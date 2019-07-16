@@ -274,7 +274,8 @@ Result BarrierInfo::create(Connection& connection, TRI_voc_tick_t minTick) {
 
   id = basics::StringUtils::uint64(barrierId);
   updateTime = TRI_microtime();
-  LOG_TOPIC("88e90", DEBUG, Logger::REPLICATION) << "created WAL logfile barrier " << id;
+  LOG_TOPIC("88e90", DEBUG, Logger::REPLICATION)
+      << "created WAL logfile barrier " << id;
 
   return Result();
 }
@@ -355,8 +356,9 @@ constexpr double BatchInfo::DefaultTimeout;
 /// @brief send a "start batch" command
 /// @param patchCount try to patch count of this collection
 ///        only effective with the incremental sync (optional)
-Result BatchInfo::start(replutils::Connection& connection,
-                        replutils::ProgressInfo& progress, std::string const& patchCount) {
+Result BatchInfo::start(replutils::Connection const& connection,
+                        replutils::ProgressInfo& progress,
+                        SyncerId const syncerId, std::string const& patchCount) {
   // TODO make sure all callers verify not child syncer
   if (!connection.valid()) {
     return {TRI_ERROR_INTERNAL};
@@ -366,8 +368,9 @@ Result BatchInfo::start(replutils::Connection& connection,
   id = 0;
 
   // SimpleHttpClient automatically add database prefix
-  std::string const url =
-      ReplicationUrl + "/batch" + "?serverId=" + connection.localServerId();
+  std::string const url = ReplicationUrl + "/batch" +
+                          "?serverId=" + connection.localServerId() +
+                          "&syncerId=" + syncerId.toString();
   VPackBuilder b;
   {
     VPackObjectBuilder guard(&b, true);
@@ -417,7 +420,8 @@ Result BatchInfo::start(replutils::Connection& connection,
 }
 
 /// @brief send an "extend batch" command
-Result BatchInfo::extend(replutils::Connection& connection, replutils::ProgressInfo& progress) {
+Result BatchInfo::extend(replutils::Connection const& connection,
+                         replutils::ProgressInfo& progress, SyncerId const syncerId) {
   if (id == 0) {
     return Result();
   } else if (!connection.valid()) {
@@ -433,7 +437,8 @@ Result BatchInfo::extend(replutils::Connection& connection, replutils::ProgressI
   }
 
   std::string const url = ReplicationUrl + "/batch/" + basics::StringUtils::itoa(id) +
-                          "?serverId=" + connection.localServerId();
+                          "?serverId=" + connection.localServerId() +
+                          "&syncerId=" + syncerId.toString();
   std::string const body = "{\"ttl\":" + basics::StringUtils::itoa(ttl) + "}";
   progress.set("sending batch extend command to url " + url);
 
@@ -456,7 +461,8 @@ Result BatchInfo::extend(replutils::Connection& connection, replutils::ProgressI
 }
 
 /// @brief send a "finish batch" command
-Result BatchInfo::finish(replutils::Connection& connection, replutils::ProgressInfo& progress) {
+Result BatchInfo::finish(replutils::Connection const& connection,
+                         replutils::ProgressInfo& progress, SyncerId const syncerId) {
   if (id == 0) {
     return Result();
   } else if (!connection.valid()) {
@@ -465,7 +471,8 @@ Result BatchInfo::finish(replutils::Connection& connection, replutils::ProgressI
 
   try {
     std::string const url = ReplicationUrl + "/batch/" + basics::StringUtils::itoa(id) +
-                            "?serverId=" + connection.localServerId();
+                            "?serverId=" + connection.localServerId() +
+                            "&syncerId=" + syncerId.toString();
     progress.set("sending batch finish command to url " + url);
 
     // send request
@@ -575,8 +582,8 @@ Result buildHttpError(httpclient::SimpleHttpResult* response,
     if (errorMsg.empty() && response != nullptr) {
       errorMsg = "HTTP " + basics::StringUtils::itoa(response->getHttpReturnCode()) +
                  ": " + response->getHttpReturnMessage() + " - " +
-                response->getBody().toString();
-    } 
+                 response->getBody().toString();
+    }
     return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
                   std::string("could not connect to master at ") +
                       connection.endpoint() + " for URL " + url + ": " + errorMsg);

@@ -1,5 +1,8 @@
 #line 17 "Aql/tokens.ll"
 #include <stdint.h>
+#if (_MSC_VER >= 1)
+#pragma warning( disable : 4267)
+#endif
 
 
 

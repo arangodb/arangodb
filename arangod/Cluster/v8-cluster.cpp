@@ -655,7 +655,8 @@ static void JS_GetCollectionInfoClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
                                              "planId",
                                              "version",
                                              "objectId"};
-  VPackBuilder infoBuilder = ci->toVelocyPackIgnore(ignoreKeys, false, false);
+  VPackBuilder infoBuilder =
+      ci->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::makeFlags());
   VPackSlice info = infoBuilder.slice();
 
   TRI_ASSERT(info.isObject());
@@ -931,24 +932,6 @@ static void JS_GetDBServers(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_V8_RETURN(l);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reloads the cache of DBServers currently registered
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_ReloadDBServers(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  ONLY_IN_CLUSTER
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("reloadDBServers()");
-  }
-
-  ClusterInfo::instance()->loadCurrentDBServers();
-  TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1987,8 +1970,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        TRI_V8_ASCII_STRING(isolate, "getServerName"),
                        JS_GetServerNameClusterInfo);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getDBServers"), JS_GetDBServers);
-  TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING(isolate, "reloadDBServers"), JS_ReloadDBServers);
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "getCoordinators"), JS_GetCoordinators);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "uniqid"), JS_UniqidClusterInfo);

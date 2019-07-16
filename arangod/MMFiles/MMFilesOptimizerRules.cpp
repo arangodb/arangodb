@@ -43,13 +43,14 @@ using EN = arangodb::aql::ExecutionNode;
 void MMFilesOptimizerRules::registerResources() {
   // remove SORT RAND() if appropriate
   OptimizerRulesFeature::registerRule("remove-sort-rand", removeSortRandRule,
-                                      OptimizerRule::removeSortRandRule, false, true);
+                                      OptimizerRule::removeSortRandRule, 
+                                      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 }
 
 /// @brief remove SORT RAND() if appropriate
 void MMFilesOptimizerRules::removeSortRandRule(Optimizer* opt,
                                                std::unique_ptr<ExecutionPlan> plan,
-                                               OptimizerRule const* rule) {
+                                               OptimizerRule const& rule) {
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::SORT, true);

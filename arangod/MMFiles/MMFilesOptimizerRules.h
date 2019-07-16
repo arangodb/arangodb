@@ -38,7 +38,7 @@ struct MMFilesOptimizerRules {
 
   static void removeSortRandRule(aql::Optimizer* opt,
                                  std::unique_ptr<aql::ExecutionPlan> plan,
-                                 aql::OptimizerRule const* rule);
+                                 aql::OptimizerRule const& rule);
 };
 
 }  // namespace arangodb

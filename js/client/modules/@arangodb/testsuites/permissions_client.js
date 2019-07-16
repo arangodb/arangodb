@@ -62,7 +62,7 @@ function permissions(options) {
   let res = {};
   let filtered = {};
   let rootDir = fs.join(fs.getTempPath(), 'permissions');
-  const tests = tu.scanTestPaths(testPaths.permissions);
+  const tests = tu.scanTestPaths(testPaths.permissions, options);
 
   fs.makeDirectoryRecursive(rootDir);
 

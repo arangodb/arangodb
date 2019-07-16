@@ -102,22 +102,25 @@ struct BoostScorer : public irs::sort {
       return nullptr;
     }
 
-    virtual irs::sort::scorer::ptr prepare_scorer(irs::sub_reader const&,
-                                                  irs::term_reader const&,
-                                                  irs::byte_type const*,
-                                                  irs::attribute_view const&,
-                                                  irs::boost_t boost) const override {
-      struct Scorer : public irs::sort::scorer {
-        Scorer(irs::boost_t score) : scr(score) {}
-
-        virtual void score(irs::byte_type* score_buf) override {
-          *reinterpret_cast<score_t*>(score_buf) = scr;
-        }
+    virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
+        irs::sub_reader const&,
+        irs::term_reader const&,
+        irs::byte_type const*,
+        irs::attribute_view const&,
+        irs::boost_t boost) const override {
+      struct ScoreCtx : public irs::sort::score_ctx {
+        ScoreCtx(irs::boost_t score) : scr(score) {}
 
         irs::boost_t scr;
       };
 
-      return irs::sort::scorer::make<Scorer>(boost);
+      return {
+        std::make_unique<ScoreCtx>(boost),
+        [](const void* ctx, irs::byte_type* score_buf) noexcept {
+          auto& state = *static_cast<const ScoreCtx*>(ctx);
+          irs::sort::score_cast<irs::boost_t>(score_buf) = state.scr;
+        }
+      };
     }
   };
 
@@ -177,22 +180,25 @@ struct CustomScorer : public irs::sort {
       return nullptr;
     }
 
-    virtual irs::sort::scorer::ptr prepare_scorer(irs::sub_reader const&,
-                                                  irs::term_reader const&,
-                                                  irs::byte_type const*,
-                                                  irs::attribute_view const&,
-                                                  irs::boost_t) const override {
-      struct Scorer : public irs::sort::scorer {
-        Scorer(float_t score) : i(score) {}
-
-        virtual void score(irs::byte_type* score_buf) override {
-          *reinterpret_cast<score_t*>(score_buf) = i;
-        }
+    virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
+        irs::sub_reader const&,
+        irs::term_reader const&,
+        irs::byte_type const*,
+        irs::attribute_view const&,
+        irs::boost_t) const override {
+      struct ScoreCtx : public irs::sort::score_ctx {
+        ScoreCtx(float_t score) : i(score) {}
 
         float_t i;
       };
 
-      return irs::sort::scorer::make<Scorer>(i);
+      return {
+        std::make_unique<ScoreCtx>(i),
+        [](const void* ctx, irs::byte_type* score_buf) noexcept {
+          auto& state = *static_cast<const ScoreCtx*>(ctx);
+          irs::sort::score_cast<float_t>(score_buf) = state.i;
+        }
+      };
     }
 
     float_t i;
@@ -245,7 +251,10 @@ REGISTER_SCORER_JSON(CustomScorer, CustomScorer::make);
 }  // namespace
 
 namespace arangodb {
+
 namespace tests {
+
+std::string const AnalyzerCollectionName("_analyzers");
 
 std::string testResourceDir;
 
@@ -409,6 +418,20 @@ void setDatabasePath(arangodb::DatabasePathFeature& feature) {
   path /= TRI_GetTempPath();
   path /= std::string("arangodb_tests.") + std::to_string(TRI_microtime());
   const_cast<std::string&>(feature.directory()) = path.utf8();
+}
+
+
+
+void expectEqualSlices_(const VPackSlice& lhs, const VPackSlice& rhs, const char* where) {
+  SCOPED_TRACE(rhs.toString());
+  SCOPED_TRACE(rhs.toHex());
+  SCOPED_TRACE("----ACTUAL----");
+  SCOPED_TRACE(lhs.toString());
+  SCOPED_TRACE(lhs.toHex());
+  SCOPED_TRACE("---EXPECTED---");
+  SCOPED_TRACE(where);
+  EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                   lhs, rhs, true));
 }
 
 }  // namespace tests

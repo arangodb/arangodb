@@ -42,9 +42,9 @@ class text_token_stream : public analyzer, util::noncopyable {
     stopwords_t explicit_stopwords;
     // needed for mark empty explicit_stopwords as valid and prevent loading from defaults
     bool explicit_stopwords_set{ false }; 
-    std::string locale;
-    bool no_accent{true}; // remove accents from letters, mach original implementation
-    bool no_stem{false}; // try to stem if possible, mach original implementation
+    std::locale locale;
+    bool accent{false}; // remove accents from letters, mach original implementation
+    bool stemming{true}; // try to stem if possible, mach original implementation
     std::string stopwordsPath{0}; // string with zero char indicates 'no value set'
   };
 
@@ -86,8 +86,6 @@ class text_token_stream : public analyzer, util::noncopyable {
   static void init(); // for trigering registration in a static build
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
-  virtual bool to_string(const ::irs::text_format::type_id& format,
-                         std::string& definition) const override;
 
  private:
   irs::attribute_view attrs_;

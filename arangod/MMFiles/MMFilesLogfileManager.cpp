@@ -62,7 +62,7 @@ using namespace arangodb::options;
 MMFilesLogfileManager* MMFilesLogfileManager::Instance = nullptr;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-bool MMFilesLogfileManager::SafeToUseInstance = false;
+std::atomic<bool> MMFilesLogfileManager::SafeToUseInstance{ false };
 #endif
 
 // whether or not there was a SHUTDOWN file with a last tick at

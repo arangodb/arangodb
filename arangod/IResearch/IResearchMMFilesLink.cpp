@@ -42,69 +42,42 @@ namespace iresearch {
 /// @brief IResearchMMFilesLink-specific implementation of an IndexTypeFactory
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchMMFilesLink::IndexFactory : public arangodb::IndexTypeFactory {
-  virtual bool equal(arangodb::velocypack::Slice const& lhs,
-                     arangodb::velocypack::Slice const& rhs) const override {
+  bool equal(arangodb::velocypack::Slice const& lhs,
+             arangodb::velocypack::Slice const& rhs) const override {
     return arangodb::iresearch::IResearchLinkHelper::equal(lhs, rhs);
   }
 
-  virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
-                                       arangodb::LogicalCollection& collection,
-                                       arangodb::velocypack::Slice const& definition,
-                                       TRI_idx_iid_t id,
-                                       bool isClusterConstructor) const override {
-    try {
-      // ensure loaded so that we have valid data in next check
-      if (TRI_VOC_COL_STATUS_LOADED != collection.status()) {
-        collection.load();
-      }
-
-      // try casting underlying collection to an MMFilesCollection
-      // this may not succeed because we may have to deal with a
-      // PhysicalCollectionMock here
-      auto mmfilesCollection =
-          dynamic_cast<arangodb::MMFilesCollection*>(collection.getPhysical());
-
-      if (mmfilesCollection && !mmfilesCollection->hasAllPersistentLocalIds()) {
-        return arangodb::Result(
-            TRI_ERROR_INTERNAL,
-            "mmfiles collection uses pre-3.4 format and cannot be linked to an "
-            "arangosearch view; try recreating collection and moving the "
-            "contents to the new collection");
-      }
-
-      auto link =
-          std::shared_ptr<IResearchMMFilesLink>(new IResearchMMFilesLink(id, collection));
-      auto res = link->init(definition);
-
-      if (!res.ok()) {
-        return res;
-      }
-
-      index = link;
-    } catch (arangodb::basics::Exception const& e) {
-      IR_LOG_EXCEPTION();
-
-      return arangodb::Result(e.code(),
-                              std::string("caught exception while creating "
-                                          "arangosearch view MMFiles link '") +
-                                  std::to_string(id) + "': " + e.what());
-    } catch (std::exception const& e) {
-      IR_LOG_EXCEPTION();
-
-      return arangodb::Result(TRI_ERROR_INTERNAL,
-                              std::string("caught exception while creating "
-                                          "arangosearch view MMFiles link '") +
-                                  std::to_string(id) + "': " + e.what());
-    } catch (...) {
-      IR_LOG_EXCEPTION();
-
-      return arangodb::Result(TRI_ERROR_INTERNAL,
-                              std::string("caught exception while creating "
-                                          "arangosearch view MMFiles link '") +
-                                  std::to_string(id) + "'");
+  std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
+                                               arangodb::velocypack::Slice const& definition,
+                                               TRI_idx_iid_t id,
+                                               bool isClusterConstructor) const override {
+    // ensure loaded so that we have valid data in next check
+    if (TRI_VOC_COL_STATUS_LOADED != collection.status()) {
+      collection.load();
     }
 
-    return arangodb::Result();
+    // try casting underlying collection to an MMFilesCollection
+    // this may not succeed because we may have to deal with a
+    // PhysicalCollectionMock here
+    auto mmfilesCollection =
+        dynamic_cast<arangodb::MMFilesCollection*>(collection.getPhysical());
+
+    if (mmfilesCollection && !mmfilesCollection->hasAllPersistentLocalIds()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+          "mmfiles collection uses pre-3.4 format and cannot be linked to an "
+          "arangosearch view; try recreating collection and moving the "
+          "contents to the new collection");
+    }
+
+    auto link =
+        std::shared_ptr<IResearchMMFilesLink>(new IResearchMMFilesLink(id, collection));
+    auto res = link->init(definition);
+
+    if (!res.ok()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    return link;
   }
 
   virtual arangodb::Result normalize( // normalize definition

@@ -148,12 +148,12 @@ function basicTestSuite() {
     },
 
     testPageRank: function () {
-      // should test correct convergence behaviour, might fail if EPS is too low
+      // should test correct convergence behavior, might fail if EPS is too low
       testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true });
     },
 
     testPageRankMMap: function () {
-      // should test correct convergence behaviour, might fail if EPS is too low
+      // should test correct convergence behavior, might fail if EPS is too low
       testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true, useMemoryMaps: true });
     },
 
@@ -370,6 +370,27 @@ function randomTestSuite() {
         store: true, useMemoryMaps: true
       };
       var pid = pregel.start("pagerank", graphName, opts);
+      var i = 10000;
+      do {
+        internal.wait(0.2);
+        var stats = pregel.status(pid);
+        if (stats.state !== "running") {
+          assertEqual(stats.vertexCount, n, stats);
+          assertEqual(stats.edgeCount, m * 2, stats);
+          break;
+        }
+      } while (i-- >= 0);
+      if (i === 0) {
+        assertTrue(false, "timeout in pregel execution");
+      }
+    },
+
+    testHITS: function () {
+      const opts = {
+        threshold: 0.0000001, resultField: "score",
+        store: true
+      };
+      var pid = pregel.start("hits", graphName, opts);
       var i = 10000;
       do {
         internal.wait(0.2);

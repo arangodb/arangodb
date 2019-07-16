@@ -36,9 +36,9 @@
 #include "Aql/Function.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/SmallVector.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/ClusterFeature.h"
 #include "Containers.h"
 #include "IResearchCommon.h"
 #include "IResearchFeature.h"
@@ -61,6 +61,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
 
 namespace arangodb {
@@ -177,7 +178,7 @@ bool upgradeSingleServerArangoSearchView0_1(
   // In order to upgrade ArangoSearch views from version 0 to version 1 we need to
   // differentiate between single server and cluster, therefore we temporary set role in 'ServerState',
   // actually supplied by a user, only for the duration of task to avoid other upgrade tasks, that
-  // potentially rely on the original behaviour, to be affected.
+  // potentially rely on the original behavior, to be affected.
   struct ServerRoleGuard {
     ServerRoleGuard() {
       auto const* clusterFeature = ApplicationServer::lookupFeature<arangodb::ClusterFeature>("Cluster");
@@ -220,7 +221,10 @@ bool upgradeSingleServerArangoSearchView0_1(
     arangodb::Result res;
 
     builder.openObject();
-    res = view->properties(builder, true, true);  // get JSON with meta + 'version'
+    res = view->properties(builder,
+                           arangodb::LogicalDataSource::makeFlags(
+                               arangodb::LogicalDataSource::Serialize::Detailed,
+                               arangodb::LogicalDataSource::Serialize::ForPersistence));  // get JSON with meta + 'version'
     builder.close();
 
     if (!res.ok()) {
@@ -250,7 +254,8 @@ bool upgradeSingleServerArangoSearchView0_1(
 
     builder.clear();
     builder.openObject();
-    res = view->properties(builder, true, false);  // get JSON with end-user definition
+    res = view->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                        arangodb::LogicalDataSource::Serialize::Detailed));  // get JSON with end-user definition
     builder.close();
 
     if (!res.ok()) {
@@ -483,9 +488,12 @@ arangodb::iresearch::IResearchFeature::WalFlushCallback registerRecoveryMarkerSu
   auto cid = link.collection().id();
   auto iid = link.id();
 
-  return [cid, iid, subscription]( // callback
-    arangodb::velocypack::Slice const& value // args
-  )->arangodb::Result {
+  return [cid, iid, subscription](
+    arangodb::velocypack::Slice const& value, TRI_voc_tick_t tick)->arangodb::Result {
+    if (value.isNone()) {
+      return subscription->commit(value, tick);
+    }
+
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
@@ -494,7 +502,7 @@ arangodb::iresearch::IResearchFeature::WalFlushCallback registerRecoveryMarkerSu
     builder.add(FLUSH_VALUE_FIELD, value);
     builder.close();
 
-    return subscription->commit(builder.slice());
+    return subscription->commit(builder.slice(), tick);
   };
 }
 
@@ -946,8 +954,8 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
       _threadsLimit(0) {
   setOptional(true);
   startsAfter("V8Phase");
-  startsAfter("IResearchAnalyzer");  // used for retrieving IResearch analyzers
-                                     // for functions
+  startsAfter("ArangoSearchAnalyzer");  // used for retrieving IResearch analyzers
+                                        // for functions
   startsAfter("AQLFunctions");
 }
 

@@ -54,12 +54,6 @@ class IRESEARCH_API analyzer: public token_stream {
 
   const type_id& type() const NOEXCEPT { return *type_; }
 
-  virtual bool to_string(const ::irs::text_format::type_id& /*format*/,
-                         std::string& definition) const {
-    definition.clear();
-    return false;
-  }
-
 protected:
  
  private:

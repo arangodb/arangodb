@@ -49,6 +49,17 @@ namespace {
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
+void ensureImmutableProperties(
+    arangodb::iresearch::IResearchViewMeta& dst,
+    arangodb::iresearch::IResearchViewMeta const& src) {
+  dst._locale = src._locale;
+  dst._version = src._version;
+  dst._writebufferActive = src._writebufferActive;
+  dst._writebufferIdle = src._writebufferIdle;
+  dst._writebufferSizeMax = src._writebufferSizeMax;
+  dst._primarySort = src._primarySort;
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -126,9 +137,9 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
                        std::to_string(impl->id()));  // refresh view from Agency
 
     if (view) {
-      view->open();  // open view to match the behaviour in
+      view->open();  // open view to match the behavior in
                      // StorageEngine::openExistingDatabase(...) and original
-                     // behaviour of TRI_vocbase_t::createView(...)
+                     // behavior of TRI_vocbase_t::createView(...)
     }
 
     return arangodb::Result();
@@ -164,8 +175,8 @@ IResearchViewCoordinator::~IResearchViewCoordinator() {
 }
 
 arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
-    arangodb::velocypack::Builder& builder, bool detailed, bool forPersistence) const {
-  if (forPersistence) {
+    arangodb::velocypack::Builder& builder, std::underlying_type<Serialize>::type flags) const {
+  if (hasFlag(flags, Serialize::ForPersistence)) {
     auto res = arangodb::LogicalViewHelperClusterInfo::properties(builder, *this);
 
     if (!res.ok()) {
@@ -173,7 +184,7 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
     }
   }
 
-  if (!detailed) {
+  if (!hasFlag(flags, Serialize::Detailed)) {
     return arangodb::Result();  // nothing more to output
   }
 
@@ -195,7 +206,8 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
 
   if (!_meta.json(sanitizedBuilder) ||
       !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(),
-                          forPersistence ? persistenceAcceptor : acceptor)) {
+                          hasFlag(flags, Serialize::ForPersistence) ? persistenceAcceptor
+                                                                    : acceptor)) {
     return arangodb::Result(
         TRI_ERROR_INTERNAL,
         std::string("failure to generate definition while generating "
@@ -207,7 +219,7 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
 
   // links are not persisted, their definitions are part of the corresponding
   // collections
-  if (!forPersistence) {
+  if (!hasFlag(flags, Serialize::ForPersistence)) {
     // verify that the current user has access on all linked collections
     auto* exec = ExecContext::CURRENT;
     if (exec) {
@@ -378,7 +390,7 @@ arangodb::Result IResearchViewCoordinator::properties(velocypack::Slice const& s
     }
 
     // reset non-updatable values to match current meta
-    meta._locale = _meta._locale;
+    ensureImmutableProperties(meta, _meta);
 
     // only trigger persisting of properties if they have changed
     if (_meta != meta) {

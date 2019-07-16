@@ -51,6 +51,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/Methods/Collections.h"
 
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
@@ -86,6 +87,11 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     PTR_NAMED(EmptyAnalyzer, ptr);
     return ptr;
   }
+  static bool normalize(irs::string_ref const&, std::string& out) { 
+    out.resize(VPackSlice::emptyObjectSlice().byteSize());
+    std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
+    return true; 
+  }
   virtual bool next() override { return false; }
   virtual bool reset(irs::string_ref const& data) override { return true; }
 
@@ -95,11 +101,12 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "iresearch-document-empty");
-REGISTER_ANALYZER_JSON(EmptyAnalyzer, EmptyAnalyzer::make);
+REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
 
 class InvalidAnalyzer : public irs::analysis::analyzer {
  public:
   static bool returnNullFromMake;
+  static bool returnFalseFromToString;
 
   DECLARE_ANALYZER_TYPE();
   InvalidAnalyzer() : irs::analysis::analyzer(InvalidAnalyzer::type()) {
@@ -109,12 +116,17 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
     return _attrs;
   }
   static ptr make(irs::string_ref const&) {
-    if (!returnNullFromMake) {
-      PTR_NAMED(InvalidAnalyzer, ptr);
-      returnNullFromMake = true;
-      return ptr;
+    if (returnNullFromMake) {
+      return nullptr;
     }
-    return nullptr;
+
+    PTR_NAMED(InvalidAnalyzer, ptr);
+    return ptr;
+  }
+  static bool normalize(irs::string_ref const&, std::string& out) {
+    out.resize(VPackSlice::emptyObjectSlice().byteSize());
+    std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
+    return !returnFalseFromToString;
   }
   virtual bool next() override { return false; }
   virtual bool reset(irs::string_ref const& data) override { return true; }
@@ -125,9 +137,10 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
 };
 
 bool InvalidAnalyzer::returnNullFromMake = false;
+bool InvalidAnalyzer::returnFalseFromToString = false;
 
 DEFINE_ANALYZER_TYPE_NAMED(InvalidAnalyzer, "iresearch-document-invalid");
-REGISTER_ANALYZER_JSON(InvalidAnalyzer, InvalidAnalyzer::make);
+REGISTER_ANALYZER_VPACK(InvalidAnalyzer, InvalidAnalyzer::make, InvalidAnalyzer::normalize);
 
 }  // namespace
 
@@ -192,24 +205,33 @@ class IResearchDocumentTest : public ::testing::Test {
         f.first->start();
       }
     }
-
+    {
+      auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
+      arangodb::methods::Collections::createSystem(
+          *vocbase,
+          arangodb::tests::AnalyzerCollectionName);
+    }
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
     // ensure that there will be no exception on 'emplace'
     InvalidAnalyzer::returnNullFromMake = false;
+    InvalidAnalyzer::returnFalseFromToString = false;
 
-    analyzers->emplace(result,
-                       arangodb::StaticStrings::SystemDatabase +
-                           "::iresearch-document-empty",
-                       "iresearch-document-empty", "en",
-                       irs::flags{irs::frequency::type()});  // cache analyzer
-    analyzers->emplace(result,
-                       arangodb::StaticStrings::SystemDatabase +
-                           "::iresearch-document-invalid",
-                       "iresearch-document-invalid", "en",
-                       irs::flags{irs::frequency::type()});  // cache analyzer
+    analyzers->emplace(
+      result,
+      arangodb::StaticStrings::SystemDatabase + "::iresearch-document-empty",
+      "iresearch-document-empty",
+      arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
+      irs::flags{irs::frequency::type()});  // cache analyzer
+
+    analyzers->emplace(
+      result,
+      arangodb::StaticStrings::SystemDatabase + "::iresearch-document-invalid",
+      "iresearch-document-invalid",
+      arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
+      irs::flags{irs::frequency::type()});  // cache analyzer
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
@@ -328,7 +350,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_custom_neste
 
   // default analyzer
   auto const expected_analyzer =
-      irs::analysis::analyzers::get("identity", irs::text_format::json, "");
+      irs::analysis::analyzers::get("identity", irs::text_format::vpack,
+                                     arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
   auto* analyzers =
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   EXPECT_TRUE(nullptr != analyzers);
@@ -409,7 +432,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_all_fields) 
 
   // default analyzer
   auto const expected_analyzer =
-      irs::analysis::analyzers::get("identity", irs::text_format::json, "");
+      irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
+                                    arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
   auto* analyzers =
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   EXPECT_TRUE(nullptr != analyzers);
@@ -498,7 +522,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_all_
 
   // default analyzer
   auto const expected_analyzer =
-      irs::analysis::analyzers::get("identity", irs::text_format::json, "");
+      irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
+                                     arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
   auto* analyzers =
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   EXPECT_TRUE(nullptr != analyzers);
@@ -574,7 +599,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filt
   auto& value = *it;
   EXPECT_TRUE(mangleStringIdentity("boost") == value.name());
   const auto expected_analyzer =
-      irs::analysis::analyzers::get("identity", irs::text_format::json, "");
+      irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
+                                    arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
   auto* analyzers =
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   EXPECT_TRUE(nullptr != analyzers);
@@ -712,7 +738,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& field = *it;
     EXPECT_TRUE(mangleStringIdentity("stringValue") == field.name());
     auto const expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::text_format::json, "");
+        irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
+                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     EXPECT_TRUE(nullptr != analyzers);
@@ -732,7 +759,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     EXPECT_TRUE(mangleString("stringValue", "iresearch-document-empty") == field.name());
     auto const expected_analyzer =
         irs::analysis::analyzers::get("iresearch-document-empty",
-                                      irs::text_format::json, "en");
+                                      irs::text_format::vpack, 
+                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
     EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
     EXPECT_TRUE(irs::flags({irs::frequency::type()}) == field.features());
@@ -895,7 +923,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
     auto& value = *it;
     EXPECT_TRUE(mangleStringIdentity("boost") == value.name());
     const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::text_format::json, "");
+        irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
+                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     EXPECT_TRUE(nullptr != analyzers);
@@ -913,7 +942,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
     auto& value = *it;
     EXPECT_TRUE(mangleStringIdentity("depth") == value.name());
     const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::text_format::json, "");
+        irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
+                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     EXPECT_TRUE(nullptr != analyzers);
@@ -933,7 +963,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
     auto& value = *it;
     EXPECT_TRUE(mangleStringIdentity("name") == value.name());
     const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::text_format::json, "");
+        irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
+                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     EXPECT_TRUE(nullptr != analyzers);
@@ -1018,7 +1049,8 @@ TEST_F(IResearchDocumentTest,
 
   // default analyzer
   auto const expected_analyzer =
-      irs::analysis::analyzers::get("identity", irs::text_format::json, "");
+      irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
+                                    arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
   auto* analyzers =
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   EXPECT_TRUE(nullptr != analyzers);
@@ -1099,7 +1131,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     auto& value = *it;
     EXPECT_TRUE(mangleStringIdentity("nested.foo") == value.name());
     const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::text_format::json, "");
+        irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
+                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
@@ -1130,7 +1163,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     auto& value = *it;
     EXPECT_TRUE(mangleStringIdentity("keys") == value.name());
     const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::text_format::json, "");
+        irs::analysis::analyzers::get("identity", irs::text_format::vpack,
+                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     EXPECT_TRUE(nullptr != analyzers);
@@ -1149,7 +1183,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     auto& value = *it;
     EXPECT_TRUE(mangleStringIdentity("boost") == value.name());
     const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::text_format::json, "");
+        irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
+                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     EXPECT_TRUE(nullptr != analyzers);
@@ -1180,7 +1215,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     auto& value = *it;
     EXPECT_TRUE(mangleStringIdentity("fields.fieldA.name") == value.name());
     const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::text_format::json, "");
+        irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
+                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     EXPECT_TRUE(nullptr != analyzers);
@@ -1212,7 +1248,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     auto& value = *it;
     EXPECT_TRUE(mangleStringIdentity("listValuation") == value.name());
     const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::text_format::json, "");
+        irs::analysis::analyzers::get("identity", irs::text_format::vpack,
+                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     EXPECT_TRUE(nullptr != analyzers);
@@ -1270,7 +1307,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
       auto& value = *it;
       EXPECT_TRUE(mangleStringIdentity("array[0].subarr") == value.name());
       const auto expected_analyzer =
-          irs::analysis::analyzers::get("identity", irs::text_format::json, "");
+          irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
+                                        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto* analyzers =
           arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       EXPECT_TRUE(nullptr != analyzers);
@@ -1305,7 +1343,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
       auto& value = *it;
       EXPECT_TRUE(mangleStringIdentity("array[1].subarr") == value.name());
       const auto expected_analyzer =
-          irs::analysis::analyzers::get("identity", irs::text_format::json, "");
+          irs::analysis::analyzers::get("identity", irs::text_format::vpack,
+                                        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto* analyzers =
           arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       EXPECT_TRUE(nullptr != analyzers);
@@ -1338,7 +1377,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     auto& value = *it;
     EXPECT_TRUE(mangleStringIdentity("array[1].id") == value.name());
     const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::text_format::json, "");
+        irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
+                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     EXPECT_TRUE(nullptr != analyzers);
@@ -1383,7 +1423,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
       auto& value = *it;
       EXPECT_TRUE(mangleStringIdentity("array[2].subarr") == value.name());
       const auto expected_analyzer =
-          irs::analysis::analyzers::get("identity", irs::text_format::json, "");
+          irs::analysis::analyzers::get("identity", irs::text_format::vpack,
+                                        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto* analyzers =
           arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       EXPECT_TRUE(nullptr != analyzers);
@@ -1426,25 +1467,51 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
 
   // register analizers with feature
   {
-    // ensure that there will be no exception on 'start'
+     // ensure there will be no exception on 'start'
     InvalidAnalyzer::returnNullFromMake = false;
-
+    InvalidAnalyzer::returnFalseFromToString = false;
     analyzers.start();
+
     analyzers.remove("empty");
     analyzers.remove("invalid");
 
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    ASSERT_TRUE(analyzers.emplace(result,
+                  arangodb::StaticStrings::SystemDatabase + "::empty",
+                  "iresearch-document-empty",
+                  arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
+                  irs::flags{irs::frequency::type()}).ok());
+
+    // valid duplicate (same properties)
+    ASSERT_TRUE(analyzers.emplace(result,
+                  arangodb::StaticStrings::SystemDatabase + "::empty",
+                  "iresearch-document-empty",
+                  arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
+                  irs::flags{irs::frequency::type()}).ok());
+
+    // ensure there will be no exception on 'emplace'
+    InvalidAnalyzer::returnFalseFromToString = true;
+    ASSERT_FALSE(analyzers.emplace(result,
+                 arangodb::StaticStrings::SystemDatabase + "::invalid",
+                 "iresearch-document-invalid",
+                 arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
+                 irs::flags{irs::frequency::type()}).ok());
+    InvalidAnalyzer::returnFalseFromToString = false;
+
     // ensure that there will be no exception on 'emplace'
+    InvalidAnalyzer::returnNullFromMake = true;
+    ASSERT_FALSE(analyzers.emplace(result,
+                 arangodb::StaticStrings::SystemDatabase + "::invalid",
+                 "iresearch-document-invalid",
+                 arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
+                 irs::flags{irs::frequency::type()}).ok());
     InvalidAnalyzer::returnNullFromMake = false;
 
-    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    analyzers.emplace(result,
-                      arangodb::StaticStrings::SystemDatabase + "::empty",
-                      "iresearch-document-empty", "en",
-                      irs::flags{irs::frequency::type()});
-    analyzers.emplace(result,
-                      arangodb::StaticStrings::SystemDatabase + "::invalid",
-                      "iresearch-document-invalid", "en",
-                      irs::flags{irs::frequency::type()});
+    ASSERT_TRUE(analyzers.emplace(result,
+                 arangodb::StaticStrings::SystemDatabase + "::invalid",
+                 "iresearch-document-invalid",
+                 arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
+                 irs::flags{irs::frequency::type()}).ok());
   }
 
   // last analyzer invalid
@@ -1453,6 +1520,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     linkMeta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
         analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty"),
         "empty"));  // add analyzer
+
+    InvalidAnalyzer::returnNullFromMake = false;
     linkMeta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
         analyzers.get(arangodb::StaticStrings::SystemDatabase + "::invalid"),
         "invalid"));                    // add analyzer
@@ -1460,6 +1529,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
 
     // acquire analyzer, another one should be created
     auto analyzer = linkMeta._analyzers.back()._pool->get();  // cached instance should have been acquired
+
+    InvalidAnalyzer::returnNullFromMake = true;
 
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
@@ -1476,7 +1547,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
       auto& field = *it;
       EXPECT_TRUE(mangleStringIdentity("stringValue") == field.name());
       auto const expected_analyzer =
-          irs::analysis::analyzers::get("identity", irs::text_format::json, "");
+          irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
+                                        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto* analyzers =
           arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       EXPECT_TRUE(nullptr != analyzers);
@@ -1495,8 +1567,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
       auto& field = *it;
       EXPECT_TRUE(mangleString("stringValue", "empty") == field.name());
       auto const expected_analyzer =
-          irs::analysis::analyzers::get("iresearch-document-empty",
-                                        irs::text_format::json, "en");
+          irs::analysis::analyzers::get(
+              "iresearch-document-empty",
+              irs::text_format::vpack, 
+              arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
       EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
       EXPECT_TRUE(expected_analyzer->attributes().features() == field.features());
@@ -1513,6 +1587,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
   {
     arangodb::iresearch::IResearchLinkMeta linkMeta;
     linkMeta._analyzers.clear();
+
+    InvalidAnalyzer::returnNullFromMake = false;
     linkMeta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
         analyzers.get(arangodb::StaticStrings::SystemDatabase + "::invalid"),
         "invalid"));  // add analyzer
@@ -1523,6 +1599,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
 
     // acquire analyzer, another one should be created
     auto analyzer = linkMeta._analyzers.front()._pool->get();  // cached instance should have been acquired
+    InvalidAnalyzer::returnNullFromMake = true;
 
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
@@ -1539,8 +1616,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
       auto& field = *it;
       EXPECT_TRUE(mangleString("stringValue", "empty") == field.name());
       auto const expected_analyzer =
-          irs::analysis::analyzers::get("iresearch-document-empty",
-                                        irs::text_format::json, "en");
+          irs::analysis::analyzers::get(
+            "iresearch-document-empty",
+            irs::text_format::vpack, 
+            arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
       EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
       EXPECT_TRUE(expected_analyzer->attributes().features() == field.features());
