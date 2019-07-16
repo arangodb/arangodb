@@ -177,9 +177,9 @@ exception from the GPL license:
 ### RocksDB
 
 * Name: RocksDB
-* Version: 6.2
+* Version: 6.3
 * GitHub: https://github.com/facebook/rocksdb
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.5/3rdParty/rocksdb/6.2/README.md
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/rocksdb/6.3.X/README.md
 * License Name: Apache License 2.0
 * License Id: Apache-2.0
 
