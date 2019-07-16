@@ -174,9 +174,9 @@ is returned.
 
 @EXAMPLES
 
-Using an identifier and requesting the figures of the collection:
+Using an identifier and requesting the figures of the collection (mmfiles storage engine):
 
-@EXAMPLE_ARANGOSH_RUN{RestCollectionGetCollectionFigures}
+@EXAMPLE_ARANGOSH_RUN{RestCollectionGetCollectionFigures_mmfiles}
     var cn = "products";
     db._drop(cn);
     var coll = db._create(cn);
