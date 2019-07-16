@@ -27,7 +27,7 @@
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBEventListener.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 #include <string>
 #include <iostream>
 
@@ -123,9 +123,7 @@ struct CFilesSetup {
 /// @brief test actions
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_CASE("RocksDBEventListenerThread statics", "[rocks][devel]") {
-
-SECTION("sha a new file") {
+TEST(RocksDBEventListenerThread, sha_a_new_file) {
   CFilesSetup s;
   std::string new_sst;
   bool good;
@@ -136,14 +134,13 @@ SECTION("sha a new file") {
   new_sst+="000042.sst";
 
   ret_val = TRI_WriteFile(new_sst.c_str(), "the quick brown fox", 19);
-  CHECK(TRI_ERROR_NO_ERROR == ret_val);
+  EXPECT_EQ(ret_val, TRI_ERROR_NO_ERROR);
 
   good = arangodb::RocksDBEventListenerThread::shaCalcFile(new_sst.c_str());
-  CHECK(true == good);
-
+  EXPECT_TRUE(good);
 }
 
-SECTION("delete matching sha") {
+TEST(RocksDBEventListenerThread, delete_matching_sha) {
   CFilesSetup s;
   std::string new_sst, basepath, new_sha;
   bool good;
@@ -155,18 +152,16 @@ SECTION("delete matching sha") {
   new_sst = basepath + ".sst";
 
   ret_val = TRI_WriteFile(new_sst.c_str(), "12345 67890 12345 67890", 23);
-  CHECK(TRI_ERROR_NO_ERROR == ret_val);
+  EXPECT_EQ(ret_val, TRI_ERROR_NO_ERROR);
 
   /// not real ssh for the data written above
   new_sha = basepath + ".sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash";
   ret_val = TRI_WriteFile(new_sha.c_str(), "", 0);
-  CHECK(TRI_ERROR_NO_ERROR == ret_val);
+  EXPECT_EQ(ret_val, TRI_ERROR_NO_ERROR);
 
   good = arangodb::RocksDBEventListenerThread::deleteFile(new_sst.c_str());
-  CHECK(true == good);
-
+  EXPECT_TRUE(good);
 }
-} // TEST_CASE
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -200,24 +195,20 @@ public:
 };
 
 
-TEST_CASE("checkMissingShaFiles simple", "[rocks][devel]") {
-SECTION("verify common situations") {
+TEST(CheckMissingShaFilesSimple, verify_common_situations) {
   TestRocksDBEventListenerThread tr;
 
   tr.checkMissingShaFiles(tr.setup._directory.c_str(), 0);
 
-  CHECK( TRI_ExistsFile(tr.pathName("MANIFEST-000004").c_str()));
-  CHECK( TRI_ExistsFile(tr.pathName("CURRENT").c_str()));
-  CHECK( TRI_ExistsFile(tr.pathName("IDENTITY").c_str()));
-  CHECK( TRI_ExistsFile(tr.pathName("037793.sst").c_str()));
-  CHECK( TRI_ExistsFile(tr.pathName("037793.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash").c_str()));
-  CHECK( TRI_ExistsFile(tr.pathName("037684.sst").c_str()));
-  CHECK( TRI_ExistsFile(tr.pathName("037684.sha.2db3c4a7da801356e4efda0d65229d0baadf6950b366418e96abb7ece9c56c12.hash").c_str()));
-  CHECK( TRI_ExistsFile(tr.pathName("086219.sst").c_str()));
-  CHECK( TRI_ExistsFile(tr.pathName("086219.sha.5d3cfa346c3852c0c108d720d580cf99910749f17c8429c07c1c2d714be2b7ff.hash").c_str()));
+  EXPECT_TRUE( TRI_ExistsFile(tr.pathName("MANIFEST-000004").c_str()));
+  EXPECT_TRUE( TRI_ExistsFile(tr.pathName("CURRENT").c_str()));
+  EXPECT_TRUE( TRI_ExistsFile(tr.pathName("IDENTITY").c_str()));
+  EXPECT_TRUE( TRI_ExistsFile(tr.pathName("037793.sst").c_str()));
+  EXPECT_TRUE( TRI_ExistsFile(tr.pathName("037793.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash").c_str()));
+  EXPECT_TRUE( TRI_ExistsFile(tr.pathName("037684.sst").c_str()));
+  EXPECT_TRUE( TRI_ExistsFile(tr.pathName("037684.sha.2db3c4a7da801356e4efda0d65229d0baadf6950b366418e96abb7ece9c56c12.hash").c_str()));
+  EXPECT_TRUE( TRI_ExistsFile(tr.pathName("086219.sst").c_str()));
+  EXPECT_TRUE( TRI_ExistsFile(tr.pathName("086219.sha.5d3cfa346c3852c0c108d720d580cf99910749f17c8429c07c1c2d714be2b7ff.hash").c_str()));
 
-  CHECK( !TRI_ExistsFile(tr.pathName("086218.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash").c_str()));
-
-
-} // SECTION
-} // TEST_CASE
+  EXPECT_TRUE( !TRI_ExistsFile(tr.pathName("086218.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash").c_str()));
+}

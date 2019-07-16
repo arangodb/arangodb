@@ -25,7 +25,7 @@
 #include "Basics/files.h"
 #include "Random/RandomGenerator.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 //#include "Basics/Exceptions.h"
 //#include "Basics/VelocyPackHelper.h"
@@ -65,6 +65,16 @@ public:
 // -----------------------------------------------------------------------------
 
 /// @brief test RocksDBHotBackup::buildDirectoryPath
+class RocksDBHotBackupPathTests : public ::testing::Test {
+protected:
+  VPackSlice config;
+  VPackBuilder report;
+  RocksDBHotBackupTest testee(config, report);
+
+  RocksDBHotBackupPathTests() : testee(config, report) {
+  }
+};
+
 TEST_CASE("RocksDBHotBackup path tests", "[rocksdb][devel][hotbackup]") {
 
   VPackSlice config;
@@ -72,31 +82,30 @@ TEST_CASE("RocksDBHotBackup path tests", "[rocksdb][devel][hotbackup]") {
 
   RocksDBHotBackupTest testee(config, report);
 
-  SECTION("test_override") {
-    CHECK(0 == testee.getPersistedId().compare("SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe"));
-  }
+TEST_F(RocksDBHotBackupPathTests, test_override) {
+  EXPECT_EQ(testee.getPersistedId().compare("SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe"), 0);
+}
 
-  SECTION("test_date clean up") {
-    CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z","") ==
-            "/var/db/backups/2019-01-23T14.47.42Z");
-  }
+TEST_F(RocksDBHotBackupPathTests, test_date_clean_up) {
+  EXPECT_EQ(testee.buildDirectoryPath("2019-01-23T14:47:42Z",""),
+          "/var/db/backups/2019-01-23T14.47.42Z");
+}
 
-  SECTION("test_user string clean up") {
-    CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z","1\"2#3,14159") ==
+TEST_F(RocksDBHotBackupPathTests, test_user_string_clean_up) {
+  EXPECT_EQ(testee.buildDirectoryPath("2019-01-23T14:47:42Z","1\"2#3,14159"),
             "/var/db/backups/2019-01-23T14.47.42Z_1.2.3.14159");
-    CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z","Today\'s Hot Backup") ==
+  EXPECT_EQ(testee.buildDirectoryPath("2019-01-23T14:47:42Z","Today\'s Hot Backup"),
             "/var/db/backups/2019-01-23T14.47.42Z_Today.s_Hot_Backup");
-    std::string raw_string("Toodaay\'s hot");
-    raw_string[1]=(char)1;
-    raw_string[5]=(char)5;
-    CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z",raw_string) ==
+  std::string raw_string("Toodaay\'s hot");
+  raw_string[1]=(char)1;
+  raw_string[5]=(char)5;
+  EXPECT_EQ(testee.buildDirectoryPath("2019-01-23T14:47:42Z",raw_string),
             "/var/db/backups/2019-01-23T14.47.42Z_Today.s_hot");
-  }
+}
 
-  SECTION("test getRocksDBPath") {
-    CHECK(testee.getDatabasePath() == "/var/db");
-    CHECK(testee.getRocksDBPath() == "/var/db/engine-rocksdb");
-  }
+TEST_F(RocksDBHotBackupPathTests, test_getRocksDBPath) {
+  EXPECT_EQ(testee.getDatabasePath(), "/var/db");
+  EXPECT_EQ(testee.getRocksDBPath(), "/var/db/engine-rocksdb");
 }
 
 
@@ -107,52 +116,50 @@ TEST_CASE("RocksDBHotBackup path tests", "[rocksdb][devel][hotbackup]") {
 /// @brief test RocksDBHotBackup create operation parameters
 TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel][hotbackup]") {
 
-  SECTION("test_defaults") {
-    const VPackSlice slice;
-    VPackBuilder report;
-    RocksDBHotBackupCreate testee(slice, report, true);
+TEST(RocksDBHotBackupOperationParameters, "test_defaults") {
+  const VPackSlice slice;
+  VPackBuilder report;
+  RocksDBHotBackupCreate testee(slice, report, true);
 
-    CHECK(true == testee.isCreate());
-    CHECK(testee.getTimestamp() == "");
-    CHECK(10 == testee.getTimeout());
-    CHECK(testee.getUserString() == "");
+  EXPECT_TRUE(testee.isCreate());
+  EXPECT_EQ(testee.getTimestamp(), "");
+  EXPECT_EQ(testee.getTimeout(), 10);
+  EXPECT_EQ(testee.getUserString() == "");
+}
+
+TEST(RocksDBHotBackupOperationParameters, "test_simple") {
+  VPackBuilder opBuilder;
+  { VPackObjectBuilder a(&opBuilder);
+    opBuilder.add("timeout", VPackValue(12345));
+    opBuilder.add("id", VPackValue("2017-08-01T09:00:00Z"));
+    opBuilder.add("label", VPackValue("first day"));
   }
 
-  SECTION("test_simple") {
-    VPackBuilder opBuilder;
-    { VPackObjectBuilder a(&opBuilder);
-      opBuilder.add("timeout", VPackValue(12345));
-      opBuilder.add("id", VPackValue("2017-08-01T09:00:00Z"));
-      opBuilder.add("label", VPackValue("first day"));
-    }
+  VPackBuilder report;
+  RocksDBHotBackupCreate testee(opBuilder.slice(), report, false);
+  testee.parseParameters();
 
-    VPackBuilder report;
-    RocksDBHotBackupCreate testee(opBuilder.slice(), report, false);
-    testee.parseParameters();
+  EXPECT_TRUE(testee.valid());
+  EXPECT_FALSE(testee.isCreate());
+  EXPECT_EQ(testee.getTimeout(), 12345);
+  EXPECT_EQ(testee.getDirectory(), "2017-08-01T09:00:00Z");
+  EXPECT_EQ(testee.getUserString(), "first day");
+}
 
-    CHECK(testee.valid());
-    CHECK(false == testee.isCreate());
-    CHECK(12345 == testee.getTimeout());
-    CHECK(testee.getDirectory() == "2017-08-01T09:00:00Z");
-    CHECK(testee.getUserString() == "first day");
+TEST(RocksDBHotBackupOperationParameters, "test_timestamp_exception") {
+  VPackBuilder opBuilder;
+  { VPackObjectBuilder a(&opBuilder);
+    opBuilder.add("timeout", VPackValue("12345"));
+    opBuilder.add("timestamp", VPackValue("2017-08-01T09:00:00Z"));   // needed for exception
+    opBuilder.add("label", VPackValue("makes timeoutMS throw")); //  to happen
   }
 
-  SECTION("test_timestamp_exception") {
-    VPackBuilder opBuilder;
-    { VPackObjectBuilder a(&opBuilder);
-      opBuilder.add("timeout", VPackValue("12345"));
-      opBuilder.add("timestamp", VPackValue("2017-08-01T09:00:00Z"));   // needed for exception
-      opBuilder.add("label", VPackValue("makes timeoutMS throw")); //  to happen
-    }
+  VPackBuilder report;
+  RocksDBHotBackupCreate testee(opBuilder.slice(), report, false);
+  testee.parseParameters();
 
-    VPackBuilder report;
-    RocksDBHotBackupCreate testee(opBuilder.slice(), report, false);
-    testee.parseParameters();
-
-    CHECK(!testee.valid());
-    CHECK((testee.resultSlice().isObject() && testee.resultSlice().hasKey("timeout")));
-  }
-
+  EXPECT_FALSE(testee.valid());
+  EXPECT_TRUE((testee.resultSlice().isObject() && testee.resultSlice().hasKey("timeout")));
 }
 
 
@@ -221,7 +228,7 @@ public:
       fclose(fd);
     }
     else {
-      CHECK(false == true);
+      EXPECT_TRUE(false);
     }
 
     return filename;
@@ -242,7 +249,7 @@ public:
       fclose(fd);
     }
     else {
-      CHECK(false == true);
+      EXPECT_TRUE(false);
     }
 
     return;
@@ -258,7 +265,7 @@ public:
     pathname = getRocksDBPath();
     retVal = TRI_CreateRecursiveDirectory(pathname.c_str(), systemError,
                                           systemErrorStr);
-    CHECK(TRI_ERROR_NO_ERROR == retVal);
+    EXPECT_EQ(TRI_ERROR_NO_ERROR, retVal);
 
     writeFile(pathname.c_str(), "MANIFEST-000007", "manifest info");
     writeFile(pathname.c_str(), "CURRENT", "MANIFEST-000007\n");
@@ -285,7 +292,7 @@ public:
     retVal = TRI_CreateRecursiveDirectory(pathname.c_str(), systemError,
                                           systemErrorStr);
 
-    CHECK(TRI_ERROR_NO_ERROR == retVal);
+    EXPECT_EQ(TRI_ERROR_NO_ERROR, retVal);
 
     writeFile(pathname.c_str(), "MANIFEST-000003", "manifest info");
     writeFile(pathname.c_str(), "CURRENT", "MANIFEST-000003\n");
@@ -310,99 +317,60 @@ public:
 
 
 /// @brief test
-TEST_CASE("RocksDBHotBackupRestore directories", "[rocksdb][devel][hotbackup]") {
-
+TEST(RocksDBHotBackupRestoreDirectories, test_createRestoringDirectory) {
   std::string restoringDir, tempname;
   bool retBool;
 
-  SECTION("test createRestoringDirectory") {
-    VPackBuilder report;
-    RocksDBHotBackupRestoreTest testee(VPackSlice(), report);
-    testee.createHotDirectory();
+  VPackBuilder report;
+  RocksDBHotBackupRestoreTest testee(VPackSlice(), report);
+  testee.createHotDirectory();
 
-    retBool = testee.createRestoringDirectory(restoringDir);
+  retBool = testee.createRestoringDirectory(restoringDir);
 
-    // spot check files in restoring dir
-    CHECK( true == retBool );
-    CHECK( TRI_ExistsFile(restoringDir.c_str()) );
-    CHECK( TRI_IsDirectory(restoringDir.c_str()) );
-    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "MANIFEST-000003";
-    CHECK( TRI_ExistsFile(tempname.c_str()) );
-    CHECK( TRI_IsRegularFile(tempname.c_str()) );
-    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "CURRENT";
-    CHECK( TRI_ExistsFile(tempname.c_str()) );
-    CHECK( TRI_IsRegularFile(tempname.c_str()) );
-    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sst";
-    CHECK( TRI_ExistsFile(tempname.c_str()) );
-    CHECK( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
-    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash";
-    CHECK( TRI_ExistsFile(tempname.c_str()) );
-    CHECK( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
+  // spot check files in restoring dir
+  EXPECT_TRUE( retBool );
+  EXPECT_TRUE( TRI_ExistsFile(restoringDir.c_str()) );
+  EXPECT_TRUE( TRI_IsDirectory(restoringDir.c_str()) );
+  tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "MANIFEST-000003";
+  EXPECT_TRUE( TRI_ExistsFile(tempname.c_str()) );
+  EXPECT_TRUE( TRI_IsRegularFile(tempname.c_str()) );
+  tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "CURRENT";
+  EXPECT_TRUE( TRI_ExistsFile(tempname.c_str()) );
+  EXPECT_TRUE( TRI_IsRegularFile(tempname.c_str()) );
+  tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sst";
+  EXPECT_TRUE( TRI_ExistsFile(tempname.c_str()) );
+  EXPECT_TRUE( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
+  tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash";
+  EXPECT_TRUE( TRI_ExistsFile(tempname.c_str()) );
+  EXPECT_TRUE( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
 
-    // verify still present in originating dir
-    restoringDir = testee.rebuildPath(testee.getDirectoryRestore());
-    CHECK( TRI_ExistsFile(restoringDir.c_str()) );
-    CHECK( TRI_IsDirectory(restoringDir.c_str()) );
-    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "MANIFEST-000003";
-    CHECK( TRI_ExistsFile(tempname.c_str()) );
-    CHECK( TRI_IsRegularFile(tempname.c_str()) );
-    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "CURRENT";
-    CHECK( TRI_ExistsFile(tempname.c_str()) );
-    CHECK( TRI_IsRegularFile(tempname.c_str()) );
-    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sst";
-    CHECK( TRI_ExistsFile(tempname.c_str()) );
-    CHECK( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
-    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash";
-    CHECK( TRI_ExistsFile(tempname.c_str()) );
-    CHECK( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
-
-  }
+  // verify still present in originating dir
+  restoringDir = testee.rebuildPath(testee.getDirectoryRestore());
+  EXPECT_TRUE( TRI_ExistsFile(restoringDir.c_str()) );
+  EXPECT_TRUE( TRI_IsDirectory(restoringDir.c_str()) );
+  tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "MANIFEST-000003";
+  EXPECT_TRUE( TRI_ExistsFile(tempname.c_str()) );
+  EXPECT_TRUE( TRI_IsRegularFile(tempname.c_str()) );
+  tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "CURRENT";
+  EXPECT_TRUE( TRI_ExistsFile(tempname.c_str()) );
+  EXPECT_TRUE( TRI_IsRegularFile(tempname.c_str()) );
+  tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sst";
+  EXPECT_TRUE( TRI_ExistsFile(tempname.c_str()) );
+  EXPECT_TRUE( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
+  tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash";
+  EXPECT_TRUE( TRI_ExistsFile(tempname.c_str()) );
+  EXPECT_TRUE( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
+}
 
 
-  SECTION("test execute() normal directory path") {
-    VPackBuilder report;
-    RocksDBHotBackupRestoreTest testee(VPackSlice(), report);
+TEST(RocksDBHotBackupRestoreTest, test_execute_normal_directory_path) {
+  VPackBuilder report;
+  RocksDBHotBackupRestoreTest testee(VPackSlice(), report);
 
-    testee.createDBDirectory();
-    testee.createHotDirectory();
+  testee.createDBDirectory();
+  testee.createHotDirectory();
 
-    testee.execute();
+  testee.execute();
 
-    CHECK( testee.success() );
-#if 0
-    // spot check files in restoring dir
-    CHECK( true == retBool );
-    CHECK( TRI_ExistsFile(restoringDir.c_str()) );
-    CHECK( TRI_IsDirectory(restoringDir.c_str()) );
-    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "MANIFEST-000003";
-    CHECK( TRI_ExistsFile(tempname.c_str()) );
-    CHECK( TRI_IsRegularFile(tempname.c_str()) );
-    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "CURRENT";
-    CHECK( TRI_ExistsFile(tempname.c_str()) );
-    CHECK( TRI_IsRegularFile(tempname.c_str()) );
-    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sst";
-    CHECK( TRI_ExistsFile(tempname.c_str()) );
-    CHECK( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
-    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash";
-    CHECK( TRI_ExistsFile(tempname.c_str()) );
-    CHECK( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
-
-    // verify still present in originating dir
-    restoringDir = testee.rebuildPath(testee.getDirectoryRestore());
-    CHECK( TRI_ExistsFile(restoringDir.c_str()) );
-    CHECK( TRI_IsDirectory(restoringDir.c_str()) );
-    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "MANIFEST-000003";
-    CHECK( TRI_ExistsFile(tempname.c_str()) );
-    CHECK( TRI_IsRegularFile(tempname.c_str()) );
-    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "CURRENT";
-    CHECK( TRI_ExistsFile(tempname.c_str()) );
-    CHECK( TRI_IsRegularFile(tempname.c_str()) );
-    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sst";
-    CHECK( TRI_ExistsFile(tempname.c_str()) );
-    CHECK( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
-    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash";
-    CHECK( TRI_ExistsFile(tempname.c_str()) );
-    CHECK( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
-#endif
-  }
+  EXPECT_TRUE( testee.success() );
 }

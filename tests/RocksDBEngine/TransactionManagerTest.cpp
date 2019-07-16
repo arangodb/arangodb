@@ -20,7 +20,7 @@
 
 #include "Basics/Common.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
@@ -35,60 +35,57 @@ using namespace arangodb;
 // -----------------------------------------------------------------------------
 
 /// @brief test RocksDBTransactionManager
-TEST_CASE("RocksDBTransactionManager tests", "[rocksdb][devel]") {
 
-  /// @brief simple non-overlapping
-  SECTION("test_non-overlapping") {
-    RocksDBTransactionManager tm;
+/// @brief simple non-overlapping
+TEST(RocksDBTransactionManager, test_non_overlapping) {
+  RocksDBTransactionManager tm;
 
-    CHECK(0 == tm.getActiveTransactionCount());
-    CHECK(true == tm.holdTransactions(500) );
-    tm.releaseTransactions();
+  EXPECT_EQ(tm.getActiveTransactionCount(), 0);
+  EXPECT_TRUE(tm.holdTransactions(500) );
+  tm.releaseTransactions();
+
+  tm.registerTransaction((TRI_voc_tid_t)1, std::unique_ptr<TransactionData>(), false);
+  EXPECT_EQ(tm.getActiveTransactionCount(), 1);
+  tm.unregisterTransaction((TRI_voc_tid_t)1, false, false);
+  EXPECT_EQ(tm.getActiveTransactionCount(), 0);
+
+  EXPECT_TRUE(tm.holdTransactions(500) );
+  tm.releaseTransactions();
+}
+
+/// @brief simple non-overlapping
+TEST(RocksDBTransactionManager, test_overlapping) {
+  RocksDBTransactionManager tm;
+
+  std::chrono::milliseconds five(5);
+  std::mutex mu;
+  std::condition_variable cv;
+
+  EXPECT_EQ(tm.getActiveTransactionCount(), 0);
+  EXPECT_TRUE(tm.holdTransactions(500) );
+
+  std::unique_lock<std::mutex> lock(mu);
+
+  auto getReadLock = [&] () -> void {
+    {
+      std::unique_lock<std::mutex> innerLock(mu);
+      cv.notify_all();
+    }
 
     tm.registerTransaction((TRI_voc_tid_t)1, std::unique_ptr<TransactionData>(), false);
-    CHECK(1 == tm.getActiveTransactionCount());
-    tm.unregisterTransaction((TRI_voc_tid_t)1, false, false);
-    CHECK(0 == tm.getActiveTransactionCount());
+    EXPECT_EQ(tm.getActiveTransactionCount(), 1);
+  };
 
-    CHECK(true == tm.holdTransactions(500) );
-    tm.releaseTransactions();
-  }
+  std::thread reader(getReadLock);
 
-  /// @brief simple non-overlapping
-  SECTION("test_overlapping") {
-    RocksDBTransactionManager tm;
+  cv.wait(lock);
+  EXPECT_EQ(tm.getActiveTransactionCount(), 0);
+  std::this_thread::sleep_for(five);
+  EXPECT_EQ(tm.getActiveTransactionCount(), 0);
+  tm.releaseTransactions();
 
-    std::chrono::milliseconds five(5);
-    std::mutex mu;
-    std::condition_variable cv;
-
-    CHECK(0 == tm.getActiveTransactionCount());
-    CHECK(true == tm.holdTransactions(500) );
-
-    std::unique_lock<std::mutex> lock(mu);
-
-    auto getReadLock = [&] () -> void {
-      {
-        std::unique_lock<std::mutex> innerLock(mu);
-        cv.notify_all();
-      }
-
-      tm.registerTransaction((TRI_voc_tid_t)1, std::unique_ptr<TransactionData>(), false);
-      CHECK(1 == tm.getActiveTransactionCount());
-    };
-
-    std::thread reader(getReadLock);
-
-    cv.wait(lock);
-    CHECK(0 == tm.getActiveTransactionCount());
-    std::this_thread::sleep_for(five);
-    CHECK(0 == tm.getActiveTransactionCount());
-    tm.releaseTransactions();
-
-    reader.join();
-    CHECK(1 == tm.getActiveTransactionCount());
-    tm.unregisterTransaction((TRI_voc_tid_t)1, false, false);
-    CHECK(0 == tm.getActiveTransactionCount());
-  }
-
+  reader.join();
+  EXPECT_EQ(tm.getActiveTransactionCount(), 1);
+  tm.unregisterTransaction((TRI_voc_tid_t)1, false, false);
+  EXPECT_EQ(tm.getActiveTransactionCount(), 0);
 }
