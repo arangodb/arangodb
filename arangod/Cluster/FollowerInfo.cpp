@@ -194,7 +194,6 @@ Result FollowerInfo::remove(ServerID const& sid) {
     return {TRI_ERROR_NO_ERROR};
   }
 #endif
-
   Result agencyRes = persistInAgency(true);
   if (agencyRes.ok()) {
     // +1 for the leader (me)
@@ -293,8 +292,22 @@ bool FollowerInfo::updateFailoverCandidates() {
   _failoverCandidates = std::make_shared<std::vector<ServerID> const>(*_followers);
   // Just be sure
   TRI_ASSERT(_failoverCandidates.get() != _followers.get());
+  TRI_ASSERT(_failoverCandidates->size() == _followers->size());
   Result res = persistInAgency(true);
+  if (!res.ok()) {
+    // We could not persist the update in the agency.
+    // Collection left in RO mode.
+    LOG_TOPIC("7af00", INFO, Logger::CLUSTER)
+        << "Could not persist insync follower for " << _docColl->vocbase().name()
+        << "/" << std::to_string(_docColl->planId())
+        << " keep RO-mode for now, next write will retry.";
+    return false;
+  }
   _canWrite = true;
+  VPackBuilder hund;
+  hund.openObject();
+  injectFollowerInfoInternal(hund);
+  hund.close();
   return true;
 }
 

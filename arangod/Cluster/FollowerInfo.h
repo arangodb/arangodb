@@ -77,7 +77,10 @@ class FollowerInfo {
         _docColl(d),
         _theLeader(""),
         _theLeaderTouched(false),
-        _canWrite(false) {}
+        _canWrite(_docColl->replicationFactor() <= 1) {
+    // On replicationfactor 1 we do not have anything we can do.
+    // This should also disable satellite tracking.
+  }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
