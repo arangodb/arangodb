@@ -269,8 +269,7 @@ class ReplicationClientsProgressTrackerTest_MultiClient : public ::testing::Test
   // all clientD*s should behave the same, as clientId should be ignored iff syncerId != 0.
   Client const clientD1{SyncerId{23}, 0};
   Client const clientD2{SyncerId{23}, 27};
-  // also, `none` should not be special as long as syncerId is set
-  Client const clientD3{SyncerId{23}, 0};
+  Client const clientD3{SyncerId{23}, 3};
 
   uint64_t tickOfA{UINT64_MAX}, tickOfB{UINT64_MAX}, tickOfC{UINT64_MAX},
       tickOfD{UINT64_MAX};
@@ -354,8 +353,7 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient,
 }
 
 TEST_F(ReplicationClientsProgressTrackerTest_MultiClient, test_ignored_clients) {
-  Client ignoredClient1{SyncerId{0}, 0};
-  Client ignoredClient2{SyncerId{0}, 0};
+  Client ignoredClient{SyncerId{0}, 0};
 
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
 
@@ -363,17 +361,11 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient, test_ignored_clients) 
 
   // tracking, extending, or untracking ignored clients should do nothing:
   // State {} for all following statements:
-  testee.track(ignoredClient1.syncerId, ignoredClient1.clientId, "", 1, ttl);
+  testee.track(ignoredClient.syncerId, ignoredClient.clientId, "", 1, ttl);
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
-  testee.track(ignoredClient2.syncerId, ignoredClient2.clientId, "", 1, ttl);
+  testee.extend(ignoredClient.syncerId, ignoredClient.clientId, "", ttl);
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
-  testee.extend(ignoredClient1.syncerId, ignoredClient1.clientId, "", ttl);
-  ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
-  testee.extend(ignoredClient2.syncerId, ignoredClient2.clientId, "", ttl);
-  ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
-  testee.untrack(ignoredClient1.syncerId, ignoredClient1.clientId, "");
-  ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
-  testee.untrack(ignoredClient2.syncerId, ignoredClient2.clientId, "");
+  testee.untrack(ignoredClient.syncerId, ignoredClient.clientId, "");
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
 
   // State {A: 100}
@@ -385,23 +377,17 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient, test_ignored_clients) 
 
   // Again, tracking ignored clients should do nothing:
   // State {A: 100, D: 101}
-  testee.track(ignoredClient1.syncerId, ignoredClient1.clientId, "", 1, ttl);
-  ASSERT_EQ(tickOfA, testee.lowestServedValue());
-  testee.track(ignoredClient2.syncerId, ignoredClient2.clientId, "", 1, ttl);
+  testee.track(ignoredClient.syncerId, ignoredClient.clientId, "", 1, ttl);
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
 
   // Untracking ignored clients should do nothing:
   // State {A: 100, D: 101}
-  testee.untrack(ignoredClient1.syncerId, ignoredClient1.clientId, "");
-  ASSERT_EQ(tickOfA, testee.lowestServedValue());
-  testee.untrack(ignoredClient2.syncerId, ignoredClient2.clientId, "");
+  testee.untrack(ignoredClient.syncerId, ignoredClient.clientId, "");
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
 
   // Extending ignored clients should do nothing:
   // State {A: 100, D: 101}
-  testee.extend(ignoredClient1.syncerId, ignoredClient1.clientId, "", 0.1);
-  ASSERT_EQ(tickOfA, testee.lowestServedValue());
-  testee.extend(ignoredClient2.syncerId, ignoredClient2.clientId, "", 0.1);
+  testee.extend(ignoredClient.syncerId, ignoredClient.clientId, "", 0.1);
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
   double const afterExtend = now();
   double const collectAt = std::nextafter(afterExtend, infty);
