@@ -112,6 +112,18 @@ add_dependencies(${LIB_ARANGO_IRESEARCH}
 )
 
 ################################################################################
+# llhttp
+################################################################################
+
+
+SET(LLHTTP_SOURCES
+  ${PROJECT_SOURCE_DIR}/3rdParty/llhttp/src/api.c
+  ${PROJECT_SOURCE_DIR}/3rdParty/llhttp/src/http.c
+  ${PROJECT_SOURCE_DIR}/3rdParty/llhttp/src/llhttp.c
+)
+
+
+################################################################################
 ## arangod
 ################################################################################
 
@@ -360,16 +372,15 @@ SET(ARANGOD_SOURCES
   GeneralServer/AcceptorTcp.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
+  GeneralServer/CommTask.cpp
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
   GeneralServer/HttpCommTask.cpp
-  GeneralServer/ListenTask.cpp
+  GeneralServer/IoContext.cpp
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/ServerSecurityFeature.cpp
-  GeneralServer/SocketSslTcp.cpp
-  GeneralServer/SocketTask.cpp
   GeneralServer/Task.cpp
   GeneralServer/VstCommTask.cpp
   GeoIndex/Index.cpp
@@ -605,14 +616,22 @@ if (USE_MAINTAINER_MODE)
 endif()
 
 if (NOT MSVC)
-  set(ARANGOD_SOURCES ${ARANGOD_SOURCES} GeneralServer/AcceptorUnixDomain.cpp GeneralServer/SocketUnixDomain.cpp)
+  set(ARANGOD_SOURCES ${ARANGOD_SOURCES} GeneralServer/AcceptorUnixDomain.cpp)
 endif()
 
 include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
 include(MMFiles/CMakeLists.txt)
 
-add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${CLUSTER_ENGINE_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_SOURCES})
+add_library(arangoserver STATIC 
+  ${ARANGOD_SOURCES} 
+  ${CLUSTER_ENGINE_SOURCES} 
+  ${MMFILES_SOURCES} 
+  ${ROCKSDB_SOURCES} 
+  ${LLHTTP_SOURCES}
+)
+
+target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
 
 target_link_libraries(arangoserver
   ${LIB_ARANGO_FE}

@@ -133,12 +133,8 @@ RestStatus RestAdminExecuteHandler::execute() {
         _response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
         switch (_response->transportType()) {
           case Endpoint::TransportType::HTTP: {
-            HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
-            if (httpResponse == nullptr) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to cast response object");
-            }
             _response->setContentType(rest::ContentType::TEXT);
-            httpResponse->body().appendText(errorMessage.data(), errorMessage.size());
+            _response->addRawPayload(VPackStringRef(errorMessage));
             break;
           }
           case Endpoint::TransportType::VST: {

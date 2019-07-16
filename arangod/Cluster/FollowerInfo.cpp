@@ -173,9 +173,6 @@ Result FollowerInfo::add(ServerID const& sid) {
           AgencyCommResult res2 = ac.sendTransactionWithFailover(trx);
           if (res2.successful()) {
             return {TRI_ERROR_NO_ERROR};
-          } else {
-            LOG_TOPIC("daeda", WARN, Logger::CLUSTER)
-                << "FollowerInfo::add, could not cas key " << path;
           }
         }
       }
@@ -186,11 +183,11 @@ Result FollowerInfo::add(ServerID const& sid) {
     }
     std::this_thread::sleep_for(std::chrono::microseconds(500000));
   } while (TRI_microtime() < startTime + 3600 &&
-           application_features::ApplicationServer::isRetryOK());
+           !application_features::ApplicationServer::isStopping());
   // This is important, give it 1h if needed. We really do not want to get
   // into the position to not accept a shard getting-in-sync just because
   // we cannot talk to the agency temporarily.
-  int errorCode = (application_features::ApplicationServer::isRetryOK()) ? TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED : TRI_ERROR_SHUTTING_DOWN;
+  int errorCode = (application_features::ApplicationServer::isStopping()) ? TRI_ERROR_SHUTTING_DOWN : TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED;
   std::string errorMessage = "unable to add follower in agency, timeout in agency CAS operation for key " + path + ": " + TRI_errno_string(errorCode);
   LOG_TOPIC("6295b", ERR, Logger::CLUSTER) << errorMessage;
 
@@ -316,13 +313,8 @@ Result FollowerInfo::remove(ServerID const& sid) {
           if (res2.successful()) {
             // we are finished
             LOG_TOPIC("be0cb", DEBUG, Logger::CLUSTER) << "Removing follower " << sid << " from "
-                                                     << _docColl->name() << "succeeded";
+                                                       << _docColl->name() << "succeeded";
             return {TRI_ERROR_NO_ERROR};
-          } else {
-            LOG_TOPIC("67778", WARN, Logger::CLUSTER)
-                << "FollowerInfo::remove, could not cas key " << path
-                << ". status code: " << res2._statusCode
-                << ", incriminating body: " << res2.bodyRef();
           }
         }
       }
@@ -333,7 +325,8 @@ Result FollowerInfo::remove(ServerID const& sid) {
     }
     std::this_thread::sleep_for(std::chrono::microseconds(500000));
   } while (TRI_microtime() < startTime + 7200 &&
-           application_features::ApplicationServer::isRetryOK());
+           !application_features::ApplicationServer::isStopping());
+  
   // This is important, give it 2h if needed. We really do not want to get
   // into the position to fail to drop a follower, just because we cannot
   // talk to the agency temporarily. The worst would be to drop the follower
@@ -345,7 +338,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
   // rollback:
   _followers = _oldFollowers;
   
-  int errorCode = (application_features::ApplicationServer::isRetryOK()) ? TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED : TRI_ERROR_SHUTTING_DOWN;
+  int errorCode = (application_features::ApplicationServer::isStopping()) ? TRI_ERROR_SHUTTING_DOWN : TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED;
   std::string errorMessage = "unable to remove follower from agency, timeout in agency CAS operation for key " + path + ": " + TRI_errno_string(errorCode);
   LOG_TOPIC("a0dcc", ERR, Logger::CLUSTER) << errorMessage;
 

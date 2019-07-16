@@ -41,7 +41,7 @@ describe('HTTP headers in Foxx services', function () {
       expect(result.code).to.equal(204);
       expect(result.headers['x-foobar']).to.equal('baz');
       expect(result.headers['x-nofoobar']).to.equal('baz');
-      const irrelevantHeaders = ['http/1.1', 'connection', 'content-type'];
+      const irrelevantHeaders = ['http/1.1', 'connection', 'content-type', 'keep-alive'];
       expect(result.headers['access-control-expose-headers']).to.equal(Object.keys(result.headers).filter(x => !x.startsWith('x-content-type-options') && !x.startsWith('access-control-') && !irrelevantHeaders.includes(x)).sort().join(', '));
       expect(result.headers['access-control-allow-credentials']).to.equal('true');
     });
@@ -67,7 +67,7 @@ describe('HTTP headers in Foxx services', function () {
     it("sets defaults for responses without headers", function () {
       var opts = { headers: { origin }, method: "POST" };
       var result = internal.download(origin + "/unittest/headers/header-empty", "", opts);
-      const irrelevantHeaders = ['http/1.1', 'connection', 'content-type'];
+      const irrelevantHeaders = ['http/1.1', 'connection', 'content-type', 'keep-alive'];
       expect(result.headers['access-control-expose-headers']).to.equal(Object.keys(result.headers).filter(x => !x.startsWith('x-content-type-options') && !x.startsWith('access-control-') && !irrelevantHeaders.includes(x)).sort().join(', '));
       expect(result.headers['access-control-allow-credentials']).to.equal('true');
     });

@@ -39,14 +39,14 @@ namespace iresearch {
 /// @brief move filters and sort conditions into views
 void handleViewsRule(arangodb::aql::Optimizer* opt,
                      std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-                     arangodb::aql::OptimizerRule const* rule);
+                     arangodb::aql::OptimizerRule const& rule);
 
 /// @brief scatter view query in cluster
 /// this rule inserts scatter, gather and remote nodes so operations on sharded
 /// views
 void scatterViewInClusterRule(arangodb::aql::Optimizer* opt,
                               std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-                              arangodb::aql::OptimizerRule const* rule);
+                              arangodb::aql::OptimizerRule const& rule);
 
 }  // namespace iresearch
 }  // namespace arangodb
