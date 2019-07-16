@@ -191,6 +191,7 @@ void V8ClientConnection::timeout(double value) {
 }
 
 void V8ClientConnection::connect(ClientFeature* client) {
+  
   TRI_ASSERT(client);
   std::lock_guard<std::recursive_mutex> guard(_lock);
   

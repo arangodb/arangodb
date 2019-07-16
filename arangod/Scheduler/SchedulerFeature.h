@@ -25,7 +25,7 @@
 #define ARANGOD_SCHEDULER_SCHEDULER_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "GeneralServer/Socket.h"  // This is required for asio_ns::signal_set
+#include "Basics/asio_ns.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
 
