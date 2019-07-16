@@ -306,6 +306,7 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   void setupLinkMaintenance();
 
+  StorageEngine* _engine{};
   VPackComparer _comparer;
   IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)
   AsyncLinkPtr _asyncSelf; // 'this' for the lifetime of the link (for use with asynchronous calls)

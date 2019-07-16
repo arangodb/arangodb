@@ -148,13 +148,8 @@ class RocksDBTransactionState final : public TransactionState {
   void trackIndexRemove(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
 
   /// @returns tick of last operation in a transaction
-  /// @note not in recovery: the value is valid only after transaction is committed
-  /// @note in recovery: the value is valid immediately after transaction is started
+  /// @note the value is valid only after transaction is committed
   TRI_voc_tick_t lastOperationTick() const noexcept final { return _lastOperationTick; }
-  void lastOperationTick(TRI_voc_tick_t tick) noexcept {
-    TRI_ASSERT(!_lastOperationTick); // must be set only once
-    _lastOperationTick = tick;
-  }
 
  private:
   /// @brief create a new rocksdb transaction

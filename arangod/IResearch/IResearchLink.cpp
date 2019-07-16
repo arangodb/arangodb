@@ -47,8 +47,6 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
-
 #include "IResearchLink.h"
 
 using namespace std::literals;
@@ -398,9 +396,9 @@ void IResearchLink::batchInsert(
 
   auto& state = *(trx.state());
 
-  if (_dataStore._recovery != RecoveryState::DONE && state.lastOperationTick() <= _recoveryTick) {
+  if (_dataStore._recovery != RecoveryState::DONE && _engine->recoveryTick() <= _recoveryTick) {
     LOG_TOPIC("7e228", TRACE, iresearch::TOPIC)
-      << "skipping 'batchInsert', operation tick '" << state.lastOperationTick()
+      << "skipping 'batchInsert', operation tick '" << _engine->recoveryTick()
       << "', recovery tick '" << _recoveryTick << "'";
 
     return;
@@ -1018,9 +1016,9 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
     };
   }
 
-  auto* engine = EngineSelectorFeature::ENGINE;
+  _engine = EngineSelectorFeature::ENGINE;
 
-  if (!engine) {
+  if (!_engine) {
     return {
       TRI_ERROR_INTERNAL,
       "failure to get storage engine while initializing arangosearch link '" + std::to_string(id()) + "'"
@@ -1058,11 +1056,11 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
     initCallback(*_dataStore._directory);
   }
 
-  if (arangodb::RecoveryState::IN_PROGRESS == engine->recoveryState()) {
+  if (arangodb::RecoveryState::IN_PROGRESS == _engine->recoveryState()) {
     // creation marker during RocksDB recovery:
     // link will contain all live documents from linked collection, so the recovery is done
     _dataStore._recovery = RecoveryState::DONE;
-    _recoveryTick = engine->releasedTick();
+    _recoveryTick = _engine->releasedTick();
   } else {
     _dataStore._recovery = RecoveryState::AFTER_CHECKPOINT; // new empty data store
     _recoveryTick = 0;
@@ -1193,7 +1191,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
   //}
 
   irs::index_writer::init_options options;
-  options.lock_repository = false; // do not lock index, ArangoDB has it's own lock
+  options.lock_repository = false; // do not lock index, ArangoDB has its own lock
   options.comparator = sorted ? &_comparer : nullptr; // set comparator if requested
 
   auto openFlags = irs::OM_APPEND;
@@ -1250,9 +1248,6 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
   _asyncSelf = irs::memory::make_unique<AsyncLinkPtr::element_type>(this);
   _asyncTerminate.store(false); // allow new asynchronous job invocation
 
-  // register flush subscription
-  flushFeature->registerFlushSubscription(_flushSubscription);
-
   // ...........................................................................
   // set up in-recovery insertion hooks
   // ...........................................................................
@@ -1266,12 +1261,19 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
   auto asyncSelf = _asyncSelf; // create copy for lambda
 
   return dbFeature->registerPostRecoveryCallback( // register callback
-    [asyncSelf]()->Result {
+    [asyncSelf, flushFeature]()->Result {
       SCOPED_LOCK(asyncSelf->mutex()); // ensure link does not get deallocated before callback finishes
       auto* link = asyncSelf->get();
 
       if (!link) {
         return {}; // link no longer in recovery state, i.e. during recovery it was created and later dropped
+      }
+
+      if (!link->_flushSubscription) {
+        return {
+          TRI_ERROR_INTERNAL,
+          "failed to register flush subscription for arangosearch link '" + std::to_string(link->id()) + "'"
+        };
       }
 
       // before commit ensure that the WAL 'Flush' marker for the opened writer
@@ -1295,6 +1297,11 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
       LOG_TOPIC("0e0ca", TRACE, iresearch::TOPIC)
         << "finished sync for arangosearch link '" << link->id() << "'";
 
+      // register flush subscription
+      TRI_ASSERT(flushFeature);
+      flushFeature->registerFlushSubscription(link->_flushSubscription);
+
+      // setup tasks for commit, consolidation, cleanup
       link->setupLinkMaintenance();
 
       return res;
@@ -1453,9 +1460,9 @@ Result IResearchLink::insert(
   TRI_ASSERT(trx.state());
   auto& state = *(trx.state());
 
-  if (_dataStore._recovery != RecoveryState::DONE && state.lastOperationTick() <= _recoveryTick) {
+  if (_dataStore._recovery != RecoveryState::DONE && _engine->recoveryTick() <= _recoveryTick) {
     LOG_TOPIC("7c228", TRACE, iresearch::TOPIC)
-      << "skipping 'insert', operation tick '" << state.lastOperationTick()
+      << "skipping 'insert', operation tick '" << _engine->recoveryTick()
       << "', recovery tick '" << _recoveryTick << "'";
 
     return {};
@@ -1678,9 +1685,9 @@ Result IResearchLink::remove(
   TRI_ASSERT(trx.state());
   auto& state = *(trx.state());
 
-  if (_dataStore._recovery != RecoveryState::DONE && state.lastOperationTick() <= _recoveryTick) {
+  if (_dataStore._recovery != RecoveryState::DONE && _engine->recoveryTick() <= _recoveryTick) {
     LOG_TOPIC("7d228", TRACE, iresearch::TOPIC)
-      << "skipping 'removal', operation tick '" << state.lastOperationTick()
+      << "skipping 'removal', operation tick '" << _engine->recoveryTick()
       << "', recovery tick '" << _recoveryTick << "'";
 
     return {};

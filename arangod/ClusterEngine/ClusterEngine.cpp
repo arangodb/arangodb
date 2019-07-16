@@ -249,6 +249,11 @@ RecoveryState ClusterEngine::recoveryState() {
   return RecoveryState::DONE; // never in recovery
 }
 
+// current recovery tick
+TRI_voc_tick_t ClusterEngine::recoveryTick() {
+  return 0; // never in recovery
+}
+
 void ClusterEngine::recoveryDone(TRI_vocbase_t& vocbase) {
   // nothing to do here
 }

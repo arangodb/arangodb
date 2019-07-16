@@ -185,6 +185,8 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   // current recovery state
   inline RecoveryState recoveryState() const noexcept { return _recoveryState; }
 
+  TRI_voc_tick_t recoveryTick() const noexcept;
+
   // whether or not we are in the shutdown phase
   inline bool isInShutdown() const { return (_shutdown != 0); }
 

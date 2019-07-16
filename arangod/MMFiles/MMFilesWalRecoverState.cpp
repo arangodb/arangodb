@@ -41,7 +41,6 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/RecoveryTransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
@@ -97,6 +96,7 @@ MMFilesWalRecoverState::MMFilesWalRecoverState(bool ignoreRecoveryErrors)
       ignoreRecoveryErrors(ignoreRecoveryErrors),
       errorCount(0),
       maxRevisionId(0),
+      recoveryTick(0),
       lastDatabaseId(0),
       lastCollectionId(0) {
   databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>(
@@ -296,7 +296,7 @@ int MMFilesWalRecoverState::executeSingleOperation(
   res = TRI_ERROR_INTERNAL;
 
   try {
-    RecoveryTransactionContext<MMFilesTransactionState> ctx(*vocbase, markerTick);
+    transaction::StandaloneContext ctx(*vocbase);
 
     SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
@@ -451,8 +451,11 @@ bool MMFilesWalRecoverState::InitialScanMarker(MMFilesMarker const* marker, void
 /// @brief callback to replay one marker during recovery
 /// this function modifies indexes etc.
 bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
-                                          void* data, MMFilesDatafile* datafile) {
+                                          void* data,
+                                          MMFilesDatafile* datafile) {
   MMFilesWalRecoverState* state = reinterpret_cast<MMFilesWalRecoverState*>(data);
+  state->recoveryTick = marker->getTick(); // update recovery tick
+
   auto visitRecoveryHelpers = arangodb::scopeGuard([marker, state]()->void { // ensure recovery helpers are called
     if (!state || (!state->canContinue() && state->errorCount) || !marker) {
         return; // ignore invalid state or unset marker
@@ -1407,6 +1410,8 @@ int MMFilesWalRecoverState::replayLogfile(MMFilesWalLogfile* logfile, int number
   LOG_TOPIC("b1bb8", INFO, arangodb::Logger::ENGINES)
       << "replaying WAL logfile '" << logfileName << "' (" << (number + 1)
       << " of " << n << ")";
+
+  usleep(5000000);
 
   MMFilesDatafile* df = logfile->df();
 

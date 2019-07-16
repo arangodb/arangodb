@@ -53,7 +53,9 @@ class RocksDBRecoveryManager final : public application_features::ApplicationFea
   }
 
   /// @brief current recovery tick
-  rocksdb::SequenceNumber tick() { return _tick; }
+  rocksdb::SequenceNumber recoveryTick() const noexcept {
+    return _tick;
+  }
 
  private:
   Result parseRocksWAL();

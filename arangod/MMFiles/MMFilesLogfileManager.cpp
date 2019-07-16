@@ -1823,6 +1823,10 @@ void MMFilesLogfileManager::logStatus() {
   }
 }
 
+TRI_voc_tick_t MMFilesLogfileManager::recoveryTick() const noexcept {
+  return _recoverState->currentTick();
+}
+
 // run the recovery procedure
 // this is called after the logfiles have been scanned completely and
 // recovery state has been build. additionally, all databases have been

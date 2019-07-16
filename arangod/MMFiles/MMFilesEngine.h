@@ -184,7 +184,10 @@ class MMFilesEngine final : public StorageEngine {
   void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
 
   // current recovery state
-  RecoveryState recoveryState() override;
+  RecoveryState recoveryState() noexcept override;
+
+  // current recovery tick
+  TRI_voc_tick_t recoveryTick() noexcept override;
 
   // start compactor thread and delete files form collections marked as deleted
   void recoveryDone(TRI_vocbase_t& vocbase) override;

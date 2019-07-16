@@ -227,7 +227,11 @@ class StorageEngine : public application_features::ApplicationFeature {
   /// @brief is database in recovery
   bool inRecovery() { return recoveryState() < RecoveryState::DONE; }
 
+  /// @brief current recovery state
   virtual RecoveryState recoveryState() = 0;
+
+  /// @brief current recovery tick
+  virtual TRI_voc_tick_t recoveryTick() = 0;
 
   /// @brief function to be run when recovery is done
   virtual void recoveryDone(TRI_vocbase_t& /*vocbase*/) {}

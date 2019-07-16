@@ -38,7 +38,6 @@
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/RecoveryTransactionState.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LocalDocumentId.h"
@@ -205,7 +204,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(
     uint32_t column_family_id,
     const rocksdb::Slice& key,
     const rocksdb::Slice& value,
-    rocksdb::SequenceNumber tick) {
+    rocksdb::SequenceNumber /*tick*/) {
   if (column_family_id == _documentCF) {
     auto coll = lookupCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));
 
@@ -222,7 +221,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(
     auto docId = RocksDBKey::documentId(key);
     auto doc = RocksDBValue::data(value);
 
-    RecoveryTransactionContext<RocksDBTransactionState> ctx(coll->vocbase(), TRI_voc_tick_t(tick));
+    transaction::StandaloneContext ctx(coll->vocbase());
 
     SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
@@ -260,7 +259,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(
 void IResearchRocksDBRecoveryHelper::handleDeleteCF(
     uint32_t column_family_id,
     const rocksdb::Slice& key,
-    rocksdb::SequenceNumber tick) {
+    rocksdb::SequenceNumber /*tick*/) {
   if (column_family_id == _documentCF) {
     return;
   }
@@ -278,7 +277,7 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
 
   auto docId = RocksDBKey::documentId(key);
 
-  RecoveryTransactionContext<RocksDBTransactionState> ctx(coll->vocbase(), TRI_voc_tick_t(tick));
+  transaction::StandaloneContext ctx(coll->vocbase());
 
   SingleCollectionTransaction trx(
     std::shared_ptr<transaction::Context>(
@@ -305,7 +304,7 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
 
 void IResearchRocksDBRecoveryHelper::LogData(
     const rocksdb::Slice& blob,
-    rocksdb::SequenceNumber tick) {
+    rocksdb::SequenceNumber /*tick*/) {
   RocksDBLogType const type = RocksDBLogValue::type(blob);
 
   switch (type) {
