@@ -308,7 +308,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
     }
 
     totalRead += static_cast<int64_t>(n);
-    reportProgress(totalLength, totalRead, nextProgress);
+    reportProgress(totalLength, fd->offset(), nextProgress);
 
     TRI_ParseCsvString(&parser, buffer, n);
   }
@@ -321,7 +321,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   TRI_Free(separator);
 
   waitForSenders();
-  reportProgress(totalLength, totalRead, nextProgress);
+  reportProgress(totalLength, fd->offset(), nextProgress);
 
   _outputBuffer.clear();
   return !_hasError;
@@ -416,7 +416,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
     }
 
     totalRead += static_cast<int64_t>(n);
-    reportProgress(totalLength, totalRead, nextProgress);
+    reportProgress(totalLength, fd->offset(), nextProgress);
 
     if (_outputBuffer.length() > _maxUploadSize) {
       if (isObject) {
@@ -444,7 +444,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
   }
 
   waitForSenders();
-  reportProgress(totalLength, totalRead, nextProgress);
+  reportProgress(totalLength, fd->offset(), nextProgress);
 
   MUTEX_LOCKER(guard, _stats._mutex);
   // this is an approximation only. _numberLines is more meaningful for CSV

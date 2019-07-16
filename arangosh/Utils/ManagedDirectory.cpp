@@ -608,4 +608,17 @@ Result const& ManagedDirectory::File::close() {
   return _status;
 }
 
+
+ssize_t ManagedDirectory::File::offset() const {
+  ssize_t fileBytesRead = -1;
+
+  if (isGzip()) {
+    fileBytesRead = gzoffset(_gzFile);
+  } else {
+    fileBytesRead = lseek(_fd, 0L, SEEK_CUR);
+  } // else
+
+  return fileBytesRead;
+}
+
 }  // namespace arangodb

@@ -131,6 +131,12 @@ class ManagedDirectory {
      */
     bool isGzip() const {return -1 != _gzfd;}
 
+    /**
+     * @brief Count of bytes read from regular or gzip file, not amount returned by read
+     */
+
+    ssize_t offset() const;
+
    private:
     ManagedDirectory const& _directory;
     std::string _path;
