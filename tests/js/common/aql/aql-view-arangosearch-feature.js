@@ -267,7 +267,7 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
         assertEqual(1, result[0].length);
-        assertEqual([null], result[0]);
+        assertEqual([""], result[0]);
       } 
       // array of strings 
       {
@@ -276,19 +276,21 @@ function iResearchFeatureAqlTestSuite () {
           null,
           { }
         ).toArray();
-        assertEqual(2, result.length);
+        assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
-        assertTrue(Array === result[1].constructor);
-        assertEqual(5, result[0].length);
-        assertEqual([ "a", "quick", "brown", "fox", "jump" ], result[0]);
-        assertEqual(4, result[1].length);
-        assertEqual([ "jump", "over", "lazy", "dog" ], result[1]);
+        assertEqual(2, result[0].length);
+        assertTrue(Array === result[0][0].constructor);
+        assertTrue(Array === result[0][1].constructor);
+        assertEqual(5, result[0][0].length);
+        assertEqual([ "a", "quick", "brown", "fox", "jump" ], result[0][0]);
+        assertEqual(4, result[0][1].length);
+        assertEqual([ "jump", "over", "lazi", "dog" ], result[0][1]);
       }
       // array of arrays of strings 
       {
         let result = db._query(
           "RETURN TOKENS([['a quick brown fox jumps', 'jumps over lazy dog'], " + 
-          "['may the force be with you', 'yet another array'] ], 'text_en')",
+          "['may the force be with you', 'yet another brick'] ], 'text_en')",
           null,
           { }
         ).toArray();
@@ -297,14 +299,17 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(2, result[0].length);
 
         assertTrue(Array === result[0][0].constructor);
-        assertEqual(5, result[0][0].length);
-        assertEqual([ "a", "quick", "brown", "fox", "jump" ], result[0][0]);
-        assertEqual(4, result[0][1].length);
-        assertEqual([ "jump", "over", "lazy", "dog" ], result[0][1]);
-        assertEqual(6, result[1][0].length);
-        assertEqual([ "may", "the", "force", "be", "with", "you" ], result[1][0]);
-        assertEqual(3, result[1][1].length);
-        assertEqual([ "yet", "another", "brick" ], result[1][1]);
+        assertEqual(2, result[0][0].length);
+        assertTrue(Array === result[0][0][0].constructor);
+        assertEqual(5, result[0][0][0].length);
+        assertEqual([ "a", "quick", "brown", "fox", "jump" ], result[0][0][0]);
+        assertEqual(4, result[0][0][1].length);
+        assertEqual([ "jump", "over", "lazi", "dog" ], result[0][0][1]);
+        assertEqual(2, result[0][1].length);
+        assertEqual(6, result[0][1][0].length);
+        assertEqual([ "may", "the", "forc", "be", "with", "you" ], result[0][1][0]);
+        assertEqual(3, result[0][1][1].length);
+        assertEqual([ "yet", "anoth", "brick" ], result[0][1][1]);
       }
       // deep array
       {
@@ -318,13 +323,14 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(1, result[0][0].length);
         assertEqual(1, result[0][0][0].length);
         assertEqual(1, result[0][0][0][0].length);
-        assertEqual(2, result.length);
-        assertTrue(Array === result[0][0][0][0][0].constructor);
-        assertTrue(Array === result[0][0][0][0][1].constructor);
-        assertEqual(5, result[0][0][0][0][0].length);
-        assertEqual([ "a", "quick", "brown", "fox", "jump" ], result[0][0][0][0][0]);
-        assertEqual(4, result[0][0][0][0][1].length);
-        assertEqual([ "jump", "over", "lazy", "dog" ], result[0][0][0][0][1]);
+        assertEqual(1, result[0][0][0][0][0].length);
+        assertEqual(2, result[0][0][0][0][0][0].length);
+        assertTrue(Array === result[0][0][0][0][0][0][0].constructor);
+        assertTrue(Array === result[0][0][0][0][0][0][1].constructor);
+        assertEqual(5, result[0][0][0][0][0][0][0].length);
+        assertEqual([ "a", "quick", "brown", "fox", "jump" ], result[0][0][0][0][0][0][0]);
+        assertEqual(4, result[0][0][0][0][0][0][1].length);
+        assertEqual([ "jump", "over", "lazi", "dog" ], result[0][0][0][0][0][0][1]);
       }
       // number
       {
@@ -335,7 +341,7 @@ function iResearchFeatureAqlTestSuite () {
         ).toArray();
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
-        assertEqual([3.14], result[0]);
+        assertEqual(["oMAJHrhR64Uf", "sMAJHrhR6w==", "wMAJHrg=", "0MAJ"], result[0]);
       }
       // array of numbers
       {
@@ -347,7 +353,10 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
         assertEqual(3, result[0].length);
-        assertEqual([1, 2, 3.14], result[0]);
+        assertEqual([
+          ["YIAAAAAAAAAB", "cIAAAAAAAA==", "gIAAAAA=", "kIAA"], 
+          ["YIAAAAAAAAAC", "cIAAAAAAAA==", "gIAAAAA=", "kIAA"], 
+          ["oMAJHrhR64Uf", "sMAJHrhR6w==", "wMAJHrg=", "0MAJ"]], result[0]);
       }
       // bool
       {
@@ -358,7 +367,7 @@ function iResearchFeatureAqlTestSuite () {
         ).toArray();
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
-        assertEqual([true], result[0]);
+        assertEqual(["/w=="], result[0]);
       }
       // array of bools
       {
@@ -367,11 +376,12 @@ function iResearchFeatureAqlTestSuite () {
           null,
           { }
         ).toArray();
-        assertEqual(3, result.length);
+        assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
-        assertEqual([true], result[0]);
-        assertEqual([false], result[1]);
-        assertEqual([true], result[2]);
+        assertEqual(3, result[0].length);
+        assertEqual(["/w=="], result[0][0]);
+        assertEqual(["AA=="], result[0][1]);
+        assertEqual(["/w=="], result[0][2]);
       }
       // mix of different types
       {
@@ -384,17 +394,17 @@ function iResearchFeatureAqlTestSuite () {
         assertTrue(Array === result[0].constructor);
         assertEqual(8, result[0].length);
         assertEqual(['quick', 'fox'], result[0][0]);
-        assertEqual([null], result[0][1]);
-        assertEqual([true], result[0][2]);
-        assertEqual([3.14], result[0][3]);
+        assertEqual([""], result[0][1]);
+        assertEqual(["/w=="], result[0][2]);
+        assertEqual(["oMAJHrhR64Uf", "sMAJHrhR6w==", "wMAJHrg=", "0MAJ"], result[0][3]);
         assertEqual(['string', 'array'], result[0][4]);
-        assertEqual([5], result[0][5]);
+        assertEqual(["YIAAAAAAAAAF", "cIAAAAAAAA==", "gIAAAAA=", "kIAA"], result[0][5]);
         assertTrue(Array === result[0][6].constructor);
         assertEqual(3, result[0][6].length);
-        assertEqual([true], result[0][6][0]);
-        assertEqual([4], result[0][6][1]);
+        assertEqual(["/w=="], result[0][6][0]);
+        assertEqual(["YIAAAAAAAAAE", "cIAAAAAAAA==", "gIAAAAA=", "kIAA"], result[0][6][1]);
         assertEqual(['one', 'two'], result[0][6][2]);
-        assertEqual([true], result[0][7]);
+        assertEqual(["/w=="], result[0][7]);
       }
        // mix of different types without text analyzer (identity will be used)
       {
@@ -407,17 +417,17 @@ function iResearchFeatureAqlTestSuite () {
         assertTrue(Array === result[0].constructor);
         assertEqual(8, result[0].length);
         assertEqual(['quick fox'], result[0][0]);
-        assertEqual([null], result[0][1]);
-        assertEqual([true], result[0][2]);
-        assertEqual([3.14], result[0][3]);
+        assertEqual([""], result[0][1]);
+        assertEqual(["/w=="], result[0][2]);
+        assertEqual(["oMAJHrhR64Uf", "sMAJHrhR6w==", "wMAJHrg=", "0MAJ"], result[0][3]);
         assertEqual(['string array'], result[0][4]);
-        assertEqual([5], result[0][5]);
+        assertEqual(["YIAAAAAAAAAF", "cIAAAAAAAA==", "gIAAAAA=", "kIAA"], result[0][5]);
         assertTrue(Array === result[0][6].constructor);
         assertEqual(3, result[0][6].length);
-        assertEqual([true], result[0][6][0]);
-        assertEqual([4], result[0][6][1]);
+        assertEqual(["/w=="], result[0][6][0]);
+        assertEqual(["YIAAAAAAAAAE", "cIAAAAAAAA==", "gIAAAAA=", "kIAA"], result[0][6][1]);
         assertEqual(['one two'], result[0][6][2]);
-        assertEqual([true], result[0][7]);
+        assertEqual(["/w=="], result[0][7]);
       }
       // mix of different types (but without text)
       {
@@ -429,15 +439,53 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
         assertEqual(6, result[0].length);
-        assertEqual([null], result[0][0]);
-        assertEqual([true], result[0][1]);
-        assertEqual([3.14], result[0][2]);
-        assertEqual([5], result[0][3]);
+        assertEqual([""], result[0][0]);
+        assertEqual(["/w=="], result[0][1]);
+        assertEqual(["oMAJHrhR64Uf", "sMAJHrhR6w==", "wMAJHrg=", "0MAJ"], result[0][2]);
+        assertEqual(["YIAAAAAAAAAF", "cIAAAAAAAA==", "gIAAAAA=", "kIAA"], result[0][3]);
         assertTrue(Array === result[0][4].constructor);
         assertEqual(2, result[0][4].length);
-        assertEqual([true], result[0][4][0]);
-        assertEqual([4], result[0][4][1]);
-        assertEqual([true], result[0][5]);
+        assertEqual(["/w=="], result[0][4][0]);
+        assertEqual(["YIAAAAAAAAAE", "cIAAAAAAAA==", "gIAAAAA=", "kIAA"], result[0][4][1]);
+        assertEqual(["/w=="], result[0][5]);
+      }
+
+      // empty array
+      {
+        let result = db._query(
+          "RETURN TOKENS([])",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(1, result[0].length);
+        assertEqual([], result[0][0]);
+      }
+       // array of empty arrays
+      {
+        let result = db._query(
+          "RETURN TOKENS([[],[]])",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(2, result[0].length);
+        assertEqual([[]], result[0][0]);
+        assertEqual([[]], result[0][1]);
+      }
+       // empty nested array
+      {
+        let result = db._query(
+          "RETURN TOKENS([[]])",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(1, result[0].length);
+        assertEqual([[]], result[0][0]);
       }
     },
 

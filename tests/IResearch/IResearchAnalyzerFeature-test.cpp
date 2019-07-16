@@ -2791,21 +2791,21 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
 
   // test values
   // 123.4
-  std::vector<uint8_t> expected123P4[] = {{0xa0, 0xc0, 0x5e, 0xd9, 0x99, 0x99, 0x99, 0x99, 0x9a},
-                                          {0xb0, 0xc0, 0x5e, 0xd9, 0x99, 0x99, 0x99},
-                                          {0xc0, 0xc0, 0x5e, 0xd9, 0x99},
-                                          {0xd0, 0xc0, 0x5e}};
+  std::string expected123P4[] = { "oMBe2ZmZmZma",
+                                  "sMBe2ZmZmQ==",
+                                  "wMBe2Zk=",
+                                  "0MBe"};
 
   // 123
-  std::vector<uint8_t> expected123[] = {{0x60, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x7b},
-                                        {0x70, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00},
-                                        {0x80, 0x80, 0x00, 0x00, 0x00},
-                                        {0x90, 0x80, 0x00}};
+  std::string expected123[] = { "YIAAAAAAAAB7",
+                                "cIAAAAAAAA==",
+                                "gIAAAAA=",
+                                "kIAA"};
 
   // boolean true
-  std::vector<uint8_t> expectedTrue({0xff});
+  std::string expectedTrue("/w==");
   // boolean false
-  std::vector<uint8_t> expectedFalse({0x00});
+  std::string expectedFalse("AA==");
 
   // test double data type
   {
@@ -2818,11 +2818,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     for (size_t i = 0; i < result->length(); ++i) {
       bool mustDestroy;
       auto entry = result->at(i, mustDestroy, false).slice();
-      EXPECT_TRUE(entry.isBinary());
-      arangodb::velocypack::ValueLength vl;
-      auto value = entry.getBinary(vl);
-      EXPECT_EQ(expected123P4[i].size(), vl);
-      EXPECT_EQ(0, memcmp(&expected123P4[i][0], value, vl));
+      EXPECT_TRUE(entry.isString());
+      EXPECT_EQ(expected123P4[i], arangodb::iresearch::getStringRef(entry));
+   
     }
   }
   // test integer data type
@@ -2837,11 +2835,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     for (size_t i = 0; i < result->length(); ++i) {
       bool mustDestroy;
       auto entry = result->at(i, mustDestroy, false).slice();
-      EXPECT_TRUE(entry.isBinary());
-      arangodb::velocypack::ValueLength vl;
-      auto value = entry.getBinary(vl);
-      EXPECT_EQ(expected123[i].size(), vl);
-      EXPECT_EQ(0, memcmp(&expected123[i][0], value, vl));
+      EXPECT_TRUE(entry.isString());
+      EXPECT_EQ(expected123[i], arangodb::iresearch::getStringRef(entry));
     }
   }
   // test true bool
@@ -2853,11 +2848,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     EXPECT_EQ(1, result->length());
     bool mustDestroy;
     auto entry = result->at(0, mustDestroy, false).slice();
-    EXPECT_TRUE(entry.isBinary());
-    arangodb::velocypack::ValueLength vl;
-    auto value = entry.getBinary(vl);
-    EXPECT_EQ(expectedTrue.size(), vl);
-    EXPECT_EQ(0, memcmp(&expectedTrue[0], value, vl));
+    EXPECT_TRUE(entry.isString());
+    EXPECT_EQ(expectedTrue, arangodb::iresearch::getStringRef(entry));
   }
   // test false bool
   {
@@ -2868,11 +2860,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     EXPECT_EQ(1, result->length());
     bool mustDestroy;
     auto entry = result->at(0, mustDestroy, false).slice();
-    EXPECT_TRUE(entry.isBinary());
-    arangodb::velocypack::ValueLength vl;
-    auto value = entry.getBinary(vl);
-    EXPECT_EQ(expectedFalse.size(), vl);
-    EXPECT_EQ(0, memcmp(&expectedFalse[0], value, vl));
+    EXPECT_TRUE(entry.isString());
+    EXPECT_EQ(expectedFalse, arangodb::iresearch::getStringRef(entry));
   }
   // test null data type
   {
@@ -2883,10 +2872,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     EXPECT_EQ(1, result->length());
     bool mustDestroy;
     auto entry = result->at(0, mustDestroy, false).slice();
-    EXPECT_TRUE(entry.isBinary());
-    arangodb::velocypack::ValueLength vl;
-    auto value = entry.getBinary(vl);
-    EXPECT_EQ(vl, 0);
+    EXPECT_TRUE(entry.isString());
+    EXPECT_EQ("", arangodb::iresearch::getStringRef(entry));
   }
 
   // test double type with not needed analyzer
@@ -2903,11 +2890,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     for (size_t i = 0; i < result->length(); ++i) {
       bool mustDestroy;
       auto entry = result->at(i, mustDestroy, false).slice();
-      EXPECT_TRUE(entry.isBinary());
-      arangodb::velocypack::ValueLength vl;
-      auto value = entry.getBinary(vl);
-      EXPECT_EQ(expected123P4[i].size(), vl);
-      EXPECT_EQ(0, memcmp(&expected123P4[i][0], value, vl));
+      EXPECT_TRUE(entry.isString());
+      EXPECT_EQ(expected123P4[i], arangodb::iresearch::getStringRef(entry));
     }
   }
   // test double type with not needed analyzer (invalid analyzer type)
@@ -2997,11 +2981,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     EXPECT_TRUE(nested2.isArray());
     EXPECT_EQ(1, nested2.length());
     auto booleanValue = nested2.at(0);
-    EXPECT_TRUE(booleanValue.isBinary());
-    arangodb::velocypack::ValueLength vl;
-    auto value = booleanValue.getBinary(vl);
-    EXPECT_EQ(expectedTrue.size(), vl);
-    EXPECT_EQ(0, memcmp(&expectedTrue[0], value, vl));
+    EXPECT_TRUE(booleanValue.isString());
+    EXPECT_EQ(expectedTrue, arangodb::iresearch::getStringRef(booleanValue));
   }
 
   // array of bools
@@ -3030,36 +3011,27 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
       auto entry = result->at(0, mustDestroy, false).slice();
       EXPECT_TRUE(entry.isArray());
       EXPECT_EQ(1, entry.length());
-      auto boolSlice = entry.at(0);
-      EXPECT_TRUE(boolSlice.isBinary());
-      arangodb::velocypack::ValueLength vl;
-      auto value = boolSlice.getBinary(vl);
-      EXPECT_EQ(expectedTrue.size(), vl);
-      EXPECT_EQ(0, memcmp(&expectedTrue[0], value, vl));
+      auto booleanValue = entry.at(0);
+      EXPECT_TRUE(booleanValue.isString());
+      EXPECT_EQ(expectedTrue, arangodb::iresearch::getStringRef(booleanValue));
     }
     {
       bool mustDestroy;
       auto entry = result->at(1, mustDestroy, false).slice();
       EXPECT_TRUE(entry.isArray());
       EXPECT_EQ(1, entry.length());
-      auto boolSlice = entry.at(0);
-      EXPECT_TRUE(boolSlice.isBinary());
-      arangodb::velocypack::ValueLength vl;
-      auto value = boolSlice.getBinary(vl);
-      EXPECT_EQ(expectedFalse.size(), vl);
-      EXPECT_EQ(0, memcmp(&expectedFalse[0], value, vl));
+      auto booleanValue = entry.at(0);
+      EXPECT_TRUE(booleanValue.isString());
+      EXPECT_EQ(expectedFalse, arangodb::iresearch::getStringRef(booleanValue));
     }
     {
       bool mustDestroy;
       auto entry = result->at(2, mustDestroy, false).slice();
       EXPECT_TRUE(entry.isArray());
       EXPECT_EQ(1, entry.length());
-      auto boolSlice = entry.at(0);
-      EXPECT_TRUE(boolSlice.isBinary());
-      arangodb::velocypack::ValueLength vl;
-      auto value = boolSlice.getBinary(vl);
-      EXPECT_EQ(expectedTrue.size(), vl);
-      EXPECT_EQ(0, memcmp(&expectedTrue[0], value, vl));
+      auto booleanValue = entry.at(0);
+      EXPECT_TRUE(booleanValue.isString());
+      EXPECT_EQ(expectedTrue, arangodb::iresearch::getStringRef(booleanValue));
     }
   }
 
@@ -3144,23 +3116,18 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
         EXPECT_EQ(_countof(expected123P4), numberTokens.length());
         for (size_t i = 0; i < numberTokens.length(); ++i) {
           auto entry = numberTokens.at(i);
-          EXPECT_TRUE(entry.isBinary());
-          arangodb::velocypack::ValueLength vl;
-          auto value = entry.getBinary(vl);
-          EXPECT_EQ(expected123P4[i].size(), vl);
-          EXPECT_EQ(0, memcmp(&expected123P4[i][0], value, vl));
+          EXPECT_TRUE(entry.isString());
+          EXPECT_EQ(expected123P4[i],
+                    arangodb::iresearch::getStringRef(entry));
         }
       }
       {
         auto booleanTokens = nested.at(2);
         EXPECT_TRUE(booleanTokens.isArray());
         EXPECT_EQ(1, booleanTokens.length());
-        auto boolSlice = booleanTokens.at(0);
-        EXPECT_TRUE(boolSlice.isBinary());
-        arangodb::velocypack::ValueLength vl;
-        auto value = boolSlice.getBinary(vl);
-        EXPECT_EQ(expectedTrue.size(), vl);
-        EXPECT_EQ(0, memcmp(&expectedTrue[0], value, vl));
+        auto booleanValue = booleanTokens.at(0);
+        EXPECT_TRUE(booleanValue.isString());
+        EXPECT_EQ(expectedTrue, arangodb::iresearch::getStringRef(booleanValue));
       }
     }
     {
@@ -3170,11 +3137,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
       EXPECT_EQ(_countof(expected123), entry.length());
       for (size_t i = 0; i < entry.length(); ++i) {
         auto numberSlice = entry.at(i);
-        EXPECT_TRUE(numberSlice.isBinary());
-        arangodb::velocypack::ValueLength vl;
-        auto value = numberSlice.getBinary(vl);
-        EXPECT_EQ(expected123[i].size(), vl);
-        EXPECT_EQ(0, memcmp(&expected123[i][0], value, vl));
+        EXPECT_TRUE(numberSlice.isString());
+        EXPECT_EQ(expected123[i], arangodb::iresearch::getStringRef(numberSlice));
       }
     }
     {
@@ -3184,11 +3148,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
       EXPECT_EQ(_countof(expected123P4), entry.length());
       for (size_t i = 0; i < entry.length(); ++i) {
         auto numberSlice = entry.at(i);
-        EXPECT_TRUE(numberSlice.isBinary());
-        arangodb::velocypack::ValueLength vl;
-        auto value = numberSlice.getBinary(vl);
-        EXPECT_EQ(expected123P4[i].size(), vl);
-        EXPECT_EQ(0, memcmp(&expected123P4[i][0], value, vl));
+        EXPECT_TRUE(numberSlice.isString());
+        EXPECT_EQ(expected123P4[i], arangodb::iresearch::getStringRef(numberSlice));
       }
     }
     {
@@ -3196,12 +3157,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
       auto entry = result->at(4, mustDestroy, false).slice();
       EXPECT_TRUE(entry.isArray());
       EXPECT_EQ(1, entry.length());
-      auto booleanSlice = entry.at(0);
-      EXPECT_TRUE(booleanSlice.isBinary());
-      arangodb::velocypack::ValueLength vl;
-      auto value = booleanSlice.getBinary(vl);
-      EXPECT_EQ(expectedTrue.size(), vl);
-      EXPECT_EQ(0, memcmp(&expectedTrue[0], value, vl));
+      auto booleanValue = entry.at(0);
+      EXPECT_TRUE(booleanValue.isString());
+      EXPECT_EQ(expectedTrue, arangodb::iresearch::getStringRef(booleanValue));
     }
     {
       bool mustDestroy;
@@ -3209,22 +3167,17 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
       EXPECT_TRUE(entry.isArray());
       EXPECT_EQ(1, entry.length());
       auto nullSlice = entry.at(0);
-      EXPECT_TRUE(nullSlice.isBinary());
-      arangodb::velocypack::ValueLength vl;
-      auto value = nullSlice.getBinary(vl);
-      EXPECT_EQ(0, vl);
+      EXPECT_TRUE(nullSlice.isString());
+      EXPECT_EQ("", arangodb::iresearch::getStringRef(nullSlice));
     }
     {
       bool mustDestroy;
       auto entry = result->at(6, mustDestroy, false).slice();
       EXPECT_TRUE(entry.isArray());
       EXPECT_EQ(1, entry.length());
-      auto booleanSlice = entry.at(0);
-      EXPECT_TRUE(booleanSlice.isBinary());
-      arangodb::velocypack::ValueLength vl;
-      auto value = booleanSlice.getBinary(vl);
-      EXPECT_EQ(vl, expectedFalse.size());
-      EXPECT_EQ(0, memcmp(&expectedFalse[0], value, vl));
+      auto booleanValue = entry.at(0);
+      EXPECT_TRUE(booleanValue.isString());
+      EXPECT_EQ(expectedFalse, arangodb::iresearch::getStringRef(booleanValue));
     }
     {
       bool mustDestroy;
