@@ -391,6 +391,10 @@ void IResearchLink::batchInsert(
     return; // nothing to do
   }
 
+  LOG_TOPIC("7c228", TRACE, iresearch::TOPIC)
+      << "'batchInsert', engine recovery '" << _engine->recoveryTick()
+      << "', recovery tick '" << _recoveryTick << "'";
+
   TRI_ASSERT(queue);
   TRI_ASSERT(trx.state());
 
@@ -1462,6 +1466,10 @@ Result IResearchLink::insert(
   TRI_ASSERT(trx.state());
   auto& state = *(trx.state());
 
+  LOG_TOPIC("7c228", TRACE, iresearch::TOPIC)
+      << "'insert', engine recovery '" << _engine->recoveryTick()
+      << "', recovery tick '" << _recoveryTick << "'";
+
   if (_dataStore._recovery != RecoveryState::DONE && _engine->recoveryTick() <= _recoveryTick) {
     LOG_TOPIC("7c228", TRACE, iresearch::TOPIC)
       << "skipping 'insert', operation tick '" << _engine->recoveryTick()
@@ -1686,6 +1694,10 @@ Result IResearchLink::remove(
     Index::OperationMode /*mode*/) {
   TRI_ASSERT(trx.state());
   auto& state = *(trx.state());
+
+  LOG_TOPIC("7c228", TRACE, iresearch::TOPIC)
+      << "'remove', engine recovery '" << _engine->recoveryTick()
+      << "', recovery tick '" << _recoveryTick << "'";
 
   if (_dataStore._recovery != RecoveryState::DONE && _engine->recoveryTick() <= _recoveryTick) {
     LOG_TOPIC("7d228", TRACE, iresearch::TOPIC)

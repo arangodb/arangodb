@@ -42,8 +42,7 @@ extern "C" const SSL_METHOD* SSLv3_method(void);
 asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string const& keyfile) {
   // create our context
 
-  using asio_ns::ssl::context;
-  context::method meth;
+  asio_ns::ssl::context::method meth;
 
   switch (protocol) {
     case SSL_V2:
@@ -52,19 +51,19 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string con
 
 #ifndef OPENSSL_NO_SSL3_METHOD
     case SSL_V3:
-      meth = context::method::sslv3;
+      meth = asio_ns::ssl::context::method::sslv3;
       break;
 #endif
     case SSL_V23:
-      meth = context::method::sslv23;
+      meth = asio_ns::ssl::context::method::sslv23;
       break;
 
     case TLS_V1:
-      meth = context::method::tlsv1_server;
+      meth = asio_ns::ssl::context::method::tlsv1_server;
       break;
 
     case TLS_V12:
-      meth = context::method::tlsv12_server;
+      meth = asio_ns::ssl::context::method::tlsv12_server;
       break;
     
     case TLS_V13: 
@@ -72,7 +71,7 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string con
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
       // openssl version number format is
       // MNNFFPPS: major minor fix patch status
-      meth = context::method::tlsv13_server;
+      meth = asio_ns::ssl::context::method::tlsv13_server;
       break;
 #else
       // no TLS 1.3 support
@@ -95,22 +94,24 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string con
   }
 
   // load our keys and certificates
-  if (!SSL_CTX_use_certificate_chain_file(sslctx.native_handle(), keyfile.c_str())) {
-    LOG_TOPIC("c6a00", ERR, arangodb::Logger::FIXME)
-        << "cannot read certificate from '" << keyfile << "': " << lastSSLError();
+  boost::system::error_code ec;
+  sslctx.use_certificate_chain_file(keyfile, ec);
+  if (ec) {
+    LOG_TOPIC("c6a00", ERR, arangodb::Logger::SSL)
+    << "cannot read certificate from '" << keyfile << "': " << ec;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "unable to read certificate from file");
   }
-
-  if (!SSL_CTX_use_PrivateKey_file(sslctx.native_handle(), keyfile.c_str(), SSL_FILETYPE_PEM)) {
+  
+  sslctx.use_private_key_file(keyfile, asio_ns::ssl::context::file_format::pem, ec);
+  if (ec) {
     LOG_TOPIC("98712", ERR, arangodb::Logger::FIXME)
-        << "cannot read key from '" << keyfile << "': " << lastSSLError();
+    << "cannot read key from '" << keyfile << "': " << ec;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "unable to read key from keyfile");
   }
-
 #if (OPENSSL_VERSION_NUMBER < 0x00905100L)
-  SSL_CTX_set_verify_depth(sslctx.native_handle(), 1);
+  sslctx.set_verify_depth(1);
 #endif
 
   return sslctx;

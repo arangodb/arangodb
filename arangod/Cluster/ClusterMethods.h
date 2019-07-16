@@ -27,7 +27,7 @@
 #include "Agency/AgencyComm.h"
 #include "Basics/Common.h"
 #include "Cluster/TraverserEngineRegistry.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
