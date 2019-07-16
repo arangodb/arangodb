@@ -1,6 +1,8 @@
 devel
 -----
 
+* added resign leadership job to supervision.
+
 * coordinator code was reporting rocksdb error codes, but not the associated detail message.
   Corrected.
 
