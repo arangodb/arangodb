@@ -85,7 +85,8 @@ static inline T numericValue(VPackSlice const& slice, char const* attribute) {
 }  // namespace
 
 /// @brief creates the recover state
-MMFilesWalRecoverState::MMFilesWalRecoverState(bool ignoreRecoveryErrors)
+MMFilesWalRecoverState::MMFilesWalRecoverState(bool ignoreRecoveryErrors,
+                                               TRI_voc_tick_t& recoveryTick)
     : databaseFeature(nullptr),
       failedTransactions(),
       lastTick(0),
@@ -96,7 +97,7 @@ MMFilesWalRecoverState::MMFilesWalRecoverState(bool ignoreRecoveryErrors)
       ignoreRecoveryErrors(ignoreRecoveryErrors),
       errorCount(0),
       maxRevisionId(0),
-      recoveryTick(0),
+      recoveryTick(recoveryTick),
       lastDatabaseId(0),
       lastCollectionId(0) {
   databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>(

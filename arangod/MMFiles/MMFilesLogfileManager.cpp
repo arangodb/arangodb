@@ -103,6 +103,7 @@ MMFilesLogfileManager::MMFilesLogfileManager(application_features::ApplicationSe
     : ApplicationFeature(server, "MMFilesLogfileManager"),
       _allowWrites(false),  // start in read-only mode
       _recoveryState(RecoveryState::BEFORE),
+      _recoveryTick(0),
       _logfilesLock(),
       _logfiles(),
       _slots(nullptr),
@@ -322,7 +323,7 @@ void MMFilesLogfileManager::start() {
 
   // initialize some objects
   _slots = new MMFilesWalSlots(this, _numberOfSlots, 0);
-  _recoverState.reset(new MMFilesWalRecoverState(_ignoreRecoveryErrors));
+  _recoverState.reset(new MMFilesWalRecoverState(_ignoreRecoveryErrors, _recoveryTick));
 
   TRI_ASSERT(!_allowWrites);
 
@@ -1821,10 +1822,6 @@ void MMFilesLogfileManager::logStatus() {
         << "- logfile " << logfile.second->id() << ", filename '"
         << logfile.second->filename() << "', status " << logfile.second->statusText();
   }
-}
-
-TRI_voc_tick_t MMFilesLogfileManager::recoveryTick() const noexcept {
-  return _recoverState->currentTick();
 }
 
 // run the recovery procedure

@@ -185,7 +185,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   // current recovery state
   inline RecoveryState recoveryState() const noexcept { return _recoveryState; }
 
-  TRI_voc_tick_t recoveryTick() const noexcept;
+  TRI_voc_tick_t recoveryTick() const noexcept { return _recoveryTick; }
 
   // whether or not we are in the shutdown phase
   inline bool isInShutdown() const { return (_shutdown != 0); }
@@ -504,6 +504,9 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // current recovery state
   RecoveryState _recoveryState;
+
+  // current recovery tick
+  TRI_voc_tick_t _recoveryTick;
 
   // a lock protecting the _logfiles map and the logfiles' statuses
   basics::ReadWriteLock _logfilesLock;

@@ -1056,14 +1056,16 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
     initCallback(*_dataStore._directory);
   }
 
+  _dataStore._recovery = RecoveryState::AFTER_CHECKPOINT; // new empty data store
+  _recoveryTick = _engine->recoveryTick();
+
   if (arangodb::RecoveryState::IN_PROGRESS == _engine->recoveryState()) {
-    // creation marker during RocksDB recovery:
-    // link will contain all live documents from linked collection, so the recovery is done
-    _dataStore._recovery = RecoveryState::DONE;
-    _recoveryTick = _engine->releasedTick();
-  } else {
-    _dataStore._recovery = RecoveryState::AFTER_CHECKPOINT; // new empty data store
-    _recoveryTick = 0;
+    if (EngineSelectorFeature::isRocksDB()) {
+      // creation marker during RocksDB recovery:
+      // link will contain all live documents from linked collection, so the recovery is done
+      _dataStore._recovery = RecoveryState::DONE;
+      _recoveryTick = _engine->releasedTick();
+    }
   }
 
   if (pathExists) {
