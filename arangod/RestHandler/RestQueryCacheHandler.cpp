@@ -23,7 +23,6 @@
 
 #include "RestQueryCacheHandler.h"
 #include "Aql/QueryCache.h"
-#include "Rest/HttpRequest.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

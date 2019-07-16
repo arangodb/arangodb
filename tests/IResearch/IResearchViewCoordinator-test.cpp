@@ -4087,7 +4087,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
                              [](TRI_voc_cid_t) -> bool { return false; })));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
-    expectedMeta._cleanupIntervalStep = 10;
 
     EXPECT_TRUE((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                  logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
@@ -4147,7 +4146,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
                              [](TRI_voc_cid_t) -> bool { return false; })));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
-    expectedMeta._cleanupIntervalStep = 10;
 
     EXPECT_TRUE((TRI_ERROR_BAD_PARAMETER ==
                  logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
@@ -4257,7 +4255,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
       arangodb::iresearch::IResearchViewMeta expectedMeta;
-      expectedMeta._cleanupIntervalStep = 10;
 
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN ==
                    logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
@@ -4856,7 +4853,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
                              [](TRI_voc_cid_t) -> bool { return false; })));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
-    expectedMeta._cleanupIntervalStep = 10;
 
     EXPECT_TRUE((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                  logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
@@ -4917,7 +4913,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
                              [](TRI_voc_cid_t) -> bool { return false; })));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
-    expectedMeta._cleanupIntervalStep = 10;
 
     EXPECT_TRUE((TRI_ERROR_BAD_PARAMETER ==
                  logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
@@ -5026,7 +5021,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
       arangodb::iresearch::IResearchViewMeta expectedMeta;
-      expectedMeta._cleanupIntervalStep = 10;
 
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN ==
                    logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
