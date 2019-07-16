@@ -300,7 +300,7 @@ IResearchLink::IResearchLink(
     auto* state = trx.state();
 
     // check state of the top-most transaction only
-    if (!state) {
+    if (!state || !state->isTopLevelTransaction()) {
       return;  // NOOP
     }
 
@@ -534,6 +534,10 @@ Result IResearchLink::cleanupUnsafe() {
     };
   }
 
+  LOG_TOPIC("7e828", TRACE, iresearch::TOPIC)
+    << "successfull cleanup of arangosearch link '" << id()
+    << "', run id '" << size_t(&runId) << "'";
+
   return {};
 }
 
@@ -589,6 +593,11 @@ Result IResearchLink::commitUnsafe() {
     }
 
     if (_dataStore._reader == reader) {
+      LOG_TOPIC("7e328", TRACE, iresearch::TOPIC)
+        << "no changes registered for arangosearch link '" << id()
+        << "' got last operation tick '" << lastCommittedTick
+        << "', run id '" << size_t(&runId) << "'";
+
       // no changes, can release the latest tick before commit
       subscription.tick(lastCommittedTick);
 
@@ -609,9 +618,11 @@ Result IResearchLink::commitUnsafe() {
     }
 
     LOG_TOPIC("7e328", TRACE, iresearch::TOPIC)
-      << "arangosearch link '" << id()
-      << "' got last operation tick '" << lastCommittedTick
-      << "', run id '" << size_t(&runId);
+      << "successfull sync of arangosearch link '" << id()
+      << "', docs count '" << reader->docs_count()
+      << "', live docs count '" << reader->live_docs_count()
+      << "', last operation tick '" << lastCommittedTick
+      << "', run id '" << size_t(&runId) << "'";
 
     // update last committed tick
     subscription.tick(lastCommittedTick);
@@ -676,6 +687,10 @@ Result IResearchLink::consolidateUnsafe(
       "' on arangosearch link '" + std::to_string(id()) + "' run id '" + std::to_string(size_t(&runId)) + "'"
     };
   }
+
+  LOG_TOPIC("7e828", TRACE, iresearch::TOPIC)
+    << "successfull consolidation of arangosearch link '" << id()
+    << "', run id '" << size_t(&runId) << "'";
 
   return {};
 }
