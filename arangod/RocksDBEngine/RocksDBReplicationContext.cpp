@@ -228,7 +228,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
 
   TRI_ASSERT(_snapshot != nullptr);
   // FIXME is it technically correct to include newly created collections ?
-  // simon: I think no, but this has been the behaviour since 3.2
+  // simon: I think no, but this has been the behavior since 3.2
   TRI_voc_tick_t tick = TRI_NewTickServer();  // = _lastArangoTick
   if (global) {
     // global inventory

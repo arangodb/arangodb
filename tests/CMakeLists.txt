@@ -138,9 +138,11 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchQueryBooleanTerm-test.cpp
   IResearch/IResearchQueryComplexBoolean-test.cpp
   IResearch/IResearchQueryExists-test.cpp
+  IResearch/IResearchQueryFilter-test.cpp
   IResearch/IResearchQueryIn-test.cpp
   IResearch/IResearchQueryInRange-test.cpp
   IResearch/IResearchQueryJoin-test.cpp
+  IResearch/IResearchQueryMinMatch-test.cpp
   IResearch/IResearchQueryNullTerm-test.cpp
   IResearch/IResearchQueryNumericTerm-test.cpp
   IResearch/IResearchQueryOptimization-test.cpp
@@ -171,6 +173,7 @@ set(ARANGODB_TESTS_SOURCES
   Pregel/typedbuffer.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
   RestHandler/RestAnalyzerHandler-test.cpp
+  RestHandler/RestDocumentHandler-test.cpp
   RestHandler/RestUsersHandler-test.cpp
   RestHandler/RestViewHandler-test.cpp
   RestServer/FlushFeature-test.cpp

@@ -45,25 +45,25 @@ using namespace arangodb::basics;
 
 bool HttpResponse::HIDE_PRODUCT_HEADER = false;
 
-HttpResponse::HttpResponse(ResponseCode code, basics::StringBuffer* buffer)
-    : GeneralResponse(code), _isHeadResponse(false), _body(buffer), _bodySize(0) {
-  TRI_ASSERT(buffer != nullptr);
+HttpResponse::HttpResponse(ResponseCode code, std::unique_ptr<basics::StringBuffer> buffer)
+: GeneralResponse(code), _isHeadResponse(false), _body(std::move(buffer)), _bodySize(0) {
   _generateBody = false;
   _contentType = ContentType::TEXT;
-  _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
 
-  if (_body == nullptr || _body->c_str() == nullptr) {
+  if (!_body) {
+    _body = std::make_unique<basics::StringBuffer>(false);
+  }
+  if (_body->c_str() == nullptr) {
     // no buffer could be reserved. out of memory!
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 }
 
-HttpResponse::~HttpResponse() { delete _body; }
+HttpResponse::~HttpResponse() { }
 
 void HttpResponse::reset(ResponseCode code) {
   _responseCode = code;
   _headers.clear();
-  _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
   _contentType = ContentType::TEXT;
   _isHeadResponse = false;
   TRI_ASSERT(_body != nullptr);
@@ -146,7 +146,6 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   output->appendText("\r\n", 2);
 
   bool seenServerHeader = false;
-  bool seenConnectionHeader = false;
   bool seenTransferEncodingHeader = false;
   std::string transferEncoding;
 
@@ -157,6 +156,10 @@ void HttpResponse::writeHeader(StringBuffer* output) {
     // ignore content-length
     if (keyLength == 14 && key[0] == 'c' &&
         memcmp(key.c_str(), "content-length", keyLength) == 0) {
+      continue;
+    } else if (keyLength == 10 && key[0] == 'c' &&
+               memcmp(key.c_str(), "connection", keyLength) == 0) {
+      // this ensures we don't print two "Connection" headers
       continue;
     }
 
@@ -172,11 +175,6 @@ void HttpResponse::writeHeader(StringBuffer* output) {
       // this ensures we don't print two "Server" headers
       seenServerHeader = true;
       // go on and use the user-defined "Server" header value
-    } else if (keyLength == 10 && key[0] == 'c' &&
-               memcmp(key.c_str(), "connection", keyLength) == 0) {
-      // this ensures we don't print two "Connection" headers
-      seenConnectionHeader = true;
-      // go on and use the user-defined "Connection" header value
     }
 
     // reserve enough space for header name + ": " + value + "\r\n"
@@ -218,20 +216,8 @@ void HttpResponse::writeHeader(StringBuffer* output) {
     output->appendText(TRI_CHAR_LENGTH_PAIR("Server: ArangoDB\r\n"));
   }
 
-  // add "Connection" response header
-  if (!seenConnectionHeader) {
-    switch (_connectionType) {
-      case rest::ConnectionType::C_KEEP_ALIVE:
-        output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
-        break;
-      case rest::ConnectionType::C_CLOSE:
-        output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
-        break;
-      case rest::ConnectionType::C_NONE:
-        output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: \r\n"));
-        break;
-    }
-  }
+  // this is just used by the batch handler, close connection
+  output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: Close \r\n"));
 
   // add "Content-Type" header
   switch (_contentType) {
@@ -328,6 +314,10 @@ void HttpResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
   }
 }
 
+void HttpResponse::addRawPayload(VPackStringRef payload) {
+  _body->appendText(payload.data(), payload.length());
+}
+
 void HttpResponse::addPayloadInternal(VPackSlice output, size_t inputLength,
                                       VPackOptions const* options, bool resolveExternals) {
   if (!options) {
@@ -360,7 +350,7 @@ void HttpResponse::addPayloadInternal(VPackSlice output, size_t inputLength,
     default: {
       setContentType(rest::ContentType::JSON);
       if (_generateBody) {
-        arangodb::basics::VelocyPackDumper dumper(_body, options);
+        arangodb::basics::VelocyPackDumper dumper(_body.get(), options);
         dumper.dumpValue(output);
       } else {
         // TODO can we optimize this?

@@ -238,7 +238,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
 
   std::vector<std::string> disabledFeatures({
-    "MMFilesPersistentIndex", "ArangoSearch", "IResearchAnalyzer",
+    "MMFilesPersistentIndex", "ArangoSearch", "ArangoSearchAnalyzer",
     "Statistics", "Action", "Script", "FoxxQueues", "Frontend"});
 
   if (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) {

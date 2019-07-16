@@ -44,14 +44,14 @@ struct AqlValue;
  */
 class OutputAqlItemRow {
  public:
-  // TODO Implement this behaviour via a template parameter instead?
-  enum class CopyRowBehaviour { CopyInputRows, DoNotCopyInputRows };
+  // TODO Implement this behavior via a template parameter instead?
+  enum class CopyRowBehavior { CopyInputRows, DoNotCopyInputRows };
 
   explicit OutputAqlItemRow(SharedAqlItemBlockPtr block,
                             std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
                             std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
                             std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
-                            CopyRowBehaviour = CopyRowBehaviour::CopyInputRows);
+                            CopyRowBehavior = CopyRowBehavior::CopyInputRows);
 
   OutputAqlItemRow(OutputAqlItemRow const&) = delete;
   OutputAqlItemRow& operator=(OutputAqlItemRow const&) = delete;

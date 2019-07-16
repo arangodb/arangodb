@@ -26,13 +26,12 @@
 #include <chrono>
 #include <thread>
 
-#include <velocypack/Exception.h>
-#include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 
@@ -130,7 +129,7 @@ bool AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
   // One needs to acquire the mutex of the condition variable
   // before entering this function!
   if (!_cv.wait(static_cast<uint64_t>(maxTimeout * 1000000.0)) &&
-      application_features::ApplicationServer::isRetryOK()) {
+      !application_features::ApplicationServer::isStopping()) {
     LOG_TOPIC("1514e", DEBUG, Logger::CLUSTER)
         << "Waiting done and nothing happended. Refetching to be sure";
     // mop: watches have not triggered during our sleep...recheck to be sure

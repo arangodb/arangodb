@@ -47,7 +47,6 @@ namespace arangodb {
 
 ServerFeature::ServerFeature(application_features::ApplicationServer& server, int* res)
     : ApplicationFeature(server, "Server"),
-      _vstMaxSize(1024 * 30),
       _result(res),
       _operationMode(OperationMode::MODE_SERVER)
 #if _WIN32
@@ -84,9 +83,9 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addSection("vst", "Configure the VelocyStream protocol");
 
-  options->addOption("--vst.maxsize",
-                     "maximal size (in bytes) for a VelocyPack chunk",
-                     new UInt32Parameter(&_vstMaxSize));
+  options->addObsoleteOption("--vst.maxsize", "maximal size (in bytes) "
+                             "for a VelocyPack chunk", false);
+
 #if _WIN32
   options->addOption("--console.code-page",
                      "Windows code page to use; defaults to UTF8",
