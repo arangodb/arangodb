@@ -263,8 +263,8 @@ void FollowerInfo::insertFollowersBeforeFailover(std::vector<std::string> const&
         std::find(failoverCandidates->begin(), failoverCandidates->end(), ourselves);
     // We are a valid failover follower
     TRI_ASSERT(myEntry != failoverCandidates->end());
-    // The first server is a different leader!
-    TRI_ASSERT(myEntry != failoverCandidates->begin());
+    // The first server is a different leader! (For some reason the job can be
+    // triggered twice) TRI_ASSERT(myEntry != failoverCandidates->begin());
     failoverCandidates->erase(myEntry);
     // Put us in front, put old leader somewhere, we do not really care
     _failoverCandidates = failoverCandidates;
