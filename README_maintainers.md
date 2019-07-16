@@ -48,7 +48,7 @@ anything that suits you to generate a **5 hex digit log** id.
 
 ### JSLint
 
-We switched to eslint a while back, burt it is still named jslint for historical reasons.
+We switched to eslint a while back, but it is still named jslint for historical reasons.
 
 #### Checker Script
 
@@ -136,6 +136,18 @@ These flags can be set in the first call to `cmake`:
 - `-DUSE_FAILURE_TESTS=1` - Adds JavaScript hook to crash the server for data integrity tests
 - `-DUSE_GOOGLE_TESTS=On` (default is On so this is set unless you explicitly disable it)
 
+Example flags for Windows:
+
+- Configure
+  ```
+  cmake .. -DSTATIC_EXECUTABLE=ON -DOPENSSL_USE_STATIC_LIBS=ON -T "v141,host=x64" -G "Visual Studio 15 2017 Win64" -DUSE_ENTERPRISE=ON
+  ```
+
+- Build
+  ```
+  cmake --build . --config RelWithDebInfo --target arangod
+  ```
+
 ### CFLAGS
 
 Add backtraces to cluster requests so you can easily track their origin:
@@ -183,7 +195,7 @@ mode will delete your changes.
 
 To build Web UI, also known as frontend or *Aardvark*, use the command:
 
-    make frontend
+    cmake --build --target frontend
 
 To remove all available node modules and start a clean installation run:
 
@@ -253,23 +265,20 @@ Depending on the native way ArangoDB tries to locate the temporary directory.
 
 ### Local Cluster Startup
 
-There are two scripts `scripts/startLocalCluster` and
-`scripts/stopLocalCluster` which help you to quickly fire up a testing
-cluster on your local machine. `scripts/startLocalCluster` takes 0, 2 or
-three arguments. In the 0 argument version, it simply starts 2 DBservers
-and one coordinator in the background, running on ports 8629, 8630 and
-8530 respectively. The agency runs on port 4001. With 2 arguments the
-first is the number of DBServers and the second is the number of 
-coordinators.
+The scripts `scripts/startLocalCluster` helps you to quickly fire up a testing
+cluster on your local machine. `scripts/stopLocalCluster` stops it again.
 
-If there is a third argument and it is "C", then the first coordinator
-will be started with `--console`` in a separate window (using an
-`xterm`). 
+`scripts/startLocalCluster [numDBServers numCoordinators [mode]]`
 
-If there is a third argument and it is "D", then all servers are started
-up in the GNU debugger in separate windows (using `xterm`s). In that
-case one has to hit ENTER in the original terminal where the script runs
-to continue, once all processes have been start up in the debugger.
+Without arguments it starts 2 DBServers and 1 Coordinator in the background,
+running on ports 8629, 8630 and 8530 respectively. The agency runs on port 4001.
+
+Mode:
+- `C`: Starts the first Coordinator with `--console` in a separate window
+  (using an `xterm`).
+- `D`: Starts all DBServers in the GNU debugger in separate windows
+  (using `xterm`s). Hit *ENTER* in the original terminal where the script
+  runs to continue once all processes have been started up in the debugger.
 
 ### Running ArangoDB on Mesos
 
@@ -674,8 +683,7 @@ or skipped depending on parameters:
 | `-noncluster`   | These tests will only run if no cluster is used (option 'cluster' needs to be false)
 | `-timecritical` | These tests are critical to execution time - and thus may fail if arangod is to slow. This may happen i.e. if you run the tests in valgrind, so you want to avoid them since they will fail anyways. To skip them, set the option `skipTimeCritical` to *true*.
 | `-disabled`     | These tests are disabled. You may however want to run them by hand.
-| `replication`   | These tests aren't run automatically since they require a manual set up environment (only applies to ruby tests).
-| `-spec`         | These tests are ran using the jasmine framework instead of jsunity.
+| `-spec`         | These tests are run using the mocha framework instead of jsunity.
 | `-nightly`      | These tests produce a certain thread on infrastructure or the test system, and therefore should only be executed once per day.
 | `-grey`         | These tests are currently listed as "grey", which means that they are known to be unstable or broken. These tests will not be executed by the testing framework if the option `--skipGrey` is given. If `--onlyGrey` option is given then non-"grey" tests are skipped. See `tests/Greylist.txt` for up-to-date information about greylisted tests. Please help to keep this file up to date.
 
@@ -763,7 +771,7 @@ Testing a single rspec test:
 
     scripts/unittest http_server --test api-users-spec.rb
 
-Running a test against a ready started server (in contrast to starting one by itself):
+Running a test against a server you started (instead of letting the script start its own server):
 
     scripts/unittest http_server --test api-batch-spec.rb --server tcp://127.0.0.1:8529 --serverRoot /tmp/123
 
@@ -822,9 +830,11 @@ Run a test via startup option:
 
 #### Running jsUnity Tests with arangosh client
 
-You can only run tests which are intended to be ran via arangosh:
+Run tests this way:
 
     require("jsunity").runTest("tests/js/client/shell/shell-client.js");
+
+You can only run tests which are intended to be ran via arangosh.
 
 ### Mocha Tests
 
@@ -842,7 +852,7 @@ This is quick introduction only.
 
 Running a single rspec test:
 
-   ./scripts/unittest http_server --test api-import-spec.rb
+    ./scripts/unittest http_server --test api-import-spec.rb
 
 Debugging rspec with gdb:
 
