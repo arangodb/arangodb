@@ -166,8 +166,7 @@ class ReplicationClientsProgressTracker {
       keyUnion.syncerId = syncerId;
       keyType = KeyType::SYNCER_ID;
     }
-
-    if (clientId != 0) {
+    else if (clientId != 0) {
       keyUnion.clientId = clientId;
       keyType = KeyType::SERVER_ID;
     }
