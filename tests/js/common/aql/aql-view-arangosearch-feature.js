@@ -487,6 +487,62 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(1, result[0].length);
         assertEqual([[]], result[0][0]);
       }
+      //// failures
+      //no parameters
+      {
+        try {
+          let result = db._query(
+            "RETURN TOKENS()",
+            null,
+            { }
+          );
+          fail();
+        } catch(err) {
+           assertEqual(require("internal").errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code,
+                       err.errorNum);
+        }
+      }
+      //too many parameters
+      {
+        try {
+          let result = db._query(
+            "RETURN TOKENS('test', 'identity', 'unexpected parameter')",
+            null,
+            { }
+          );
+          fail();
+        } catch(err) {
+           assertEqual(require("internal").errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code,
+                       err.errorNum);
+        }
+      }
+      //invalid first parameter type
+      {
+        try {
+          let result = db._query(
+            "RETURN TOKENS({'test': true}, 'identity')",
+            null,
+            { }
+          );
+          fail();
+        } catch(err) {
+            assertTrue(TypeError ===  err.constructor );
+        }
+      }
+      //invalid second parameter type
+      {
+        try {
+          let result = db._query(
+            "RETURN TOKENS('test', 123)",
+            null,
+            { }
+          );
+          fail();
+        } catch(err) {
+            assertTrue(TypeError ===  err.constructor );
+        }
+      }
+
     },
 
     testDefaultAnalyzers : function() {
@@ -496,7 +552,8 @@ function iResearchFeatureAqlTestSuite () {
           db._query("RETURN TOKENS('a quick brown fox jumps', 'invalid')").toArray();
           fail();
         } catch (err) {
-          assertEqual(err.errorNum, require("internal").errors.ERROR_BAD_PARAMETER.code);
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
         }
       }
 
@@ -763,7 +820,8 @@ function iResearchFeatureAqlTestSuite () {
           analyzers.remove(analyzerName, true); // cleanup (should not get there)
           created = true;
         } catch (err) {
-          assertEqual(err.errorNum, require("internal").errors.ERROR_BAD_PARAMETER.code);
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
         }
         assertFalse(created);
       }
@@ -789,7 +847,8 @@ function iResearchFeatureAqlTestSuite () {
           analyzers.remove(analyzerName, true); // cleanup (should not get there)
           fail();
         } catch (err) {
-          assertEqual(err.errorNum, require("internal").errors.ERROR_BAD_PARAMETER.code);
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
         }
       }
     },
@@ -894,7 +953,8 @@ function iResearchFeatureAqlTestSuite () {
           analyzers.remove(analyzerName, true); // cleanup (should not get there)
           fail();
         } catch (err) {
-          assertEqual(err.errorNum, require("internal").errors.ERROR_BAD_PARAMETER.code);
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
         }
       }
     },
@@ -905,7 +965,8 @@ function iResearchFeatureAqlTestSuite () {
           analyzers.remove(analyzerName, true); // cleanup (should not get there)
           fail();
       } catch (err) {
-          assertEqual(err.errorNum, require("internal").errors.ERROR_NOT_IMPLEMENTED.code);
+          assertEqual(require("internal").errors.ERROR_NOT_IMPLEMENTED.code,
+                      err.errorNum);
       }
     }
   };

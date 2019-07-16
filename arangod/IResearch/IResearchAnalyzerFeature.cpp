@@ -379,14 +379,15 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
     irs::string_ref const message =
         "invalid arguments count while computing result for function 'TOKENS'";
     LOG_TOPIC("740fd", WARN, arangodb::iresearch::TOPIC) << message;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, message);
   }
 
   if (args.size() > 1 && !args[1].isString()) { // second arg must be analyzer name
     irs::string_ref const message =
-        "invalid argument(s) type while computing result for function 'TOKENS'";
+        "invalid analyzer name argument type while computing result for function 'TOKENS',"
+        " string expected";
     LOG_TOPIC("d0b60", WARN, arangodb::iresearch::TOPIC) << message;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, message);
   }
 
   // identity now is default analyzer
@@ -424,7 +425,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   auto string_analyzer = pool->get();
 
   if (!string_analyzer) {
-    auto const message = "failure to find arangosearch analyzer with name '"s +
+    auto const message = "failure to get arangosearch analyzer with name '"s +
                          static_cast<std::string>(name) +
                          "' while computing result for function 'TOKENS'";
     LOG_TOPIC("d7477", WARN, arangodb::iresearch::TOPIC) << message;
@@ -520,10 +521,10 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
       builder.openArray();
       builder.close();
     } else {
-      auto const message = "Unexpected parameter type '"s + current.typeName() +
+      auto const message = "unexpected parameter type '"s + current.typeName() +
                            "' while computing result for function 'TOKENS'";
       LOG_TOPIC("45a2e", WARN, arangodb::iresearch::TOPIC) << message;
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, message);
     }
     // de-stack all closing arrays
     while (!iteratorStack.empty()) {
