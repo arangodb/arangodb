@@ -445,9 +445,15 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
 
   irs::numeric_token_stream numeric_analyzer;
   auto& numeric_terms = numeric_analyzer.attributes().get<irs::term_attribute>();
-  // null and bool are just fixed values - use them as constants
-  // irs::boolean_token_stream::value(max.getBoolean())
-  // irs::null_token_stream::value_null();
+
+  if (!numeric_terms) {
+    auto const message =
+        "failure to retrieve values from arangosearch numeric analyzer "
+        "while computing result for function 'TOKENS'";
+
+    LOG_TOPIC("7d5df", WARN, arangodb::iresearch::TOPIC) << message;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
+  }
 
   // to avoid copying Builder's default buffer when initializing AqlValue
   // create the buffer externally and pass ownership directly into AqlValue
@@ -490,13 +496,13 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
         arangodb::iresearch::addStringRef(builder, value);
       }
     } else if (current.isBool()) {
-      std::string encoded = arangodb::basics::StringUtils::encodeBase64(
-          irs::ref_cast<char>(irs::boolean_token_stream::value(current.getBoolean())));
-      arangodb::iresearch::addStringRef(builder, encoded);
+      arangodb::iresearch::addStringRef(
+          builder, arangodb::basics::StringUtils::encodeBase64(irs::ref_cast<char>(
+                       irs::boolean_token_stream::value(current.getBoolean()))));
     } else if (current.isNull()) {
-      std::string encoded = arangodb::basics::StringUtils::encodeBase64(
-          irs::ref_cast<char>(irs::null_token_stream::value_null()));
-      arangodb::iresearch::addStringRef(builder, encoded);
+      arangodb::iresearch::addStringRef(
+          builder, arangodb::basics::StringUtils::encodeBase64(
+                       irs::ref_cast<char>(irs::null_token_stream::value_null())));
     } else if (current.isNumber()) {
       TRI_ASSERT(current.isDouble() || current.isInteger());
       if (current.isDouble()) {
@@ -505,9 +511,9 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
         numeric_analyzer.reset(current.getInt());
       }
       while (numeric_analyzer.next()) {
-        std::string encoded = arangodb::basics::StringUtils::encodeBase64(
-            irs::ref_cast<char>(numeric_terms->value()));
-        arangodb::iresearch::addStringRef(builder, encoded);
+        arangodb::iresearch::addStringRef(builder,
+                                          arangodb::basics::StringUtils::encodeBase64(
+                                              irs::ref_cast<char>(numeric_terms->value())));
       }
     } else if (current.isEmptyArray()){ 
       // empty array in = empty array out
