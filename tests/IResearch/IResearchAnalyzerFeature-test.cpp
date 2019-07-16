@@ -2813,7 +2813,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
     auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
     EXPECT_TRUE(result->isArray());
-    EXPECT_EQ(_countof(expected123P4), result->length());
+    EXPECT_EQ(IRESEARCH_COUNTOF(expected123P4), result->length());
 
     for (size_t i = 0; i < result->length(); ++i) {
       bool mustDestroy;
@@ -2830,7 +2830,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     args->emplace_back(arangodb::aql::AqlValueHintInt(expected));
     auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
     EXPECT_TRUE(result->isArray());
-    EXPECT_EQ(_countof(expected123), result->length());
+    EXPECT_EQ(IRESEARCH_COUNTOF(expected123), result->length());
 
     for (size_t i = 0; i < result->length(); ++i) {
       bool mustDestroy;
@@ -2885,7 +2885,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     args->emplace_back(analyzer.c_str(), analyzer.size());
     auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
     EXPECT_TRUE(result->isArray());
-    EXPECT_EQ(_countof(expected123P4), result->length());
+    EXPECT_EQ(IRESEARCH_COUNTOF(expected123P4), result->length());
 
     for (size_t i = 0; i < result->length(); ++i) {
       bool mustDestroy;
@@ -3113,7 +3113,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
       {
         auto numberTokens = nested.at(1);
         EXPECT_TRUE(numberTokens.isArray());
-        EXPECT_EQ(_countof(expected123P4), numberTokens.length());
+        EXPECT_EQ(IRESEARCH_COUNTOF(expected123P4), numberTokens.length());
         for (size_t i = 0; i < numberTokens.length(); ++i) {
           auto entry = numberTokens.at(i);
           EXPECT_TRUE(entry.isString());
@@ -3134,7 +3134,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
       bool mustDestroy;
       auto entry = result->at(2, mustDestroy, false).slice();
       EXPECT_TRUE(entry.isArray());
-      EXPECT_EQ(_countof(expected123), entry.length());
+      EXPECT_EQ(IRESEARCH_COUNTOF(expected123), entry.length());
       for (size_t i = 0; i < entry.length(); ++i) {
         auto numberSlice = entry.at(i);
         EXPECT_TRUE(numberSlice.isString());
@@ -3145,7 +3145,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
       bool mustDestroy;
       auto entry = result->at(3, mustDestroy, false).slice();
       EXPECT_TRUE(entry.isArray());
-      EXPECT_EQ(_countof(expected123P4), entry.length());
+      EXPECT_EQ(IRESEARCH_COUNTOF(expected123P4), entry.length());
       for (size_t i = 0; i < entry.length(); ++i) {
         auto numberSlice = entry.at(i);
         EXPECT_TRUE(numberSlice.isString());
