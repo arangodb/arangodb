@@ -59,7 +59,7 @@ using namespace rocksdb;
 #include <sys/types.h>
 #define _SSIZE_T_DEFINED 1
 #endif
-#include <db/db_impl.h>
+#include <db/db_impl/db_impl.h>
 #include <db/write_controller.h>
 
 namespace arangodb {
