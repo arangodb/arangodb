@@ -45,6 +45,7 @@ namespace aql {
 
 struct Collection;
 class GraphNode;
+class GatherNode;
 class ScatterNode;
 class Query;
 
