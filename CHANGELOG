@@ -1,6 +1,8 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Prevent rare cases of duplicate DDL actions being executed by Maintenance.
+
 * coordinator code was reporting rocksdb error codes, but not the associated detail message.
   Corrected.
 
@@ -8,6 +10,7 @@ v3.4.8 (XXXX-XX-XX)
 
 * Fixed an error condition in which an ex-leader for a short still believed
   to be the leader and wrongly reported to Current.
+
 
 v3.4.7 (2019-07-02)
 -------------------
