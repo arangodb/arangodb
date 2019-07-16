@@ -3,6 +3,9 @@ v3.4.8 (XXXX-XX-XX)
 
 * Prevent rare cases of duplicate DDL actions being executed by Maintenance.
 
+* coordinator code was reporting rocksdb error codes, but not the associated detail message.
+  Corrected.
+
 * Fixed some error reporting and logging in Maintenance.
 
 * Fixed an error condition in which an ex-leader for a short still believed
@@ -33,7 +36,7 @@ v3.4.7 (2019-07-02)
 
 * fixed internal issue #4172: on agent servers the RocksDB WAL files in the archive directory
   were retained due to an error. Now they are removed, eventually
-  
+
 * fix error reporting in arangorestore. previously, when the server returned an HTTP 404 error,
   arangorestore unconditionally translated this into a "collection not found" error, which may
   have masked an actually different server-side error. Instead, make arangorestore return the
@@ -46,13 +49,13 @@ v3.4.7 (2019-07-02)
 
 * Fixed parsing of ArangoDB config files with inlined comments. Previous versions didn't handle
   line comments properly if they were appended to an otherwise valid option value.
-  
+
   For example, the comment in the line
-  
+
       max-total-wal-size = 1024000 # 1M
 
   was not ignored and made part of the value. In the end, the value was interpreted as if
-      
+
       max-total-wal-size = 10240001000000
 
   was specified.
@@ -111,7 +114,7 @@ v3.4.6 (2019-05-21)
 
 * fixed internal issue #3912: improved the performance of graph creation with multiple
   relations. They do now create multiple collections within a single round-trip in the agency.
-  
+
 * fixed a crash when posting an async request to the server using the "x-arango-async"
   request header and the server's request queue was full
 
@@ -120,7 +123,7 @@ v3.4.6 (2019-05-21)
   and uncompressed data blocks not fitting into the block cache
 
   The error can only occur for collection or index scans with the RocksDB storage engine
-  when the RocksDB block cache is used and set to a very small size, plus its maximum size is 
+  when the RocksDB block cache is used and set to a very small size, plus its maximum size is
   enforced by setting the `--rocksdb.enforce-block-cache-size-limit` option to `true`.
 
   Previously these incomplete reads could have been ignored silently, making collection or
@@ -128,7 +131,7 @@ v3.4.6 (2019-05-21)
 
 * fixed internal issue #3918: added optional second parameter "withId" to AQL
   function PREGEL_RESULT
- 
+
   this parameter defaults to `false`. When set to `true` the results of the Pregel
   computation run will also contain the `_id` attribute for each vertex and not
   just `_key`. This allows distinguishing vertices from different vertex collections.
