@@ -147,7 +147,7 @@ class SocketTask : public std::enable_shared_from_this<SocketTask> {
   // caller must run in _peer->strand()
   void closeStreamNoLock();
 
-  // starts the keep alive time, no need to run on strand
+  // starts the keep alive time
   void resetKeepAlive();
 
   // cancels the keep alive timer
