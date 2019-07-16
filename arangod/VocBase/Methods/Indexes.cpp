@@ -34,7 +34,6 @@
 #include "Indexes.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexFactory.h"
-#include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"

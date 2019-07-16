@@ -47,8 +47,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -1589,7 +1588,7 @@ AgencyCommResult AgencyComm::send(arangodb::httpclient::GeneralClientConnection*
   AgencyCommResult result;
 
   LOG_TOPIC("47733", TRACE, Logger::AGENCYCOMM)
-      << "sending " << arangodb::HttpRequest::translateMethod(method)
+      << "sending " << arangodb::GeneralRequest::translateMethod(method)
       << " request to agency at endpoint '"
       << connection->getEndpoint()->specification() << "', url '" << url
       << "': " << body;

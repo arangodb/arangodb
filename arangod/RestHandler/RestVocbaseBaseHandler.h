@@ -26,7 +26,7 @@
 
 #include "RestHandler/RestBaseHandler.h"
 
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 #include "RestServer/VocbaseContext.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"

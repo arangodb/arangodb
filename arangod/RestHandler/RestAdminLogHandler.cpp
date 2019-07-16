@@ -31,7 +31,6 @@
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogBuffer.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
