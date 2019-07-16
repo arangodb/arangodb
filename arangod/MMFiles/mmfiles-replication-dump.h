@@ -94,7 +94,7 @@ struct MMFilesReplicationDumpContext {
   bool _hasMore;
   bool _includeSystem;
   bool _fromTickIncluded;
-  std::vector<VPackBuffer<uint8_t>> _slices;
+  VPackBuffer<uint8_t> _slices;
   bool _useVst;
 };
 

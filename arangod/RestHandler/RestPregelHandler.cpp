@@ -23,7 +23,6 @@
 #include "RestPregelHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Rest/HttpRequest.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>

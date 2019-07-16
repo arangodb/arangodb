@@ -28,7 +28,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -316,17 +315,11 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
     // auto detect import type by peeking at first non-whitespace character
 
-    // http required here
-    HttpRequest* req = dynamic_cast<HttpRequest*>(_request.get());
+    // json required here
+    TRI_ASSERT(_request->contentType() == ContentType::JSON);
+    VPackStringRef body = _request->rawPayload();
 
-    if (req == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid request type");
-    }
-
-    std::string const& body = req->body();
-
-    char const* ptr = body.c_str();
+    char const* ptr = body.data();
     char const* end = ptr + body.size();
 
     while (ptr < end) {
@@ -378,17 +371,12 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   VPackBuilder tmpBuilder;
 
   if (linewise) {
-    // http required here
-    HttpRequest* req = dynamic_cast<HttpRequest*>(_request.get());
-
-    if (req == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid request type");
-    }
-
+    // json required here
+    TRI_ASSERT(_request->contentType() == ContentType::JSON);
+    
     // each line is a separate JSON document
-    std::string const& body = req->body();
-    char const* ptr = body.c_str();
+    VPackStringRef body = _request->rawPayload();
+    char const* ptr = body.data();
     char const* end = ptr + body.size();
     size_t i = 0;
 
@@ -673,15 +661,11 @@ bool RestImportHandler::createFromKeyValueList() {
                                         lineNumValue.data() + lineNumValue.size());
   }
 
-  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
-
-  if (httpRequest == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
-  }
-
-  std::string const& bodyStr = httpRequest->body();
-  char const* current = bodyStr.c_str();
-  char const* bodyEnd = current + bodyStr.size();
+  // json required here  
+  // each line is a separate JSON document
+  VPackStringRef body = _request->rawPayload();
+  char const* current = body.data();
+  char const* bodyEnd = current + body.size();
 
   // process header
   char const* next = static_cast<char const*>(memchr(current, '\n', bodyEnd - current));
