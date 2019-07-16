@@ -257,8 +257,7 @@ void SocketTask::resetKeepAlive() {
 
 // caller must hold the _lock
 void SocketTask::cancelKeepAlive() {
-  if (_keepAliveTimerActive.load()) {
-    _keepAliveTimerActive.store(false);
+  if (_keepAliveTimerActive.exchange(false)) {
     asio_ns::error_code err;
     _keepAliveTimer->cancel(err);
   }
