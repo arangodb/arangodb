@@ -486,7 +486,7 @@ function hotBackup (options) {
       'hotbackup for mmfiles not yet implemented': {
         status: true,
       }
-    }
+    };
   }
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
