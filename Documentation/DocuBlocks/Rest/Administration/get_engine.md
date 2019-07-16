@@ -20,6 +20,7 @@ will be *mmfiles* or *rocksdb*
 
 Return the active storage engine
 
+With the mmfiles storage engine:
 @EXAMPLE_ARANGOSH_RUN{RestEngine_mmfiles}
     var response = logCurlRequest('GET', '/_api/engine');
 
@@ -27,5 +28,15 @@ Return the active storage engine
 
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
+
+With the rocksdb storage engine:
+@EXAMPLE_ARANGOSH_RUN{RestEngine_rocksdb}
+    var response = logCurlRequest('GET', '/_api/engine');
+
+    assert(response.code === 200);
+
+    logJsonResponse(response);
+@END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock
 
