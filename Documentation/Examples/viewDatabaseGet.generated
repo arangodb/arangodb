@@ -1,5 +1,5 @@
 arangosh&gt; view = db._view(<span class="hljs-string">"example"</span>);
 ........&gt; <span class="hljs-comment">// or, alternatively</span>
-[ArangoView <span class="hljs-number">132056</span>, <span class="hljs-string">"example"</span> (type arangosearch)]
+[ArangoView <span class="hljs-number">132032</span>, <span class="hljs-string">"example"</span> (type arangosearch)]
 arangosh&gt; view = db[<span class="hljs-string">"example"</span>]
-[ArangoView <span class="hljs-number">132056</span>, <span class="hljs-string">"example"</span> (type arangosearch)]
+[ArangoView <span class="hljs-number">132032</span>, <span class="hljs-string">"example"</span> (type arangosearch)]

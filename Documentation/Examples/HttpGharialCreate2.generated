@@ -23,7 +23,7 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> Accepted
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _Y9SMs_2--B
+etag: _Y2g6pda--B
 x-content-type-options: nosniff
 
 { 
@@ -33,7 +33,7 @@ x-content-type-options: nosniff
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"myGraph"</span>, 
     <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">9</span>, 
     <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">2</span>, 
-    <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"edgeDefinitions"</span> : [ 
       { 
         <span class="hljs-string">"collection"</span> : <span class="hljs-string">"edges"</span>, 
@@ -46,10 +46,7 @@ x-content-type-options: nosniff
       } 
     ], 
     <span class="hljs-string">"orphanCollections"</span> : [ ], 
-    <span class="hljs-string">"initial"</span> : <span class="hljs-string">"startVertices"</span>, 
-    <span class="hljs-string">"initialCid"</span> : <span class="hljs-number">101429</span>, 
-    <span class="hljs-string">"smartGraphAttribute"</span> : <span class="hljs-string">"region"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y9SMs_2--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g6pda--B"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/myGraph"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"myGraph"</span> 
   } 

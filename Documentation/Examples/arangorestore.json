@@ -292,7 +292,7 @@
   },
   "input-directory" : {
     "category" : "option",
-    "default" : "/home/neunhoef/oskar/work/ArangoDB/dump",
+    "default" : "/oskar/work/ArangoDB/dump",
     "deprecatedIn" : null,
     "description" : "input directory",
     "dynamic" : false,
@@ -734,7 +734,7 @@
     "category" : "option",
     "default" : "http+tcp://127.0.0.1:8529",
     "deprecatedIn" : null,
-    "description" : "endpoint to connect to. Use 'none' to start without a server. Use http+ssl:// or vst+ssl:// as schema to connect to an SSL-secured server endpoint, otherwise http+tcp://, vst+tcp:// or unix://",
+    "description" : "endpoint to connect to, use 'none' to start without a server",
     "dynamic" : false,
     "enterpriseOnly" : false,
     "hidden" : false,

@@ -267,20 +267,6 @@
     "section" : "audit",
     "type" : "string..."
   },
-  "backup.api-enabled" : {
-    "category" : "option",
-    "default" : false,
-    "deprecatedIn" : null,
-    "description" : "whether the backup api is enabled or not",
-    "dynamic" : false,
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "introducedIn" : null,
-    "obsolete" : false,
-    "requiresValue" : false,
-    "section" : "backup",
-    "type" : "boolean"
-  },
   "cache.rebalancing-interval" : {
     "category" : "option",
     "default" : 2000000,
@@ -297,7 +283,7 @@
   },
   "cache.size" : {
     "category" : "option",
-    "default" : 2585860096,
+    "default" : 16341579776,
     "deprecatedIn" : null,
     "description" : "size of cache in bytes",
     "dynamic" : true,
@@ -2311,20 +2297,6 @@
     "type" : "uint32",
     "values" : "Possible values: 1, 2, 3, 4"
   },
-  "rclone.executable" : {
-    "category" : "option",
-    "default" : "",
-    "deprecatedIn" : null,
-    "description" : "rclone executable used for up and download of backups",
-    "dynamic" : false,
-    "enterpriseOnly" : false,
-    "hidden" : false,
-    "introducedIn" : null,
-    "obsolete" : false,
-    "requiresValue" : true,
-    "section" : "rclone",
-    "type" : "string"
-  },
   "replication.active-failover" : {
     "category" : "option",
     "default" : false,
@@ -2414,7 +2386,7 @@
   },
   "rocksdb.block-cache-size" : {
     "category" : "option",
-    "default" : 3103032115,
+    "default" : 19609895731,
     "deprecatedIn" : null,
     "description" : "size of block cache in bytes",
     "dynamic" : true,
@@ -2439,20 +2411,6 @@
     "requiresValue" : true,
     "section" : "rocksdb",
     "type" : "uint64"
-  },
-  "rocksdb.create-sha-files" : {
-    "category" : "option",
-    "default" : true,
-    "deprecatedIn" : null,
-    "description" : "enable generation of sha256 files for each .sst file",
-    "dynamic" : false,
-    "enterpriseOnly" : true,
-    "hidden" : false,
-    "introducedIn" : null,
-    "obsolete" : false,
-    "requiresValue" : false,
-    "section" : "rocksdb",
-    "type" : "boolean"
   },
   "rocksdb.debug-logging" : {
     "category" : "option",
@@ -2655,7 +2613,7 @@
   },
   "rocksdb.max-background-jobs" : {
     "category" : "option",
-    "default" : 4,
+    "default" : 8,
     "deprecatedIn" : null,
     "description" : "Maximum number of concurrent background jobs (compactions and flushes)",
     "dynamic" : true,
@@ -2893,7 +2851,7 @@
   },
   "rocksdb.total-write-buffer-size" : {
     "category" : "option",
-    "default" : 4137376153,
+    "default" : 26146527641,
     "deprecatedIn" : null,
     "description" : "maximum total size of in-memory write buffers (0 = unbounded)",
     "dynamic" : true,
@@ -3276,7 +3234,7 @@
   },
   "server.maintenance-threads" : {
     "category" : "option",
-    "default" : 2,
+    "default" : 9,
     "deprecatedIn" : null,
     "description" : "maximum number of threads available for maintenance actions",
     "dynamic" : true,

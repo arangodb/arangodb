@@ -2,6 +2,6 @@ arangosh&gt; <span class="hljs-keyword">var</span> graph_module = <span class="h
 arangosh&gt; <span class="hljs-keyword">var</span> edgeDefinitions = [ { <span class="hljs-attr">collection</span>: <span class="hljs-string">"edges"</span>, <span class="hljs-string">"from"</span>: [ <span class="hljs-string">"vertices"</span> ], <span class="hljs-string">"to"</span> : [ <span class="hljs-string">"vertices"</span> ] } ];
 arangosh&gt; graph = graph_module._create(<span class="hljs-string">"myGraph"</span>, edgeDefinitions);
 {[Graph] 
-  <span class="hljs-string">"edges"</span> : [ArangoCollection <span class="hljs-number">111985</span>, <span class="hljs-string">"edges"</span> (type edge, status loaded)], 
-  <span class="hljs-string">"vertices"</span> : [ArangoCollection <span class="hljs-number">111983</span>, <span class="hljs-string">"vertices"</span> (type <span class="hljs-built_in">document</span>, status loaded)] 
+  <span class="hljs-string">"edges"</span> : [ArangoCollection <span class="hljs-number">111963</span>, <span class="hljs-string">"edges"</span> (type edge, status loaded)], 
+  <span class="hljs-string">"vertices"</span> : [ArangoCollection <span class="hljs-number">111961</span>, <span class="hljs-string">"vertices"</span> (type <span class="hljs-built_in">document</span>, status loaded)] 
 }

@@ -5,6 +5,6 @@ arangosh&gt; graph._fromVertex(<span class="hljs-string">"relation/"</span> + an
 { 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y9SNCfe--B"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g69re--_"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
 }
