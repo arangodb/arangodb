@@ -457,17 +457,24 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const {
   // upto 75% of work can go on MedLane and FastLane
   // uptop 50% of work can go on Slow, Med and FastLane
   TRI_ASSERT(_maxNumWorker >= 2);
-  TRI_ASSERT(_jobsDequeued >= _jobsDone);
+
+  // The ordering of Done and dequeued is important, hence acquire.
+  // Otherwise we might have the unlucky case that we first check dequeued,
+  // then a job gets done fast (eg dequeued++, done++)
+  // and then we read done.
+  uint64_t jobsDone = _jobsDone.load(std::memory_order_acquire);
+  uint64_t jobsDequeued = _jobsDequeued.load(std::memory_order_acquire);
+  TRI_ASSERT(jobsDequeued >= jobsDone);
   switch (queueIndex) {
     case 0:
       // We can always! pull from high priority
       return true;
     case 1:
       // We can work on med if less than 75% of the workers are busy
-      return (_jobsDequeued - _jobsDone) < (_maxNumWorker * 3 / 4);
+      return (jobsDequeued - jobsDone) < (_maxNumWorker * 3 / 4);
     default:
       // We can work on low if less than 50% of the workers are busy
-      return (_jobsDequeued - _jobsDone) < (_maxNumWorker / 2);
+      return (jobsDequeued - jobsDone) < (_maxNumWorker / 2);
   }
 }
 
