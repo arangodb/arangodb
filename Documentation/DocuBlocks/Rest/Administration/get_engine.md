@@ -20,7 +20,7 @@ will be *mmfiles* or *rocksdb*
 
 Return the active storage engine
 
-@EXAMPLE_ARANGOSH_RUN{RestEngine}
+@EXAMPLE_ARANGOSH_RUN{RestEngine_mmfiles}
     var response = logCurlRequest('GET', '/_api/engine');
 
     assert(response.code === 200);
