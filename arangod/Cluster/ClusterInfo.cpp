@@ -209,9 +209,14 @@ ClusterInfo::~ClusterInfo() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterInfo::cleanup() {
+
   ClusterInfo* theInstance = instance();
   if (theInstance == nullptr) {
     return;
+  }
+
+  while (theInstance->_uniqid._backgroundJobIsRunning) {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
   MUTEX_LOCKER(mutexLocker, theInstance->_planProt.mutex);
@@ -304,9 +309,6 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
       oldValue = _uniqid._currentValue;
       oldNextValue = _uniqid._nextBatchStart;
     }
-
-    //std::this_thread::sleep(200us);
-    //continue ;
 
     // We need to fetch from the agency
 
