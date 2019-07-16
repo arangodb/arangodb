@@ -3136,7 +3136,7 @@ arangodb::Result hotBackupList(
   cc->performRequests(
     requests, CL_DEFAULT_TIMEOUT, done, Logger::BACKUP, false);
 
-  LOG_TOPIC(DEBUG, Logger::BACKUP) << "Getting list of local backups";
+  LOG_TOPIC("410a1", DEBUG, Logger::BACKUP) << "Getting list of local backups";
 
   // Now listen to the results:
   for (auto const& req : requests) {
@@ -3195,7 +3195,7 @@ arangodb::Result hotBackupList(
     }
   }
 
-  //LOG_TOPIC(DEBUG, Logger::BACKUP) << "found: " << dbsBackups;
+  //LOG_TOPIC("4ccd8", DEBUG, Logger::BACKUP) << "found: " << dbsBackups;
 
   for (auto& i : dbsBackups) {
     // check if the backup is on all dbservers
@@ -3211,7 +3211,7 @@ arangodb::Result hotBackupList(
           version = meta._version;
         } else {
           if (version != meta._version) {
-            LOG_TOPIC(WARN, Logger::BACKUP) << "Backup " << meta._id << " has different versions accross dbservers: " << version << " and " << meta._version;
+            LOG_TOPIC("aaaaa", WARN, Logger::BACKUP) << "Backup " << meta._id << " has different versions accross dbservers: " << version << " and " << meta._version;
             valid = false;
             break ;
           }
@@ -3253,7 +3253,7 @@ arangodb::Result matchBackupServers(VPackSlice const agencyDump,
 arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
                                     std::vector<ServerID> const& dbServers,
                                     std::map<ServerID,ServerID>& match) {
-  //LOG_TOPIC(DEBUG, Logger::BACKUP) << "matching db servers between snapshot: " <<
+  //LOG_TOPIC("711d8", DEBUG, Logger::BACKUP) << "matching db servers between snapshot: " <<
   //  planServers.toJson() << " and this cluster's db servers " << dbServers;
 
   if (!planServers.isObject()) {
@@ -3293,7 +3293,7 @@ arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
     m.second = *it2++;
   }
 
-  LOG_TOPIC(DEBUG, Logger::BACKUP) << "DB server matches: " << match;
+  LOG_TOPIC("a201e", DEBUG, Logger::BACKUP) << "DB server matches: " << match;
 
   return arangodb::Result();
 
@@ -3325,7 +3325,7 @@ arangodb::Result controlMaintenanceFeature(
     requests.emplace_back("server:" + dbServer, RequestType::POST, url, body);
   }
 
-  LOG_TOPIC(DEBUG, Logger::BACKUP)
+  LOG_TOPIC("3d080", DEBUG, Logger::BACKUP)
     << "Attempting to execute " << command << " maintenance features for hot backup id "
     << backupId << " using " << *body;
 
@@ -3363,7 +3363,7 @@ arangodb::Result controlMaintenanceFeature(
         + backupId + " on server " + req.destination);
     }
 
-    LOG_TOPIC(DEBUG, Logger::BACKUP) << "maintenance is paused on " << req.destination;
+    LOG_TOPIC("d7e7c", DEBUG, Logger::BACKUP) << "maintenance is paused on " << req.destination;
 
   }
 
@@ -3402,7 +3402,7 @@ arangodb::Result restoreOnDBServers(
   cc->performRequests(
     requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::BACKUP, false);
 
-  LOG_TOPIC(DEBUG, Logger::BACKUP) << "Restoring backup " << backupId;
+  LOG_TOPIC("37960", DEBUG, Logger::BACKUP) << "Restoring backup " << backupId;
 
   // Now listen to the results:
   for (auto const& req : requests) {
@@ -3448,11 +3448,11 @@ arangodb::Result restoreOnDBServers(
     }
 
     previous = result.get("previous").copyString();
-    LOG_TOPIC(DEBUG, Logger::BACKUP)
+    LOG_TOPIC("9a5c4", DEBUG, Logger::BACKUP)
       << "received failsafe name " << previous << " from db server " << req.destination;
   }
 
-  LOG_TOPIC(DEBUG, Logger::BACKUP) << "Restored " << backupId << " successfully";
+  LOG_TOPIC("755a2", DEBUG, Logger::BACKUP) << "Restored " << backupId << " successfully";
 
   return arangodb::Result();
 
@@ -3533,13 +3533,13 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
 
   auto result = hotBackupList(dbServers, payload, list, plan);
   if (!result.ok()) {
-    LOG_TOPIC(ERR, Logger::BACKUP)
+    LOG_TOPIC("ed4dd", ERR, Logger::BACKUP)
       << "failed to find backup " << backupId << " on all db servers: "
       << result.errorMessage();
       return result;
   }
   if (plan.slice().isNone()) {
-    LOG_TOPIC(ERR, Logger::BACKUP)
+    LOG_TOPIC("54b9a", ERR, Logger::BACKUP)
       << "failed to find agency dump for " << backupId << " on any db server: "
       << result.errorMessage();
     return result;
@@ -3561,7 +3561,7 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
   std::map<ServerID, ServerID> matches;
   result = matchBackupServers(plan.slice(), dbServers, matches);
   if (!result.ok()) {
-    LOG_TOPIC(ERR, Logger::BACKUP) << "failed to match db servers: " <<
+    LOG_TOPIC("5a746", ERR, Logger::BACKUP) << "failed to match db servers: " <<
       result.errorMessage();
     return result;
   }
@@ -3628,7 +3628,7 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
         ++good;
       }
     }
-    LOG_TOPIC(INFO, Logger::BACKUP) << "Backup restore: So far "
+    LOG_TOPIC("8dc7e", INFO, Logger::BACKUP) << "Backup restore: So far "
       << good << "/" << dbServers.size() << " dbServers have reregistered.";
     if (good >= dbServers.size()) {
       break;
@@ -3671,7 +3671,7 @@ arangodb::Result lockDBServerTransactions(
     lock.add("timeout", VPackValue(lockWait));
   }
 
-  LOG_TOPIC(DEBUG, Logger::BACKUP)
+  LOG_TOPIC("707ed", DEBUG, Logger::BACKUP)
     << "Trying to acquire global transaction locks using body " << lock.toJson();
 
   auto body = std::make_shared<std::string const>(lock.toJson());
@@ -3709,7 +3709,7 @@ arangodb::Result lockDBServerTransactions(
     }
 
     if (slc.get("error").getBoolean()) {
-      LOG_TOPIC(DEBUG, Logger::BACKUP)
+      LOG_TOPIC("d7a8a", DEBUG, Logger::BACKUP)
         << "failed to acquire lock from " << req.destination << ": " << slc.toJson();
       auto errorNum = slc.get("errorNum").getNumber<int>();
       if (errorNum == TRI_ERROR_LOCK_TIMEOUT) {
@@ -3734,7 +3734,7 @@ arangodb::Result lockDBServerTransactions(
     uint64_t lockId = 0;
     try {
       lockId = slc.get(lockPath).getNumber<uint64_t>();
-      LOG_TOPIC(DEBUG, Logger::BACKUP)
+      LOG_TOPIC("14457", DEBUG, Logger::BACKUP)
         << "acquired lock from " << req.destination << " for backupId " << backupId
         << " with lockId " << lockId;
     } catch (std::exception const& e) {
@@ -3749,7 +3749,7 @@ arangodb::Result lockDBServerTransactions(
 
   }
 
-  LOG_TOPIC(DEBUG, Logger::BACKUP) << "acquired transaction locks on all db servers";
+  LOG_TOPIC("c1869", DEBUG, Logger::BACKUP) << "acquired transaction locks on all db servers";
 
   return arangodb::Result();
 
@@ -3787,7 +3787,7 @@ arangodb::Result unlockDBServerTransactions(
   cc->performRequests(
     requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::BACKUP, false);
 
-  LOG_TOPIC(DEBUG, Logger::BACKUP) << "best try to kill all locks on db servers";
+  LOG_TOPIC("2ba8f", DEBUG, Logger::BACKUP) << "best try to kill all locks on db servers";
 
   return arangodb::Result();
 
@@ -3826,7 +3826,7 @@ arangodb::Result hotBackupDBServers(
   cc->performRequests(
     requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::BACKUP, false);
 
-  LOG_TOPIC(DEBUG, Logger::BACKUP) << "Inquiring about backup " << backupId;
+  LOG_TOPIC("478ef", DEBUG, Logger::BACKUP) << "Inquiring about backup " << backupId;
 
   // Now listen to the results:
   for (auto const& req : requests) {
@@ -3848,19 +3848,19 @@ arangodb::Result hotBackupDBServers(
     }
 
     if (!resSlice.hasKey(idPath) || !resSlice.get(idPath).isString()) {
-      LOG_TOPIC(ERR, Logger::BACKUP)
+      LOG_TOPIC("6240a", ERR, Logger::BACKUP)
         << "DB server " << req.destination << "is missing backup " << backupId;
       return arangodb::Result(
         TRI_ERROR_FILE_NOT_FOUND,
         std::string("no backup with id ") + backupId + " on server " + req.destination);
     }
 
-    LOG_TOPIC(DEBUG, Logger::BACKUP)
+    LOG_TOPIC("b370d", DEBUG, Logger::BACKUP)
       << req.destination << " created local backup " << resSlice.get(idPath).copyString();
 
   }
 
-  LOG_TOPIC(DEBUG, Logger::BACKUP) << "Have created backup " << backupId;
+  LOG_TOPIC("5c5e9", DEBUG, Logger::BACKUP) << "Have created backup " << backupId;
 
   return arangodb::Result();
 
@@ -3899,7 +3899,7 @@ arangodb::Result removeLocalBackups(
   cc->performRequests(
     requests, CL_DEFAULT_TIMEOUT, done, Logger::BACKUP, false);
 
-  LOG_TOPIC(DEBUG, Logger::BACKUP) << "Deleting backup " << backupId;
+  LOG_TOPIC("33e85", DEBUG, Logger::BACKUP) << "Deleting backup " << backupId;
 
   size_t notFoundCount = 0;
 
@@ -3936,19 +3936,19 @@ arangodb::Result removeLocalBackups(
       std::string errorMsg = std::string("failed to delete backup ") + backupId + " on " + req.destination
         + ":" + resSlice.get("errorMessage").copyString() + " (" + std::to_string(errorNum) + ")";
 
-      LOG_TOPIC(ERR, Logger::BACKUP) << errorMsg;
+      LOG_TOPIC("9b94f", ERR, Logger::BACKUP) << errorMsg;
       return arangodb::Result(errorNum, errorMsg);
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::BACKUP) << "removeLocalBackups: notFoundCount = " << notFoundCount << " " << dbServers.size();
+  LOG_TOPIC("1b318", DEBUG, Logger::BACKUP) << "removeLocalBackups: notFoundCount = " << notFoundCount << " " << dbServers.size();
 
   if (notFoundCount == dbServers.size()) {
     return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND, "Backup " + backupId + " not found.");
   }
 
   deleted.emplace_back(backupId);
-  LOG_TOPIC(DEBUG, Logger::BACKUP) << "Have located and deleted " << backupId;
+  LOG_TOPIC("04e97", DEBUG, Logger::BACKUP) << "Have located and deleted " << backupId;
 
   return arangodb::Result();
 
@@ -4008,12 +4008,12 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       result.reset(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
         std::string("agency lock operation resulted in ") + result.errorMessage());
-      LOG_TOPIC(ERR, Logger::BACKUP) << result.errorMessage();
+      LOG_TOPIC("6c73d", ERR, Logger::BACKUP) << result.errorMessage();
       return result;
     }
 
     if (end < steady_clock::now()) {
-      LOG_TOPIC(INFO, Logger::BACKUP)
+      LOG_TOPIC("352d6", INFO, Logger::BACKUP)
         << "hot backup didn't get to locking phase within " << timeout
         << "s.";
       auto hlRes = ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
@@ -4029,7 +4029,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       result.reset(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
         std::string ("failed to acquire agency dump: ") + result.errorMessage());
-      LOG_TOPIC(ERR, Logger::BACKUP) << result.errorMessage();
+      LOG_TOPIC("c014d", ERR, Logger::BACKUP) << result.errorMessage();
       return result;
     }
 
@@ -4070,7 +4070,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       result.reset(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
         std::string ("failed to acquire global transaction log on all db servers: ") + result.errorMessage());
-      LOG_TOPIC(ERR, Logger::BACKUP) << result.errorMessage();
+      LOG_TOPIC("b7d09", ERR, Logger::BACKUP) << result.errorMessage();
       return result;
     }
 
@@ -4081,7 +4081,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       result.reset(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
         std::string ("failed to hot backup on all db servers: ") + result.errorMessage());
-      LOG_TOPIC(ERR, Logger::BACKUP) << result.errorMessage();
+      LOG_TOPIC("6b333", ERR, Logger::BACKUP) << result.errorMessage();
       std::vector<std::string> dummy;
       removeLocalBackups(backupId, dbServers, dummy);
       return result;
@@ -4098,7 +4098,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
         TRI_ERROR_HOT_BACKUP_INTERNAL,
         std::string ("failed to acquire agency dump post backup: ") + result.errorMessage()
         + " backup's consistency is not guaranteed" );
-      LOG_TOPIC(ERR, Logger::BACKUP) << result.errorMessage();
+      LOG_TOPIC("d4229", ERR, Logger::BACKUP) << result.errorMessage();
       return result;
     }
 
@@ -4107,13 +4107,13 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
         result.reset(
           TRI_ERROR_HOT_BACKUP_INTERNAL,
           "data definition of cluster was changed during hot backup: backup's consistency is not guaranteed");
-        LOG_TOPIC(ERR, Logger::BACKUP) << result.errorMessage();
+        LOG_TOPIC("0ad21", ERR, Logger::BACKUP) << result.errorMessage();
         return result;
       }
     } catch (std::exception const& e) {
       result.reset(
         TRI_ERROR_HOT_BACKUP_INTERNAL, std::string("invalid agency state: ") + e.what());
-      LOG_TOPIC(ERR, Logger::BACKUP) << result.errorMessage();
+      LOG_TOPIC("037eb", ERR, Logger::BACKUP) << result.errorMessage();
       return result;
     }
 

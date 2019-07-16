@@ -79,7 +79,7 @@ RestStatus MaintenanceRestHandler::postAction() {
   try {
 
     bptr = _request->toVelocyPackBuilderPtr();
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "parsed post action " << bptr->toJson();
+    LOG_TOPIC("a0212", DEBUG, Logger::MAINTENANCE) << "parsed post action " << bptr->toJson();
   } catch (std::exception const& e) {
     es << "failed parsing post action "  << bptr->toJson() << " " << e.what();
     return RestStatus::DONE;
@@ -100,12 +100,12 @@ RestStatus MaintenanceRestHandler::postAction() {
                   << " seconds";
           }
           // Pause maintenance
-          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          LOG_TOPIC("1ee7a", DEBUG, Logger::MAINTENANCE)
             << "Maintenance is paused for " << dur.count() << " seconds";
           ApplicationServer::getFeature<MaintenanceFeature>("Maintenance")->pause(dur);
         }
       } else if (ex == "proceed") {
-        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+        LOG_TOPIC("6c38a", DEBUG, Logger::MAINTENANCE)
           << "Maintenance is prceeded "  << dur.count() << " seconds";
         ApplicationServer::getFeature<MaintenanceFeature>("Maintenance")->proceed();
       } else {
@@ -128,7 +128,7 @@ RestStatus MaintenanceRestHandler::postAction() {
     }
     generateResult(rest::ResponseCode::OK, ok.slice());
   } else {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << es.str(); 
+    LOG_TOPIC("9faa1", ERR, Logger::MAINTENANCE) << es.str(); 
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, es.str());
   }
 

@@ -56,7 +56,7 @@ void RocksDBEventListenerThread::run() {
               break;
 
             default:
-              LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+              LOG_TOPIC("7c75c", ERR, arangodb::Logger::ENGINES)
                 << "RocksDBEventListenerThread::run encountered unknown _action";
               TRI_ASSERT(false);
               break;
@@ -77,10 +77,10 @@ void RocksDBEventListenerThread::run() {
         } // if
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("a27a1", ERR, arangodb::Logger::ENGINES)
         << "RocksDBEventListenerThread::run caught exception: " << ex.what();
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("66a10", ERR, arangodb::Logger::ENGINES)
         << "RocksDBEventListenerThread::run caught an exception";
     } // catch
   } // while
@@ -127,7 +127,7 @@ bool RocksDBEventListenerThread::shaCalcFile(std::string const& filename) {
 
   if (4 < filename.size() && 0 == filename.substr(filename.size() - 4).compare(".sst")) {
     TRI_SHA256Functor sha;
-    LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES) << "shaCalcFile: computing "
+    LOG_TOPIC("af088", DEBUG, arangodb::Logger::ENGINES) << "shaCalcFile: computing "
       << filename;
     good = TRI_ProcessFile(filename.c_str(), std::ref(sha));
 
@@ -136,17 +136,17 @@ bool RocksDBEventListenerThread::shaCalcFile(std::string const& filename) {
       newfile += ".sha.";
       newfile += sha.final();
       newfile += ".hash";
-      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES) << "shaCalcFile: done "
+      LOG_TOPIC("80257", DEBUG, arangodb::Logger::ENGINES) << "shaCalcFile: done "
         << filename << " result: " << newfile;
       int ret_val = TRI_WriteFile(newfile.c_str(), "", 0);
       if (TRI_ERROR_NO_ERROR != ret_val) {
         good = false;
-        LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+        LOG_TOPIC("8f7ef", DEBUG, arangodb::Logger::ENGINES)
           << "shaCalcFile: TRI_WriteFile failed with " << ret_val
           << " for " << newfile.c_str();
       }
     } else {
-      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+      LOG_TOPIC("7f3fd", DEBUG, arangodb::Logger::ENGINES)
         << "shaCalcFile:  TRI_ProcessFile failed for " << filename.c_str();
     } // else
   } // if
@@ -185,11 +185,11 @@ bool RocksDBEventListenerThread::deleteFile(std::string const& filename) {
         int ret_val = TRI_UnlinkFile(deletefile.c_str());
         good = (TRI_ERROR_NO_ERROR == ret_val);
         if (!good) {
-          LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+          LOG_TOPIC("acb34", DEBUG, arangodb::Logger::ENGINES)
             << "deleteCalcFile:  TRI_UnlinkFile failed with " << ret_val
             << " for " << deletefile.c_str();
         } else {
-          LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+          LOG_TOPIC("e0a0d", DEBUG, arangodb::Logger::ENGINES)
             << "deleteCalcFile:  TRI_UnlinkFile succeeded for "
             << deletefile.c_str();
         }// if
@@ -251,7 +251,7 @@ void RocksDBEventListenerThread::checkMissingShaFiles(std::string const& pathnam
         temppath = pathname;
         temppath += TRI_DIR_SEPARATOR_CHAR;
         temppath += *iter;
-        LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES) << "checkMissingShaFiles:"
+        LOG_TOPIC("4eac9", DEBUG, arangodb::Logger::ENGINES) << "checkMissingShaFiles:"
           " Deleting file " << temppath;
         TRI_UnlinkFile(temppath.c_str());
       } // if
@@ -270,11 +270,11 @@ void RocksDBEventListenerThread::checkMissingShaFiles(std::string const& pathnam
       int64_t modTime;
       int r = TRI_MTimeFile(temppath.c_str(), &modTime);
       if (r == 0 && (now - modTime) >= requireAge) {
-        LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES) << "checkMissingShaFiles:"
+        LOG_TOPIC("d6c86", DEBUG, arangodb::Logger::ENGINES) << "checkMissingShaFiles:"
           " Computing checksum for " << temppath;
         shaCalcFile(temppath);
       } else {
-        LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES) << "checkMissingShaFiles:"
+        LOG_TOPIC("7f70f", DEBUG, arangodb::Logger::ENGINES) << "checkMissingShaFiles:"
           " Not computing checksum for " << temppath << " since it is too young";
       }
     } // else

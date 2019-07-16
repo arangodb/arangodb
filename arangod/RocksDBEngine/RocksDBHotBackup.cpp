@@ -355,7 +355,7 @@ bool RocksDBHotBackup::clearPath(std::string const& path) {
     // test if still there and error out?
     if (basics::FileUtils::exists(path)) {
       retFlag = false;
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("81ad6", ERR, arangodb::Logger::ENGINES)
         << "RocksDBHotBackup::clearPath: unable to remove previous " << path;
     } // if
   } // if
@@ -580,7 +580,7 @@ void RocksDBHotBackup::startGlobalShutdown() {
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestPriority::LOW, [](bool) {
       std::this_thread::sleep_for(std::chrono::seconds(1));
-      LOG_TOPIC(INFO, arangodb::Logger::ENGINES)
+      LOG_TOPIC("59a7d", INFO, arangodb::Logger::ENGINES)
         << "RocksDBHotBackupRestore:  restarting server with restored data";
       application_features::ApplicationServer::server->beginShutdown();
     });
@@ -691,10 +691,10 @@ void RocksDBHotBackupCreate::executeCreate() {
       if (gotLock || _forceBackup) {
         Result res = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->settingsManager()->sync(true);
         EngineSelectorFeature::ENGINE->flushWal(true, true);
-        LOG_TOPIC(DEBUG, Logger::BACKUP) << "Creating checkpoint in RocksDB...";
+        LOG_TOPIC("9ce0a", DEBUG, Logger::BACKUP) << "Creating checkpoint in RocksDB...";
         stat = ptr->CreateCheckpoint(dirPathTemp);
         _success = stat.ok();
-        LOG_TOPIC(DEBUG, Logger::BACKUP) << "Done creating checkpoint in RocksDB, result:" << stat.ToString();
+        LOG_TOPIC("f3dbb", DEBUG, Logger::BACKUP) << "Done creating checkpoint in RocksDB, result:" << stat.ToString();
       } // if
     } // guardHold released
 
@@ -743,7 +743,7 @@ void RocksDBHotBackupCreate::executeCreate() {
         _respError = TRI_ERROR_HOT_RESTORE_INTERNAL;
         _errorMessage =
           std::string("RocksDBHotBackupCreate caught exception: ") + e.what();
-        LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
+        LOG_TOPIC("cee0c", ERR, arangodb::Logger::ENGINES) << _errorMessage;
       }
     }
 
@@ -754,7 +754,7 @@ void RocksDBHotBackupCreate::executeCreate() {
           _respCode = rest::ResponseCode::BAD;
           _respError = TRI_ERROR_HOT_RESTORE_INTERNAL;
           _errorMessage = res.errorMessage();
-          LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
+          LOG_TOPIC("0412c", ERR, arangodb::Logger::ENGINES) << _errorMessage;
       }
     }
   } // if
@@ -777,7 +777,7 @@ void RocksDBHotBackupCreate::executeCreate() {
       _respError = TRI_ERROR_HOT_RESTORE_INTERNAL;
       _errorMessage =
         std::string("RocksDBHotBackupCreate caught exception: ") + e.what();
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
+      LOG_TOPIC("23cf3", ERR, arangodb::Logger::ENGINES) << _errorMessage;
     } // catch
   } else {
     // stat.ok() means CreateCheckpoint() never called ... so lock issue
@@ -978,7 +978,7 @@ void RocksDBHotBackupRestore::execute() {
         _respError = TRI_ERROR_HOT_RESTORE_INTERNAL;
         _errorMessage =
           std::string("RocksDBHotBackupRestore caught exception: ") + e.what();
-        LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
+        LOG_TOPIC("45ae8", ERR, arangodb::Logger::ENGINES) << _errorMessage;
       } // catch
     } // if
 
@@ -986,7 +986,7 @@ void RocksDBHotBackupRestore::execute() {
     // restartAction already populated, nothing we can do
     _respCode = rest::ResponseCode::BAD;
     _errorMessage = "restartAction already set. More than one restore occurring in parallel?";
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("09d1e", ERR, arangodb::Logger::ENGINES)
       << "RocksDBHotBackupRestore: " << _errorMessage;
   } // else
 
@@ -1012,7 +1012,7 @@ bool RocksDBHotBackupRestore::validateVersionString(std::string const& fullDirec
   _success = false;
   _errorMessage = "RocksDBHotBackupRestore unable to restore: version mismatch";
 
-  LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
+  LOG_TOPIC("16e06", ERR, arangodb::Logger::ENGINES) << _errorMessage;
   return false;
 }
 
@@ -1049,7 +1049,7 @@ bool RocksDBHotBackupRestore::createRestoringDirectory(std::string& restoreDirOu
     } // if
   } catch (std::exception const& e) {
     retFlag = false;
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("4d34f", ERR, arangodb::Logger::ENGINES)
       << std::string("createRestoringDirectory caught exception: ") + e.what();
   } // catch
 
@@ -1070,7 +1070,7 @@ bool RocksDBHotBackupRestore::createRestoringDirectory(std::string& restoreDirOu
       restoreDirOutput + " from " + fullDirectoryRestore + " (errors: " +
       errors + ")";
 
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
+    LOG_TOPIC("d226a", ERR, arangodb::Logger::ENGINES) << _errorMessage;
 
   } // if
 
@@ -1104,7 +1104,7 @@ void RocksDBHotBackupList::parseParameters() {
       _respError = TRI_ERROR_HOT_RESTORE_INTERNAL;
       _errorMessage =
         std::string("RocksDBHotBackupList::parseParameters caught exception: ") + e.what();
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
+      LOG_TOPIC("3b164", ERR, arangodb::Logger::ENGINES) << _errorMessage;
     } // catch
   } // if
 
@@ -1186,7 +1186,7 @@ void RocksDBHotBackupList::listAll() {
     _respCode = rest::ResponseCode::BAD;
     _respError = TRI_ERROR_HOT_RESTORE_INTERNAL;
     _errorMessage = std::string("RocksDBHotBackupList::execute caught exception:") + e.what();
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
+    LOG_TOPIC("be9e0", ERR, arangodb::Logger::ENGINES) << _errorMessage;
   } // catch
 
 } // RocksDBHotBackupList::execute
@@ -1212,7 +1212,7 @@ struct LockCleaner {
     // only unlock if creation of this object instance was due to
     //  the taking of current transaction lock
     if (lockingSerialNumber == _lockSerialNumber) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("a20be", ERR, arangodb::Logger::ENGINES)
         << "RocksDBHotBackup LockCleaner removing lost transaction lock.";
       // would prefer virtual releaseRocksDBTransactions() ... but would
       //   require copy of RocksDBHotBackupLock object used from RestHandler or unit test.

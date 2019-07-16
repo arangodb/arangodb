@@ -74,11 +74,11 @@ int main(int argc, char* argv[]) {
         ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("78140", ERR, arangodb::Logger::FIXME)
           << "arangodump terminated because of an unhandled exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("cc40d", ERR, arangodb::Logger::FIXME)
           << "arangodump terminated because of an unhandled exception of "
              "unknown type";
       ret = EXIT_FAILURE;

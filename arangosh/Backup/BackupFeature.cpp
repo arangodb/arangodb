@@ -146,7 +146,7 @@ arangodb::Result waitForRestart(arangodb::ClientManager& clientManager,
             decltype(duration)::period::den* decltype(duration)::period::num);
   };
 
-  LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
+  LOG_TOPIC("0dfda", INFO, arangodb::Logger::BACKUP)
       << "Waiting for server to restart...";
 
   // sleep once to allow shutdown to start
@@ -160,7 +160,7 @@ arangodb::Result waitForRestart(arangodb::ClientManager& clientManager,
         double uptime = 0.0;
         result = ::getUptime(*client, uptime);
         if (result.ok() && uptime < originalUptime) {
-          LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
+          LOG_TOPIC("5caac", INFO, arangodb::Logger::BACKUP)
               << "...server back up and running!";
           return result;
         }
@@ -229,17 +229,17 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
   TRI_ASSERT(backups.isObject());
 
   if (backups.isEmptyObject()) {
-    LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
+    LOG_TOPIC("efc76", INFO, arangodb::Logger::BACKUP)
         << "There are no backups available.";
   } else {
-    LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
+    LOG_TOPIC("e0356", INFO, arangodb::Logger::BACKUP)
         << "The following backups are available:";
     for (auto const& backup : VPackObjectIterator(backups)) {
-      LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << " - " << backup.key.copyString();
+      LOG_TOPIC("9e6b6", INFO, arangodb::Logger::BACKUP) << " - " << backup.key.copyString();
       arangodb::ResultT<arangodb::BackupMeta> meta = arangodb::BackupMeta::fromSlice(backup.value);
       if (meta.ok()) {
-        LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << "      version:   " << meta.get()._version;
-        LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << "      date/time: " << meta.get()._datetime;
+        LOG_TOPIC("0f208", INFO, arangodb::Logger::BACKUP) << "      version:   " << meta.get()._version;
+        LOG_TOPIC("55af7", INFO, arangodb::Logger::BACKUP) << "      date/time: " << meta.get()._datetime;
       }
     }
   }
@@ -302,7 +302,7 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
 
   VPackSlice const forced = resultObject.get("forced");
   if (forced.isTrue()) {
-    LOG_TOPIC(WARN, arangodb::Logger::BACKUP)
+    LOG_TOPIC("f448b", WARN, arangodb::Logger::BACKUP)
         << "Failed to get write lock before proceeding with backup. Backup may "
            "contain some inconsistencies.";
   } else if (!forced.isBoolean() && !forced.isNone()) {
@@ -311,7 +311,7 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
     return result;
   }
 
-  LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
+  LOG_TOPIC("c4d37", INFO, arangodb::Logger::BACKUP)
       << "Backup succeeded. Generated identifier '" << identifier.copyString() << "'";
 
   return result;
@@ -379,12 +379,12 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
     }
     TRI_ASSERT(previous.isString());
 
-    LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
+    LOG_TOPIC("08c95", INFO, arangodb::Logger::BACKUP)
         << "current state was saved as backup with identifier '"
         << previous.copyString() << "'";
   }
 
-  LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
+  LOG_TOPIC("b6d4c", INFO, arangodb::Logger::BACKUP)
       << "Successfully restored '" << options.identifier << "'";
 
   bool cluster = false;
@@ -435,7 +435,7 @@ arangodb::Result executeDelete(arangodb::httpclient::SimpleHttpClient& client,
     return result;
   }
 
-  LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
+  LOG_TOPIC("a23cb", INFO, arangodb::Logger::BACKUP)
       << "Successfully deleted '" << options.identifier << "'";
 
   return result;
@@ -534,31 +534,31 @@ arangodb::Result executeStatusQuery(arangodb::httpclient::SimpleHttpClient& clie
       if (server.value.hasKey("Status")) {
         statusMessage += " Status: " + server.value.get("Status").copyString();
       }
-      LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << statusMessage;
+      LOG_TOPIC("24d75", INFO, arangodb::Logger::BACKUP) << statusMessage;
 
 
       if (server.value.hasKey("Progress")) {
         VPackSlice const progressSlice = server.value.get("Progress");
 
-        LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << "Last progress update " << progressSlice.get("Time").copyString()
+        LOG_TOPIC("68cc8", INFO, arangodb::Logger::BACKUP) << "Last progress update " << progressSlice.get("Time").copyString()
                                                   << ": " << progressSlice.get("Done").getInt() << "/" << progressSlice.get("Total").getInt() << " files done";
       }
 
       if (server.value.hasKey("Error")) {
-        LOG_TOPIC(ERR, arangodb::Logger::BACKUP) << "Error: " << server.value.get("Error").getInt();
+        LOG_TOPIC("036de", ERR, arangodb::Logger::BACKUP) << "Error: " << server.value.get("Error").getInt();
       }
 
       if (server.value.hasKey("ErrorMessage")) {
-        LOG_TOPIC(ERR, arangodb::Logger::BACKUP) << "ErrorMessage: " << server.value.get("ErrorMessage").copyString();
+        LOG_TOPIC("3c3c4", ERR, arangodb::Logger::BACKUP) << "ErrorMessage: " << server.value.get("ErrorMessage").copyString();
       }
     }
   } else {
 
     if (resBody.hasKey("error") && resBody.get("error").getBoolean()) {
-      LOG_TOPIC(ERR, arangodb::Logger::BACKUP)
+      LOG_TOPIC("f3add", ERR, arangodb::Logger::BACKUP)
         << "error: " << resBody.get("errorMessage").copyString();
     } else {
-      LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
+      LOG_TOPIC("c7c73", INFO, arangodb::Logger::BACKUP)
         << "aborting transfer";
     }
 
@@ -620,9 +620,9 @@ arangodb::Result executeInitiateTransfere(arangodb::httpclient::SimpleHttpClient
 
   std::string transfereId = resultObject.get(TransfereType::asJsonId(type)).copyString();
 
-  LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << "Backup initiated, use ";
-  LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << "    arangobackup " << TransfereType::asString(type) << " --status-id=" << transfereId;
-  LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << " to query progress.";
+  LOG_TOPIC("a9597", INFO, arangodb::Logger::BACKUP) << "Backup initiated, use ";
+  LOG_TOPIC("4c459", INFO, arangodb::Logger::BACKUP) << "    arangobackup " << TransfereType::asString(type) << " --status-id=" << transfereId;
+  LOG_TOPIC("5cd70", INFO, arangodb::Logger::BACKUP) << " to query progress.";
   return result;
 }
 
@@ -752,7 +752,7 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   auto client = ApplicationServer::getFeature<arangodb::ClientFeature>("Client");
 
   if (client->databaseName() != "_system") {
-    LOG_TOPIC(FATAL, Logger::BACKUP)
+    LOG_TOPIC("6b53c", FATAL, Logger::BACKUP)
       << "hot backups are global and must be performed on the _system database with super user privileges";
     FATAL_ERROR_EXIT();
   }
@@ -760,7 +760,7 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   if (1 == positionals.size()) {
     _options.operation = positionals[0];
   } else {
-    LOG_TOPIC(FATAL, Logger::BACKUP)
+    LOG_TOPIC("48e32", FATAL, Logger::BACKUP)
         << "expected exactly one operation of create|delete|download|list|restore|upload, got '"
         << basics::StringUtils::join(positionals, ", ") << "'";
     FATAL_ERROR_EXIT();
@@ -768,7 +768,7 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 
   auto const it = ::Operations.find(_options.operation);
   if (it == ::Operations.end()) {
-    LOG_TOPIC(FATAL, Logger::BACKUP)
+    LOG_TOPIC("138ed", FATAL, Logger::BACKUP)
         << "expected operation to be one of: " << operationList(", ");
     FATAL_ERROR_EXIT();
   }
@@ -777,7 +777,7 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
     if (!_options.label.empty()) {
       std::regex re = std::regex("^([a-zA-Z0-9\\._\\-]+)$", std::regex::ECMAScript);
       if (!std::regex_match(_options.label, re)) {
-        LOG_TOPIC(FATAL, Logger::BACKUP)
+        LOG_TOPIC("7829b", FATAL, Logger::BACKUP)
             << "--label value may only contain numbers, letters, periods, "
                "dashes, and underscores";
         FATAL_ERROR_EXIT();
@@ -785,7 +785,7 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
     }
 
     if (_options.maxWaitForLock < 0.0) {
-      LOG_TOPIC(FATAL, Logger::BACKUP)
+      LOG_TOPIC("6caeb", FATAL, Logger::BACKUP)
           << "expected --max-wait-for-lock to be a non-negative number, got '"
           << _options.maxWaitForLock << "'";
       FATAL_ERROR_EXIT();
@@ -794,7 +794,7 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 
   if (_options.operation == ::OperationDelete || _options.operation == ::OperationRestore) {
     if (_options.identifier.empty()) {
-      LOG_TOPIC(FATAL, Logger::BACKUP)
+      LOG_TOPIC("e83ef", FATAL, Logger::BACKUP)
           << "must specify a backup via --identifier";
       FATAL_ERROR_EXIT();
     }
@@ -802,7 +802,7 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 
   if (_options.operation == ::OperationRestore) {
     if (_options.maxWaitForRestart < 0.0) {
-      LOG_TOPIC(FATAL, Logger::BACKUP) << "expected --max-wait-for-restart to "
+      LOG_TOPIC("efa20", FATAL, Logger::BACKUP) << "expected --max-wait-for-restart to "
                                           "be a non-negative number, got '"
                                        << _options.maxWaitForRestart << "'";
       FATAL_ERROR_EXIT();
@@ -813,20 +813,20 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 
     if (_options.statusId.empty() == _options.identifier.empty()) {
       // Either both or none are set
-      LOG_TOPIC(FATAL, Logger::BACKUP) << "either --status-id or --identifier"
+      LOG_TOPIC("2d0fa", FATAL, Logger::BACKUP) << "either --status-id or --identifier"
                                           " must be set";
       FATAL_ERROR_EXIT();
     }
 
     if (_options.abort == true &&
         (_options.statusId.empty() || !_options.identifier.empty())) {
-      LOG_TOPIC(FATAL, Logger::BACKUP) << "--abort true expects --status-id to be set";
+      LOG_TOPIC("62375", FATAL, Logger::BACKUP) << "--abort true expects --status-id to be set";
       FATAL_ERROR_EXIT();
     }
 
     if (!_options.identifier.empty()) {
       if (_options.rcloneConfigFile.empty() || _options.remoteDirectory.empty()) {
-        LOG_TOPIC(FATAL, Logger::BACKUP) << "for data transfere --rclone-config-file"
+        LOG_TOPIC("6063d", FATAL, Logger::BACKUP) << "for data transfere --rclone-config-file"
                                             " and --remote-path must be set";
         FATAL_ERROR_EXIT();
       }
@@ -856,7 +856,7 @@ void BackupFeature::start() {
   }
 
   if (result.fail()) {
-    LOG_TOPIC(ERR, Logger::BACKUP)
+    LOG_TOPIC("8bde3", ERR, Logger::BACKUP)
         << "Error during backup operation '" << _options.operation
         << "': " << result.errorMessage();
     //FATAL_ERROR_EXIT();
