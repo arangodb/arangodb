@@ -240,6 +240,11 @@ class IResearchLink {
     InitCallback const& initCallback = {}
   );
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief link was created during recovery
+  ////////////////////////////////////////////////////////////////////////////////
+  bool createdInRecovery() const noexcept { return _createdInRecovery; }
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the current data-store recovery state of the link
@@ -306,7 +311,7 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   void setupLinkMaintenance();
 
-  StorageEngine* _engine{};
+  StorageEngine* _engine;
   VPackComparer _comparer;
   IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)
   AsyncLinkPtr _asyncSelf; // 'this' for the lifetime of the link (for use with asynchronous calls)
@@ -321,6 +326,7 @@ class IResearchLink {
   std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxCallback; // for insert(...)/remove(...)
   irs::index_writer::before_commit_f _before_commit;
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
+  bool _createdInRecovery; // link was created based on recovery marker
 };  // IResearchLink
 
 }  // namespace iresearch

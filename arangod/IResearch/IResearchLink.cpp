@@ -285,12 +285,14 @@ namespace iresearch {
 IResearchLink::IResearchLink(
     TRI_idx_iid_t iid,
     LogicalCollection& collection)
-  : _asyncFeature(nullptr),
-   _asyncSelf(irs::memory::make_unique<AsyncLinkPtr::element_type>(nullptr)), // mark as data store not initialized
-   _asyncTerminate(false),
-   _collection(collection),
-   _id(iid),
-   _recoveryTick(0) {
+  : _engine(nullptr),
+    _asyncFeature(nullptr),
+    _asyncSelf(irs::memory::make_unique<AsyncLinkPtr::element_type>(nullptr)), // mark as data store not initialized
+    _asyncTerminate(false),
+    _collection(collection),
+    _id(iid),
+    _recoveryTick(0),
+    _createdInRecovery(false) {
   auto* key = this;
 
   // initialize transaction callback
@@ -391,10 +393,7 @@ void IResearchLink::batchInsert(
     return; // nothing to do
   }
 
-  LOG_TOPIC("7c228", TRACE, iresearch::TOPIC)
-      << "'batchInsert', engine recovery '" << _engine->recoveryTick()
-      << "', recovery tick '" << _recoveryTick << "'";
-
+  TRI_ASSERT(_engine);
   TRI_ASSERT(queue);
   TRI_ASSERT(trx.state());
 
@@ -1060,16 +1059,17 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
     initCallback(*_dataStore._directory);
   }
 
-  _dataStore._recovery = RecoveryState::AFTER_CHECKPOINT; // new empty data store
-  _recoveryTick = _engine->recoveryTick();
-
   if (arangodb::RecoveryState::IN_PROGRESS == _engine->recoveryState()) {
-    if (EngineSelectorFeature::isRocksDB()) {
-      // creation marker during RocksDB recovery:
-      // link will contain all live documents from linked collection, so the recovery is done
-      _dataStore._recovery = RecoveryState::DONE;
-      _recoveryTick = _engine->releasedTick();
-    }
+    // index is being created during recovery:
+    // both MMFiles and RocksDB will fill out index based on
+    // actual data in linked collections, we can treat recovery as done
+    _createdInRecovery = true;
+
+    _dataStore._recovery = RecoveryState::DONE;
+    _recoveryTick = _engine->releasedTick();
+  } else {
+    _dataStore._recovery = RecoveryState::AFTER_CHECKPOINT; // new empty data store
+    _recoveryTick = _engine->recoveryTick();
   }
 
   if (pathExists) {
@@ -1463,12 +1463,10 @@ Result IResearchLink::insert(
     LocalDocumentId const& documentId,
     velocypack::Slice const& doc,
     Index::OperationMode /*mode*/) {
+  TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
-  auto& state = *(trx.state());
 
-  LOG_TOPIC("7c228", TRACE, iresearch::TOPIC)
-      << "'insert', engine recovery '" << _engine->recoveryTick()
-      << "', recovery tick '" << _recoveryTick << "'";
+  auto& state = *(trx.state());
 
   if (_dataStore._recovery != RecoveryState::DONE && _engine->recoveryTick() <= _recoveryTick) {
     LOG_TOPIC("7c228", TRACE, iresearch::TOPIC)
@@ -1692,12 +1690,10 @@ Result IResearchLink::remove(
     LocalDocumentId const& documentId,
     velocypack::Slice const& /*doc*/,
     Index::OperationMode /*mode*/) {
+  TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
-  auto& state = *(trx.state());
 
-  LOG_TOPIC("7c228", TRACE, iresearch::TOPIC)
-      << "'remove', engine recovery '" << _engine->recoveryTick()
-      << "', recovery tick '" << _recoveryTick << "'";
+  auto& state = *(trx.state());
 
   if (_dataStore._recovery != RecoveryState::DONE && _engine->recoveryTick() <= _recoveryTick) {
     LOG_TOPIC("7d228", TRACE, iresearch::TOPIC)
