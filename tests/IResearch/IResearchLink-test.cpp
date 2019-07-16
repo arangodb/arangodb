@@ -391,7 +391,8 @@ TEST_F(IResearchLinkTest, test_flush_marker) {
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
     marker->setSize(static_cast<uint32_t>(buf.size()));
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-    arangodb::MMFilesWalRecoverState state(false);
+    TRI_voc_tick_t tick = 0;
+    arangodb::MMFilesWalRecoverState state(false, tick);
     EXPECT_TRUE((0 == state.errorCount));
     EXPECT_TRUE((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
     EXPECT_TRUE((1 == state.errorCount));
@@ -409,7 +410,8 @@ TEST_F(IResearchLinkTest, test_flush_marker) {
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
     marker->setSize(static_cast<uint32_t>(buf.size()));
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-    arangodb::MMFilesWalRecoverState state(false);
+    TRI_voc_tick_t tick = 0;
+    arangodb::MMFilesWalRecoverState state(false, tick);
     EXPECT_TRUE((0 == state.errorCount));
     EXPECT_TRUE((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
     EXPECT_TRUE((1 == state.errorCount));
@@ -427,7 +429,8 @@ TEST_F(IResearchLinkTest, test_flush_marker) {
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
     marker->setSize(static_cast<uint32_t>(buf.size()));
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-    arangodb::MMFilesWalRecoverState state(false);
+    TRI_voc_tick_t tick = 0;
+    arangodb::MMFilesWalRecoverState state(false, tick);
     EXPECT_TRUE((0 == state.errorCount));
     EXPECT_TRUE((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
     EXPECT_TRUE((1 == state.errorCount));
@@ -446,7 +449,8 @@ TEST_F(IResearchLinkTest, test_flush_marker) {
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
     marker->setSize(static_cast<uint32_t>(buf.size()));
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-    arangodb::MMFilesWalRecoverState state(false);
+    TRI_voc_tick_t tick = 0;
+    arangodb::MMFilesWalRecoverState state(false, tick);
     EXPECT_TRUE((0 == state.errorCount));
     EXPECT_TRUE((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
     EXPECT_TRUE((0 == state.errorCount));  // missing collection treated as a removed collection (after the WAL marker)
@@ -465,7 +469,8 @@ TEST_F(IResearchLinkTest, test_flush_marker) {
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
     marker->setSize(static_cast<uint32_t>(buf.size()));
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-    arangodb::MMFilesWalRecoverState state(false);
+    TRI_voc_tick_t tick = 0;
+    arangodb::MMFilesWalRecoverState state(false, tick);
     EXPECT_TRUE((0 == state.errorCount));
     EXPECT_TRUE((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
     EXPECT_TRUE((0 == state.errorCount));  // missing link treated as a removed index (after the WAL marker)
@@ -484,7 +489,8 @@ TEST_F(IResearchLinkTest, test_flush_marker) {
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
     marker->setSize(static_cast<uint32_t>(buf.size()));
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-    arangodb::MMFilesWalRecoverState state(false);
+    TRI_voc_tick_t tick = 0;
+    arangodb::MMFilesWalRecoverState state(false, tick);
     EXPECT_TRUE((0 == state.errorCount));
     EXPECT_TRUE((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
     EXPECT_TRUE((1 == state.errorCount));
@@ -516,7 +522,8 @@ TEST_F(IResearchLinkTest, test_flush_marker) {
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
     marker->setSize(static_cast<uint32_t>(buf.size()));
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-    arangodb::MMFilesWalRecoverState state(false);
+    TRI_voc_tick_t tick = 0;
+    arangodb::MMFilesWalRecoverState state(false, tick);
     EXPECT_TRUE((0 == state.errorCount));
     EXPECT_TRUE((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
     EXPECT_TRUE((1 == state.errorCount));
@@ -535,7 +542,8 @@ TEST_F(IResearchLinkTest, test_flush_marker) {
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
     marker->setSize(static_cast<uint32_t>(buf.size()));
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-    arangodb::MMFilesWalRecoverState state(false);
+    TRI_voc_tick_t tick = 0;
+    arangodb::MMFilesWalRecoverState state(false, tick);
     EXPECT_TRUE((0 == state.errorCount));
     EXPECT_TRUE((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
     EXPECT_TRUE((0 == state.errorCount));
@@ -714,7 +722,8 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
       auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
       marker->setSize(static_cast<uint32_t>(buf.size()));
       marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-      arangodb::MMFilesWalRecoverState state(false);
+      TRI_voc_tick_t tick = 0;
+      arangodb::MMFilesWalRecoverState state(false, tick);
       EXPECT_TRUE((0 == state.errorCount));
       EXPECT_TRUE((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
       EXPECT_TRUE((0 == state.errorCount));
@@ -823,7 +832,8 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
       auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
       marker->setSize(static_cast<uint32_t>(buf.size()));
       marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-      arangodb::MMFilesWalRecoverState state(false);
+      TRI_voc_tick_t tick = 0;
+      arangodb::MMFilesWalRecoverState state(false, tick);
       EXPECT_TRUE((0 == state.errorCount));
       EXPECT_TRUE((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
       EXPECT_TRUE((0 == state.errorCount));
@@ -883,7 +893,8 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
       auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
       marker->setSize(static_cast<uint32_t>(buf.size()));
       marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-      arangodb::MMFilesWalRecoverState state(false);
+      TRI_voc_tick_t tick = 0;
+      arangodb::MMFilesWalRecoverState state(false, tick);
       EXPECT_TRUE((0 == state.errorCount));
       EXPECT_TRUE((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
       EXPECT_TRUE((0 == state.errorCount));
@@ -902,7 +913,8 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
       auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
       marker->setSize(static_cast<uint32_t>(buf.size()));
       marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-      arangodb::MMFilesWalRecoverState state(false);
+      TRI_voc_tick_t tick = 0;
+      arangodb::MMFilesWalRecoverState state(false, tick);
       EXPECT_TRUE((0 == state.errorCount));
       EXPECT_TRUE((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
       EXPECT_TRUE((0 == state.errorCount));
@@ -962,7 +974,8 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
       auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
       marker->setSize(static_cast<uint32_t>(buf.size()));
       marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-      arangodb::MMFilesWalRecoverState state(false);
+      TRI_voc_tick_t tick = 0;
+      arangodb::MMFilesWalRecoverState state(false, tick);
       EXPECT_TRUE((0 == state.errorCount));
       EXPECT_TRUE((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
       EXPECT_TRUE((0 == state.errorCount));
@@ -981,7 +994,8 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
       auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
       marker->setSize(static_cast<uint32_t>(buf.size()));
       marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-      arangodb::MMFilesWalRecoverState state(false);
+      TRI_voc_tick_t tick = 0;
+      arangodb::MMFilesWalRecoverState state(false, tick);
       EXPECT_TRUE((0 == state.errorCount));
       EXPECT_TRUE((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
       EXPECT_TRUE((0 == state.errorCount));
@@ -1000,7 +1014,8 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
       auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
       marker->setSize(static_cast<uint32_t>(buf.size()));
       marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-      arangodb::MMFilesWalRecoverState state(false);
+      TRI_voc_tick_t tick = 0;
+      arangodb::MMFilesWalRecoverState state(false, tick);
       EXPECT_TRUE((0 == state.errorCount));
       EXPECT_TRUE((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
       EXPECT_TRUE((0 == state.errorCount));
