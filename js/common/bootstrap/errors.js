@@ -339,7 +339,21 @@
     "ERROR_AGENCY_CANNOT_REBUILD_DBS" : { "code" : 20021, "message" : "Cannot rebuild readDB and spearHead" },
     "ERROR_SUPERVISION_GENERAL_FAILURE" : { "code" : 20501, "message" : "general supervision failure" },
     "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "named queue is full" },
-    "ERROR_ACTION_OPERATION_UNABORTABLE" : { "code" : 6002, "message" : "this maintenance action cannot be stopped" }
+    "ERROR_ACTION_ALREADY_REGISTERED" : { "code" : 6001, "message" : "maintenance action already registered" },
+    "ERROR_ACTION_OPERATION_UNABORTABLE" : { "code" : 6002, "message" : "this maintenance action cannot be stopped" },
+    "ERROR_ACTION_UNFINISHED"      : { "code" : 6003, "message" : "maintenance action still processing" },
+    "ERROR_NO_SUCH_ACTION"         : { "code" : 6004, "message" : "no such maintenance action" },
+    "ERROR_HOT_BACKUP_INTERNAL"    : { "code" :  7001, "message" : " \"internal hot backup error\"" },
+    "ERROR_HOT_RESTORE_INTERNAL"   : { "code" :  7002, "message" : " \"internal hot restore error\"" },
+    "ERROR_BACKUP_TOPOLOGY"        : { "code" :  7003, "message" : " \"backup does not match this topology\"" },
+    "ERROR_NO_SPACE_LEFT_ON_DEVICE" : { "code" :  7004, "message" : " \"no space left on device\"" },
+    "ERROR_FAILED_TO_UPLOAD_BACKUP" : { "code" :  7005, "message" : " \"failed to upload hot backup set to remote target\"" },
+    "ERROR_FAILED_TO_DOWNLOAD_BACKUP" : { "code" :  7006, "message" : " \"failed to download hot backup set from remote source\"" },
+    "ERROR_NO_SUCH_HOT_BACKUP"     : { "code" :  7007, "message" : " \"no such hot backup set can be found" },
+    "ERROR_REMOTE_REPOSITORY_CONFIG_BAD" : { "code" :  7008, "message" : " \"remote hotback repository configuration error\"" },
+    "ERROR_LOCAL_LOCK_FAILED"      : { "code" :  7009, "message" : " \"some db servers cannot be reached for transaction locks\"" },
+    "ERROR_LOCAL_LOCK_RETRY"       : { "code" :  7010, "message" : " \"some db servers cannot be reached for transaction locks\"" },
+    "ERROR_HOT_BACKUP_CONFLICT"    : { "code" :  7011, "message" : " \"hot backup conflict\"" }
   };
 
   // For compatibility with <= 3.3

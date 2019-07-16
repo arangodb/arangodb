@@ -68,6 +68,15 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
+  // Is maintenance paused?
+  bool isPaused() const;
+
+  // Pause maintenance for 
+  void pause(std::chrono::seconds const& s = std::chrono::seconds(10));
+
+   // Proceed doing maintenance
+  void proceed();
+
   // preparation phase for feature in the preparation phase, the features must
   // not start any threads. furthermore, they must not write any files under
   // elevated privileges if they want other features to access them, or if they
@@ -414,6 +423,9 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief shards have versions in order to be able to distinguish between
   /// independant actions
   std::unordered_map<std::string, size_t> _shardVersion;
+
+  std::atomic<std::chrono::steady_clock::duration> _pauseUntil;
+  
 };
 
 }  // namespace arangodb

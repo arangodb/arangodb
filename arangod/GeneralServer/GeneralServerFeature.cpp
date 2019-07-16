@@ -1,7 +1,7 @@
 /////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2016-2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -69,6 +69,7 @@
 #include "RestHandler/RestExplainHandler.h"
 #include "RestHandler/RestGraphHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
+#include "RestHandler/RestHotBackupHandler.h"
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
@@ -100,6 +101,7 @@
 #include "Ssl/SslServerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/HotBackupFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::rest;
@@ -306,6 +308,13 @@ void GeneralServerFeature::defineHandlers() {
       application_features::ApplicationServer::getFeature<AuthenticationFeature>(
           "Authentication");
   TRI_ASSERT(authentication != nullptr);
+
+#ifdef USE_ENTERPRISE
+  HotBackupFeature* backup =
+    application_features::ApplicationServer::getFeature<HotBackupFeature>(
+          "HotBackup");
+  TRI_ASSERT(backup != nullptr);
+#endif
 
   auto queryRegistry = QueryRegistryFeature::registry();
   auto traverserEngineRegistry = TraverserEngineRegistryFeature::registry();
@@ -543,6 +552,14 @@ void GeneralServerFeature::defineHandlers() {
     _handlerFactory->addPrefixHandler("/_admin/repair",
                                       RestHandlerCreator<arangodb::RestRepairHandler>::createNoData);
   }
+
+#ifdef USE_ENTERPRISE
+  if (backup->isAPIEnabled()) {
+    _handlerFactory->addPrefixHandler("/_admin/backup",
+                                    RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
+  }
+#endif
+
 
   // ...........................................................................
   // test handler

@@ -75,6 +75,18 @@ uint64_t Version::current() {
   return parseVersion(ARANGODB_VERSION);
 }
 
+VersionResult::StatusCode Version::compare(uint64_t current, uint64_t other) {
+  if (current / 100 == other / 100) {
+    return VersionResult::VERSION_MATCH;
+  } else if (current > other) {  // downgrade??
+    return VersionResult::DOWNGRADE_NEEDED;
+  } else if (current < other) {  // upgrade
+    return VersionResult::UPGRADE_NEEDED;
+  }
+
+  return VersionResult::INVALID;
+}
+
 VersionResult Version::check(TRI_vocbase_t* vocbase) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
@@ -124,21 +136,26 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(lastVersion != UINT32_MAX);
 
   VersionResult res = {VersionResult::NO_VERSION_FILE, serverVersion, lastVersion, tasks};
-  if (lastVersion / 100 == serverVersion / 100) {
-    LOG_TOPIC("e9cc3", DEBUG, Logger::STARTUP) << "version match: last version " << lastVersion
-                                      << ", current version " << serverVersion;
-    res.status = VersionResult::VERSION_MATCH;
-  } else if (lastVersion > serverVersion) {  // downgrade??
-    LOG_TOPIC("73276", DEBUG, Logger::STARTUP) << "downgrade: last version " << lastVersion
-                                      << ", current version " << serverVersion;
-    res.status = VersionResult::DOWNGRADE_NEEDED;
-  } else if (lastVersion < serverVersion) {  // upgrade
-    LOG_TOPIC("0f77f", DEBUG, Logger::STARTUP) << "upgrade: last version " << lastVersion
-                                      << ", current version " << serverVersion;
-    res.status = VersionResult::UPGRADE_NEEDED;
-  } else {
-    LOG_TOPIC("b0d3c", ERR, Logger::STARTUP) << "should not happen: last version " << lastVersion
-                                    << ", current version " << serverVersion;
+
+  switch (compare(lastVersion, serverVersion)) {
+    case VersionResult::VERSION_MATCH:
+      LOG_TOPIC("e9cc3", DEBUG, Logger::STARTUP) << "version match: last version " << lastVersion
+                                        << ", current version " << serverVersion;
+      res.status = VersionResult::VERSION_MATCH;
+      break;
+    case VersionResult::DOWNGRADE_NEEDED:
+      LOG_TOPIC("73276", DEBUG, Logger::STARTUP) << "downgrade: last version " << lastVersion
+                                        << ", current version " << serverVersion;
+      res.status = VersionResult::DOWNGRADE_NEEDED;
+      break;
+    case VersionResult::UPGRADE_NEEDED:
+      LOG_TOPIC("0f77f", DEBUG, Logger::STARTUP) << "upgrade: last version " << lastVersion
+                                        << ", current version " << serverVersion;
+      res.status = VersionResult::UPGRADE_NEEDED;
+      break;
+    default:
+      LOG_TOPIC("b0d3c", ERR, Logger::STARTUP) << "should not happen: last version " << lastVersion
+
   }
 
   return res;

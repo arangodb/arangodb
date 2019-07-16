@@ -47,6 +47,11 @@ RestStatus MaintenanceRestHandler::execute() {
       getAction();
       break;
 
+    // administrative commands for hot restore 
+    case rest::RequestType::POST:
+      return postAction();
+      break;
+
     // add an action to the list (or execute it directly)
     case rest::RequestType::PUT:
       putAction();
@@ -64,6 +69,71 @@ RestStatus MaintenanceRestHandler::execute() {
   }  // switch
 
   return RestStatus::DONE;
+}
+
+RestStatus MaintenanceRestHandler::postAction() {
+
+  std::stringstream es;
+
+  std::shared_ptr<VPackBuilder> bptr;
+  try {
+
+    bptr = _request->toVelocyPackBuilderPtr();
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "parsed post action " << bptr->toJson();
+  } catch (std::exception const& e) {
+    es << "failed parsing post action "  << bptr->toJson() << " " << e.what();
+    return RestStatus::DONE;
+  }
+
+  VPackSlice body = bptr->slice();
+  
+  if (body.isObject()) {
+    std::chrono::seconds dur(0);
+    if (body.hasKey("execute") && body.get("execute").isString()) {
+      // {"execute": "pause", "duration": 60} / {"execute": "proceed"}
+      auto const ex = body.get("execute").copyString();
+      if (ex == "pause") {
+        if (body.hasKey("duration") && body.get("duration").isNumber()) {
+          dur = std::chrono::seconds(body.get("duration").getNumber<int64_t>());
+          if (dur.count() <= 0 || dur.count() > 300) {
+            es << "invalid mainenance pause duration: " << dur.count()
+                  << " seconds";
+          }
+          // Pause maintenance
+          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+            << "Maintenance is paused for " << dur.count() << " seconds";
+          ApplicationServer::getFeature<MaintenanceFeature>("Maintenance")->pause(dur);
+        }
+      } else if (ex == "proceed") {
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          << "Maintenance is prceeded "  << dur.count() << " seconds";
+        ApplicationServer::getFeature<MaintenanceFeature>("Maintenance")->proceed();
+      } else {
+        es << "invalid POST command";
+          }
+    } else {
+      es << "invalid POST object";
+    }
+  } else {
+    es << "invalid POST body";
+  }
+
+  if (es.str().empty()) {
+    VPackBuilder ok;
+    {
+      VPackObjectBuilder o(&ok);
+      ok.add("error", VPackValue(false));
+      ok.add("code", VPackValue(200));
+      ok.add("result", VPackValue(true));
+    }
+    generateResult(rest::ResponseCode::OK, ok.slice());
+  } else {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << es.str(); 
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, es.str());
+  }
+
+  return RestStatus::DONE;
+
 }
 
 void MaintenanceRestHandler::putAction() {
@@ -159,6 +229,8 @@ void MaintenanceRestHandler::getAction() {
   VPackBuilder builder;
   {
     VPackObjectBuilder o(&builder);
+    builder.add("status",
+                VPackValue(maintenance->isPaused() ? "paused" : "running"));
     builder.add(VPackValue("registry"));
     maintenance->toVelocyPack(builder);
     if (found && StringUtils::boolean(detailsStr)) {

@@ -100,7 +100,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
 
   if (nestingLevel() == 0) { // result is valid
     // register with manager
-    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr);
+    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr, isReadOnlyTransaction());
     updateStatus(transaction::Status::RUNNING);
 
     setRegistered();

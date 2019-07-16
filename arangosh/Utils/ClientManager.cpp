@@ -76,7 +76,7 @@ ClientManager::~ClientManager() {}
 
 Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpClient>& httpClient,
                                          bool force, bool logServerVersion,
-                                         bool logDatabaseNotFound) {
+                                         bool logDatabaseNotFound, bool quiet) {
   ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>(
       "Client");
   TRI_ASSERT(client);
@@ -97,7 +97,7 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
   int errorCode;
   std::string const versionString = httpClient->getServerVersion(&errorCode);
   if (TRI_ERROR_NO_ERROR != errorCode) {
-    if (TRI_ERROR_ARANGO_DATABASE_NOT_FOUND != errorCode || logDatabaseNotFound) {
+    if (!quiet && (TRI_ERROR_ARANGO_DATABASE_NOT_FOUND != errorCode || logDatabaseNotFound)) {
       // arangorestore does not log "database not found" errors in case
       // it tries to create the database...
       LOG_TOPIC("775bd", ERR, _topic) << "Could not connect to endpoint '"
@@ -114,7 +114,7 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
     return {TRI_ERROR_NO_ERROR};
   }
 
-  if (logServerVersion) {
+  if (!quiet && logServerVersion) {
     // successfully connected
     LOG_TOPIC("06792", INFO, _topic) << "Server version: " << versionString;
   }
@@ -123,8 +123,10 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
   std::pair<int, int> version = rest::Version::parseVersionString(versionString);
   if (version.first < 3) {
     // we can connect to 3.x
-    LOG_TOPIC("c4add", ERR, _topic) << "Error: got incompatible server version '"
-                           << versionString << "'";
+    if (!quiet) {
+      LOG_TOPIC("c4add", ERR, _topic)
+          << "Error: got incompatible server version '" << versionString << "'";
+    }
 
     if (!force) {
       return {TRI_ERROR_INCOMPATIBLE_VERSION};
@@ -138,7 +140,8 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientManager::getConnectedClient(
     bool force, bool logServerVersion, bool logDatabaseNotFound) {
   std::unique_ptr<httpclient::SimpleHttpClient> httpClient;
 
-  Result result = getConnectedClient(httpClient, force, logServerVersion, logDatabaseNotFound);
+  Result result = getConnectedClient(httpClient, force, logServerVersion,
+                                     logDatabaseNotFound, false);
   if (result.fail() && !(force && result.is(TRI_ERROR_INCOMPATIBLE_VERSION))) {
     FATAL_ERROR_EXIT();
   }

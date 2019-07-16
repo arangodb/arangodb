@@ -31,6 +31,7 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include "Agency/AgencyComm.h"
+#include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
@@ -656,6 +657,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm) {
       builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
       builder.add("versionString", VPackValue(rest::Version::getServerVersion()));
       builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
+      builder.add("timestamp", VPackValue(timepointToString(std::chrono::system_clock::now())));
     } catch (...) {
       LOG_TOPIC("de625", FATAL, arangodb::Logger::CLUSTER) << "out of memory";
       FATAL_ERROR_EXIT();

@@ -481,6 +481,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestEngineHandler.cpp
   RestHandler/RestExplainHandler.cpp
   RestHandler/RestGraphHandler.cpp
+  RestHandler/RestHotBackupHandler.cpp
   RestHandler/RestImportHandler.cpp
   RestHandler/RestIndexHandler.cpp
   RestHandler/RestJobHandler.cpp
@@ -544,6 +545,8 @@ SET(ARANGOD_SOURCES
   Statistics/StatisticsFeature.cpp
   Statistics/StatisticsWorker.cpp
   StorageEngine/EngineSelectorFeature.cpp
+  StorageEngine/HotBackup.cpp
+  StorageEngine/HotBackupFeature.cpp
   StorageEngine/PhysicalCollection.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp

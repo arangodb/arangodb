@@ -339,4 +339,17 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_SUPERVISION_GENERAL_FAILURE, "general supervision failure");
   REG_ERROR(ERROR_QUEUE_FULL, "named queue is full");
   REG_ERROR(ERROR_ACTION_OPERATION_UNABORTABLE, "this maintenance action cannot be stopped");
+  REG_ERROR(ERROR_ACTION_UNFINISHED, "maintenance action still processing");
+  REG_ERROR(ERROR_NO_SUCH_ACTION, "no such maintenance action");
+  REG_ERROR(ERROR_HOT_BACKUP_INTERNAL, " \"internal hot backup error\"");
+  REG_ERROR(ERROR_HOT_RESTORE_INTERNAL, " \"internal hot restore error\"");
+  REG_ERROR(ERROR_BACKUP_TOPOLOGY, " \"backup does not match this topology\"");
+  REG_ERROR(ERROR_NO_SPACE_LEFT_ON_DEVICE, " \"no space left on device\"");
+  REG_ERROR(ERROR_FAILED_TO_UPLOAD_BACKUP, " \"failed to upload hot backup set to remote target\"");
+  REG_ERROR(ERROR_FAILED_TO_DOWNLOAD_BACKUP, " \"failed to download hot backup set from remote source\"");
+  REG_ERROR(ERROR_NO_SUCH_HOT_BACKUP, " \"no such hot backup set can be found");
+  REG_ERROR(ERROR_REMOTE_REPOSITORY_CONFIG_BAD, " \"remote hotback repository configuration error\"");
+  REG_ERROR(ERROR_LOCAL_LOCK_FAILED, " \"some db servers cannot be reached for transaction locks\"");
+  REG_ERROR(ERROR_LOCAL_LOCK_RETRY, " \"some db servers cannot be reached for transaction locks\"");
+  REG_ERROR(ERROR_HOT_BACKUP_CONFLICT, " \"hot backup conflict\"");
 }

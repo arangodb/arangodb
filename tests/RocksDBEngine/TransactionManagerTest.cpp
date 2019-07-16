@@ -1,0 +1,94 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+#include "Basics/Common.h"
+
+#include "catch.hpp"
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
+
+#include "RocksDBEngine/RocksDBTransactionManager.h"
+
+using namespace arangodb;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        test suite
+// -----------------------------------------------------------------------------
+
+/// @brief test RocksDBTransactionManager
+TEST_CASE("RocksDBTransactionManager tests", "[rocksdb][devel]") {
+
+  /// @brief simple non-overlapping
+  SECTION("test_non-overlapping") {
+    RocksDBTransactionManager tm;
+
+    CHECK(0 == tm.getActiveTransactionCount());
+    CHECK(true == tm.holdTransactions(500) );
+    tm.releaseTransactions();
+
+    tm.registerTransaction((TRI_voc_tid_t)1, std::unique_ptr<TransactionData>(), false);
+    CHECK(1 == tm.getActiveTransactionCount());
+    tm.unregisterTransaction((TRI_voc_tid_t)1, false, false);
+    CHECK(0 == tm.getActiveTransactionCount());
+
+    CHECK(true == tm.holdTransactions(500) );
+    tm.releaseTransactions();
+  }
+
+  /// @brief simple non-overlapping
+  SECTION("test_overlapping") {
+    RocksDBTransactionManager tm;
+
+    std::chrono::milliseconds five(5);
+    std::mutex mu;
+    std::condition_variable cv;
+
+    CHECK(0 == tm.getActiveTransactionCount());
+    CHECK(true == tm.holdTransactions(500) );
+
+    std::unique_lock<std::mutex> lock(mu);
+
+    auto getReadLock = [&] () -> void {
+      {
+        std::unique_lock<std::mutex> innerLock(mu);
+        cv.notify_all();
+      }
+
+      tm.registerTransaction((TRI_voc_tid_t)1, std::unique_ptr<TransactionData>(), false);
+      CHECK(1 == tm.getActiveTransactionCount());
+    };
+
+    std::thread reader(getReadLock);
+
+    cv.wait(lock);
+    CHECK(0 == tm.getActiveTransactionCount());
+    std::this_thread::sleep_for(five);
+    CHECK(0 == tm.getActiveTransactionCount());
+    tm.releaseTransactions();
+
+    reader.join();
+    CHECK(1 == tm.getActiveTransactionCount());
+    tm.unregisterTransaction((TRI_voc_tid_t)1, false, false);
+    CHECK(0 == tm.getActiveTransactionCount());
+  }
+
+}

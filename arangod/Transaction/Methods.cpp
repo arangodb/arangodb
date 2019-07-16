@@ -797,7 +797,9 @@ transaction::Methods::~Methods() {
     // store result in context
     _transactionContextPtr->storeTransactionResult(_state->id(),
                                                    _state->hasFailedOperations(),
-                                                   _state->wasRegistered());
+                                                   _state->wasRegistered(),
+                                                   _state->isReadOnlyTransaction());
+    _transactionContextPtr->unregisterTransaction();
 
     delete _state;
     _state = nullptr;

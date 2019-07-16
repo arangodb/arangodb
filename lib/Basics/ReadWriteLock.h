@@ -27,6 +27,7 @@
 
 #include "Basics/Common.h"
 
+#include <chrono>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
@@ -53,6 +54,14 @@ class ReadWriteLock {
 
   /// @brief locks for writing
   void writeLock();
+
+  /// @brief locks for writing within microsecond timeout
+  bool writeLock(uint64_t timeout) {
+    std::chrono::microseconds ms(timeout);
+    return writeLock(ms);
+  }
+
+  bool writeLock(std::chrono::microseconds timeout);
 
   /// @brief locks for writing, but only tries
   bool tryWriteLock();

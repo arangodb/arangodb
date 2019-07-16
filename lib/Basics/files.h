@@ -28,7 +28,10 @@
 #include "Basics/win-utils.h"
 #endif
 
+#include <openssl/sha.h>
+
 #include "Basics/Common.h"
+#include "Basics/StringUtils.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file
@@ -187,6 +190,12 @@ bool TRI_fsync(int fd);
 char* TRI_SlurpFile(char const* filename, size_t* length);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief read file and pass blocks to user function
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ProcessFile(char const* filename, std::function<bool(char const* block, size_t size)> const& reader);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a lock file based on the PID
 ///
 /// Creates a file containing a the current process identifier and locks
@@ -331,6 +340,13 @@ bool TRI_CreateSymbolicLink(std::string const& target, std::string const& linkpa
                             std::string& error);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief copies the symlink from source to dest; will do nothing in Windows?
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CreateHardlink(std::string const& existingFile, std::string const& newFile,
+                        std::string& error);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief locate the installation directory
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -381,4 +397,34 @@ void TRI_ShutdownFiles();
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_GETENV(char const* which, std::string& value);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief functor for generating a SHA256.  Use with TRI_ProcessFiles.
+///        you need to wrap your TRI_SHA256Functor object within std::ref().
+////////////////////////////////////////////////////////////////////////////////
+struct TRI_SHA256Functor {
+  SHA256_CTX _context;
+  unsigned char _digest[SHA256_DIGEST_LENGTH];
+
+  TRI_SHA256Functor() {
+    int ret_val = SHA256_Init(&_context);
+    if (1 != ret_val) {
+      TRI_ASSERT(false);
+    } // if
+  }
+
+  bool operator()(char const* data, size_t size) {
+    int ret_val = SHA256_Update(&_context, static_cast<void const*>(data), size);
+    return 1 == ret_val;
+  }
+
+  std::string final() {
+    int ret_val = SHA256_Final(_digest, &_context);
+    if (1 != ret_val) {
+      TRI_ASSERT(false);
+    } // if
+    return arangodb::basics::StringUtils::encodeHex((char const *)_digest, SHA256_DIGEST_LENGTH);
+  }
+};// struct TRI_SHA256Functor
+
 #endif

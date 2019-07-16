@@ -184,6 +184,13 @@ class AgencyPrecondition {
   AgencyPrecondition();
   AgencyPrecondition(std::string const& key, Type, bool e);
   AgencyPrecondition(std::string const& key, Type, velocypack::Slice const&);
+  template<typename T> 
+  AgencyPrecondition(std::string const& key, Type t, T const& v)
+    : key(AgencyCommManager::path(key)), type(t), empty(false),
+      builder(std::make_shared<VPackBuilder>()) {
+    builder->add(VPackValue(v));
+    value = builder->slice();
+  }; 
 
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
@@ -193,7 +200,8 @@ class AgencyPrecondition {
   std::string key;
   Type type;
   bool empty;
-  velocypack::Slice const value;
+  velocypack::Slice value;
+  std::shared_ptr<VPackBuilder> builder;
 };
 
 // -----------------------------------------------------------------------------
@@ -208,6 +216,15 @@ class AgencyOperation {
 
   AgencyOperation(std::string const& key, AgencyValueOperationType opType,
                   velocypack::Slice const value);
+
+  template<typename T>
+  AgencyOperation(std::string const& key, AgencyValueOperationType opType, T const& value)
+    : _key(AgencyCommManager::path(key)), _opType(), _holder(std::make_shared<VPackBuilder>()) {
+    _holder->add(VPackValue(value));
+    _value = _holder->slice();
+    _opType.type = AgencyOperationType::Type::VALUE;
+    _opType.value = opType;
+  }
 
   AgencyOperation(std::string const& key, AgencyValueOperationType opType,
                   velocypack::Slice const newValue, velocypack::Slice const oldValue);
@@ -226,6 +243,7 @@ class AgencyOperation {
   AgencyOperationType _opType;
   velocypack::Slice _value;
   velocypack::Slice _value2;
+  std::shared_ptr<VPackBuilder> _holder;
 };
 
 // -----------------------------------------------------------------------------
@@ -267,6 +285,13 @@ class AgencyCommResult {
   velocypack::Slice slice() const;
   void setVPack(std::shared_ptr<velocypack::Builder> const& vpack) {
     _vpack = vpack;
+  }
+
+  Result asResult() {
+    if (successful()) {
+      return Result{};
+    }
+    return Result{errorCode(), errorMessage()};
   }
 
  public:
