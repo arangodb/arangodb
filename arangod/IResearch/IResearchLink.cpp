@@ -399,7 +399,7 @@ void IResearchLink::batchInsert(
 
   auto& state = *(trx.state());
 
-  if (_dataStore._recovery != RecoveryState::DONE && _engine->recoveryTick() <= _recoveryTick) {
+  if (_dataStore._inRecovery && _engine->recoveryTick() <= _recoveryTick) {
     LOG_TOPIC("7e228", TRACE, iresearch::TOPIC)
       << "skipping 'batchInsert', operation tick '" << _engine->recoveryTick()
       << "', recovery tick '" << _recoveryTick << "'";
@@ -449,26 +449,6 @@ void IResearchLink::batchInsert(
 
       return;
     }
-  }
-
-  switch (_dataStore._recovery) {
-   case RecoveryState::BEFORE_CHECKPOINT:
-    return; // ignore all insertions before 'checkpoint'
-   case RecoveryState::AFTER_CHECKPOINT:
-    // FIXME TODO find a better way to force MMFiles WAL recovery
-    // workaround MMFilesWalRecoverState not replaying document insertion
-    // markers, but instead reinserting all documents into the index just before
-    // the end of recovery
-    if (!dynamic_cast<MMFilesCollection*>(collection().getPhysical())) {
-      break; // skip for non-MMFiles (fallthough for MMFiles)
-    }
-    // intentionally falls through
-   case RecoveryState::DURING_CHECKPOINT:
-    for (auto const& doc: batch) {
-      ctx->remove(doc.first);
-    }
-   default: // fall through
-    {} // NOOP
   }
 
   // ...........................................................................
@@ -1065,10 +1045,10 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
     // actual data in linked collections, we can treat recovery as done
     _createdInRecovery = true;
 
-    _dataStore._recovery = RecoveryState::DONE;
+    _dataStore._inRecovery = false;
     _recoveryTick = _engine->releasedTick();
   } else {
-    _dataStore._recovery = RecoveryState::AFTER_CHECKPOINT; // new empty data store
+    _dataStore._inRecovery = true;
     _recoveryTick = _engine->recoveryTick();
   }
 
@@ -1088,113 +1068,6 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
   }
 
   _flushSubscription = std::make_shared<IResearchFlushSubscription>(_recoveryTick);
-
-  // if this is an existing datastore then ensure that it has a valid
-  // '.checkpoint' file for the last state of the data store
-  // if it's missing them probably the WAL tail was lost
-  //if (recovery_reader) {
-  //  irs::index_file_refs::ref_t ref;
-
-  //  // find the latest segment state with a checkpoint file
-  //  for(;;) {
-  //    auto& filename = recovery_reader.meta().filename; // segment state filename
-  //    auto checkpointFile = // checkpoint filename
-  //      filename + std::string(IRESEARCH_CHECKPOINT_SUFFIX);
-
-  //    ref = irs::directory_utils::reference( // create a reference
-  //      *(_dataStore._directory), checkpointFile, false // args
-  //    );
-
-  //    if (ref) {
-  //      break; // found checkpoint file for latest state
-  //    }
-
-  //    auto src = _dataStore._path;
-  //    auto& srcFilename = filename;
-  //    auto dst = src;
-  //    auto dstFilename = filename + std::string(IRESEARCH_BACKUP_SUFFIX);
-
-  //    src /= srcFilename;
-  //    dst /= dstFilename;
-
-  //    // move segment state file without a matching checkpint out of the way
-  //    if (!src.rename(dst)) {
-  //      return {
-  //        TRI_ERROR_ARANGO_ILLEGAL_STATE,
-  //        "failed rename the latest data store state file for arangosearch link '" + std::to_string(id()) +
-  //        "', source '" + srcFilename + "' destination '" + dstFilename +
-  //        "' in path: " + _dataStore._path.utf8()
-  //      };
-  //    }
-
-  //    try {
-  //      recovery_reader.reset(); // unset to allow for checking for success below
-  //      recovery_reader = irs::directory_reader::open(*(_dataStore._directory)); // retry opening
-  //    } catch (irs::index_not_found const&) {
-  //      // ignore
-  //    }
-
-  //    if (!recovery_reader) {
-  //      return {
-  //        TRI_ERROR_ARANGO_ILLEGAL_STATE,
-  //        "failed to find checkpoint file matching the latest data store state for arangosearch link '" + std::to_string(id()) +
-  //        "', expecting file '" + checkpointFile + "' in path: " + _dataStore._path.utf8()
-  //      };
-  //    }
-  //  }
-
-  //  auto& checkpointFile = *ref; // ref non-null ensured by above loop
-  //  auto in = _dataStore._directory->open(checkpointFile, irs::IOAdvice::NORMAL);
-
-  //  if (!in) {
-  //    return {
-  //      TRI_ERROR_CANNOT_READ_FILE,
-  //      "failed to read checkpoint file for arangosearch link '" + std::to_string(id()) +
-  //      "', path: " + checkpointFile
-  //    };
-  //  }
-
-  //  std::string previousCheckpoint;
-
-  //  // zero-length indicates very first '.checkpoint' file
-  //  if (in->length()) {
-  //    try {
-  //      previousCheckpoint = irs::read_string<std::string>(*in);
-  //    } catch (std::exception const& e) {
-  //      return {
-  //        TRI_ERROR_ARANGO_IO_ERROR,
-  //        "caught exception while reading checkpoint file for arangosearch link '" + std::to_string(id()) +
-  //        "': " + e.what()
-  //      };
-  //    } catch (...) {
-  //      return {
-  //        TRI_ERROR_ARANGO_IO_ERROR,
-  //        "caught exception while reading checkpoint file for arangosearch link '" + std::to_string(id()) + "'"
-  //      };
-  //    }
-
-  //    auto* engine = EngineSelectorFeature::ENGINE;
-
-  //    if (!engine) {
-  //      _dataStore._writer.reset(); // unlock the directory
-  //      return {
-  //        TRI_ERROR_INTERNAL,
-  //        "failure to get storage engine while initializing arangosearch link '" + std::to_string(id()) + "'"
-  //      };
-  //    }
-
-  //    // if in recovery then recovery markers are expected
-  //    // if not in recovery then AFTER_CHECKPOINT will be converted to DONE by
-  //    // the post-recovery-callback (or left untouched if no DatabaseFeature)
-  //    if (engine->inRecovery() && previousCheckpoint != recovery_reader.meta().filename) {
-  //      _dataStore._recovery = RecoveryState::DURING_CHECKPOINT; // exisitng data store (assume worst case, i.e. replaying just before checkpoint)
-  //    }
-  //  }
-
-  //  _dataStore._recovery_range_start = std::move(previousCheckpoint); // remember current checkpoint range start
-  //  _dataStore._recovery_reader = recovery_reader; // remember last successful reader
-  //  _dataStore._recovery_ref = ref; // ensure checkpoint file will not get removed
-  //}
 
   irs::index_writer::init_options options;
   options.lock_repository = false; // do not lock index, ArangoDB has its own lock
@@ -1282,18 +1155,8 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
         };
       }
 
-      // before commit ensure that the WAL 'Flush' marker for the opened writer
-      // was seen, otherwise this indicates a lost WAL tail during recovery
-      // i.e. dataStore is ahead of the WAL
-      if (RecoveryState::AFTER_CHECKPOINT != link->_dataStore._recovery) {
-        LOG_TOPIC("31fa1", ERR, iresearch::TOPIC)
-          << "failed to find checkpoint after finishing recovery of arangosearch link '" << std::to_string(link->id())
-          << "'. It seems WAL tail was lost and link is out of sync with the underlying collection '" << link->collection().name()
-          << "', consider to re-create the link in order to synchronize them.";
-      }
-
-      // set before commit() to trigger update of '_recovery_reader'/'_recovery_ref'
-      link->_dataStore._recovery = RecoveryState::DONE;
+      // recovery finished
+      link->_dataStore._inRecovery = false;
 
       LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
         << "starting sync for arangosearch link '" << link->id() << "'";
@@ -1468,7 +1331,7 @@ Result IResearchLink::insert(
 
   auto& state = *(trx.state());
 
-  if (_dataStore._recovery != RecoveryState::DONE && _engine->recoveryTick() <= _recoveryTick) {
+  if (_dataStore._inRecovery && _engine->recoveryTick() <= _recoveryTick) {
     LOG_TOPIC("7c228", TRACE, iresearch::TOPIC)
       << "skipping 'insert', operation tick '" << _engine->recoveryTick()
       << "', recovery tick '" << _recoveryTick << "'";
@@ -1533,7 +1396,7 @@ Result IResearchLink::insert(
 //FIXME try to preserve optimization
 //    // optimization for single-document insert-only transactions
 //    if (trx.isSingleOperationTransaction() // only for single-docuemnt transactions
-//        && RecoveryState::DONE == _dataStore._recovery) {
+//        && !_dataStore._inRecovery) {
 //      auto ctx = _dataStore._writer->documents();
 //
 //      return insertImpl(ctx);
@@ -1552,19 +1415,6 @@ Result IResearchLink::insert(
       };
     }
   }
-
-  switch (_dataStore._recovery) {
-   case RecoveryState::BEFORE_CHECKPOINT:
-    return Result(); // ignore all insertions before 'checkpoint'
-   case RecoveryState::DURING_CHECKPOINT:
-    ctx->remove(documentId);
-   default: // fall through
-    {} // NOOP
-  }
-
-  // ...........................................................................
-  // below only during recovery after the 'checkpoint' marker, or post recovery
-  // ...........................................................................
 
   return insertImpl(ctx->_ctx);
 }
@@ -1695,7 +1545,7 @@ Result IResearchLink::remove(
 
   auto& state = *(trx.state());
 
-  if (_dataStore._recovery != RecoveryState::DONE && _engine->recoveryTick() <= _recoveryTick) {
+  if (_dataStore._inRecovery && _engine->recoveryTick() <= _recoveryTick) {
     LOG_TOPIC("7d228", TRACE, iresearch::TOPIC)
       << "skipping 'removal', operation tick '" << _engine->recoveryTick()
       << "', recovery tick '" << _recoveryTick << "'";
@@ -1740,17 +1590,6 @@ Result IResearchLink::remove(
       };
     }
   }
-
-  switch (_dataStore._recovery) {
-   case RecoveryState::BEFORE_CHECKPOINT:
-    return {}; // ignore all removals before 'checkpoint'
-   default: // fall through
-   {} // NOOP
-  }
-
-  // ...........................................................................
-  // below only during recovery after the 'checkpoint' marker, or post recovery
-  // ...........................................................................
 
   // ...........................................................................
   // if an exception occurs below than the transaction is droped including all
@@ -1809,54 +1648,6 @@ Index::IndexType IResearchLink::type() const {
 
 char const* IResearchLink::typeName() const {
   return IResearchLinkHelper::type().c_str();
-}
-
-Result IResearchLink::walFlushMarker(velocypack::Slice const& value) {
-  if (!value.isString()) {
-    return {
-      TRI_ERROR_BAD_PARAMETER,
-      "non-string WAL 'Flush' marker value"
-    };
-  }
-
-  auto valueRef = getStringRef(value);
-
-  SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock); // '_dataStore' can be asynchronously modified
-
-  if (!*_asyncSelf) {
-    // the current link is no longer valid (checked after ReadLock aquisition)
-    return {
-      TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
-      "failed to lock arangosearch link while processing 'Flush' marker arangosearch link '" + std::to_string(id()) + "'"
-    };
-  }
-
-  TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
-
-  switch (_dataStore._recovery) {
-   case RecoveryState::BEFORE_CHECKPOINT:
-    if (valueRef == _dataStore._recovery_range_start) {
-      _dataStore._recovery = RecoveryState::DURING_CHECKPOINT; // do insert with matching remove
-    }
-
-    break;
-   case RecoveryState::DURING_CHECKPOINT:
-    if (valueRef == _dataStore._recovery_reader.meta().filename) {
-      _dataStore._recovery = RecoveryState::AFTER_CHECKPOINT; // do insert without matching remove
-    } else if (valueRef != _dataStore._recovery_range_start) { // fake 'DURING_CHECKPOINT' set in initDataStore(...) as initial value to cover worst case and not in that case (seen another checkpoint)
-      _dataStore._recovery = RecoveryState::BEFORE_CHECKPOINT; // ignore inserts (scenario for initial state before any checkpoints were seen)
-    } // else fake 'DURING_CHECKPOINT' set in initDataStore(...) as initial value to cover worst case and actually in that case (leave as is)
-    break;
-   case RecoveryState::AFTER_CHECKPOINT:
-    break; // NOOP
-   case RecoveryState::DONE:
-    return {
-      TRI_ERROR_INTERNAL,
-      "arangosearch link not in recovery while processing 'Flush' marker arangosearch link '" + std::to_string(id()) + "'"
-    };
-  }
-
-  return {};
 }
 
 Result IResearchLink::unload() {

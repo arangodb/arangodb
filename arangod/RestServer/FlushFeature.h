@@ -18,6 +18,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_REST_SERVER_FLUSH_FEATURE_H
@@ -56,17 +57,6 @@ class FlushFeature final : public application_features::ApplicationFeature {
   explicit FlushFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions> options) override;
-
-  /// @brief add a callback for 'Flush' recovery markers of the specified type
-  ///        encountered during recovery
-  /// @param type the 'Flush' marker type to invoke callback for
-  /// @param callback the callback to invoke
-  /// @return success, false == handler for the specified type already registered
-  /// @note not thread-safe on the assumption of static factory registration
-  static bool registerFlushRecoveryCallback(
-    std::string const& type, // marker type
-    FlushRecoveryCallback const& callback // marker callback
-  );
 
   /// @brief register a flush subscription that will ensure replay of all WAL
   ///        entries after the latter of registration or the last successful

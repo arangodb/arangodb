@@ -211,12 +211,6 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   char const* typeName() const; // arangodb::Index override
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief called with the contents of the WAL 'Flush' marker
-  /// @note used by IResearchFeature when processing WAL Flush markers
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result walFlushMarker(arangodb::velocypack::Slice const& value);
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is unloaded from memory
   ////////////////////////////////////////////////////////////////////////////////
@@ -247,35 +241,21 @@ class IResearchLink {
 
  private:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief the current data-store recovery state of the link
-  //////////////////////////////////////////////////////////////////////////////
-  enum class RecoveryState {
-    BEFORE_CHECKPOINT, // in recovery but before the FS checkpoint was seen
-    DURING_CHECKPOINT, // in recovery, FS checkpoint was seen but before the next WAL checkpoint was seen
-    AFTER_CHECKPOINT, // in recovery, FS checkpoint was seen and the next WAL checkpoint was seen
-    DONE, // not in recovery
-  };
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying iresearch data store
   //////////////////////////////////////////////////////////////////////////////
   struct DataStore {
-    irs::directory::ptr _directory;
     IResearchViewMeta _meta; // runtime meta for a data store (not persisted)
+    irs::directory::ptr _directory;
     irs::async_utils::read_write_mutex _mutex; // for use with member '_meta'
     irs::utf8_path _path;
     irs::directory_reader _reader;
-    std::atomic<RecoveryState> _recovery;
-    std::string _recovery_range_start; // previous to last successful WAL 'Flush'
-    irs::directory_reader _recovery_reader; // last successful WAL 'Flush'
-    irs::index_file_refs::ref_t _recovery_ref; // ref at the checkpoint file
     irs::index_writer::ptr _writer;
+    std::atomic<bool> _inRecovery{ false }; // data store is in recovery
     operator bool() const noexcept { return _directory && _writer; }
 
     void resetDataStore() noexcept { // reset all underlying readers to release file handles 
       _reader.reset(); 
       _writer.reset();
-      _recovery_reader.reset();
       _directory.reset();
     } 
   };

@@ -405,59 +405,6 @@ void registerIndexFactory() {
   }
 }
 
-void registerRecoveryMarkerHandler() {
-  static const arangodb::FlushFeature::FlushRecoveryCallback callback = []( // callback
-    TRI_vocbase_t const& vocbase, // marker vocbase
-    arangodb::velocypack::Slice const& slice // marker data
-  )->arangodb::Result {
-    if (!slice.isObject()) {
-      return arangodb::Result( // result
-        TRI_ERROR_BAD_PARAMETER, // code
-        "non-object recovery marker body recieved by the arangosearch handler" // message
-      );
-    }
-
-    if (!slice.hasKey(FLUSH_COLLECTION_FIELD) // missing field
-        || !slice.get(FLUSH_COLLECTION_FIELD).isNumber<TRI_voc_cid_t>()) {
-      return arangodb::Result( // result
-        TRI_ERROR_BAD_PARAMETER, // code
-        "arangosearch handler failed to get collection indentifier from the recovery marker" // message
-      );
-    }
-
-    if (!slice.hasKey(FLUSH_INDEX_FIELD) // missing field
-        || !slice.get(FLUSH_INDEX_FIELD).isNumber<TRI_idx_iid_t>()) {
-      return arangodb::Result( // result
-        TRI_ERROR_BAD_PARAMETER, // code
-        "arangosearch handler failed to get link indentifier from the recovery marker" // message
-      );
-    }
-
-    auto collection = vocbase.lookupCollection( // collection of the recovery marker
-      slice.get(FLUSH_COLLECTION_FIELD).getNumber<TRI_voc_cid_t>() // args
-    );
-
-    // arangosearch handler failed to find collection from the recovery marker, possibly already removed
-    if (!collection) {
-      return arangodb::Result();
-    }
-
-    auto link = arangodb::iresearch::IResearchLinkHelper::find( // link of the recovery marker
-      *collection, slice.get(FLUSH_INDEX_FIELD).getNumber<TRI_idx_iid_t>() // args
-    );
-
-    // arangosearch handler failed to find link from the recovery marker, possibly already removed
-    if (!link) {
-      return arangodb::Result();
-    }
-
-    return link->walFlushMarker(slice.get(FLUSH_VALUE_FIELD));
-  };
-  auto& type = arangodb::iresearch::DATA_SOURCE_TYPE.name();
-
-  arangodb::FlushFeature::registerFlushRecoveryCallback(type, callback);
-}
-
 void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
   irs::string_ref const args(".|+");  // positional arguments (attribute [,
                                       // <scorer-specific properties>...]);
@@ -964,9 +911,6 @@ void IResearchFeature::prepare() {
   registerTransactionDataSourceRegistrationCallback();
 
   registerRecoveryHelper();
-
-  // register 'arangosearch' flush marker recovery handler
-  registerRecoveryMarkerHandler();
 
   // start the async task thread pool
   if (!ServerState::instance()->isCoordinator() // not a coordinator

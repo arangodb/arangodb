@@ -427,6 +427,12 @@ bool MMFilesLogfileManager::open() {
   // remove usage locks for databases and collections
   _recoverState->releaseResources();
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine);
+  TRI_ASSERT(engine->recoveryTick() == _recoverState->lastTick);
+#endif
+
   // not needed anymore
   _recoverState.reset();
 
