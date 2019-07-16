@@ -20,26 +20,31 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_ACCEPTORUNIXDOMAIN_H
-#define ARANGOD_SCHEDULER_ACCEPTORUNIXDOMAIN_H 1
+#pragma once
+#ifndef ARANGOD_GENERAL_SERVER_ACCEPTORUNIXDOMAIN_H
+#define ARANGOD_GENERAL_SERVER_ACCEPTORUNIXDOMAIN_H 1
 
 #include "GeneralServer/Acceptor.h"
+#include "GeneralServer/AsioSocket.h"
 
 namespace arangodb {
+namespace rest {
+
 class AcceptorUnixDomain final : public Acceptor {
  public:
-  AcceptorUnixDomain(rest::GeneralServer& server,
-                     rest::GeneralServer::IoContext& context, Endpoint* endpoint)
-      : Acceptor(server, context, endpoint), _acceptor(context.newDomainAcceptor()) {}
+  AcceptorUnixDomain(rest::GeneralServer& server, rest::IoContext& ctx, Endpoint* endpoint)
+      : Acceptor(server, ctx, endpoint), _acceptor(ctx.io_context) {}
 
  public:
   void open() override;
   void close() override;
-  void asyncAccept(AcceptHandler const& handler) override;
+  void asyncAccept() override;
 
  private:
-  std::unique_ptr<asio_ns::local::stream_protocol::acceptor> _acceptor;
+  asio_ns::local::stream_protocol::acceptor _acceptor;
+  std::unique_ptr<AsioSocket<SocketType::Unix>> _asioSocket;
 };
+}  // namespace rest
 }  // namespace arangodb
 
 #endif

@@ -31,10 +31,7 @@
 #include "Rest/RequestContext.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Dumper.h>
-#include <velocypack/Options.h>
 #include <velocypack/StringRef.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 
@@ -49,7 +46,6 @@ class StringBuffer;
 
 using rest::ContentType;
 using rest::EncodingType;
-using rest::ProtocolVersion;
 using rest::RequestType;
 
 class GeneralRequest {
@@ -60,8 +56,6 @@ class GeneralRequest {
   GeneralRequest(GeneralRequest&&) = default;
 
  public:
-  // translate the HTTP protocol version
-  static std::string translateVersion(ProtocolVersion);
 
   // translate an RequestType enum value into an "HTTP method string"
   static std::string translateMethod(RequestType);
@@ -78,10 +72,7 @@ class GeneralRequest {
  public:
   GeneralRequest() = default;
   explicit GeneralRequest(ConnectionInfo const& connectionInfo)
-      : _version(ProtocolVersion::UNKNOWN),
-        _protocol(""),
-        _connectionInfo(connectionInfo),
-        _clientTaskId(0),
+      : _connectionInfo(connectionInfo),
         _requestContext(nullptr),
         _isRequestContextOwner(false),
         _authenticated(false),
@@ -93,14 +84,7 @@ class GeneralRequest {
   virtual ~GeneralRequest();
 
  public:
-  ProtocolVersion protocolVersion() const { return _version; }
-  char const* protocol() const { return _protocol; }  // http, https or vst
-  void setProtocol(char const* protocol) { _protocol = protocol; }
-
   ConnectionInfo const& connectionInfo() const { return _connectionInfo; }
-
-  uint64_t clientTaskId() const { return _clientTaskId; }
-  void setClientTaskId(uint64_t clientTaskId) { _clientTaskId = clientTaskId; }
 
   /// Database used for this request, _system by default
   TEST_VIRTUAL std::string const& databaseName() const { return _databaseName; }
@@ -133,16 +117,9 @@ class GeneralRequest {
   void setRequestType(RequestType type) { _type = type; }
 
   std::string const& fullUrl() const { return _fullUrl; }
-  void setFullUrl(char const* begin, char const* end);
 
   // consists of the URL without the host and without any parameters.
   std::string const& requestPath() const { return _requestPath; }
-  void setRequestPath(std::string&& requestPath) {
-    _requestPath = std::move(requestPath);
-  }
-  void setRequestPath(char const* begin, char const* end) {
-    setRequestPath(std::string(begin, end - begin));
-  }
 
   // The request path consists of the URL without the host and without any
   // parameters.  The request path is split into two parts: the prefix, namely
@@ -206,13 +183,14 @@ class GeneralRequest {
   /// @brief the content length
   virtual size_t contentLength() const = 0;
   /// @brief unprocessed request payload
-  virtual arangodb::velocypack::StringRef rawPayload() const = 0;
+  virtual velocypack::StringRef rawPayload() const = 0;
   /// @brief parsed request payload
-  virtual VPackSlice payload(arangodb::velocypack::Options const* options = &VPackOptions::Defaults) = 0;
+  virtual velocypack::Slice payload(arangodb::velocypack::Options const* options =
+                                    &velocypack::Options::Defaults) = 0;
 
-  TEST_VIRTUAL std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr();
-  std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtrNoUniquenessChecks() {
-    return std::make_shared<VPackBuilder>(payload());
+  TEST_VIRTUAL std::shared_ptr<velocypack::Builder> toVelocyPackBuilderPtr();
+  std::shared_ptr<velocypack::Builder> toVelocyPackBuilderPtrNoUniquenessChecks() {
+    return std::make_shared<velocypack::Builder>(payload());
   };
 
   /// @brieg should reflect the Content-Type header
@@ -231,12 +209,8 @@ class GeneralRequest {
   }
 
  protected:
-  ProtocolVersion _version;
-  char const* _protocol;  // http, https or vst
-
-  // connection info
-  ConnectionInfo _connectionInfo;
-  uint64_t _clientTaskId;
+  ConnectionInfo _connectionInfo; /// connection info
+  
   std::string _databaseName;
   std::string _user;
 
