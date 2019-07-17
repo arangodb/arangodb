@@ -1424,7 +1424,6 @@ int TransactionCollectionMock::doUnlock(arangodb::AccessMode::Type type, int nes
 size_t TransactionStateMock::abortTransactionCount;
 size_t TransactionStateMock::beginTransactionCount;
 size_t TransactionStateMock::commitTransactionCount;
-TRI_voc_tick_t TransactionStateMock::transactionTick{0};
 
 // ensure each transaction state has a unique ID
 TransactionStateMock::TransactionStateMock(TRI_vocbase_t& vocbase,

@@ -221,9 +221,11 @@ class TransactionState {
   }
 
   /// @returns tick of last operation in a transaction
-  /// @note not in recovery: the value is valid only after transaction is committed
-  /// @note in recovery: the value is valid immediately after transaction is started
-  virtual TRI_voc_tick_t lastOperationTick() const = 0;
+  /// @note the value is guaranteed to be valid only after
+  ///       transaction is committed
+  TRI_voc_tick_t lastOperationTick() const noexcept {
+    return _lastWrittenOperationTick;
+  }
 
  protected:
   /// @brief find a collection in the transaction's list of collections
@@ -244,6 +246,9 @@ class TransactionState {
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
   TRI_voc_tid_t const _id;  /// @brief local trx id
+
+  /// @brief tick of last added & written operation
+  TRI_voc_tick_t _lastWrittenOperationTick;
 
   /// @brief access type (read|write)
   AccessMode::Type _type;

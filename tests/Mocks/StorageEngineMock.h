@@ -137,14 +137,12 @@ class TransactionStateMock: public arangodb::TransactionState {
   static size_t abortTransactionCount;
   static size_t beginTransactionCount;
   static size_t commitTransactionCount;
-  static TRI_voc_tick_t transactionTick;
 
   TransactionStateMock(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid, arangodb::transaction::Options const& options);
   virtual arangodb::Result abortTransaction(arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result beginTransaction(arangodb::transaction::Hints hints) override;
   virtual arangodb::Result commitTransaction(arangodb::transaction::Methods* trx) override;
   virtual bool hasFailedOperations() const override;
-  virtual TRI_voc_tick_t lastOperationTick() const override { return transactionTick; }
 };
 
 class StorageEngineMock: public arangodb::StorageEngine {

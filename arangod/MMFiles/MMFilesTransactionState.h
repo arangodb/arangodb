@@ -74,10 +74,6 @@ class MMFilesTransactionState final : public TransactionState {
   /// @brief get (or create) a rocksdb WriteTransaction
   rocksdb::Transaction* rocksTransaction();
 
-  /// @returns tick of last operation in a transaction
-  /// @note the value is valid only after transaction is committed
-  TRI_voc_tick_t lastOperationTick() const noexcept final { return _lastWrittenOperationTick; }
-
  private:
   /// @brief whether or not a marker needs to be written
   bool needWriteMarker(bool isBeginMarker) const {
@@ -106,9 +102,6 @@ class MMFilesTransactionState final : public TransactionState {
   rocksdb::Transaction* _rocksTransaction;
   bool _beginWritten;
   bool _hasOperations;
-  
-  /// @brief tick of last added & written operation
-  TRI_voc_tick_t _lastWrittenOperationTick;
 };
 
 }  // namespace arangodb

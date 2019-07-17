@@ -44,8 +44,6 @@ class ClusterTransactionState final : public TransactionState {
   Result abortTransaction(transaction::Methods* trx) override;
 
   bool hasFailedOperations() const override { return false; }
-
-  TRI_voc_tick_t lastOperationTick() const noexcept final { return 0; }
 };
 
 }  // namespace arangodb

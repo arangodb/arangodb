@@ -63,7 +63,6 @@ RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t& vocbase, TRI_voc
       _readSnapshot(nullptr),
       _rocksReadOptions(),
       _cacheTx(nullptr),
-      _lastOperationTick(0),
       _numInserts(0),
       _numUpdates(0),
       _numRemoves(0),
@@ -323,7 +322,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
         postCommitSeq += numOps - 1;  // add to get to the next batch
       }
       TRI_ASSERT(postCommitSeq <= rocksutils::globalRocksDB()->GetLatestSequenceNumber());
-      _lastOperationTick = postCommitSeq;
+      _lastWrittenOperationTick = postCommitSeq;
 
       for (auto& trxColl : _collections) {
         auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
