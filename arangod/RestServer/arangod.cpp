@@ -102,6 +102,7 @@
 #include "Ssl/SslServerFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/HotBackupFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/ManagerFeature.h"
 #include "V8Server/FoxxQueuesFeature.h"
@@ -227,6 +228,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature(new aql::AqlFunctionFeature(server));
     server.addFeature(new aql::OptimizerRulesFeature(server));
     server.addFeature(new pregel::PregelFeature(server));
+    server.addFeature(new HotBackupFeature(server));
 
 #ifdef ARANGODB_HAVE_FORK
     server.addFeature(new DaemonFeature(server));

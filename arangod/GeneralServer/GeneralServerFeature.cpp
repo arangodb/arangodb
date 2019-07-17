@@ -309,12 +309,11 @@ void GeneralServerFeature::defineHandlers() {
           "Authentication");
   TRI_ASSERT(authentication != nullptr);
 
-#ifdef USE_ENTERPRISE
   HotBackupFeature* backup =
     application_features::ApplicationServer::getFeature<HotBackupFeature>(
           "HotBackup");
   TRI_ASSERT(backup != nullptr);
-#endif
+
 
   auto queryRegistry = QueryRegistryFeature::registry();
   auto traverserEngineRegistry = TraverserEngineRegistryFeature::registry();
@@ -468,21 +467,21 @@ void GeneralServerFeature::defineHandlers() {
   // And now some handlers which are registered in both /_api and /_admin
   _handlerFactory->addHandler("/_admin/actions",
                               RestHandlerCreator<MaintenanceRestHandler>::createNoData);
-  
+
   _handlerFactory->addHandler("/_admin/aql/reload",
                               RestHandlerCreator<RestAqlReloadHandler>::createNoData);
 
   _handlerFactory->addHandler("/_admin/auth/reload",
                               RestHandlerCreator<RestAuthReloadHandler>::createNoData);
-  
+
   if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->allowAdminExecute()) {
     _handlerFactory->addHandler("/_admin/execute",
                                 RestHandlerCreator<RestAdminExecuteHandler>::createNoData);
   }
-  
+
   _handlerFactory->addHandler("/_admin/time",
                               RestHandlerCreator<RestTimeHandler>::createNoData);
-  
+
   _handlerFactory->addPrefixHandler("/_api/job",
                                     RestHandlerCreator<arangodb::RestJobHandler>::createData<AsyncJobManager*>,
                                     _jobManager.get());
@@ -553,12 +552,10 @@ void GeneralServerFeature::defineHandlers() {
                                       RestHandlerCreator<arangodb::RestRepairHandler>::createNoData);
   }
 
-#ifdef USE_ENTERPRISE
   if (backup->isAPIEnabled()) {
     _handlerFactory->addPrefixHandler("/_admin/backup",
                                     RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
   }
-#endif
 
 
   // ...........................................................................
