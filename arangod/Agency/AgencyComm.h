@@ -35,6 +35,7 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 #include <type_traits>
 
