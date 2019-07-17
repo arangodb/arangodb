@@ -1873,7 +1873,7 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
   // be a precondition failed, in which case we want to retry for some time:
   while (true) {
     if (TRI_microtime() > endTime) {
-      for (auto info : infos) {
+      for (auto const& info : infos) {
         if (info.state != ClusterCollectionCreationInfo::DONE) {
           LOG_TOPIC("a2184", ERR, Logger::CLUSTER)
               << "Timeout in _create collection"
