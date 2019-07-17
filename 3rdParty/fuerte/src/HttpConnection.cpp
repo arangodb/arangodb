@@ -242,10 +242,10 @@ void HttpConnection<ST>::startWriting() {
   FUERTE_LOG_HTTPTRACE << "startWriting: this=" << this << "\n";
   if (!_active) {
     FUERTE_LOG_HTTPTRACE << "startWriting: active=true, this=" << this << "\n";
-    if (!_active.exchange(true)) { // we are the only ones here now
+    if (!_active.exchange(true)) {  // we are the only ones here now
       auto cb = [self = Connection::shared_from_this()] {
         auto* thisPtr = static_cast<HttpConnection<ST>*>(self.get());
-        
+
         // we might get in a race with shutdownConnection
         Connection::State state = thisPtr->_state.load();
         if (state != Connection::State::Connected) {
@@ -302,7 +302,7 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
   header.append("Host: ");
   header.append(this->_config._host);
   header.append("\r\n");
-  if (_idleTimeout.count() > 0) { // technically not required for http 1.1
+  if (_idleTimeout.count() > 0) {  // technically not required for http 1.1
     header.append("Connection: Keep-Alive\r\n");
   } else {
     header.append("Connection: Close\r\n");
@@ -412,9 +412,9 @@ void HttpConnection<ST>::asyncWriteCb(asio_ns::error_code const& ec,
   assert(_item == nullptr);
   _item = std::move(item);
 
-  http_parser_init(&_parser, HTTP_RESPONSE);
+  setTimeout(_item->request->timeout());      // extend timeout
+  http_parser_init(&_parser, HTTP_RESPONSE);  // reset parser
 
-  // check queue length later
   this->asyncReadSome();  // listen for the response
 }
 
@@ -512,7 +512,7 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
     FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
     if (thisPtr->_active) {
       thisPtr->restartConnection(Error::Timeout);
-    } else { // close an idle connection
+    } else {  // close an idle connection
       thisPtr->shutdownConnection(Error::CloseRequested);
     }
   };
