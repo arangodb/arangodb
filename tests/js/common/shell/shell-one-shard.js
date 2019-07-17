@@ -71,7 +71,11 @@ function OneShardPropertiesSuite () {
       db._useDatabase(dn);
       let props = db._properties();
       assertEqual(props.sharding, "single");
-      assertEqual(props.replicationFactor, "satellite");
+      if (isEnterprise) {
+        assertEqual(props.replicationFactor, "satellite");
+      } else {
+        assertEqual(props.replicationFactor, 1);
+      }
 
       let col = db._create("oneshardcol");
       let ulfProperties = col.properties();

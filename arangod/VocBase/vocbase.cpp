@@ -2133,7 +2133,6 @@ VocbaseOptions arangodb::getVocbaseOptions(VPackSlice const& options) {
     if(!isSatellite && !isNumber){
       if(cluster) {
         replicationFactor = cluster->defaultReplicationFactor();
-        minReplicationFactor = cluster->minReplicationFactor();
       } else {
         LOG_TOPIC("eeeee", ERR, Logger::CLUSTER) << "Can not access ClusterFeature to determine database replicationFactor";
       }
@@ -2142,6 +2141,16 @@ VocbaseOptions arangodb::getVocbaseOptions(VPackSlice const& options) {
     } else if (isNumber) {
       replicationFactor = static_cast<decltype(replicationFactor)>(replicationSlice.getUInt());
     }
+#ifndef USE_ENTERPRISE
+    if(replicationFactor == 0) {
+      if(cluster) {
+        replicationFactor = cluster->defaultReplicationFactor();
+      } else {
+        LOG_TOPIC("eeeef", ERR, Logger::CLUSTER) << "Can not access ClusterFeature to determine database replicationFactor";
+        replicationFactor = 1;
+      }
+    }
+#endif
   }
 
   {
