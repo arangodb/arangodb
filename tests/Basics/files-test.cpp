@@ -445,7 +445,7 @@ TEST_F(CFilesTest, tst_processFile) {
   const char* buffer = "the quick brown fox";
   bool good;
 
-  StringBuffer* filename = s.writeFile(buffer);
+  StringBuffer* filename = writeFile(buffer);
 
   ByteCountFunctor bcf;
   auto reader = std::ref(bcf);

@@ -91,7 +91,7 @@ protected:
   }
   VPackBuilder pb;
   VPackSlice plan;
-}
+};
 
 
 TEST_F(HotBackupOnCoordinators, test_dbserver_matching) {
