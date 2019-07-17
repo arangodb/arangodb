@@ -1,5 +1,6 @@
 devel
 -----
+* TOKENS function updated to deal with primitive types and arrays
 
 * coordinator code was reporting rocksdb error codes, but not the associated detail message.
   Corrected.
