@@ -100,10 +100,11 @@ void handleLeadership(LogicalCollection& collection, std::string const& localLea
       // This will block the thread until we fetched a new current version
       // in maintenance main thread.
       feature.waitForLargerCurrentCounter(oldCounter);
+      using namespace std::chrono_literals;
+      std::this_thread::sleep_for(10s);
       auto currentInfo = ClusterInfo::instance()->getCollectionCurrent(
           databaseName, std::to_string(collection.planId()));
-      // TODO Is this guaranteed? Or can we have a stale current version where
-      // this collection has been dropped?
+
       TRI_ASSERT(currentInfo != nullptr);
       auto failoverCandidates = currentInfo->failoverCandidates(collection.name());
       followers->insertFollowersBeforeFailover(failoverCandidates);
