@@ -1,7 +1,9 @@
 v3.5.0-rc.5 (2019-XX-XX)
 ------------------------
+ 
+* Prevent rare cases of duplicate DDL actions being executed by Maintenance.
 
-* coordinator code was reporting rocksdb error codes, but not the associated detail message.
+* Coordinator code was reporting rocksdb error codes, but not the associated detail message.
   Corrected.
 
 * The keep alive timeout specified via --http.keep-alive-timeout is now being honored
