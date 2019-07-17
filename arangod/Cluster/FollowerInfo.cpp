@@ -100,10 +100,6 @@ Result FollowerInfo::add(ServerID const& sid) {
         auto nextCandidates = std::make_shared<std::vector<ServerID>>(*_failoverCandidates);
         nextCandidates->push_back(sid);  // add a single entry
         _failoverCandidates = nextCandidates;  // will cast to std::vector<ServerID> const
-      } else {
-        // else: ignore if we already found
-        // This could only be the case where we need to get back insync
-        TRI_ASSERT(!_canWrite);
       }
     }
 #ifdef DEBUG_SYNC_REPLICATION
