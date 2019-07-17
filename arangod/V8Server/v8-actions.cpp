@@ -380,12 +380,12 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
   req->Set(UrlKey, TRI_V8_STD_STRING(isolate, fullUrl));
 
   // set the protocol
-  char const* protocol = request->protocol();
   TRI_GET_GLOBAL_STRING(ProtocolKey);
-  req->Set(ProtocolKey, TRI_V8_ASCII_STRING(isolate, protocol));
-
-  // set the task id
-  std::string const taskId(StringUtils::itoa(request->clientTaskId()));
+  if (request->transportType() == Endpoint::TransportType::HTTP) {
+    req->Set(ProtocolKey, TRI_V8_ASCII_STRING(isolate, "http"));
+  } else if (request->transportType() == Endpoint::TransportType::VST) {
+    req->Set(ProtocolKey, TRI_V8_ASCII_STRING(isolate, "vst"));
+  }
 
   // set the connection info
   const ConnectionInfo& info = request->connectionInfo();
@@ -411,7 +411,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
   clientArray->Set(AddressKey, TRI_V8_STD_STRING(isolate, info.clientAddress));
   clientArray->Set(PortKey, v8::Number::New(isolate, info.clientPort));
   TRI_GET_GLOBAL_STRING(IdKey);
-  clientArray->Set(IdKey, TRI_V8_STD_STRING(isolate, taskId));
+  clientArray->Set(IdKey, TRI_V8_STD_STRING(isolate, std::string("0")));
   TRI_GET_GLOBAL_STRING(ClientKey);
   req->Set(ClientKey, clientArray);
 
@@ -434,13 +434,8 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
 
   auto setRequestBodyJsonOrVPack = [&]() {
     if (rest::ContentType::JSON == request->contentType()) {
-      auto httpreq = dynamic_cast<HttpRequest*>(request);
-      if (httpreq == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "invalid request type");
-      }
-      std::string const& body = httpreq->body();
-      req->Set(RequestBodyKey, TRI_V8_STD_STRING(isolate, body));
+      VPackStringRef body = request->rawPayload();
+      req->Set(RequestBodyKey, TRI_V8_PAIR_STRING(isolate, body.data(), body.size()));
       headers[StaticStrings::ContentLength] =
           StringUtils::itoa(request->contentLength());
     } else if (rest::ContentType::VPACK == request->contentType()) {
@@ -1148,14 +1143,15 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
         case Endpoint::TransportType::HTTP: {
           auto httpRequest = static_cast<arangodb::HttpRequest*>(e->Value());
           if (httpRequest != nullptr) {
-            std::string bodyStr;
+            V8Buffer* buffer;
             if (rest::ContentType::VPACK == request->contentType()) {
               VPackSlice slice = request->payload();
-              bodyStr = slice.toJson();
+              std::string bodyStr = slice.toJson();
+              buffer = V8Buffer::New(isolate, bodyStr.c_str(), bodyStr.size());
             } else {
-              bodyStr = httpRequest->body();
+              auto raw = httpRequest->rawPayload();
+              buffer = V8Buffer::New(isolate, raw.data(), raw.size());
             }
-            V8Buffer* buffer = V8Buffer::New(isolate, bodyStr.c_str(), bodyStr.size());
 
             TRI_V8_RETURN(buffer->_handle);
           }
@@ -1207,8 +1203,8 @@ static void JS_RequestParts(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::External> e = v8::Handle<v8::External>::Cast(property);
       auto request = static_cast<arangodb::HttpRequest*>(e->Value());
 
-      std::string const& bodyStr = request->body();
-      char const* beg = bodyStr.c_str();
+      VPackStringRef bodyStr = request->rawPayload();
+      char const* beg = bodyStr.data();
       char const* end = beg + bodyStr.size();
 
       while (beg < end && (*beg == '\r' || *beg == '\n' || *beg == ' ')) {

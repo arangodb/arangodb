@@ -52,7 +52,7 @@ class RestBaseHandler : public rest::RestHandler {
 
   // generates a result from VelocyPack
   template <typename Payload>
-  void generateResult(rest::ResponseCode, Payload&&, VPackOptions const*);
+  void generateResult(rest::ResponseCode, Payload&&, velocypack::Options const*);
 
   // generates a result from VelocyPack
   template <typename Payload>
