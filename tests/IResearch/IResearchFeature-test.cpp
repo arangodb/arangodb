@@ -57,6 +57,7 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -420,6 +421,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     arangodb::DatabaseFeature* database;
     arangodb::iresearch::IResearchFeature feature(server);
     arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
+    server.addFeature(new arangodb::FlushFeature(server)); // required for constructing TRI_vocbase_t
     server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
     TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
     server.addFeature(new arangodb::AuthenticationFeature(server)); // required for ClusterComm::instance()

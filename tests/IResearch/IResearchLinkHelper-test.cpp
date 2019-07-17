@@ -42,6 +42,7 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -79,6 +80,7 @@ class IResearchLinkHelperTest : public ::testing::Test {
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
                                     arangodb::LogLevel::FATAL);
 
+    features.emplace_back(new arangodb::FlushFeature(server), false);
     features.emplace_back(new arangodb::AqlFeature(server),
                           true);  // required for UserManager::loadFromDB()
     features.emplace_back(new arangodb::AuthenticationFeature(server), false);  // required for authentication tests
