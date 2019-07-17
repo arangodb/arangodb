@@ -462,7 +462,7 @@ void RestCollectionHandler::handleCommandPut() {
           // replication checks
           if (body.get(StaticStrings::ReplicationFactor).isNumber() &&
               body.get(StaticStrings::ReplicationFactor).getInt() > 0) {
-            u_int64_t replicationFactor =
+            uint64_t replicationFactor =
                 body.get(StaticStrings::ReplicationFactor).getUInt();
             if (ServerState::instance()->isRunningInCluster() &&
                 replicationFactor >
@@ -474,7 +474,7 @@ void RestCollectionHandler::handleCommandPut() {
           // min replication checks
           if (body.get(StaticStrings::MinReplicationFactor).isNumber() &&
               body.get(StaticStrings::MinReplicationFactor).getInt() > 0) {
-            u_int64_t minReplicationFactor =
+            uint64_t minReplicationFactor =
                 body.get(StaticStrings::MinReplicationFactor).getUInt();
             if (ServerState::instance()->isRunningInCluster() &&
                 minReplicationFactor >
