@@ -28,6 +28,8 @@
 #include "Agency/TimeString.h"
 #include "Basics/Mutex.h"
 
+#include <map>
+
 namespace arangodb {
 
 class HotBackupFeature : virtual public application_features::ApplicationFeature {

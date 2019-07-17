@@ -154,7 +154,7 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
       res.status = VersionResult::UPGRADE_NEEDED;
       break;
     default:
-      LOG_TOPIC("b0d3c", ERR, Logger::STARTUP) << "should not happen: last version " << lastVersion
+      LOG_TOPIC("b0d3c", ERR, Logger::STARTUP) << "should not happen: last version " << lastVersion;
 
   }
 

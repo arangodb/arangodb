@@ -74,10 +74,10 @@ class Manager final {
   std::unordered_set<TRI_voc_tid_t> getFailedTransactions() const;
 
   // register a transaction
-  void registerTransaction(TRI_voc_tid_t, std::unique_ptr<TransactionData> data);
+  void registerTransaction(TRI_voc_tid_t, std::unique_ptr<TransactionData> data, bool isReadOnlyTransaction);
 
   // unregister a transaction
-  void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed);
+  void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed, bool isReadOnlyTransaction);
 
   // iterate all the active transactions
   void iterateActiveTransactions(TrxCallback const&);

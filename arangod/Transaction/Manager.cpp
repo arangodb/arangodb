@@ -75,7 +75,8 @@ void Manager::unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> con
 }
 
 void Manager::registerTransaction(TRI_voc_tid_t transactionId,
-                                  std::unique_ptr<TransactionData> data) {
+                                  std::unique_ptr<TransactionData> data,
+                                  bool isReadOnlyTransaction) {
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
 
   if (_keepTransactionData) {
@@ -95,7 +96,7 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
 }
 
 // unregisters a transaction
-void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed) {
+void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed, bool isReadOnlyTransaction) {
   uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
   TRI_ASSERT(r > 0);
 

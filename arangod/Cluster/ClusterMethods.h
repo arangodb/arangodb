@@ -36,6 +36,8 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <map>
+
 namespace arangodb {
 namespace velocypack {
 template <typename T>

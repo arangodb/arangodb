@@ -28,7 +28,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
@@ -56,9 +55,9 @@
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Collection.h>
-#include <velocypack/Helpers.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include "velocypack/StringRef.h"
 #include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
@@ -3132,9 +3131,8 @@ arangodb::Result hotBackupList(
   }
 
   // Perform the requests
-  size_t done = 0;
   cc->performRequests(
-    requests, CL_DEFAULT_TIMEOUT, done, Logger::BACKUP, false);
+    requests, CL_DEFAULT_TIMEOUT, Logger::BACKUP, false, false);
 
   LOG_TOPIC("410a1", DEBUG, Logger::BACKUP) << "Getting list of local backups";
 
@@ -3330,9 +3328,8 @@ arangodb::Result controlMaintenanceFeature(
     << backupId << " using " << *body;
 
   // Perform the requests
-  size_t done = 0;
   cc->performRequests(
-    requests, CL_DEFAULT_TIMEOUT, done, Logger::BACKUP, false);
+    requests, CL_DEFAULT_TIMEOUT, Logger::BACKUP, false, false);
 
   // Now listen to the results:
   for (auto const& req : requests) {
@@ -3398,9 +3395,8 @@ arangodb::Result restoreOnDBServers(
   }
 
   // Perform the requests
-  size_t nrDone = 0;
   cc->performRequests(
-    requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::BACKUP, false);
+    requests, CL_DEFAULT_TIMEOUT, Logger::BACKUP, false, false);
 
   LOG_TOPIC("37960", DEBUG, Logger::BACKUP) << "Restoring backup " << backupId;
 
@@ -3681,9 +3677,8 @@ arangodb::Result lockDBServerTransactions(
   }
 
   // Perform the requests
-  size_t nrDone = 0;
   cc->performRequests(
-    requests, lockWait+1.0, nrDone, Logger::BACKUP, false);
+    requests, lockWait+1.0, Logger::BACKUP, false, false);
 
   // Now listen to the results:
   for (auto const& req : requests) {
@@ -3783,9 +3778,8 @@ arangodb::Result unlockDBServerTransactions(
   }
 
   // Perform the requests
-  size_t nrDone = 0;
   cc->performRequests(
-    requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::BACKUP, false);
+    requests, CL_DEFAULT_TIMEOUT, Logger::BACKUP, false, false);
 
   LOG_TOPIC("2ba8f", DEBUG, Logger::BACKUP) << "best try to kill all locks on db servers";
 
@@ -3822,9 +3816,8 @@ arangodb::Result hotBackupDBServers(
   }
 
   // Perform the requests
-  size_t nrDone = 0;
   cc->performRequests(
-    requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::BACKUP, false);
+    requests, CL_DEFAULT_TIMEOUT, Logger::BACKUP, false, false);
 
   LOG_TOPIC("478ef", DEBUG, Logger::BACKUP) << "Inquiring about backup " << backupId;
 
@@ -3895,9 +3888,8 @@ arangodb::Result removeLocalBackups(
   }
 
   // Perform the requests
-  size_t done = 0;
   cc->performRequests(
-    requests, CL_DEFAULT_TIMEOUT, done, Logger::BACKUP, false);
+    requests, CL_DEFAULT_TIMEOUT, Logger::BACKUP, false, false);
 
   LOG_TOPIC("33e85", DEBUG, Logger::BACKUP) << "Deleting backup " << backupId;
 
@@ -4103,7 +4095,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     }
 
     try {
-      if (agency->slice()[0].get(versionPath) != agencyCheck->slice()[0].get(versionPath)) {
+      if (!basics::VelocyPackHelper::equal(agency->slice()[0].get(versionPath), agencyCheck->slice()[0].get(versionPath), false)) {
         result.reset(
           TRI_ERROR_HOT_BACKUP_INTERNAL,
           "data definition of cluster was changed during hot backup: backup's consistency is not guaranteed");

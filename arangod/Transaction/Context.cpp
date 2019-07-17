@@ -88,7 +88,7 @@ transaction::Context::Context(TRI_vocbase_t& vocbase)
 transaction::Context::~Context() {
   // unregister the transaction from the logfile manager
   if (_transaction.id > 0) {
-    TransactionManagerFeature::manager()->unregisterTransaction(_transaction.id,
+    transaction::ManagerFeature::manager()->unregisterTransaction(_transaction.id,
                                                                 _transaction.hasFailedOperations,
                                                                 _transaction.isReadOnlyTransaction);
   }
