@@ -26,7 +26,7 @@
 #include <mutex>
 #include <thread>
 
-#include "RocksDBEngine/RocksDBTransactionManager.h"
+#include "Transaction/Manager.h"
 
 using namespace arangodb;
 
@@ -38,7 +38,7 @@ using namespace arangodb;
 
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_non_overlapping) {
-  RocksDBTransactionManager tm;
+  transaction::Manager tm;
 
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
   EXPECT_TRUE(tm.holdTransactions(500) );
@@ -55,7 +55,7 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
 
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_overlapping) {
-  RocksDBTransactionManager tm;
+  transaction::Manager tm;
 
   std::chrono::milliseconds five(5);
   std::mutex mu;

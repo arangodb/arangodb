@@ -75,12 +75,6 @@ protected:
   }
 };
 
-TEST_CASE("RocksDBHotBackup path tests", "[rocksdb][devel][hotbackup]") {
-
-  VPackSlice config;
-  VPackBuilder report;
-
-  RocksDBHotBackupTest testee(config, report);
 
 TEST_F(RocksDBHotBackupPathTests, test_override) {
   EXPECT_EQ(testee.getPersistedId().compare("SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe"), 0);
@@ -114,9 +108,7 @@ TEST_F(RocksDBHotBackupPathTests, test_getRocksDBPath) {
 // -----------------------------------------------------------------------------
 
 /// @brief test RocksDBHotBackup create operation parameters
-TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel][hotbackup]") {
-
-TEST(RocksDBHotBackupOperationParameters, "test_defaults") {
+TEST(RocksDBHotBackupOperationParameters, test_defaults) {
   const VPackSlice slice;
   VPackBuilder report;
   RocksDBHotBackupCreate testee(slice, report, true);
@@ -127,7 +119,7 @@ TEST(RocksDBHotBackupOperationParameters, "test_defaults") {
   EXPECT_EQ(testee.getUserString() == "");
 }
 
-TEST(RocksDBHotBackupOperationParameters, "test_simple") {
+TEST(RocksDBHotBackupOperationParameters, test_simple) {
   VPackBuilder opBuilder;
   { VPackObjectBuilder a(&opBuilder);
     opBuilder.add("timeout", VPackValue(12345));
@@ -146,7 +138,7 @@ TEST(RocksDBHotBackupOperationParameters, "test_simple") {
   EXPECT_EQ(testee.getUserString(), "first day");
 }
 
-TEST(RocksDBHotBackupOperationParameters, "test_timestamp_exception") {
+TEST(RocksDBHotBackupOperationParameters, test_timestamp_exception) {
   VPackBuilder opBuilder;
   { VPackObjectBuilder a(&opBuilder);
     opBuilder.add("timeout", VPackValue("12345"));
