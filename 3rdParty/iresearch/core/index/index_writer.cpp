@@ -705,10 +705,12 @@ index_writer::documents_context::document::~document() NOEXCEPT {
 index_writer::documents_context::~documents_context() NOEXCEPT {
   assert(segment_.ctx().use_count() == segment_use_count_); // failure may indicate a dangling 'document' instance
 
-  auto& writer = *segment_.ctx()->writer_;
+  if (segment_.ctx()) {
+    auto& writer = *segment_.ctx()->writer_;
 
-  if (writer.tick() < tick_) {
-    writer.tick(tick_);
+    if (writer.tick() < tick_) {
+      writer.tick(tick_);
+    }
   }
 
   try {
