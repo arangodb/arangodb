@@ -526,7 +526,8 @@ function iResearchFeatureAqlTestSuite () {
           );
           fail();
         } catch(err) {
-            assertTrue(TypeError ===  err.constructor );
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
         }
       }
       //invalid second parameter type
@@ -539,7 +540,8 @@ function iResearchFeatureAqlTestSuite () {
           );
           fail();
         } catch(err) {
-            assertTrue(TypeError ===  err.constructor );
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
         }
       }
 

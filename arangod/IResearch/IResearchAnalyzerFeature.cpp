@@ -387,7 +387,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
         "invalid analyzer name argument type while computing result for function 'TOKENS',"
         " string expected";
     LOG_TOPIC("d0b60", WARN, arangodb::iresearch::TOPIC) << message;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, message);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
   }
 
   // identity now is default analyzer
@@ -472,14 +472,14 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   arangodb::velocypack::Builder builder(*buffer);
   builder.openArray();
 
-  std::deque<arangodb::velocypack::ArrayIterator> iteratorStack;
+  std::deque<arangodb::velocypack::ArrayIterator> arrayIteratorStack;
   auto current = args[0].slice();
   do {
     // stack opening non-empty arrays
     while (current.isArray() && !current.isEmptyArray()) {
-      iteratorStack.emplace_back(current);
+      arrayIteratorStack.emplace_back(current);
       builder.openArray();
-      current = iteratorStack.back().value();
+      current = arrayIteratorStack.back().value();
     }
     // process current item
     if (current.isString()) {
@@ -524,23 +524,24 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
       auto const message = "unexpected parameter type '"s + current.typeName() +
                            "' while computing result for function 'TOKENS'";
       LOG_TOPIC("45a2e", WARN, arangodb::iresearch::TOPIC) << message;
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, message);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
     }
     // de-stack all closing arrays
-    while (!iteratorStack.empty()) {
-      if (!iteratorStack.back().isLast()) {
-        iteratorStack.back().next();
-        current = iteratorStack.back().value();
+    while (!arrayIteratorStack.empty()) {
+      auto& currentArrayIterator = arrayIteratorStack.back();
+      if (!currentArrayIterator.isLast()) {
+        currentArrayIterator.next();
+        current = currentArrayIterator.value();
         //next array for next item
         builder.close();
         builder.openArray();
         break;
       } else {
-        iteratorStack.pop_back();
+        arrayIteratorStack.pop_back();
         builder.close();
       }
     }
-  } while (!iteratorStack.empty());
+  } while (!arrayIteratorStack.empty());
 
   builder.close();
 
