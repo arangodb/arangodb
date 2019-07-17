@@ -1277,6 +1277,23 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
         } else if (p->getType() == EN::COLLECT) {
           auto collectNode = ExecutionNode::castTo<CollectNode const*>(p);
           if (collectNode->hasOutVariable()) {
+
+            // We have the following shituation:
+            //
+            // COLLECT foo = doc._id INTO a
+            // COLLECT bar = doc._id INTO b
+            //
+            // now in a following return there is a bad
+            // and a good case
+            //
+            // RETURN b[0]               <-bad
+            // RETURN b[0].not_a.foo.bar <-good
+            //
+            // In the good case we might manage to
+            // show that `b.a` is not required any
+            // following calculation / return or
+            // other node.
+
             stop = true;
           }
         }
