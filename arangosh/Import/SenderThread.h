@@ -55,7 +55,8 @@ class SenderThread final : public arangodb::Thread {
   /// @brief imports a delimited file
   //////////////////////////////////////////////////////////////////////////////
 
-  void sendData(std::string const& url, basics::StringBuffer* sender);
+  void sendData(std::string const& url, basics::StringBuffer* sender,
+                int lowLine = 0, int highLine = 0);
 
   bool hasError();
   /// Ready to start sending
@@ -80,6 +81,8 @@ class SenderThread final : public arangodb::Thread {
   bool _hasError;
   bool _idle;
   bool _ready;
+  int _lowLineNumber;
+  int _highLineNumber;
 
   ImportStatistics* _stats;
   std::string _errorMessage;
