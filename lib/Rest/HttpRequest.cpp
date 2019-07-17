@@ -440,22 +440,23 @@ namespace {
   }
 }
 
-void HttpRequest::parseUrl(const char* url, size_t urlLen) {
-  _fullUrl.reserve(urlLen);
+void HttpRequest::parseUrl(const char* path, size_t length) {
+  std::string tmp;
+  tmp.reserve(length);
   // get rid of '//'
-  for (size_t i = 0; i < urlLen; ++i) {
-    _fullUrl.push_back(url[i]);
-    if (url[i] == '/') {
-      while (i + 1 < urlLen && url[i+1] == '/') {
+  for (size_t i = 0; i < length; ++i) {
+    tmp.push_back(path[i]);
+    if (path[i] == '/') {
+      while (i + 1 < length && path[i+1] == '/') {
         ++i;
       }
     }
   }
   
-  const char* start = _fullUrl.data();
-  const char* end = start + _fullUrl.size();
+  const char* start = tmp.data();
+  const char* end = start + tmp.size();
   // look for database name in URL
-  if (_fullUrl.size() >= 5) {
+  if (end - start >= 5) {
     char const* q = start;
     
     // check if the prefix is "_db"
@@ -474,10 +475,16 @@ void HttpRequest::parseUrl(const char* url, size_t urlLen) {
       
       TRI_ASSERT(q >= start);
       _databaseName = std::string(start, q - start);
+      _fullUrl.assign(q, end - q);
       
       start = q;
+    } else {
+      _fullUrl.assign(start, end - start); 
     }
+  } else {
+    _fullUrl.assign(start, end - start);
   }
+  TRI_ASSERT(!_fullUrl.empty());
   
   char const* q = start;
   while (q != end && *q != '?') {
