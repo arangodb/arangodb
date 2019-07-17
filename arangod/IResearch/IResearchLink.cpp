@@ -554,7 +554,12 @@ Result IResearchLink::commitUnsafe() {
     };
   }
 
-  auto& subscription = static_cast<IResearchFlushSubscription&>(*_flushSubscription);
+  auto subscription = std::static_pointer_cast<IResearchFlushSubscription>(_flushSubscription);
+
+  if (!subscription) {
+    // already released
+    return { };
+  }
 
   try {
     auto lastCommittedTick = engine->currentTick();
@@ -580,7 +585,7 @@ Result IResearchLink::commitUnsafe() {
         << "', run id '" << size_t(&runId) << "'";
 
       // no changes, can release the latest tick before commit
-      subscription.tick(lastCommittedTick);
+      subscription->tick(lastCommittedTick);
 
       return {};
     }
@@ -606,7 +611,7 @@ Result IResearchLink::commitUnsafe() {
       << "', run id '" << size_t(&runId) << "'";
 
     // update last committed tick
-    subscription.tick(lastCommittedTick);
+    subscription->tick(lastCommittedTick);
   } catch (basics::Exception const& e) {
     return {
       e.code(),
