@@ -1156,7 +1156,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
       }
 
       // recovery finished
-      link->_dataStore._inRecovery = false;
+      link->_dataStore._inRecovery = link->_engine->inRecovery();
 
       LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
         << "starting sync for arangosearch link '" << link->id() << "'";

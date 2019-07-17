@@ -229,6 +229,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     arangodb::iresearch::IResearchFeature feature(server);
     arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
     arangodb::DatabasePathFeature* dbPathFeature;
+    server.addFeature(new arangodb::FlushFeature(server)); // required to skip IResearchView validation
     server.addFeature(new arangodb::DatabaseFeature(server)); // required to skip IResearchView validation
     server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server)); // required for IResearchLink::initDataStore()
     server.addFeature(analyzerFeature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for restoring link analyzers
@@ -320,6 +321,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     arangodb::iresearch::IResearchFeature feature(server);
     arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
     arangodb::DatabasePathFeature* dbPathFeature;
+    server.addFeature(new arangodb::FlushFeature(server)); // required to skip IResearchView validation
     server.addFeature(new arangodb::DatabaseFeature(server)); // required to skip IResearchView validation
     server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server)); // required for IResearchLink::initDataStore()
     server.addFeature(analyzerFeature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for restoring link analyzers
@@ -540,6 +542,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     arangodb::iresearch::IResearchFeature feature(server);
     arangodb::DatabasePathFeature* dbPathFeature;
     arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
+    server.addFeature(new arangodb::FlushFeature(server)); // required to skip IResearchView validation
     server.addFeature(new arangodb::AuthenticationFeature(server)); // required for ClusterInfo::loadPlan()
     server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(server)); // required for SimpleHttpClient::doRequest()
     server.addFeature(new arangodb::DatabaseFeature(server)); // required to skip IResearchView validation
@@ -626,6 +629,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     arangodb::iresearch::IResearchFeature feature(server);
     arangodb::DatabasePathFeature* dbPathFeature;
     arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
+    server.addFeature(new arangodb::FlushFeature(server)); // required to skip IResearchView validation
     server.addFeature(new arangodb::AuthenticationFeature(server)); // required for ClusterInfo::loadPlan()
     server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(server)); // required for SimpleHttpClient::doRequest()
     server.addFeature(new arangodb::DatabaseFeature(server)); // required to skip IResearchView validation

@@ -153,6 +153,8 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
 
   {
     auto subscription = std::make_shared<TestFlushSubscripion>();
+    feature.registerFlushSubscription(subscription);
+
     auto const subscriptionTick = engine.currentTick();
     auto const currentTick = TRI_NewTickServer();
     ASSERT_EQ(currentTick, engine.currentTick());
@@ -164,7 +166,7 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
       TRI_voc_tick_t releasedTick = 42;
       feature.releaseUnusedTicks(removed, releasedTick);
       ASSERT_EQ(0, removed); // reference is being held
-      ASSERT_EQ(0, releasedTick); // min tick released
+      ASSERT_EQ(subscription->_tick, releasedTick); // min tick released
     }
 
     auto const newSubscriptionTick = currentTick;
@@ -178,7 +180,7 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
       TRI_voc_tick_t releasedTick = 42;
       feature.releaseUnusedTicks(removed, releasedTick);
       ASSERT_EQ(0, removed); // reference is being held
-      ASSERT_EQ(subscriptionTick, releasedTick); // min tick released
+      ASSERT_EQ(subscription->_tick, releasedTick); // min tick released
     }
   }
 

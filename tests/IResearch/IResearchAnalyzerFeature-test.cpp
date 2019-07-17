@@ -2189,7 +2189,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     }
 
     auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
     auto restore = irs::make_finally(
         [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
 
