@@ -38,7 +38,7 @@ using namespace arangodb;
 namespace arangodb {
 
 HotBackupFeature::HotBackupFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "HotBackup"), _backupEnabled(false) {
+    : ApplicationFeature(server, "HotBackup"), _backupEnabled(true) {
   setOptional(true);
   startsAfter("DatabasePhase");
   startsBefore("GeneralServer");
@@ -131,7 +131,7 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
   std::string const& remote) {
 
   // if such transfer with id is found, add status to it.
-  // else create a new transfer record 
+  // else create a new transfer record
 
   arangodb::Result res;
   MUTEX_LOCKER(guard, _clipBoardMutex);
@@ -237,7 +237,7 @@ arangodb::Result HotBackupFeature::getTransferRecord(
   // Get transfer record.
   // Report last entry in _clipboard/progress or next to last in archive
   // If transfer is still in _clipboard, it is still ongoing. We can report last status or progress.
-  // Else we need to find the next to last message if failed 
+  // Else we need to find the next to last message if failed
 
   MUTEX_LOCKER(guard, _clipBoardMutex);
 
@@ -283,11 +283,11 @@ arangodb::Result HotBackupFeature::getTransferRecord(
   return arangodb::Result();
 }
 
-// cancel a transfer 
+// cancel a transfer
 arangodb::Result HotBackupFeature::cancel(std::string const& transferId) {
 
   // If not alredy otherwise done, cancel the job by adding last entry
-  
+
   MUTEX_LOCKER(guard, _clipBoardMutex);
   auto t = _clipBoard.find(transferId);
 

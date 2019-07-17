@@ -799,7 +799,6 @@ transaction::Methods::~Methods() {
                                                    _state->hasFailedOperations(),
                                                    _state->wasRegistered(),
                                                    _state->isReadOnlyTransaction());
-    _transactionContextPtr->unregisterTransaction();
 
     delete _state;
     _state = nullptr;
