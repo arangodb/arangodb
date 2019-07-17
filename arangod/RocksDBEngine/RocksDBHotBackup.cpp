@@ -33,15 +33,15 @@
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/TransactionManagerFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEventListener.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/HotBackupCommon.h"
-#include "StorageEngine/TransactionManager.h"
 #include "Rest/Version.h"
 
 #if USE_ENTERPRISE
@@ -562,7 +562,7 @@ std::string RocksDBHotBackup::getRocksDBPath() {
 
 bool RocksDBHotBackup::holdRocksDBTransactions() {
 
-  return TransactionManagerFeature::manager()->holdTransactions(_timeoutSeconds * 1000000);
+  return transaction::ManagerFeature::manager()->holdTransactions(_timeoutSeconds * 1000000);
 
 } // RocksDBHotBackup::holdRocksDBTransactions()
 
@@ -570,15 +570,15 @@ bool RocksDBHotBackup::holdRocksDBTransactions() {
 /// WARNING:  this wrapper is NOT used in LockCleaner class
 void RocksDBHotBackup::releaseRocksDBTransactions() {
 
-  TransactionManagerFeature::manager()->releaseTransactions();
+  transaction::ManagerFeature::manager()->releaseTransactions();
 
 } // RocksDBHotBackup::releaseRocksDBTransactions()
 
 
 void RocksDBHotBackup::startGlobalShutdown() {
 
-  rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestPriority::LOW, [](bool) {
+  arangodb::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  scheduler->queue(RequestLane::INTERNAL_LOW, []() {
       std::this_thread::sleep_for(std::chrono::seconds(1));
       LOG_TOPIC("59a7d", INFO, arangodb::Logger::ENGINES)
         << "RocksDBHotBackupRestore:  restarting server with restored data";
@@ -1201,13 +1201,10 @@ struct LockCleaner {
   LockCleaner(uint64_t lockSerialNumber, unsigned timeoutSeconds)
     : _lockSerialNumber(lockSerialNumber)
   {
-    _timer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
-    _timer->expires_after(std::chrono::seconds(timeoutSeconds));
-//    std::function<void(const asio_ns::error_code&)> func(this);
-    _timer->async_wait(*this);
+    SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, std::chrono::seconds(timeoutSeconds), *this);
   };
 
-  void operator()(const asio_ns::error_code& ec) {
+  void operator()(bool cancelled) {
     MUTEX_LOCKER (mLock, serialNumberMutex);
     // only unlock if creation of this object instance was due to
     //  the taking of current transaction lock
@@ -1216,7 +1213,7 @@ struct LockCleaner {
         << "RocksDBHotBackup LockCleaner removing lost transaction lock.";
       // would prefer virtual releaseRocksDBTransactions() ... but would
       //   require copy of RocksDBHotBackupLock object used from RestHandler or unit test.
-      TransactionManagerFeature::manager()->releaseTransactions();
+      transaction::ManagerFeature::manager()->releaseTransactions();
       lockingSerialNumber = 0;
     } // if
   } // operator()

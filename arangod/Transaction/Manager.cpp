@@ -189,23 +189,29 @@ void Manager::registerAQLTrx(TransactionState* state) {
   if (_disallowInserts.load(std::memory_order_acquire)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
-  
+
   TRI_ASSERT(state != nullptr);
   const size_t bucket = getBucket(state->id());
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+  {
+    READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
-  auto& buck = _transactions[bucket];
-  auto it = buck._managed.find(state->id());
-  if (it != buck._managed.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
-                                   "transaction ID already used");
+    auto& buck = _transactions[bucket];
+    auto it = buck._managed.find(state->id());
+    if (it != buck._managed.end()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
+                                     "transaction ID already used");
+    }
+
+    buck._managed.emplace(std::piecewise_construct,
+                          std::forward_as_tuple(state->id()),
+                          std::forward_as_tuple(MetaType::StandaloneAQL, state,
+                                                (defaultTTL + TRI_microtime())));
   }
 
-  buck._managed.emplace(std::piecewise_construct,
-                        std::forward_as_tuple(state->id()),
-                        std::forward_as_tuple(MetaType::StandaloneAQL, state,
-                                              (defaultTTL + TRI_microtime())));
+  if (!state->isReadOnlyTransaction()) {
+    _rwLock.readLock();
+  }
 }
 
 void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
@@ -228,6 +234,11 @@ void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
     TRI_ASSERT(false);
     return;
   }
+
+  if (!it->second.state->isReadOnlyTransaction()) {
+    _rwLock.unlockRead();
+  }
+
   buck._managed.erase(it); // unlocking not necessary
 }
 
@@ -293,6 +304,8 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
 
+  bool isReadOnlyTransaction = writeCollections.empty() && exclusiveCollections.empty();
+
   const size_t bucket = getBucket(tid);
 
   { // quick check whether ID exists
@@ -352,6 +365,10 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     return res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
+  if (!isReadOnlyTransaction) {
+    _rwLock.readLock();
+  }
+
   // start the transaction
   transaction::Hints hints;
   hints.set(transaction::Hints::Hint::LOCK_ENTIRELY);
@@ -389,7 +406,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return nullptr;
   }
-  
+
   const size_t bucket = getBucket(tid);
   int i = 0;
   TransactionState* state = nullptr;
@@ -577,6 +594,13 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
   if (!state) { // this should never happen
     return res.reset(TRI_ERROR_INTERNAL, "managed trx in an invalid state");
   }
+
+  bool isReadOnlyTransaction = state->isReadOnlyTransaction();
+  auto readLockGuard = scopeGuard([&](){
+    if (isReadOnlyTransaction) {
+      _rwLock.unlockRead();
+    }
+  });
 
   auto abortTombstone = [&] {  // set tombstone entry to aborted
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
