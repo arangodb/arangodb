@@ -712,7 +712,8 @@ Run all tests:
     scripts/unittest all
 
 `scripts/unittest` is only a wrapper for the most part, the backend
-functionality lives in `js/client/modules/@arangodb/testing.js`.
+functionality lives in `js/client/modules/@arangodb/` (`testing.js`, `process-utils.js`, `test-utils.js`).
+The actual testsuites are located in the `testsuites` subfolder.
 
 #### Passing Options
 
