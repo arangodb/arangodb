@@ -100,7 +100,18 @@ const rawAppender = function(text) {
 };
 
 const plainAppender = function(text) {
-  output += text;
+  // do we have a line that could be json? try to parse & format it.
+  if (text.match(/^{.*}$/) || text.match(/^[.*]$/)) {
+    try {
+      let parsed = JSON.parse(text);
+      output += highlight("js", internal.inspect(parsed)) + "&#x21A9;\n" ;
+    } catch (x) {
+      // fallback to plain text.
+      output += text;
+    }
+  } else {
+    output += text;
+  }
 };
 
 const shellAppender = function(text) {

@@ -26,7 +26,13 @@ Connection:
 Content-Type: application/json; charset=utf-8
 Content-Length: 87
 
-{"code":404,"error":true,"errorMessage":"collection or view not found","errorNum":1203}
+{ 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">404</span>, 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"collection or view not found"</span>, 
+  <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1203</span> 
+}&#x21A9;
+
 --SomeBoundaryValue
 Content-Type: application/x-arango-batchpart
 
@@ -36,5 +42,11 @@ Connection:
 Content-Type: application/json; charset=utf-8
 Content-Length: 101
 
-{"error":true,"code":404,"errorNum":404,"errorMessage":"unknown path '_api/collection/notexisting2'"}
+{ 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">404</span>, 
+  <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">404</span>, 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"unknown path '_api/collection/notexisting2'"</span> 
+}&#x21A9;
+
 --SomeBoundaryValue--
