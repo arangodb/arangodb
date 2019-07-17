@@ -38,7 +38,7 @@ using namespace arangodb;
 
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_non_overlapping) {
-  transaction::Manager tm;
+  transaction::Manager tm(false);
 
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
   EXPECT_TRUE(tm.holdTransactions(500) );
@@ -55,7 +55,7 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
 
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_overlapping) {
-  transaction::Manager tm;
+  transaction::Manager tm(false);
 
   std::chrono::milliseconds five(5);
   std::mutex mu;

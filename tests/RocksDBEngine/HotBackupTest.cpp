@@ -69,7 +69,7 @@ class RocksDBHotBackupPathTests : public ::testing::Test {
 protected:
   VPackSlice config;
   VPackBuilder report;
-  RocksDBHotBackupTest testee(config, report);
+  RocksDBHotBackupTest testee;
 
   RocksDBHotBackupPathTests() : testee(config, report) {
   }
@@ -116,7 +116,7 @@ TEST(RocksDBHotBackupOperationParameters, test_defaults) {
   EXPECT_TRUE(testee.isCreate());
   EXPECT_EQ(testee.getTimestamp(), "");
   EXPECT_EQ(testee.getTimeout(), 10);
-  EXPECT_EQ(testee.getUserString() == "");
+  EXPECT_EQ(testee.getUserString(), "");
 }
 
 TEST(RocksDBHotBackupOperationParameters, test_simple) {

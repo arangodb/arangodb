@@ -85,7 +85,7 @@ struct CFilesSetup {
       fclose(fd);
     }
     else {
-      CHECK(false == true);
+      EXPECT_TRUE(false);
     }
 
     return filename;
@@ -105,7 +105,7 @@ struct CFilesSetup {
       fclose(fd);
     }
     else {
-      CHECK(false == true);
+      EXPECT_TRUE(false);
     }
 
     return filename;
