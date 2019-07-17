@@ -1050,7 +1050,7 @@ char* TRI_SlurpFile(char const* filename, size_t* length) {
 bool TRI_ProcessFile(char const* filename,
                      std::function<bool(char const* block, size_t size)> const& reader) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
-  int fd = TRI_TRACKED_OPEN_FILE(filename, O_RDONLY | TRI_O_CLOEXEC);
+  int fd = TRI_OPEN(filename, O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -1065,7 +1065,7 @@ bool TRI_ProcessFile(char const* filename,
     int res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_TRACKED_CLOSE_FILE(fd);
+      TRI_CLOSE(fd);
       TRI_AnnihilateStringBuffer(&result);
 
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -1079,7 +1079,7 @@ bool TRI_ProcessFile(char const* filename,
     }
 
     if (n < 0) {
-      TRI_TRACKED_CLOSE_FILE(fd);
+      TRI_CLOSE(fd);
 
       TRI_AnnihilateStringBuffer(&result);
 
@@ -1091,7 +1091,7 @@ bool TRI_ProcessFile(char const* filename,
   }
 
   TRI_DestroyStringBuffer(&result);
-  TRI_TRACKED_CLOSE_FILE(fd);
+  TRI_CLOSE(fd);
   return good;
 }
 

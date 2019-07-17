@@ -152,9 +152,9 @@ std::string RocksDBHotBackup::loadAgencyJson(std::string filename) {
 
 #ifdef USE_ENTERPRISE
   std::string encryptionKey = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->getEncryptionKey();
-  int fd = TRI_TRACKED_OPEN_FILE(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+  int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
   if (fd != -1) {
-    TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+    TRI_DEFER(TRI_CLOSE(fd));
 
     auto context = EncryptionFeature::beginDecryption(fd, encryptionKey);
     return EncryptionFeature::slurpData(*context.get());
