@@ -78,13 +78,13 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
   }
 
   size_t heapSizeLimit = h.heap_size_limit();
-  size_t usedHeadSize = h.used_heap_size();
-  size_t stillFree = heapSizeLimit - usedHeadSize;
+  size_t usedHeapSize = h.used_heap_size();
+  size_t stillFree = heapSizeLimit - usedHeapSize;
 
   if (stillFree <= LIMIT_ABS && freed <= minFreed) {
     LOG_TOPIC("95f66", WARN, arangodb::Logger::FIXME)
         << "reached heap-size limit, interrupting V8 execution ("
-        << "heap size limit " << heapSizeLimit << ", used " << usedHeadSize << ")";
+        << "heap size limit " << heapSizeLimit << ", used " << usedHeapSize << ")";
 
     isolate->TerminateExecution();
     V8PlatformFeature::setOutOfMemory(isolate);
