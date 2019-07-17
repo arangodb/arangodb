@@ -254,8 +254,16 @@
 
       // append body
       if (response.body !== undefined) {
-        syntaxAppender(response.body);
-        appender('\n');
+        let splitted = response.body.split(/\r\n|\r|\n/);
+        if (splitted.length > 0) {
+          splitted.forEach(function (line) {
+            syntaxAppender(line);
+            appender('\n');
+          });
+        } else {
+            syntaxAppender(response.body);
+          appender('\n');
+        }
       }
     };
   };
