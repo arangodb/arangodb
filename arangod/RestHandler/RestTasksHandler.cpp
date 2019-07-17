@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
-#include "Rest/HttpRequest.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"

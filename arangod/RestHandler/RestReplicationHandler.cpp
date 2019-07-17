@@ -645,18 +645,15 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 
   std::unique_ptr<ClusterCommResult> res;
   if (!useVst) {
-    HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
-    if (httpRequest == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid request type");
-    }
-
+    TRI_ASSERT(_request->transportType() == Endpoint::TransportType::HTTP);
+    
+    VPackStringRef body = _request->rawPayload();
     // Send a synchronous request to that shard using ClusterComm:
     res = cc->syncRequest(TRI_NewTickServer(), "server:" + DBserver,
                           _request->requestType(),
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               _request->requestPath() + params,
-                          httpRequest->body(), *headers, 300.0);
+                          body.toString(), *headers, 300.0);
   } else {
     // do we need to handle multiple payloads here - TODO
     // here we switch from vst to http?!
@@ -1330,14 +1327,13 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
   VPackBuilder builder(&options);
 
   allMarkers.clear();
-
-  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
-  if (httpRequest == nullptr) {
+  
+  if (_request->transportType() != Endpoint::TransportType::HTTP) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
 
-  std::string const& bodyStr = httpRequest->body();
-  char const* ptr = bodyStr.c_str();
+  VPackStringRef bodyStr = _request->rawPayload();
+  char const* ptr = bodyStr.data();
   char const* end = ptr + bodyStr.size();
 
   VPackValueLength currentPos = 0;

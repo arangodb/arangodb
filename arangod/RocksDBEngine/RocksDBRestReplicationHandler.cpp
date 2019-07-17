@@ -30,6 +30,7 @@
 #include "Logger/Logger.h"
 #include "Replication/Syncer.h"
 #include "Replication/utilities.h"
+#include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -43,6 +44,7 @@
 #include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
