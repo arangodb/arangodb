@@ -47,7 +47,6 @@
 #if USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackupEE.h"
 #include "Enterprise/Encryption/EncryptionFeature.h"
-#include "Basics/OpenFilesTracker.h"
 #endif
 
 #include <velocypack/Parser.h>
@@ -725,10 +724,10 @@ void RocksDBHotBackupCreate::executeCreate() {
 
 #ifdef USE_ENTERPRISE
         std::string encryptionKey = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->getEncryptionKey();
-        int fd = TRI_TRACKED_CREATE_FILE(agencyDumpFileName.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
+        int fd = TRI_CREATE(agencyDumpFileName.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
                                      S_IRUSR | S_IWUSR | S_IRGRP);
         if (fd != -1) {
-          TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+          TRI_DEFER(TRI_CLOSE(fd));
           auto context = EncryptionFeature::beginEncryption(fd, encryptionKey);
           _success = EncryptionFeature::writeData(*context.get(), json.c_str(), json.size());
         } else {
