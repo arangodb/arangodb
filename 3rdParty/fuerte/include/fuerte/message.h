@@ -166,7 +166,7 @@ class Message {
 class Request final : public Message {
  public:
   static constexpr std::chrono::milliseconds defaultTimeout =
-      std::chrono::milliseconds(30 * 1000);
+      std::chrono::milliseconds(300 * 1000);
 
   Request(RequestHeader&& messageHeader = RequestHeader())
       : header(std::move(messageHeader)), _timeout(defaultTimeout) {}
