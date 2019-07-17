@@ -54,18 +54,6 @@ using namespace std::literals;
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the suffix appened to the index_meta filename to generate the
-///        backup filename to be used for renaming
-////////////////////////////////////////////////////////////////////////////////
-const irs::string_ref IRESEARCH_BACKUP_SUFFIX(".backup");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the suffix appened to the index_meta filename to generate the
-///        corresponding checkpoint file
-////////////////////////////////////////////////////////////////////////////////
-const irs::string_ref IRESEARCH_CHECKPOINT_SUFFIX(".checkpoint");
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the storage format used with IResearch writers
 ////////////////////////////////////////////////////////////////////////////////
 const irs::string_ref IRESEARCH_STORE_FORMAT("1_1");
@@ -515,7 +503,7 @@ Result IResearchLink::cleanupUnsafe() {
     };
   }
 
-  LOG_TOPIC("7e828", TRACE, iresearch::TOPIC)
+  LOG_TOPIC("7e821", TRACE, iresearch::TOPIC)
     << "successfull cleanup of arangosearch link '" << id()
     << "', run id '" << size_t(&runId) << "'";
 
@@ -579,7 +567,7 @@ Result IResearchLink::commitUnsafe() {
     }
 
     if (_dataStore._reader == reader) {
-      LOG_TOPIC("7e328", TRACE, iresearch::TOPIC)
+      LOG_TOPIC("7e319", TRACE, iresearch::TOPIC)
         << "no changes registered for arangosearch link '" << id()
         << "' got last operation tick '" << lastCommittedTick
         << "', run id '" << size_t(&runId) << "'";
@@ -1044,17 +1032,23 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
     initCallback(*_dataStore._directory);
   }
 
-  if (arangodb::RecoveryState::IN_PROGRESS == _engine->recoveryState()) {
-    // index is being created during recovery:
-    // both MMFiles and RocksDB will fill out index based on
-    // actual data in linked collections, we can treat recovery as done
-    _createdInRecovery = true;
+  switch (_engine->recoveryState()) {
+    case RecoveryState::BEFORE: // link is being opened before recovery
+    case RecoveryState::DONE: { // link is being created after recovery
+      _dataStore._inRecovery = true; // will be adjusted in post-recovery callback
+      _recoveryTick = _engine->recoveryTick();
+      break;
+    }
 
-    _dataStore._inRecovery = false;
-    _recoveryTick = _engine->releasedTick();
-  } else {
-    _dataStore._inRecovery = true;
-    _recoveryTick = _engine->recoveryTick();
+    case RecoveryState::IN_PROGRESS: { // link is being created during recovery
+      // both MMFiles and RocksDB will fill out index based on
+      // actual data in linked collections, we can treat recovery as done
+      _createdInRecovery = true;
+
+      _dataStore._inRecovery = false;
+      _recoveryTick = _engine->releasedTick();
+      break;
+    }
   }
 
   if (pathExists) {
@@ -1158,6 +1152,16 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
           TRI_ERROR_INTERNAL,
           "failed to register flush subscription for arangosearch link '" + std::to_string(link->id()) + "'"
         };
+      }
+
+      if (link->_recoveryTick > link->_engine->recoveryTick()) {
+        LOG_TOPIC("5b59f", WARN, iresearch::TOPIC)
+          << "arangosearch link '" << link->id()
+          << "' is recovered at tick '" << link->_recoveryTick
+          << "' less than storage engine tick '" << link->_engine->recoveryTick()
+          << "', it seems WAL tail was lost link '" << link->id()
+          << "' is out of sync with the underlying collection '" << link->collection().name()
+          << "', consider to re-create the link in order to synchronize them.";
       }
 
       // recovery finished
