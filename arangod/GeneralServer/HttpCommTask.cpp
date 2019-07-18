@@ -50,8 +50,6 @@ namespace {
 using namespace arangodb;
 using namespace arangodb::rest;
 
-constexpr static size_t MaximalBodySize = 1024 * 1024 * 1024;  // 1024 MB
-
 rest::RequestType llhttpToRequestType(llhttp_t* p) {
   switch (p->method) {
     case HTTP_DELETE:
@@ -159,7 +157,7 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
                             rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return HPE_USER;
   }
-  if (p->content_length > MaximalBodySize) {
+  if (p->content_length > GeneralCommTask<T>::MaximalBodySize) {
     self->addSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
                             rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return HPE_USER;
@@ -278,7 +276,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     } else {
       LOG_TOPIC("395fe", DEBUG, Logger::REQUESTS)
           << "Error while reading from socket: '" << ec.message() << "'";
-      err = HPE_CLOSED_CONNECTION;
+      err = HPE_INVALID_EOF_STATE;
     }
   } else { // Inspect the received data
     
@@ -304,8 +302,13 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
   }
 
   if (err != HPE_OK && err != HPE_USER && err != HPE_PAUSED) {
-    LOG_TOPIC("595fe", TRACE, Logger::REQUESTS)
-    << "HTTP parse failure: '" << llhttp_get_error_reason(&_parser) << "'";
+    if (err == HPE_INVALID_EOF_STATE) {
+      LOG_TOPIC("595fd", TRACE, Logger::REQUESTS)
+      << "Connection closed by peer, with ptr " << this;
+    } else {
+      LOG_TOPIC("595fe", TRACE, Logger::REQUESTS)
+      << "HTTP parse failure: '" << llhttp_get_error_reason(&_parser) << "'";
+    }
     this->close();
   }
 

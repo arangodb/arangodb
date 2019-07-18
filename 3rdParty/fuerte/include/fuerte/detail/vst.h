@@ -118,19 +118,14 @@ void prepareForNetwork(VSTVersion vstVersion,
 
 namespace parser {
 
-// isChunkComplete returns the length of the chunk that starts at the given
-// begin
-// if the entire chunk is available.
-// Otherwise 0 is returned.
-std::size_t isChunkComplete(uint8_t const* const begin,
-                            std::size_t const length);
+/// @brief readChunkHeaderVST1_0 reads a chunk header in VST1.0 format.
+/// @return true if chunk is complete
+bool readChunkHeaderVST1_0(Chunk& chunk, uint8_t const*, std::size_t len);
 
-// readChunkHeaderVST1_0 reads a chunk header in VST1.0 format.
-Chunk readChunkHeaderVST1_0(uint8_t const*);
+/// @brief readChunkHeaderVST1_1 reads a chunk header in VST1.1 format.
+/// @return true if chunk is complete
+bool readChunkHeaderVST1_1(Chunk& chunk, uint8_t const*, std::size_t len);
 
-// readChunkHeaderVST1_1 reads a chunk header in VST1.1 format.
-Chunk readChunkHeaderVST1_1(uint8_t const*);
-  
 /// @brief verifies header input and checks correct length
 /// @return message type or MessageType::Undefined on an error
 MessageType validateAndExtractMessageType(uint8_t const* const vpStart,

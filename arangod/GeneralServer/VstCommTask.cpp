@@ -52,7 +52,7 @@ VstCommTask<T>::VstCommTask(GeneralServer& server,
                             ConnectionInfo info,
                             std::unique_ptr<AsioSocket<T>> so,
                             fuerte::vst::VSTVersion v)
-: GeneralCommTask<T>(server, "HttpCommTask", std::move(info), std::move(so)),
+: GeneralCommTask<T>(server, "VstCommTask", std::move(info), std::move(so)),
   _writing(false),
   _authorized(!this->_auth->isActive()),
   _authMethod(rest::AuthenticationMethod::NONE),
@@ -96,25 +96,19 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
   // TODO technically buffer_cast is deprecated
   
   size_t parsedBytes = 0;
-  while (vst::parser::isChunkComplete(cursor, available)) {
-    // Read chunk
-    vst::Chunk chunk;
-    switch (_vstVersion) {
-      case vst::VST1_1:
-        chunk = vst::parser::readChunkHeaderVST1_1(cursor);
-        break;
-      case vst::VST1_0:
-        chunk = vst::parser::readChunkHeaderVST1_0(cursor);
-        break;
-      default:
-        TRI_ASSERT(false);
-        this->close();
-        return false;
-    }
+  while (true) {
     
-    if (available < chunk.header.chunkLength()) { // prevent reading beyond buffer
-      LOG_TOPIC("5d7b4", DEBUG, arangodb::Logger::REQUESTS)
-        << "invalid chunk header";
+    vst::Chunk chunk;
+    if (_vstVersion == vst::VST1_1) {
+      if (!vst::parser::readChunkHeaderVST1_1(chunk, cursor, available)) {
+        break;
+      }
+    } else if (_vstVersion == vst::VST1_0) {
+      if (!vst::parser::readChunkHeaderVST1_0(chunk, cursor, available)) {
+        break;
+      }
+    } else { // actually should never happen
+      TRI_ASSERT(false);
       this->close();
       return false;
     }
@@ -140,11 +134,18 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
 // Process the given incoming chunk.
 template<SocketType T>
 bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
-    
+  
+  if (chunk.header.messageLength() > GeneralCommTask<T>::MaximalBodySize) {
+    LOG_TOPIC("695fe", INFO, Logger::REQUESTS)
+    << "vst-request body is too big: '" << chunk.header.messageLength() << "'";
+    return false; // close connection
+  }
+  
   if (chunk.header.isFirst()) {
     RequestStatistics* stat = this->acquireStatistics(chunk.header.messageID());
     RequestStatistics::SET_READ_START(stat, TRI_microtime());
     
+    // single chunk optimization
     if (chunk.header.numberOfChunks() == 1) {
       VPackBuffer<uint8_t> buffer; // TODO lease buffers ?
       buffer.append(reinterpret_cast<uint8_t const*>(chunk.body.data()),
@@ -186,12 +187,16 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
   auto len = buffer.byteSize();
   
   // first part of the buffer contains the response buffer
-  std::size_t headerLength;
-  MessageType mt = vst::parser::validateAndExtractMessageType(ptr, len, headerLength);
+  std::size_t headerLength = 0;
+  MessageType mt = MessageType::Undefined;
+  try {
+    mt = vst::parser::validateAndExtractMessageType(ptr, len, headerLength);
+  } catch(std::exception const& e) {
+    LOG_TOPIC("6479a", ERR, Logger::REQUESTS) << "invalid VST message: '" <<
+    e.what() << "'";
+  }
 
   RequestStatistics::SET_READ_END(this->statistics(messageId));
-  
-  VPackSlice header(buffer.data());
   
   //  if (Logger::logRequestParameters()) {
   //    LOG_TOPIC("5479a", DEBUG, Logger::REQUESTS)
@@ -208,9 +213,10 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
   
   // handle request types
   if (mt == MessageType::Authentication) {  // auth
-    handleAuthHeader(header, messageId);
+    handleAuthHeader(VPackSlice(buffer.data()), messageId);
   } else if (mt == MessageType::Request) {  // request
     
+    VPackSlice header(buffer.data());
     // the handler will take ownership of this pointer
     auto req = std::make_unique<VstRequest>(this->_connectionInfo,
                                             std::move(buffer),
@@ -233,8 +239,7 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
   } else {  // not supported on server
     LOG_TOPIC("b5073", ERR, Logger::REQUESTS)
     << "\"vst-request-header\",\"" << (void*)this << "/"
-    << messageId << "\"," << header.toJson() << "\""
-    << " is unsupported";
+    << messageId << "\"" << " is unsupported";
     addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
                       messageId, VPackBuffer<uint8_t>());
   }
