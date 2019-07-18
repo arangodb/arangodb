@@ -307,12 +307,14 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
 
 template<SocketType T>
 void VstCommTask<T>::doWrite() {
+  TRI_ASSERT(_writing.load() == true);
+  
   do { // loop instead of using recursion
     
     ResponseItem* tmp = nullptr;
     if (!_writeQueue.pop(tmp)) {
       // careful now, we need to consider that someone queues
-      // a new request item while we store
+      // a new request item
       _writing.store(false);
       if (_writeQueue.empty()) {
         return; // done, someone else can restart
