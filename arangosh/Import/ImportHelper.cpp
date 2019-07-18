@@ -815,7 +815,7 @@ void ImportHelper::sendCsvBuffer() {
   SenderThread* t = findIdleSender();
   if (t != nullptr) {
     uint64_t tmp_length = _outputBuffer.length();
-    t->sendData(url, &_outputBuffer);
+    t->sendData(url, &_outputBuffer, _rowOffset +1, _rowsRead);
     addPeriodByteCount(tmp_length + url.length());
   }
 
