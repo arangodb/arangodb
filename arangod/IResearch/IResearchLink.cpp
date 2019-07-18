@@ -1077,6 +1077,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
     }
   }
 
+  _lastCommittedTick = _dataStore._recoveryTick;
   _flushSubscription.reset(new IResearchFlushSubscription(_dataStore._recoveryTick));
 
   irs::index_writer::init_options options;
@@ -1192,7 +1193,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
       TRI_ASSERT(flushFeature);
       flushFeature->registerFlushSubscription(link->_flushSubscription);
 
-      // setup tasks for commit, consolidation, cleanup
+      // setup asynchronous tasks for commit, consolidation, cleanup
       link->setupMaintenance();
 
       return res;
@@ -1256,7 +1257,8 @@ void IResearchLink::setupMaintenance() {
 
       if (!res.ok()) {
         LOG_TOPIC("8377b", WARN, iresearch::TOPIC)
-          << "error while committing arangosearch link '" << id() << "': " << res.errorNumber() << " " <<  res.errorMessage();
+          << "error while committing arangosearch link '" << id() <<
+          "': " << res.errorNumber() << " " <<  res.errorMessage();
       } else if (state._cleanupIntervalStep // if enabled
                  && state._cleanupIntervalCount++ > state._cleanupIntervalStep) {
         state._cleanupIntervalCount = 0; // reset counter
@@ -1264,7 +1266,8 @@ void IResearchLink::setupMaintenance() {
 
         if (!res.ok()) {
           LOG_TOPIC("130de", WARN, iresearch::TOPIC)
-            << "error while cleaning up arangosearch link '" << id() << "': " << res.errorNumber() << " " <<  res.errorMessage();
+            << "error while cleaning up arangosearch link '" << id()
+            << "': " << res.errorNumber() << " " <<  res.errorMessage();
         }
       }
 
