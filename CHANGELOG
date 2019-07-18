@@ -1,5 +1,8 @@
 v3.5.0-rc.5 (2019-XX-XX)
 ------------------------
+
+* Fixed some races in cluster collection creation, which allowed collections with the
+  same name to be created in parallel under some rare conditions.
  
 * Prevent rare cases of duplicate DDL actions being executed by Maintenance.
 
