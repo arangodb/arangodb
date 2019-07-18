@@ -219,7 +219,7 @@ function ClusterCollectionSuite () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test create collection with replicationFactor && minReplicationFactor
-/// set to 2. Then increase both to 2 (update).
+/// set to 1. Then increase both to 2 (update).
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateValidMinReplicationFactorThenIncrease : function () {
