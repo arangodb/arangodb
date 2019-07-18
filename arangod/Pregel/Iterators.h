@@ -92,8 +92,6 @@ class RangeIterator {
   size_t _size;
   
  public:
-  typedef RangeIterator<T> iterator;
-  typedef const RangeIterator<T> const_iterator;
   
   RangeIterator(std::vector<std::unique_ptr<TypedBuffer<T>>>& bufs,
                 size_t beginBuffer, T* beginPtr,

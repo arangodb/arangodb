@@ -91,19 +91,22 @@ class Vertex {
   friend class GraphStore<V,E>;
   
   const char* _key; // uint64_t
-  Edge<E>* _edges; // uint64_t
+  Edge<E>* _edgesBegin; // uint64_t
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  Edge<E>* _edgesEnd; // uint64_t
+#endif
   size_t _edgeCount; // uint64_t
   
   uint16_t _keyLength; // uint16_t
   PregelShard _shard; // uint16_t
-  bool _active = true; // bool8_t
-
+  
   V _data; // variable byte size
   
+  bool _active = true; // uint8_t
 
  public:
   
-  Edge<E>* getEdges() const { return _edges; }
+  Edge<E>* getEdges() const { return _edgesBegin; }
   size_t getEdgeCount() const { return _edgeCount; }
   
   bool active() const { return _active; }
