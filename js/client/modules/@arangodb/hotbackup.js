@@ -67,7 +67,7 @@ exports.create = function (userString = undefined) {
 // / @brief restore a hot backup to the server
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.waitForRestart = (maxWait, originalUptime) => {
+const waitForRestart = (maxWait, originalUptime) => {
   if (maxWait === 0.0 || maxWait === undefined || maxWait === null || 
       isNaN(parseFloat(maxWait))) {
     return;
