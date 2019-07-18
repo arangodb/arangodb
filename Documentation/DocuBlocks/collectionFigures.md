@@ -83,7 +83,7 @@ used as a lower bound approximation of the disk usage.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_OUTPUT{collectionFigures}
+@EXAMPLE_ARANGOSH_OUTPUT{collectionFigures_mmfiles}
 ~ require("internal").wal.flush(true, true);
   db.demo.figures()
 @END_EXAMPLE_ARANGOSH_OUTPUT
