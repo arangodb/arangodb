@@ -472,7 +472,7 @@ creating the file `/etc/sysctl.d/corepattern.conf` (or add the following lines t
     # and know the PID plus the process name for later use.
     kernel.core_uses_pid = 1
     kernel.core_pattern =  /var/tmp/core-%e-%p-%t
-    
+
 to reload the above settings most systems support:
 
     sudo sysctl -p
@@ -485,19 +485,19 @@ The non permanent way of doing this in a running system is:
 
 (you may also inspect these files to validate the current settings)
 
-More modern systems facilitate [`systemd-coredump`](https://www.freedesktop.org/software/systemd/man/systemd-coredump.html) (via a similar named package) to control coredumps.
-On most systems it will put compressed coredumps to `/var/lib/systemd/coredump`. 
+More modern systems facilitate [`systemd-coredump`](https://www.freedesktop.org/software/systemd/man/systemd-coredump.html) (via a similar named package) to control core dumps.
+On most systems it will put compressed core dumps to `/var/lib/systemd/coredump`.
 
-In order to use automatic coredump analysis with the unittests you need to configure 
+In order to use automatic core dump analysis with the unittests you need to configure
 `/etc/systemd/coredump.conf` and set `Compress=no` - so instant analysis may take place.
 
 Please note that we can't support [Ubuntu Apport](https://wiki.ubuntu.com/Apport).
-Please use `apport-unpack` to send us the bare coredumps.
+Please use `apport-unpack` to send us the bare core dumps.
 
-In order to get coredumps from binaries changing their UID the system needs to
+In order to get core dumps from binaries changing their UID the system needs to
 be told that its allowed to write cores from them. Default ArangoDB
 installations will do exactly that, so the following is necessary to make the
-system produce coredumps from production ArangoDB instances:
+system produce core dumps from production ArangoDB instances:
 
 Edit `/etc/security/limits.conf` to contain:
 
@@ -525,18 +525,18 @@ Enable suid process dumping:
 
 Make the above change permanent:
 
-`echo "sys.fs.suid_dumpable = 1" >> /etc/sysctl.d/99-suid-coredump.conf` 
+`echo "sys.fs.suid_dumpable = 1" >> /etc/sysctl.d/99-suid-coredump.conf`
 
 **Please note that GDB 8 is required for ArangoDB 3.4 and later; GDB7 won't see threads**
 
-You can also generate coredumps from running processes without killing them by using gdb:
+You can also generate core dumps from running processes without killing them by using gdb:
 
-    # sleep 100000 & 
+    # sleep 100000 &
     [2] 6942
-    # gdb /bin/sleep 6942 
+    # gdb /bin/sleep 6942
     ...
     0x00007faaa7abd4e4 in __GI___nanosleep (requested_time=0x7ffd047c9940, remaining=0x0) at ../sysdeps/unix/sysv/linux/nanosleep.c:28
-    gdb> gcore 
+    gdb> gcore
     Saved corefile core.6942
     gdb> quit
     Detaching from program: /bin/sleep, process 6942
@@ -547,7 +547,7 @@ You can also generate coredumps from running processes without killing them by u
 
 We offer debug packages containing the debug symbols for your binaries. Please install them if you didn't compile yourselves.
 
-Given you saw in the log of the arangod with the PID `25216` that it died, you should then find 
+Given you saw in the log of the arangod with the PID `25216` that it died, you should then find
 `/var/tmp/core-V8 WorkerThread-25216-1490887259` with this information. We may now start GDB and inspect whats going on:
 
     gdb /usr/sbin/arangod /var/tmp/*25216*
@@ -565,13 +565,13 @@ For the average \*nix user windows debugging has some awkward methods.
 
 ##### Windows Core Dump Generation
 
-Coredumps can be created using the task manager; switch it to detail view, the
+Core dumps can be created using the task manager; switch it to detail view, the
 context menu offers to *create dump file*; the generated file ends in a
 directory that explorer hides from you - AppData - you have to type that in the
 location bar. This however only for running processes which is not as useful as
 having dumps of crashing processes.
 
-While it is a common feature to turn on coredumps with the system facilities on
+While it is a common feature to turn on core dumps with the system facilities on
 \*nix systems, it is not as easy in Windows. You need an external program from
 the *Sysinternals package*:
 [ProcDump](https://technet.microsoft.com/en-us/sysinternals/dd996900.aspx).
@@ -599,7 +599,7 @@ ArangoDB symbolserver like this:
 
 You then will be able to see stack traces in the debugger.
 
-You may also try to download the symbols manually using: 
+You may also try to download the symbols manually using:
 
     symchk.exe arangod.exe /s SRV*e:/symbol_cache/cache*https://download.arangodb.com/symsrv_arangodbXX/
 
@@ -609,7 +609,7 @@ It contains of a list of directories corresponding to the components of ArangoDB
 
   - arango - the basic arangodb library needed by all components
   - arango_v8 - the basic V8 wrappers needed by all components
-  - arangod - the server process 
+  - arangod - the server process
   - the client utilities:
     - arangob
     - arangobench
@@ -621,9 +621,9 @@ It contains of a list of directories corresponding to the components of ArangoDB
 
 In these directories you will find subdirectories with the hash corresponding
 to the id of the binaries. Their date should corrospond to the release date
-of their respective arango release. 
+of their respective arango release.
 
-This means i.e. for ArangoDB 3.1.11: 
+This means i.e. for ArangoDB 3.1.11:
 
  https://download.arangodb.com/symsrv_arangodb31/arangod.pdb/A8B899D2EDFC40E994C30C32FCE5FB346/arangod.pd_
 
@@ -709,11 +709,11 @@ Since several testing technologies are utilized, and different ArangoDB
 startup options may be required (even different compilation options may be
 required) the framework is split into testsuites.
 
-Get a list of the available testsuites and options by invoking: 
+Get a list of the available testsuites and options by invoking:
 
     ./scripts/unittest
 
-To locate the suite(s) associated with a specific test file use: 
+To locate the suite(s) associated with a specific test file use:
 
     ./scripts/unittest find --test tests/js/common/shell/shell-aqlfunctions.js
 
@@ -884,7 +884,7 @@ Don't want to miss a beat of your test? If you want to invoke tcpdump with sudo,
 that your current shell has sudo enabled. Try like this:
 
     sudo /bin/true; ./scripts/unittest http_server \
-      --sniff sudo --cleanup false 
+      --sniff sudo --cleanup false
 
 The pcap file will end up in your tests temporary directory.
 You may need to press an additional `ctrl+c` to force stop the sudo'ed tcpdump.
