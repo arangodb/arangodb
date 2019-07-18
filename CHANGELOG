@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed a performance regression of COLLECT WITH COUNT INTO.
+
 * arangoimport would not stop, much less report, communications errors.  Add CSV reporting
   of line numbers that are impacted during such errors
 
