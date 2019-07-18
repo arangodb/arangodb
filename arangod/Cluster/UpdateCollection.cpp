@@ -95,8 +95,6 @@ void handleLeadership(LogicalCollection& collection, std::string const& localLea
 
   if (plannedLeader.empty()) {   // Planned to lead
     if (!localLeader.empty()) {  // We were not leader, assume leadership
-      followers->setTheLeader(std::string());
-      followers->clear();
       // This will block the thread until we fetched a new current version
       // in maintenance main thread.
       feature.waitForLargerCurrentCounter(oldCounter);
@@ -108,7 +106,7 @@ void handleLeadership(LogicalCollection& collection, std::string const& localLea
       }
       TRI_ASSERT(currentInfo != nullptr);
       auto failoverCandidates = currentInfo->failoverCandidates(collection.name());
-      followers->insertFollowersBeforeFailover(failoverCandidates);
+      followers->takeOverLeadership(failoverCandidates);
       transaction::cluster::abortFollowerTransactionsOnShard(collection.id());
     } else {
       // If someone (the Supervision most likely) has thrown

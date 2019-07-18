@@ -101,11 +101,12 @@ class FollowerInfo {
   }
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief Inject information of a insync followers that we knew about
+  /// @brief Take over leadership for this shard.
+  ///        Also inject information of a insync followers that we knew about
   ///        before a failover to this server has happened
   ////////////////////////////////////////////////////////////////////////////////
 
-  void insertFollowersBeforeFailover(std::vector<std::string> const& previousInsyncFollowers);
+  void takeOverLeadership(std::vector<std::string> const& previousInsyncFollowers);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a follower to a shard, this is only done by the server side
@@ -143,6 +144,9 @@ class FollowerInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   void setTheLeader(std::string const& who) {
+    // Empty leader => we are now new leader.
+    // This needs to be handled with takeOverLeadership
+    TRI_ASSERT(!who.empty());
     WRITE_LOCKER(writeLocker, _dataLock);
     _theLeader = who;
     _theLeaderTouched = true;

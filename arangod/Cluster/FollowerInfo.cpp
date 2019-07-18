@@ -242,13 +242,24 @@ bool FollowerInfo::contains(ServerID const& sid) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Inject information of a insync followers that we knew about
+/// @brief Take over leadership for this shard.
+///        Also inject information of a insync followers that we knew about
 ///        before a failover to this server has happened
 ////////////////////////////////////////////////////////////////////////////////
-void FollowerInfo::insertFollowersBeforeFailover(std::vector<std::string> const& previousInsyncFollowers) {
+
+void FollowerInfo::takeOverLeadership(std::vector<std::string> const& previousInsyncFollowers) {
   // This function copies over the information taken from the last CURRENT into a local vector.
   // Where we remove the old leader and ourself from the list of followers
+  WRITE_LOCKER(canWriteLocker, _canWriteLock);
   WRITE_LOCKER(writeLocker, _dataLock);
+  // Reset local structures, if we take over leadership we do not know anything!
+  _followers = std::make_shared<std::vector<ServerID>>();
+  _failoverCandidates = std::make_shared<std::vector<ServerID>>();
+  // We disallow writes until the first write.
+  _canWrite = false;
+  // Take over leadership
+  _theLeader = "";
+  _theLeaderTouched = true;
   TRI_ASSERT(_failoverCandidates != nullptr && _failoverCandidates->empty());
   if (previousInsyncFollowers.size() > 1) {
     auto ourselves = arangodb::ServerState::instance()->getId();
