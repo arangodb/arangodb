@@ -685,6 +685,7 @@ void RocksDBHotBackupCreate::executeCreate() {
       auto guardHold = scopeGuard([&gotLock,this]()
                                   { if (gotLock && _isSingle) releaseRocksDBTransactions(); });
 
+      MUTEX_LOCKER (mLock, serialNumberMutex);
       gotLock = (_isSingle ? holdRocksDBTransactions() : 0 != lockingSerialNumber);
 
       if (gotLock || _forceBackup) {
@@ -1217,7 +1218,6 @@ struct LockCleaner {
     } // if
   } // operator()
 
-  std::shared_ptr<asio_ns::steady_timer> _timer;
   uint64_t _lockSerialNumber;
 };
 
