@@ -2929,7 +2929,9 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
 
       // the default behavior however is to bail out and inform the user
       // that the requested replicationFactor is not possible right now
-      if (dbServers.size() < replicationFactor || dbServers.size() < minReplicationFactor) {
+      if (dbServers.size() < replicationFactor) {
+        TRI_ASSERT(minReplicationFactor <= replicationFactor);
+        // => (dbServers.size() < minReplicationFactor) is granted
         LOG_TOPIC("9ce2e", DEBUG, Logger::CLUSTER)
             << "Do not have enough DBServers for requested replicationFactor,"
             << " nrDBServers: " << dbServers.size()
@@ -2941,8 +2943,9 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
 
       if (!avoid.empty()) {
         // We need to remove all servers that are in the avoid list
-        if (dbServers.size() - avoid.size() < replicationFactor ||
-            dbServers.size() - avoid.size() < minReplicationFactor) {
+        if (dbServers.size() - avoid.size() < replicationFactor) {
+          TRI_ASSERT(minReplicationFactor <= replicationFactor);
+          // => (dbServers.size() - avoid.size() < minReplicationFactor) is granted
           LOG_TOPIC("03682", DEBUG, Logger::CLUSTER)
               << "Do not have enough DBServers for requested replicationFactor,"
               << " (after considering avoid list),"

@@ -592,7 +592,7 @@
                 [
                   {
                     rule: Joi.string().allow('').optional().regex(/^([1-9]|10)$/),
-                    msg: 'Must be a number.'
+                    msg: 'Must be a number between 1 and 10.'
                   }
                 ]
               )
