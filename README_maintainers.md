@@ -410,7 +410,7 @@ Debugging
 
 ### Startup
 
-We now have a startup rc file: `~/.arangod.rc`. It's evaled as JavaScript.
+Arangod has a startup rc file: `~/.arangod.rc`. It's evaled as JavaScript.
 A sample version to help working with the arangod rescue console may look like that:
 
     ENABLE_NATIVE_BACKTRACES(true);
@@ -435,6 +435,12 @@ To debug AQL execution blocks, two steps are required:
 - send queries enabling block debugging: `db._query('RETURN 1', {}, { profile: 4 })`
 
 You now will get log-entries with the contents being passed between the blocks.
+
+Coredumps
+---------
+
+Coredumps represent the current process state at a specific time into a file. 
+This file can then later be used to analyze problematic situations in a debugger.
 
 ### Linux Coredumps
 
@@ -653,8 +659,8 @@ Unittests
 
 ### Dependencies
 
-- *Ruby*, *rspec*, *httparty* to install the required dependencies run:
-  `cd tests/rb/HttpInterface; bundler`
+- *Ruby*, *rspec*, *httparty*; to install the required dependencies run:
+  `gem install bundler; cd tests/rb/HttpInterface; bundler`
 - *Google Test* (compile time, shipped in the 3rdParty directory)
 
 ### Folder Locations
@@ -678,7 +684,6 @@ or skipped depending on parameters:
 
 | Substring       | Description
 |:----------------|:----------------
-| `-server`       | Make use of existing external server. Example: `scripts/unittest http_server --server tcp://127.0.0.1:8529/`
 | `-cluster`      | These tests will only run if clustering is tested (option 'cluster' needs to be true).
 | `-noncluster`   | These tests will only run if no cluster is used (option 'cluster' needs to be false)
 | `-timecritical` | These tests are critical to execution time - and thus may fail if arangod is to slow. This may happen i.e. if you run the tests in valgrind, so you want to avoid them since they will fail anyways. To skip them, set the option `skipTimeCritical` to *true*.
@@ -688,8 +693,6 @@ or skipped depending on parameters:
 | `-grey`         | These tests are currently listed as "grey", which means that they are known to be unstable or broken. These tests will not be executed by the testing framework if the option `--skipGrey` is given. If `--onlyGrey` option is given then non-"grey" tests are skipped. See `tests/Greylist.txt` for up-to-date information about greylisted tests. Please help to keep this file up to date.
 
 ### Javascript Framework
-
-(Used in our local Jenkins and TravisCI integration; required for running cluster tests)
 
 Since several testing technologies are utilized, and different ArangoDB
 startup options may be required (even different compilation options may be
@@ -727,11 +730,17 @@ Available choices include:
 Different facilities may take different options. The above mentioned usage
 output contains the full detail.
 
+Instead of starting its own instance, `unittest` can also make use of a previously started ArangoDB instance.
+You can launch the instance as you want - i.e. a debugger or `rr` and prepare it for what you want to test with it.
+You then launch the test on it like this:
+
+    ./scripts/unittest http_server --server tcp://127.0.0.1:8529/
+
 A commandline for running a single test (-> with the facility 'single_server') using
 valgrind could look like this. Options are passed as regular long values in the
 syntax --option value --sub:option value. Using Valgrind could look like this:
 
-    ./scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js \
+    ./scripts/unittest single_server --test tests/js/server/aql/aql-escaping.js \
       --extraArgs:server.threads 1 \
       --extraArgs:scheduler.threads 1 \
       --extraArgs:javascript.gc-frequency 1000000 \
@@ -766,7 +775,7 @@ You can also only execute a filtered test case in a jsunity/mocha/gtest test sui
 
 Testing a single test with the framework via arangosh:
 
-    scripts/unittest single_client --test tests/js/server/aql/aql-escaping.js
+    scripts/unittest single_client --test tests/js/client/shell/shell-transaction.js
 
 Testing a single rspec test:
 
@@ -782,7 +791,7 @@ Since downloading Foxx apps from GitHub can be cumbersome with shaky DSL
 and DoS'ed GitHub, we can fake it like this:
 
     export FOXX_BASE_URL="http://germany/fakegit/"
-    ./scripts/unittest single_server --test 'js/server/tests/shell/shell-foxx-manager-spec.js'
+    ./scripts/unittest single_server --test 'tests/js/server/shell/shell-foxx-manager-spec.js'
 
 ### Running jsUnity Tests
 
@@ -823,12 +832,6 @@ Filtering for one test case (in this case `testTokens`) in console mode:
 
     require("jsunity").runTest("tests/js/server/aql/aql-escaping.js", false, "testTokens");
 
-Run a test via startup option:
-
-    build/bin/arangod /tmp/dataUT --javascript.unit-tests="tests/js/server/aql/aql-escaping.js" --no-server
-
-    js/common/modules/loadtestrunner.js
-
 #### Running jsUnity Tests with arangosh client
 
 Run tests this way:
@@ -842,10 +845,7 @@ You can only run tests which are intended to be ran via arangosh.
 All tests with `-spec` in their names are using the [mochajs.org](https://mochajs.org) framework.
 To run those tests, e.g. in the arangosh, use this:
 
-```js
-const runTest = require("@arangodb/mocha-runner");
-runTest(<filepath>, true)
-```
+    require("@arangodb/mocha-runner").runTest('tests/js/client/endpoint-spec.js', true)
 
 ### Debugging Tests
 
