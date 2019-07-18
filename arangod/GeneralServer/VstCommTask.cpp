@@ -402,8 +402,8 @@ std::unique_ptr<GeneralResponse> VstCommTask<T>::createResponse(rest::ResponseCo
 template<SocketType T>
 bool VstCommTask<T>::Message::addChunk(fuerte::vst::Chunk const& chunk) {
   if (chunk.header.isFirst()) {
-    // only the first chunk safely has the message length
-    // as well as the number of chunks
+    // only the first chunk has the message length
+    // and number of chunks (in VST/1.0)
     expectedChunks = chunk.header.numberOfChunks();
     expectedMsgSize = chunk.header.messageLength();
     chunks.reserve(expectedChunks);
@@ -414,7 +414,7 @@ bool VstCommTask<T>::Message::addChunk(fuerte::vst::Chunk const& chunk) {
     }
   }
   
-  // verify that we do get send more data than allowed
+  // verify total message body size limit
   size_t newSize = buffer.size() + chunk.body.size();
   if (newSize > CommTask::MaximalBodySize ||
       (expectedMsgSize != 0 && expectedMsgSize < newSize)) {
