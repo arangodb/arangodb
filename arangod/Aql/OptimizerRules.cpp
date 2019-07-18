@@ -1223,6 +1223,16 @@ void arangodb::aql::removeUnnecessaryFiltersRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
+
+namespace {
+bool startsWith(std::string const& in, std::string const& toMatch) {
+ if(in.find(toMatch) == 0) {
+     return true;
+  }
+  return false;
+}
+}
+
 /// @brief remove INTO of a COLLECT if not used
 /// additionally remove all unused aggregate calculations from a COLLECT
 void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
@@ -1250,10 +1260,14 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
       modified = true;
     } else if (outVariable != nullptr && !collectNode->count() &&
                !collectNode->hasExpressionVariable() && !collectNode->hasKeepVariables()) {
+
       // outVariable used later, no count, no INTO expression, no KEEP
       // e.g. COLLECT something INTO g
-      // we will now check how many part of "g" are used later
+      // we will now check how many parts of "g" are used later
+
       std::unordered_set<std::string> keepAttributes;
+      bool keepSelf = false;
+      CollectNode const* other = nullptr;
 
       bool stop = false;
       auto p = collectNode->getFirstParent();
@@ -1266,13 +1280,33 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
             auto usedThere =
                 Ast::getReferencedAttributesForKeep(exp->node(), outVariable,
                                                     isSafeForOptimization);
+
+
             if (isSafeForOptimization) {
               for (auto const& it : usedThere) {
                 keepAttributes.emplace(it);
               }
             } else {
               stop = true;
+              break;
             }
+
+            if(keepSelf) {
+              std::vector<arangodb::basics::AttributeName> names;
+              auto access = std::make_pair(other->outVariable(), names);
+              bool isAccess = exp->node()->isAttributeAccessForVariable(access, true);
+              if(isAccess && !access.second.empty()) {
+                TRI_ASSERT(!access.second.empty());
+                std::string tomatch = access.second.front().name;
+                std::string outvarname = outVariable->name;
+
+                if(!(tomatch == outvarname) && !startsWith(tomatch, outvarname + "[") ) {
+                  other = nullptr;
+                  keepSelf = false;
+                }
+              }
+            }
+
           }
         } else if (p->getType() == EN::COLLECT) {
           auto collectNode = ExecutionNode::castTo<CollectNode const*>(p);
@@ -1294,17 +1328,16 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
             // following calculation / return or
             // other node.
 
-            stop = true;
+            keepSelf = true;
+            other = collectNode;
           }
         }
 
-        if (stop) {
-          break;
-        }
         p = p->getFirstParent();
       }
 
-      if (!stop) {
+      if (!stop && !keepSelf) {
+        LOG_DEVEL << "can optimize";
         std::vector<Variable const*> keepVariables;
         // we are allowed to do the optimization
         auto current = n->getFirstDependency();
@@ -1331,6 +1364,8 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
           collectNode->setKeepVariables(std::move(keepVariables));
           modified = true;
         }
+      } else {
+        LOG_DEVEL << "can not optimize";
       }
     }
 
