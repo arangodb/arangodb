@@ -1,6 +1,9 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* arangoimport would not stop, much less report, communications errors.  Add CSV reporting
+  of line numbers that are impacted during such errors
+
 * Fixed a bug which could lead to some unnecessary HTTP requests during an AQL query in a cluster.
   Only occurs with views in the query.
 
