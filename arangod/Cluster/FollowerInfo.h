@@ -180,6 +180,7 @@ class FollowerInfo {
         // Invariant, we can only WRITE if we do not have other failover candidates
         READ_LOCKER(readLockerData, _dataLock);
         TRI_ASSERT(_followers->size() == _failoverCandidates->size());
+        TRI_ASSERT(_followers->size() > _docColl->minReplicationFactor());
 #endif
         return _canWrite;
       }
