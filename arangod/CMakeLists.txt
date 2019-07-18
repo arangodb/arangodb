@@ -558,6 +558,7 @@ SET(ARANGOD_SOURCES
   Utils/FlushThread.cpp
   Utils/OperationCursor.cpp
   Utils/SingleCollectionTransaction.cpp
+  Utils/UrlHelper.cpp
   V8Server/FoxxQueuesFeature.cpp
   V8Server/V8Context.cpp
   V8Server/V8DealerFeature.cpp
