@@ -237,7 +237,7 @@
 
       // append body
       if (response.body !== undefined) {
-        syntaxAppender(internal.inspect(response.body));
+        syntaxAppender(exports.inspect(response.body));
         appender('\n');
       }
     };
