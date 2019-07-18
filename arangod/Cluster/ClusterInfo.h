@@ -388,6 +388,13 @@ class ClusterInfo {
                                   arangodb::velocypack::Slice const& json,
                                   std::string& errorMsg, double timeout);
 
+  /// @brief this method does an atomic check of the preconditions for the collections
+  /// to be created, using the currently loaded plan. it populates the plan version
+  /// used for the checks
+  Result checkCollectionPreconditions(std::string const& databaseName,
+                                      std::vector<ClusterCollectionCreationInfo> const& infos,
+                                      uint64_t& planVersion);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create multiple collections in coordinator
   ///        If any one of these collections fails, all creations will be
@@ -612,20 +619,20 @@ class ClusterInfo {
    * @return         List of DB servers serving the shard
    */
   arangodb::Result getShardServers(ShardID const& shardId, std::vector<ServerID>&);
-
- private:
-  void loadClusterId();
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get an operation timeout
   //////////////////////////////////////////////////////////////////////////////
 
-  double getTimeout(double timeout) const {
+  static double getTimeout(double timeout) {
     if (timeout == 0.0) {
       return 24.0 * 3600.0;
     }
     return timeout;
   }
+
+ private:
+  void loadClusterId();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the poll interval
