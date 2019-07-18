@@ -53,9 +53,9 @@ bool isDirectDeadlockLane(RequestLane lane) {
   // Those tasks can not be executed directly.
   return lane == RequestLane::TASK_V8 || lane == RequestLane::CLIENT_V8 ||
          lane == RequestLane::CLUSTER_V8 || lane == RequestLane::INTERNAL_LOW ||
-         lane == RequestLane::SERVER_REPLICATION ||
-         lane == RequestLane::CLUSTER_ADMIN || lane == RequestLane::CLUSTER_INTERNAL ||
-         lane == RequestLane::AGENCY_CLUSTER || lane == RequestLane::CLIENT_AQL;
+         lane == RequestLane::SERVER_REPLICATION || lane == RequestLane::CLUSTER_ADMIN ||
+         lane == RequestLane::CLUSTER_INTERNAL || lane == RequestLane::AGENCY_CLUSTER ||
+         lane == RequestLane::CLIENT_AQL || lane == RequestLane::CLUSTER_AQL;
 }
 
 }  // namespace
