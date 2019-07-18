@@ -641,7 +641,7 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
 
       if (engine.type() != EngineInfo::EngineType::View &&
           query.trx()->isInaccessibleCollectionId(engine.collection()->getPlanId())) {
-        for (ShardID sid : shards) {
+        for (ShardID const& sid : shards) {
           opts.inaccessibleCollections.insert(sid);
         }
         opts.inaccessibleCollections.insert(std::to_string(engine.collection()->getPlanId()));
