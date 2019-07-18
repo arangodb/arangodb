@@ -777,13 +777,9 @@ Testing a single test with the framework directly on a server:
 
     scripts/unittest single_server --test tests/js/server/aql/aql-escaping.js
 
-You can also only execute a filtered test case in a jsunity/mocha/gtest test suite (in this case `testTokens`):
+You can also only execute a single test case in a jsunity test suite (in this case `testTokens`):
 
     scripts/unittest single_server --test tests/js/server/aql/aql-escaping.js --testCase testTokens
-    
-    scripts/unittest shell_client --test shell-util-spec.js --testCase zip
-    
-    scripts/unittest gtest --testCase IResearchDocumentTest.*
 
 Testing a single test with the framework via arangosh:
 
