@@ -1,21 +1,5 @@
 /* jshint -W051:true */
 /* eslint-disable */
-
-let appendHeaders = function(appender, headers) {
-  var key;
-  // generate header
-  appender('HTTP/1.1 ' + headers['http/1.1'] + '\n');
-
-  for (key in headers) {
-    if (headers.hasOwnProperty(key)) {
-      if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
-          && key !== 'content-length') {
-        appender(key + ': ' + headers[key] + '\n');
-      }
-    }
-  }
-};
-
 ;(function () {
   'use strict'
   /* eslint-enable */
@@ -235,6 +219,21 @@ let appendHeaders = function(appender, headers) {
     };
   };
 
+  let appendHeaders = function(appender, headers) {
+    var key;
+    // generate header
+    appender('HTTP/1.1 ' + headers['http/1.1'] + '\n');
+
+    for (key in headers) {
+      if (headers.hasOwnProperty(key)) {
+        if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
+            && key !== 'content-length') {
+          appender(key + ': ' + headers[key] + '\n');
+        }
+      }
+    }
+  };
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief logs a raw response
   // //////////////////////////////////////////////////////////////////////////////
@@ -248,6 +247,31 @@ let appendHeaders = function(appender, headers) {
       if (response.body !== undefined) {
         syntaxAppender(exports.inspect(response.body));
         appender('\n');
+      }
+    };
+  };
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief logs a raw response - don't string escape etc.
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.appendPlainResponse = function (appender, syntaxAppender) {
+    return function (response) {
+      appendHeaders(appender, response.headers);
+      appender('\n');
+
+      // append body
+      if (response.body !== undefined) {
+        let splitted = response.body.split(/\r\n|\r|\n/);
+        if (splitted.length > 0) {
+          splitted.forEach(function (line) {
+            syntaxAppender(line);
+            appender('\n');
+          });
+        } else {
+            syntaxAppender(response.body);
+          appender('\n');
+        }
       }
     };
   };

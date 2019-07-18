@@ -1292,7 +1292,7 @@ static void PrepareClusterCommRequest(v8::FunctionCallbackInfo<v8::Value> const&
   if (args[0]->IsString()) {
     TRI_Utf8ValueNFC UTF8(isolate, args[0]);
     std::string methstring = *UTF8;
-    reqType = arangodb::HttpRequest::translateMethod(methstring);
+    reqType = arangodb::GeneralRequest::translateMethod(methstring);
     if (reqType == arangodb::rest::RequestType::ILLEGAL) {
       reqType = arangodb::rest::RequestType::GET;
     }
@@ -1477,30 +1477,24 @@ static void Return_PrepareClusterCommResultForJS(v8::FunctionCallbackInfo<v8::Va
              TRI_V8_ASCII_STRING(isolate,
                                  "required backend was not available"));
     } else if (res.status == CL_COMM_RECEIVED) {  // Everything is OK
-      // FIXME HANDLE VST
-      auto httpRequest = std::dynamic_pointer_cast<HttpRequest>(res.answer);
-      if (httpRequest == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "invalid request type");
-      }
-
       // The headers:
       v8::Handle<v8::Object> h = v8::Object::New(isolate);
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING(isolate, "RECEIVED"));
       TRI_ASSERT(res.answer != nullptr);
       std::unordered_map<std::string, std::string> headers = res.answer->headers();
-      headers["content-length"] = StringUtils::itoa(httpRequest->contentLength());
+      headers[StaticStrings::ContentLength] = StringUtils::itoa(res.answer->contentLength());
       for (auto& it : headers) {
         h->Set(TRI_V8_STD_STRING(isolate, it.first), TRI_V8_STD_STRING(isolate, it.second));
       }
       r->Set(TRI_V8_ASCII_STRING(isolate, "headers"), h);
 
       // The body:
-      std::string const& body = httpRequest->body();
+      // FIXME HANDLE VST
+      VPackStringRef body = res.answer->rawPayload();
       if (!body.empty()) {
-        r->Set(TRI_V8_ASCII_STRING(isolate, "body"), TRI_V8_STD_STRING(isolate, body));
-        V8Buffer* buffer = V8Buffer::New(isolate, body.c_str(), body.length());
+        r->Set(TRI_V8_ASCII_STRING(isolate, "body"), TRI_V8_ASCII_PAIR_STRING(isolate, body.data(), body.size()));
+        V8Buffer* buffer = V8Buffer::New(isolate, body.data(), body.size());
         v8::Local<v8::Object> bufferObject =
             v8::Local<v8::Object>::New(isolate, buffer->_handle);
         r->Set(TRI_V8_ASCII_STRING(isolate, "rawBody"), bufferObject);
