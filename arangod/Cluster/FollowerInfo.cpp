@@ -338,24 +338,6 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
   std::string curPath = CurrentShardPath(*_docColl);
   std::string planPath = PlanShardPath(*_docColl);
   AgencyComm ac;
-  double startTime = TRI_microtime();
-  double timeout = startTime;
-  if (isRemove) {
-    // This is important, give it 2h if needed. We really do not want to get
-    // into the position to fail to drop a follower, just because we cannot
-    // talk to the agency temporarily. The worst would be to drop the follower
-    // locally but not report the fact to the agency. The second worst is to
-    // not be able to drop the follower, despite the fact that a replication
-    // was not successful. All else is less dramatic. Therefore we try for
-    // a long time.
-    timeout += 7200;
-  } else {
-    // This is important, give it 1h if needed. We really do not want to get
-    // into the position to not accept a shard getting-in-sync just because
-    // we cannot talk to the agency temporarily.
-    timeout += 3600;
-  }
-
   do {
     AgencyReadTransaction trx(std::vector<std::string>(
         {AgencyCommManager::path(planPath), AgencyCommManager::path(curPath)}));
@@ -409,12 +391,8 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
     }
     using namespace std::chrono_literals;
     std::this_thread::sleep_for(500ms);
-  } while (TRI_microtime() < timeout &&
-           !application_features::ApplicationServer::isStopping());
-  if (application_features::ApplicationServer::isStopping()) {
-    return TRI_ERROR_SHUTTING_DOWN;
-  }
-  return TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED;
+  } while (!application_features::ApplicationServer::isStopping());
+  return TRI_ERROR_SHUTTING_DOWN;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
