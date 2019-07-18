@@ -55,7 +55,6 @@
       var wfs = waitForSync ? 'true' : 'false';
       var wfc = waitForCollector ? 'true' : 'false';
       exports.arango.PUT('/_admin/wal/flush?waitForSync=' + wfs + '&waitForCollector=' + wfc, null);
-      return;
     },
 
     properties: function (value) {
