@@ -401,7 +401,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   }
 
   // identity now is default analyzer
-  auto name = args.size() > 1 ? arangodb::iresearch::getStringRef(args[1].slice()) : "identity";
+  auto name = args.size() > 1 ? arangodb::iresearch::getStringRef(args[1].slice()) : IDENTITY_ANALYZER_NAME;
   auto* analyzers =
       arangodb::application_features::ApplicationServer::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
