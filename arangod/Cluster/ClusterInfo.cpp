@@ -1606,9 +1606,14 @@ Result ClusterInfo::checkCollectionPreconditions(std::string const& databaseName
           return TRI_ERROR_ARANGO_DUPLICATE_NAME;
         }
       } else {
-        // no need to create a collection in a database that is not there (anymore)
-        events::CreateCollection(info.name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-        return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+        // no collection in plan for this particular database... this may be true for
+        // the first collection created in a db
+        // now check if there is a planned database at least
+        if (_plannedDatabases.find(databaseName) == _plannedDatabases.end()) {
+          // no need to create a collection in a database that is not there (anymore)
+          events::CreateCollection(info.name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+          return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+        }
       }
     }
   
