@@ -132,7 +132,6 @@
 
   exports.reloadAqlFunctions = function () {
     exports.arango.POST('/_admin/aql/reload', null);
-    return;
   };
 
   // //////////////////////////////////////////////////////////////////////////////
