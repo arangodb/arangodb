@@ -65,7 +65,7 @@ void SenderThread::beginShutdown() {
 }
 
 void SenderThread::sendData(std::string const& url, arangodb::basics::StringBuffer* data,
-                            int lowLine, int highLine) {
+                            size_t lowLine, size_t highLine) {
   TRI_ASSERT(_idle && !_hasError);
   _url = url;
   _data.swap(data);
