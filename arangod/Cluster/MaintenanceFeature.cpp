@@ -758,6 +758,22 @@ void MaintenanceFeature::delShardVersion(std::string const& shname) {
 uint64_t MaintenanceFeature::getCurrentCounter() const {
   // It is guaranteed that getCurrentCounter is not executed
   // concurrent to increase / wait.
+  // This guarantee is created by the following:
+  // 1) There is one inifinite loop that will call
+  //    PhaseOne and PhaseTwo in exactly this ordering.
+  //    It is guaranteed that only one thread at a time is
+  //    in this loop.
+  //    Between PhaseOne and PhaseTwo the increaseCurrentCounter is called
+  //    Within PhaseOne this getCurrentCounter is called, but never after.
+  //    so getCurrentCounter and increaseCurrentCounter are strictily serialized.
+  // 2) waitForLargerCurrentCounter can be called in concurrent threads at any time.
+  //    It is read-only, so it is save to have it concurrent to getCurrentCounter
+  //    without any locking.
+  //    However we need locking for increase and waitFor in order to guarantee
+  //    it's functionallity.
+  // For now we actually do not need this guard, but as this is NOT performance
+  // critical we can simply get it, just to be save for later use.
+  std::unique_lock<std::mutex> guard(_currentCounterLock);
   return _currentCounter;
 }
 
@@ -766,6 +782,7 @@ void MaintenanceFeature::increaseCurrentCounter() {
   _currentCounter++;
   _currentCounterCondition.notify_all();
 }
+
 void MaintenanceFeature::waitForLargerCurrentCounter(uint64_t old) {
   std::unique_lock<std::mutex> guard(_currentCounterLock);
   if (_currentCounter > old) {

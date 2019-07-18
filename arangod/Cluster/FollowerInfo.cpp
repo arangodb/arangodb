@@ -202,7 +202,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
     return agencyRes;
   }
   if (agencyRes.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
-    // TODO: Do we need to rollback?
+    // Next run in Maintenance will fix this.
     return agencyRes;
   }
 
@@ -289,10 +289,18 @@ bool FollowerInfo::updateFailoverCandidates() {
   // Next acquire _dataLock
   WRITE_LOCKER(dataLocker, _dataLock);
   if (_canWrite) {
-    // Short circuit, we have multiple writes in the above write lock
-    // The first needs to do things and flips _canWrite
-    // All followers can return as soon as the lock is released
-    return true;
+// Short circuit, we have multiple writes in the above write lock
+// The first needs to do things and flips _canWrite
+// All followers can return as soon as the lock is released
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_failoverCandidates->size() == _followers->size());
+    std::vector<string> diff;
+    std::set_intersection(_failoverCandidates->begin(),
+                          _failoverCandidates->end(), _followers->begin(),
+                          _followers->end(), std::back_inserter(diff));
+    TRI_ASSERT(diff.empty());
+#endif
+    return _canWrite;
   }
   TRI_ASSERT(_followers->size() + 1 >= _docColl->minReplicationFactor());
   // Update both lists (we use a copy here, as we are modifying them in other places individually!)
@@ -300,6 +308,12 @@ bool FollowerInfo::updateFailoverCandidates() {
   // Just be sure
   TRI_ASSERT(_failoverCandidates.get() != _followers.get());
   TRI_ASSERT(_failoverCandidates->size() == _followers->size());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::vector<string> diff;
+  std::set_intersection(_failoverCandidates->begin(), _failoverCandidates->end(),
+                        _followers->begin(), _followers->end(), std::back_inserter(diff));
+  TRI_ASSERT(diff.empty());
+#endif
   Result res = persistInAgency(true);
   if (!res.ok()) {
     // We could not persist the update in the agency.
@@ -308,14 +322,11 @@ bool FollowerInfo::updateFailoverCandidates() {
         << "Could not persist insync follower for " << _docColl->vocbase().name()
         << "/" << std::to_string(_docColl->planId())
         << " keep RO-mode for now, next write will retry.";
-    return false;
+    TRI_ASSERT(!_canWrite);
+  } else {
+    _canWrite = true;
   }
-  _canWrite = true;
-  VPackBuilder hund;
-  hund.openObject();
-  injectFollowerInfoInternal(hund);
-  hund.close();
-  return true;
+  return _canWrite;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -396,7 +407,8 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
           << reportName(isRemove) << ", could not read " << planPath << " and "
           << curPath << " in agency.";
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(500000));
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(500ms);
   } while (TRI_microtime() < timeout &&
            !application_features::ApplicationServer::isStopping());
   if (application_features::ApplicationServer::isStopping()) {
@@ -444,7 +456,8 @@ VPackBuilder FollowerInfo::newShardEntry(VPackSlice oldValue) const {
   TRI_ASSERT(oldValue.isObject());
   {
     VPackObjectBuilder b(&newValue);
-    // Now need to find the `servers` attribute, which is a list:
+    // Copy all but SERVERS and FailoverCandidates.
+    // They will be injected later.
     for (auto const& it : VPackObjectIterator(oldValue)) {
       if (!it.key.isEqualString(maintenance::SERVERS) &&
           !it.key.isEqualString(StaticStrings::FailoverCandidates)) {

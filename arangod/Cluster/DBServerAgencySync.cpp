@@ -145,6 +145,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   if (mfeature == nullptr) {
     LOG_TOPIC("3a1f7", ERR, Logger::MAINTENANCE)
         << "Could not load maintenance feature, can happen during shutdown.";
+    result.success = false;
     result.errorMessage = "Could not load maintenance feature";
     return result;
   }

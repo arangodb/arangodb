@@ -179,6 +179,7 @@ class CollectionInfoCurrent {
       VPackSlice servers = slice.get(StaticStrings::FailoverCandidates);
       if (servers.isArray()) {
         for (auto const& server : VPackArrayIterator(servers)) {
+          TRI_ASSERT(server.isString());
           if (server.isString()) {
             v.push_back(server.copyString());
           }

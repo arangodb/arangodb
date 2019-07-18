@@ -78,7 +78,7 @@ class FollowerInfo {
         _theLeader(""),
         _theLeaderTouched(false),
         _canWrite(_docColl->replicationFactor() <= 1) {
-    // On replicationfactor 1 we do not have anything we can do.
+    // On replicationfactor 1 we do not have any failover servers to maintain.
     // This should also disable satellite tracking.
   }
 
