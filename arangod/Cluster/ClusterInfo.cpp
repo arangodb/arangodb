@@ -242,30 +242,30 @@ void ClusterInfo::triggerBackgroundGetIds() {
       return ;
     }
     _uniqid._backgroundJobIsRunning = true;
-    std::thread([this] {
+    std::thread([this]{
+      auto guardRunning = scopeGuard([this]{
+        _uniqid._backgroundJobIsRunning = false;
+      });
+
       uint64_t result;
       try {
         result = _agency.uniqid(MinIdsPerBatch, 0.0);
       } catch (std::exception const& e) {
-        _uniqid._backgroundJobIsRunning = false;
         return ;
       }
 
       {
         MUTEX_LOCKER(mutexLocker, _idLock);
 
-
         if (1ULL == _uniqid._nextBatchStart) {
           // Invalidate next batch
           _uniqid._nextBatchStart = result;
           _uniqid._nextUpperValue = result + MinIdsPerBatch - 1;
-          //LOG_DEVEL << "Updated next batch";
-        } else {
-          //LOG_DEVEL << "Throw away ids, someone was faster";
         }
         // If we get here, somebody else tried succeeded in doing the same,
         // so we just try again.
       }
+
     }).detach();
   } catch (std::exception const& e) {
     LOG_TOPIC("adef4", ERR, Logger::CLUSTER) << "Failed to trigger background get ids. " << e.what();
