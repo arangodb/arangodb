@@ -58,6 +58,14 @@ VstCommTask<T>::VstCommTask(GeneralServer& server,
   _authMethod(rest::AuthenticationMethod::NONE),
   _vstVersion(v) {}
 
+template<SocketType T>
+VstCommTask<T>::~VstCommTask() {
+  ResponseItem* tmp = nullptr;
+  while (_writeQueue.pop(tmp)) {
+    delete tmp;
+  }
+}
+
 /// @brief send simple response including response body
 template<SocketType T>
 void VstCommTask<T>::addSimpleResponse(rest::ResponseCode code,
@@ -135,13 +143,15 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
 template<SocketType T>
 bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
   
-  if (chunk.header.messageLength() > GeneralCommTask<T>::MaximalBodySize) {
-    LOG_TOPIC("695fe", INFO, Logger::REQUESTS)
-    << "vst-request body is too big: '" << chunk.header.messageLength() << "'";
-    return false; // close connection
-  }
-  
   if (chunk.header.isFirst()) {
+    // only the first chunk safely has the message length
+    if (chunk.header.messageLength() > GeneralCommTask<T>::MaximalBodySize) {
+      LOG_TOPIC("695fe", WARN, Logger::REQUESTS)
+      << "vst-request body is too big '" << chunk.header.messageLength()
+      << "', this=" << this;
+      return false; // close connection
+    }
+    
     RequestStatistics* stat = this->acquireStatistics(chunk.header.messageID());
     RequestStatistics::SET_READ_START(stat, TRI_microtime());
     
@@ -165,9 +175,15 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
     msg = it->second.get();
   }
   
-  msg->addChunk(chunk);
-  if (!msg->assemble()) { // not done yet
-    return true;
+  if (!msg->addChunk(chunk)) {
+    LOG_TOPIC("695fd", WARN, Logger::REQUESTS)
+    << "vst-request, chunk contents have become larger than "
+    << "initial message size, this=" << this;
+    return false; // close connection
+  }
+  
+  if (!msg->assemble()) {
+    return true; // wait for more chunks
   }
   
   //this->_proto->timer.cancel();
@@ -366,7 +382,8 @@ void VstCommTask<T>::handleAuthHeader(VPackSlice header, uint64_t mId) {
     authString = basics::StringUtils::encodeBase64(user + ":" + pass);
     _authMethod = AuthenticationMethod::BASIC;
   } else {
-    LOG_TOPIC("01f44", WARN, Logger::REQUESTS) << "Unknown VST encryption type";
+    LOG_TOPIC("01f44", WARN, Logger::REQUESTS)
+      << "Unknown VST encryption type, ";
   }
 
   this->_authToken = this->_auth->tokenCache().checkAuthentication(_authMethod, authString);
@@ -389,11 +406,13 @@ std::unique_ptr<GeneralResponse> VstCommTask<T>::createResponse(rest::ResponseCo
   return std::make_unique<VstResponse>(responseCode, messageId);
 }
 
-/// add chunk to this message
+/// @brief add chunk to this message
+/// @return false if the message size is too big
 template<SocketType T>
-void VstCommTask<T>::Message::addChunk(fuerte::vst::Chunk const& chunk) {
+bool VstCommTask<T>::Message::addChunk(fuerte::vst::Chunk const& chunk) {
   if (chunk.header.isFirst()) { // first chunk contains the number of chunks
     expectedChunks = chunk.header.numberOfChunks();
+    expectedMessageSize = chunk.header.messageLength();
     chunks.reserve(expectedChunks);
     
     TRI_ASSERT(buffer.empty());
@@ -401,11 +420,19 @@ void VstCommTask<T>::Message::addChunk(fuerte::vst::Chunk const& chunk) {
       buffer.reserve(chunk.header.messageLength() - buffer.capacity());
     }
   }
+  
+  // verify that we do not e
+  if (expectedMessageSize < buffer.size() + chunk.body.size()) {
+    return false;
+  }
+  
   uint8_t const* begin = reinterpret_cast<uint8_t const*>(chunk.body.data());
   size_t offset = buffer.size();
   buffer.append(begin, chunk.body.size());
   // Add chunk to index list
   chunks.push_back(ChunkInfo{chunk.header.index(), offset, chunk.body.size()});
+  
+  return true;
 }
 
 /// assemble message, if true result is in _buffer

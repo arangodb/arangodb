@@ -61,16 +61,13 @@ namespace arangodb { namespace fuerte { inline namespace v1 { namespace vst {
 // The length of the buffer is returned.
 size_t ChunkHeader::writeHeaderToVST1_0(size_t chunkDataLen,
                                         VPackBuffer<uint8_t>& buffer) const {
-  size_t hdrLength;
+  size_t hdrLength = minChunkHeaderSize;
   uint8_t hdr[maxChunkHeaderSize];
   if (isFirst() && numberOfChunks() > 1) {
     // Use extended header
     hdrLength = maxChunkHeaderSize;
     basics::uintToPersistentLittleEndian<uint64_t>(hdr + 16, _messageLength);  // total message length
-  } else {
-    // Use minimal header
-    hdrLength = minChunkHeaderSize;
-  }
+  } // else Use minimal header
   basics::uintToPersistentLittleEndian<uint32_t>(hdr + 0, hdrLength + chunkDataLen);  // chunk length (header+data)
   basics::uintToPersistentLittleEndian<uint32_t>(hdr + 4, _chunkX);  // chunkX
   basics::uintToPersistentLittleEndian<uint64_t>(hdr + 8, _messageID);  // messageID
@@ -356,14 +353,20 @@ bool readChunkHeaderVST1_0(Chunk& chunk, uint8_t const* hdr, std::size_t avail) 
   }
   
   size_t hdrLen = minChunkHeaderSize;
-  if (chunk.header.isFirst() && chunk.header.numberOfChunks() > 1) {
-    if (avail < maxChunkHeaderSize) {
-      return false;
+  if (chunk.header.isFirst()) {
+    if (chunk.header.numberOfChunks() > 1) {
+      if (avail < maxChunkHeaderSize) {
+        return false;
+      }
+      hdrLen = maxChunkHeaderSize; // first chunk header is bigger
+      // First chunk, numberOfChunks>1 -> read messageLength
+      chunk.header._messageLength =
+      basics::uintFromPersistentLittleEndian<uint64_t>(hdr + 16);
+    } else {
+      chunk.header._messageLength = chunk.header._chunkLength - hdrLen;
     }
-    hdrLen = maxChunkHeaderSize; // first chunk header is bigger
-    // First chunk, numberOfChunks>1 -> read messageLength
-    chunk.header._messageLength =
-        basics::uintFromPersistentLittleEndian<uint64_t>(hdr + 16);
+  } else { // not needed / known otherwise
+    chunk.header._messageLength = 0;
   }
 
   size_t contentLength = 0;

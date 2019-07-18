@@ -59,6 +59,7 @@ struct ChunkHeader {
   // Return message ID of this chunk (in host byte order)
   inline uint64_t messageID() const { return _messageID; }
   // Return total message length (in host byte order)
+  // for VST1.0 only known in first chunk, 0 otherwise
   inline uint64_t messageLength() const { return _messageLength; }
   // isFirst returns true when the "first chunk" flag has been set.
   inline bool isFirst() const { return ((_chunkX & 0x01) == 1); }
