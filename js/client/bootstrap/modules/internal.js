@@ -142,7 +142,6 @@
 
   exports.reloadRouting = function () {
     exports.arango.POST('/_admin/routing/reload', null);
-    return;
   };
 
   // //////////////////////////////////////////////////////////////////////////////
