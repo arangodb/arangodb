@@ -254,7 +254,6 @@ void ClusterInfo::triggerBackgroundGetIds() {
       {
         MUTEX_LOCKER(mutexLocker, _idLock);
 
-        //LOG_DEVEL << "background got ids: " << result
 
         if (1ULL == _uniqid._nextBatchStart) {
           // Invalidate next batch
