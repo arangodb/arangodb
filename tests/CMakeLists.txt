@@ -154,6 +154,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/CompileTimeStrlenTest.cpp
   Basics/EndpointTest.cpp
   Basics/FixedSizeAllocatorTest.cpp
+  Basics/GuardedTest.cpp
   Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
   Basics/RandomTest.cpp
