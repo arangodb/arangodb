@@ -193,16 +193,18 @@ mode will delete your changes.
 
 ### Building the Web Interface
 
-To build Web UI, also known as frontend or *Aardvark*, use the command:
+To build Web UI, also known as frontend or *Aardvark*, use CMake in the
+build directory:
 
-    cmake --build --target frontend
+    cmake --build . --target frontend
 
 To remove all available node modules and start a clean installation run:
 
-    make frontend_clean
+    cmake --build . --target frontend_clean
 
 The frontend can also be built using these commands:
 
+    cd <SourceRoot>/js/apps/system/_admin/aardvark/APP/
     npm install
     grunt deploy
 
