@@ -274,6 +274,9 @@ class ClusterInfo final {
   static void cleanup();
 
  public:
+  /// @brief produces an agency dump and logs it
+  void logAgencyDump() const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get a number of cluster-wide unique IDs, returns the first
   /// one and guarantees that <number> are reserved for the caller.

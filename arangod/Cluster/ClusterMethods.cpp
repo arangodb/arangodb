@@ -2892,7 +2892,11 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
   double const realTimeout = ClusterInfo::getTimeout(240.0);
   double const endTime = TRI_microtime() + realTimeout;
 
-  // We have at least one, take this collections DB name
+  // We have at least one, take this collection's DB name
+  // (if there are multiple collections to create, the assumption is that
+  // all collections have the same database name - ArangoDB does not
+  // support cross-database operations and they cannot be triggered by
+  // users)
   auto const dbName = collections[0]->vocbase().name();
   ClusterInfo* ci = ClusterInfo::instance();
   
