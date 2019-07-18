@@ -142,16 +142,18 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
 // Process the given incoming chunk.
 template<SocketType T>
 bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
+  if (chunk.body.size() > CommTask::MaximalBodySize) {
+    LOG_TOPIC("695ef", WARN, Logger::REQUESTS)
+    << "\"vst-request\"; chunk is too big for server, \"" << chunk.body.size()
+    << "\", this=" << this;
+    return false; // close connection
+  } else if (chunk.body.size() == 0) {
+    LOG_TOPIC("695ff", WARN, Logger::REQUESTS)
+    << "\"vst-request\"; chunk was empty, this=" << this;
+    return false; // close connection
+  }
   
   if (chunk.header.isFirst()) {
-    // only the first chunk safely has the message length
-    if (chunk.header.messageLength() > GeneralCommTask<T>::MaximalBodySize) {
-      LOG_TOPIC("695fe", WARN, Logger::REQUESTS)
-      << "vst-request body is too big '" << chunk.header.messageLength()
-      << "', this=" << this;
-      return false; // close connection
-    }
-    
     RequestStatistics* stat = this->acquireStatistics(chunk.header.messageID());
     RequestStatistics::SET_READ_START(stat, TRI_microtime());
     
@@ -175,10 +177,11 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
     msg = it->second.get();
   }
   
+  // returns false if message gets too big
   if (!msg->addChunk(chunk)) {
     LOG_TOPIC("695fd", WARN, Logger::REQUESTS)
-    << "vst-request, chunk contents have become larger than "
-    << "initial message size, this=" << this;
+    << "\"vst-request\"; chunk contents have become larger than "
+    << "allowed, this=" << this;
     return false; // close connection
   }
   
@@ -208,24 +211,12 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
   try {
     mt = vst::parser::validateAndExtractMessageType(ptr, len, headerLength);
   } catch(std::exception const& e) {
-    LOG_TOPIC("6479a", ERR, Logger::REQUESTS) << "invalid VST message: '" <<
+    LOG_TOPIC("6479a", ERR, Logger::REQUESTS) << "\"vst-request\"; invalid message: '" <<
     e.what() << "'";
+    // error is handled below
   }
 
   RequestStatistics::SET_READ_END(this->statistics(messageId));
-  
-  //  if (Logger::logRequestParameters()) {
-  //    LOG_TOPIC("5479a", DEBUG, Logger::REQUESTS)
-  //    << "\"vst-request-header\",\"" << (void*)this << "/"
-  //    << chunkHeader._messageID << "\"," << message.header().toJson() << "\"";
-  //
-  //    /*LOG_TOPIC("4feb4", DEBUG, Logger::REQUESTS)
-  //     << "\"vst-request-payload\",\"" << (void*)this << "/"
-  //     << chunkHeader._messageID << "\"," <<
-  //     VPackSlice(message.payload()).toJson()
-  //     << "\"";
-  //     */
-  //  }
   
   // handle request types
   if (mt == MessageType::Authentication) {  // auth
@@ -410,9 +401,11 @@ std::unique_ptr<GeneralResponse> VstCommTask<T>::createResponse(rest::ResponseCo
 /// @return false if the message size is too big
 template<SocketType T>
 bool VstCommTask<T>::Message::addChunk(fuerte::vst::Chunk const& chunk) {
-  if (chunk.header.isFirst()) { // first chunk contains the number of chunks
+  if (chunk.header.isFirst()) {
+    // only the first chunk safely has the message length
+    // as well as the number of chunks
     expectedChunks = chunk.header.numberOfChunks();
-    expectedMessageSize = chunk.header.messageLength();
+    expectedMsgSize = chunk.header.messageLength();
     chunks.reserve(expectedChunks);
     
     TRI_ASSERT(buffer.empty());
@@ -421,9 +414,11 @@ bool VstCommTask<T>::Message::addChunk(fuerte::vst::Chunk const& chunk) {
     }
   }
   
-  // verify that we do not e
-  if (expectedMessageSize < buffer.size() + chunk.body.size()) {
-    return false;
+  // verify that we do get send more data than allowed
+  size_t newSize = buffer.size() + chunk.body.size();
+  if (newSize > CommTask::MaximalBodySize ||
+      (expectedMsgSize != 0 && expectedMsgSize < newSize)) {
+    return false; // error
   }
   
   uint8_t const* begin = reinterpret_cast<uint8_t const*>(chunk.body.data());

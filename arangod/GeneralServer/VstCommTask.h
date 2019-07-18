@@ -91,7 +91,7 @@ class VstCommTask final : public GeneralCommTask<T> {
     /// @brief List of chunks that have been received.
     std::vector<ChunkInfo> chunks;
     std::size_t expectedChunks = 0;
-    std::size_t expectedMessageSize = 0;
+    std::size_t expectedMsgSize = 0;
     
     /// @brief add chunk to this message
     /// @return false if the message size is too big
