@@ -140,7 +140,7 @@ Example flags for Windows:
 
 - Configure
   ```
-  cmake .. -DSTATIC_EXECUTABLE=ON -DOPENSSL_USE_STATIC_LIBS=ON -T "v141,host=x64" -G "Visual Studio 15 2017 Win64" -DUSE_ENTERPRISE=ON
+  cmake .. -DSTATIC_EXECUTABLE=ON -DOPENSSL_USE_STATIC_LIBS=ON -T "v141,host=x64" -G "Visual Studio 15 2017 Win64" -DUSE_ENTERPRISE=OFF
   ```
 
 - Build
