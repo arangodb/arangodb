@@ -294,7 +294,7 @@ bool FollowerInfo::updateFailoverCandidates() {
 // All followers can return as soon as the lock is released
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_failoverCandidates->size() == _followers->size());
-    std::vector<string> diff;
+    std::vector<std::string> diff;
     std::set_symmetric_difference(_failoverCandidates->begin(),
                                   _failoverCandidates->end(), _followers->begin(),
                                   _followers->end(), std::back_inserter(diff));
@@ -309,7 +309,7 @@ bool FollowerInfo::updateFailoverCandidates() {
   TRI_ASSERT(_failoverCandidates.get() != _followers.get());
   TRI_ASSERT(_failoverCandidates->size() == _followers->size());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  std::vector<string> diff;
+  std::vector<std::string> diff;
   std::set_symmetric_difference(_failoverCandidates->begin(),
                                 _failoverCandidates->end(), _followers->begin(),
                                 _followers->end(), std::back_inserter(diff));
