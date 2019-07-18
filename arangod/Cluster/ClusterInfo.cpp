@@ -279,6 +279,7 @@ void ClusterInfo::cleanup() {
 
 /// @brief produces an agency dump and logs it
 void ClusterInfo::logAgencyDump() const {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   AgencyComm ac;
   AgencyCommResult ag = ac.getValues("/");
 
@@ -287,6 +288,7 @@ void ClusterInfo::logAgencyDump() const {
   } else {
     LOG_TOPIC(WARN, Logger::CLUSTER) << "Could not get agency dump!";
   }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
