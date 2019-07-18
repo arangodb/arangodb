@@ -1,6 +1,9 @@
 v3.5.0-rc.5 (2019-XX-XX)
 ------------------------
 
+* Fixed some races in cluster collection creation, which allowed collections with the
+  same name to be created in parallel under some rare conditions.
+ 
 * arangoimport would not stop, much less report, communications errors.  Add CSV reporting
   of line numbers that are impacted during such errors
 
