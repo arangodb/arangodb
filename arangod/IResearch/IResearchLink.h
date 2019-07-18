@@ -250,6 +250,7 @@ class IResearchLink {
     irs::utf8_path _path;
     irs::directory_reader _reader;
     irs::index_writer::ptr _writer;
+    TRI_voc_tick_t _recoveryTick{ 0 }; // the tick at which data store was recovered
     std::atomic<bool> _inRecovery{ false }; // data store is in recovery
     operator bool() const noexcept { return _directory && _writer; }
 
@@ -300,9 +301,9 @@ class IResearchLink {
   DataStore _dataStore; // the iresearch data store, protected by _asyncSelf->mutex()
   std::shared_ptr<FlushSubscription> _flushSubscription;
   TRI_idx_iid_t const _id; // the index identifier
-  TRI_voc_tick_t _recoveryTick;
+  TRI_voc_tick_t _lastCommittedTick; // protected by _commitMutex
   IResearchLinkMeta const _meta; // how this collection should be indexed (read-only, set via init())
-  std::mutex _readerMutex; // prevents query cache double invalidation
+  std::mutex _commitMutex; // prevents data store sequential commits
   std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxCallback; // for insert(...)/remove(...)
   irs::index_writer::before_commit_f _before_commit;
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())

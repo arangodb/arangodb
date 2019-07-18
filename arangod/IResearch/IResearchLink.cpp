@@ -279,7 +279,7 @@ IResearchLink::IResearchLink(
     _asyncTerminate(false),
     _collection(collection),
     _id(iid),
-    _recoveryTick(0),
+    _lastCommittedTick(0),
     _createdInRecovery(false) {
   auto* key = this;
 
@@ -314,8 +314,8 @@ IResearchLink::IResearchLink(
 
   // initialize commit callback
   _before_commit = [this](uint64_t tick, irs::bstring& out) {
-    tick = std::max(uint64_t(_flushSubscription->tick()), tick);
-    tick = irs::numeric_utils::hton64(tick); // convert to BE
+    _lastCommittedTick = std::max(_lastCommittedTick, TRI_voc_tick_t(tick)); // update last tick
+    tick = irs::numeric_utils::hton64(uint64_t(_lastCommittedTick)); // convert to BE
 
     out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof(uint64_t));
 
@@ -345,13 +345,11 @@ void IResearchLink::afterTruncate() {
   SCOPED_LOCK(_asyncSelf->mutex());  // '_dataStore' can be asynchronously modified
 
   if (!*_asyncSelf) {
+    // the current link is no longer valid (checked after ReadLock aquisition)
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,  // the current link is no longer
-                                            // valid (checked after ReadLock
-                                            // aquisition)
-        std::string("failed to lock arangosearch link while truncating "
-                    "arangosearch link '") +
-            std::to_string(id()) + "'");
+      TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
+      "failed to lock arangosearch link while truncating arangosearch link '" +
+      std::to_string(id()) + "'");
   }
 
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
@@ -387,10 +385,10 @@ void IResearchLink::batchInsert(
 
   auto& state = *(trx.state());
 
-  if (_dataStore._inRecovery && _engine->recoveryTick() <= _recoveryTick) {
+  if (_dataStore._inRecovery && _engine->recoveryTick() <= _dataStore._recoveryTick) {
     LOG_TOPIC("7e228", TRACE, iresearch::TOPIC)
       << "skipping 'batchInsert', operation tick '" << _engine->recoveryTick()
-      << "', recovery tick '" << _recoveryTick << "'";
+      << "', recovery tick '" << _dataStore._recoveryTick << "'";
 
     return;
   }
@@ -405,17 +403,17 @@ void IResearchLink::batchInsert(
 #endif
 
   if (!ctx) {
-    SCOPED_LOCK_NAMED(_asyncSelf->mutex(),
-                      lock);  // '_dataStore' can be asynchronously modified
+    // '_dataStore' can be asynchronously modified
+    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
 
     if (!*_asyncSelf) {
       LOG_TOPIC("7d258", WARN, iresearch::TOPIC)
           << "failed to lock arangosearch link while inserting a batch into "
              "arangosearch link '"
           << id() << "', tid '" << state.id() << "'";
-      queue->setStatus(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);  // the current link is no longer
-                                                            // valid (checked after ReadLock
-                                                            // aquisition)
+
+      // the current link is no longer valid (checked after ReadLock aquisition)
+      queue->setStatus(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
 
       return;
     }
@@ -546,16 +544,32 @@ Result IResearchLink::commitUnsafe() {
 
   if (!subscription) {
     // already released
-    return { };
+    return {};
   }
 
   try {
-    auto lastCommittedTick = engine->currentTick();
+    auto const lastTickBeforeCommit = engine->currentTick();
 
-    _dataStore._writer->commit(_before_commit);
+    TRY_SCOPED_LOCK_NAMED(_commitMutex, commitLock);
 
-    SCOPED_LOCK(_readerMutex);
-    auto reader = _dataStore._reader.reopen(); // update reader
+    if (!commitLock.owns_lock()) {
+      // commit is in progress
+      return {};
+    }
+
+    auto const lastCommittedTick = _lastCommittedTick;
+
+    try {
+      // _lastCommittedTick is being updated in '_before_commit'
+      _dataStore._writer->commit(_before_commit);
+    } catch (...) {
+      // restore last committed tick in case of any error
+      _lastCommittedTick = lastCommittedTick;
+      throw;
+    }
+
+    // get new reader
+    auto reader = _dataStore._reader.reopen();
 
     if (!reader) {
       // nothing more to do
@@ -569,11 +583,11 @@ Result IResearchLink::commitUnsafe() {
     if (_dataStore._reader == reader) {
       LOG_TOPIC("7e319", TRACE, iresearch::TOPIC)
         << "no changes registered for arangosearch link '" << id()
-        << "' got last operation tick '" << lastCommittedTick
+        << "' got last operation tick '" << _lastCommittedTick
         << "', run id '" << size_t(&runId) << "'";
 
       // no changes, can release the latest tick before commit
-      subscription->tick(lastCommittedTick);
+      subscription->tick(lastTickBeforeCommit);
 
       return {};
     }
@@ -581,25 +595,18 @@ Result IResearchLink::commitUnsafe() {
     // update reader
     _dataStore._reader = reader;
 
+    // update last committed tick
+    subscription->tick(_lastCommittedTick);
+
     // invalidate query cache
     aql::QueryCache::instance()->invalidate(&(_collection.vocbase()), _viewGuid);
-
-    if (!::readTick(reader->meta().meta.payload(), lastCommittedTick)) {
-      return {
-        TRI_ERROR_INTERNAL,
-        "failed to get last committed tick for arangosearch link '" + std::to_string(id()) + "'"
-      };
-    }
 
     LOG_TOPIC("7e328", TRACE, iresearch::TOPIC)
       << "successfull sync of arangosearch link '" << id()
       << "', docs count '" << reader->docs_count()
       << "', live docs count '" << reader->live_docs_count()
-      << "', last operation tick '" << lastCommittedTick
+      << "', last operation tick '" << _lastCommittedTick
       << "', run id '" << size_t(&runId) << "'";
-
-    // update last committed tick
-    subscription->tick(lastCommittedTick);
   } catch (basics::Exception const& e) {
     return {
       e.code(),
@@ -1036,7 +1043,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
     case RecoveryState::BEFORE: // link is being opened before recovery
     case RecoveryState::DONE: { // link is being created after recovery
       _dataStore._inRecovery = true; // will be adjusted in post-recovery callback
-      _recoveryTick = _engine->recoveryTick();
+      _dataStore._recoveryTick = _engine->recoveryTick();
       break;
     }
 
@@ -1046,7 +1053,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
       _createdInRecovery = true;
 
       _dataStore._inRecovery = false;
-      _recoveryTick = _engine->releasedTick();
+      _dataStore._recoveryTick = _engine->releasedTick();
       break;
     }
   }
@@ -1055,7 +1062,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
     try {
       _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory));
 
-      if (!::readTick(_dataStore._reader.meta().meta.payload(), _recoveryTick)) {
+      if (!::readTick(_dataStore._reader.meta().meta.payload(), _dataStore._recoveryTick)) {
         return {
           TRI_ERROR_INTERNAL,
           "failed to get last committed tick while initializing link '" + std::to_string(id()) + "'"
@@ -1066,7 +1073,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
     }
   }
 
-  _flushSubscription = std::make_shared<IResearchFlushSubscription>(_recoveryTick);
+  _flushSubscription.reset(new IResearchFlushSubscription(_dataStore._recoveryTick));
 
   irs::index_writer::init_options options;
   options.lock_repository = false; // do not lock index, ArangoDB has its own lock
@@ -1102,7 +1109,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
     };
   }
 
-  if (!::readTick(_dataStore._reader.meta().meta.payload(), _recoveryTick)) {
+  if (!::readTick(_dataStore._reader.meta().meta.payload(), _dataStore._recoveryTick)) {
     return {
       TRI_ERROR_INTERNAL,
       "failed to get last committed tick while initializing link '" + std::to_string(id()) + "'"
@@ -1111,7 +1118,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
 
   LOG_TOPIC("7e128", TRACE, iresearch::TOPIC)
     << "data store reader for link '" + std::to_string(id())
-    << "' is initialized with recovery tick '" << _recoveryTick << "'";
+    << "' is initialized with recovery tick '" << _dataStore._recoveryTick << "'";
 
   // reset data store meta, will be updated at runtime via properties(...)
   _dataStore._meta._cleanupIntervalStep = 0; // 0 == disable
@@ -1154,18 +1161,20 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
         };
       }
 
-      if (link->_recoveryTick > link->_engine->recoveryTick()) {
+      auto& dataStore = link->_dataStore;
+
+      if (dataStore._recoveryTick > link->_engine->recoveryTick()) {
         LOG_TOPIC("5b59f", WARN, iresearch::TOPIC)
           << "arangosearch link '" << link->id()
-          << "' is recovered at tick '" << link->_recoveryTick
+          << "' is recovered at tick '" << dataStore._recoveryTick
           << "' less than storage engine tick '" << link->_engine->recoveryTick()
-          << "', it seems WAL tail was lost link '" << link->id()
+          << "', it seems WAL tail was lost and link '" << link->id()
           << "' is out of sync with the underlying collection '" << link->collection().name()
           << "', consider to re-create the link in order to synchronize them.";
       }
 
       // recovery finished
-      link->_dataStore._inRecovery = link->_engine->inRecovery();
+      dataStore._inRecovery = link->_engine->inRecovery();
 
       LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
         << "starting sync for arangosearch link '" << link->id() << "'";
@@ -1340,10 +1349,10 @@ Result IResearchLink::insert(
 
   auto& state = *(trx.state());
 
-  if (_dataStore._inRecovery && _engine->recoveryTick() <= _recoveryTick) {
+  if (_dataStore._inRecovery && _engine->recoveryTick() <= _dataStore._recoveryTick) {
     LOG_TOPIC("7c228", TRACE, iresearch::TOPIC)
       << "skipping 'insert', operation tick '" << _engine->recoveryTick()
-      << "', recovery tick '" << _recoveryTick << "'";
+      << "', recovery tick '" << _dataStore._recoveryTick << "'";
 
     return {};
   }
@@ -1554,10 +1563,10 @@ Result IResearchLink::remove(
 
   auto& state = *(trx.state());
 
-  if (_dataStore._inRecovery && _engine->recoveryTick() <= _recoveryTick) {
+  if (_dataStore._inRecovery && _engine->recoveryTick() <= _dataStore._recoveryTick) {
     LOG_TOPIC("7d228", TRACE, iresearch::TOPIC)
       << "skipping 'removal', operation tick '" << _engine->recoveryTick()
-      << "', recovery tick '" << _recoveryTick << "'";
+      << "', recovery tick '" << _dataStore._recoveryTick << "'";
 
     return {};
   }
@@ -1572,13 +1581,15 @@ Result IResearchLink::remove(
 #endif
 
   if (!ctx) {
-    SCOPED_LOCK_NAMED(_asyncSelf->mutex(),
-                      lock);  // '_dataStore' can be asynchronously modified
+    // '_dataStore' can be asynchronously modified
+    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
 
     if (!*_asyncSelf) {
       return {
         TRI_ERROR_ARANGO_INDEX_HANDLE_BAD, // the current link is no longer valid (checked after ReadLock aquisition)
-        std::string("failed to lock arangosearch link while removing a document from arangosearch link '") + std::to_string(id()) + "', tid '" + std::to_string(state.id()) + "', revision '" + std::to_string(documentId.id()) + "'"
+        "failed to lock arangosearch link while removing a document from arangosearch link '" + std::to_string(id()) +
+        "', tid '" + std::to_string(state.id()) +
+        "', revision '" + std::to_string(documentId.id()) + "'"
       };
     }
 
@@ -1595,7 +1606,8 @@ Result IResearchLink::remove(
       return {
         TRI_ERROR_INTERNAL,
         "failed to store state into a TransactionState for remove from arangosearch link '" + std::to_string(id()) +
-        "', tid '" + std::to_string(state.id()) + "', revision '" + std::to_string(documentId.id()) + "'"
+        "', tid '" + std::to_string(state.id()) +
+        "', revision '" + std::to_string(documentId.id()) + "'"
       };
     }
   }
@@ -1632,8 +1644,8 @@ Result IResearchLink::remove(
 }
 
 IResearchLink::Snapshot IResearchLink::snapshot() const {
-  SCOPED_LOCK_NAMED(_asyncSelf->mutex(),
-                    lock);  // '_dataStore' can be asynchronously modified
+  // '_dataStore' can be asynchronously modified
+  SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
 
   if (!*_asyncSelf) {
     LOG_TOPIC("f42dc", WARN, iresearch::TOPIC)
