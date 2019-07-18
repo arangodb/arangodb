@@ -1412,8 +1412,6 @@ int MMFilesWalRecoverState::replayLogfile(MMFilesWalLogfile* logfile, int number
       << "replaying WAL logfile '" << logfileName << "' (" << (number + 1)
       << " of " << n << ")";
 
-  usleep(5000000);
-
   MMFilesDatafile* df = logfile->df();
 
   // Advise on sequential use:

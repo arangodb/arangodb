@@ -345,7 +345,7 @@ void IResearchLink::afterTruncate() {
   SCOPED_LOCK(_asyncSelf->mutex());  // '_dataStore' can be asynchronously modified
 
   if (!*_asyncSelf) {
-    // the current link is no longer valid (checked after ReadLock aquisition)
+    // the current link is no longer valid (checked after ReadLock acquisition)
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
       "failed to lock arangosearch link while truncating arangosearch link '" +
@@ -412,7 +412,7 @@ void IResearchLink::batchInsert(
              "arangosearch link '"
           << id() << "', tid '" << state.id() << "'";
 
-      // the current link is no longer valid (checked after ReadLock aquisition)
+      // the current link is no longer valid (checked after ReadLock acquisition)
       queue->setStatus(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
 
       return;
@@ -502,7 +502,7 @@ Result IResearchLink::cleanupUnsafe() {
   }
 
   LOG_TOPIC("7e821", TRACE, iresearch::TOPIC)
-    << "successfull cleanup of arangosearch link '" << id()
+    << "successful cleanup of arangosearch link '" << id()
     << "', run id '" << size_t(&runId) << "'";
 
   return {};
@@ -512,8 +512,10 @@ Result IResearchLink::commit(bool wait /*= true*/) {
   SCOPED_LOCK(_asyncSelf->mutex()); // '_dataStore' can be asynchronously modified
 
   if (!*_asyncSelf) {
+    // the current link is no longer valid (checked after ReadLock acquisition)
+
     return {
-      TRI_ERROR_ARANGO_INDEX_HANDLE_BAD, // the current link is no longer valid (checked after ReadLock aquisition)
+      TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
       "failed to lock arangosearch link while commiting arangosearch link '"
        + std::to_string(id()) + "'"
     };
@@ -606,7 +608,7 @@ Result IResearchLink::commitUnsafe(bool wait) {
     aql::QueryCache::instance()->invalidate(&(_collection.vocbase()), _viewGuid);
 
     LOG_TOPIC("7e328", TRACE, iresearch::TOPIC)
-      << "successfull sync of arangosearch link '" << id()
+      << "successful sync of arangosearch link '" << id()
       << "', docs count '" << reader->docs_count()
       << "', live docs count '" << reader->live_docs_count()
       << "', last operation tick '" << _lastCommittedTick
@@ -674,7 +676,7 @@ Result IResearchLink::consolidateUnsafe(
   }
 
   LOG_TOPIC("7e828", TRACE, iresearch::TOPIC)
-    << "successfull consolidation of arangosearch link '" << id()
+    << "successful consolidation of arangosearch link '" << id()
     << "', run id '" << size_t(&runId) << "'";
 
   return {};
@@ -794,7 +796,7 @@ Result IResearchLink::init(
     if (!ci) {
       return {
         TRI_ERROR_INTERNAL,
-        "failure to get storage engine while initializing arangosearch link '" + std::to_string(_id) + "'"
+        "failure to get cluster info while initializing arangosearch link '" + std::to_string(_id) + "'"
       };
     }
 
@@ -836,7 +838,7 @@ Result IResearchLink::init(
     if (!ci) {
       return {
         TRI_ERROR_INTERNAL,
-        "failure to get storage engine while initializing arangosearch link '" + std::to_string(_id) + "'"
+        "failure to get cluster info while initializing arangosearch link '" + std::to_string(_id) + "'"
       };
     }
 
@@ -1052,7 +1054,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
     }
 
     case RecoveryState::IN_PROGRESS: { // link is being created during recovery
-      // both MMFiles and RocksDB will fill out index based on
+      // both MMFiles and RocksDB will fill out link based on
       // actual data in linked collections, we can treat recovery as done
       _createdInRecovery = true;
 
@@ -1408,7 +1410,7 @@ Result IResearchLink::insert(
     SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
 
     if (!*_asyncSelf) {
-      // the current link is no longer valid (checked after ReadLock aquisition)
+      // the current link is no longer valid (checked after ReadLock acquisition)
       return {
         TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
         "failed to lock arangosearch link while inserting a "
@@ -1517,7 +1519,7 @@ Result IResearchLink::properties(IResearchViewMeta const& meta) {
   SCOPED_LOCK(_asyncSelf->mutex());  // '_dataStore' can be asynchronously modified
 
   if (!*_asyncSelf) {
-    // the current link is no longer valid (checked after ReadLock aquisition)
+    // the current link is no longer valid (checked after ReadLock acquisition)
     return {
       TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
       "failed to lock arangosearch link while modifying properties "
@@ -1592,8 +1594,10 @@ Result IResearchLink::remove(
     SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
 
     if (!*_asyncSelf) {
+      // the current link is no longer valid (checked after ReadLock acquisition)
+
       return {
-        TRI_ERROR_ARANGO_INDEX_HANDLE_BAD, // the current link is no longer valid (checked after ReadLock aquisition)
+        TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
         "failed to lock arangosearch link while removing a document from arangosearch link '" + std::to_string(id()) +
         "', tid '" + std::to_string(state.id()) +
         "', revision '" + std::to_string(documentId.id()) + "'"

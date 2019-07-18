@@ -358,8 +358,8 @@ class IRESEARCH_API index_writer:
     ////////////////////////////////////////////////////////////////////////////
     void reset() NOEXCEPT;
 
-    void tick(uint64_t tick) noexcept { tick_ = tick; }
-    uint64_t tick() const noexcept { return tick_; }
+    void tick(uint64_t tick) NOEXCEPT { tick_ = tick; }
+    uint64_t tick() const NOEXCEPT { return tick_; }
 
    private:
     active_segment_context segment_; // the segment_context used for storing changes (lazy-initialized)
