@@ -107,18 +107,18 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
   while (true) {
     
     vst::Chunk chunk;
+    vst::parser::ChunkState state = vst::parser::ChunkState::Invalid;
     if (_vstVersion == vst::VST1_1) {
-      if (!vst::parser::readChunkHeaderVST1_1(chunk, cursor, available)) {
-        break;
-      }
+      state = vst::parser::readChunkVST1_1(chunk, cursor, available);
     } else if (_vstVersion == vst::VST1_0) {
-      if (!vst::parser::readChunkHeaderVST1_0(chunk, cursor, available)) {
-        break;
-      }
-    } else { // actually should never happen
-      TRI_ASSERT(false);
+      state = vst::parser::readChunkVST1_0(chunk, cursor, available);
+    }
+    
+    if (vst::parser::ChunkState::Incomplete == state) {
+      break;
+    } else if (vst::parser::ChunkState::Invalid == state) { // actually should never happen
       this->close();
-      return false;
+      return false; // stop read loop
     }
     
     // move cursors
@@ -129,7 +129,7 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
     // Process chunk
     if (!processChunk(chunk)) {
       this->close();
-      return false;
+      return false; // stop read loop
     }
   }
   
@@ -374,7 +374,7 @@ void VstCommTask<T>::handleAuthHeader(VPackSlice header, uint64_t mId) {
     _authMethod = AuthenticationMethod::BASIC;
   } else {
     LOG_TOPIC("01f44", WARN, Logger::REQUESTS)
-      << "Unknown VST encryption type, ";
+      << "Unknown VST encryption type";
   }
 
   this->_authToken = this->_auth->tokenCache().checkAuthentication(_authMethod, authString);

@@ -118,14 +118,19 @@ void prepareForNetwork(VSTVersion vstVersion,
 /////////////////////////////////////////////////////////////////////////////////////
 
 namespace parser {
+  
+enum class ChunkState : char{
+  Invalid = 0,
+  Incomplete = 1,
+  Complete = 2,
+};
 
-/// @brief readChunkHeaderVST1_0 reads a chunk header in VST1.0 format.
-/// @return true if chunk is complete
-bool readChunkHeaderVST1_0(Chunk& chunk, uint8_t const*, std::size_t len);
+/// @brief readChunkVST1_0 reads a chunk header in VST1.0 format.
+ChunkState readChunkVST1_0(Chunk& chunk, uint8_t const*, std::size_t avail);
 
-/// @brief readChunkHeaderVST1_1 reads a chunk header in VST1.1 format.
+/// @brief readChunkVST1_1 reads a chunk header in VST1.1 format.
 /// @return true if chunk is complete
-bool readChunkHeaderVST1_1(Chunk& chunk, uint8_t const*, std::size_t len);
+ChunkState readChunkVST1_1(Chunk& chunk, uint8_t const*, std::size_t avail);
 
 /// @brief verifies header input and checks correct length
 /// @return message type or MessageType::Undefined on an error

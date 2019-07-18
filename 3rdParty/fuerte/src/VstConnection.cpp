@@ -376,16 +376,17 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   while (true) {
     
     Chunk chunk;
+    parser::ChunkState state = parser::ChunkState::Invalid;
     if (_vstVersion == VST1_1) {
-      if (!vst::parser::readChunkHeaderVST1_1(chunk, cursor, available)) {
-        break;
-      }
+      state = vst::parser::readChunkVST1_1(chunk, cursor, available);
     } else if (_vstVersion == VST1_0) {
-      if (!vst::parser::readChunkHeaderVST1_0(chunk, cursor, available)) {
-        break;
-      }
-    } else { // actually should never happen
-      FUERTE_LOG_ERROR << "Unknown VST version";
+      state = vst::parser::readChunkVST1_0(chunk, cursor, available);
+    }
+    
+    if (parser::ChunkState::Incomplete == state) {
+      break; 
+    } else if (parser::ChunkState::Invalid == state) { // actually should never happen
+      FUERTE_LOG_ERROR << "Invalid VST chunk";
       this->shutdownConnection(Error::ProtocolError);
       return;
     }

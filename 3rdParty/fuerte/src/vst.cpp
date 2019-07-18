@@ -337,11 +337,11 @@ namespace parser {
 // receiving vst
 ///////////////////////////////////////////////////////////////////////////////////
 
-/// @brief readChunkHeaderVST1_0 reads a chunk header in VST1.0 format.
+/// @brief readChunkVST1_0 reads a chunk header in VST1.0 format.
 /// @return true if chunk is complete
-bool readChunkHeaderVST1_0(Chunk& chunk, uint8_t const* hdr, std::size_t avail) {
+ChunkState readChunkVST1_0(Chunk& chunk, uint8_t const* hdr, std::size_t avail) {
   if (avail < minChunkHeaderSize) {
-    return false;
+    return ChunkState::Incomplete;
   }
   
   chunk.header._chunkLength = basics::uintFromPersistentLittleEndian<uint32_t>(hdr + 0);
@@ -349,15 +349,16 @@ bool readChunkHeaderVST1_0(Chunk& chunk, uint8_t const* hdr, std::size_t avail) 
   chunk.header._messageID = basics::uintFromPersistentLittleEndian<uint64_t>(hdr + 8);
   
   if (avail < chunk.header._chunkLength) {
-    return false;
+    return ChunkState::Incomplete;
   }
   
   size_t hdrLen = minChunkHeaderSize;
   if (chunk.header.isFirst()) {
     if (chunk.header.numberOfChunks() > 1) {
       if (avail < maxChunkHeaderSize) {
-        return false;
+        return ChunkState::Incomplete;
       }
+      
       hdrLen = maxChunkHeaderSize; // first chunk header is bigger
       // First chunk, numberOfChunks>1 -> read messageLength
       chunk.header._messageLength =
@@ -368,30 +369,25 @@ bool readChunkHeaderVST1_0(Chunk& chunk, uint8_t const* hdr, std::size_t avail) 
   } else { // not needed / known otherwise
     chunk.header._messageLength = 0;
   }
+  
+  assert(avail >= chunk.header._chunkLength);
+  if (hdrLen > chunk.header._chunkLength) {
+    return ChunkState::Invalid; // chunk incomplete / invalid chunk length
+  }
 
-  size_t contentLength = 0;
-  if (chunk.header._chunkLength >= hdrLen) { // prevent underflow
-    contentLength = chunk.header._chunkLength - hdrLen;
-  } else {
-    FUERTE_LOG_ERROR << "received invalid chunk length";
-  }
-  
-  if (avail < contentLength) { // chunk incomplete
-    return false;
-  }
-  
+  size_t contentLength = chunk.header._chunkLength - hdrLen;
+
   FUERTE_LOG_VSTCHUNKTRACE << "readChunkHeaderVST1_0: got " << contentLength
                            << " data bytes after " << hdrLen << " header bytes\n";
   chunk.body = asio_ns::const_buffer(hdr + hdrLen, contentLength);
   
-  return true;
+  return ChunkState::Complete;
 }
 
-/// @brief readChunkHeaderVST1_1 reads a chunk header in VST1.1 format.
-/// @return true if chunk is complete
-bool readChunkHeaderVST1_1(Chunk& chunk, uint8_t const* hdr, std::size_t avail) {
+/// @brief readChunkVST1_1 reads a chunk header in VST1.1 format.
+ChunkState readChunkVST1_1(Chunk& chunk, uint8_t const* hdr, std::size_t avail) {
   if (avail < maxChunkHeaderSize) {
-    return false;
+    return ChunkState::Incomplete;
   }
 
   chunk.header._chunkLength = basics::uintFromPersistentLittleEndian<uint32_t>(hdr + 0);
@@ -399,21 +395,20 @@ bool readChunkHeaderVST1_1(Chunk& chunk, uint8_t const* hdr, std::size_t avail) 
   chunk.header._messageID = basics::uintFromPersistentLittleEndian<uint64_t>(hdr + 8);
   chunk.header._messageLength = basics::uintFromPersistentLittleEndian<uint64_t>(hdr + 16);
   
-  if (avail < chunk.header._chunkLength ||
-      maxChunkHeaderSize > chunk.header._chunkLength) {
-    return false;
+  if (avail < chunk.header._chunkLength) {
+    return ChunkState::Incomplete;
+  }
+  
+  if (maxChunkHeaderSize > chunk.header._chunkLength) {
+    return ChunkState::Invalid; // invalid chunk length
   }
   
   size_t contentLength = chunk.header._chunkLength - maxChunkHeaderSize;
-  if (avail < contentLength) { // chunk incomplete
-    return false;
-  }
-  
   FUERTE_LOG_VSTCHUNKTRACE << "readChunkHeaderVST1_1: got " << contentLength
                            << " data bytes after " << maxChunkHeaderSize << " bytes\n";
   chunk.body = asio_ns::const_buffer(hdr + maxChunkHeaderSize, contentLength);
   
-  return true;
+  return ChunkState::Complete;
 }
   
 /// @brief verifies header input and checks correct length
