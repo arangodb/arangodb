@@ -660,9 +660,9 @@ static VPackBuilder removeSelectivityEstimate(VPackSlice const& index) {
 }
 
 static VPackBuilder assembleLocalCollectionInfo(
-    VPackSlice const& info, VPackSlice const& planServers, std::string const& database,
-    std::string const& shard, std::string const& ourselves,
-    MaintenanceFeature::errors_t const& allErrors, VPackSlice previousInsyncFollowers) {
+    VPackSlice const& info, VPackSlice const& planServers,
+    std::string const& database, std::string const& shard,
+    std::string const& ourselves, MaintenanceFeature::errors_t const& allErrors) {
   VPackBuilder ret;
 
   try {
@@ -870,13 +870,9 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           continue;
         }
 
-        auto previousInsyncFollowersInCurrentPath =
-            std::vector<std::string>{COLLECTIONS, dbName, colName, shName, SERVERS};
-        auto previousInsyncFollowers = cur.get(previousInsyncFollowersInCurrentPath);
         auto const localCollectionInfo =
             assembleLocalCollectionInfo(shSlice, shardMap.slice().get(shName),
-                                        dbName, shName, serverId, allErrors,
-                                        previousInsyncFollowers);
+                                        dbName, shName, serverId, allErrors);
         // Collection no longer exists
         TRI_ASSERT(!localCollectionInfo.slice().isNone());
         if (localCollectionInfo.slice().isEmptyObject() ||

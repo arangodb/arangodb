@@ -540,8 +540,7 @@ static void collectResultsFromAllShards(
 
 static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> DistributeShardsEvenly(
     ClusterInfo* ci, uint64_t numberOfShards, uint64_t replicationFactor,
-    uint64_t minReplicationFactor, std::vector<std::string>& dbServers,
-    bool warnAboutReplicationFactor) {
+    std::vector<std::string>& dbServers, bool warnAboutReplicationFactor) {
   auto shards =
       std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
 
@@ -2963,7 +2962,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       }
       std::random_shuffle(dbServers.begin(), dbServers.end());
       shards = DistributeShardsEvenly(ci, numberOfShards, replicationFactor,
-                                      minReplicationFactor, dbServers, !col->system());
+                                      dbServers, !col->system());
     }
 
     if (shards->empty() && !col->isSmart()) {
