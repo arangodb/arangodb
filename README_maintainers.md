@@ -15,6 +15,8 @@ Main sections:
 - [Building](#building)
 - [Running](#running)
 - [Debugging](#debugging)
+  - [Linux Core Dumps](#linux-core-dumps)
+  - [Windows Core Dumps](#windows-core-dumps)
 - [Unittests](#unittests)
 
 ---
@@ -140,7 +142,7 @@ Example flags for Windows:
 
 - Configure
   ```
-  cmake .. -DSTATIC_EXECUTABLE=ON -DOPENSSL_USE_STATIC_LIBS=ON -T "v141,host=x64" -G "Visual Studio 15 2017 Win64" -DUSE_ENTERPRISE=ON
+  cmake .. -DSTATIC_EXECUTABLE=ON -DOPENSSL_USE_STATIC_LIBS=ON -T "v141,host=x64" -G "Visual Studio 15 2017 Win64" -DUSE_ENTERPRISE=OFF
   ```
 
 - Build
@@ -412,7 +414,7 @@ Debugging
 
 ### Startup
 
-We now have a startup rc file: `~/.arangod.rc`. It's evaled as JavaScript.
+Arangod has a startup rc file: `~/.arangod.rc`. It's evaled as JavaScript.
 A sample version to help working with the arangod rescue console may look like that:
 
     ENABLE_NATIVE_BACKTRACES(true);
@@ -438,9 +440,17 @@ To debug AQL execution blocks, two steps are required:
 
 You now will get log-entries with the contents being passed between the blocks.
 
-### Linux Coredumps
+### Core Dumps
 
-Generally coredumps have to be enabled using:
+A core dump consists of the recorded state of the working memory of a process
+at a specific time. Such a file can be created on a program crash to analyze
+the cause of the unexpected termination in a debugger.
+
+#### Linux Core Dumps
+
+##### Linux Core Dump Generation
+
+Generally core dumps have to be enabled using:
 
      ulimit -c unlimited
 
@@ -533,7 +543,7 @@ You can also generate coredumps from running processes without killing them by u
     # ls -l core*
     -rw-r--r--  1 me users  352664 Nov 27 10:48  core.6942
 
-#### Analyzing Coredumps on Linux
+##### Analyzing Core Dumps on Linux
 
 We offer debug packages containing the debug symbols for your binaries. Please install them if you didn't compile yourselves.
 
@@ -549,11 +559,11 @@ These commands give usefull information about the incident:
 
 The first gives the full stacktrace including variables of the last active thread, the later one the stacktraces of all threads.
 
-### Windows Debugging
+#### Windows Core Dumps
 
 For the average \*nix user windows debugging has some awkward methods.
 
-#### Windows Coredump Generation
+##### Windows Core Dump Generation
 
 Coredumps can be created using the task manager; switch it to detail view, the
 context menu offers to *create dump file*; the generated file ends in a
@@ -575,7 +585,7 @@ You will then get a core dump if an incident occurs or *Dump count not reached.*
 if nothing happened, *Dump count reached.* if a dump was written - the filename
 will be printed above.
 
-#### Windows Debugging Symbols
+##### Windows Debugging Symbols
 
 Releases are supported by a public symbol server so you will be able to debug cores.
 Please replace `XX` with the major and minor release number (e.g. `35` for v3.5).
@@ -623,7 +633,7 @@ Windows Explorer offers you its proper handler by renaming it to .cab;
 click on the now named `arangod.cab`, copy the contained arangod.pdb into your
 symbol path.
 
-#### Coredump analysis
+##### Widnows Core Dump Analysis
 
 While Visual studio may cary a nice shiny GUI, the concept of GUI fails miserably
 e.g. in test automation. Getting an overview over all running threads is a
@@ -655,8 +665,13 @@ Unittests
 
 ### Dependencies
 
-- *Ruby*, *rspec*, *httparty* to install the required dependencies run:
-  `cd tests/rb/HttpInterface; bundler`
+- *Ruby*, *rspec*, *httparty*; to install the required dependencies run the
+  following commands in the source root:
+  ```
+  gem install bundler
+  cd tests/rb/HttpInterface
+  bundler
+  ```
 - *Google Test* (compile time, shipped in the 3rdParty directory)
 
 ### Folder Locations
@@ -680,7 +695,6 @@ or skipped depending on parameters:
 
 | Substring       | Description
 |:----------------|:----------------
-| `-server`       | Make use of existing external server. Example: `scripts/unittest http_server --server tcp://127.0.0.1:8529/`
 | `-cluster`      | These tests will only run if clustering is tested (option 'cluster' needs to be true).
 | `-noncluster`   | These tests will only run if no cluster is used (option 'cluster' needs to be false)
 | `-timecritical` | These tests are critical to execution time - and thus may fail if arangod is to slow. This may happen i.e. if you run the tests in valgrind, so you want to avoid them since they will fail anyways. To skip them, set the option `skipTimeCritical` to *true*.
@@ -690,8 +704,6 @@ or skipped depending on parameters:
 | `-grey`         | These tests are currently listed as "grey", which means that they are known to be unstable or broken. These tests will not be executed by the testing framework if the option `--skipGrey` is given. If `--onlyGrey` option is given then non-"grey" tests are skipped. See `tests/Greylist.txt` for up-to-date information about greylisted tests. Please help to keep this file up to date.
 
 ### Javascript Framework
-
-(Used in our local Jenkins and TravisCI integration; required for running cluster tests)
 
 Since several testing technologies are utilized, and different ArangoDB
 startup options may be required (even different compilation options may be
@@ -729,11 +741,18 @@ Available choices include:
 Different facilities may take different options. The above mentioned usage
 output contains the full detail.
 
+Instead of starting its own instance, `unittest` can also make use of a previously
+started arangod instance. You can launch the instance as you want including via
+a debugger or `rr` and prepare it for what you want to test with it.
+You then launch the test on it like this (assuming the default endpoint):
+
+    ./scripts/unittest http_server --server tcp://127.0.0.1:8529/
+
 A commandline for running a single test (-> with the facility 'single_server') using
 valgrind could look like this. Options are passed as regular long values in the
 syntax --option value --sub:option value. Using Valgrind could look like this:
 
-    ./scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js \
+    ./scripts/unittest single_server --test tests/js/server/aql/aql-escaping.js \
       --extraArgs:server.threads 1 \
       --extraArgs:scheduler.threads 1 \
       --extraArgs:javascript.gc-frequency 1000000 \
@@ -744,13 +763,13 @@ syntax --option value --sub:option value. Using Valgrind could look like this:
       --valgrind /usr/bin/valgrind \
       --valgrindargs:log-file /tmp/valgrindlog.%p
 
-- we specify the test to execute
-- we specify some arangod arguments via --extraArgs which increase the server performance
-- we specify to run using valgrind (this is supported by all facilities)
-- we specify some valgrind commandline arguments
-- we set the log level to debug
-- we force the logging not to happen asynchronous
-- eventually you may still add temporary `console.log()` statements to tests you debug.
+- We specify the test to execute
+- We specify some arangod arguments via --extraArgs which increase the server performance
+- We specify to run using valgrind (this is supported by all facilities)
+- We specify some valgrind commandline arguments
+- We set the log level to debug
+- We force the logging not to happen asynchronous
+- Eventually you may still add temporary `console.log()` statements to tests you debug.
 
 #### Running a Single Unittest Suite
 
@@ -768,7 +787,7 @@ You can also only execute a filtered test case in a jsunity/mocha/gtest test sui
 
 Testing a single test with the framework via arangosh:
 
-    scripts/unittest single_client --test tests/js/server/aql/aql-escaping.js
+    scripts/unittest single_client --test tests/js/client/shell/shell-transaction.js
 
 Testing a single rspec test:
 
@@ -784,7 +803,7 @@ Since downloading Foxx apps from GitHub can be cumbersome with shaky DSL
 and DoS'ed GitHub, we can fake it like this:
 
     export FOXX_BASE_URL="http://germany/fakegit/"
-    ./scripts/unittest single_server --test 'js/server/tests/shell/shell-foxx-manager-spec.js'
+    ./scripts/unittest single_server --test 'tests/js/server/shell/shell-foxx-manager-spec.js'
 
 ### Running jsUnity Tests
 
@@ -825,12 +844,6 @@ Filtering for one test case (in this case `testTokens`) in console mode:
 
     require("jsunity").runTest("tests/js/server/aql/aql-escaping.js", false, "testTokens");
 
-Run a test via startup option:
-
-    build/bin/arangod /tmp/dataUT --javascript.unit-tests="tests/js/server/aql/aql-escaping.js" --no-server
-
-    js/common/modules/loadtestrunner.js
-
 #### Running jsUnity Tests with arangosh client
 
 Run tests this way:
@@ -844,10 +857,7 @@ You can only run tests which are intended to be ran via arangosh.
 All tests with `-spec` in their names are using the [mochajs.org](https://mochajs.org) framework.
 To run those tests, e.g. in the arangosh, use this:
 
-```js
-const runTest = require("@arangodb/mocha-runner");
-runTest(<filepath>, true)
-```
+    require("@arangodb/mocha-runner").runTest('tests/js/client/endpoint-spec.js', true)
 
 ### Debugging Tests
 
