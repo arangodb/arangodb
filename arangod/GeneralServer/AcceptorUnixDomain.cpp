@@ -21,18 +21,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GeneralServer/AcceptorUnixDomain.h"
+
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Endpoint/ConnectionInfo.h"
 #include "Endpoint/EndpointUnixDomain.h"
-#include "GeneralServer/SocketUnixDomain.h"
+#include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/HttpCommTask.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
+using namespace arangodb::rest;
 
 void AcceptorUnixDomain::open() {
   std::string path(((EndpointUnixDomain*)_endpoint)->path());
   if (basics::FileUtils::exists(path)) {
     // socket file already exists
-    LOG_TOPIC("e0ae1", WARN, arangodb::Logger::FIXME) << "socket file '" << path << "' already exists.";
+    LOG_TOPIC("e0ae1", WARN, arangodb::Logger::FIXME)
+        << "socket file '" << path << "' already exists.";
 
     int error = 0;
     // delete previously existing socket file
@@ -46,30 +52,56 @@ void AcceptorUnixDomain::open() {
   }
 
   asio_ns::local::stream_protocol::stream_protocol::endpoint endpoint(path);
-  _acceptor->open(endpoint.protocol());
-  _acceptor->bind(endpoint);
-  _acceptor->listen();
+  _acceptor.open(endpoint.protocol());
+  _acceptor.bind(endpoint);
+  _acceptor.listen();
+  
+  _open = true;
+  asyncAccept();
 }
 
-void AcceptorUnixDomain::asyncAccept(AcceptHandler const& handler) {
-  TRI_ASSERT(!_peer);
-  auto& context = _server.selectIoContext();
+void AcceptorUnixDomain::asyncAccept() {
+  TRI_ASSERT(!_asioSocket);
+  IoContext& context = _server.selectIoContext();
 
-  _peer.reset(new SocketUnixDomain(context));
-  auto peer = dynamic_cast<SocketUnixDomain*>(_peer.get());
-  if (peer == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "unexpected socket type");
-  }
-  _acceptor->async_accept(*peer->_socket, peer->_peerEndpoint, handler);
+  _asioSocket.reset(new AsioSocket<SocketType::Unix>(context));
+
+  auto handler = [this](asio_ns::error_code const& ec) {
+    if (ec) {
+      handleError(ec);
+      return;
+    }
+
+    // set the endpoint
+    ConnectionInfo info;
+    info.endpoint = _endpoint->specification();
+    info.endpointType = _endpoint->domainType();
+    info.encryptionType = _endpoint->encryption();
+    info.serverAddress = _endpoint->host();
+    info.serverPort = _endpoint->port();
+    info.clientAddress = "local";
+    info.clientPort = 0;
+
+    auto commTask =
+        std::make_shared<HttpCommTask<SocketType::Unix>>(_server,
+                                                         std::move(info),
+                                                         std::move(_asioSocket));
+    _server.registerTask(std::move(commTask));
+    this->asyncAccept();
+  };
+
+  _acceptor.async_accept(_asioSocket->socket, _asioSocket->peer, handler);
 }
 
 void AcceptorUnixDomain::close() {
-  _acceptor->close();
-  int error = 0;
-  std::string path = ((EndpointUnixDomain*)_endpoint)->path();
-  if (!basics::FileUtils::remove(path, &error)) {
-    LOG_TOPIC("56b89", TRACE, arangodb::Logger::FIXME)
-        << "unable to remove socket file '" << path << "'";
+  if (_open) {
+    _acceptor.close();
+    int error = 0;
+    std::string path = static_cast<EndpointUnixDomain*>(_endpoint)->path();
+    if (!basics::FileUtils::remove(path, &error)) {
+      LOG_TOPIC("56b89", TRACE, arangodb::Logger::FIXME)
+          << "unable to remove socket file '" << path << "'";
+    }
   }
+  _open = false;
 }
