@@ -309,7 +309,7 @@ template<SocketType T>
 void VstCommTask<T>::doWrite() {
   TRI_ASSERT(_writing.load() == true);
   
-  do { // loop instead of using recursion
+  while(true) { // loop instead of using recursion
     
     ResponseItem* tmp = nullptr;
     if (!_writeQueue.pop(tmp)) {
@@ -317,15 +317,16 @@ void VstCommTask<T>::doWrite() {
       // a new request item
       _writing.store(false);
       if (_writeQueue.empty()) {
-        return; // done, someone else can restart
+        break; // done, someone else may restart
       }
       // at this point
       bool expected = false;
       if (_writing.compare_exchange_strong(expected, true)) {
         continue; // we re-start writing
       }
+      TRI_ASSERT(expected == true);
+      break; // someone else restarted writing
     }
-    
     TRI_ASSERT(tmp != nullptr);
     std::unique_ptr<ResponseItem> item(tmp);
     
@@ -343,8 +344,9 @@ void VstCommTask<T>::doWrite() {
       }
     };
     asio_ns::async_write(this->_protocol->socket, buffers, std::move(cb));
-    return;
-  } while(true);
+    
+    break; // done
+  }
 }
 
 template<SocketType T>
