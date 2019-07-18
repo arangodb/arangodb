@@ -1892,6 +1892,8 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     // add a precondition that checks the plan version has not yet changed
     precs.emplace_back(AgencyPrecondition("Plan/Version", AgencyPrecondition::Type::VALUE, versionBuilder.slice()));
 
+    AgencyWriteTransaction transaction(opers, precs);
+
     {  // we hold this mutex from now on until we have updated our cache
       // using loadPlan, this is necessary for the callback closure to
       // see the new planned state for this collection. Otherwise it cannot
