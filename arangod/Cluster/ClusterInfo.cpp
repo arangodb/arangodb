@@ -1624,7 +1624,12 @@ Result ClusterInfo::checkCollectionPreconditions(std::string const& databaseName
 
   return {};
 }
-
+  
+/// @brief create multiple collections in coordinator
+///        If any one of these collections fails, all creations will be
+///        rolled back.
+/// Note that in contrast to most other methods here, this method does not
+/// get a timeout parameter, but an endTime parameter!!!
 Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName,
                                                  std::vector<ClusterCollectionCreationInfo>& infos,
                                                  double endTime) {
@@ -1646,10 +1651,6 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
   AgencyComm ac;
   std::vector<std::shared_ptr<AgencyCallback>> agencyCallbacks;
   
-  // We need to make sure our plan is up to date.
-  LOG_TOPIC(DEBUG, Logger::CLUSTER)
-      << "createCollectionCoordinator, loading Plan from agency...";
-
   auto cbGuard = scopeGuard([&] {
     // We have a subtle race here, that we try to cover against:
     // We register a callback in the agency.
@@ -1835,6 +1836,9 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
                                           AgencyPrecondition::Type::EMPTY, true));
   }
 
+  // We need to make sure our plan is up to date.
+  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+      << "createCollectionCoordinator, loading Plan from agency...";
 
   // load the plan, so we are up-to-date
   loadPlan();
@@ -1936,7 +1940,6 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
         precs.emplace_back(CreateCollectionOrderPrecondition(databaseName, info.collectionID,
                                                              info.isBuildingSlice()));
       }
-      // TODO: Should we use preconditions?
 
       AgencyWriteTransaction transaction(opers, precs);
 

@@ -2678,6 +2678,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       vpackData.emplace_back(velocy.steal());
     }
 
+    // pass in the *endTime* here, not a timeout!
     Result res = ci->createCollectionsCoordinator(dbName, infos, endTime);
 
     if (res.ok()) {

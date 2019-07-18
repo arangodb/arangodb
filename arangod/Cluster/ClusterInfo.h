@@ -395,19 +395,15 @@ class ClusterInfo {
                                       std::vector<ClusterCollectionCreationInfo> const& infos,
                                       uint64_t& planVersion);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create multiple collections in coordinator
   ///        If any one of these collections fails, all creations will be
   ///        rolled back.
-  //////////////////////////////////////////////////////////////////////////////
-
+  /// Note that in contrast to most other methods here, this method does not
+  /// get a timeout parameter, but an endTime parameter!!!
   Result createCollectionsCoordinator(std::string const& databaseName,
-                                      std::vector<ClusterCollectionCreationInfo>&, double timeout);
+                                      std::vector<ClusterCollectionCreationInfo>&, double endTime);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief drop collection in coordinator
-  //////////////////////////////////////////////////////////////////////////////
-
   int dropCollectionCoordinator(std::string const& databaseName, std::string const& collectionID,
                                 std::string& errorMsg, double timeout);
 
