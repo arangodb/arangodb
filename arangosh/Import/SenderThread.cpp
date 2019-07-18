@@ -64,7 +64,8 @@ void SenderThread::beginShutdown() {
   guard.broadcast();
 }
 
-void SenderThread::sendData(std::string const& url, arangodb::basics::StringBuffer* data) {
+void SenderThread::sendData(std::string const& url, arangodb::basics::StringBuffer* data,
+                            size_t lowLine, size_t highLine) {
   TRI_ASSERT(_idle && !_hasError);
   _url = url;
   _data.swap(data);
@@ -72,6 +73,8 @@ void SenderThread::sendData(std::string const& url, arangodb::basics::StringBuff
   // wake up the thread that may be waiting in run()
   CONDITION_LOCKER(guard, _condition);
   _idle = false;
+  _lowLineNumber = lowLine;
+  _highLineNumber = highLine;
   guard.broadcast();
 }
 
