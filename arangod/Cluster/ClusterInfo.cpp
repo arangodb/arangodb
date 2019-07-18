@@ -277,6 +277,18 @@ void ClusterInfo::cleanup() {
   theInstance->_currentCollections.clear();
 }
 
+/// @brief produces an agency dump and logs it
+void ClusterInfo::logAgencyDump() const {
+  AgencyComm ac;
+  AgencyCommResult ag = ac.getValues("/");
+
+  if (ag.successful()) {
+    LOG_TOPIC(INFO, Logger::CLUSTER) << "Agency dump:\n" << ag.slice().toJson();
+  } else {
+    LOG_TOPIC(WARN, Logger::CLUSTER) << "Could not get agency dump!";
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief increase the uniqid value. if it exceeds the upper bound, fetch a
 /// new upper bound value from the agency
@@ -1529,14 +1541,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
       }
 
       if (TRI_microtime() > endTime) {
-        AgencyCommResult ag = ac.getValues("/");
-        if (ag.successful()) {
-          LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
-                                          << ag.slice().toJson();
-        } else {
-          LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
-        }
-
+        logAgencyDump();
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
 
@@ -1906,15 +1911,7 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
       }
 
       // Get a full agency dump for debugging
-      {
-        AgencyCommResult ag = ac.getValues("");
-        if (ag.successful()) {
-          LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
-                                          << ag.slice().toJson();
-        } else {
-          LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
-        }
-      }
+      logAgencyDump();
 
       if (tmpRes <= TRI_ERROR_NO_ERROR) {
         tmpRes = TRI_ERROR_CLUSTER_TIMEOUT;
@@ -2136,13 +2133,8 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& dbName,
           << "Precondition failed for this agency transaction: " << trans.toJson()
           << ", return code: " << res.httpCode();
     }
-    AgencyCommResult ag = ac.getValues("");
-    if (ag.successful()) {
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
-                                      << ag.slice().toJson();
-    } else {
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
-    }
+    
+    logAgencyDump();
     // TODO: this should rather be TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, as the
     // precondition is that the database still exists
     return TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION;
@@ -2178,13 +2170,8 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& dbName,
             << "Timeout in _drop collection (" << realTimeout << ")"
             << ": database: " << dbName << ", collId:" << collectionID
             << "\ntransaction sent to agency: " << trans.toJson();
-        AgencyCommResult ag = ac.getValues("");
-        if (ag.successful()) {
-          LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
-                                          << ag.slice().toJson();
-        } else {
-          LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
-        }
+    
+        logAgencyDump();
         events::DropCollection(collectionID, TRI_ERROR_CLUSTER_TIMEOUT);
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
@@ -2334,14 +2321,7 @@ int ClusterInfo::createViewCoordinator(std::string const& databaseName,
                   viewID + " does not yet exist failed. Cannot create view.";
 
       // Dump agency plan:
-      auto const ag = ac.getValues("/");
-
-      if (ag.successful()) {
-        LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
-                                        << ag.slice().toJson();
-      } else {
-        LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
-      }
+      logAgencyDump();
 
       return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN;
     } else {
@@ -2392,14 +2372,7 @@ int ClusterInfo::dropViewCoordinator(std::string const& databaseName,
       errorMsg += " already exist failed. Cannot create view.";
 
       // Dump agency plan:
-      auto const ag = ac.getValues("/");
-
-      if (ag.successful()) {
-        LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
-                                        << ag.slice().toJson();
-      } else {
-        LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
-      }
+      logAgencyDump();
     } else {
       errorMsg += std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__);
       errorMsg += " HTTP code: " + std::to_string(res.httpCode());
@@ -2434,14 +2407,7 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
       {AgencyCommManager::path(), "Plan", "Views", databaseName, viewID});
 
   if (!view.isObject()) {
-    auto const ag = ac.getValues("");
-
-    if (ag.successful()) {
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
-                                      << ag.slice().toJson();
-    } else {
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
-    }
+    logAgencyDump();
 
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
