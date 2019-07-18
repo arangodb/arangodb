@@ -1841,6 +1841,7 @@ int MMFilesLogfileManager::runRecovery() {
 
   if (!_recoverState->mustRecover()) {
     // nothing to do
+    _recoveryTick = _recoverState->lastTick;
     return TRI_ERROR_NO_ERROR;
   }
 
