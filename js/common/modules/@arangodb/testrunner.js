@@ -29,14 +29,14 @@ const statusKeys = [
   // //////////////////////////////////////////////////////////////////////////////
 
 function runJSUnityTests (tests, instanceinfo) {
-  let env = require('internal').env;
+  let env = internal.env;
   var allResults = _.clone(deflRes);
   var failed = [];
   var res;
 
   // find out whether we're on server or client...
   var runenvironment = 'arangod';
-  if (typeof (require('internal').arango) === 'object') {
+  if (typeof (internal.arango) === 'object') {
     runenvironment = 'arangosh';
   }
 
@@ -46,11 +46,20 @@ function runJSUnityTests (tests, instanceinfo) {
   }
 
   _.each(tests, function (file) {
-    if (allResults.success) {
+    if (allResults.status) {
       print('\n' + Date() + ' ' + runenvironment + ": Running JSUnity test from file '" + file + "'");
     } else {
       print('\n' + Date() + ' ' + runenvironment +
-        ": Skipping JSUnity test from file '" + file + "' due to previous errors");
+            ": Skipping JSUnity test from file '" + file + "' due to previous errors");
+      if (!allResults.hasOwnProperty('ALLTESTS')) {
+        allResults['ALLTESTS'] = {
+          status: false,
+          skipped: true,
+          message: 'test failed, skipping others: '
+        };
+      }
+      allResults.ALLTESTS.message += file + ', ';
+      return;
     }
 
     try {
@@ -61,7 +70,7 @@ function runJSUnityTests (tests, instanceinfo) {
       allResults.totalSetUp += res.totalSetup;
       allResults.totalTearDown += res.totalTearDown;
 
-      allResults.success = allResults.success && res.status;
+      allResults.status = allResults.status && res.status;
 
       if (!res.status) {
         failed.push(file);
@@ -77,7 +86,7 @@ function runJSUnityTests (tests, instanceinfo) {
         );
         err = err.cause;
       }
-      allResults.success = false;
+      allResults.status = false;
     }
 
     internal.wait(0); // force GC
@@ -115,7 +124,7 @@ function runMochaTests (testFiles) {
 
 function runCommandLineTests () {
   let instanceinfo;
-  let env = require('internal').env;
+  let env = internal.env;
   if (!env.hasOwnProperty('INSTANCEINFO')) {
     throw new Error('env.INSTANCEINFO was not set by caller!');
   }
