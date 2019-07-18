@@ -104,21 +104,16 @@ class CountCollectExecutor {
     }
 
     while (true) {
-      std::tie(_state, input) = _fetcher.fetchRow();
+      size_t skipped;
+      std::tie(_state, skipped) = _fetcher.skipRows(ExecutionBlock::SkipAllSize());
 
       if (_state == ExecutionState::WAITING) {
+        TRI_ASSERT(skipped == 0);
         return {_state, stats};
       }
 
-      if (!input) {
-        TRI_ASSERT(_state == ExecutionState::DONE);
-        output.cloneValueInto(_infos.getOutputRegisterId(), input,
-                              AqlValue(AqlValueHintUInt(getCount())));
-        return {_state, stats};
-      }
-
-      TRI_ASSERT(input.isInitialized());
-      incrCount();
+      TRI_ASSERT(skipped != 0 || _state == ExecutionState::DONE);
+      incrCountBy(skipped);
 
       // Abort if upstream is done
       if (_state == ExecutionState::DONE) {
@@ -129,7 +124,7 @@ class CountCollectExecutor {
     }
   }
 
-  void incrCount() noexcept { _count++; };
+  void incrCountBy(size_t incr) noexcept { _count += incr; };
   uint64_t getCount() noexcept { return _count; };
 
   inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {
