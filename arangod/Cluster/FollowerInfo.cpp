@@ -295,9 +295,9 @@ bool FollowerInfo::updateFailoverCandidates() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_failoverCandidates->size() == _followers->size());
     std::vector<string> diff;
-    std::set_intersection(_failoverCandidates->begin(),
-                          _failoverCandidates->end(), _followers->begin(),
-                          _followers->end(), std::back_inserter(diff));
+    std::set_symmetric_difference(_failoverCandidates->begin(),
+                                  _failoverCandidates->end(), _followers->begin(),
+                                  _followers->end(), std::back_inserter(diff));
     TRI_ASSERT(diff.empty());
 #endif
     return _canWrite;
@@ -310,8 +310,9 @@ bool FollowerInfo::updateFailoverCandidates() {
   TRI_ASSERT(_failoverCandidates->size() == _followers->size());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::vector<string> diff;
-  std::set_intersection(_failoverCandidates->begin(), _failoverCandidates->end(),
-                        _followers->begin(), _followers->end(), std::back_inserter(diff));
+  std::set_symmetric_difference(_failoverCandidates->begin(),
+                                _failoverCandidates->end(), _followers->begin(),
+                                _followers->end(), std::back_inserter(diff));
   TRI_ASSERT(diff.empty());
 #endif
   Result res = persistInAgency(true);
