@@ -397,6 +397,25 @@ bool Syncer::JobSynchronizer::hasJobInFlight() const noexcept {
   return _jobsInFlight > 0;
 }
 
+/**
+ * @brief Generate a new syncer ID, used for the catchup in synchronous replication.
+ *
+ * If we're running in a cluster, we're a DBServer that's using asynchronous
+ * replication to catch up until we can switch to synchronous replication.
+ *
+ * As in this case multiple syncers can run on the same client, syncing from the
+ * same server, the server ID used to identify the client with usual asynchronous
+ * replication on the server is not sufficiently unique. For that case, we use
+ * the syncer ID with a server specific tick.
+ *
+ * Otherwise, we're doing some other kind of asynchronous replication (e.g.
+ * active failover or dc2dc). In that case, the server specific tick would not
+ * be unique among clients, and the server ID will be used instead.
+ *
+ * The server distinguishes between syncer and server IDs, which is why we don't
+ * just return ServerIdFeature::getId() here, so e.g. SyncerId{4} and server ID 4
+ * will be handled as distinct values.
+ */
 SyncerId newSyncerId() {
   if (ServerState::instance()->isRunningInCluster()) {
     TRI_ASSERT(ServerState::instance()->getShortId() != 0);
