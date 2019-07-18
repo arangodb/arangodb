@@ -48,7 +48,7 @@ struct SyncerInfo {
 
   SyncerId const syncerId;
   TRI_server_id_t const clientId;
-  std::string const& clientInfo;
+  std::string const clientInfo;
 };
 
 std::ostream& operator<<(std::ostream& ostream, SyncerInfo const& info) {
