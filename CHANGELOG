@@ -8,6 +8,9 @@ devel
   minReplicationFactor can have the values: 1 <= minReplicationFactor <= replicationFactor.
   Having minReplicationFactor == 1 ArangoDB behaves the same way as in any previous version.
 
+* arangoimport would not stop, much less report, communications errors.  Add CSV reporting
+  of line numbers that are impacted during such errors
+
 * coordinator code was reporting rocksdb error codes, but not the associated detail message.
   Corrected.
 

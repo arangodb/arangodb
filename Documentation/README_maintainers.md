@@ -237,8 +237,10 @@ Here is how its details work:
   - an example start is marked with *@EXAMPLE_ARANGOSH_OUTPUT* or *@EXAMPLE_ARANGOSH_RUN*
   - the example is named by the string provided in brackets after the above key
   - the output is written to `Documentation/Examples/<name>.generated`
+  - if your example depends on a storage engine, prepend `<name>` with `_rocksdb` or `_mmfiles` to run it against such a server
   - examples end with *@END_EXAMPLE_[OUTPUT|RUN|AQL]*
   - all code in between is executed as javascript in the **arangosh** while talking to a valid **arangod**.
+  - you should strive to group your examples by naming them with a common prefix per topic.
   You may inspect the generated js code in `/tmp/arangosh.examples.js`
 
 ## OUTPUT, RUN and AQL specifics
