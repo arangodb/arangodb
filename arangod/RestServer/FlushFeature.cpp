@@ -88,8 +88,6 @@ void FlushFeature::registerFlushSubscription(const std::shared_ptr<FlushSubscrip
   }
 
   _flushSubscriptions.emplace_back(subscription);
-
-  return;
 }
 
 arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t& minTick) {
