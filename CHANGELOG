@@ -1,6 +1,8 @@
 v3.5.0-rc.5 (2019-XX-XX)
 ------------------------
- 
+
+* Fixed a performance regression of COLLECT WITH COUNT INTO.
+
 * Prevent rare cases of duplicate DDL actions being executed by Maintenance.
 
 * Coordinator code was reporting rocksdb error codes, but not the associated detail message.
