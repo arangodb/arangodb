@@ -508,7 +508,7 @@ Result IResearchLink::cleanupUnsafe() {
   return {};
 }
 
-Result IResearchLink::commit() {
+Result IResearchLink::commit(bool wait /*= true*/) {
   SCOPED_LOCK(_asyncSelf->mutex()); // '_dataStore' can be asynchronously modified
 
   if (!*_asyncSelf) {
@@ -519,13 +519,13 @@ Result IResearchLink::commit() {
     };
   }
 
-  return commitUnsafe();
+  return commitUnsafe(wait);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
 ////////////////////////////////////////////////////////////////////////////////
-Result IResearchLink::commitUnsafe() {
+Result IResearchLink::commitUnsafe(bool wait) {
   char runId = 0; // value not used
 
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
@@ -553,8 +553,12 @@ Result IResearchLink::commitUnsafe() {
     TRY_SCOPED_LOCK_NAMED(_commitMutex, commitLock);
 
     if (!commitLock.owns_lock()) {
-      // commit is in progress
-      return {};
+      // commit is already in progress
+      if (!wait) {
+        return {};
+      }
+
+      commitLock.lock();
     }
 
     auto const lastCommittedTick = _lastCommittedTick;
@@ -1179,7 +1183,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
       LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
         << "starting sync for arangosearch link '" << link->id() << "'";
 
-      auto res = link->commit();
+      auto res = link->commitUnsafe(true);
 
       LOG_TOPIC("0e0ca", TRACE, iresearch::TOPIC)
         << "finished sync for arangosearch link '" << link->id() << "'";
@@ -1189,14 +1193,14 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
       flushFeature->registerFlushSubscription(link->_flushSubscription);
 
       // setup tasks for commit, consolidation, cleanup
-      link->setupLinkMaintenance();
+      link->setupMaintenance();
 
       return res;
     }
   );
 }
 
-void IResearchLink::setupLinkMaintenance() {
+void IResearchLink::setupMaintenance() {
   _asyncFeature = application_features::ApplicationServer::lookupFeature<iresearch::IResearchFeature>();
 
   if (!_asyncFeature) {
@@ -1248,7 +1252,7 @@ void IResearchLink::setupLinkMaintenance() {
       state._last = std::chrono::system_clock::now(); // remember last task start time
       timeoutMsec = state._commitIntervalMsec;
 
-      auto res = commitUnsafe(); // run commit ('_asyncSelf' locked by async task)
+      auto res = commitUnsafe(false); // run commit ('_asyncSelf' locked by async task)
 
       if (!res.ok()) {
         LOG_TOPIC("8377b", WARN, iresearch::TOPIC)
