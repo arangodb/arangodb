@@ -24,7 +24,6 @@
 #include "RestAqlUserFunctionsHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Rest/HttpRequest.h"
 
 #include "VocBase/Methods/AqlUserFunctions.h"
 
