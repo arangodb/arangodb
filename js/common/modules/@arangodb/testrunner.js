@@ -84,13 +84,8 @@ function runMochaTests (testFiles) {
   var result = true;
 
   if (testFiles.length > 0) {
-    var unitTestFilter = internal.unitTestFilter();
-    if (unitTestFilter === "") {
-      unitTestFilter = undefined;
-    }
-
     print('\nRunning Mocha Tests: ' + testFiles.join(', '));
-    result = require('@arangodb/mocha-runner')(testFiles, false, unitTestFilter);
+    result = require('@arangodb/mocha-runner')(testFiles);
   }
 
   return result;
