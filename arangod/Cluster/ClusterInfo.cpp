@@ -236,7 +236,6 @@ void ClusterInfo::triggerBackgroundGetIds() {
   _uniqid._nextBatchStart = 1ULL;
   _uniqid._nextUpperValue = 0ULL;
 
-  LOG_DEVEL << "Trigger background get ids";
 
   try {
     if (_uniqid._backgroundJobIsRunning) {
