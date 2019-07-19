@@ -266,6 +266,30 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
 namespace arangodb {
 namespace iresearch {
 
+void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
+                     std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
+                     arangodb::aql::OptimizerRule const& rule) {
+  bool modified = false;
+  auto addPlan = irs::make_finally([opt, &plan, rule, &modified]() {
+    opt->addPlan(std::move(plan), rule, modified);
+  });
+
+  if (!plan->contains(EN::ENUMERATE_IRESEARCH_VIEW)) {
+    // no view present in the query, so no need to do any expensive
+    // transformations
+    return;
+  }
+
+  // test run. Set flag for each view in query
+   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+   SmallVector<ExecutionNode*> nodes{a};
+   plan->findNodesOfType(nodes, EN::ENUMERATE_IRESEARCH_VIEW, true);
+   for(auto& node : nodes) {
+      auto& viewNode = *EN::castTo<IResearchViewNode*>(node);
+      //viewNode.view()->~LogicalDataSource;
+   }
+}
+
 /// @brief move filters and sort conditions into views
 void handleViewsRule(arangodb::aql::Optimizer* opt,
                      std::unique_ptr<arangodb::aql::ExecutionPlan> plan,

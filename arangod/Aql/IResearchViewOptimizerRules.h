@@ -36,6 +36,10 @@ class ExecutionPlan;
 
 namespace iresearch {
 
+void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
+                     std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
+                     arangodb::aql::OptimizerRule const& rule);
+
 /// @brief move filters and sort conditions into views
 void handleViewsRule(arangodb::aql::Optimizer* opt,
                      std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
