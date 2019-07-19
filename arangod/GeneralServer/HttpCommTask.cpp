@@ -743,7 +743,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     this->_protocol->timer.async_wait([this](asio_ns::error_code ec) {
       if (!ec) {
         LOG_TOPIC("5c1e0", DEBUG, Logger::REQUESTS)
-        << "keep alive timout, closing stream!";
+        << "keep alive timeout, closing stream!";
         this->close();
       }
     });
