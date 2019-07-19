@@ -2365,12 +2365,14 @@ void RestReplicationHandler::handleCommandAddFollower() {
   }
 
   {  // untrack the (async) replication client, so the WAL may be cleaned
-    std::string const serverId =
-        basics::VelocyPackHelper::getStringValue(body, "serverId", "");
+    TRI_server_id_t const serverId = StringUtils::uint64(
+        basics::VelocyPackHelper::getStringValue(body, "serverId", ""));
     SyncerId const syncerId = SyncerId{StringUtils::uint64(
         basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
+    std::string const clientInfo =
+        basics::VelocyPackHelper::getStringValue(body, "clientInfo", "");
 
-    _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId);
+    _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId, clientInfo);
   }
 
   VPackBuilder b;

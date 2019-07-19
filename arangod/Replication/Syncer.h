@@ -183,6 +183,8 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
   // TODO worker-safety
   virtual bool isAborted() const;
 
+  SyncerId syncerId() const noexcept;
+
  protected:
   /// @brief reload all users
   // TODO worker safety

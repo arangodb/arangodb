@@ -99,7 +99,7 @@ HTTP Replication APIs
 Tailing of recent server operations via `/_api/wal/tail` gets a new parameter
 `syncerId`, which helps in tracking the WAL tick of each client. If set, this
 supersedes the parameter `serverId` for this purpose. The API stays backwards
-compatible, but relying on `serverId` for this is now deprecated.
+compatible.
 
 
 Miscellaneous
