@@ -93,6 +93,10 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
       throw;
     }
   }
+
+  if (!isReadOnlyTransaction) {
+    _rwLock.readLock();
+  }
 }
 
 // unregisters a transaction
@@ -110,6 +114,9 @@ void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFail
     if (markAsFailed) {
       _transactions[bucket]._failedTransactions.emplace(transactionId);
     }
+  }
+  if (!isReadOnlyTransaction) {
+    _rwLock.unlockRead();
   }
 }
 
@@ -208,10 +215,6 @@ void Manager::registerAQLTrx(TransactionState* state) {
                           std::forward_as_tuple(MetaType::StandaloneAQL, state,
                                                 (defaultTTL + TRI_microtime())));
   }
-
-  if (!state->isReadOnlyTransaction()) {
-    _rwLock.readLock();
-  }
 }
 
 void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
@@ -233,10 +236,6 @@ void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
     LOG_TOPIC("9f7d7", ERR, Logger::TRANSACTIONS) << "a transaction is still in use";
     TRI_ASSERT(false);
     return;
-  }
-
-  if (!it->second.state->isReadOnlyTransaction()) {
-    _rwLock.unlockRead();
   }
 
   buck._managed.erase(it); // unlocking not necessary
@@ -304,8 +303,6 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
 
-  bool isReadOnlyTransaction = writeCollections.empty() && exclusiveCollections.empty();
-
   const size_t bucket = getBucket(tid);
 
   { // quick check whether ID exists
@@ -363,10 +360,6 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     }
     // no error set. so it must be "data source not found"
     return res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  }
-
-  if (!isReadOnlyTransaction) {
-    _rwLock.readLock();
   }
 
   // start the transaction
@@ -594,13 +587,6 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
   if (!state) { // this should never happen
     return res.reset(TRI_ERROR_INTERNAL, "managed trx in an invalid state");
   }
-
-  bool isReadOnlyTransaction = state->isReadOnlyTransaction();
-  auto readLockGuard = scopeGuard([&](){
-    if (isReadOnlyTransaction) {
-      _rwLock.unlockRead();
-    }
-  });
 
   auto abortTombstone = [&] {  // set tombstone entry to aborted
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
