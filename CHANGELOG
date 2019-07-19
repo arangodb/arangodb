@@ -14,6 +14,8 @@ devel
 * Add new server option `--cluster.default-replication-factor` that allows to set the
   default replication factor for non-system collections (default: 1).
 
+* Fixed a performance regression of COLLECT WITH COUNT INTO.
+
 * arangoimport would not stop, much less report, communications errors.  Add CSV reporting
   of line numbers that are impacted during such errors
 

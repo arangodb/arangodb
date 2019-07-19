@@ -2006,10 +2006,10 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
   {
     size_t actualDocs = 0;
 
-    auto beforeRecovery = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
+    auto beforeRecovery = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
     auto restoreRecovery = irs::make_finally([&beforeRecovery]() -> void {
-      StorageEngineMock::inRecoveryResult = beforeRecovery;
+      StorageEngineMock::recoveryStateResult = beforeRecovery;
     });
 
     for (auto const docSlice : arangodb::velocypack::ArrayIterator(dataSlice)) {
@@ -2107,10 +2107,10 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
   {
     size_t actualDocs = 0;
 
-    auto beforeRecovery = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
+    auto beforeRecovery = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
     auto restoreRecovery = irs::make_finally([&beforeRecovery]() -> void {
-      StorageEngineMock::inRecoveryResult = beforeRecovery;
+      StorageEngineMock::recoveryStateResult = beforeRecovery;
     });
 
     for (auto const docSlice : arangodb::velocypack::ArrayIterator(dataSlice)) {
