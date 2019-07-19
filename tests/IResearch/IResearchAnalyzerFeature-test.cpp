@@ -2797,10 +2797,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
                                   "0MBe"};
 
   // 123
-  std::string expected123[] = { "YIAAAAAAAAB7",
-                                "cIAAAAAAAA==",
-                                "gIAAAAA=",
-                                "kIAA"};
+  std::string expected123[] = { "oMBewAAAAAAA",
+                                "sMBewAAAAA==",
+                                "wMBewAA=",
+                                "0MBe"};
 
   // boolean true
   std::string expectedTrue("/w==");

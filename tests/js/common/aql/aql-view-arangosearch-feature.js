@@ -354,8 +354,8 @@ function iResearchFeatureAqlTestSuite () {
         assertTrue(Array === result[0].constructor);
         assertEqual(3, result[0].length);
         assertEqual([
-          ["YIAAAAAAAAAB", "cIAAAAAAAA==", "gIAAAAA=", "kIAA"], 
-          ["YIAAAAAAAAAC", "cIAAAAAAAA==", "gIAAAAA=", "kIAA"], 
+          ["oL/wAAAAAAAA", "sL/wAAAAAA==", "wL/wAAA=", "0L/w"],
+          ["oMAAAAAAAAAA", "sMAAAAAAAA==", "wMAAAAA=", "0MAA"],
           ["oMAJHrhR64Uf", "sMAJHrhR6w==", "wMAJHrg=", "0MAJ"]], result[0]);
       }
       // bool
@@ -398,11 +398,11 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(["/w=="], result[0][2]);
         assertEqual(["oMAJHrhR64Uf", "sMAJHrhR6w==", "wMAJHrg=", "0MAJ"], result[0][3]);
         assertEqual(['string', 'array'], result[0][4]);
-        assertEqual(["YIAAAAAAAAAF", "cIAAAAAAAA==", "gIAAAAA=", "kIAA"], result[0][5]);
+        assertEqual(["oMAUAAAAAAAA", "sMAUAAAAAA==", "wMAUAAA=", "0MAU"], result[0][5]);
         assertTrue(Array === result[0][6].constructor);
         assertEqual(3, result[0][6].length);
         assertEqual(["/w=="], result[0][6][0]);
-        assertEqual(["YIAAAAAAAAAE", "cIAAAAAAAA==", "gIAAAAA=", "kIAA"], result[0][6][1]);
+        assertEqual(["oMAQAAAAAAAA", "sMAQAAAAAA==", "wMAQAAA=", "0MAQ"], result[0][6][1]);
         assertEqual(['one', 'two'], result[0][6][2]);
         assertEqual(["/w=="], result[0][7]);
       }
@@ -421,11 +421,11 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(["/w=="], result[0][2]);
         assertEqual(["oMAJHrhR64Uf", "sMAJHrhR6w==", "wMAJHrg=", "0MAJ"], result[0][3]);
         assertEqual(['string array'], result[0][4]);
-        assertEqual(["YIAAAAAAAAAF", "cIAAAAAAAA==", "gIAAAAA=", "kIAA"], result[0][5]);
+        assertEqual(["oMAUAAAAAAAA", "sMAUAAAAAA==", "wMAUAAA=", "0MAU"], result[0][5]);
         assertTrue(Array === result[0][6].constructor);
         assertEqual(3, result[0][6].length);
         assertEqual(["/w=="], result[0][6][0]);
-        assertEqual(["YIAAAAAAAAAE", "cIAAAAAAAA==", "gIAAAAA=", "kIAA"], result[0][6][1]);
+        assertEqual(["oMAQAAAAAAAA", "sMAQAAAAAA==", "wMAQAAA=", "0MAQ"], result[0][6][1]);
         assertEqual(['one two'], result[0][6][2]);
         assertEqual(["/w=="], result[0][7]);
       }
@@ -442,11 +442,11 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual([""], result[0][0]);
         assertEqual(["/w=="], result[0][1]);
         assertEqual(["oMAJHrhR64Uf", "sMAJHrhR6w==", "wMAJHrg=", "0MAJ"], result[0][2]);
-        assertEqual(["YIAAAAAAAAAF", "cIAAAAAAAA==", "gIAAAAA=", "kIAA"], result[0][3]);
+        assertEqual(["oMAUAAAAAAAA", "sMAUAAAAAA==", "wMAUAAA=", "0MAU"], result[0][3]);
         assertTrue(Array === result[0][4].constructor);
         assertEqual(2, result[0][4].length);
         assertEqual(["/w=="], result[0][4][0]);
-        assertEqual(["YIAAAAAAAAAE", "cIAAAAAAAA==", "gIAAAAA=", "kIAA"], result[0][4][1]);
+        assertEqual(["oMAQAAAAAAAA", "sMAQAAAAAA==", "wMAQAAA=", "0MAQ"], result[0][4][1]);
         assertEqual(["/w=="], result[0][5]);
       }
 
