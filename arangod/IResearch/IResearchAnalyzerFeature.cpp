@@ -457,7 +457,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   }
 
   std::unique_ptr<irs::numeric_token_stream> numeric_analyzer;
-  const iresearch::pointer_wrapper<irs::term_attribute>* numeric_terms;
+  const irs::term_attribute* numeric_terms = nullptr; 
 
   // to avoid copying Builder's default buffer when initializing AqlValue
   // create the buffer externally and pass ownership directly into AqlValue
@@ -511,8 +511,8 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
                                 // deal with them all here in generic way
         if(!numeric_analyzer) { 
           numeric_analyzer = std::make_unique<irs::numeric_token_stream>();
-          numeric_terms = &numeric_analyzer->attributes().get<irs::term_attribute>();
-          if (ADB_UNLIKELY(!numeric_terms || !(numeric_terms->get()))) {
+          numeric_terms = numeric_analyzer->attributes().get<irs::term_attribute>().get();
+          if (ADB_UNLIKELY(!numeric_terms)) {
             auto const message =
               "failure to retrieve values from arangosearch numeric analyzer "
               "while computing result for function 'TOKENS'";
@@ -528,7 +528,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
           builder.add(
             arangodb::iresearch::toValuePair(
               arangodb::basics::StringUtils::encodeBase64(
-                  irs::ref_cast<char>(numeric_terms->get()->value()))));
+                  irs::ref_cast<char>(numeric_terms->value()))));
         }
       } else {
         auto const message = "unexpected parameter type '"s + current.typeName() +

@@ -2462,8 +2462,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
       collection = vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
       EXPECT_TRUE((nullptr == collection));
     }
-==== BASE ====
-    
+
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
     auto restore = irs::make_finally(
