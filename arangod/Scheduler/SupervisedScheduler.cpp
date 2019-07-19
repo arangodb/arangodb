@@ -67,7 +67,7 @@ typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
 thread_local time_point conditionQueueFullSince{};
 thread_local uint_fast32_t queueWarningTick{};
 
-time_point lastWarningQueue;
+time_point lastWarningQueue = std::chrono::steady_clock::now();
 int64_t queueWarningEvents = 0;
 std::mutex queueWarningMutex;
 
@@ -76,7 +76,7 @@ int64_t fullQueueEvents[3] = {0, 0, 0};
 std::mutex fullQueueWarningMutex[3];
 
 void logQueueWarningEveryNowAndThen(int64_t events) {
-  auto const& now = std::chrono::steady_clock::now();
+  auto const now = std::chrono::steady_clock::now();
   uint64_t totalEvents;
   bool printLog = false;
   std::chrono::duration<double> sinceLast;

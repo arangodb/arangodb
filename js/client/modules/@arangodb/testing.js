@@ -501,7 +501,7 @@ function findTestCases(options) {
   let allTestFiles = {};
   for (let testSuiteName in allTestPaths) {
     var myList = [];
-    let files = tu.scanTestPaths(allTestPaths[testSuiteName]);
+    let files = tu.scanTestPaths(allTestPaths[testSuiteName], options);
     if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
       for (let j = 0; j < files.length; j++) {
         let foo = {};
