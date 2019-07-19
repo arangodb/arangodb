@@ -227,6 +227,9 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   void reset() NOEXCEPT;
   void reset(const segment_meta& meta);
 
+  void tick(uint64_t tick) NOEXCEPT { tick_ = tick; }
+  uint64_t tick() const NOEXCEPT { return tick_; }
+
  private:
   template<Action action>
   friend struct action_helper;
@@ -399,6 +402,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   column_meta_writer::ptr col_meta_writer_;
   columnstore_writer::ptr col_writer_;
   tracking_directory dir_;
+  uint64_t tick_{0};
   bool initialized_;
   bool valid_{ true }; // current state
   IRESEARCH_API_PRIVATE_VARIABLES_END

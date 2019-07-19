@@ -2,6 +2,11 @@ devel
 -----
 * TOKENS function updated to deal with primitive types and arrays
 
+* Fixed a performance regression of COLLECT WITH COUNT INTO.
+
+* arangoimport would not stop, much less report, communications errors.  Add CSV reporting
+  of line numbers that are impacted during such errors
+
 * coordinator code was reporting rocksdb error codes, but not the associated detail message.
   Corrected.
 
