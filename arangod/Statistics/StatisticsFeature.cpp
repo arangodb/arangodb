@@ -104,6 +104,7 @@ class arangodb::StatisticsThread final : public Thread {
         }
 
         std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
+
       } else {
         nothingHappened = 0;
 

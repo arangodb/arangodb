@@ -266,19 +266,6 @@ class IResearchLink {
     } 
   };
 
-  VPackComparer _comparer;
-  IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)
-  AsyncLinkPtr _asyncSelf; // 'this' for the lifetime of the link (for use with asynchronous calls)
-  std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
-  arangodb::LogicalCollection& _collection; // the linked collection
-  DataStore _dataStore; // the iresearch data store, protected by _asyncSelf->mutex()
-  std::function<arangodb::Result(arangodb::velocypack::Slice const&)> _flushCallback; // for writing 'Flush' marker during commit (guaranteed valid by init)
-  TRI_idx_iid_t const _id; // the index identifier
-  IResearchLinkMeta const _meta; // how this collection should be indexed (read-only, set via init())
-  std::mutex _readerMutex; // prevents query cache double invalidation
-  std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxCallback; // for insert(...)/remove(...)
-  std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run filesystem cleanup on the data store
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
@@ -304,6 +291,24 @@ class IResearchLink {
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////
   arangodb::Result initDataStore(InitCallback const& initCallback, bool sorted);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set up asynchronous maintenance tasks
+  //////////////////////////////////////////////////////////////////////////////
+  void setupLinkMaintenance();
+
+  VPackComparer _comparer;
+  IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)
+  AsyncLinkPtr _asyncSelf; // 'this' for the lifetime of the link (for use with asynchronous calls)
+  std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
+  arangodb::LogicalCollection& _collection; // the linked collection
+  DataStore _dataStore; // the iresearch data store, protected by _asyncSelf->mutex()
+  std::function<arangodb::Result(arangodb::velocypack::Slice const&, TRI_voc_tick_t)> _flushCallback; // for writing 'Flush' marker during commit (guaranteed valid by init)
+  TRI_idx_iid_t const _id; // the index identifier
+  IResearchLinkMeta const _meta; // how this collection should be indexed (read-only, set via init())
+  std::mutex _readerMutex; // prevents query cache double invalidation
+  std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxCallback; // for insert(...)/remove(...)
+  std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
 };  // IResearchLink
 
 }  // namespace iresearch

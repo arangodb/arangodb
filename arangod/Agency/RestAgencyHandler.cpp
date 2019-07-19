@@ -31,7 +31,6 @@
 #include "Agency/Agent.h"
 #include "Basics/StaticStrings.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
@@ -568,7 +567,7 @@ RestStatus RestAgencyHandler::handleConfig() {
 RestStatus RestAgencyHandler::handleState() {
 
   VPackBuilder body;
-  { 
+  {
     VPackObjectBuilder o(&body);
     _agent->readDB(body);
   }
@@ -583,6 +582,7 @@ RestStatus RestAgencyHandler::reportMethodNotAllowed() {
 }
 
 RestStatus RestAgencyHandler::execute() {
+  response()->setAllowCompression(true);
   try {
     auto const& suffixes = _request->suffixes();
     if (suffixes.empty()) {  // Empty request

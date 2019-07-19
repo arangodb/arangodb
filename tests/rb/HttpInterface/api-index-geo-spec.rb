@@ -194,20 +194,25 @@ describe ArangoDB do
 
         iid = doc.parsed_response['id']
 
-        cmd = "/_api/collection/#{@cn}/unload"
-        doc = ArangoDB.put(cmd)
+        if RSpec.configuration.STORAGE_ENGINE == "mmfiles"
+          cmd = "/_api/collection/#{@cn}/unload"
+          doc = ArangoDB.put(cmd)
 
-        doc.code.should eq(200)
+          doc.code.should eq(200)
 
-        cmd = "/_api/collection/#{@cn}"
-        doc = ArangoDB.get(cmd)
-        doc.code.should eq(200)
-
-        while doc.parsed_response['status'] != 2
+          cmd = "/_api/collection/#{@cn}"
           doc = ArangoDB.get(cmd)
           doc.code.should eq(200)
-        end
 
+          i = 0
+          while (doc.parsed_response['status'] != 2) && (i < 100)
+            doc = ArangoDB.get(cmd)
+            doc.code.should eq(200)
+            i += 1
+            sleep 1
+          end
+          expect(i).to be < 100 # Timeout...
+        end
         cmd = api + "/#{iid}"
         doc = ArangoDB.get(cmd)
 

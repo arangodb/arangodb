@@ -244,6 +244,15 @@ RestStatus RestReplicationHandler::execute() {
       if (isCoordinatorError()) {
         return RestStatus::DONE;
       }
+      // track the number of parallel invocations of the tailing API
+      auto* rf = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
+      // this may throw when too many threads are going into tailing
+      rf->trackTailingStart();
+      
+      auto guard = scopeGuard([rf]() {
+        rf->trackTailingEnd();
+      });
+      
       handleCommandLoggerFollow();
     } else if (command == "determine-open-transactions") {
       if (type != rest::RequestType::GET) {
@@ -608,18 +617,15 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 
   std::unique_ptr<ClusterCommResult> res;
   if (!useVst) {
-    HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
-    if (httpRequest == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid request type");
-    }
-
+    TRI_ASSERT(_request->transportType() == Endpoint::TransportType::HTTP);
+    
+    VPackStringRef body = _request->rawPayload();
     // Send a synchronous request to that shard using ClusterComm:
     res = cc->syncRequest(TRI_NewTickServer(), "server:" + DBserver,
                           _request->requestType(),
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               _request->requestPath() + params,
-                          httpRequest->body(), *headers, 300.0);
+                          body.toString(), *headers, 300.0);
   } else {
     // do we need to handle multiple payloads here - TODO
     // here we switch from vst to http?!
@@ -1264,14 +1270,13 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
   VPackBuilder builder(&options);
 
   allMarkers.clear();
-
-  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
-  if (httpRequest == nullptr) {
+  
+  if (_request->transportType() != Endpoint::TransportType::HTTP) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
 
-  std::string const& bodyStr = httpRequest->body();
-  char const* ptr = bodyStr.c_str();
+  VPackStringRef bodyStr = _request->rawPayload();
+  char const* ptr = bodyStr.data();
   char const* end = ptr + bodyStr.size();
 
   VPackValueLength currentPos = 0;
@@ -2224,7 +2229,12 @@ void RestReplicationHandler::handleCommandAddFollower() {
             << "Compare with shortCut Leader: " << nr
             << " == Follower: " << checksumSlice.copyString();
         if (nr == 0 && checksumSlice.isEqualString("0")) {
-          col->followers()->add(followerId);
+          Result res = col->followers()->add(followerId);
+          
+          if (res.fail()) {
+            // this will create an error response with the appropriate message
+            THROW_ARANGO_EXCEPTION(res);
+          }
 
           VPackBuilder b;
           {
@@ -2284,7 +2294,21 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  col->followers()->add(followerId);
+  Result res = col->followers()->add(followerId);
+  
+  if (res.fail()) {
+    // this will create an error response with the appropriate message
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  { // untrack the (async) replication client, so the WAL may be cleaned
+    std::string const serverId =
+        basics::VelocyPackHelper::getStringValue(body, "serverId", "");
+    SyncerId const syncerId = SyncerId{StringUtils::uint64(
+        basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
+
+    _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId);
+  }
 
   VPackBuilder b;
   {
@@ -2293,7 +2317,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   }
 
   LOG_TOPIC("c13d4", DEBUG, Logger::REPLICATION) << followerId << " is now following on shard "
-                                        << _vocbase.name() << "/" << col->name();
+                                                 << _vocbase.name() << "/" << col->name();
   generateResult(rest::ResponseCode::OK, b.slice());
 }
 
@@ -2331,7 +2355,13 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
                   "did not find collection");
     return;
   }
-  col->followers()->remove(followerId.copyString());
+  
+  Result res = col->followers()->remove(followerId.copyString());
+  
+  if (res.fail()) {
+    // this will create an error response with the appropriate message
+    THROW_ARANGO_EXCEPTION(res);
+  }
 
   VPackBuilder b;
   {
@@ -2393,7 +2423,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 
   // This is an optional parameter, it may not be set (backwards compatible)
   // If it is not set it will default to a hard-lock, otherwise we do a
-  // potentially faster soft-lock synchronisation with a smaller hard-lock
+  // potentially faster soft-lock synchronization with a smaller hard-lock
   // phase.
 
   bool doSoftLock = VelocyPackHelper::getBooleanValue(body, "doSoftLockOnly", false);

@@ -160,12 +160,12 @@ class StaticStrings {
   static std::string const RequestForwardedTo;
   static std::string const ResponseCode;
   static std::string const Server;
+  static std::string const TransferEncoding;
   static std::string const TransactionBody;
   static std::string const TransactionId;
   static std::string const Unlimited;
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
-  static std::string const XArangoNoLock;
   static std::string const XArangoFrontend;
 
   // mime types
@@ -173,6 +173,9 @@ class StaticStrings {
   static std::string const MimeTypeText;
   static std::string const MimeTypeVPack;
   static std::string const MultiPartContentType;
+
+  // encodings
+  static std::string const EncodingDeflate;
 
   // collection attributes
   static std::string const NumberOfShards;

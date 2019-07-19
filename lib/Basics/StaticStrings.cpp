@@ -173,13 +173,13 @@ std::string const StaticStrings::RequestForwardedTo(
     "x-arango-request-forwarded-to");
 std::string const StaticStrings::ResponseCode("x-arango-response-code");
 std::string const StaticStrings::Server("server");
+std::string const StaticStrings::TransferEncoding("transfer-encoding");
 std::string const StaticStrings::TransactionBody("x-arango-trx-body");
 std::string const StaticStrings::TransactionId("x-arango-trx-id");
 
 std::string const StaticStrings::Unlimited = "unlimited";
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
-std::string const StaticStrings::XArangoNoLock("x-arango-nolock");
 std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
 
 // mime types
@@ -188,6 +188,9 @@ std::string const StaticStrings::MimeTypeJson(
 std::string const StaticStrings::MimeTypeText("text/plain; charset=utf-8");
 std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
+
+// accept-encodings
+std::string const StaticStrings::EncodingDeflate("deflate");
 
 // collection attributes
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");

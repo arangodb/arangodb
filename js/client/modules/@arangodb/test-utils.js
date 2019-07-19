@@ -87,11 +87,11 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
   if (testList.length === 0) {
     print('Testsuite is empty!');
-
     return {
-      'EMPTY TESTSUITE': {
-        status: false,
-        message: 'no testsuites found!'
+      "ALLTESTS" : {
+        status: ((options.skipGrey || options.skipTimecritial || options.skipNondeterministic) && (options.test === undefined)),
+        skipped: true,
+        message: 'no testfiles were found!'
       }
     };
   }
@@ -188,7 +188,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         catch (x) {
           results[te] = {
             status: false,
-            message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
+            message: 'failed to fetch the previously available collections: ' + x.message
           };
           continueTesting = false;
           serverDead = true;
@@ -528,7 +528,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function splitBuckets (options, cases) {
-  if (!options.testBuckets || cases.length === 0) {
+  if (!options.testBuckets) {
+    return cases;
+  }
+  if (cases.length === 0) {
+    didSplitBuckets = true;
     return cases;
   }
 
@@ -574,7 +578,7 @@ function doOnePathInner (path) {
     }).sort();
 }
 
-function scanTestPaths (paths) {
+function scanTestPaths (paths, options) {
   // add enterprise tests
   if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
     paths = paths.concat(paths.map(function(p) {
@@ -588,6 +592,21 @@ function scanTestPaths (paths) {
     allTestCases = allTestCases.concat(doOnePathInner(p));
   });
 
+  let allFiltered = [];
+  let filteredTestCases = _.filter(allTestCases,
+                                   function (p) {
+                                     let whichFilter = {};
+                                     let rc = filterTestcaseByOptions(p, options, whichFilter);
+                                     if (!rc) {
+                                       allFiltered.push(p + " Filtered by: " + whichFilter.filter);
+                                     }
+                                     return rc;
+                                   });
+  if (filteredTestCases.length === 0) {
+    print("No testcase matched the filter: " + JSON.stringify(allFiltered));
+    return [];
+  }
+
   return allTestCases;
 }
 
@@ -598,7 +617,6 @@ function scanTestPaths (paths) {
 function runThere (options, instanceInfo, file) {
   try {
     let testCode;
-    let mochaGrep = options.mochaGrep ? ', ' + JSON.stringify(options.mochaGrep) : '';
     if (file.indexOf('-spec') === -1) {
       let testCase = JSON.stringify(options.testCase);
       if (options.testCase === undefined) {
@@ -607,6 +625,7 @@ function runThere (options, instanceInfo, file) {
       testCode = 'const runTest = require("jsunity").runTest; ' +
         'return runTest(' + JSON.stringify(file) + ', true, ' + testCase + ');';
     } else {
+      let mochaGrep = options.testCase ? ', ' + JSON.stringify(options.testCase) : '';
       testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
         'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');';
     }
@@ -615,7 +634,9 @@ function runThere (options, instanceInfo, file) {
 
     let httpOptions = pu.makeAuthorizationHeaders(options);
     httpOptions.method = 'POST';
-    httpOptions.timeout = 2700;
+    
+    if (options.isAsan) { options.oneTestTimeout *= 2; }
+    httpOptions.timeout = options.oneTestTimeout;
 
     if (options.valgrind) {
       httpOptions.timeout *= 2;
@@ -734,7 +755,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
 
   args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);
 
-  args['javascript.unit-test-filter'] = options.testFilter;
+  args['javascript.unit-test-filter'] = options.testCase;
 
   if (!options.verbose) {
     args['log.level'] = 'warning';
@@ -770,7 +791,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
     testCode = 'const runTest = require("jsunity").runTest;\n ' +
       'return runTest(' + JSON.stringify(file) + ', true, ' + testCase + ');\n';
   } else {
-    let mochaGrep = options.mochaGrep ? ', ' + JSON.stringify(options.mochaGrep) : '';
+    let mochaGrep = options.testCase ? ', ' + JSON.stringify(options.testCase) : '';
     testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
       'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');\n';
   }
@@ -848,6 +869,8 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
       '  c.ARANGO_PASSWORD = "' + options.password + '"\n' +
       '  c.add_setting :SKIP_TIMECRITICAL\n' +
       '  c.SKIP_TIMECRITICAL = ' + JSON.stringify(options.skipTimeCritical) + '\n' +
+      '  c.add_setting :STORAGE_ENGINE\n' +
+      '  c.STORAGE_ENGINE = ' + JSON.stringify(options.storageEngine) + '\n' +
       'end\n';
 
   fs.write(tmpname, rspecConfig);
@@ -886,7 +909,17 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     args = [rspec].concat(args);
   }
 
-  const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir, false, false);
+  const res = pu.executeAndWait(command, args, options, 'rspec', instanceInfo.rootDir, false, false, options.oneTestTimeout);
+
+  if (!res.status && res.timeout) {
+    return {
+      total: 0,
+      failed: 1,
+      status: false,
+      forceTerminate: true,
+      message: res.message
+    };
+  }
 
   let result = {
     total: 0,

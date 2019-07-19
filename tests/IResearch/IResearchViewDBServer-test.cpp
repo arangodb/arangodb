@@ -1443,7 +1443,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       EXPECT_TRUE((13U == slice.length()));
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
-                   10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
+                   2 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       EXPECT_TRUE((slice.hasKey("consolidationIntervalMsec") &&
                    slice.get("consolidationIntervalMsec").isNumber<size_t>() &&
                    52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
@@ -1470,7 +1470,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       EXPECT_TRUE((13U == slice.length()));
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
-                   10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
+                   2 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       EXPECT_TRUE((slice.hasKey("consolidationIntervalMsec") &&
                    slice.get("consolidationIntervalMsec").isNumber<size_t>() &&
                    52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
@@ -1495,7 +1495,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
                    1 == slice.get("collections").length()));
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
-                   10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
+                   2 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       EXPECT_TRUE((slice.hasKey("consolidationIntervalMsec") &&
                    slice.get("consolidationIntervalMsec").isNumber<size_t>() &&
                    52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
@@ -1714,7 +1714,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       EXPECT_TRUE((13U == slice.length()));
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
-                   10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
+                   2 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       EXPECT_TRUE((slice.hasKey("consolidationIntervalMsec") &&
                    slice.get("consolidationIntervalMsec").isNumber<size_t>() &&
                    52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
@@ -1736,7 +1736,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       EXPECT_TRUE((13U == slice.length()));
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
-                   10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
+                   2 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       EXPECT_TRUE((slice.hasKey("consolidationIntervalMsec") &&
                    slice.get("consolidationIntervalMsec").isNumber<size_t>() &&
                    52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
@@ -1761,7 +1761,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
                    2 == slice.get("collections").length()));  // list of links is not modified after link drop
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
-                   10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
+                   2 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       EXPECT_TRUE((slice.hasKey("consolidationIntervalMsec") &&
                    slice.get("consolidationIntervalMsec").isNumber<size_t>() &&
                    52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));

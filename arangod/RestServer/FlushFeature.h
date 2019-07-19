@@ -25,6 +25,9 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ReadWriteLock.h"
+#include "VocBase/voc-types.h"
+
+#include <list>
 
 struct TRI_vocbase_t;  // forward declaration
 
@@ -34,7 +37,6 @@ class FlushThread;
 
 class FlushFeature final : public application_features::ApplicationFeature {
  public:
-
   /// @brief handle a 'Flush' marker during recovery
   /// @param vocbase the vocbase the marker applies to
   /// @param slice the originally stored marker body
@@ -45,13 +47,13 @@ class FlushFeature final : public application_features::ApplicationFeature {
   ///        corresponding TRI_voc_tick_t for the subscription
   struct FlushSubscription {
     virtual ~FlushSubscription() = default;
-    virtual Result commit(velocypack::Slice const& data) = 0;
+    virtual TRI_voc_tick_t tick() const = 0;
+    virtual Result commit(VPackSlice data, TRI_voc_tick_t tick) = 0;
   };
-  class FlushSubscriptionBase; // forward declaration
 
   // used by catch tests
   #ifdef ARANGODB_USE_GOOGLE_TESTS
-    typedef std::function<Result(std::string const&, TRI_vocbase_t const&, velocypack::Slice const&)> DefaultFlushSubscription;
+    typedef std::function<Result(std::string const&, TRI_vocbase_t const&, velocypack::Slice const&, TRI_voc_tick_t)> DefaultFlushSubscription;
     static DefaultFlushSubscription _defaultFlushSubscription;
   #endif
 
@@ -84,7 +86,9 @@ class FlushFeature final : public application_features::ApplicationFeature {
   );
 
   /// @brief release all ticks not used by the flush subscriptions
-  arangodb::Result releaseUnusedTicks();
+  /// @param 'count' a number of released subscriptions
+  /// @param 'tick' released tick
+  arangodb::Result releaseUnusedTicks(size_t& count, TRI_voc_tick_t& tick);
 
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override;
@@ -100,7 +104,7 @@ class FlushFeature final : public application_features::ApplicationFeature {
   std::unique_ptr<FlushThread> _flushThread;
   static std::atomic<bool> _isRunning;
   basics::ReadWriteLock _threadLock;
-  std::unordered_set<std::shared_ptr<FlushSubscriptionBase>> _flushSubscriptions;
+  std::list<std::weak_ptr<FlushSubscription>> _flushSubscriptions;
   std::mutex _flushSubscriptionsMutex;
   bool _stopped;
 };

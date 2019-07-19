@@ -37,7 +37,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Utils/Events.h"
@@ -1479,7 +1479,7 @@ Result ClusterInfo::createDatabaseCoordinator(  // create database
 
       agencyCallback->executeByCallbackOrTimeout(getReloadServerListTimeout() / interval);
 
-      if (!application_features::ApplicationServer::isRetryOK()) {
+      if (application_features::ApplicationServer::isStopping()) {
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }
@@ -1583,7 +1583,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
 
       agencyCallback->executeByCallbackOrTimeout(interval);
 
-      if (!application_features::ApplicationServer::isRetryOK()) {
+      if (application_features::ApplicationServer::isStopping()) {
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }
@@ -1868,7 +1868,7 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
   // be a precondition failed, in which case we want to retry for some time:
   while (true) {
     if (TRI_microtime() > endTime) {
-      for (auto info : infos) {
+      for (auto const& info : infos) {
         if (info.state != ClusterCollectionCreationInfo::DONE) {
           LOG_TOPIC("a2184", ERR, Logger::CLUSTER)
               << "Timeout in _create collection"
@@ -2084,10 +2084,10 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
       }
     }
 
-  } while (application_features::ApplicationServer::isRetryOK());
+  } while (!application_features::ApplicationServer::isStopping());
   // If we get here we are not allowed to retry.
   // The loop above does not contain a break
-  TRI_ASSERT(!application_features::ApplicationServer::isRetryOK());
+  TRI_ASSERT(application_features::ApplicationServer::isStopping());
   for (auto const& info : infos) {
     events::CreateCollection(databaseName, info.name, TRI_ERROR_SHUTTING_DOWN);
   }
@@ -2265,7 +2265,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
       agencyCallback->executeByCallbackOrTimeout(interval);
 
-      if (!application_features::ApplicationServer::isRetryOK()) {
+      if (application_features::ApplicationServer::isStopping()) {
         events::DropCollection(dbName, collectionID, TRI_ERROR_CLUSTER_TIMEOUT);
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
@@ -2474,7 +2474,7 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
   Result result;
 
   if (!res.successful()) {
-    if (res.errorCode() == int(arangodb::ResponseCode::PRECONDITION_FAILED)) {
+    if (res.errorCode() == int(rest::ResponseCode::PRECONDITION_FAILED)) {
       result = Result(                                            // result
           TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,  // FIXME COULD_NOT_REMOVE_VIEW_IN_PLAN
           std::string("Precondition that view  with ID ") + viewID +
@@ -2981,6 +2981,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
         // Finally check if it has appeared, if not, we take another turn,
         // which does not do any harm:
         auto coll = getCollection(databaseName, collectionID);
+        if (coll == nullptr) {
+          return Result(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED,
+                        "The collection has gone. Aborting index creation");
+        }
+
         auto indexes = coll->getIndexes();
         if (std::any_of(indexes.begin(), indexes.end(),
                         [indexId](std::shared_ptr<arangodb::Index>& index) -> bool {
@@ -3033,7 +3038,10 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
                   "rolling back index creation.");
             }
 
-            return Result(tmpRes);
+            // The mutex in the condition variable protects the access to
+            // *errMsg:
+            CONDITION_LOCKER(locker, agencyCallback->_cv);
+            return Result(tmpRes, *errMsg);
           }
 
           if (update._statusCode == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
@@ -3052,7 +3060,10 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
                   "Timed out while trying to roll back index creation failure");
             }
 
-            return Result(tmpRes);
+            // The mutex in the condition variable protects the access to
+            // *errMsg:
+            CONDITION_LOCKER(locker, agencyCallback->_cv);
+            return Result(tmpRes, *errMsg);
           }
 
           if (sleepFor <= 2500) {
@@ -3264,7 +3275,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 
       agencyCallback->executeByCallbackOrTimeout(interval);
 
-      if (!application_features::ApplicationServer::isRetryOK()) {
+      if (application_features::ApplicationServer::isStopping()) {
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }
@@ -3642,7 +3653,7 @@ void ClusterInfo::loadCurrentDBServers() {
         bool found = false;
         if (failedDBServers.isObject()) {
           for (auto const& failedServer : VPackObjectIterator(failedDBServers)) {
-            if (dbserver.key == failedServer.key) {
+            if (basics::VelocyPackHelper::equal(dbserver.key, failedServer.key, false)) {
               found = true;
               break;
             }
@@ -3655,7 +3666,7 @@ void ClusterInfo::loadCurrentDBServers() {
         if (cleanedDBServers.isArray()) {
           bool found = false;
           for (auto const& cleanedServer : VPackArrayIterator(cleanedDBServers)) {
-            if (dbserver.key == cleanedServer) {
+            if (basics::VelocyPackHelper::equal(dbserver.key, cleanedServer, false)) {
               found = true;
               break;
             }
@@ -3668,7 +3679,7 @@ void ClusterInfo::loadCurrentDBServers() {
         if (toBeCleanedDBServers.isArray()) {
           bool found = false;
           for (auto const& toBeCleanedServer : VPackArrayIterator(toBeCleanedDBServers)) {
-            if (dbserver.key == toBeCleanedServer) {
+            if (basics::VelocyPackHelper::equal(dbserver.key, toBeCleanedServer, false)) {
               found = true;
               break;
             }

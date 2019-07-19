@@ -224,7 +224,7 @@ class Collection {
 struct IsEqualPredicate {
   IsEqualPredicate(Slice const& value) : value(value) {}
   bool operator()(Slice const& current, ValueLength) {
-    return value.equals(current);
+    return value.binaryEquals(current);
   }
   // compare value
   Slice const value;

@@ -23,7 +23,6 @@
 #include "RestDatabaseHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Rest/HttpRequest.h"
 #include "Utils/Events.h"
 #include "VocBase/Methods/Databases.h"
 

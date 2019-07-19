@@ -46,7 +46,7 @@ typedef std::vector<Expected> ExpectedVec_t;
 //
 // TestProgressHandler lets us know once ApplicationServer is ready
 //
-class TestProgressHandler : public arangodb::application_features::ProgressHandler {
+class TestProgressHandler : public arangodb::application_features::ApplicationServer::ProgressHandler {
 public:
   TestProgressHandler() {
     _serverReady=false;
@@ -59,15 +59,15 @@ public:
   }
 
 
-  void StateChange(arangodb::application_features::ServerState newState) {
-    if (arangodb::application_features::ServerState::IN_WAIT == newState) {
+  void StateChange(arangodb::application_features::ApplicationServer::State newState) {
+    if (arangodb::application_features::ApplicationServer::State::IN_WAIT == newState) {
       CONDITION_LOCKER(clock, _serverReadyCond);
       _serverReady = true;
       _serverReadyCond.broadcast();
     }
   }
 
-  void FeatureChange(arangodb::application_features::ServerState newState, std::string const &) {
+  void FeatureChange(arangodb::application_features::ApplicationServer::State newState, std::string const &) {
   }
 
   arangodb::basics::ConditionVariable _serverReadyCond;

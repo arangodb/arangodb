@@ -45,17 +45,17 @@ class SimpleAttributeEqualityMatcher {
  public:
   /// @brief match a single of the attributes
   /// this is used for the primary index and the edge index
-  Index::UsageCosts matchOne(arangodb::Index const* index, 
-                             arangodb::aql::AstNode const* node,
-                             arangodb::aql::Variable const* reference, 
-                             size_t itemsInIndex);
-
+  Index::FilterCosts matchOne(arangodb::Index const* index, 
+                              arangodb::aql::AstNode const* node,
+                              arangodb::aql::Variable const* reference, 
+                              size_t itemsInIndex);
+  
   /// @brief match all of the attributes, in any order
   /// this is used for the hash index
-  Index::UsageCosts matchAll(arangodb::Index const* index, 
-                             arangodb::aql::AstNode const* node,
-                             arangodb::aql::Variable const* reference, 
-                             size_t itemsInIndex);
+  Index::FilterCosts matchAll(arangodb::Index const* index, 
+                              arangodb::aql::AstNode const* node,
+                              arangodb::aql::Variable const* reference, 
+                              size_t itemsInIndex);
 
   /// @brief get the condition parts that the index is responsible for
   /// this is used for the primary index and the edge index
@@ -84,8 +84,9 @@ class SimpleAttributeEqualityMatcher {
   /// that will return in average
   /// cost values have no special meaning, except that multiple cost values are
   /// comparable, and lower values mean lower costs
-  Index::UsageCosts calculateIndexCosts(arangodb::Index const* index,
-                                        arangodb::aql::AstNode const* attribute, size_t itemsInIndex) const;
+  Index::FilterCosts calculateIndexCosts(arangodb::Index const* index,
+                                         arangodb::aql::AstNode const* attribute, 
+                                         size_t itemsInIndex, size_t coveredAttributes) const;
 
   /// @brief whether or not the access fits
   bool accessFitsIndex(arangodb::Index const*, arangodb::aql::AstNode const*,

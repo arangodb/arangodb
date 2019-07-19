@@ -31,6 +31,7 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/mmfiles-replication-dump.h"
 #include "Replication/utilities.h"
+#include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -56,17 +57,15 @@ MMFilesRestReplicationHandler::MMFilesRestReplicationHandler(GeneralRequest* req
                                                              GeneralResponse* response)
     : RestReplicationHandler(request, response) {}
 
-MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() {}
+MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() = default;
 
 /// @brief insert the applier action into an action list
 void MMFilesRestReplicationHandler::insertClient(TRI_voc_tick_t lastServedTick) {
-  bool found;
-  std::string const& value = _request->value("serverId", found);
+  std::string const& clientId = _request->value("serverId");
+  SyncerId const syncerId = SyncerId::fromRequest(*_request);
 
-  if (found && !value.empty() && value != "none") {
-    _vocbase.replicationClients().track(value, lastServedTick,
-                                        replutils::BatchInfo::DefaultTimeout);
-  }
+  _vocbase.replicationClients().track(syncerId, clientId, lastServedTick,
+                                      replutils::BatchInfo::DefaultTimeout);
 }
 
 // prevents datafiles from being removed while dumping the contents
@@ -441,9 +440,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
 
   if (length > 0) {
     if (useVst) {
-      for (auto message : dump._slices) {
-        _response->addPayload(std::move(message), &dump._vpackOptions, true);
-      }
+      _response->addPayload(std::move(dump._slices), &dump._vpackOptions, true);
     } else {
       HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
 

@@ -113,7 +113,6 @@ ERROR_ARANGO_INDEX_HANDLE_BAD,1214,"illegal index handle","Will be raised when a
 ERROR_ARANGO_DOCUMENT_TOO_LARGE,1216,"document too large","Will be raised when the document cannot fit into any datafile because of it is too large."
 ERROR_ARANGO_COLLECTION_NOT_UNLOADED,1217,"collection must be unloaded","Will be raised when a collection should be unloaded, but has a different status."
 ERROR_ARANGO_COLLECTION_TYPE_INVALID,1218,"collection type invalid","Will be raised when an invalid collection type is used in a request."
-ERROR_ARANGO_VALIDATION_FAILED,1219,"validator failed","Will be raised when the validation of an attribute of a structure failed."
 ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,1220,"parsing attribute name definition failed","Will be raised when parsing an attribute name definition failed."
 ERROR_ARANGO_DOCUMENT_KEY_BAD,1221,"illegal document key","Will be raised when a document key is corrupt."
 ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED,1222,"unexpected document key","Will be raised when a user-defined document key is supplied for collections with auto key generation."
@@ -124,10 +123,8 @@ ERROR_ARANGO_DOCUMENT_TYPE_INVALID,1227,"invalid document type","Will be raised 
 ERROR_ARANGO_DATABASE_NOT_FOUND,1228,"database not found","Will be raised when a non-existing database is accessed."
 ERROR_ARANGO_DATABASE_NAME_INVALID,1229,"database name invalid","Will be raised when an invalid database name is used."
 ERROR_ARANGO_USE_SYSTEM_DATABASE,1230,"operation only allowed in system database","Will be raised when an operation is requested in a database other than the system database."
-ERROR_ARANGO_ENDPOINT_NOT_FOUND,1231,"endpoint not found","Will be raised when there is an attempt to delete a non-existing endpoint."
 ERROR_ARANGO_INVALID_KEY_GENERATOR,1232,"invalid key generator","Will be raised when an invalid key generator description is used."
 ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE,1233,"edge attribute missing or invalid","will be raised when the _from or _to values of an edge are undefined or contain an invalid value."
-ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING,1234,"index insertion warning - attribute missing in document","Will be raised when an attempt to insert a document into an index is caused by in the document not having one or more attributes which the index is built on."
 ERROR_ARANGO_INDEX_CREATION_FAILED,1235,"index creation failed","Will be raised when an attempt to create an index has failed."
 ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT,1236,"write-throttling timeout","Will be raised when the server is write-throttled and a write operation has waited too long for the server to process queued operations."
 ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,1237,"collection type mismatch","Will be raised when a collection has a different type from what has been expected."
@@ -172,12 +169,8 @@ ERROR_REPLICATION_SHARD_NONEMPTY,1417,"shard not empty","Will be raised when a s
 ## ArangoDB cluster errors
 ################################################################################
 
-ERROR_CLUSTER_NO_AGENCY,1450,"could not connect to agency","Will be raised when none of the agency servers can be connected to."
-ERROR_CLUSTER_NO_COORDINATOR_HEADER,1451,"missing coordinator header","Will be raised when a DB server in a cluster receives a HTTP request without a coordinator header."
-ERROR_CLUSTER_COULD_NOT_LOCK_PLAN,1452,"could not lock plan in agency","Will be raised when a coordinator in a cluster cannot lock the Plan hierarchy in the agency."
 ERROR_CLUSTER_COLLECTION_ID_EXISTS,1453,"collection ID already exists","Will be raised when a coordinator in a cluster tries to create a collection and the collection ID already exists."
 ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,1454,"could not create collection in plan","Will be raised when a coordinator in a cluster cannot create an entry for a new collection in the Plan hierarchy in the agency."
-ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,1455,"could not read version in current in agency","Will be raised when a coordinator in a cluster cannot read the Version entry in the Current hierarchy in the agency."
 ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,1456,"could not create collection","Will be raised when a coordinator in a cluster notices that some DBServers report problems when creating shards for a new collection."
 ERROR_CLUSTER_TIMEOUT,1457,"timeout in cluster operation","Will be raised when a coordinator in a cluster runs into a timeout for some cluster wide operation."
 ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,1458,"could not remove collection from plan","Will be raised when a coordinator in a cluster cannot remove an entry for a collection in the Plan hierarchy in the agency."
@@ -197,12 +190,8 @@ ERROR_CLUSTER_ONLY_ON_COORDINATOR,1471,"this operation is only valid on a coordi
 ERROR_CLUSTER_READING_PLAN_AGENCY,1472,"error reading Plan in agency","Will be raised if a coordinator or DBserver cannot read the Plan in the agency."
 ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION,1473,"could not truncate collection","Will be raised if a coordinator cannot truncate all shards of a cluster collection."
 ERROR_CLUSTER_AQL_COMMUNICATION,1474,"error in cluster internal communication for AQL","Will be raised if the internal communication of the cluster for AQL produces an error."
-ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED,1475,"document not found or sharding attributes changed","Will be raised when a document with a given identifier or handle is unknown, or if the sharding attributes have been changed in a REPLACE operation in the cluster."
-ERROR_CLUSTER_COULD_NOT_DETERMINE_ID,1476,"could not determine my ID from my local info","Will be raised if a cluster server at startup could not determine its own ID from the local info provided."
 ERROR_CLUSTER_ONLY_ON_DBSERVER,1477,"this operation is only valid on a DBserver in a cluster","Will be raised if there is an attempt to run a DBserver-only operation on a different type of node."
 ERROR_CLUSTER_BACKEND_UNAVAILABLE,1478,"A cluster backend which was required for the operation could not be reached","Will be raised if a required db server can't be reached."
-ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT,1479,"An endpoint couldn't be found","An endpoint couldn't be found"
-ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID,1480,"Invalid agency structure","The structure in the agency is invalid"
 ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,1481,"collection is out of sync","Will be raised if a collection needed during query execution is out of sync. This currently can only happen when using satellite collections"
 ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN,1482,"could not create index in plan","Will be raised when a coordinator in a cluster cannot create an entry for a new index in the Plan hierarchy in the agency."
 ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN,1483,"could not drop index in plan","Will be raised when a coordinator in a cluster cannot remove an index from the Plan hierarchy in the agency."
@@ -215,8 +204,6 @@ ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION,1489,"a shard leader refuses to p
 ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION,1490,"a shard follower refuses to perform an operation that is not a replication","Will be raised if a non-replication operation is refused by a shard follower."
 ERROR_CLUSTER_SHARD_LEADER_RESIGNED,1491,"a (former) shard leader refuses to perform an operation, because it has resigned in the meantime","Will be raised if a non-replication operation is refused by a former shard leader that has found out that it is no longer the leader."
 ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,1492,"some agency operation failed","Will be raised if after various retries an agency operation could not be performed successfully."
-ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR,1493,"conflicting replication factor with distributeShardsLike parameter assignment","Will be raised if intended replication factor does not match that of the prototype shard given in distributeShardsLike parameter."
-ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS,1494,"conflicting shard number with distributeShardsLike parameter assignment","Will be raised if intended number of shards does not match that of the prototype shard given in distributeShardsLike parameter."
 ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING,1495,"leadership challenge is ongoing","Will be raised when servers are currently competing for leadership, and the result is still unknown."
 ERROR_CLUSTER_NOT_LEADER,1496,"not a leader","Will be raised when an operation is sent to a non-leading server."
 ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN,1497,"could not create view in plan","Will be raised when a coordinator in a cluster cannot create an entry for a new view in the Plan hierarchy in the agency."
@@ -278,7 +265,6 @@ ERROR_QUERY_FUNCTION_RUNTIME_ERROR,1583,"user function runtime error: %s","Will 
 
 ERROR_QUERY_BAD_JSON_PLAN,1590,"bad execution plan JSON","Will be raised when an HTTP API for a query got an invalid JSON object."
 ERROR_QUERY_NOT_FOUND,1591,"query ID not found","Will be raised when an Id of a query is not found by the HTTP API."
-ERROR_QUERY_IN_USE,1592,"query with this ID is in use","Will be raised when an Id of a query is found by the HTTP API but the query is in use."
 
 ERROR_QUERY_USER_ASSERT,1593,"%s","Will be raised if and user provided expression fails to evalutate to true"
 ERROR_QUERY_USER_WARN,1594,"%s","Will be raised if and user provided expression fails to evalutate to true"
@@ -306,7 +292,6 @@ ERROR_TRANSACTION_NOT_FOUND,1655,"transaction not found","Will be raised when a 
 ################################################################################
 
 ERROR_USER_INVALID_NAME,1700,"invalid user name","Will be raised when an invalid user name is used."
-ERROR_USER_INVALID_PASSWORD,1701,"invalid password","Will be raised when an invalid password is used."
 ERROR_USER_DUPLICATE,1702,"duplicate user","Will be raised when a user name already exists."
 ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is updated that does not exist."
 ERROR_USER_EXTERNAL,1705,"user is external","Will be raised when the user is authenicated by an external server."
@@ -316,8 +301,6 @@ ERROR_USER_EXTERNAL,1705,"user is external","Will be raised when the user is aut
 ## These have been superceded by the Foxx management errors in public APIs.
 ################################################################################
 
-ERROR_SERVICE_INVALID_NAME,1750,"invalid service name","Will be raised when an invalid service name is specified."
-ERROR_SERVICE_INVALID_MOUNT,1751,"invalid mount","Will be raised when an invalid mount is specified."
 ERROR_SERVICE_DOWNLOAD_FAILED,1752,"service download failed","Will be raised when a service download from the central repository failed."
 ERROR_SERVICE_UPLOAD_FAILED,1753,"service upload failed","Will be raised when a service upload from the client to the ArangoDB server failed."
 
@@ -394,17 +377,17 @@ ERROR_SESSION_EXPIRED,1951,"session expired","Will be raised when a session is e
 ## Simple Client errors
 ################################################################################
 
-SIMPLE_CLIENT_UNKNOWN_ERROR,2000,"unknown client error","This error should not happen."
-SIMPLE_CLIENT_COULD_NOT_CONNECT,2001,"could not connect to server","Will be raised when the client could not connect to the server."
-SIMPLE_CLIENT_COULD_NOT_WRITE,2002,"could not write to server","Will be raised when the client could not write data."
-SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised when the client could not read data."
+ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR,2000,"unknown client error","This error should not happen."
+ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,2001,"could not connect to server","Will be raised when the client could not connect to the server."
+ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE,2002,"could not write to server","Will be raised when the client could not write data."
+ERROR_SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised when the client could not read data."
 
 ################################################################################
 ## Communicator errors
 ################################################################################
 
-COMMUNICATOR_REQUEST_ABORTED,2100,"Request aborted","Request was aborted."
-COMMUNICATOR_DISABLED,2101,"Communication was disabled","Communication was disabled."
+ERROR_COMMUNICATOR_REQUEST_ABORTED,2100,"Request aborted","Request was aborted."
+ERROR_COMMUNICATOR_DISABLED,2101,"Communication was disabled","Communication was disabled."
 
 ################################################################################
 ## internal AQL errors
@@ -480,7 +463,6 @@ ERROR_CLUSTER_REPAIRS_OPERATION_FAILED,5010,"agency transaction failed during cl
 ## Agency errors
 ################################################################################
 
-ERROR_AGENCY_INQUIRY_SYNTAX,20001,"Illegal inquiry syntax","Inquiry handles a list of string clientIds: [<clientId>,...]."
 ERROR_AGENCY_INFORM_MUST_BE_OBJECT,20011,"Inform message must be an object.","The inform message in the agency must be an object."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM,20012,"Inform message must contain uint parameter 'term'","The inform message in the agency must contain a uint parameter 'term'."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_ID,20013,"Inform message must contain string parameter 'id'","The inform message in the agency must contain a string parameter 'id'."
@@ -489,7 +471,6 @@ ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL,20015,"Inform message must contain object 
 ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING,20016,"Inform message must contain object 'min ping'","The inform message in the agency must contain an object 'min ping'."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING,20017,"Inform message must contain object 'max ping'","The inform message in the agency must contain an object 'max ping'."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT,20018,"Inform message must contain object 'timeoutMult'","The inform message in the agency must contain an object 'timeoutMult'."
-ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING,20020,"Inquiry failed","Inquiry by clientId failed"
 ERROR_AGENCY_CANNOT_REBUILD_DBS,20021,"Cannot rebuild readDB and spearHead","Will be raised if the readDB or the spearHead cannot be rebuilt from the replicated log."
 
 ################################################################################
@@ -502,15 +483,10 @@ ERROR_SUPERVISION_GENERAL_FAILURE,20501,"general supervision failure","General s
 ## Dispatcher errors
 ################################################################################
 
-ERROR_DISPATCHER_IS_STOPPING,21001,"dispatcher stopped","Will be returned if a shutdown is in progress."
-ERROR_QUEUE_UNKNOWN,21002,"named queue does not exist","Will be returned if a queue with this name does not exist."
 ERROR_QUEUE_FULL,21003,"named queue is full","Will be returned if a queue with this name is full."
 
 ################################################################################
 ## Maintenance errors
 ################################################################################
 
-ERROR_ACTION_ALREADY_REGISTERED,6001,"maintenance action already registered","Action with this description has been registered already"
 ERROR_ACTION_OPERATION_UNABORTABLE,6002,"this maintenance action cannot be stopped","This maintenance action cannot be stopped once it is started"
-ERROR_ACTION_UNFINISHED,6003,"maintenance action still processing","This maintenance action is still processing"
-ERROR_NO_SUCH_ACTION,6004,"no such maintenance action","No such maintenance action exists"

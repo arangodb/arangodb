@@ -1,6 +1,8 @@
 3rd Party components and what to do on update
 =============================================
 
+** EDIT ../LICENSES-OTHER-COMPONENTS.md **
+
 ## boost
 
 https://www.boost.org/

@@ -156,7 +156,10 @@ class Constituent : public Thread {
   std::string _id;        // My own id
 
   // Last time an AppendEntriesRPC message has arrived, this is used to
-  // organize out-of-patience in the follower:
+  // organize out-of-patience in the follower. Note that this variable is
+  // also set to the current time when a vote is cast, either for ourselves
+  // or for somebody else. The constituent calls for an election if and only
+  // if the time since _lastHeartbeatSeen is greater than a random timeout:
   std::atomic<double> _lastHeartbeatSeen;
 
   role_t _role;           // My role

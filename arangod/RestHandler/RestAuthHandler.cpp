@@ -29,7 +29,6 @@
 #include "Basics/StringUtils.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/Events.h"
 

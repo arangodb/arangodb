@@ -31,7 +31,6 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "GeneralServer/GeneralCommTask.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralRequest.h"
 #include "Statistics/RequestStatistics.h"
@@ -144,6 +143,7 @@ bool RestHandler::forwardRequest() {
     }
     ++it;
   }
+  // FIXME why don't we just forward the header ?!
   auto auth = AuthenticationFeature::instance();
   if (auth != nullptr && auth->isActive()) {
     // when in superuser mode, username is empty
@@ -189,13 +189,15 @@ bool RestHandler::forwardRequest() {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "invalid request type");
     }
-
+    
+    const char* ptr = reinterpret_cast<const char*>(httpRequest->body().data());
+    std::string body(ptr, httpRequest->body().size());
     // Send a synchronous request to that shard using ClusterComm:
     res = cc->syncRequest(TRI_NewTickServer(), "server:" + serverId,
                           _request->requestType(),
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               _request->requestPath() + params,
-                          httpRequest->body(), headers, 300.0);
+                          body, headers, 300.0);
   } else {
     // do we need to handle multiple payloads here? - TODO
     // here we switch from vst to http
@@ -295,10 +297,12 @@ void RestHandler::runHandlerStateMachine() {
 
       case HandlerState::FINALIZE:
         RequestStatistics::SET_REQUEST_END(_statistics);
+        shutdownEngine();
+        
+        // compress response if required
+        compressResponse();
         // Callback may stealStatistics!
         _callback(this);
-        // Schedule callback BEFORE! finalize
-        shutdownEngine();
         break;
 
       case HandlerState::FAILED:
@@ -482,6 +486,22 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
                           /*resolveExternals*/false);
   } catch (...) {
     // exception while generating error
+  }
+}
+
+void RestHandler::compressResponse() {
+  if (_response->isCompressionAllowed()) {
+
+    switch (_request->acceptEncoding()) {
+      case rest::EncodingType::DEFLATE:
+        _response->deflate();
+        _response->setHeader(StaticStrings::ContentEncoding, StaticStrings::EncodingDeflate);
+        break;
+
+      default:
+        break;
+    }
+
   }
 }
 

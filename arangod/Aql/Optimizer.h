@@ -132,7 +132,7 @@ class Optimizer {
                   QueryOptions const& queryOptions, bool estimateAllPlans);
 
   /// @brief add a plan to the optimizer
-  void addPlan(std::unique_ptr<ExecutionPlan>, OptimizerRule const*, bool, int newLevel = 0);
+  void addPlan(std::unique_ptr<ExecutionPlan>, OptimizerRule const&, bool wasModified, int newLevel = 0);
 
   void disableRule(int rule);
 
