@@ -31,6 +31,7 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/mmfiles-replication-dump.h"
 #include "Replication/utilities.h"
+#include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -441,9 +442,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
 
   if (length > 0) {
     if (useVst) {
-      for (auto message : dump._slices) {
-        _response->addPayload(std::move(message), &dump._vpackOptions, true);
-      }
+      _response->addPayload(std::move(dump._slices), &dump._vpackOptions, true);
     } else {
       HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
 

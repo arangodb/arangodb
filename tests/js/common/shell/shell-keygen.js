@@ -33,18 +33,7 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
-let cluster = false; // default to false
-// quick hack to check if we are arangod or arangosh
-if (typeof ArangoClusterComm === "object") {
-  // arangod
-  cluster = require("@arangodb/cluster").isCluster();
-} else {
-  // arangosh
-  if (arango) {
-    let role = arango.GET("/_admin/server/role").role;
-    cluster = (role === "COORDINATOR");
-  }
-}
+let cluster = require("internal").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: traditional key gen

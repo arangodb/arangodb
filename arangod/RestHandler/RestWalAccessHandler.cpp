@@ -43,6 +43,7 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -292,7 +293,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
                          if (vocbase != nullptr) {  // database drop has no vocbase
                            prepOpts(*vocbase);
                          }
-
+                         
                          _response->addPayload(marker, &opts, true);
                        });
   } else {

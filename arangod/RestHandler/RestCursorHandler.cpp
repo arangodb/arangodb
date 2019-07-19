@@ -123,7 +123,7 @@ void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
     // set by RestCursorHandler before
     return;
   }
-
+  
   try {
     bool parseSuccess = true;
     std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);

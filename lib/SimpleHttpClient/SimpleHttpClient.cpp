@@ -33,6 +33,8 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
+#include <boost/algorithm/string.hpp>
+
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -521,7 +523,7 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
   _writeBuffer.clear();
 
   // append method
-  HttpRequest::appendMethod(method, &_writeBuffer);
+  GeneralRequest::appendMethod(method, &_writeBuffer);
 
   // append location
   std::string const* l = &location;
@@ -577,6 +579,10 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
   }
 
   for (auto const& header : headers) {
+    if (boost::iequals(StaticStrings::ContentLength, header.first)) {
+      continue; // skip content-length header
+    }
+    
     _writeBuffer.appendText(header.first);
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR(": "));
     _writeBuffer.appendText(header.second);

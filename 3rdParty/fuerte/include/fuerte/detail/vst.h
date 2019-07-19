@@ -39,7 +39,7 @@ static size_t const bufferLength = 4096UL;
 // static size_t const chunkMaxBytes = 1000UL;
 static size_t const minChunkHeaderSize = 16;
 static size_t const maxChunkHeaderSize = 24;
-static size_t const defaultMaxChunkSize = 1024 * 32;
+static size_t const defaultMaxChunkSize = 1024 * 30;
 
 /////////////////////////////////////////////////////////////////////////////////////
 // DataStructures
