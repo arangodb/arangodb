@@ -708,11 +708,6 @@ class ClusterInfo final {
   class ServerRegisteredInfo {
    public:
     static ServerRegisteredInfo fromSlice(arangodb::velocypack::Slice slice);
-    ServerRegisteredInfo(ServerRegisteredInfo&&) = default;
-    ServerRegisteredInfo(ServerRegisteredInfo const&) = default;
-    ServerRegisteredInfo& operator=(ServerRegisteredInfo const&) = default;
-    ServerRegisteredInfo& operator=(ServerRegisteredInfo&&) = default;
-    ~ServerRegisteredInfo() = default;
 
     std::string const& endpoint() const noexcept { return _endpoint; }
     std::string const& advertisedEndpoint() const noexcept {

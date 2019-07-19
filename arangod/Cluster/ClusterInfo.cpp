@@ -3326,7 +3326,7 @@ void ClusterInfo::loadServers() {
         velocypack::Slice slice = res.value;
 
         auto const info = ServerRegisteredInfo::fromSlice(slice);
-        newServersRegistered.emplace(std::make_pair(serverId, std::move(info)));
+        newServersRegistered.emplace(std::make_pair(serverId, info));
         oldAndNewServers.emplace(serverId);
 
         try {
@@ -4020,11 +4020,12 @@ ClusterInfo::ServerRegisteredInfo ClusterInfo::ServerRegisteredInfo::fromSlice(V
   }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   else {
+    // TODO Is this a sane check? Either assert it, or remove it.
     LOG_TOPIC("", FATAL, Logger::CLUSTER)
         << "Expected values in object /Current/ServersRegistered to be "
            "objects, but got "
         << slice.type();
-    TRI_ASSERT(false);
+    // TRI_ASSERT(false);
   }
 #endif
 
