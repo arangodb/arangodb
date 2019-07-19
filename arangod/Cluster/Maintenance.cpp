@@ -245,7 +245,8 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
                 {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
                 {SERVER_ID, serverId},
                 {LOCAL_LEADER, lcol.get(THE_LEADER).copyString()},
-                {FOLLOWERS_TO_DROP, followersToDropString}},
+                {FOLLOWERS_TO_DROP, followersToDropString},
+                {OLD_CURRENT_COUNTER, std::to_string(feature.getCurrentCounter())}},
             HIGHER_PRIORITY, properties));
       } else {
         LOG_TOPIC("0285b", DEBUG, Logger::MAINTENANCE)
@@ -726,26 +727,14 @@ static VPackBuilder assembleLocalCollectionInfo(
           }
         }
       }
-      ret.add(VPackValue(SERVERS));
-      {
-        VPackArrayBuilder a(&ret);
-        ret.add(VPackValue(ourselves));
-        // planServers may be `none` in the case that the shard is not
-        // contained in Plan, but in local.
-        if (planServers.isArray()) {
-          std::shared_ptr<std::vector<std::string> const> current =
-              collection->followers()->get();
-          for (auto const& server : *current) {
-            ret.add(VPackValue(server));
-          }
-        }
-      }
+      collection->followers()->injectFollowerInfo(ret);
     }
     return ret;
   } catch (std::exception const& e) {
     ret.clear();
     std::string errorMsg(
-        "Maintenance::assembleLocalCollectionInfo: Failed to lookup database ");
+        "Maintenance::assembleLocalCollectionInfo: Failed to lookup "
+        "database ");
     errorMsg += database;
     errorMsg += ", exception: ";
     errorMsg += e.what();
@@ -852,8 +841,10 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         auto const planPath = std::vector<std::string>{dbName, colName, "shards", shName};
         if (!pdbs.hasKey(planPath)) {
           LOG_TOPIC("43242", DEBUG, Logger::MAINTENANCE)
-              << "Ooops, we have a shard for which we believe to be the leader,"
-                 " but the Plan does not have it any more, we do not report in "
+              << "Ooops, we have a shard for which we believe to be the "
+                 "leader,"
+                 " but the Plan does not have it any more, we do not report "
+                 "in "
                  "Current about this, database: "
               << dbName << ", shard: " << shName;
           continue;
@@ -863,7 +854,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         if (!thePlanList.isArray() || thePlanList.length() == 0 ||
             !thePlanList[0].isString() || !thePlanList[0].isEqualStringUnchecked(serverId)) {
           LOG_TOPIC("87776", DEBUG, Logger::MAINTENANCE)
-              << "Ooops, we have a shard for which we believe to be the leader,"
+              << "Ooops, we have a shard for which we believe to be the "
+                 "leader,"
                  " but the Plan says otherwise, we do not report in Current "
                  "about this, database: "
               << dbName << ", shard: " << shName;
@@ -923,7 +915,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
               if (!pdbs.hasKey(planPath)) {
                 LOG_TOPIC("65432", DEBUG, Logger::MAINTENANCE)
                     << "Ooops, we have a shard for which we believe that we "
-                       "just resigned, but the Plan does not have it any more,"
+                       "just resigned, but the Plan does not have it any "
+                       "more,"
                        " we do not report in Current about this, database: "
                     << dbName << ", shard: " << shName;
                 continue;

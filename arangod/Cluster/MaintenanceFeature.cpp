@@ -57,7 +57,8 @@ bool findNotDoneActions(std::shared_ptr<maintenance::Action> const& action) {
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Maintenance"),
       _forceActivation(false),
-      _maintenanceThreadsMax(2) {
+      _maintenanceThreadsMax(2),
+      _currentCounter(0) {
   // the number of threads will be adjusted later. it's just that we want to
   // initialize all members properly
 
@@ -116,7 +117,8 @@ void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options
         << "Need at least" << minThreadLimit << "maintenance-threads";
     _maintenanceThreadsMax = minThreadLimit;
   } else if (_maintenanceThreadsMax >= maxThreadLimit) {
-    LOG_TOPIC("8fb0e", WARN, Logger::MAINTENANCE) << "maintenance-threads limited to " << maxThreadLimit;
+    LOG_TOPIC("8fb0e", WARN, Logger::MAINTENANCE)
+        << "maintenance-threads limited to " << maxThreadLimit;
     _maintenanceThreadsMax = maxThreadLimit;
   }
 }
@@ -129,8 +131,9 @@ void MaintenanceFeature::start() {
 
   // _forceActivation is set by the catch tests
   if (!_forceActivation && (serverState->isAgent() || serverState->isSingleServer())) {
-    LOG_TOPIC("deb1a", TRACE, Logger::MAINTENANCE) << "Disable maintenance-threads"
-                                          << " for single-server or agents.";
+    LOG_TOPIC("deb1a", TRACE, Logger::MAINTENANCE)
+        << "Disable maintenance-threads"
+        << " for single-server or agents.";
     return;
   }
 
@@ -442,7 +445,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
           }  // else
         }    // for
       }
-    }      // WRITE
+    }  // WRITE
 
     // no pointer ... wait 0.1 seconds unless woken up
     if (!_isShuttingDown) {
@@ -732,4 +735,42 @@ void MaintenanceFeature::delShardVersion(std::string const& shname) {
   if (it != _shardVersion.end()) {
     _shardVersion.erase(it);
   }
+}
+
+uint64_t MaintenanceFeature::getCurrentCounter() const {
+  // It is guaranteed that getCurrentCounter is not executed
+  // concurrent to increase / wait.
+  // This guarantee is created by the following:
+  // 1) There is one inifinite loop that will call
+  //    PhaseOne and PhaseTwo in exactly this ordering.
+  //    It is guaranteed that only one thread at a time is
+  //    in this loop.
+  //    Between PhaseOne and PhaseTwo the increaseCurrentCounter is called
+  //    Within PhaseOne this getCurrentCounter is called, but never after.
+  //    so getCurrentCounter and increaseCurrentCounter are strictily serialized.
+  // 2) waitForLargerCurrentCounter can be called in concurrent threads at any time.
+  //    It is read-only, so it is save to have it concurrent to getCurrentCounter
+  //    without any locking.
+  //    However we need locking for increase and waitFor in order to guarantee
+  //    it's functionallity.
+  // For now we actually do not need this guard, but as this is NOT performance
+  // critical we can simply get it, just to be save for later use.
+  std::unique_lock<std::mutex> guard(_currentCounterLock);
+  return _currentCounter;
+}
+
+void MaintenanceFeature::increaseCurrentCounter() {
+  std::unique_lock<std::mutex> guard(_currentCounterLock);
+  _currentCounter++;
+  _currentCounterCondition.notify_all();
+}
+
+void MaintenanceFeature::waitForLargerCurrentCounter(uint64_t old) {
+  std::unique_lock<std::mutex> guard(_currentCounterLock);
+  if (_currentCounter > old) {
+    return;
+  }
+  _currentCounterCondition.wait(guard);
+  TRI_ASSERT(_currentCounter > old);
+  return;
 }
