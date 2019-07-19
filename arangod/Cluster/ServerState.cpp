@@ -412,16 +412,6 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
   return "INVALID_CLUSTER_ROLE";
 }
 
-void mkdir(std::string const& path) {
-  if (!TRI_IsDirectory(path.c_str())) {
-    if (!arangodb::basics::FileUtils::createDirectory(path)) {
-      LOG_TOPIC("626e8", FATAL, arangodb::Logger::CLUSTER)
-          << "Couldn't create file directory " << path << " (UUID)";
-      FATAL_ERROR_EXIT();
-    }
-  }
-}
-
 std::string ServerState::getUuidFilename() {
   auto dbpath = application_features::ApplicationServer::getFeature<DatabasePathFeature>(
       "DatabasePath");
