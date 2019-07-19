@@ -168,7 +168,7 @@ void MaintenanceFeature::stop() {
 
     // loop on each worker, retesting at 10ms just in case
     while (itWorker->isRunning()) {
-      _workerCompletion.wait(std::chrono::microseconds(10000));
+      _workerCompletion.wait(std::chrono::milliseconds(10));
     }  // if
   }    // for
 

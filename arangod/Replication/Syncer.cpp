@@ -264,7 +264,7 @@ Syncer::JobSynchronizer::~JobSynchronizer() {
 
   // wait until all posted jobs have been completed/canceled
   while (hasJobInFlight()) {
-    std::this_thread::sleep_for(std::chrono::microseconds(20000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     std::this_thread::yield();
   }
 }
@@ -561,7 +561,7 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx, LogicalColle
       LOG_TOPIC("569c6", DEBUG, Logger::REPLICATION)
           << "got lock timeout while waiting for lock on collection '"
           << coll->name() << "', retrying...";
-      std::this_thread::sleep_for(std::chrono::microseconds(50000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
       // retry
     }
   } else {
