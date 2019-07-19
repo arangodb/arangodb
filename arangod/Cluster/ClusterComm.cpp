@@ -390,11 +390,10 @@ void ClusterComm::stopBackgroundThreads() {
 }
 
 void ClusterComm::deleteBackgroundThreads() {
-  // pass 3:  de-alocate instances
+  // pass 3:  de-allocate instances
   // we want to keep the thread objects allocated till now,
   // so eventual access to them doesn't fail.
   for (ClusterCommThread* thread : _backgroundThreads) {
-    thread->shutdown();
     delete thread;
   }
 
