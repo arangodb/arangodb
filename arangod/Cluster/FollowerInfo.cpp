@@ -117,58 +117,6 @@ Result FollowerInfo::add(ServerID const& sid) {
   }
   // Real error, report
 
-<<<<<<< HEAD
-=======
-      if (!currentEntry.isObject()) {
-        LOG_TOPIC("b753d", ERR, Logger::CLUSTER)
-            << "FollowerInfo::add, did not find object in " << curPath;
-        if (!currentEntry.isNone()) {
-          LOG_TOPIC("568de", ERR, Logger::CLUSTER) << "Found: " << currentEntry.toJson();
-        }
-      } else {
-        if (!planEntry.isArray() || planEntry.length() == 0 || !planEntry[0].isString() ||
-            !planEntry[0].isEqualString(ServerState::instance()->getId())) {
-          LOG_TOPIC("54555", INFO, Logger::CLUSTER)
-              << "FollowerInfo::add, did not find myself in Plan: "
-              << _docColl->vocbase().name() << "/"
-              << std::to_string(_docColl->planId())
-              << " (can happen when the leader changed recently).";
-          if (!planEntry.isNone()) {
-            LOG_TOPIC("66762", INFO, Logger::CLUSTER) << "Found: " << planEntry.toJson();
-          }
-          return {TRI_ERROR_CLUSTER_NOT_LEADER};
-        } else {
-          auto newValue = newShardEntry(currentEntry, sid, true);
-          AgencyWriteTransaction trx;
-          trx.preconditions.push_back(
-              AgencyPrecondition(curPath, AgencyPrecondition::Type::VALUE, currentEntry));
-          trx.preconditions.push_back(
-              AgencyPrecondition(planPath, AgencyPrecondition::Type::VALUE, planEntry));
-          trx.operations.push_back(AgencyOperation(curPath, AgencyValueOperationType::SET,
-                                                   newValue.slice()));
-          trx.operations.push_back(
-              AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP));
-          AgencyCommResult res2 = ac.sendTransactionWithFailover(trx);
-          if (res2.successful()) {
-            return {TRI_ERROR_NO_ERROR};
-          }
-        }
-      }
-    } else {
-      LOG_TOPIC("dcf54", WARN, Logger::CLUSTER)
-          << "FollowerInfo::add, could not read " << planPath << " and "
-          << curPath << " in agency.";
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-  } while (TRI_microtime() < startTime + 3600 &&
-           !application_features::ApplicationServer::isStopping());
-  // This is important, give it 1h if needed. We really do not want to get
-  // into the position to not accept a shard getting-in-sync just because
-  // we cannot talk to the agency temporarily.
-  int errorCode = (application_features::ApplicationServer::isStopping())
-                      ? TRI_ERROR_SHUTTING_DOWN
-                      : TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED;
->>>>>>> c922c5f1332482ef29dff794d8af394d31c1b737
   std::string errorMessage =
       "unable to add follower in agency, timeout in agency CAS operation for "
       "key " +
@@ -442,39 +390,10 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
           << reportName(isRemove) << ", could not read " << planPath << " and "
           << curPath << " in agency.";
     }
-<<<<<<< HEAD
     using namespace std::chrono_literals;
     std::this_thread::sleep_for(500ms);
   } while (!application_features::ApplicationServer::isStopping());
   return TRI_ERROR_SHUTTING_DOWN;
-=======
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-  } while (TRI_microtime() < startTime + 7200 &&
-           !application_features::ApplicationServer::isStopping());
-
-  // This is important, give it 2h if needed. We really do not want to get
-  // into the position to fail to drop a follower, just because we cannot
-  // talk to the agency temporarily. The worst would be to drop the follower
-  // locally but not report the fact to the agency. The second worst is to
-  // not be able to drop the follower, despite the fact that a replication
-  // was not successful. All else is less dramatic. Therefore we try for
-  // a long time.
-
-  // rollback:
-  _followers = _oldFollowers;
-
-  int errorCode = (application_features::ApplicationServer::isStopping())
-                      ? TRI_ERROR_SHUTTING_DOWN
-                      : TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED;
-  std::string errorMessage =
-      "unable to remove follower from agency, timeout in agency CAS operation "
-      "for key " +
-      _docColl->vocbase().name() + "/" + std::to_string(_docColl->planId()) +
-      ": " + TRI_errno_string(errorCode);
-  LOG_TOPIC("a0dcc", ERR, Logger::CLUSTER) << errorMessage;
-
-  return {errorCode, std::move(errorMessage)};
->>>>>>> c922c5f1332482ef29dff794d8af394d31c1b737
 }
 
 ////////////////////////////////////////////////////////////////////////////////
