@@ -3313,42 +3313,62 @@ void ClusterInfo::loadServers() {
         {AgencyCommManager::path(), "Target", "MapUniqueToShortID"}));
 
     if (serversRegistered.isObject()) {
-      decltype(_servers) newServers;
       decltype(_serverAliases) newAliases;
-      decltype(_serverAdvertisedEndpoints) newAdvertisedEndpoints;
+
+      auto newServersRegistered = decltype(_serversRegistered){};
+      auto oldAndNewServers = std::unordered_set<ServerID>{};
+      for(auto const& it : _serversRegistered) {
+        oldAndNewServers.emplace(it.first);
+      }
 
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
+        auto const serverId = res.key.copyString();
         velocypack::Slice slice = res.value;
 
-        if (slice.isObject() && slice.hasKey("endpoint")) {
-          std::string server =
-              arangodb::basics::VelocyPackHelper::getStringValue(slice,
-                                                                 "endpoint", "");
-          std::string advertised = arangodb::basics::VelocyPackHelper::getStringValue(
-              slice, "advertisedEndpoint", "");
+        auto const info = ServerRegisteredInfo::fromSlice(slice);
+        newServersRegistered.emplace(std::make_pair(serverId, std::move(info)));
+        oldAndNewServers.emplace(serverId);
 
-          std::string serverId = res.key.copyString();
-          try {
-            velocypack::Slice serverSlice;
-            serverSlice = serversAliases.get(serverId);
-            if (serverSlice.isObject()) {
-              std::string alias = arangodb::basics::VelocyPackHelper::getStringValue(
-                  serverSlice, "ShortName", "");
-              newAliases.emplace(std::make_pair(alias, serverId));
-            }
-          } catch (...) {
+        try {
+          velocypack::Slice serverSlice;
+          serverSlice = serversAliases.get(serverId);
+          if (serverSlice.isObject()) {
+            std::string alias = arangodb::basics::VelocyPackHelper::getStringValue(
+                serverSlice, "ShortName", "");
+            newAliases.emplace(std::make_pair(alias, serverId));
           }
-          newServers.emplace(std::make_pair(serverId, server));
-          newAdvertisedEndpoints.emplace(std::make_pair(serverId, advertised));
+        } catch (...) {
         }
       }
+
+
+      auto changedRebootIds = std::unordered_map<ServerID, std::pair<uint64_t, uint64_t>>{};
+      {
+        // rebootIds are expected to be at least 1 if set. Thus 0 means either
+        // the rebootId, or the whole server entry, is missing.
+        auto const getRebootIdOrZero = [&](auto const& map, auto const& id) {
+          auto it = map.find(id);
+          if (it != map.end()) {
+            return it->second.rebootId();
+          }
+          return UINT64_C(0);
+        };
+
+        for (auto const& id : oldAndNewServers) {
+          uint64_t oldRebootId = getRebootIdOrZero(_serversRegistered, id);
+          uint64_t newRebootId = getRebootIdOrZero(newServersRegistered, id);
+          if (oldRebootId != newRebootId) {
+            changedRebootIds.emplace(std::make_pair(id, std::make_pair(oldRebootId, newRebootId)));
+          }
+        }
+      }
+      // TODO Send changedRebootIds to some service that does something with it...
 
       // Now set the new value:
       {
         WRITE_LOCKER(writeLocker, _serversProt.lock);
-        _servers.swap(newServers);
+        _serversRegistered.swap(newServersRegistered);
         _serverAliases.swap(newAliases);
-        _serverAdvertisedEndpoints.swap(newAdvertisedEndpoints);
         _serversProt.doneVersion = storedVersion;
         _serversProt.isValid = true;
       }
@@ -3394,11 +3414,9 @@ std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
         serverID_ = (*ita).second;
       }
 
-      // _servers is a map-type <ServerId, std::string>
-      auto it = _servers.find(serverID_);
-
-      if (it != _servers.end()) {
-        return (*it).second;
+      auto it = _serversRegistered.find(serverID_);
+      if (it != _serversRegistered.end()) {
+        return it->second.endpoint();
       }
     }
 
@@ -3445,10 +3463,9 @@ std::string ClusterInfo::getServerAdvertisedEndpoint(ServerID const& serverID) {
         serverID_ = (*ita).second;
       }
 
-      // _serversAliases is a map-type <ServerID, std::string>
-      auto it = _serverAdvertisedEndpoints.find(serverID_);
-      if (it != _serverAdvertisedEndpoints.end()) {
-        return (*it).second;
+      auto it = _serversRegistered.find(serverID_);
+      if (it != _serversRegistered.end()) {
+        return it->second.advertisedEndpoint();
       }
     }
 
@@ -3480,8 +3497,8 @@ std::string ClusterInfo::getServerName(std::string const& endpoint) {
   while (true) {
     {
       READ_LOCKER(readLocker, _serversProt.lock);
-      for (auto const& it : _servers) {
-        if (it.second == endpoint) {
+      for (auto const& it : _serversRegistered) {
+        if (it.second.endpoint() == endpoint) {
           return it.first;
         }
       }
@@ -3941,7 +3958,12 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServers() {
     loadServers();
   }
   READ_LOCKER(readLocker, _serversProt.lock);
-  std::unordered_map<ServerID, std::string> serv = _servers;
+
+  auto serv = std::unordered_map<ServerID, std::string>{};
+  for (auto const& it : _serversRegistered) {
+    serv.emplace(std::make_pair(it.first, it.second.endpoint()));
+  }
+
   return serv;
 }
 
@@ -3957,8 +3979,8 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
 std::unordered_map<ServerID, std::string> ClusterInfo::getServerAdvertisedEndpoints() {
   READ_LOCKER(readLocker, _serversProt.lock);
   std::unordered_map<std::string, std::string> ret;
-  for (const auto& i : _serverAdvertisedEndpoints) {
-    ret.emplace(i.second, i.first);
+  for (const auto& i : _serversRegistered) {
+    ret.emplace(i.second.advertisedEndpoint(), i.first);
   }
   return ret;
 }
@@ -3982,6 +4004,31 @@ arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
   AgencyCommResult dump = _agency.dump();
   body->add(dump.slice());
   return Result();
+}
+
+ClusterInfo::ServerRegisteredInfo ClusterInfo::ServerRegisteredInfo::fromSlice(VPackSlice slice) {
+  auto endpoint = decltype(_endpoint){};
+  auto advertisedEndpoint = decltype(_advertisedEndpoint){};
+  auto rebootId = decltype(_rebootId){};
+  if (slice.isObject()) {
+    using namespace arangodb::basics;
+    endpoint = VelocyPackHelper::getStringValue(slice, "endpoint", "");
+    advertisedEndpoint =
+        VelocyPackHelper::getStringValue(slice, "advertisedEndpoint", "");
+    rebootId =
+        VelocyPackHelper::getNumericValue<decltype(rebootId)>(slice, "rebootId", 0);
+  }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  else {
+    LOG_TOPIC("", FATAL, Logger::CLUSTER)
+        << "Expected values in object /Current/ServersRegistered to be "
+           "objects, but got "
+        << slice.type();
+    TRI_ASSERT(false);
+  }
+#endif
+
+  return ServerRegisteredInfo(std::move(endpoint), std::move(advertisedEndpoint), rebootId);
 }
 
 // -----------------------------------------------------------------------------

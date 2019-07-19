@@ -703,10 +703,47 @@ class ClusterInfo final {
     ProtectionData() : isValid(false), wantedVersion(0), doneVersion(0) {}
   };
 
+  /// @brief /Current/ServersRegistered is a map from server-UUIDs to objects,
+  /// and these objects correspond to this struct.
+  class ServerRegisteredInfo {
+   public:
+    static ServerRegisteredInfo fromSlice(arangodb::velocypack::Slice slice);
+    ServerRegisteredInfo(ServerRegisteredInfo&&) = default;
+    ServerRegisteredInfo(ServerRegisteredInfo const&) = default;
+    ServerRegisteredInfo& operator=(ServerRegisteredInfo const&) = default;
+    ServerRegisteredInfo& operator=(ServerRegisteredInfo&&) = default;
+    ~ServerRegisteredInfo() = default;
+
+    std::string const& endpoint() const noexcept { return _endpoint; }
+    std::string const& advertisedEndpoint() const noexcept {
+      return _advertisedEndpoint;
+    }
+    uint64_t rebootId() const noexcept { return _rebootId; }
+
+   private:
+    ServerRegisteredInfo(std::string&& endpoint, std::string&& advertisedEndpoint, uint64_t rebootId)
+        : _endpoint(std::move(endpoint)),
+          _advertisedEndpoint(std::move(advertisedEndpoint)),
+          _rebootId(rebootId) {}
+
+    /// @brief entry "endpoint"
+    std::string const _endpoint;
+    /// @brief entry "advertisedEndpoint"
+    std::string const _advertisedEndpoint;
+    /// @brief entry "rebootId"
+    uint64_t const _rebootId{};
+
+    // At the time of this writing, the following fields (may) also exist, but
+    // are currently unused here:
+    // - "host"
+    // - "version"
+    // - "versionString"
+    // - "engine"
+  };
+
   // The servers, first all, we only need Current here:
-  std::unordered_map<ServerID, std::string> _servers;  // from Current/ServersRegistered
-  std::unordered_map<ServerID, std::string> _serverAliases;  // from Current/ServersRegistered
-  std::unordered_map<ServerID, std::string> _serverAdvertisedEndpoints;  // from Current/ServersRegistered
+  std::unordered_map<ServerID, ServerRegisteredInfo> _serversRegistered;  // from Current/ServersRegistered
+  std::unordered_map<ServerID, std::string> _serverAliases;  // from Current/ServersRegistered & Target/MapUniqueToShortID
   ProtectionData _serversProt;
 
   // The DBServers, also from Current:
