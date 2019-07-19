@@ -1147,7 +1147,8 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   }
 
   if (!isValidMinReplFactorSlice) {
-    if (replFactorSlice.isString() && replFactorSlice.isEqualString("satellite")) {
+    if (replFactorSlice.isString() &&
+        replFactorSlice.isEqualString("satellite")) {
       minReplicationFactor = 0;
     } else if (minReplicationFactor <= 0) {
       minReplicationFactor = 1;

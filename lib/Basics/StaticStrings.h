@@ -210,6 +210,7 @@ class StaticStrings {
 
   // Replication
   static std::string const ReplicationSoftLockOnly;
+  static std::string const FailoverCandidates;
 
   // misc strings
   static std::string const LastValue;
