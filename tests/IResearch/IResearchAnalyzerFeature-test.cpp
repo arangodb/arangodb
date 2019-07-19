@@ -520,11 +520,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_none) {
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
   // implicit RO access to collection _analyzers collection granted due to RO access to db
-  EXPECT_TRUE(
-      arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RO));
+  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,
+                                                                    arangodb::auth::Level::RO));
 
-  EXPECT_FALSE( 
-    arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RW));
+  EXPECT_FALSE(
+      arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RW));
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
@@ -560,8 +560,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_ro) {
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,
                                                                     arangodb::auth::Level::RO));
   // implicit access for system analyzers collection granted due to RW access to database
-  EXPECT_TRUE(
-      arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RW));
+  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,
+                                                                    arangodb::auth::Level::RW));
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_rw) {
@@ -748,16 +748,16 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_during_recovery) {
   // add valid inRecovery (failure)
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-  auto before = StorageEngineMock::inRecoveryResult;
-  StorageEngineMock::inRecoveryResult = true;
+  auto before = StorageEngineMock::recoveryStateResult;
+  StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
   auto restore = irs::make_finally(
-      [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
   auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
                              VPackParser::fromJson("\"abc\"")->slice());
   // emplace should return OK for the sake of recovery
   EXPECT_TRUE(res.ok());
   auto ptr = feature.get(analyzerName());
-  // but nothing should be stored 
+  // but nothing should be stored
   EXPECT_EQ(nullptr, ptr);
 }
 
@@ -1330,7 +1330,6 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
   TRI_vocbase_t* specificBase() const { return _vocbase; }
 };
 
-
 TEST_F(IResearchAnalyzerFeatureGetTest, test_get_db_server) {
   auto before = arangodb::ServerState::instance()->getRole();
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
@@ -1359,14 +1358,14 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index) {
                                                    TRI_idx_iid_t id,
                                                    bool isClusterConstructor) const override {
         auto* ci = arangodb::ClusterInfo::instance();
-        EXPECT_NE(nullptr , ci);
+        EXPECT_NE(nullptr, ci);
         auto* feature =
             arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
         EXPECT_TRUE((feature));
         ci->invalidatePlan();  // invalidate plan to test recursive lock aquisition in ClusterInfo::loadPlan()
         EXPECT_EQ(nullptr, feature->get(arangodb::StaticStrings::SystemDatabase + "::missing",
-                                           "TestAnalyzer", VPackSlice::noneSlice(),
-                                           irs::flags()));
+                                        "TestAnalyzer", VPackSlice::noneSlice(),
+                                        irs::flags()));
         return std::make_shared<TestIndex>(id, collection, definition);
       }
 
@@ -1393,7 +1392,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index) {
     ClusterCommMock clusterComm;
     auto scopedClusterComm = ClusterCommMock::setInstance(clusterComm);
     auto* ci = arangodb::ClusterInfo::instance();
-    ASSERT_NE(nullptr , ci);
+    ASSERT_NE(nullptr, ci);
 
     ASSERT_TRUE((ci->createCollectionCoordinator(system()->name(), collectionId, 0, 1, 1, false,
                                                  createCollectionJson->slice(), 0.0)
@@ -2172,10 +2171,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
                                          "::test_analyzer0")));
     }
 
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
-    auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally([&before]() -> void {
+      StorageEngineMock::recoveryStateResult = before;
+    });
 
     EXPECT_TRUE((false == feature
                               .remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer0")
@@ -2218,7 +2218,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       arangodb::aql::OptimizerRulesFeature(this->server).unprepare();
     });
 
-    auto cleanup = arangodb::scopeGuard([dbFeature](){dbFeature->unprepare(); });
+    auto cleanup = arangodb::scopeGuard([dbFeature]() { dbFeature->unprepare(); });
 
     // create system vocbase (before feature start)
     {
@@ -2300,7 +2300,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       arangodb::aql::OptimizerRulesFeature(this->server).unprepare();
     });
 
-    auto cleanup = arangodb::scopeGuard([dbFeature](){dbFeature->unprepare(); });
+    auto cleanup = arangodb::scopeGuard([dbFeature]() { dbFeature->unprepare(); });
 
     // create system vocbase (before feature start)
     {
@@ -2341,10 +2341,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
                                           "::test_analyzer2")));
     }
 
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
-    auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally([&before]() -> void {
+      StorageEngineMock::recoveryStateResult = before;
+    });
 
     EXPECT_TRUE((true == feature
                              ->remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2")
@@ -2414,10 +2415,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
-  auto before = StorageEngineMock::inRecoveryResult;
-  StorageEngineMock::inRecoveryResult = true;
+  auto before = StorageEngineMock::recoveryStateResult;
+  StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
   auto restore = irs::make_finally(
-      [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   EXPECT_TRUE(feature.visit([](auto) { return false; }));  // ensure feature is empty after creation
   feature.prepare();  // add static analyzers
@@ -2464,10 +2465,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
       EXPECT_TRUE((nullptr == collection));
     }
 
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
-    auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally([&before]() -> void {
+      StorageEngineMock::recoveryStateResult = before;
+    });
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
     feature.prepare();  // add static analyzers
     feature.start();    // load persisted analyzers
@@ -2522,10 +2524,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
       EXPECT_TRUE((nullptr != collection));
     }
 
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
-    auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally([&before]() -> void {
+      StorageEngineMock::recoveryStateResult = before;
+    });
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
     feature.prepare();  // add static analyzers
     feature.start();    // load persisted analyzers
@@ -2675,7 +2678,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   auto* analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server);
   auto* functions = new arangodb::aql::AqlFunctionFeature(server);
   auto* dbfeature = new arangodb::DatabaseFeature(server);
-  auto cleanup = arangodb::scopeGuard([dbfeature](){ dbfeature->unprepare(); });
+  auto cleanup = arangodb::scopeGuard([dbfeature]() { dbfeature->unprepare(); });
   auto* sharding = new arangodb::ShardingFeature(server);
   auto* systemdb = new arangodb::SystemDatabaseFeature(server);
 
@@ -2869,7 +2872,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
       arangodb::aql::OptimizerRulesFeature(this->server).unprepare();
     });
 
-    auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+    auto cleanup = arangodb::scopeGuard([dbFeature]() { dbFeature->unprepare(); });
     feature->start();  // register upgrade tasks
 
     arangodb::DatabasePathFeature dbPathFeature(server);
@@ -2926,7 +2929,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
       arangodb::aql::OptimizerRulesFeature(this->server).unprepare();
     });
 
-    auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+    auto cleanup = arangodb::scopeGuard([dbFeature]() { dbFeature->unprepare(); });
     feature->start();  // register upgrade tasks
 
     arangodb::DatabasePathFeature dbPathFeature(server);
@@ -3009,7 +3012,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     });
 
     feature->start();  // register upgrade tasks
-    auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+    auto cleanup = arangodb::scopeGuard([dbFeature]() { dbFeature->unprepare(); });
 
     // ensure no legacy collection after feature start
     {
@@ -3071,7 +3074,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     });
 
     feature->start();  // register upgrade tasks
-    auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+    auto cleanup = arangodb::scopeGuard([dbFeature]() { dbFeature->unprepare(); });
 
     // ensure no legacy collection after feature start
     {
@@ -3158,7 +3161,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     });
 
     feature->start();  // register upgrade tasks
-    auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+    auto cleanup = arangodb::scopeGuard([dbFeature]() { dbFeature->unprepare(); });
 
     // ensure legacy collection after feature start
     {
@@ -3235,7 +3238,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     });
 
     feature->start();  // register upgrade tasks
-    auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+    auto cleanup = arangodb::scopeGuard([dbFeature]() { dbFeature->unprepare(); });
 
     // ensure no legacy collection after feature start
     {
@@ -3387,7 +3390,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
                                                  arangodb::tests::AnalyzerCollectionName);
   }
 
-  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+  auto cleanup = arangodb::scopeGuard([dbFeature]() { dbFeature->unprepare(); });
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   EXPECT_TRUE(
@@ -3648,7 +3651,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
   server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server));  // required for IResearchAnalyzerFeature::start()
   server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
-  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+  auto cleanup = arangodb::scopeGuard([dbFeature]() { dbFeature->unprepare(); });
 
   // create system vocbase (before feature start)
   {

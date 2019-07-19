@@ -49,6 +49,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -188,6 +189,7 @@ class IResearchIndexTest : public ::testing::Test {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
+    features.emplace_back(new arangodb::FlushFeature(server), false);
     features.emplace_back(new arangodb::AqlFeature(server),
                           true);  // required for arangodb::aql::Query(...)
     features.emplace_back(new arangodb::AuthenticationFeature(server), false);  // required for ExecContext in Collections::create(...)
