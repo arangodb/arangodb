@@ -255,6 +255,7 @@ arangodb::Result HotBackupFeature::getTransferRecord(
     report.add(
       (ts.operation == "Upload") ? "UploadId" : "DownloadId",
       VPackValue(t->first));
+    report.add("Cancelled", VPackValue(ts.status == "CANCELLED"));
     report.add("BackupId", VPackValue(ts.backupId));
     report.add(VPackValue("DBServers"));
     {
