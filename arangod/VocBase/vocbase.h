@@ -168,8 +168,6 @@ struct TRI_vocbase_t {
 
   std::unique_ptr<arangodb::DatabaseReplicationApplier> _replicationApplier;
 
-  // arangodb::basics::ReadWriteLock _replicationClientsLock;
-  // std::unordered_map<TRI_server_id_t, std::tuple<double, double, TRI_voc_tick_t>> _replicationClients;
   // Use pimpl so ReplicationClientsProgressTracker can be forward-declared.
   std::unique_ptr<arangodb::ReplicationClientsProgressTracker> _replicationClients;
 
