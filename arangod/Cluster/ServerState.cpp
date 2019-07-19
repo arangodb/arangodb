@@ -348,18 +348,6 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
     return false;
   }
 
-  // if (have persisted id) {
-  //   use the persisted id
-  // } else {
-  //  if (myLocalId not empty) {
-  //    lookup in agency
-  //    if (found) {
-  //      persist id
-  //    }
-  //  }
-  //  if (id still not set) {
-  //    generate and persist new id
-  //  }
   std::string id;
   if (!hasPersistedId()) {
     id = generatePersistedId(role);
@@ -392,7 +380,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
 /// @brief get the key for a role in the agency
 //////////////////////////////////////////////////////////////////////////////
 std::string ServerState::roleToAgencyListKey(ServerState::RoleEnum role) {
-  return roleToAgencyKey(role) + "s";  // lol
+  return roleToAgencyKey(role) + "s";
 }
 
 std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
