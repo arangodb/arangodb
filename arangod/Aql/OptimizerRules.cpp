@@ -1266,7 +1266,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
       // we will now check how many parts of "g" are used later
 
       std::unordered_set<std::string> keepAttributes;
-      bool keepSelf = false;
+      bool nextCollectSeen = false;
       CollectNode const* other = nullptr;
 
       bool stop = false;
@@ -1291,7 +1291,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
               break;
             }
 
-            if(keepSelf) {
+            if(other) {
               std::vector<arangodb::basics::AttributeName> names;
               auto access = std::make_pair(other->outVariable(), names);
               bool isAccess = exp->node()->isAttributeAccessForVariable(access, true);
@@ -1300,43 +1300,47 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
                 std::string tomatch = access.second.front().name;
                 std::string outvarname = outVariable->name;
 
-                if(!(tomatch == outvarname) && !startsWith(tomatch, outvarname + "[") ) {
-                  other = nullptr;
-                  keepSelf = false;
+                if( (tomatch == outvarname) || startsWith(tomatch, outvarname + "[") ) {
+                  stop = true;
                 }
               }
             }
 
           }
         } else if (p->getType() == EN::COLLECT) {
-          auto collectNode = ExecutionNode::castTo<CollectNode const*>(p);
-          if (collectNode->hasOutVariable()) {
+          if(nextCollectSeen){
+              // there is the next collect which will set it's
+              // scope variables in another loop
+              other = nullptr;
+          } else {
+            auto collectNode = ExecutionNode::castTo<CollectNode const*>(p);
+            if (collectNode->hasOutVariable()) {
 
-            // We have the following shituation:
-            //
-            // COLLECT foo = doc._id INTO a
-            // COLLECT bar = doc._id INTO b
-            //
-            // now in a following return there is a bad
-            // and a good case
-            //
-            // RETURN b[0]               <-bad
-            // RETURN b[0].not_a.foo.bar <-good
-            //
-            // In the good case we might manage to
-            // show that `b.a` is not required any
-            // following calculation / return or
-            // other node.
+              // We have the following shituation:
+              //
+              // COLLECT foo = doc._id INTO a
+              // COLLECT bar = doc._id INTO b
+              //
+              // now in a following return there is a bad
+              // and a good case
+              //
+              // RETURN b[0]               <-bad
+              // RETURN b[0].not_a.foo.bar <-good
+              //
+              // In the good case we might manage to
+              // show that `b.a` is not required any
+              // following calculation / return or
+              // other node.
 
-            keepSelf = true;
-            other = collectNode;
+              other = collectNode;
+            }
           }
         }
 
         p = p->getFirstParent();
       }
 
-      if (!stop && !keepSelf) {
+      if (!stop) {
         std::vector<Variable const*> keepVariables;
         // we are allowed to do the optimization
         auto current = n->getFirstDependency();
