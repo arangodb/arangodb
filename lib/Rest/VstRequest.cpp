@@ -62,7 +62,7 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
   TRI_ASSERT(options != nullptr);
 
   if (_contentType == ContentType::JSON) {
-    if (!_vpackBuilder && _buffer.size() >= _payloadOffset) {
+    if (!_vpackBuilder && _buffer.size() > _payloadOffset) {
       _vpackBuilder = VPackParser::fromJson(_buffer.data() + _payloadOffset,
                                             _buffer.size() - _payloadOffset);
     }
@@ -70,7 +70,7 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
       return _vpackBuilder->slice();
     }
   } else if (_contentType == ContentType::VPACK) {
-    if (_buffer.size() >= _payloadOffset) {
+    if (_buffer.size() > _payloadOffset) {
       uint8_t const* ptr = _buffer.data() + _payloadOffset;
       if (!_validatedPayload) {
         VPackOptions validationOptions = *options;  // intentional copy

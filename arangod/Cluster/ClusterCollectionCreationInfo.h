@@ -32,12 +32,14 @@ namespace arangodb {
 
 struct ClusterCollectionCreationInfo {
   enum State { INIT, FAILED, DONE };
-  ClusterCollectionCreationInfo(std::string const cID, uint64_t shards, uint64_t repFac,
+  ClusterCollectionCreationInfo(std::string const cID, uint64_t shards,
+                                uint64_t repFac, uint64_t minRepFac,
                                 bool waitForRep, velocypack::Slice const& slice);
 
   std::string const collectionID;
   uint64_t numberOfShards;
   uint64_t replicationFactor;
+  uint64_t minReplicationFactor;
   bool waitForReplication;
   velocypack::Slice const json;
   std::string name;
@@ -45,7 +47,7 @@ struct ClusterCollectionCreationInfo {
 
  public:
   velocypack::Slice isBuildingSlice() const;
- 
+
  private:
   bool needsBuildingFlag() const;
 

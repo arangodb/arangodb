@@ -1014,7 +1014,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
   while (tries++ < maxTries) {
     result = getValues("Sync/LatestID");
     if (!result.successful()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(500000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
       continue;
     }
 
@@ -1050,7 +1050,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
     try {
       newBuilder.add(VPackValue(newValue));
     } catch (...) {
-      std::this_thread::sleep_for(std::chrono::microseconds(500000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
       continue;
     }
 

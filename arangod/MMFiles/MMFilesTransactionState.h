@@ -102,9 +102,6 @@ class MMFilesTransactionState final : public TransactionState {
   rocksdb::Transaction* _rocksTransaction;
   bool _beginWritten;
   bool _hasOperations;
-  
-  /// @brief tick of last added & written operation
-  TRI_voc_tick_t _lastWrittenOperationTick;
 };
 
 }  // namespace arangodb
