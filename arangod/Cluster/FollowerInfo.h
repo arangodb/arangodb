@@ -31,6 +31,8 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/WriteLocker.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/LogicalCollection.h"
 
 namespace arangodb {
@@ -172,6 +174,11 @@ class FollowerInfo {
 
   bool allowedToWrite() {
     {
+      auto engine = arangodb::EngineSelectorFeature::ENGINE;
+      TRI_ASSERT(engine != nullptr);
+      if (engine->inRecovery()) {
+        return true;
+      }
       READ_LOCKER(readLocker, _canWriteLock);
       if (_canWrite) {
         // Someone has decided we can write, fastPath!
