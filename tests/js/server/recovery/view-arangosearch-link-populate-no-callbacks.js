@@ -44,20 +44,14 @@ function runSetup () {
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
   db._view('UnitTestsRecoveryView').properties(meta);
 
-  var tx = {
-    collections: {
-      write: ['UnitTestsRecoveryDummy']
-    },
-    action: function() {
-      var c = db.UnitTestsRecoveryDummy;
-      for (let i = 0; i < 10000; i++) {
-        c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
-      }
-    },
-    waitForSync: true
-  };
+  internal.wal.flush(true, true);
+  internal.debugSetFailAt("FlushCrashAfterSyncingMinTick");
 
-  db._executeTransaction(tx);
+  for (let i = 0; i < 100000; i++) {
+    c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
+  }
+
+  c.save({ name: 'crashme' }, { waitForSync: true });
 
   internal.debugSegfault('crashing server');
 }
@@ -78,7 +72,7 @@ function recoverySuite () {
     // / @brief test whether we can restore the trx data
     // //////////////////////////////////////////////////////////////////////////////
 
-    testIResearchLinkPopulateTransaction: function () {
+    testIResearchLinkPopulateNoCallbacks: function () {
       var v = db._view('UnitTestsRecoveryView');
       assertEqual(v.name(), 'UnitTestsRecoveryView');
       assertEqual(v.type(), 'arangosearch');
@@ -86,8 +80,9 @@ function recoverySuite () {
       assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
       assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
 
-      var result = AQL_EXECUTE("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").json;
-      assertEqual(result[0], 10000);
+      var result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+      var expectedResult = db._query("FOR doc IN UnitTestsRecoveryDummy FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
+      assertEqual(result[0], expectedResult[0]);
     }
 
   };

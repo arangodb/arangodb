@@ -77,6 +77,8 @@ class SingleRowFetcherHelper
 
   uint64_t nrCalled() { return _nrCalled; }
 
+  size_t totalSkipped() const { return _totalSkipped; }
+
   std::pair<arangodb::aql::ExecutionState, size_t> skipRows(size_t atMost) override;
 
   std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlockForPassthrough(
@@ -113,6 +115,7 @@ class SingleRowFetcherHelper
   uint64_t _nrItems;
   uint64_t _nrCalled{};
   size_t _skipped{};
+  size_t _totalSkipped{};
   size_t _curIndexInBlock{};
   size_t _curRowIndex{};
   size_t _blockSize;
