@@ -1337,7 +1337,6 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
       }
 
       if (!stop && !keepSelf) {
-        LOG_DEVEL << "can optimize";
         std::vector<Variable const*> keepVariables;
         // we are allowed to do the optimization
         auto current = n->getFirstDependency();
@@ -1364,8 +1363,6 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
           collectNode->setKeepVariables(std::move(keepVariables));
           modified = true;
         }
-      } else {
-        LOG_DEVEL << "can not optimize";
       }
     }
 

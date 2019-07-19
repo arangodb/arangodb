@@ -84,7 +84,13 @@ function optimizerRuleTestSuite () {
       var queries = [ 
         "FOR i IN 1..10 COLLECT a = i RETURN a",
         "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j RETURN a",
-        "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b, group: group }"
+        "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b, group: group }",
+        `LET items = [{foo : 'bar'}]
+         FOR i1 IN items
+           FOR i2 IN items
+             COLLECT foo1 = i1.foo INTO g1
+             COLLECT foo2 = g1[0].item2.foo INTO g2
+             RETURN g2[0].g`
       ];
 
       queries.forEach(function(query) {
@@ -101,7 +107,7 @@ function optimizerRuleTestSuite () {
       var queries = [ 
         "FOR i IN 1..10 COLLECT a = i INTO group RETURN a",
         "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN a",
-        "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b }"
+        "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b }",
       ];
 
       queries.forEach(function(query) {
@@ -136,12 +142,22 @@ function optimizerRuleTestSuite () {
     testResults : function () {
       var queries = [ 
         [ "FOR i IN 1..10 COLLECT a = i INTO group RETURN a", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
-        [ "FOR i IN 1..2 FOR j IN 1..2 COLLECT a = i, b = j INTO group RETURN [ a, b ]", [ [ 1, 1 ], [ 1, 2 ], [ 2, 1 ], [ 2, 2 ] ] ]
+        [ "FOR i IN 1..2 FOR j IN 1..2 COLLECT a = i, b = j INTO group RETURN [ a, b ]", [ [ 1, 1 ], [ 1, 2 ], [ 2, 1 ], [ 2, 2 ] ] ],
+        [ `LET items = [{foo : 'bar'}]
+           FOR i1 IN items
+             FOR i2 IN items
+               COLLECT foo1 = i1.foo INTO g1
+               COLLECT foo2 = g1[0].item2.foo INTO g2
+               RETURN g2[0].i2`,
+          [ {"foo" : "bar"}  ]
+        ]
+
       ];
 
       queries.forEach(function(query) {
         var planDisabled   = AQL_EXPLAIN(query[0], { }, paramDisabled);
         var planEnabled    = AQL_EXPLAIN(query[0], { }, paramEnabled);
+
         var resultDisabled = AQL_EXECUTE(query[0], { }, paramDisabled).json;
         var resultEnabled  = AQL_EXECUTE(query[0], { }, paramEnabled).json;
 
