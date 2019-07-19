@@ -5312,7 +5312,7 @@ class format10 : public irs::version10::format {
   }
 }; // format10
 
-index_meta_writer::ptr format10::get_index_meta_writer() const  {
+index_meta_writer::ptr format10::get_index_meta_writer() const {
   return irs::index_meta_writer::make<::index_meta_writer>(
     int32_t(::index_meta_writer::FORMAT_MIN)
   );
@@ -5421,9 +5421,9 @@ class format11 final : public format10 {
   virtual segment_meta_writer::ptr get_segment_meta_writer() const override final;
 
   virtual column_meta_writer::ptr get_column_meta_writer() const override final;
-}; // format10
+}; // format11
 
-index_meta_writer::ptr format11::get_index_meta_writer() const  {
+index_meta_writer::ptr format11::get_index_meta_writer() const {
   return irs::index_meta_writer::make<::index_meta_writer>(
     int32_t(::index_meta_writer::FORMAT_MAX)
   );

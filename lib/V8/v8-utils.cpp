@@ -60,7 +60,7 @@
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Random/UniformCharacter.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -769,7 +769,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
           TRI_ObjectToString(isolate, TRI_GetProperty(context, isolate, options,
                                                       "method"));
 
-      method = HttpRequest::translateMethod(methodString);
+      method = GeneralRequest::translateMethod(methodString);
     }
 
     // headers
