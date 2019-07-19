@@ -71,6 +71,7 @@ class ReplicationApplierConfiguration {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _force32mode = false;  // force client to act like 3.2
 #endif
+  std::string _clientInfoString;
 
  public:
   ReplicationApplierConfiguration();
@@ -91,6 +92,9 @@ class ReplicationApplierConfiguration {
   /// @brief get a VelocyPack representation
   /// expects builder to be in an open Object state
   void toVelocyPack(arangodb::velocypack::Builder&, bool includePassword, bool includeJwt) const;
+
+  void setClientInfo(std::string&& clientInfo) { _clientInfoString = std::move(clientInfo); }
+  void setClientInfo(std::string const& clientInfo) { _clientInfoString = clientInfo; }
 
   /// @brief create a configuration object from velocypack
   static ReplicationApplierConfiguration fromVelocyPack(arangodb::velocypack::Slice slice,
