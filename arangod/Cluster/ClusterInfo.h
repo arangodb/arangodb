@@ -298,6 +298,9 @@ class ClusterInfo final {
   static void cleanup();
 
  public:
+  /// @brief produces an agency dump and logs it
+  void logAgencyDump() const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get a number of cluster-wide unique IDs, returns the first
   /// one and guarantees that <number> are reserved for the caller.
@@ -420,18 +423,22 @@ class ClusterInfo final {
       bool waitForReplication, arangodb::velocypack::Slice const& json,
       double timeout  // request timeout
   );
+  
+  /// @brief this method does an atomic check of the preconditions for the collections
+  /// to be created, using the currently loaded plan. it populates the plan version
+  /// used for the checks
+  Result checkCollectionPreconditions(std::string const& databaseName,
+                                      std::vector<ClusterCollectionCreationInfo> const& infos,
+                                      uint64_t& planVersion);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create multiple collections in coordinator
   ///        If any one of these collections fails, all creations will be
   ///        rolled back.
-  //////////////////////////////////////////////////////////////////////////////
-
+  /// Note that in contrast to most other methods here, this method does not
+  /// get a timeout parameter, but an endTime parameter!!!
   Result createCollectionsCoordinator(std::string const& databaseName,
-                                      std::vector<ClusterCollectionCreationInfo>&,
-                                      double timeout);
+                                      std::vector<ClusterCollectionCreationInfo>&, double endTime);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief drop collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
   Result dropCollectionCoordinator(     // drop collection
@@ -656,20 +663,20 @@ class ClusterInfo final {
    * @return         List of DB servers serving the shard
    */
   arangodb::Result getShardServers(ShardID const& shardId, std::vector<ServerID>&);
-
- private:
-  void loadClusterId();
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get an operation timeout
   //////////////////////////////////////////////////////////////////////////////
 
-  double getTimeout(double timeout) const {
+  static double getTimeout(double timeout) {
     if (timeout == 0.0) {
       return 24.0 * 3600.0;
     }
     return timeout;
   }
+
+ private:
+  void loadClusterId();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the poll interval
