@@ -242,7 +242,8 @@ class MMFilesCollection final : public PhysicalCollection {
                            std::function<bool(LocalDocumentId const&)> callback) override;
 
   std::shared_ptr<Index> createIndex(arangodb::velocypack::Slice const& info,
-                                     bool restore, bool& created) override;
+                                     bool restore,
+                                     bool& created) override;
 
   std::shared_ptr<Index> createIndex(transaction::Methods& trx,
                                      velocypack::Slice const& info,

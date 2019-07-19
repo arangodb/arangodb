@@ -1601,14 +1601,14 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
 /// is a timeout, a timeout of 0.0 means no timeout.
 ////////////////////////////////////////////////////////////////////////////////
 Result ClusterInfo::createCollectionCoordinator(  // create collection
-    std::string const& databaseName, std::string const& collectionID,
-    uint64_t numberOfShards, uint64_t replicationFactor, bool waitForReplication,
+    std::string const& databaseName, std::string const& collectionID, uint64_t numberOfShards,
+    uint64_t replicationFactor, uint64_t minReplicationFactor, bool waitForReplication,
     velocypack::Slice const& json,  // collection definition
     double timeout                  // request timeout
 ) {
   std::vector<ClusterCollectionCreationInfo> infos{
-      ClusterCollectionCreationInfo{collectionID, numberOfShards,
-                                    replicationFactor, waitForReplication, json}};
+      ClusterCollectionCreationInfo{collectionID, numberOfShards, replicationFactor,
+                                    minReplicationFactor, waitForReplication, json}};
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   return createCollectionsCoordinator(databaseName, infos, endTime);
@@ -2082,12 +2082,11 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   }
 
   if (!clones.empty()) {
-    std::string errorMsg(
-      "Collection ");
+    std::string errorMsg("Collection ");
     errorMsg += coll->name();
     errorMsg += " must not be dropped while ";
     errorMsg += arangodb::basics::StringUtils::join(clones, ", ");
-    if(clones.size() == 1) {
+    if (clones.size() == 1) {
       errorMsg += " has ";
     } else {
       errorMsg += " have ";
@@ -2264,6 +2263,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   temp.openObject();
   temp.add(StaticStrings::WaitForSyncString, VPackValue(info->waitForSync()));
   temp.add("replicationFactor", VPackValue(info->replicationFactor()));
+  temp.add("minReplicationFactor", VPackValue(info->minReplicationFactor()));
   info->getPhysical()->getPropertiesVPack(temp);
   temp.close();
 

@@ -2938,11 +2938,14 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
         }
 
         size_t replicationFactor = col->replicationFactor();
+        size_t minReplicationFactor = col->minReplicationFactor();
         size_t numberOfShards = col->numberOfShards();
 
         // the default behavior however is to bail out and inform the user
         // that the requested replicationFactor is not possible right now
         if (dbServers.size() < replicationFactor) {
+          TRI_ASSERT(minReplicationFactor <= replicationFactor);
+          // => (dbServers.size() < minReplicationFactor) is granted
           LOG_TOPIC("9ce2e", DEBUG, Logger::CLUSTER)
               << "Do not have enough DBServers for requested replicationFactor,"
               << " nrDBServers: " << dbServers.size()
@@ -2992,6 +2995,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       infos.emplace_back(
           ClusterCollectionCreationInfo{std::to_string(col->id()),
                                         col->numberOfShards(), col->replicationFactor(),
+                                        col->minReplicationFactor(),
                                         waitForSyncReplication, velocy.slice()});
       vpackData.emplace_back(velocy.steal());
     }
