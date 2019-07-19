@@ -25,9 +25,12 @@
 #define ARANGOD_AGENCY_STRINGS_H 1
 
 #include <string>
+#include "Basics/StringUtils.h"
 
 namespace arangodb {
 namespace consensus {
+
+constexpr char const* ARANGO = "arango";
 
 constexpr char const* DATABASES = "Databases";
 constexpr char const* COLLECTIONS = "Collections";
@@ -39,6 +42,8 @@ constexpr char const* CURRENT_VERSION = "Current/Version";
 constexpr char const* CURRENT_COLLECTIONS = "Current/Collections/";
 constexpr char const* CURRENT_DATABASES = "Current/Databases/";
 
+constexpr char const* SERVERS_REGISTERED =  "ServersRegistered";
+
 constexpr char const* PLAN = "Plan";
 constexpr char const* PLAN_VERSION = "Plan/Version";
 constexpr char const* PLAN_COLLECTIONS = "Plan/Collections/";
@@ -46,6 +51,16 @@ constexpr char const* PLAN_DATABASES = "Plan/Databases/";
 
 constexpr char const* TARGET = "Target";
 constexpr char const* MAP_UNIQUE_TO_SHORT_ID = "MapUniqueToShortId";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to conveniently assemble paths from string constants
+///
+///        this should really be moved to a more appropriate place, and maybe
+///        do checks and/or trims on the strings that are passed in.
+////////////////////////////////////////////////////////////////////////////////
+static inline std::string concatPath(std::vector<std::string> const& components) {
+  return arangodb::basics::StringUtils::join(components, "/");
+}
 
 }  // namespace consensus
 }  // namespace arangodb

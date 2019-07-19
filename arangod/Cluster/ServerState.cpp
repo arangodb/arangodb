@@ -31,10 +31,10 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include "Agency/AgencyComm.h"
+#include "Agency/AgencyStrings.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterInfo.h"
@@ -47,6 +47,7 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
+using namespace arangodb::consensus;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief single instance of ServerState - will live as long as the server is
@@ -317,12 +318,13 @@ bool ServerState::unregister() {
   std::string const& id = getId();
   std::vector<AgencyOperation> operations;
   const std::string agencyListKey = roleToAgencyListKey(loadRole());
-  operations.push_back(AgencyOperation("Plan/" + agencyListKey + "/" + id,
+
+  operations.push_back(AgencyOperation(concatPath({PLAN, agencyListKey, id}),
                                        AgencySimpleOperationType::DELETE_OP));
-  operations.push_back(AgencyOperation("Current/" + agencyListKey + "/" + id,
+  operations.push_back(AgencyOperation(concatPath({CURRENT, agencyListKey, id}),
                                        AgencySimpleOperationType::DELETE_OP));
-  operations.push_back(AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP));
-  operations.push_back(AgencyOperation("Current/Version",
+  operations.push_back(AgencyOperation(PLAN_VERSION, AgencySimpleOperationType::INCREMENT_OP));
+  operations.push_back(AgencyOperation(CURRENT_VERSION,
                                        AgencySimpleOperationType::INCREMENT_OP));
 
   AgencyWriteTransaction unregisterTransaction(operations);
@@ -456,18 +458,13 @@ std::string ServerState::getPersistedId() {
   FATAL_ERROR_EXIT();
 }
 
-static constexpr char const* currentServersRegisteredPref =
-    "/Current/ServersRegistered/";
-
 /// @brief check equality of engines with other registered servers
 bool ServerState::checkEngineEquality(AgencyComm& comm) {
   std::string engineName = EngineSelectorFeature::engineName();
 
-  AgencyCommResult result = comm.getValues(currentServersRegisteredPref);
+  AgencyCommResult result = comm.getValues(concatPath({CURRENT, SERVERS_REGISTERED}));
   if (result.successful()) {  // no error if we cannot reach agency directly
-
-    auto slicePath = AgencyCommManager::slicePath(currentServersRegisteredPref);
-    VPackSlice servers = result.slice()[0].get(slicePath);
+    VPackSlice servers = result.slice()[0].get(std::vector<std::string>({ARANGO, CURRENT, SERVERS_REGISTERED}));
     if (!servers.isObject()) {
       return true;  // do not do anything harsh here
     }
@@ -498,34 +495,35 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
 
   AgencyCommResult createResult;
 
-  AgencyCommResult result = comm.getValues("Plan/" + agencyListKey);
+  AgencyCommResult result = comm.getValues(concatPath({PLAN, agencyListKey}));
   if (!result.successful()) {
     LOG_TOPIC("0f327", FATAL, Logger::STARTUP)
-        << "Couldn't fetch Plan/" << agencyListKey << " from agency. "
+        << "Couldn't fetch " << PLAN << "/" << agencyListKey << " from agency. "
         << " Agency is not initialized?";
     return false;
   }
 
   VPackSlice servers = result.slice()[0].get(
-      std::vector<std::string>({AgencyCommManager::path(), "Plan", agencyListKey}));
+      std::vector<std::string>({AgencyCommManager::path(), PLAN, agencyListKey}));
   if (!servers.isObject()) {
-    LOG_TOPIC("6507f", FATAL, Logger::STARTUP) << "Plan/" << agencyListKey << " in agency is no object. "
-                                      << "Agency not initialized?";
+    LOG_TOPIC("6507f", FATAL, Logger::STARTUP)
+        << PLAN << "/" << agencyListKey << " in agency is not an object. "
+        << "Agency not initialized?";
     return false;
   }
 
-  std::string planUrl = "Plan/" + agencyListKey + "/" + _id;
-  std::string currentUrl = "Current/" + agencyListKey + "/" + _id;
+  std::string planUrl = concatPath({PLAN, agencyListKey,  _id});
+  std::string currentUrl = concatPath({CURRENT, agencyListKey, _id});
 
   AgencyWriteTransaction preg(
       {AgencyOperation(planUrl, AgencyValueOperationType::SET, builder.slice()),
-       AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
+       AgencyOperation(PLAN_VERSION, AgencySimpleOperationType::INCREMENT_OP)},
       AgencyPrecondition(planUrl, AgencyPrecondition::Type::EMPTY, true));
   // ok to fail..if it failed we are already registered
   comm.sendTransactionWithFailover(preg, 0.0);
   AgencyWriteTransaction creg(
       {AgencyOperation(currentUrl, AgencyValueOperationType::SET, builder.slice()),
-       AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP)},
+       AgencyOperation(CURRENT_VERSION, AgencySimpleOperationType::INCREMENT_OP)},
       AgencyPrecondition(currentUrl, AgencyPrecondition::Type::EMPTY, true));
   // ok to fail..if it failed we are already registered
   AgencyCommResult res = comm.sendTransactionWithFailover(creg, 0.0);
@@ -534,8 +532,8 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
   // must establish a new short ID
   bool forceChangeShortId = isCoordinator(role);
 
-  std::string targetIdPath = "Target/" + latestIdKey;
-  std::string targetUrl = "Target/MapUniqueToShortID/" + _id;
+  std::string targetIdPath = concatPath({TARGET, latestIdKey});
+  std::string targetUrl = concatPath({TARGET, MAP_UNIQUE_TO_SHORT_ID, _id});
 
   size_t attempts{0};
   while (attempts++ < 300) {
@@ -552,7 +550,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
     }
 
     VPackSlice mapSlice = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Target", "MapUniqueToShortID", _id}));
+        {AgencyCommManager::path(), TARGET, MAP_UNIQUE_TO_SHORT_ID, _id}));
 
     // already registered
     if (!mapSlice.isNone() && !forceChangeShortId) {
@@ -569,7 +567,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
     }
 
     VPackSlice latestIdSlice = result.slice()[0].get(
-        std::vector<std::string>({AgencyCommManager::path(), "Target", latestIdKey}));
+        std::vector<std::string>({AgencyCommManager::path(), TARGET, latestIdKey}));
 
     uint32_t num = 0;
     std::unique_ptr<AgencyPrecondition> latestIdPrecondition;
@@ -639,7 +637,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm) {
       FATAL_ERROR_EXIT();
     }
 
-    auto result = comm.setValue(currentServersRegisteredPref + _id, builder.slice(), 0.0);
+    auto result = comm.setValue(concatPath({CURRENT, SERVERS_REGISTERED, _id}), builder.slice(), 0.0);
 
     if (result.successful()) {
       return true;
