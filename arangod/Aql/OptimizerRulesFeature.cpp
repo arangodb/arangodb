@@ -266,6 +266,10 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::handleArangoSearchViewsRule,
                OptimizerRule::makeFlags());
 
+  registerRule("late-document-materialization", arangodb::iresearch::lateDocumentMaterializationRule,
+               OptimizerRule::lateDocumentMaterializationRule,
+               OptimizerRule::makeFlags());
+
   // remove FILTER DISTANCE(...) and SORT DISTANCE(...)
   registerRule("geo-index-optimizer", geoIndexRule,
                OptimizerRule::applyGeoIndexRule,

@@ -231,6 +231,9 @@ struct OptimizerRule {
     /// Pass 9: patch update statements
     patchUpdateStatementsRule,
 
+    // move document materialization after SORT and LIMIT
+    lateDocumentMaterializationRule,
+
     /// "Pass 10": final transformations for the cluster
 
     // optimize queries in the cluster so that the entire query
