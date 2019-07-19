@@ -1,6 +1,5 @@
 /* jshint -W051:true */
 /* eslint-disable */
-  
 ;(function () {
   'use strict'
   /* eslint-enable */
@@ -53,62 +52,78 @@
 
   exports.wal = {
     flush: function (waitForSync, waitForCollector) {
-      if (exports.arango) {
-        var wfs = waitForSync ? 'true' : 'false';
-        var wfc = waitForCollector ? 'true' : 'false';
-        exports.arango.PUT('/_admin/wal/flush?waitForSync=' + wfs + '&waitForCollector=' + wfc, null);
-        return;
-      }
-
-      throw 'not connected';
+      var wfs = waitForSync ? 'true' : 'false';
+      var wfc = waitForCollector ? 'true' : 'false';
+      exports.arango.PUT('/_admin/wal/flush?waitForSync=' + wfs + '&waitForCollector=' + wfc, null);
     },
 
     properties: function (value) {
-      if (exports.arango) {
-        if (value !== undefined) {
-          return exports.arango.PUT('/_admin/wal/properties', value);
-        }
-
-        return exports.arango.GET('/_admin/wal/properties', '');
+      if (value !== undefined) {
+        return exports.arango.PUT('/_admin/wal/properties', value);
       }
 
-      throw 'not connected';
+      return exports.arango.GET('/_admin/wal/properties', '');
     },
 
     transactions: function () {
-      if (exports.arango) {
-        return exports.arango.GET('/_admin/wal/transactions', null);
-      }
-
-      throw 'not connected';
+      return exports.arango.GET('/_admin/wal/transactions', null);
     }
   };
-  
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief are we talking to a single server or cluster?
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.isCluster = function () {
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult = exports.arango.GET("/_admin/server/role");
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.role === "COORDINATOR";
+  };
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief processStatistics
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_PROCESS_STATISTICS) {
+    exports.thisProcessStatistics = global.SYS_PROCESS_STATISTICS;
+    delete global.SYS_PROCESS_STATISTICS;
+  }
+
+  exports.processStatistics = function () {
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult = exports.arango.GET('/_admin/statistics');
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.system;
+  };
+
+  // / @brief serverStatistics
+  exports.serverStatistics = function () {
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult = exports.arango.GET('/_admin/statistics');
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.server;
+  };
+
   // / @brief ttlStatistics
   exports.ttlStatistics = function () {
-    if (exports.arango) {
-      const arangosh = require('@arangodb/arangosh');
-      let requestResult = exports.arango.GET('/_api/ttl/statistics');
-      arangosh.checkRequestResult(requestResult);
-      return requestResult.result;
-    }
-    throw 'not connected';
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult = exports.arango.GET('/_api/ttl/statistics');
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.result;
   };
-  
+
   // / @brief ttlProperties
   exports.ttlProperties = function (properties) {
-    if (exports.arango) {
-      const arangosh = require('@arangodb/arangosh');
-      let requestResult;
-      if (properties === undefined) {
-        requestResult = exports.arango.GET('/_api/ttl/properties');
-      } else {
-        requestResult = exports.arango.PUT('/_api/ttl/properties', properties);
-      }
-      arangosh.checkRequestResult(requestResult);
-      return requestResult.result;
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult;
+    if (properties === undefined) {
+      requestResult = exports.arango.GET('/_api/ttl/properties');
+    } else {
+      requestResult = exports.arango.PUT('/_api/ttl/properties', properties);
     }
-    throw 'not connected';
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.result;
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -116,12 +131,7 @@
   // //////////////////////////////////////////////////////////////////////////////
 
   exports.reloadAqlFunctions = function () {
-    if (exports.arango) {
-      exports.arango.POST('/_admin/aql/reload', null);
-      return;
-    }
-
-    throw 'not connected';
+    exports.arango.POST('/_admin/aql/reload', null);
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -129,14 +139,9 @@
   // //////////////////////////////////////////////////////////////////////////////
 
   exports.reloadRouting = function () {
-    if (exports.arango) {
-      exports.arango.POST('/_admin/routing/reload', null);
-      return;
-    }
-
-    throw 'not connected';
+    exports.arango.POST('/_admin/routing/reload', null);
   };
-  
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief logs a request in curl format
   // //////////////////////////////////////////////////////////////////////////////

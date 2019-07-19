@@ -85,7 +85,7 @@ static std::shared_ptr<VPackBuilder> compareRelevantProps(VPackSlice const& firs
     VPackObjectBuilder b(result.get());
     for (auto const& property : cmp) {
       auto const& planned = first.get(property);
-      if (basics::VelocyPackHelper::compare(planned, second.get(property), false) != 0) {  // Register any change
+      if (!basics::VelocyPackHelper::equal(planned, second.get(property), false)) {  // Register any change
         result->add(property, planned);
       }
     }
