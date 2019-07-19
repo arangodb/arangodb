@@ -322,6 +322,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
         postCommitSeq += numOps - 1;  // add to get to the next batch
       }
       TRI_ASSERT(postCommitSeq <= rocksutils::globalRocksDB()->GetLatestSequenceNumber());
+      _lastWrittenOperationTick = postCommitSeq;
 
       for (auto& trxColl : _collections) {
         auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);

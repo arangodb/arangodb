@@ -56,7 +56,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
@@ -1745,6 +1744,7 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
         if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
           continue;
         }
+
         fillIndex(queue, trx, idx.get(), documentsPtr, skipPersistent);
       }
 
@@ -2174,11 +2174,18 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(!_indexes.empty());
 }
 
-std::shared_ptr<Index> MMFilesCollection::createIndex(arangodb::velocypack::Slice const& info,
-                                                      bool restore, bool& created) {
-  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(
-                                      _logicalCollection.vocbase()),
-                                  _logicalCollection, AccessMode::Type::EXCLUSIVE);
+std::shared_ptr<Index> MMFilesCollection::createIndex(
+    arangodb::velocypack::Slice const& info,
+    bool restore,
+    bool& created) {
+  transaction::StandaloneContext ctx(_logicalCollection.vocbase());
+
+  SingleCollectionTransaction trx(
+    std::shared_ptr<transaction::Context>(
+       std::shared_ptr<transaction::Context>(),
+       &ctx), // aliasing ctor
+    _logicalCollection, AccessMode::Type::EXCLUSIVE);
+
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -2194,9 +2201,11 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(arangodb::velocypack::Slic
   return idx;
 }
 
-std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
-                                                      velocypack::Slice const& info,
-                                                      bool restore, bool& created) {
+std::shared_ptr<Index> MMFilesCollection::createIndex(
+    transaction::Methods& trx,
+    velocypack::Slice const& info,
+    bool restore,
+    bool& created) {
   // prevent concurrent dropping
   //  TRI_ASSERT(trx->isLocked(&_logicalCollection, AccessMode::Type::READ));
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
