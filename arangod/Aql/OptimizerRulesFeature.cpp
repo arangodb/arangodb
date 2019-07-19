@@ -268,7 +268,7 @@ void OptimizerRulesFeature::addRules() {
 
   registerRule("late-document-materialization", arangodb::iresearch::lateDocumentMaterializationRule,
                OptimizerRule::lateDocumentMaterializationRule,
-               OptimizerRule::makeFlags());
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // remove FILTER DISTANCE(...) and SORT DISTANCE(...)
   registerRule("geo-index-optimizer", geoIndexRule,
