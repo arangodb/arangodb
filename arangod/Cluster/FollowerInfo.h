@@ -25,19 +25,24 @@
 #ifndef ARANGOD_CLUSTER_FOLLOWER_INFO_H
 #define ARANGOD_CLUSTER_FOLLOWER_INFO_H 1
 
-#include "ClusterInfo.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/WriteLocker.h"
+#include "ClusterInfo.h"
 
 namespace arangodb {
+
+namespace velocypack {
+class Slice;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a class to track followers that are in sync for a shard
 ////////////////////////////////////////////////////////////////////////////////
 
 class FollowerInfo {
+  // This is the list of real local followers
   std::shared_ptr<std::vector<ServerID> const> _followers;
 
   // The agencyMutex is used to synchronise access to the agency.
@@ -52,7 +57,9 @@ class FollowerInfo {
 
  public:
   explicit FollowerInfo(arangodb::LogicalCollection* d)
-      : _followers(std::make_shared<std::vector<ServerID>>()), _docColl(d), _theLeaderTouched(false) {}
+      : _followers(std::make_shared<std::vector<ServerID>>()),
+        _docColl(d),
+        _theLeaderTouched(false) {}
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
