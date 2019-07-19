@@ -383,14 +383,6 @@ std::string encodeHex(std::string const& value);
 std::string decodeHex(char const* value, size_t length);
 std::string decodeHex(std::string const& value);
 
-bool gzipUncompress(char const* compressed, size_t compressedLength, std::string& uncompressed);
-
-bool gzipUncompress(std::string const& compressed, std::string& uncompressed);
-
-bool gzipDeflate(char const* compressed, size_t compressedLength, std::string& uncompressed);
-
-bool gzipDeflate(std::string const& compressed, std::string& uncompressed);
-
 void escapeRegexParams(std::string& out, const char* ptr, size_t length);
 std::string escapeRegexParams(std::string const& in);
 

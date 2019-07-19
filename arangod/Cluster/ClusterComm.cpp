@@ -458,7 +458,7 @@ OperationID ClusterComm::getOperationID() { return TRI_NewTickServer(); }
 /// limit the time to send the initial request away. If `initTimeout`
 /// is negative (as for example in the default value), then `initTimeout`
 /// is taken to be the same as `timeout`. The idea behind the two timeouts
-/// is to be able to specify correct behaviour for automatic failover.
+/// is to be able to specify correct behavior for automatic failover.
 /// The idea is that if the initial request cannot be sent within
 /// `initTimeout`, one can retry after a potential failover.
 ////////////////////////////////////////////////////////////////////////////////

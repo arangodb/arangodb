@@ -76,6 +76,7 @@ let optionsDocumentation = [
   '   - `agencySize`: number of agents in agency',
   '   - `agencySupervision`: run supervision in agency',
   '   - `oneTestTimeout`: how long a single testsuite (.js, .rb)  should run',
+  '   - `isAsan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
   '   - `test`: path to single test to execute for "single" test target',
   '   - `cleanup`: if set to true (the default), the cluster data files',
   '     and logs are removed after termination of the test.',
@@ -155,7 +156,6 @@ const optionsDefaults = {
   'loopSleepWhen': 1,
   'minPort': 1024,
   'maxPort': 32768,
-  'mochaGrep': undefined,
   'onlyNightly': false,
   'password': '',
   'protocol': 'tcp',
@@ -176,6 +176,7 @@ const optionsDefaults = {
   'skipGrey': false,
   'onlyGrey': false,
   'oneTestTimeout': 2700,
+  'isAsan': false,
   'skipTimeCritical': false,
   'storageEngine': 'rocksdb',
   'test': undefined,
@@ -500,7 +501,7 @@ function findTestCases(options) {
   let allTestFiles = {};
   for (let testSuiteName in allTestPaths) {
     var myList = [];
-    let files = tu.scanTestPaths(allTestPaths[testSuiteName]);
+    let files = tu.scanTestPaths(allTestPaths[testSuiteName], options);
     if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
       for (let j = 0; j < files.length; j++) {
         let foo = {};

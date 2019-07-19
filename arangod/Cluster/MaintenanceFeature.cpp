@@ -45,6 +45,15 @@ using namespace arangodb::maintenance;
 const uint32_t MaintenanceFeature::minThreadLimit = 2;
 const uint32_t MaintenanceFeature::maxThreadLimit = 64;
 
+
+namespace {
+
+bool findNotDoneActions(std::shared_ptr<maintenance::Action> const& action) {
+  return !action->done();
+}
+
+} // namespace
+
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Maintenance"),
       _forceActivation(false),
@@ -198,10 +207,10 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::Action> newAct
     size_t action_hash = newAction->hash();
     WRITE_LOCKER(wLock, _actionRegistryLock);
 
-    std::shared_ptr<Action> curAction = findActionHashNoLock(action_hash);
+    std::shared_ptr<Action> curAction = findFirstActionHashNoLock(action_hash, ::findNotDoneActions);
 
     // similar action not in the queue (or at least no longer viable)
-    if (curAction == nullptr || curAction->done()) {
+    if (!curAction) {
       if (newAction && newAction->ok()) {
         // Register action only if construction was ok
         registerAction(newAction, executeNow);
@@ -243,16 +252,13 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescript
   try {
     std::shared_ptr<Action> newAction;
 
-    // is there a known name field
-    auto find_it = description->get("name");
-
     size_t action_hash = description->hash();
     WRITE_LOCKER(wLock, _actionRegistryLock);
 
-    std::shared_ptr<Action> curAction = findActionHashNoLock(action_hash);
+    std::shared_ptr<Action> curAction = findFirstActionHashNoLock(action_hash, ::findNotDoneActions);
 
     // similar action not in the queue (or at least no longer viable)
-    if (!curAction || curAction->done()) {
+    if (!curAction) {
       newAction = createAndRegisterAction(description, executeNow);
 
       if (!newAction || !newAction->ok()) {
@@ -357,55 +363,45 @@ std::shared_ptr<Action> MaintenanceFeature::createAndRegisterAction(
   return newAction;
 }
 
-std::shared_ptr<Action> MaintenanceFeature::findAction(std::shared_ptr<ActionDescription> const description) {
-  return findActionHash(description->hash());
+std::shared_ptr<Action> MaintenanceFeature::findFirstNotDoneAction(std::shared_ptr<ActionDescription> const& description) {
+  return findFirstActionHash(description->hash(), ::findNotDoneActions);
 }
 
-std::shared_ptr<Action> MaintenanceFeature::findActionHash(size_t hash) {
+std::shared_ptr<Action> MaintenanceFeature::findFirstActionHash(size_t hash,
+    std::function<bool(std::shared_ptr<maintenance::Action> const&)> const& predicate) {
   READ_LOCKER(rLock, _actionRegistryLock);
 
-  return findActionHashNoLock(hash);
-}  // MaintenanceFeature::findActionHash
+  return findFirstActionHashNoLock(hash, predicate);
+}  
 
-std::shared_ptr<Action> MaintenanceFeature::findActionHashNoLock(size_t hash) {
+std::shared_ptr<Action> MaintenanceFeature::findFirstActionHashNoLock(size_t hash,
+    std::function<bool(std::shared_ptr<maintenance::Action> const&)> const& predicate) {
   // assert to test lock held?
 
-  std::shared_ptr<Action> ret_ptr;
-
-  for (auto action_it = _actionRegistry.begin();
-       _actionRegistry.end() != action_it && !ret_ptr; ++action_it) {
-    if ((*action_it)->hash() == hash) {
-      ret_ptr = *action_it;
-    }  // if
-  }    // for
-
-  return ret_ptr;
-
-}  // MaintenanceFeature::findActionHashNoLock
+  for (auto const& action : _actionRegistry) {
+    if (action->hash() == hash && predicate(action)) {
+      return action;
+    }
+  }
+  return std::shared_ptr<Action>();
+}
 
 std::shared_ptr<Action> MaintenanceFeature::findActionId(uint64_t id) {
   READ_LOCKER(rLock, _actionRegistryLock);
 
   return findActionIdNoLock(id);
-}  // MaintenanceFeature::findActionId
+} 
 
 std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
   // assert to test lock held?
 
-  std::shared_ptr<Action> ret_ptr;
-
-  for (auto action_it = _actionRegistry.begin();
-       _actionRegistry.end() != action_it && !ret_ptr; ++action_it) {
-    if ((*action_it)->id() == id) {
-      // should we return the first match here or the last match?
-      // if first, we could simply add a break
-      ret_ptr = *action_it;
-    }  // if
-  }    // for
-
-  return ret_ptr;
-
-}  // MaintenanceFeature::findActionIdNoLock
+  for (auto const& action : _actionRegistry) {
+    if (action->id() == id) {
+      return action;
+    }
+  }
+  return std::shared_ptr<Action>();
+}
 
 std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<std::string> const& labels) {
   std::shared_ptr<Action> ret_ptr;
@@ -458,7 +454,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
 
   return ret_ptr;
 
-}  // MaintenanceFeature::findReadyAction
+} 
 
 VPackBuilder MaintenanceFeature::toVelocyPack() const {
   VPackBuilder vb;
@@ -643,20 +639,6 @@ arangodb::Result MaintenanceFeature::storeIndexError(
     errors.emplace(indexId, error);
   } catch (std::exception const& e) {
     return Result(TRI_ERROR_FAILED, e.what());
-  }
-
-  return Result();
-}
-
-arangodb::Result MaintenanceFeature::indexErrors(
-    std::string const& database, std::string const& collection, std::string const& shard,
-    std::map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>>& error) const {
-  std::string key = database + SLASH + collection + SLASH + shard;
-
-  MUTEX_LOCKER(guard, _ieLock);
-  auto const& it = _indexErrors.find(key);
-  if (it != _indexErrors.end()) {
-    error = it->second;
   }
 
   return Result();

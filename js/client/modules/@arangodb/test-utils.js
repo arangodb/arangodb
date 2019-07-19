@@ -188,7 +188,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         catch (x) {
           results[te] = {
             status: false,
-            message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
+            message: 'failed to fetch the previously available collections: ' + x.message
           };
           continueTesting = false;
           serverDead = true;
@@ -617,7 +617,6 @@ function scanTestPaths (paths, options) {
 function runThere (options, instanceInfo, file) {
   try {
     let testCode;
-    let mochaGrep = options.mochaGrep ? ', ' + JSON.stringify(options.mochaGrep) : '';
     if (file.indexOf('-spec') === -1) {
       let testCase = JSON.stringify(options.testCase);
       if (options.testCase === undefined) {
@@ -626,6 +625,7 @@ function runThere (options, instanceInfo, file) {
       testCode = 'const runTest = require("jsunity").runTest; ' +
         'return runTest(' + JSON.stringify(file) + ', true, ' + testCase + ');';
     } else {
+      let mochaGrep = options.testCase ? ', ' + JSON.stringify(options.testCase) : '';
       testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
         'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');';
     }
@@ -634,6 +634,8 @@ function runThere (options, instanceInfo, file) {
 
     let httpOptions = pu.makeAuthorizationHeaders(options);
     httpOptions.method = 'POST';
+    
+    if (options.isAsan) { options.oneTestTimeout *= 2; }
     httpOptions.timeout = options.oneTestTimeout;
 
     if (options.valgrind) {
@@ -753,7 +755,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
 
   args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);
 
-  args['javascript.unit-test-filter'] = options.testFilter;
+  args['javascript.unit-test-filter'] = options.testCase;
 
   if (!options.verbose) {
     args['log.level'] = 'warning';
@@ -789,7 +791,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
     testCode = 'const runTest = require("jsunity").runTest;\n ' +
       'return runTest(' + JSON.stringify(file) + ', true, ' + testCase + ');\n';
   } else {
-    let mochaGrep = options.mochaGrep ? ', ' + JSON.stringify(options.mochaGrep) : '';
+    let mochaGrep = options.testCase ? ', ' + JSON.stringify(options.testCase) : '';
     testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
       'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');\n';
   }
@@ -907,9 +909,9 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     args = [rspec].concat(args);
   }
 
-  const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir, false, false, options.oneTestTimeout);
+  const res = pu.executeAndWait(command, args, options, 'rspec', instanceInfo.rootDir, false, false, options.oneTestTimeout);
 
-  if (!res.status) {
+  if (!res.status && res.timeout) {
     return {
       total: 0,
       failed: 1,

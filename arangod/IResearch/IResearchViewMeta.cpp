@@ -209,9 +209,9 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
 }
 
 IResearchViewMeta::IResearchViewMeta()
-    : _cleanupIntervalStep(10),
+    : _cleanupIntervalStep(2),
       _commitIntervalMsec(1000),
-      _consolidationIntervalMsec(60 * 1000),
+      _consolidationIntervalMsec(10 * 1000),
       _locale(std::locale::classic()),
       _version(LATEST_VERSION),
       _writebufferActive(0),
@@ -286,7 +286,7 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
   }
 
   try {
-    if (basics::VelocyPackHelper::compare(_consolidationPolicy.properties(), other._consolidationPolicy.properties(), false) != 0) {
+    if (!basics::VelocyPackHelper::equal(_consolidationPolicy.properties(), other._consolidationPolicy.properties(), false)) {
       return false; // values do not match
     }
   } catch (...) {
@@ -621,9 +621,9 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
                 arangodb::velocypack::Value(_consolidationIntervalMsec));
   }
 
-  if ((!ignoreEqual || arangodb::basics::VelocyPackHelper::compare(
+  if ((!ignoreEqual || !arangodb::basics::VelocyPackHelper::equal(
           _consolidationPolicy.properties(),
-          ignoreEqual->_consolidationPolicy.properties(), false) != 0) &&
+          ignoreEqual->_consolidationPolicy.properties(), false)) &&
       (!mask || mask->_consolidationPolicy)) {
     builder.add("consolidationPolicy", _consolidationPolicy.properties());
   }
