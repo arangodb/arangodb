@@ -38,10 +38,6 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   ~RocksDBRestReplicationHandler() {}
 
  public:
-  RequestLane lane() const override final {
-    return RequestLane::SERVER_REPLICATION;
-  }
-
   char const* name() const override final {
     return "RocksDBRestReplicationHandler";
   }

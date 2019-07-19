@@ -2881,14 +2881,13 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     std::vector<std::shared_ptr<LogicalCollection>>& collections,
     bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
     bool enforceReplicationFactor) {
-  
   TRI_ASSERT(!collections.empty());
   if (collections.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
         "Trying to create an empty list of collections on coordinator.");
   }
-  
+
   double const realTimeout = ClusterInfo::getTimeout(240.0);
   double const endTime = TRI_microtime() + realTimeout;
 
@@ -2899,16 +2898,16 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
   // users)
   auto const dbName = collections[0]->vocbase().name();
   ClusterInfo* ci = ClusterInfo::instance();
-  
+
   std::vector<ClusterCollectionCreationInfo> infos;
 
   while (true) {
     infos.clear();
- 
+
     ci->loadCurrentDBServers();
     std::vector<std::string> dbServers = ci->getCurrentDBServers();
     infos.reserve(collections.size());
-  
+
     std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> vpackData;
     vpackData.reserve(collections.size());
     for (auto& col : collections) {
@@ -2943,6 +2942,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
         // the default behavior however is to bail out and inform the user
         // that the requested replicationFactor is not possible right now
         if (dbServers.size() < replicationFactor) {
+          // => (dbServers.size() - avoid.size() < minReplicationFactor) is granted
           LOG_TOPIC("9ce2e", DEBUG, Logger::CLUSTER)
               << "Do not have enough DBServers for requested replicationFactor,"
               << " nrDBServers: " << dbServers.size()
@@ -2956,9 +2956,11 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
           // We need to remove all servers that are in the avoid list
           if (dbServers.size() - avoid.size() < replicationFactor) {
             LOG_TOPIC("03682", DEBUG, Logger::CLUSTER)
-                << "Do not have enough DBServers for requested replicationFactor,"
+                << "Do not have enough DBServers for requested "
+                   "replicationFactor,"
                 << " (after considering avoid list),"
-                << " nrDBServers: " << dbServers.size() << " replicationFactor: " << replicationFactor
+                << " nrDBServers: " << dbServers.size()
+                << " replicationFactor: " << replicationFactor
                 << " avoid list size: " << avoid.size();
             // Not enough DBServers left
             THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
@@ -2989,39 +2991,38 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       VPackBuilder velocy =
           col->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::makeFlags());
 
-      infos.emplace_back(
-          ClusterCollectionCreationInfo{std::to_string(col->id()),
-                                        col->numberOfShards(), col->replicationFactor(),
-                                        waitForSyncReplication, velocy.slice()});
+      infos.emplace_back(ClusterCollectionCreationInfo{
+          std::to_string(col->id()), col->numberOfShards(), col->replicationFactor(),
+          col->minReplicationFactor(), waitForSyncReplication, velocy.slice()});
       vpackData.emplace_back(velocy.steal());
     }
 
     // pass in the *endTime* here, not a timeout!
     Result res = ci->createCollectionsCoordinator(dbName, infos, endTime);
-    
+
     if (res.ok()) {
       // success! exit the loop and go on
       break;
     }
-    
+
     if (res.is(TRI_ERROR_REQUEST_CANCELED)) {
-      // special error code indicating that storing the updated plan in the agency
-      // didn't succeed, and that we should try again
-      
+      // special error code indicating that storing the updated plan in the
+      // agency didn't succeed, and that we should try again
+
       // sleep for a while
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      
+
       if (TRI_microtime() > endTime) {
         // timeout expired
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_TIMEOUT);
       }
-  
+
       if (arangodb::application_features::ApplicationServer::isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
-      
+
       // try in next iteration with an adjusted plan change attempt
-      continue; 
+      continue;
 
     } else {
       // any other error
@@ -3043,7 +3044,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     usableCollectionPointers.emplace_back(std::move(c));
   }
   return usableCollectionPointers;
-}
+}  // namespace arangodb
 
 /// @brief fetch edges from TraverserEngines
 ///        Contacts all TraverserEngines placed

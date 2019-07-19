@@ -50,6 +50,20 @@ class Methods;
 
 class RestReplicationHandler : public RestVocbaseBaseHandler {
  public:
+  RequestLane lane() const override final {
+    auto const& suffixes = _request->suffixes();
+
+    size_t const len = suffixes.size();
+    if (len >= 1) {
+      std::string const& command = suffixes[0];
+      if (command == AddFollower || command == HoldReadLockCollection ||
+          command == RemoveFollower || command == LoggerFollow) {
+        return RequestLane::SERVER_REPLICATION_CATCHUP;
+      }
+    }
+    return RequestLane::SERVER_REPLICATION;
+  }
+
   RestStatus execute() override;
 
   // Never instantiate this.
@@ -57,6 +71,37 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
  protected:
   RestReplicationHandler(GeneralRequest*, GeneralResponse*);
   ~RestReplicationHandler();
+
+ protected:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief list of available commands
+  //////////////////////////////////////////////////////////////////////////////
+  static std::string LoggerState;
+  static std::string LoggerTickRanges;
+  static std::string LoggerFirstTick;
+  static std::string LoggerFollow;
+  static std::string OpenTransactions;
+  static std::string Batch;
+  static std::string Barrier;
+  static std::string Inventory;
+  static std::string Keys;
+  static std::string Dump;
+  static std::string RestoreCollection;
+  static std::string RestoreIndexes;
+  static std::string RestoreData;
+  static std::string RestoreView;
+  static std::string Sync;
+  static std::string MakeSlave;
+  static std::string ServerId;
+  static std::string ApplierConfig;
+  static std::string ApplierStart;
+  static std::string ApplierStop;
+  static std::string ApplierState;
+  static std::string ApplierStateAll;
+  static std::string ClusterInventory;
+  static std::string AddFollower;
+  static std::string RemoveFollower;
+  static std::string HoldReadLockCollection;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -261,6 +306,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   Result processRestoreCollectionCoordinator(VPackSlice const&, bool overwrite,
                                              bool force, uint64_t numberOfShards,
                                              uint64_t replicationFactor,
+                                             uint64_t minReplicationFactor,
                                              bool ignoreDistributeShardsLikeErrors);
 
   //////////////////////////////////////////////////////////////////////////////

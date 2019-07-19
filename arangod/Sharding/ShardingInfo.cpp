@@ -44,6 +44,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       _numberOfShards(basics::VelocyPackHelper::readNumericValue<size_t>(info, StaticStrings::NumberOfShards,
                                                                          1)),
       _replicationFactor(1),
+      _minReplicationFactor(1),
       _distributeShardsLike(basics::VelocyPackHelper::getStringValue(info, StaticStrings::DistributeShardsLike,
                                                                      "")),
       _avoidServers(),
@@ -65,11 +66,12 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
                                      "invalid number of shards");
     }
   }
-  
+
   VPackSlice distributeShardsLike = info.get(StaticStrings::DistributeShardsLike);
   if (!distributeShardsLike.isNone() && !distributeShardsLike.isString()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "invalid non-string value for 'distributeShardsLike'");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "invalid non-string value for 'distributeShardsLike'");
   }
 
   VPackSlice v = info.get(StaticStrings::NumberOfShards);
@@ -113,6 +115,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     else if (replicationFactorSlice.isString() &&
              replicationFactorSlice.copyString() == "satellite") {
       _replicationFactor = 0;
+      _minReplicationFactor = 0;
       _numberOfShards = 1;
       _distributeShardsLike = "";
       _avoidServers.clear();
@@ -122,6 +125,28 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     if (isError) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "invalid replicationFactor");
+    }
+  }
+
+  auto minReplicationFactorSlice = info.get(StaticStrings::MinReplicationFactor);
+  if (!minReplicationFactorSlice.isNone()) {
+    if (minReplicationFactorSlice.isNumber()) {
+      _minReplicationFactor = minReplicationFactorSlice.getNumber<size_t>();
+      if (_minReplicationFactor > _replicationFactor) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "minReplicationFactor cannot be larger then replicationFactor (" +
+                basics::StringUtils::itoa(_minReplicationFactor) + " > " +
+                basics::StringUtils::itoa(_replicationFactor) + ")");
+      }
+      if (_minReplicationFactor == 0 && _replicationFactor != 0) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       "minReplicationFactor cannot be 0");
+      }
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "minReplicationFactor needs to be an integer number");
     }
   }
 
@@ -256,6 +281,8 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) {
     result.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
   }
 
+  result.add(StaticStrings::MinReplicationFactor, VPackValue(_minReplicationFactor));
+
   if (!_distributeShardsLike.empty() && ServerState::instance()->isCoordinator()) {
     if (translateCids) {
       CollectionNameResolver resolver(_collection->vocbase());
@@ -327,10 +354,48 @@ void ShardingInfo::avoidServers(std::vector<std::string> const& avoidServers) {
   _avoidServers = avoidServers;
 }
 
-size_t ShardingInfo::replicationFactor() const { return _replicationFactor; }
+size_t ShardingInfo::replicationFactor() const {
+  TRI_ASSERT(_minReplicationFactor <= _replicationFactor);
+  return _replicationFactor;
+}
 
 void ShardingInfo::replicationFactor(size_t replicationFactor) {
+  if (replicationFactor < _minReplicationFactor) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "replicationFactor cannot be smaller then minReplicationFactor (" +
+            basics::StringUtils::itoa(_replicationFactor) + " < " +
+            basics::StringUtils::itoa(_minReplicationFactor) + ")");
+  }
   _replicationFactor = replicationFactor;
+}
+
+size_t ShardingInfo::minReplicationFactor() const {
+  TRI_ASSERT(_minReplicationFactor <= _replicationFactor);
+  return _minReplicationFactor;
+}
+
+void ShardingInfo::minReplicationFactor(size_t minReplicationFactor) {
+  if (minReplicationFactor > _replicationFactor) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "minReplicationFactor cannot be larger then replicationFactor (" +
+            basics::StringUtils::itoa(_minReplicationFactor) + " > " +
+            basics::StringUtils::itoa(_replicationFactor) + ")");
+  }
+  _minReplicationFactor = minReplicationFactor;
+}
+
+void ShardingInfo::setMinAndMaxReplicationFactor(size_t minimal, size_t maximal) {
+  if (minimal > maximal) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "minReplicationFactor cannot be larger then replicationFactor (" +
+            basics::StringUtils::itoa(minimal) + " > " +
+            basics::StringUtils::itoa(maximal) + ")");
+  }
+  _minReplicationFactor = minimal;
+  _replicationFactor = maximal;
 }
 
 bool ShardingInfo::isSatellite() const { return _replicationFactor == 0; }
