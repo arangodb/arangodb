@@ -1291,21 +1291,33 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
               break;
             }
 
-            if(other) {
-              std::vector<arangodb::basics::AttributeName> names;
-              auto access = std::make_pair(other->outVariable(), names);
-              bool isAccess = exp->node()->isAttributeAccessForVariable(access, true);
-              if(isAccess && !access.second.empty()) {
-                TRI_ASSERT(!access.second.empty());
-                std::string tomatch = access.second.front().name;
-                std::string outvarname = outVariable->name;
+            if(other != nullptr) {
 
-                if( (tomatch == outvarname) || startsWith(tomatch, outvarname + "[") ) {
-                  stop = true;
-                }
+              std::string myName = outVariable->name;
+              auto otherOutvar = other->outVariable();
+              std::string otherName = otherOutvar->name;
+
+              //LOG_DEVEL << "   my name: " << myName ;
+              //LOG_DEVEL << "other name: " << otherName;
+              //exp->node()->dump(4);
+
+              // check if the name of the current variable turns up as attribute access in the next collect
+              bool isSafeForOptimization;
+              Ast::getReferencedAttributesForKeep(exp->node(), outVariable, isSafeForOptimization, true /*test indexed*/);
+              if(!isSafeForOptimization) {
+                stop = true;
               }
-            }
 
+              // check if within the next collect the new group variable is used without any attribute
+              // if so the current variabe has to be available.
+              auto usedThere =
+                Ast::getReferencedAttributesForKeep(exp->node(), otherOutvar,
+                                                    isSafeForOptimization);
+              if(usedThere.empty()) {
+                stop = true;
+              }
+
+            } // end - other != nullptr
           }
         } else if (p->getType() == EN::COLLECT) {
           if(nextCollectSeen){

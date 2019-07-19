@@ -360,10 +360,10 @@ class Ast {
   //  Otherwise return the input node.
   AstNode const* createNodeOptions(AstNode const*) const;
 
-  /// @brief create an AST traversal node 
+  /// @brief create an AST traversal node
   AstNode* createNodeTraversal(AstNode const*, AstNode const*);
 
-  /// @brief create an AST shortest path node 
+  /// @brief create an AST shortest path node
   AstNode* createNodeShortestPath(AstNode const*, AstNode const*);
 
   /// @brief create an AST k-shortest paths node
@@ -418,7 +418,7 @@ class Ast {
   /// variable
   static TopLevelAttributes getReferencedAttributes(AstNode const*, bool&);
   static std::unordered_set<std::string> getReferencedAttributesForKeep(
-      AstNode const*, Variable const* searchVariable, bool&);
+      AstNode const*, Variable const* searchVariable, bool&, bool checkForAttributeName = false);
 
   static bool getReferencedAttributes(AstNode const*, Variable const*,
                                       std::unordered_set<std::string>&);
