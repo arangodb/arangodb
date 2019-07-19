@@ -24,6 +24,7 @@
 #include "DBServerAgencySync.h"
 
 #include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"

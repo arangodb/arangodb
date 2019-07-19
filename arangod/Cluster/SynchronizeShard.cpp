@@ -868,7 +868,7 @@ bool SynchronizeShard::first() {
       auto sy = details->slice();
       auto const endTime = system_clock::now();
 
-      // Long shard sync initialisation
+      // Long shard sync initialization
       if (endTime - startTime > seconds(5)) {
         LOG_TOPIC("ca7e3", INFO, Logger::MAINTENANCE)
             << "synchronizeOneShard: long call to syncCollection for shard"

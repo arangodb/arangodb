@@ -18,9 +18,9 @@ The name of the collection.
 @RESTDESCRIPTION
 In addition to the above, the result also contains the number of documents
 and additional statistical information about the collection.
-**Note** : This will always load the collection into memory.
+**Note**: This will always load the collection into memory.
 
-**Note**: collection data that are stored in the write-ahead log only are
+**Note**: collection data that is stored in the write-ahead log only is
 not reported in the results. When the write-ahead log is collected, documents
 might be added to journals and datafiles of the collection, which may modify
 the figures of the collection.
@@ -126,6 +126,7 @@ engine (in bytes). This figure does not include the document data but only mappi
 from document revision ids to storage engine datafile positions.
 
 @RESTSTRUCT{indexes,collection_figures,object,required,collection_figures_indexes}
+
 @RESTSTRUCT{count,collection_figures_indexes,integer,required,int64}
 The total number of indexes defined for the collection, including the pre-defined
 indexes (e.g. primary index).
@@ -153,6 +154,7 @@ head of the collection's cleanup queue. This information can be used for debuggi
 compaction and unload issues.
 
 @RESTSTRUCT{compactionStatus,collection_figures,object,optional,compactionStatus_attributes}
+
 @RESTSTRUCT{message,compactionStatus_attributes,string,optional,string}
 The action that was performed when the compaction was last run for the collection. 
 This information can be used for debugging compaction issues.
@@ -174,9 +176,9 @@ is returned.
 
 @EXAMPLES
 
-Using an identifier and requesting the figures of the collection:
+Using an identifier and requesting the figures of the collection (MMFiles storage engine):
 
-@EXAMPLE_ARANGOSH_RUN{RestCollectionGetCollectionFigures}
+@EXAMPLE_ARANGOSH_RUN{RestCollectionGetCollectionFigures_mmfiles}
     var cn = "products";
     db._drop(cn);
     var coll = db._create(cn);
@@ -191,5 +193,24 @@ Using an identifier and requesting the figures of the collection:
     logJsonResponse(response);
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
+
+Using an identifier and requesting the figures of the collection (RocksDB storage engine):
+
+@EXAMPLE_ARANGOSH_RUN{RestCollectionGetCollectionFigures_rocksdb}
+    var cn = "products";
+    db._drop(cn);
+    var coll = db._create(cn);
+    coll.save({"test":"hello"});
+    require("internal").wal.flush(true, true);
+    var url = "/_api/collection/"+ coll.name() + "/figures";
+
+    var response = logCurlRequest('GET', url);
+
+    assert(response.code === 200);
+
+    logJsonResponse(response);
+    db._drop(cn);
+@END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock
 

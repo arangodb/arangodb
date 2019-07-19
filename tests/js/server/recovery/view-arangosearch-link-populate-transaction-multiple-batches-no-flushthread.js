@@ -54,8 +54,12 @@ function runSetup () {
     },
     action: function() {
       var c = db.UnitTestsRecoveryDummy;
-      for (let i = 0; i < 10000; i++) {
-        c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
+      for (let j = 0; j < 100; j++) {
+        var values = [];
+        for (let i = 0; i < 100; i++) {
+          values.push({ a: "foo_" + i, b: "bar_" + i, c: i });
+        }
+        c.save(values);
       }
     },
     waitForSync: true
@@ -90,8 +94,9 @@ function recoverySuite () {
       assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
       assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
 
-      var result = AQL_EXECUTE("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").json;
-      assertEqual(result[0], 10000);
+      var result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+      var epxectedResult = db._query("FOR doc IN UnitTestsRecoveryDummy FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
+      assertEqual(result[0], epxectedResult[0]);
     }
 
   };

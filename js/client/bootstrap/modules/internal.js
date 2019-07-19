@@ -15,7 +15,7 @@ let appendHeaders = function(appender, headers) {
     }
   }
 };
-
+  
 ;(function () {
   'use strict'
   /* eslint-enable */
@@ -98,37 +98,7 @@ let appendHeaders = function(appender, headers) {
       throw 'not connected';
     }
   };
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief processStatistics
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.SYS_PROCESS_STATISTICS) {
-    exports.thisProcessStatistics = global.SYS_PROCESS_STATISTICS;
-    delete global.SYS_PROCESS_STATISTICS;
-  }
-
-  exports.processStatistics = function () {
-    if (exports.arango) {
-      const arangosh = require('@arangodb/arangosh');
-      let requestResult = exports.arango.GET('/_admin/statistics');
-      arangosh.checkRequestResult(requestResult);
-      return requestResult.system;
-    }
-    throw 'not connected';
-  };
-
-  // / @brief serverStatistics
-  exports.serverStatistics = function () {
-    if (exports.arango) {
-      const arangosh = require('@arangodb/arangosh');
-      let requestResult = exports.arango.GET('/_admin/statistics');
-      arangosh.checkRequestResult(requestResult);
-      return requestResult.server;
-    }
-    throw 'not connected';
-  };
-
+  
   // / @brief ttlStatistics
   exports.ttlStatistics = function () {
     if (exports.arango) {
@@ -139,7 +109,7 @@ let appendHeaders = function(appender, headers) {
     }
     throw 'not connected';
   };
-
+  
   // / @brief ttlProperties
   exports.ttlProperties = function (properties) {
     if (exports.arango) {
@@ -181,7 +151,7 @@ let appendHeaders = function(appender, headers) {
 
     throw 'not connected';
   };
-
+  
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief logs a request in curl format
   // //////////////////////////////////////////////////////////////////////////////

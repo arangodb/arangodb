@@ -55,19 +55,20 @@ std::vector<ExecutionNode::NodeType> const reduceExtractionToProjectionTypes = {
 void RocksDBOptimizerRules::registerResources() {
   // simplify an EnumerationCollectionNode that fetches an entire document to a
   // projection of this document
-  OptimizerRulesFeature::registerRule("reduce-extraction-to-projection",
-                                      reduceExtractionToProjectionRule,
+  OptimizerRulesFeature::registerRule("reduce-extraction-to-projection", reduceExtractionToProjectionRule,
                                       OptimizerRule::reduceExtractionToProjectionRule,
-                                      false, true);
+                                      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
   // remove SORT RAND() LIMIT 1 if appropriate
   OptimizerRulesFeature::registerRule("remove-sort-rand-limit-1", removeSortRandRule,
-                                      OptimizerRule::removeSortRandRule, false, true);
+                                      OptimizerRule::removeSortRandRule, 
+                                      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 }
 
 // simplify an EnumerationCollectionNode that fetches an entire document to a
 // projection of this document
 void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const* rule) {
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const& rule) {
   // These are all the nodes where we start traversing (including all
   // subqueries)
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
@@ -349,7 +350,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 /// @brief remove SORT RAND() if appropriate
 void RocksDBOptimizerRules::removeSortRandRule(Optimizer* opt,
                                                std::unique_ptr<ExecutionPlan> plan,
-                                               OptimizerRule const* rule) {
+                                               OptimizerRule const& rule) {
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::SORT, true);
