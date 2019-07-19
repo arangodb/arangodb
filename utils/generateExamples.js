@@ -2,6 +2,7 @@
 /*global start_pretty_print */
 'use strict';
 
+const _ = require("lodash");
 const fs = require("fs");
 const internal = require("internal");
 const executeExternal = internal.executeExternal;
@@ -112,142 +113,152 @@ function main(argv) {
     }
     startServer = false;
     serverEndpoint = options['server.endpoint'];
-    
+
   }
 
   let args = [theScript].concat(internal.toArgv(scriptArguments));
   args = args.concat(['--arangoshSetup']);
   args = args.concat(documentationSourceDirs);
 
-  let res = executeExternalAndWait(thePython, args);
+  let storageEngines = [['mmfiles', false], ['rocksdb', true]];
+  let res;
 
-  if (res.exit !== 0) {
-    print("parsing the examples failed - aborting!");
-    print(res);
-    return -1;
-  }
+  storageEngines.forEach(function (engine) {
+    let pyArgs = _.clone(args);
+    pyArgs.push('--storageEngine');
+    pyArgs.push(engine[0]);
+    pyArgs.push('--storageEngineAgnostic');
+    pyArgs.push(engine[1]);
+    print(pyArgs)
+    res = executeExternalAndWait(thePython, pyArgs);
 
-  if (startServer) {
-    let port = findFreePort();
-    instanceInfo.port = port;
-    serverEndpoint = protocol + "://127.0.0.1:" + port;
-
-    instanceInfo.url = endpointToURL(serverEndpoint);
-
-    fs.makeDirectoryRecursive(fs.join(tmpDataDir, "data"));
-
-    let serverArgs = {};
-    fs.makeDirectoryRecursive(fs.join(tmpDataDir, "apps"));
-
-    serverArgs["configuration"] = "none";
-    serverArgs["database.directory"] = fs.join(tmpDataDir, "data");
-    serverArgs["javascript.app-path"] = fs.join(tmpDataDir, "apps");
-    serverArgs["javascript.startup-directory"] = "js";
-    serverArgs["javascript.module-directory"] = "enterprise/js";
-    serverArgs["log.file"] = fs.join(tmpDataDir, "log");
-    serverArgs["server.authentication"] = "false";
-    serverArgs["server.endpoint"] = serverEndpoint;
-    serverArgs["server.storage-engine"] = "mmfiles"; // examples depend on it
-    serverArgs["backup.api-enabled"] = "true";
-
-    print("================================================================================");
-    ARANGOD = locateProgram("arangod", "Cannot find arangod to execute tests against");
-    print(ARANGOD);
-    print(toArgv(serverArgs));
-    instanceInfo.pid = executeExternal(ARANGOD, toArgv(serverArgs)).pid;
-
-    // Wait until the server is up:
-    count = 0;
-    instanceInfo.endpoint = serverEndpoint;
-
-    while (true) {
-      wait(0.5, false);
-      let r = download(instanceInfo.url + "/_api/version", "");
-
-      if (!r.error && r.code === 200) {
-        break;
-      }
-
-      count++;
-
-      if (count % 60 === 0) {
-        res = statusExternal(instanceInfo.pid, false);
-
-        if (res.status !== "RUNNING") {
-          print("start failed - process is gone: " + yaml.safeDump(res));
-          return 1;
-        }
-      }
+    if (res.exit !== 0) {
+      print("parsing the examples failed - aborting!");
+      print(res);
+      return -1;
     }
-  }
 
-  let arangoshArgs = {
-    'configuration': fs.join(fs.makeAbsolute(''), 'etc', 'relative', 'arangosh.conf'),
-    'server.password': "",
-    'server.endpoint': serverEndpoint,
-    'javascript.execute': scriptArguments.outputFile
-  };
+    if (startServer) {
+      let port = findFreePort();
+      instanceInfo.port = port;
+      serverEndpoint = protocol + "://127.0.0.1:" + port;
 
-  print("--------------------------------------------------------------------------------");
-  ARANGOSH = locateProgram("arangosh", "Cannot find arangosh to run tests with");
-  print(ARANGOSH);
-  print(internal.toArgv(arangoshArgs));
-  res = executeExternalAndWait(ARANGOSH, internal.toArgv(arangoshArgs));
+      instanceInfo.url = endpointToURL(serverEndpoint);
 
-  if (startServer) {
-    if (typeof(instanceInfo.exitStatus) === 'undefined') {
-      download(instanceInfo.url + "/_admin/shutdown", "", {method: "DELETE"});
+      fs.makeDirectoryRecursive(fs.join(tmpDataDir, engine[0], "data"));
 
-      print("Waiting for server shut down");
+      let serverArgs = {};
+      fs.makeDirectoryRecursive(fs.join(tmpDataDir, engine[0], "apps"));
+
+      serverArgs["configuration"] = "none";
+      serverArgs["database.directory"] = fs.join(tmpDataDir, engine[0], "data");
+      serverArgs["javascript.app-path"] = fs.join(tmpDataDir, engine[0], "apps");
+      serverArgs["javascript.startup-directory"] = "js";
+      serverArgs["javascript.module-directory"] = "enterprise/js";
+      serverArgs["log.file"] = fs.join(tmpDataDir, engine[0], "log");
+      serverArgs["server.authentication"] = "false";
+      serverArgs["server.endpoint"] = serverEndpoint;
+      serverArgs["server.storage-engine"] = engine[0];
+      serverArgs["backup.api-enabled"] = "true";
+
+      print("================================================================================");
+      ARANGOD = locateProgram("arangod", "Cannot find arangod to execute tests against");
+      print(ARANGOD);
+      print(toArgv(serverArgs));
+      instanceInfo.pid = executeExternal(ARANGOD, toArgv(serverArgs)).pid;
+
+      // Wait until the server is up:
       count = 0;
-      let bar = "[";
+      instanceInfo.endpoint = serverEndpoint;
 
-      while (1) {
-        instanceInfo.exitStatus = statusExternal(instanceInfo.pid, false);
+      while (true) {
+        wait(0.5, false);
+        let r = download(instanceInfo.url + "/_api/version", "");
 
-        if (instanceInfo.exitStatus.status === "RUNNING") {
-          count++;
-          if (typeof(options.valgrind) === 'string') {
-            wait(1);
-            continue;
+        if (!r.error && r.code === 200) {
+          break;
+        }
+
+        count++;
+
+        if (count % 60 === 0) {
+          res = statusExternal(instanceInfo.pid, false);
+
+          if (res.status !== "RUNNING") {
+            print("start failed - process is gone: " + yaml.safeDump(res));
+            return 1;
           }
-          if (count % 10 === 0) {
-            bar = bar + "#";
-          }
-          if (count > 600) {
-            print("forcefully terminating " + yaml.safeDump(instanceInfo.pid) +
-              " after 600 s grace period; marking crashy.");
-            serverCrashed = true;
-            killExternal(instanceInfo.pid);
-            break;
-          } else {
-            wait(1);
-          }
-        } else if (instanceInfo.exitStatus.status !== "TERMINATED") {
-          if (instanceInfo.exitStatus.hasOwnProperty('signal')) {
-            print("Server shut down with : " +
-              yaml.safeDump(instanceInfo.exitStatus) +
-              " marking build as crashy.");
-            serverCrashed = true;
-            break;
-          }
-          if (internal.platform.substr(0, 3) === 'win') {
-            // Windows: wait for procdump to do its job...
-            statusExternal(instanceInfo.monitor, true);
-          }
-        } else {
-          print("Server shutdown: Success.");
-          break; // Success.
         }
       }
-
-      if (count > 10) {
-        print("long Server shutdown: " + bar + ']');
-      }
-
     }
-  }
 
+    let arangoshArgs = {
+      'configuration': fs.join(fs.makeAbsolute(''), 'etc', 'relative', 'arangosh.conf'),
+      'server.password': "",
+      'server.endpoint': serverEndpoint,
+      'javascript.execute': scriptArguments.outputFile
+    };
+
+    print("--------------------------------------------------------------------------------");
+    ARANGOSH = locateProgram("arangosh", "Cannot find arangosh to run tests with");
+    print(ARANGOSH);
+    print(internal.toArgv(arangoshArgs));
+    res = executeExternalAndWait(ARANGOSH, internal.toArgv(arangoshArgs));
+
+    if (startServer) {
+      if (typeof(instanceInfo.exitStatus) === 'undefined') {
+        download(instanceInfo.url + "/_admin/shutdown", "", {method: "DELETE"});
+
+        print("Waiting for server shut down");
+        count = 0;
+        let bar = "[";
+
+        while (1) {
+          instanceInfo.exitStatus = statusExternal(instanceInfo.pid, false);
+
+          if (instanceInfo.exitStatus.status === "RUNNING") {
+            count++;
+            if (typeof(options.valgrind) === 'string') {
+              wait(1);
+              continue;
+            }
+            if (count % 10 === 0) {
+              bar = bar + "#";
+            }
+            if (count > 600) {
+              print("forcefully terminating " + yaml.safeDump(instanceInfo.pid) +
+                    " after 600 s grace period; marking crashy.");
+              serverCrashed = true;
+              killExternal(instanceInfo.pid);
+              break;
+            } else {
+              wait(1);
+            }
+          } else if (instanceInfo.exitStatus.status !== "TERMINATED") {
+            if (instanceInfo.exitStatus.hasOwnProperty('signal')) {
+              print("Server shut down with : " +
+                    yaml.safeDump(instanceInfo.exitStatus) +
+                    " marking build as crashy.");
+              serverCrashed = true;
+              break;
+            }
+            if (internal.platform.substr(0, 3) === 'win') {
+              // Windows: wait for procdump to do its job...
+              statusExternal(instanceInfo.monitor, true);
+            }
+          } else {
+            print("Server shutdown: Success.");
+            break; // Success.
+          }
+        }
+
+        if (count > 10) {
+          print("long Server shutdown: " + bar + ']');
+        }
+
+      }
+    }
+  });
   if (res.exit != 0) {
     throw("generating examples failed!");
   }

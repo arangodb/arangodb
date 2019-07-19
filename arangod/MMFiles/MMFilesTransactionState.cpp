@@ -58,8 +58,8 @@ MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t& vocbase, TRI_voc
     : TransactionState(vocbase, tid, options),
       _rocksTransaction(nullptr),
       _beginWritten(false),
-      _hasOperations(false),
-      _lastWrittenOperationTick(0) {}
+      _hasOperations(false) {
+}
 
 /// @brief free a transaction container
 MMFilesTransactionState::~MMFilesTransactionState() {

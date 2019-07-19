@@ -26,7 +26,7 @@ is returned when an invalid HTTP method is used.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestWalTransactionsGet}
+@EXAMPLE_ARANGOSH_RUN{RestWalTransactionsGet_mmfiles}
     var url = "/_admin/wal/transactions";
     var response = logCurlRequest('GET', url);
 

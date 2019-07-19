@@ -102,7 +102,7 @@ void GeneralCommTask<T>::asyncReadSome() {
       thisPtr->asyncReadSome();
     }
   };
-  auto mutableBuff = _protocol->buffer.prepare(READ_BLOCK_SIZE);
+  auto mutableBuff = _protocol->buffer.prepare(ReadBlockSize);
   _protocol->socket.async_read_some(mutableBuff, std::move(cb));
 }
 

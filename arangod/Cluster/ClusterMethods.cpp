@@ -323,7 +323,7 @@ static void mergeResultsAllShards(std::vector<std::shared_ptr<VPackBuilder>> con
       VPackSlice oneRes = it->slice();
       TRI_ASSERT(oneRes.isArray());
       oneRes = oneRes.at(currentIndex);
-      if (basics::VelocyPackHelper::compare(oneRes, notFound, false) != 0) {
+      if (!basics::VelocyPackHelper::equal(oneRes, notFound, false)) {
         // This is the correct result
         // Use it
         resultBody->add(oneRes);
@@ -762,7 +762,7 @@ bool shardKeysChanged(LogicalCollection const& collection, VPackSlice const& old
       n = arangodb::velocypack::Slice::nullSlice();
     }
 
-    if (arangodb::basics::VelocyPackHelper::compare(n, o, false) != 0) {
+    if (!arangodb::basics::VelocyPackHelper::equal(n, o, false)) {
       return true;
     }
   }
@@ -796,7 +796,7 @@ bool smartJoinAttributeChanged(LogicalCollection const& collection, VPackSlice c
   VPackSlice o = oldValue.get(s);
   TRI_ASSERT(o.isString());
 
-  return (arangodb::basics::VelocyPackHelper::compare(n, o, false) != 0);
+  return !arangodb::basics::VelocyPackHelper::equal(n, o, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
