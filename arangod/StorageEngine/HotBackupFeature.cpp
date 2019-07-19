@@ -73,7 +73,11 @@ void HotBackupFeature::beginShutdown() {
   // Call off uploads / downloads?
 }
 
-void HotBackupFeature::stop() {}
+void HotBackupFeature::stop() {
+  // We are supposed to cancel all our delay-queued actions. There could
+  // be one, and it is registered in _lockCleaner.
+  _lockCleaner.reset();
+}
 
 void HotBackupFeature::unprepare() {}
 

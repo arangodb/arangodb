@@ -27,6 +27,7 @@
 
 #include "Agency/TimeString.h"
 #include "Basics/Mutex.h"
+#include "Scheduler/Scheduler.h"
 
 #include <map>
 
@@ -167,8 +168,16 @@ private:
 
   bool _backupEnabled;
 
+  // The hotbackup feature can at any given time have up to one lock cleaner
+  // which will eventually clean up a write transaction lock somebody holds.
+  // Whenever a lock is acquired, the WorkHandle is registered here, such that
+  // the HotBackupFeature can cancel it on shutdown.
+  Scheduler::WorkHandle _lockCleaner;
 public:
   bool isAPIEnabled() { return _backupEnabled; }
+  void registerLockCleaner(Scheduler::WorkHandle& handle) {
+    _lockCleaner = handle;   // cancel any previous one
+  }
 };
 
 } // namespaces

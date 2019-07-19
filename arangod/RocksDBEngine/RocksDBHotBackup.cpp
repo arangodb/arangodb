@@ -42,6 +42,7 @@
 #include "Transaction/ManagerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/HotBackupCommon.h"
+#include "StorageEngine/HotBackupFeature.h"
 #include "Rest/Version.h"
 
 #if USE_ENTERPRISE
@@ -76,7 +77,7 @@ static constexpr char const* dirDownloadingString = {"DOWNLOADING"};
 static constexpr char const* dirFailsafeString = {"FAILSAFE"};
 
 //
-// @brief Serial numbers are used to match asynchronous LockCleaner
+// @brief Serial numbers are used to match asynchronous lock cleaner
 //        callbacks to current instance of lock holder
 static Mutex serialNumberMutex;
 static std::atomic<uint64_t> lockingSerialNumber{0}; // zero when no lock held
@@ -90,6 +91,36 @@ static uint64_t getSerialNumber() {
   } // if
   return temp;
 } // getSerialNumber
+
+// @brief This function schedules a lock cleanup job in the future using
+// the scheduler. The only subtlety here is that we must be able to
+// cancel that action on server shutdown. We are using the stop method
+// of the HotBackupFeature here:
+static void scheduleLockCleaning(uint64_t serialNumber, uint32_t timeout) {
+  Scheduler::WorkHandle handle
+    = SchedulerFeature::SCHEDULER->queueDelay(
+        RequestLane::INTERNAL_LOW,
+        std::chrono::seconds(timeout),
+        [serialNumber](bool cancelled) {
+          MUTEX_LOCKER (mLock, serialNumberMutex);
+          // only unlock if creation of this object instance was due to
+          //  the taking of current transaction lock
+          if (lockingSerialNumber == serialNumber) {
+            LOG_TOPIC("a20be", INFO, arangodb::Logger::BACKUP)
+              << "RocksDBHotBackup removing lost transaction lock.";
+            // would prefer virtual releaseRocksDBTransactions() ... but would
+            //   require copy of RocksDBHotBackupLock object used from RestHandler or unit test.
+            transaction::ManagerFeature::manager()->releaseTransactions();
+            lockingSerialNumber = 0;
+          } else {
+            LOG_TOPIC("efaed", DEBUG, arangodb::Logger::BACKUP)
+              << "RocksDBHotBackup not removing transaction lock since there is already a new one or it is already removed.";
+          }
+        });
+  // Finally, inform the HotbackupFeature about this delayed task
+  // such that it can be cancelled on shutdown:
+  application_features::ApplicationServer::getFeature<HotBackupFeature>("HotBackup")->registerLockCleaner(handle);
+}
 
 //
 // @brief static function to pick proper operation object and then have it
@@ -1191,37 +1222,6 @@ void RocksDBHotBackupList::listAll() {
 } // RocksDBHotBackupList::execute
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief LockCleaner is a helper class to RocksDBHotBackupLock.  It insures
-///   that the rocksdb transaction lock is removed if DELETE lock is never called
-////////////////////////////////////////////////////////////////////////////////
-
-struct LockCleaner {
-  LockCleaner() = delete;
-  LockCleaner(uint64_t lockSerialNumber, unsigned timeoutSeconds)
-    : _lockSerialNumber(lockSerialNumber)
-  {
-    SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, std::chrono::seconds(timeoutSeconds), *this);
-  };
-
-  void operator()(bool cancelled) {
-    MUTEX_LOCKER (mLock, serialNumberMutex);
-    // only unlock if creation of this object instance was due to
-    //  the taking of current transaction lock
-    if (lockingSerialNumber == _lockSerialNumber) {
-      LOG_TOPIC("a20be", ERR, arangodb::Logger::ENGINES)
-        << "RocksDBHotBackup LockCleaner removing lost transaction lock.";
-      // would prefer virtual releaseRocksDBTransactions() ... but would
-      //   require copy of RocksDBHotBackupLock object used from RestHandler or unit test.
-      transaction::ManagerFeature::manager()->releaseTransactions();
-      lockingSerialNumber = 0;
-    } // if
-  } // operator()
-
-  std::shared_ptr<asio_ns::steady_timer> _timer;
-  uint64_t _lockSerialNumber;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief RocksDBHotBackupLock
 ///        POST:  Initiate lock on transactions within rocksdb
 ///      DELETE:  Remove lock on transactions
@@ -1258,10 +1258,13 @@ void RocksDBHotBackupLock::execute() {
 
           // prepare emergency lock release in case of coordinator failure
           if (_success) {
+            // Need to schedule a cleanup action in the future to release
+            // this lock. In case we shut down, we must be able to cancel
+            // this, so we keep a Scheduler::WorkHandle in the HotbackupFeature
             lockingSerialNumber = getSerialNumber();
-            // LockCleaner gets copied by async_wait during constructor
+            scheduleLockCleaning(lockingSerialNumber, _unlockTimeoutSeconds);
+
             _result.add("lockId", VPackValue(lockingSerialNumber));
-            LockCleaner cleaner(lockingSerialNumber, _unlockTimeoutSeconds);
           } else {
             _respCode = rest::ResponseCode::REQUEST_TIMEOUT;
             _respError = TRI_ERROR_LOCK_TIMEOUT;
