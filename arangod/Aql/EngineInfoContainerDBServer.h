@@ -31,6 +31,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/AccessMode.h"
 
+#include <map>
+#include <set>
 #include <stack>
 
 namespace arangodb {
@@ -43,6 +45,7 @@ namespace aql {
 
 struct Collection;
 class GraphNode;
+class GatherNode;
 class ScatterNode;
 class Query;
 
@@ -79,6 +82,8 @@ class EngineInfoContainerDBServer {
     explicit EngineInfo(size_t idOfRemoteNode) noexcept;
     EngineInfo(EngineInfo&& other) noexcept;
     ~EngineInfo();
+    EngineInfo(EngineInfo&) = delete;
+    EngineInfo(EngineInfo const& other) = delete;
 
 #if (_MSC_VER != 0)
 #pragma warning(disable : 4521)  // stfu wintendo.
@@ -103,9 +108,39 @@ class EngineInfoContainerDBServer {
 
     LogicalView const* view() const noexcept;
 
+    QueryId getParentQueryId() const noexcept { return _otherId; }
+
+    std::vector<ExecutionNode*> const& nodes() const noexcept {
+      return _nodes;
+    }
+
    private:
-    EngineInfo(EngineInfo&) = delete;
-    EngineInfo(EngineInfo const& other) = delete;
+    struct CollectionSource {
+      explicit CollectionSource(aql::Collection* collection) noexcept
+        : collection(collection) {
+      }
+      CollectionSource(CollectionSource&&) = default;
+      CollectionSource& operator=(CollectionSource&&) = default;
+
+      aql::Collection* collection{};  // The collection used to connect to this engine
+      std::string restrictedShard;    // The shard this snippet is restricted to
+    };
+
+    struct ViewSource {
+      ViewSource(
+          LogicalView const& view,
+          GatherNode* gather,
+          ScatterNode* scatter) noexcept
+        : view(&view),
+          gather(gather),
+          scatter(scatter) {
+      }
+
+      LogicalView const* view{};  // The view used to connect to this engine
+      GatherNode* gather{};  // The gather associated with the engine
+      ScatterNode* scatter{}; // The scatter associated with the engine
+      size_t numClients{}; // A number of db servers the engine is distributed across
+    };
 
     std::vector<ExecutionNode*> _nodes;
     size_t _idOfRemoteNode;  // id of the remote node
@@ -122,7 +157,7 @@ class EngineInfoContainerDBServer {
    public:
     void addShardLock(AccessMode::Type const& lock, ShardID const& id);
 
-    void addEngine(std::shared_ptr<EngineInfo> info, ShardID const& id);
+    void addEngine(std::shared_ptr<EngineInfo> const& info, ShardID const& id);
 
     void setShardAsResponsibleForInitializeCursor(ShardID const& id);
 
