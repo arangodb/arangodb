@@ -390,96 +390,62 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
           << reportName(isRemove) << ", could not read " << planPath << " and "
           << curPath << " in agency.";
     }
-<<<<<<< HEAD
-    std::this_thread::sleep_for(std::chrono::microseconds(500000));
-=======
-<<<<<<< HEAD
+
     using namespace std::chrono_literals;
     std::this_thread::sleep_for(500ms);
   } while (!application_features::ApplicationServer::isStopping());
   return TRI_ERROR_SHUTTING_DOWN;
-=======
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
->>>>>>> 36b1d290a9... Bug fix/failover with min replication factor (#9486)
 }
-while (TRI_microtime() < startTime + 7200 &&
-       !application_features::ApplicationServer::isStopping())
-  ;
 
-// This is important, give it 2h if needed. We really do not want to get
-// into the position to fail to drop a follower, just because we cannot
-// talk to the agency temporarily. The worst would be to drop the follower
-// locally but not report the fact to the agency. The second worst is to
-// not be able to drop the follower, despite the fact that a replication
-// was not successful. All else is less dramatic. Therefore we try for
-// a long time.
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inject the information about "servers" and "failoverCandidates"
+////////////////////////////////////////////////////////////////////////////////
 
-// rollback:
-_followers = _oldFollowers;
-
-int errorCode = (application_features::ApplicationServer::isStopping())
-                    ? TRI_ERROR_SHUTTING_DOWN
-                    : TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED;
-std::string errorMessage =
-    "unable to remove follower from agency, timeout in agency CAS operation "
-    "for key " +
-    _docColl->vocbase().name() + "/" + std::to_string(_docColl->planId()) +
-    ": " + TRI_errno_string(errorCode);
-LOG_TOPIC("a0dcc", ERR, Logger::CLUSTER) << errorMessage;
-
-return {errorCode, std::move(errorMessage)};
->>>>>>> c922c5f1332482ef29dff794d8af394d31c1b737
+void FollowerInfo::injectFollowerInfoInternal(VPackBuilder& builder) const {
+  auto ourselves = arangodb::ServerState::instance()->getId();
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add(VPackValue(maintenance::SERVERS));
+  {
+    VPackArrayBuilder bb(&builder);
+    builder.add(VPackValue(ourselves));
+    for (auto const& f : *_followers) {
+      builder.add(VPackValue(f));
+    }
   }
+  builder.add(VPackValue(StaticStrings::FailoverCandidates));
+  {
+    VPackArrayBuilder bb(&builder);
+    builder.add(VPackValue(ourselves));
+    for (auto const& f : *_failoverCandidates) {
+      builder.add(VPackValue(f));
+    }
+  }
+  TRI_ASSERT(builder.isOpenObject());
+}
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief inject the information about "servers" and "failoverCandidates"
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief change JSON under
+/// Current/Collection/<DB-name>/<Collection-ID>/<shard-ID>
+/// to add or remove a serverID, if add flag is true, the entry is added
+/// (if it is not yet there), otherwise the entry is removed (if it was
+/// there).
+////////////////////////////////////////////////////////////////////////////////
 
-  void FollowerInfo::injectFollowerInfoInternal(VPackBuilder & builder) const {
-    auto ourselves = arangodb::ServerState::instance()->getId();
-    TRI_ASSERT(builder.isOpenObject());
-    builder.add(VPackValue(maintenance::SERVERS));
-    {
-      VPackArrayBuilder bb(&builder);
-      builder.add(VPackValue(ourselves));
-      for (auto const& f : *_followers) {
-        builder.add(VPackValue(f));
+VPackBuilder FollowerInfo::newShardEntry(VPackSlice oldValue) const {
+  VPackBuilder newValue;
+  TRI_ASSERT(oldValue.isObject());
+  {
+    VPackObjectBuilder b(&newValue);
+    // Copy all but SERVERS and FailoverCandidates.
+    // They will be injected later.
+    for (auto const& it : VPackObjectIterator(oldValue)) {
+      if (!it.key.isEqualString(maintenance::SERVERS) &&
+          !it.key.isEqualString(StaticStrings::FailoverCandidates)) {
+        newValue.add(it.key);
+        newValue.add(it.value);
       }
     }
-    builder.add(VPackValue(StaticStrings::FailoverCandidates));
-    {
-      VPackArrayBuilder bb(&builder);
-      builder.add(VPackValue(ourselves));
-      for (auto const& f : *_failoverCandidates) {
-        builder.add(VPackValue(f));
-      }
-    }
-    TRI_ASSERT(builder.isOpenObject());
+    injectFollowerInfoInternal(newValue);
   }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief change JSON under
-  /// Current/Collection/<DB-name>/<Collection-ID>/<shard-ID>
-  /// to add or remove a serverID, if add flag is true, the entry is added
-  /// (if it is not yet there), otherwise the entry is removed (if it was
-  /// there).
-  ////////////////////////////////////////////////////////////////////////////////
-
-  VPackBuilder FollowerInfo::newShardEntry(VPackSlice oldValue) const {
-    VPackBuilder newValue;
-    TRI_ASSERT(oldValue.isObject());
-    {
-      VPackObjectBuilder b(&newValue);
-      // Copy all but SERVERS and FailoverCandidates.
-      // They will be injected later.
-      for (auto const& it : VPackObjectIterator(oldValue)) {
-        if (!it.key.isEqualString(maintenance::SERVERS) &&
-            !it.key.isEqualString(StaticStrings::FailoverCandidates)) {
-          newValue.add(it.key);
-          newValue.add(it.value);
-        }
-      }
-      injectFollowerInfoInternal(newValue);
-    }
-    return newValue;
-  }
+  return newValue;
+}
