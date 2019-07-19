@@ -61,16 +61,13 @@ namespace arangodb { namespace fuerte { inline namespace v1 { namespace vst {
 // The length of the buffer is returned.
 size_t ChunkHeader::writeHeaderToVST1_0(size_t chunkDataLen,
                                         VPackBuffer<uint8_t>& buffer) const {
-  size_t hdrLength;
+  size_t hdrLength = minChunkHeaderSize;
   uint8_t hdr[maxChunkHeaderSize];
   if (isFirst() && numberOfChunks() > 1) {
     // Use extended header
     hdrLength = maxChunkHeaderSize;
     basics::uintToPersistentLittleEndian<uint64_t>(hdr + 16, _messageLength);  // total message length
-  } else {
-    // Use minimal header
-    hdrLength = minChunkHeaderSize;
-  }
+  } // else Use minimal header
   basics::uintToPersistentLittleEndian<uint32_t>(hdr + 0, hdrLength + chunkDataLen);  // chunk length (header+data)
   basics::uintToPersistentLittleEndian<uint32_t>(hdr + 4, _chunkX);  // chunkX
   basics::uintToPersistentLittleEndian<uint64_t>(hdr + 8, _messageID);  // messageID
@@ -340,77 +337,78 @@ namespace parser {
 // receiving vst
 ///////////////////////////////////////////////////////////////////////////////////
 
-// isChunkComplete returns the length of the chunk that starts at the given
-// begin
-// if the entire chunk is available.
-// Otherwise 0 is returned.
-std::size_t isChunkComplete(uint8_t const* const begin,
-                            std::size_t const lengthAvailable) {
-  // there is not enought to read the length of
-  if (lengthAvailable < sizeof(uint32_t)) { // first header field
-    return 0;
+/// @brief readChunkVST1_0 reads a chunk header in VST1.0 format.
+/// @return true if chunk is complete
+ChunkState readChunkVST1_0(Chunk& chunk, uint8_t const* hdr, std::size_t avail) {
+  if (avail < minChunkHeaderSize) {
+    return ChunkState::Incomplete;
   }
-  // read chunk length
-  uint32_t lengthThisChunk = basics::uintFromPersistentLittleEndian<uint32_t>(begin);
-  if (lengthAvailable < lengthThisChunk) {
-    FUERTE_LOG_VSTCHUNKTRACE << "\nchunk incomplete: " << lengthAvailable << "/"
-                             << lengthThisChunk << "(available/len)\n";
-    return 0;
-  }
-  FUERTE_LOG_VSTCHUNKTRACE << "\nchunk complete: " << lengthThisChunk
-                           << " bytes\n";
-  return lengthThisChunk;
-}
-
-// readChunkHeaderVST1_0 reads a chunk header in VST1.0 format.
-Chunk readChunkHeaderVST1_0(uint8_t const* bufferBegin) {
-  Chunk chunk;
-
-  uint8_t const* hdr = bufferBegin;
+  
   chunk.header._chunkLength = basics::uintFromPersistentLittleEndian<uint32_t>(hdr + 0);
   chunk.header._chunkX = basics::uintFromPersistentLittleEndian<uint32_t>(hdr + 4);
   chunk.header._messageID = basics::uintFromPersistentLittleEndian<uint64_t>(hdr + 8);
+  
+  if (avail < chunk.header._chunkLength) {
+    return ChunkState::Incomplete;
+  }
+  
   size_t hdrLen = minChunkHeaderSize;
-
-  if (chunk.header.isFirst() && chunk.header.numberOfChunks() > 1) {
-    // First chunk, numberOfChunks>1 -> read messageLength
-    chunk.header._messageLength =
-        basics::uintFromPersistentLittleEndian<uint64_t>(hdr + 16);
-    hdrLen = maxChunkHeaderSize; // first chunk header is bigger
+  if (chunk.header.isFirst()) {
+    if (chunk.header.numberOfChunks() > 1) {
+      if (avail < maxChunkHeaderSize) {
+        return ChunkState::Incomplete;
+      }
+      
+      hdrLen = maxChunkHeaderSize; // first chunk header is bigger
+      // First chunk, numberOfChunks>1 -> read messageLength
+      chunk.header._messageLength =
+      basics::uintFromPersistentLittleEndian<uint64_t>(hdr + 16);
+    } else {
+      chunk.header._messageLength = chunk.header._chunkLength - hdrLen;
+    }
+  } else { // not needed / known otherwise
+    chunk.header._messageLength = 0;
+  }
+  
+  assert(avail >= chunk.header._chunkLength);
+  if (hdrLen > chunk.header._chunkLength) {
+    return ChunkState::Invalid; // chunk incomplete / invalid chunk length
   }
 
-  size_t contentLength = 0;
-  if (chunk.header._chunkLength >= hdrLen) { // prevent underflow
-    chunk.header._chunkLength = chunk.header._chunkLength - hdrLen;
-  } else {
-    FUERTE_LOG_ERROR << "received invalid chunk length";
-  }
+  size_t contentLength = chunk.header._chunkLength - hdrLen;
+
   FUERTE_LOG_VSTCHUNKTRACE << "readChunkHeaderVST1_0: got " << contentLength
                            << " data bytes after " << hdrLen << " header bytes\n";
   chunk.body = asio_ns::const_buffer(hdr + hdrLen, contentLength);
-  return chunk;
+  
+  return ChunkState::Complete;
 }
 
-// readChunkHeaderVST1_1 reads a chunk header in VST1.1 format.
-Chunk readChunkHeaderVST1_1(uint8_t const* bufferBegin) {
-  Chunk chunk;
+/// @brief readChunkVST1_1 reads a chunk header in VST1.1 format.
+ChunkState readChunkVST1_1(Chunk& chunk, uint8_t const* hdr, std::size_t avail) {
+  if (avail < maxChunkHeaderSize) {
+    return ChunkState::Incomplete;
+  }
 
-  uint8_t const* hdr = bufferBegin;
   chunk.header._chunkLength = basics::uintFromPersistentLittleEndian<uint32_t>(hdr + 0);
   chunk.header._chunkX = basics::uintFromPersistentLittleEndian<uint32_t>(hdr + 4);
   chunk.header._messageID = basics::uintFromPersistentLittleEndian<uint64_t>(hdr + 8);
   chunk.header._messageLength = basics::uintFromPersistentLittleEndian<uint64_t>(hdr + 16);
-  size_t contentLength = 0;
-  if (chunk.header._chunkLength >= maxChunkHeaderSize) { // prevent underflow
-    contentLength = chunk.header._chunkLength - maxChunkHeaderSize;
-  } else {
-    FUERTE_LOG_ERROR << "received invalid chunk length";
+  
+  if (avail < chunk.header._chunkLength) {
+    return ChunkState::Incomplete;
   }
+  
+  if (maxChunkHeaderSize > chunk.header._chunkLength) {
+    return ChunkState::Invalid; // invalid chunk length
+  }
+  
+  size_t contentLength = chunk.header._chunkLength - maxChunkHeaderSize;
   FUERTE_LOG_VSTCHUNKTRACE << "readChunkHeaderVST1_1: got " << contentLength
                            << " data bytes after " << maxChunkHeaderSize << " bytes\n";
   chunk.body = asio_ns::const_buffer(hdr + maxChunkHeaderSize, contentLength);
   
-  return chunk;
+  return ChunkState::Complete;
 }
   
 /// @brief verifies header input and checks correct length

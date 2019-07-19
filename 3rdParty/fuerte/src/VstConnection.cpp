@@ -377,25 +377,19 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   // TODO technically buffer_cast is deprecated
 
   size_t parsedBytes = 0;
-  while (vst::parser::isChunkComplete(cursor, available)) {
-    // Read chunk
+  while (true) {
     Chunk chunk;
-    switch (_vstVersion) {
-      case VST1_1:
-        chunk = vst::parser::readChunkHeaderVST1_1(cursor);
-        break;
-      case VST1_0:
-        chunk = vst::parser::readChunkHeaderVST1_0(cursor);
-        break;
-      default:
-        FUERTE_LOG_ERROR << "Unknown VST version";
-        this->shutdownConnection(Error::ProtocolError);
-        return;
+    parser::ChunkState state = parser::ChunkState::Invalid;
+    if (_vstVersion == VST1_1) {
+      state = vst::parser::readChunkVST1_1(chunk, cursor, available);
+    } else if (_vstVersion == VST1_0) {
+      state = vst::parser::readChunkVST1_0(chunk, cursor, available);
     }
 
-    if (available <
-        chunk.header.chunkLength()) {  // prevent reading beyond buffer
-      FUERTE_LOG_ERROR << "invalid chunk header";
+    if (parser::ChunkState::Incomplete == state) {
+      break;
+    } else if (parser::ChunkState::Invalid == state) {
+      FUERTE_LOG_ERROR << "Invalid VST chunk";
       this->shutdownConnection(Error::ProtocolError);
       return;
     }
