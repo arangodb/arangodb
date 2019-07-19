@@ -274,9 +274,9 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
     opt->addPlan(std::move(plan), rule, modified);
   });
 
-  if (!plan->contains(EN::ENUMERATE_IRESEARCH_VIEW)) {
-    // no view present in the query, so no need to do any expensive
-    // transformations
+  if (!plan->contains(EN::ENUMERATE_IRESEARCH_VIEW) ||
+      !plan->contains(EN::SORT) || 
+      !plan->contains(EN::LIMIT)) {
     return;
   }
 
@@ -288,6 +288,9 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
       auto& viewNode = *EN::castTo<IResearchViewNode*>(node);
       //viewNode.view()->~LogicalDataSource;
    }
+
+   // make test rule appear in plan  - just to see what will happen
+   modified = true;
 }
 
 /// @brief move filters and sort conditions into views
