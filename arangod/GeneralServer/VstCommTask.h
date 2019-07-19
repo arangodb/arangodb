@@ -44,6 +44,7 @@ class VstCommTask final : public GeneralCommTask<T> {
               ConnectionInfo,
               std::unique_ptr<AsioSocket<T>> socket,
               fuerte::vst::VSTVersion v);
+  ~VstCommTask();
 
   bool allowDirectHandling() const override { return false; }
 
@@ -90,9 +91,11 @@ class VstCommTask final : public GeneralCommTask<T> {
     /// @brief List of chunks that have been received.
     std::vector<ChunkInfo> chunks;
     std::size_t expectedChunks = 0;
+    std::size_t expectedMsgSize = 0;
     
-    /// add chunk to this message
-    void addChunk(fuerte::vst::Chunk const& chunk);
+    /// @brief add chunk to this message
+    /// @return false if the message size is too big
+    bool addChunk(fuerte::vst::Chunk const& chunk);
     /// assemble message, if true result is in _buffer
     bool assemble();
   };

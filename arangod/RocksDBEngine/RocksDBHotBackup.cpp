@@ -716,6 +716,7 @@ void RocksDBHotBackupCreate::executeCreate() {
       auto guardHold = scopeGuard([&gotLock,this]()
                                   { if (gotLock && _isSingle) releaseRocksDBTransactions(); });
 
+      MUTEX_LOCKER (mLock, serialNumberMutex);
       gotLock = (_isSingle ? holdRocksDBTransactions() : 0 != lockingSerialNumber);
 
       if (gotLock || _forceBackup) {

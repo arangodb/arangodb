@@ -39,4 +39,162 @@ content-type: application/json
 x-arango-errors: 1
 x-content-type-options: nosniff
 
-"--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: myId1\r\n\r\nHTTP/1.1 200 OK\r\nServer: \r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 66\r\n\r\n{\"server\":\"arango\",\"version\":\"3.5.0-devel\",\"license\":\"enterprise\"}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: myId2\r\n\r\nHTTP/1.1 404 Not Found\r\nServer: \r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 87\r\n\r\n{\"error\":true,\"errorMessage\":\"collection or view not found\",\"code\":404,\"errorNum\":1203}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: someId\r\n\r\nHTTP/1.1 200 OK\r\nServer: \r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 328\r\n\r\n{\"error\":false,\"code\":200,\"waitForSync\":false,\"type\":2,\"status\":3,\"journalSize\":33554432,\"keyOptions\":{\"allowUserKeys\":true,\"type\":\"traditional\",\"lastValue\":0},\"globallyUniqueId\":\"h8B2B671BCFD0/102789\",\"statusString\":\"loaded\",\"id\":\"102789\",\"name\":\"products\",\"doCompact\":true,\"isSystem\":false,\"indexBuckets\":8,\"isVolatile\":false}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: nextId\r\n\r\nHTTP/1.1 200 OK\r\nServer: \r\nLocation: /_api/collection/products/figures\r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 835\r\n\r\n{\"error\":false,\"code\":200,\"type\":2,\"status\":3,\"journalSize\":33554432,\"isVolatile\":false,\"name\":\"products\",\"doCompact\":true,\"isSystem\":false,\"count\":0,\"waitForSync\":false,\"figures\":{\"indexes\":{\"count\":1,\"size\":32128},\"documentReferences\":0,\"waitingFor\":\"-\",\"alive\":{\"count\":0,\"size\":0},\"dead\":{\"count\":0,\"size\":0,\"deletion\":0},\"compactionStatus\":{\"message\":\"compaction not yet started\",\"time\":\"2019-02-20T10:32:57Z\",\"count\":0,\"filesCombined\":0,\"bytesRead\":0,\"bytesWritten\":0},\"datafiles\":{\"count\":0,\"fileSize\":0},\"journals\":{\"count\":0,\"fileSize\":0},\"compactors\":{\"count\":0,\"fileSize\":0},\"revisions\":{\"count\":0,\"size\":48192},\"lastTick\":0,\"uncollectedLogfileEntries\":0},\"keyOptions\":{\"allowUserKeys\":true,\"type\":\"traditional\",\"lastValue\":0},\"globallyUniqueId\":\"h8B2B671BCFD0/102789\",\"statusString\":\"loaded\",\"id\":\"102789\",\"indexBuckets\":8}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: otherId\r\n\r\nHTTP/1.1 200 OK\r\nServer: \r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 40\r\n\r\n{\"error\":false,\"code\":200,\"id\":\"102789\"}\r\n--SomeBoundaryValue--"
+--SomeBoundaryValue
+Content-Type: application/x-arango-batchpart
+Content-Id: myId1
+
+HTTP/1.1 200 OK
+Server: 
+Connection: 
+Content-Type: application/json; charset=utf-8
+Content-Length: 65
+
+{ 
+  <span class="hljs-string">"server"</span> : <span class="hljs-string">"arango"</span>, 
+  <span class="hljs-string">"license"</span> : <span class="hljs-string">"community"</span>, 
+  <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.6.0-devel"</span> 
+}&#x21A9;
+
+--SomeBoundaryValue
+Content-Type: application/x-arango-batchpart
+Content-Id: myId2
+
+HTTP/1.1 404 Not Found
+Server: 
+Connection: 
+Content-Type: application/json; charset=utf-8
+Content-Length: 87
+
+{ 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">404</span>, 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"collection or view not found"</span>, 
+  <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1203</span> 
+}&#x21A9;
+
+--SomeBoundaryValue
+Content-Type: application/x-arango-batchpart
+Content-Id: someId
+
+HTTP/1.1 200 OK
+Server: 
+Connection: 
+Content-Type: application/json; charset=utf-8
+Content-Length: 322
+
+{ 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
+  <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
+  <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+  <span class="hljs-string">"journalSize"</span> : <span class="hljs-number">33554432</span>, 
+  <span class="hljs-string">"keyOptions"</span> : { 
+    <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
+    <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">0</span> 
+  }, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h5E72DF2A848A/111"</span>, 
+  <span class="hljs-string">"statusString"</span> : <span class="hljs-string">"loaded"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"111"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
+  <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
+  <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span> 
+}&#x21A9;
+
+--SomeBoundaryValue
+Content-Type: application/x-arango-batchpart
+Content-Id: nextId
+
+HTTP/1.1 200 OK
+Server: 
+Location: /_api/collection/products/figures
+Connection: 
+Content-Type: application/json; charset=utf-8
+Content-Length: 829
+
+{ 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
+  <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+  <span class="hljs-string">"journalSize"</span> : <span class="hljs-number">33554432</span>, 
+  <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
+  <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"figures"</span> : { 
+    <span class="hljs-string">"indexes"</span> : { 
+      <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
+      <span class="hljs-string">"size"</span> : <span class="hljs-number">32128</span> 
+    }, 
+    <span class="hljs-string">"documentReferences"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"waitingFor"</span> : <span class="hljs-string">"-"</span>, 
+    <span class="hljs-string">"alive"</span> : { 
+      <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"size"</span> : <span class="hljs-number">0</span> 
+    }, 
+    <span class="hljs-string">"dead"</span> : { 
+      <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"size"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"deletion"</span> : <span class="hljs-number">0</span> 
+    }, 
+    <span class="hljs-string">"compactionStatus"</span> : { 
+      <span class="hljs-string">"message"</span> : <span class="hljs-string">"compaction not yet started"</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2019-07-17T12:01:44Z"</span>, 
+      <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"filesCombined"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"bytesRead"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"bytesWritten"</span> : <span class="hljs-number">0</span> 
+    }, 
+    <span class="hljs-string">"datafiles"</span> : { 
+      <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"fileSize"</span> : <span class="hljs-number">0</span> 
+    }, 
+    <span class="hljs-string">"journals"</span> : { 
+      <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"fileSize"</span> : <span class="hljs-number">0</span> 
+    }, 
+    <span class="hljs-string">"compactors"</span> : { 
+      <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"fileSize"</span> : <span class="hljs-number">0</span> 
+    }, 
+    <span class="hljs-string">"revisions"</span> : { 
+      <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"size"</span> : <span class="hljs-number">48192</span> 
+    }, 
+    <span class="hljs-string">"lastTick"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"uncollectedLogfileEntries"</span> : <span class="hljs-number">0</span> 
+  }, 
+  <span class="hljs-string">"keyOptions"</span> : { 
+    <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
+    <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">0</span> 
+  }, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h5E72DF2A848A/111"</span>, 
+  <span class="hljs-string">"statusString"</span> : <span class="hljs-string">"loaded"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"111"</span>, 
+  <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span> 
+}&#x21A9;
+
+--SomeBoundaryValue
+Content-Type: application/x-arango-batchpart
+Content-Id: otherId
+
+HTTP/1.1 200 OK
+Server: 
+Connection: 
+Content-Type: application/json; charset=utf-8
+Content-Length: 37
+
+{ 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"111"</span> 
+}&#x21A9;
+
+--SomeBoundaryValue--

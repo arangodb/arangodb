@@ -128,7 +128,13 @@ OPTION_ARANGOSH_SETUP = 1
 OPTION_OUTPUT_DIR = 2
 OPTION_FILTER = 3
 OPTION_OUTPUT_FILE = 4
+OPTION_OUTPUT_ENGINE = 5
+OPTION_OUTPUT_FILTER_NONMATCHING = 6
 
+engines = ["mmfiles", "rocksdb"]
+engine = "mmfiles"
+otherEngine = "mmfiles"
+storageEngineAgnostic = True
 escapeBS = re.compile("\\\\")
 doubleBS = "\\\\\\\\"
 
@@ -198,17 +204,17 @@ def matchStartLine(line, filename):
     if m:
         strip = m.group(1)
         name = m.group(2)
-    
+
         if name in AQLFiles:
             print >> sys.stderr, "%s\nduplicate test name '%s' in file %s!\n%s\n" % ('#' * 80, name, filename, '#' * 80)
             sys.exit(1)
-    
+
         # if we match for filters, only output these!
         if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
             print >> sys.stderr, "AQL: filtering out testcase '%s'" %name
             filterTestList.append(name)
             return("", STATE_BEGIN);
-    
+
         AQLFiles[name] = True
         return (name, STATE_AQL)
 
@@ -257,10 +263,10 @@ AQLEXPLAIN="aql_explain"
 ### @brief loop over the lines of one input file
 ################################################################################
 
-def analyzeFile(f, filename): 
+def analyzeFile(f, filename):
     global RunTests, TESTLINES, TYPE, LINE_NO, STRING
     strip = None
-    
+
     name = ""
     partialCmd = ""
     partialLine = ""
@@ -280,7 +286,7 @@ def analyzeFile(f, filename):
 
         if state == STATE_BEGIN:
             (name, state) = matchStartLine(line, filename)
-            if state != STATE_BEGIN: 
+            if state != STATE_BEGIN:
                 MapSourceFiles[name] = filename
                 RunTests[name] = {}
                 RunTests[name][TYPE] = state
@@ -315,7 +321,7 @@ def analyzeFile(f, filename):
         # we are within a example
         line = line[len(strip):]
         showCmd = True
-        
+
         # end-example test
         m = endExample.match(line)
 
@@ -601,18 +607,18 @@ if (allErrors.length > 0) {
 ################################################################################
 
 def loopDirectories():
-    global ArangoshSetup, OutputDir, FilterForTestcase
+    global ArangoshSetup, OutputDir, FilterForTestcase, storageEngineAgnostic, engine, otherEngine
     argv = sys.argv
     argv.pop(0)
     filenames = []
     fstate = OPTION_NORMAL
-    
+
     for filename in argv:
         if filename == "--arangoshSetup":
             fstate = OPTION_ARANGOSH_SETUP
             continue
 
-        if filename == "--onlyThisOne": 
+        if filename == "--onlyThisOne":
             fstate = OPTION_FILTER
             continue
 
@@ -622,6 +628,14 @@ def loopDirectories():
 
         if filename == "--outputFile":
             fstate = OPTION_OUTPUT_FILE
+            continue
+
+        if filename == "--storageEngine":
+            fstate = OPTION_OUTPUT_ENGINE
+            continue
+
+        if filename == "--storageEngineAgnostic":
+            fstate = OPTION_OUTPUT_FILTER_NONMATCHING
             continue
 
         if fstate == OPTION_NORMAL:
@@ -635,17 +649,17 @@ def loopDirectories():
 
         elif fstate == OPTION_FILTER:
             fstate = OPTION_NORMAL
-            if (len(filename) > 0): 
+            if (len(filename) > 0):
                 FilterForTestcase = re.compile(filename);
 
         elif fstate == OPTION_ARANGOSH_SETUP:
             fstate = OPTION_NORMAL
             f = open(filename, "r")
-    
+
             for line in f:
                 line = line.rstrip('\n')
                 ArangoshSetup += line + "\n"
-    
+
             f.close()
 
         elif fstate == OPTION_OUTPUT_DIR:
@@ -656,21 +670,41 @@ def loopDirectories():
             fstate = OPTION_NORMAL
             sys.stdout = open(filename, 'w')
 
+        elif fstate == OPTION_OUTPUT_ENGINE:
+            fstate = OPTION_NORMAL
+            engine = filename
+            if engine == engines[0]:
+                otherEngine = engines[1]
+            else:
+                otherEngine = engines[0]
+
+        elif fstate == OPTION_OUTPUT_FILTER_NONMATCHING:
+            fstate = OPTION_NORMAL
+            storageEngineAgnostic = filename == "true"
+
     for filename in filenames:
         if (filename.find("#") < 0):
             f = open(filename, "r")
             analyzeFile(f, filename)
-    
+
             f.close()
         else:
             print >> sys.stderr, "skipping %s\n" % (filename)
 
 
 def generateTestCases():
-    global TESTLINES, TYPE, LINE_NO, STRING, RunTests
+    global TESTLINES, TYPE, LINE_NO, STRING, RunTests, storageEngineAgnostic, engine, otherEngine
     testNames = RunTests.keys()
     testNames.sort()
+
     for thisTest in testNames:
+        if thisTest.endswith(otherEngine):
+            print >> sys.stderr, "skipping " + thisTest
+            continue
+        if not storageEngineAgnostic and not thisTest.endswith(engine):
+            print >> sys.stderr, "skipping " + thisTest
+            continue
+
         if RunTests[thisTest][TYPE] == STATE_ARANGOSH_OUTPUT:
             generateArangoshOutput(thisTest)
         elif RunTests[thisTest][TYPE] == STATE_ARANGOSH_RUN:

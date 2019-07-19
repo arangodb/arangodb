@@ -431,7 +431,7 @@ JOB_STATUS FailedLeader::status() {
     auto cur_slice = _snapshot.hasAsSlice(curColPrefix + sub + "/" +
                                           clone.shard + "/servers");
     if (plan_slice.second && cur_slice.second &&
-        basics::VelocyPackHelper::compare(plan_slice.first[0], cur_slice.first[0], false) != 0) {
+        !basics::VelocyPackHelper::equal(plan_slice.first[0], cur_slice.first[0], false)) {
       LOG_TOPIC("0d8ca", DEBUG, Logger::SUPERVISION)
           << "FailedLeader waiting for " << sub + "/" + shard;
       break;

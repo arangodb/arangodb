@@ -102,7 +102,8 @@ static constexpr uint32_t MaxSlots() { return 1024 * 1024 * 16; }
 MMFilesLogfileManager::MMFilesLogfileManager(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "MMFilesLogfileManager"),
       _allowWrites(false),  // start in read-only mode
-      _inRecovery(true),
+      _recoveryState(RecoveryState::BEFORE),
+      _recoveryTick(0),
       _logfilesLock(),
       _logfiles(),
       _slots(nullptr),
@@ -322,7 +323,7 @@ void MMFilesLogfileManager::start() {
 
   // initialize some objects
   _slots = new MMFilesWalSlots(this, _numberOfSlots, 0);
-  _recoverState.reset(new MMFilesWalRecoverState(_ignoreRecoveryErrors));
+  _recoverState.reset(new MMFilesWalRecoverState(_ignoreRecoveryErrors, _recoveryTick));
 
   TRI_ASSERT(!_allowWrites);
 
@@ -426,6 +427,12 @@ bool MMFilesLogfileManager::open() {
   // remove usage locks for databases and collections
   _recoverState->releaseResources();
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine);
+  TRI_ASSERT(engine->recoveryTick() == _recoverState->lastTick);
+#endif
+
   // not needed anymore
   _recoverState.reset();
 
@@ -433,7 +440,7 @@ bool MMFilesLogfileManager::open() {
   writeShutdownInfo(false);
 
   // finished recovery
-  _inRecovery = false;
+  _recoveryState = RecoveryState::DONE;
 
   res = startMMFilesCollectorThread();
 
@@ -509,7 +516,7 @@ void MMFilesLogfileManager::unprepare() {
   }
 
   // do a final flush at shutdown
-  if (!_inRecovery) {
+  if (!isInRecovery()) {
     flush(true, true, false);
   }
 
@@ -849,7 +856,7 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector, bool w
                                  double maxWaitTime, bool abortWaitOnShutdown) {
   TRI_IF_FAILURE("LogfileManagerFlush") { return TRI_ERROR_NO_ERROR; }
 
-  TRI_ASSERT(!_inRecovery);
+  TRI_ASSERT(!isInRecovery());
 
   MMFilesWalLogfile::IdType lastOpenLogfileId;
   MMFilesWalLogfile::IdType lastSealedLogfileId;
@@ -931,7 +938,7 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector, bool w
 
 /// wait until all changes to the current logfile are synced
 bool MMFilesLogfileManager::waitForSync(double maxWait) {
-  TRI_ASSERT(!_inRecovery);
+  TRI_ASSERT(!isInRecovery());
 
   double const end = TRI_microtime() + maxWait;
   TRI_voc_tick_t lastAssignedTick = 0;
@@ -1471,7 +1478,7 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
 /// if it returns a logfile, the logfile is removed from the list of available
 /// logfiles
 MMFilesWalLogfile* MMFilesLogfileManager::getRemovableLogfile() {
-  TRI_ASSERT(!_inRecovery);
+  TRI_ASSERT(!isInRecovery());
 
   // take all barriers into account
   MMFilesWalLogfile::IdType const minBarrierTick = getMinBarrierTick();
@@ -1557,7 +1564,7 @@ void MMFilesLogfileManager::setCollectionRequested(MMFilesWalLogfile* logfile) {
     logfile->setStatus(MMFilesWalLogfile::StatusType::COLLECTION_REQUESTED);
   }
 
-  if (!_inRecovery) {
+  if (!isInRecovery()) {
     // to start collection
     READ_LOCKER(locker, _collectorThreadLock);
 
@@ -1590,7 +1597,7 @@ void MMFilesLogfileManager::setCollectionDone(MMFilesWalLogfile* logfile) {
     _lastCollectedId = id;
   }
 
-  if (!_inRecovery) {
+  if (!isInRecovery()) {
     // to start removal of unneeded datafiles
     {
       READ_LOCKER(locker, _collectorThreadLock);
@@ -1830,8 +1837,11 @@ void MMFilesLogfileManager::logStatus() {
 int MMFilesLogfileManager::runRecovery() {
   TRI_ASSERT(!_allowWrites);
 
+  _recoveryState = RecoveryState::IN_PROGRESS;
+
   if (!_recoverState->mustRecover()) {
     // nothing to do
+    _recoveryTick = _recoverState->lastTick;
     return TRI_ERROR_NO_ERROR;
   }
 
