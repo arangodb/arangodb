@@ -403,9 +403,9 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   
   arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr pool;
   // identity now is default analyzer
-  auto name = args.size() > 1 ? 
+  auto const name = args.size() > 1 ? 
     arangodb::iresearch::getStringRef(args[1].slice()) : 
-    arangodb::iresearch::IResearchAnalyzerFeature::identity()->name();
+    iresearch::string_ref(arangodb::iresearch::IResearchAnalyzerFeature::identity()->name());
   
   if( args.size() > 1) {
     auto* analyzers =
