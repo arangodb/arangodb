@@ -62,12 +62,6 @@ class ArrayIterator {
     }
   }
 
-  ArrayIterator(ArrayIterator const& other) noexcept = default;
-  ArrayIterator(ArrayIterator&& other) noexcept = default;
-
-  ArrayIterator& operator=(ArrayIterator const& other) = delete;
-  ArrayIterator& operator=(ArrayIterator&& other) = default;
-
   // prefix ++
   ArrayIterator& operator++() {
     ++_position;
@@ -202,12 +196,6 @@ class ObjectIterator {
       }
     }
   }
-
-  ObjectIterator(ObjectIterator const& other) noexcept = default;
-  ObjectIterator(ObjectIterator&& other) noexcept = default;
-
-  ObjectIterator& operator=(ObjectIterator const& other) = delete;
-  ObjectIterator& operator=(ObjectIterator&& other) = default;
 
   // prefix ++
   ObjectIterator& operator++() {
