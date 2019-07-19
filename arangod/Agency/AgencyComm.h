@@ -212,6 +212,9 @@ class AgencyOperation {
   AgencyOperation(std::string const& key, AgencyValueOperationType opType,
                   velocypack::Slice const newValue, velocypack::Slice const oldValue);
 
+  template <typename T>
+  AgencyOperation(std::string const& key, AgencyValueOperationType opType, T const& value);
+
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;

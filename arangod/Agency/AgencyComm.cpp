@@ -159,6 +159,17 @@ AgencyOperation::AgencyOperation(std::string const& key, AgencyValueOperationTyp
   _opType.value = opType;
 }
 
+template<typename T>
+AgencyOperation::AgencyOperation(std::string const& key, AgencyValueOperationType opType, T const& value)
+  : _key(AgencyCommManager::path(key)), _opType(), _holder(std::make_shared<VPackBuilder>()) {
+  _holder->add(VPackValue(value));
+  _value = _holder->slice();
+  _opType.type = AgencyOperationType::Type::VALUE;
+  _opType.value = opType;
+}
+
+
+
 AgencyOperationType AgencyOperation::type() const { return _opType; }
 
 void AgencyOperation::toVelocyPack(VPackBuilder& builder) const {
