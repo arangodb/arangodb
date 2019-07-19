@@ -358,9 +358,13 @@ class IRESEARCH_API index_writer:
     ////////////////////////////////////////////////////////////////////////////
     void reset() NOEXCEPT;
 
+    void tick(uint64_t tick) NOEXCEPT { tick_ = tick; }
+    uint64_t tick() const NOEXCEPT { return tick_; }
+
    private:
     active_segment_context segment_; // the segment_context used for storing changes (lazy-initialized)
-    long segment_use_count_{0}; // segment_.ctx().use_count() at constructor/destructor time must equal
+    uint64_t segment_use_count_{0}; // segment_.ctx().use_count() at constructor/destructor time must equal
+    uint64_t tick_{0}; // transaction tick
     index_writer& writer_;
 
     // refresh segment if required (guarded by flush_context::flush_mutex_)
@@ -588,15 +592,17 @@ class IRESEARCH_API index_writer:
     return comparator_;
   }
 
+  typedef std::function<bool(uint64_t, bstring&)> before_commit_f;
+
   ////////////////////////////////////////////////////////////////////////////
   /// @brief begins the two-phase transaction
   /// @param payload arbitrary user supplied data to store in the index
   /// @returns true if transaction has been sucessflully started
   ////////////////////////////////////////////////////////////////////////////
-  bool begin(const bytes_ref& payload = bytes_ref::NIL) {
+  bool begin(const before_commit_f& before_commit = {}) {
     SCOPED_LOCK(commit_lock_);
 
-    return start(payload);
+    return start(before_commit);
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -615,10 +621,10 @@ class IRESEARCH_API index_writer:
   /// @note that if begin() has been already called commit() is
   /// relatively lightweight operation 
   ////////////////////////////////////////////////////////////////////////////
-  void commit(const bytes_ref& payload = bytes_ref::NIL) {
+  void commit(const before_commit_f& before_commit = {}) {
     SCOPED_LOCK(commit_lock_);
 
-    start(payload);
+    start(before_commit);
     finish();
   }
 
@@ -798,9 +804,9 @@ class IRESEARCH_API index_writer:
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief flush current writer state into a materialized segment
-    /// @return success
+    /// @return tick of last committed transaction
     ////////////////////////////////////////////////////////////////////////////
-    void flush();
+    uint64_t flush();
 
     // returns context for "insert" operation
     segment_writer::update_context make_update_context();
@@ -1007,12 +1013,12 @@ class IRESEARCH_API index_writer:
     committed_state_t&& committed_state
   ) NOEXCEPT;
 
-  pending_context_t flush_all(const bytes_ref& payload);
+  pending_context_t flush_all(const before_commit_f& before_commit);
 
   flush_context_ptr get_flush_context(bool shared = true);
   active_segment_context get_segment_context(flush_context& ctx); // return a usable segment or a nullptr segment if retry is required (e.g. no free segments available)
 
-  bool start(const bytes_ref& payload); // starts transaction
+  bool start(const before_commit_f& before_commit); // starts transaction
   void finish(); // finishes transaction
   void abort(); // aborts transaction
 
@@ -1020,7 +1026,7 @@ class IRESEARCH_API index_writer:
   const comparer* comparator_;
   readers_cache cached_readers_; // readers by segment name
   format::ptr codec_;
-  std::mutex commit_lock_; // guard for cached_segment_readers_, commit_pool_, meta_ (modification during commit()/defragment())
+  std::mutex commit_lock_; // guard for cached_segment_readers_, commit_pool_, meta_ (modification during commit()/defragment()), paylaod_buf_
   committed_state_t committed_state_; // last successfully committed state
   std::recursive_mutex consolidation_lock_;
   consolidating_segments_t consolidating_segments_; // segments that are under consolidation

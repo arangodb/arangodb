@@ -77,7 +77,7 @@ function recoverySuite () {
 
       assertNull(db._view('UnitTestsRecovery1'));
       assertNotNull(db._view('UnitTestsRecovery2'));
-      res = AQL_EXECUTE('FOR doc IN `UnitTestsRecovery2` SEARCH doc.num > 0 OPTIONS {waitForSync: true}  RETURN doc').json;
+      res = db._query('FOR doc IN `UnitTestsRecovery2` SEARCH doc.num > 0 OPTIONS {waitForSync: true}  RETURN doc').toArray();
       assertEqual(res.length, 2);
     }
 

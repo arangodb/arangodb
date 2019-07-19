@@ -3288,8 +3288,12 @@ int MMFilesEngine::writeDropMarker(TRI_voc_tick_t id, std::string const& name) {
   return res;
 }
 
-bool MMFilesEngine::inRecovery() {
-  return MMFilesLogfileManager::instance(true)->isInRecovery();
+RecoveryState MMFilesEngine::recoveryState() noexcept {
+  return MMFilesLogfileManager::instance(true)->recoveryState();
+}
+
+TRI_voc_tick_t MMFilesEngine::recoveryTick() noexcept {
+  return MMFilesLogfileManager::instance(true)->recoveryTick();
 }
 
 /// @brief writes a create-database marker into the log

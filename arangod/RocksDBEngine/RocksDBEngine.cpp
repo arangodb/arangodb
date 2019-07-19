@@ -1192,9 +1192,14 @@ void RocksDBEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */,
   status = TRI_ERROR_NO_ERROR;
 }
 
-// wal in recovery
-bool RocksDBEngine::inRecovery() {
-  return RocksDBRecoveryManager::instance()->inRecovery();
+// current recovery state
+RecoveryState RocksDBEngine::recoveryState() noexcept {
+  return RocksDBRecoveryManager::instance()->recoveryState();
+}
+
+// current recovery tick
+TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
+  return TRI_voc_tick_t(RocksDBRecoveryManager::instance()->recoveryTick());
 }
 
 void RocksDBEngine::recoveryDone(TRI_vocbase_t& vocbase) {}
