@@ -4061,7 +4061,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       result.reset(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
-        std::string ("failed to acquire global transaction log on all db servers: ") + result.errorMessage());
+        std::string ("failed to acquire global transaction lock on all db servers: ") + result.errorMessage());
       LOG_TOPIC("b7d09", ERR, Logger::BACKUP) << result.errorMessage();
       return result;
     }
