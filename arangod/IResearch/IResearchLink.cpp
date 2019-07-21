@@ -1074,6 +1074,13 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
           "failed to get last committed tick while initializing link '" + std::to_string(id()) + "'"
         };
       }
+
+      LOG_TOPIC("7e028", TRACE, iresearch::TOPIC)
+        << "successfully opened existing data store data store reader for link '" + std::to_string(id())
+        << "', docs count '" << _dataStore._reader->docs_count()
+        << "', live docs count '" << _dataStore._reader->live_docs_count()
+        << "', recovery tick '" << _dataStore._recoveryTick << "'";
+
     } catch (irs::index_not_found const&) {
       // NOOP
     }

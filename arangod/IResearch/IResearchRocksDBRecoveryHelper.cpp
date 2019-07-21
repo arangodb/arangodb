@@ -205,40 +205,43 @@ void IResearchRocksDBRecoveryHelper::PutCF(
     const rocksdb::Slice& key,
     const rocksdb::Slice& value,
     rocksdb::SequenceNumber /*tick*/) {
-  if (column_family_id == _documentCF) {
-    auto coll = lookupCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));
+  if (column_family_id != _documentCF) {
+    return;
+  }
 
-    if (coll == nullptr) {
-      return;
+  auto coll = lookupCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));
+
+  if (coll == nullptr) {
+    return;
+  }
+
+  auto const links = lookupLinks(*coll);
+
+  if (links.empty()) {
+    return;
+  }
+
+  auto docId = RocksDBKey::documentId(key);
+  auto doc = RocksDBValue::data(value);
+
+  transaction::StandaloneContext ctx(coll->vocbase());
+
+  SingleCollectionTransaction trx(
+    std::shared_ptr<transaction::Context>(
+      std::shared_ptr<transaction::Context>(),
+      &ctx), // aliasing ctor
+    *coll, arangodb::AccessMode::Type::WRITE);
+
+  trx.begin();
+
+  for (std::shared_ptr<arangodb::Index> const& link : links) {
+    IndexId indexId(coll->vocbase().id(), coll->id(), link->id());
+
+    // optimization: avoid insertion of recovered documents twice,
+    //               first insertion done during index creation
+    if (!link || _recoveredIndexes.find(indexId) != _recoveredIndexes.end()) {
+      continue;  // index was already populated when it was created
     }
-
-    auto const links = lookupLinks(*coll);
-
-    if (links.empty()) {
-      return;
-    }
-
-    auto docId = RocksDBKey::documentId(key);
-    auto doc = RocksDBValue::data(value);
-
-    transaction::StandaloneContext ctx(coll->vocbase());
-
-    SingleCollectionTransaction trx(
-      std::shared_ptr<transaction::Context>(
-        std::shared_ptr<transaction::Context>(),
-        &ctx), // aliasing ctor
-      *coll, arangodb::AccessMode::Type::WRITE);
-
-    trx.begin();
-
-    for (std::shared_ptr<arangodb::Index> const& link : links) {
-      IndexId indexId(coll->vocbase().id(), coll->id(), link->id());
-
-      // optimization: avoid insertion of recovered documents twice,
-      //               first insertion done during index creation
-      if (!link || _recoveredIndexes.find(indexId) != _recoveredIndexes.end()) {
-        continue;  // index was already populated when it was created
-      }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     IResearchLink& impl = dynamic_cast<IResearchRocksDBLink&>(*link);
@@ -246,13 +249,12 @@ void IResearchRocksDBRecoveryHelper::PutCF(
     IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*link);
 #endif
 
-      impl.insert(trx, docId, doc, arangodb::Index::OperationMode::internal);
-    }
-
-    trx.commit();
-
-    return;
+    impl.insert(trx, docId, doc, arangodb::Index::OperationMode::internal);
   }
+
+  trx.commit();
+
+  return;
 }
 
 // common implementation for DeleteCF / SingleDeleteCF
@@ -260,9 +262,10 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
     uint32_t column_family_id,
     const rocksdb::Slice& key,
     rocksdb::SequenceNumber /*tick*/) {
-  if (column_family_id == _documentCF) {
+  if (column_family_id != _documentCF) {
     return;
   }
+
   auto coll = lookupCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));
 
   if (coll == nullptr) {
