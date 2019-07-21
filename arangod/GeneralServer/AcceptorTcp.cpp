@@ -155,6 +155,9 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
     std::unique_ptr<AsioSocket<SocketType::Tcp>> as = std::move(_asioSocket);
     info.clientAddress = as->peer.address().to_string();
     info.clientPort = as->peer.port();
+    
+    LOG_TOPIC("853AA", DEBUG, arangodb::Logger::COMMUNICATION)
+    << "accepted connection from " << info.clientAddress << ":" << info.clientPort;
 
     auto commTask =
         std::make_shared<HttpCommTask<SocketType::Tcp>>(_server,

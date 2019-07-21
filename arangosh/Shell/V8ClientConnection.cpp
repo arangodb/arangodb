@@ -80,7 +80,7 @@ V8ClientConnection::~V8ClientConnection() {
   shutdownConnection();
 }
 
-void V8ClientConnection::createConnection() {
+std::shared_ptr<fuerte::Connection> V8ClientConnection::createConnection() {
   auto newConnection = _builder.connect(_loop);
   fuerte::StringMap params{{"details", "true"}};
   auto req = fuerte::createRequest(fuerte::RestVerb::Get, "/_api/version", params);
@@ -98,72 +98,77 @@ void V8ClientConnection::createConnection() {
       }
     }
 
-    if (_lastHttpReturnCode == 200) {
-      std::lock_guard<std::recursive_mutex> guard(_lock);
-      _connection = newConnection;
+    if (_lastHttpReturnCode != 200) {
+      return nullptr;
+    }
+    
+    std::lock_guard<std::recursive_mutex> guard(_lock);
+    _connection = newConnection;
 
-      std::shared_ptr<VPackBuilder> parsedBody;
-      VPackSlice body;
-      if (res->contentType() == fuerte::ContentType::VPack) {
-        body = res->slice();
-      } else {
-        parsedBody =
-            VPackParser::fromJson(reinterpret_cast<char const*>(res->payload().data()),
-                                  res->payload().size());
-        body = parsedBody->slice();
+    std::shared_ptr<VPackBuilder> parsedBody;
+    VPackSlice body;
+    if (res->contentType() == fuerte::ContentType::VPack) {
+      body = res->slice();
+    } else {
+      parsedBody =
+          VPackParser::fromJson(reinterpret_cast<char const*>(res->payload().data()),
+                                res->payload().size());
+      body = parsedBody->slice();
+    }
+    if (!body.isObject()) {
+      _lastErrorMessage = "invalid response";
+      _lastHttpReturnCode = 503;
+    }
+
+    std::string const server =
+        VelocyPackHelper::getStringValue(body, "server", "");
+
+    // "server" value is a string and content is "arango"
+    if (server == "arango") {
+      // look up "version" value
+      _version = VelocyPackHelper::getStringValue(body, "version", "");
+      VPackSlice const details = body.get("details");
+      if (details.isObject()) {
+        VPackSlice const mode = details.get("mode");
+        if (mode.isString()) {
+          _mode = mode.copyString();
+        }
+        VPackSlice role = details.get("role");
+        if (role.isString()) {
+          _role = role.copyString();
+        }
       }
-      if (!body.isObject()) {
-        _lastErrorMessage = "invalid response";
-        _lastHttpReturnCode = 503;
+      if (!body.hasKey("version")) {
+        // if we don't get a version number in return, the server is
+        // probably running in hardened mode
+        return newConnection;
       }
-
-      std::string const server =
-          VelocyPackHelper::getStringValue(body, "server", "");
-
-      // "server" value is a string and content is "arango"
-      if (server == "arango") {
-        // look up "version" value
-        _version = VelocyPackHelper::getStringValue(body, "version", "");
-        VPackSlice const details = body.get("details");
-        if (details.isObject()) {
-          VPackSlice const mode = details.get("mode");
-          if (mode.isString()) {
-            _mode = mode.copyString();
-          }
-          VPackSlice role = details.get("role");
-          if (role.isString()) {
-            _role = role.copyString();
-          }
-        }
-        if (!body.hasKey("version")) {
-          // if we don't get a version number in return, the server is
-          // probably running in hardened mode
-          return;
-        }
-        std::string const versionString =
-            VelocyPackHelper::getStringValue(body, "version", "");
-        std::pair<int, int> version = rest::Version::parseVersionString(versionString);
-        if (version.first < 3) {
-          // major version of server is too low
-          //_client->disconnect();
-          shutdownConnection();
-          _lastErrorMessage = "Server version number ('" + versionString +
-                              "') is too low. Expecting 3.0 or higher";
-          return;
-        }
+      std::string const versionString =
+          VelocyPackHelper::getStringValue(body, "version", "");
+      std::pair<int, int> version = rest::Version::parseVersionString(versionString);
+      if (version.first < 3) {
+        // major version of server is too low
+        //_client->disconnect();
+        shutdownConnection();
+        _lastErrorMessage = "Server version number ('" + versionString +
+                            "') is too low. Expecting 3.0 or higher";
+        return newConnection;
       }
     }
   } catch (fuerte::Error const& e) {  // connection error
     _lastErrorMessage = fuerte::to_string(e);
     _lastHttpReturnCode = 503;
   }
+  
+  return nullptr;
 }
 
 void V8ClientConnection::setInterrupted(bool interrupted) {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   if (interrupted && _connection != nullptr) {
     shutdownConnection();
-  } else if (!interrupted && _connection == nullptr) {
+  } else if (!interrupted && (_connection == nullptr ||
+                              _connection->state() == fuerte::Connection::State::Failed)) {
     createConnection();
   }
 }
@@ -1567,6 +1572,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     _lastHttpReturnCode = 0;
     connection = _connection;
   }
+  
   if (!connection || connection->state() == fuerte::Connection::State::Failed) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                  "not connected");

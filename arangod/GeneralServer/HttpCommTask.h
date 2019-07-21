@@ -41,23 +41,25 @@ class HttpCommTask final : public GeneralCommTask<T> {
  public:
   HttpCommTask(GeneralServer& server, ConnectionInfo, std::unique_ptr<AsioSocket<T>> so);
   ~HttpCommTask();
+  
+  void start() override;
 
  protected:
   
-  std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode, uint64_t messageId) override;
-
-  void sendResponse(std::unique_ptr<GeneralResponse> response,
-                    RequestStatistics* stat) override;
-  
   bool allowDirectHandling() const override {
-    return false;//this->_protocol->context.clients() <= 1;
+    return this->_protocol->context.clients() <= 1;
   }
-
+  
   /// @brief send error response including response body
   void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
                          velocypack::Buffer<uint8_t>&&) override;
   
   bool readCallback(asio_ns::error_code ec) override;
+  
+  void sendResponse(std::unique_ptr<GeneralResponse> response,
+                    RequestStatistics* stat) override;
+  
+  std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode, uint64_t messageId) override;
   
  private:
   static int on_message_began(llhttp_t* p);
@@ -71,12 +73,15 @@ class HttpCommTask final : public GeneralCommTask<T> {
 
 private:
 
-  bool checkVstUpgrade();
+  void checkVSTPrefix();
+  
   bool checkHttpUpgrade();
 
   void processRequest();
 
-  void parseOriginHeader(HttpRequest const& req);
+  /// deny credentialed requests or not (only CORS)
+  bool allowCredentials(std::string const& origin);
+  
   /// handle an OPTIONS request
   void processCorsOptions();
   /// check authentication headers
@@ -96,9 +101,7 @@ private:
   std::unique_ptr<HttpRequest> _request;
   bool _lastHeaderWasValue;
   bool _shouldKeepAlive;  /// keep connection open
-  bool _denyCredentials;  /// credentialed requests or not (only CORS)
-
-  bool _checkedVstUpgrade;
+  bool _messageDone;
 };
 }  // namespace rest
 }  // namespace arangodb

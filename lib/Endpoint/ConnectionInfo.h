@@ -41,8 +41,7 @@ struct ConnectionInfo {
         clientAddress(),
         endpoint(),
         endpointType(Endpoint::DomainType::UNKNOWN),
-        encryptionType(Endpoint::EncryptionType::NONE),
-        sslContext(nullptr) {}
+        encryptionType(Endpoint::EncryptionType::NONE) {}
 
  public:
   std::string portType() const {
@@ -69,8 +68,6 @@ struct ConnectionInfo {
   std::string endpoint;
   Endpoint::DomainType endpointType;
   Endpoint::EncryptionType encryptionType;
-
-  void* sslContext;
 };
 
 }  // namespace arangodb

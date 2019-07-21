@@ -83,7 +83,7 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) {
                                     /*allowMethodOverride*/ true);
   self->_lastHeaderWasValue = false;
   self->_shouldKeepAlive = false;
-  self->_denyCredentials = false;
+  self->_messageDone = false;
   
   // acquire a new statistics entry for the request
   RequestStatistics* stat = self->acquireStatistics(1UL);
@@ -204,8 +204,8 @@ int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
   RequestStatistics* stat = self->statistics(1UL);
   RequestStatistics::SET_READ_END(stat);
   RequestStatistics::ADD_RECEIVED_BYTES(stat, self->_request->body().size());
+  self->_messageDone = true;
   
-  self->processRequest();
   return HPE_PAUSED;
 }
 
@@ -214,7 +214,9 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server,
                               ConnectionInfo info,
                               std::unique_ptr<AsioSocket<T>> so)
   : GeneralCommTask<T>(server, "HttpCommTask", std::move(info), std::move(so)),
-                      _checkedVstUpgrade(false) {
+                      _lastHeaderWasValue(false),
+                      _shouldKeepAlive(false),
+                      _messageDone(false) {
   ConnectionStatistics::SET_HTTP(this->_connectionStatistics);
 
   // initialize http parsing code
@@ -233,6 +235,17 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server,
 
 template <SocketType T>
 HttpCommTask<T>::~HttpCommTask() {}
+
+template <SocketType T>
+void HttpCommTask<T>::start() {
+  this->_protocol->setNonBlocking(true);
+  asio_ns::post(this->_protocol->context.io_context,
+                [self = this->shared_from_this()] {
+    auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
+    thisPtr->checkVSTPrefix();
+  });
+}
+
 
 /// @brief send error response including response body
 template <SocketType T>
@@ -255,19 +268,6 @@ void HttpCommTask<T>::addSimpleResponse(rest::ResponseCode code,
 
 template <SocketType T>
 bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
-  if (!_checkedVstUpgrade) {
-    if (ec) { // just bail out
-      this->close();
-      return false;
-    }
-    if (this->_protocol->buffer.size() < 11) {
-      return true; // read more
-    }
-    _checkedVstUpgrade = true;
-    if (checkVstUpgrade()) {
-      return false; // stop reading
-    }
-  }
 
   llhttp_errno_t err;
   if (ec) { // got a connection error
@@ -298,10 +298,18 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     if (err == HPE_PAUSED_UPGRADE) {
       this->addSimpleResponse(rest::ResponseCode::NOT_IMPLEMENTED,
                               rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
+      return false; // stop read loop
     }
   }
+  
+  if (_messageDone) {
+    TRI_ASSERT(err == HPE_PAUSED);
+    _messageDone = false;
+    processRequest();
+    return false; // stop read loop
+  }
 
-  if (err != HPE_OK && err != HPE_USER && err != HPE_PAUSED) {
+  if (err != HPE_OK && err != HPE_USER) {
     if (err == HPE_INVALID_EOF_STATE) {
       LOG_TOPIC("595fd", TRACE, Logger::REQUESTS)
       << "Connection closed by peer, with ptr " << this;
@@ -316,34 +324,48 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
 }
 
 namespace {
-  static constexpr const char* vst10 = "VST/1.0\r\n\r\n";
-  static constexpr const char* vst11 = "VST/1.1\r\n\r\n";
+static constexpr const char* vst10 = "VST/1.0\r\n\r\n";
+static constexpr const char* vst11 = "VST/1.1\r\n\r\n";
 }
 
 template <SocketType T>
-bool HttpCommTask<T>::checkVstUpgrade() {
-  TRI_ASSERT(this->_protocol->buffer.size() >= 11);
-  auto bg = asio_ns::buffers_begin(this->_protocol->buffer.data());
-  if (std::equal(::vst10, ::vst10 + 11, bg, bg + 11)) {
-    this->_protocol->buffer.consume(11); // remove VST/1.0 prefix
+void HttpCommTask<T>::checkVSTPrefix() {
+  auto cb = [self = this->shared_from_this()]
+  (asio_ns::error_code const& ec, size_t nread) {
+    auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
+    if (ec || nread < 11) {
+      thisPtr->close();
+      return;
+    }
+    thisPtr->_protocol->buffer.commit(nread);
     
-    auto commTask =
-    std::make_unique<VstCommTask<T>>(this->_server, this->_connectionInfo,
-                                     std::move(this->_protocol),
-                                     fuerte::vst::VST1_0);
-    this->_server.registerTask(std::move(commTask));
-    return true; // vst
-  } else if (std::equal(::vst11, ::vst11 + 11, bg, bg + 11)) {
-    this->_protocol->buffer.consume(11); // remove VST/1.1 prefix
+    auto bg = asio_ns::buffers_begin(thisPtr->_protocol->buffer.data());
+    if (std::equal(::vst10, ::vst10 + 11, bg, bg + 11)) {
+      
+      thisPtr->_protocol->buffer.consume(11); // remove VST/1.0 prefix
+      auto commTask =
+      std::make_unique<VstCommTask<T>>(thisPtr->_server, thisPtr->_connectionInfo,
+                                       std::move(thisPtr->_protocol),
+                                       fuerte::vst::VST1_0);
+      thisPtr->_server.registerTask(std::move(commTask));
+      return; // vst 1.0
+      
+    } else if (std::equal(::vst11, ::vst11 + 11, bg, bg + 11)) {
+      
+      thisPtr->_protocol->buffer.consume(11); // remove VST/1.1 prefix
+      auto commTask =
+      std::make_unique<VstCommTask<T>>(thisPtr->_server, thisPtr->_connectionInfo,
+                                       std::move(thisPtr->_protocol),
+                                       fuerte::vst::VST1_1);
+      thisPtr->_server.registerTask(std::move(commTask));
+      return; // vst 1.1
+    }
     
-    auto commTask =
-    std::make_unique<VstCommTask<T>>(this->_server, this->_connectionInfo,
-                                     std::move(this->_protocol),
-                                     fuerte::vst::VST1_1);
-    this->_server.registerTask(std::move(commTask));
-    return true; // vst
-  }
-  return false; // not vst
+    thisPtr->asyncReadSome(); // continue reading
+  };
+  auto buffs = this->_protocol->buffer.prepare(GeneralCommTask<T>::ReadBlockSize);
+  asio_ns::async_read(this->_protocol->socket, buffs,
+                      asio_ns::transfer_at_least(11), std::move(cb));
 }
 
 template <SocketType T>
@@ -379,7 +401,8 @@ void HttpCommTask<T>::processRequest() {
     }
   }
 
-  parseOriginHeader(*_request);
+  // store origin heaer
+  _origin = _request->header(StaticStrings::Origin);
 
   // OPTIONS requests currently go unauthenticated
   if (_request->requestType() == rest::RequestType::OPTIONS) {
@@ -420,42 +443,45 @@ void HttpCommTask<T>::processRequest() {
   this->executeRequest(std::move(_request), std::move(resp));
 }
 
-template <SocketType T>
-void HttpCommTask<T>::parseOriginHeader(HttpRequest const& req) {
-  // handle origin headers
-  _origin = req.header(StaticStrings::Origin);
-  if (!_origin.empty()) {
-    // default is to allow nothing
-    _denyCredentials = true;
-
-    // if the request asks to allow credentials, we'll check against the
-    // configured whitelist of origins
-    std::vector<std::string> const& accessControlAllowOrigins =
-        GeneralServerFeature::accessControlAllowOrigins();
-
-    if (!accessControlAllowOrigins.empty()) {
-      if (accessControlAllowOrigins[0] == "*") {
-        // special case: allow everything
-        _denyCredentials = false;
-      } else if (!_origin.empty()) {
-        // copy origin string
-        if (_origin[_origin.size() - 1] == '/') {
-          // strip trailing slash
-          auto result = std::find(accessControlAllowOrigins.begin(),
-                                  accessControlAllowOrigins.end(),
-                                  _origin.substr(0, _origin.size() - 1));
-          _denyCredentials = (result == accessControlAllowOrigins.end());
-        } else {
-          auto result = std::find(accessControlAllowOrigins.begin(),
-                                  accessControlAllowOrigins.end(), _origin);
-          _denyCredentials = (result == accessControlAllowOrigins.end());
-        }
+/// deny credentialed requests or not (only CORS)
+namespace {
+bool allowCredentials(std::string const& origin) {
+  // default is to allow nothing
+  bool allowCredentials = false;
+  if (origin.empty()) {
+    return allowCredentials;
+  } // else handle origin headers
+  
+  // if the request asks to allow credentials, we'll check against the
+  // configured whitelist of origins
+  std::vector<std::string> const& accessControlAllowOrigins =
+  GeneralServerFeature::accessControlAllowOrigins();
+  
+  if (!accessControlAllowOrigins.empty()) {
+    if (accessControlAllowOrigins[0] == "*") {
+      // special case: allow everything
+      allowCredentials = true;
+    } else if (!origin.empty()) {
+      // copy origin string
+      if (origin[origin.size() - 1] == '/') {
+        // strip trailing slash
+        auto result = std::find(accessControlAllowOrigins.begin(),
+                                accessControlAllowOrigins.end(),
+                                origin.substr(0, origin.size() - 1));
+        allowCredentials = (result != accessControlAllowOrigins.end());
       } else {
-        TRI_ASSERT(_denyCredentials);
+        auto result = std::find(accessControlAllowOrigins.begin(),
+                                accessControlAllowOrigins.end(), origin);
+        allowCredentials = (result != accessControlAllowOrigins.end());
       }
+    } else {
+      TRI_ASSERT(!allowCredentials);
     }
   }
+  return allowCredentials;
 }
+}
+
 
 /// handle an OPTIONS request
 template <SocketType T>
@@ -599,12 +625,6 @@ bool HttpCommTask<T>::handleContentEncoding(HttpRequest& req) {
 }
 
 template <SocketType T>
-std::unique_ptr<GeneralResponse> HttpCommTask<T>::createResponse(rest::ResponseCode responseCode,
-                                                                 uint64_t /* messageId */) {
-  return std::make_unique<HttpResponse>(responseCode, nullptr);
-}
-
-template <SocketType T>
 void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
                                    RequestStatistics* stat) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -620,21 +640,21 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     // the request contained an Origin header. We have to send back the
     // access-control-allow-origin header now
     LOG_TOPIC("ae603", DEBUG, arangodb::Logger::REQUESTS)
-        << "handling CORS response";
-
+    << "handling CORS response";
+    
     // send back original value of "Origin" header
     response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin, _origin);
-
+    
     // send back "Access-Control-Allow-Credentials" header
     response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
-                                 (_denyCredentials ? "false" : "true"));
-
+                                 (::allowCredentials(_origin) ? "true" : "false"));
+    
     // use "IfNotSet" here because we should not override HTTP headers set
     // by Foxx applications
     response.setHeaderNCIfNotSet(StaticStrings::AccessControlExposeHeaders,
                                  StaticStrings::ExposedCorsHeaders);
   }
-
+  
   if (!ServerState::instance()->isDBServer()) {
     // DB server is not user-facing, and does not need to set this header
     // use "IfNotSet" to not overwrite an existing response header
@@ -768,13 +788,13 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   << "\"http-request-end\",\"" << (void*)this << "\",\"" << this->_connectionInfo.clientAddress
   << "\",\"" << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser)) << "\",\""
   << static_cast<int>(response.responseCode()) << "\"," << Logger::FIXED(totalTime, 6);
-
+  
   std::array<asio_ns::const_buffer, 2> buffers;
   buffers[0] = asio_ns::buffer(header->data(), header->size());
   if (HTTP_HEAD != _parser.method) {
     buffers[1] = asio_ns::buffer(body->data(), body->size());
   }
-
+  
   // FIXME measure performance w/o sync write
   auto cb = [self = CommTask::shared_from_this(),
              h = std::move(header),
@@ -795,6 +815,12 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     }
   };
   asio_ns::async_write(this->_protocol->socket, std::move(buffers), std::move(cb));
+}
+
+template <SocketType T>
+std::unique_ptr<GeneralResponse> HttpCommTask<T>::createResponse(rest::ResponseCode responseCode,
+                                                                 uint64_t /* messageId */) {
+  return std::make_unique<HttpResponse>(responseCode, nullptr);
 }
 
 template class arangodb::rest::HttpCommTask<SocketType::Tcp>;

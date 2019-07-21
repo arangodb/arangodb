@@ -906,7 +906,7 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
     validationOptions.disallowExternals = true;
     validationOptions.disallowCustom = true;
     VPackValidator validator(&validationOptions);
-    validator.validate(_body.data(), _body.length());
+    validator.validate(_body.data(), _body.length()); // throws on error
     return VPackSlice(reinterpret_cast<uint8_t const*>(_body.data()));
   }
   return VPackSlice::noneSlice();
