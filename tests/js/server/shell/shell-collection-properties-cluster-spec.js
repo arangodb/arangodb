@@ -128,7 +128,7 @@ describe('Update collection properties', function() {
             expect(false.replicationFactor).to.equal(true,
                 "Was able to update replicationFactor of follower");
         } catch(e) {
-            expect(e.errorNum).to.equal(errors.ERROR_BAD_PARAMETER.code);
+            expect(e.errorNum).to.equal(errors.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code);
         }
 
         try {

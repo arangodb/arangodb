@@ -1721,6 +1721,16 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
+      if (!followerInfo->allowedToWrite()) {
+        // We cannot fulfill minimum replication Factor.
+        // Reject write.
+        LOG_TOPIC("d7306", ERR, Logger::REPLICATION)
+            << "Less then minReplicationFactor "
+            << basics::StringUtils::itoa(collection->minReplicationFactor())
+            << " followers in sync. Shard  " << collection->name()
+            << " is temporarily in read-only mode.";
+        return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+      }
 
       replicationType = ReplicationType::LEADER;
       if (isMMFiles && needsLock) {
@@ -1745,7 +1755,6 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
       }
     }
   }  // isDBServer - early block
-
   if (options.returnOld || options.returnNew) {
     pinData(cid);  // will throw when it fails
   }
@@ -1833,7 +1842,6 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
   } else {
     res = workForOneDocument(value);
   }
-
   if (res.ok() && replicationType == ReplicationType::LEADER) {
     TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(followers != nullptr);
@@ -2036,6 +2044,16 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+      }
+      if (!followerInfo->allowedToWrite()) {
+        // We cannot fulfill minimum replication Factor.
+        // Reject write.
+        LOG_TOPIC("2e35a", ERR, Logger::REPLICATION)
+            << "Less then minReplicationFactor "
+            << basics::StringUtils::itoa(collection->minReplicationFactor())
+            << " followers in sync. Shard  " << collection->name()
+            << " is temporarily in read-only mode.";
+        return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
       }
 
       replicationType = ReplicationType::LEADER;
@@ -2307,6 +2325,16 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
+      if (!followerInfo->allowedToWrite()) {
+        // We cannot fulfill minimum replication Factor.
+        // Reject write.
+        LOG_TOPIC("f1f8e", ERR, Logger::REPLICATION)
+            << "Less then minReplicationFactor "
+            << basics::StringUtils::itoa(collection->minReplicationFactor())
+            << " followers in sync. Shard  " << collection->name()
+            << " is temporarily in read-only mode.";
+        return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+      }
 
       replicationType = ReplicationType::LEADER;
       if (isMMFiles && needsLock) {
@@ -2531,6 +2559,16 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+      }
+      if (!followerInfo->allowedToWrite()) {
+        // We cannot fulfill minimum replication Factor.
+        // Reject write.
+        LOG_TOPIC("7c1d4", ERR, Logger::REPLICATION)
+            << "Less then minReplicationFactor "
+            << basics::StringUtils::itoa(collection->minReplicationFactor())
+            << " followers in sync. Shard  " << collection->name()
+            << " is temporarily in read-only mode.";
+        return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
       }
 
       // fetch followers
