@@ -33,7 +33,7 @@
 
 using namespace arangodb;
 
-static std::string const inline reportName(bool isRemove) {
+static std::string inline reportName(bool isRemove) {
   if (isRemove) {
     return "FollowerInfo::remove";
   } else {
@@ -41,25 +41,25 @@ static std::string const inline reportName(bool isRemove) {
   }
 }
 
-static std::string CurrentShardPath(arangodb::LogicalCollection& col) {
+static std::string CurrentShardPath(arangodb::LogicalCollection const& col) {
   // Agency path is
   //   Current/Collections/<dbName>/<collectionID>/<shardID>
   return "Current/Collections/" + col.vocbase().name() + "/" +
          std::to_string(col.planId()) + "/" + col.name();
 }
 
-static VPackSlice CurrentShardEntry(arangodb::LogicalCollection& col, VPackSlice current) {
+static VPackSlice CurrentShardEntry(arangodb::LogicalCollection const& col, VPackSlice current) {
   return current.get(std::vector<std::string>(
       {AgencyCommManager::path(), "Current", "Collections",
        col.vocbase().name(), std::to_string(col.planId()), col.name()}));
 }
 
-static std::string PlanShardPath(arangodb::LogicalCollection& col) {
+static std::string PlanShardPath(arangodb::LogicalCollection const& col) {
   return "Plan/Collections/" + col.vocbase().name() + "/" +
          std::to_string(col.planId()) + "/shards/" + col.name();
 }
 
-static VPackSlice PlanShardEntry(arangodb::LogicalCollection& col, VPackSlice plan) {
+static VPackSlice PlanShardEntry(arangodb::LogicalCollection const& col, VPackSlice plan) {
   return plan.get(std::vector<std::string>(
       {AgencyCommManager::path(), "Plan", "Collections", col.vocbase().name(),
        std::to_string(col.planId()), "shards", col.name()}));
@@ -260,7 +260,7 @@ void FollowerInfo::takeOverLeadership(std::vector<std::string> const& previousIn
   // Take over leadership
   _theLeader = "";
   _theLeaderTouched = true;
-  TRI_ASSERT(_failoverCandidates != nullptr && _failoverCandidates->empty());
+  TRI_ASSERT(_failoverCandidates->empty());
   if (previousInsyncFollowers.size() > 1) {
     auto ourselves = arangodb::ServerState::instance()->getId();
     auto failoverCandidates =

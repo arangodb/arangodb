@@ -76,32 +76,32 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief list of available commands
   //////////////////////////////////////////////////////////////////////////////
-  static std::string LoggerState;
-  static std::string LoggerTickRanges;
-  static std::string LoggerFirstTick;
-  static std::string LoggerFollow;
-  static std::string OpenTransactions;
-  static std::string Batch;
-  static std::string Barrier;
-  static std::string Inventory;
-  static std::string Keys;
-  static std::string Dump;
-  static std::string RestoreCollection;
-  static std::string RestoreIndexes;
-  static std::string RestoreData;
-  static std::string RestoreView;
-  static std::string Sync;
-  static std::string MakeSlave;
-  static std::string ServerId;
-  static std::string ApplierConfig;
-  static std::string ApplierStart;
-  static std::string ApplierStop;
-  static std::string ApplierState;
-  static std::string ApplierStateAll;
-  static std::string ClusterInventory;
-  static std::string AddFollower;
-  static std::string RemoveFollower;
-  static std::string HoldReadLockCollection;
+  static std::string const LoggerState;
+  static std::string const LoggerTickRanges;
+  static std::string const LoggerFirstTick;
+  static std::string const LoggerFollow;
+  static std::string const OpenTransactions;
+  static std::string const Batch;
+  static std::string const Barrier;
+  static std::string const Inventory;
+  static std::string const Keys;
+  static std::string const Dump;
+  static std::string const RestoreCollection;
+  static std::string const RestoreIndexes;
+  static std::string const RestoreData;
+  static std::string const RestoreView;
+  static std::string const Sync;
+  static std::string const MakeSlave;
+  static std::string const ServerId;
+  static std::string const ApplierConfig;
+  static std::string const ApplierStart;
+  static std::string const ApplierStop;
+  static std::string const ApplierState;
+  static std::string const ApplierStateAll;
+  static std::string const ClusterInventory;
+  static std::string const AddFollower;
+  static std::string const RemoveFollower;
+  static std::string const HoldReadLockCollection;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
