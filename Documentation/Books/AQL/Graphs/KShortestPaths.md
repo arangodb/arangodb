@@ -178,8 +178,8 @@ length (or weight), they do not need to return the same path.
 
     @startDocuBlockInline GRAPHKSP_02_Aberdeen_to_London
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_02_Aberdeen_to_London}
-    db._query("FOR v, e IN OUTBOUND SHORTEST_PATH 'places/Aberdeen' TO 'places/London' GRAPH 'kShortestPathsGraph' RETURN [v,e]");
-    db._query("FOR p IN OUTBOUND K_SHORTEST_PATHS 'places/Aberdeen' TO 'places/London' GRAPH 'kShortestPathsGraph' LIMIT 1 RETURN p");
+    db._query("FOR v, e IN OUTBOUND SHORTEST_PATH 'places/Aberdeen' TO 'places/London' GRAPH 'shortestPathsGraph' RETURN [v,e]");
+    db._query("FOR p IN OUTBOUND K_SHORTEST_PATHS 'places/Aberdeen' TO 'places/London' GRAPH 'shortestPathsGraph' LIMIT 1 RETURN p");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHKSP_02_Aberdeen_to_London
 
@@ -187,7 +187,7 @@ Next, we can ask for more than one option for a route:
 
     @startDocuBlockInline GRAPHKSP_03_Aberdeen_to_London
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_03_Aberdeen_to_London}
-    db._query("FOR p IN OUTBOUND K_SHORTEST_PATHS 'places/Aberdeen' TO 'places/London' GRAPH 'kShortestPathsGraph' LIMIT 3 RETURN p");
+    db._query("FOR p IN OUTBOUND K_SHORTEST_PATHS 'places/Aberdeen' TO 'places/London' GRAPH 'shortestPathsGraph' LIMIT 3 RETURN p");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHKSP_03_Aberdeen_to_London
     
@@ -195,7 +195,7 @@ If we ask for routes that don't exist we get an empty result:
 
     @startDocuBlockInline GRAPHKSP_04_Aberdeen_to_Toronto
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_04_Aberdeen_to_Toronto}
-    db._query("FOR p IN OUTBOUND K_SHORTEST_PATHS 'places/Aberdeen' TO 'places/Toronto' GRAPH 'kShortestPathsGraph' LIMIT 3 RETURN p");
+    db._query("FOR p IN OUTBOUND K_SHORTEST_PATHS 'places/Aberdeen' TO 'places/Toronto' GRAPH 'shortestPathsGraph' LIMIT 3 RETURN p");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHKSP_04_Aberdeen_to_Toronto
     
@@ -204,7 +204,7 @@ take into account which connections are quicker:
 
     @startDocuBlockInline GRAPHKSP_05_StAndrews_to_Cologne
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_05_StAndrews_to_Cologne}
-    db._query("FOR p IN OUTBOUND K_SHORTEST_PATHS 'places/StAndrews' TO 'places/Cologne' GRAPH 'kShortestPathsGraph' OPTIONS { 'weightAttribute': 'travelTime', defaultWeight: '15'} LIMIT 3 RETURN p");
+    db._query("FOR p IN OUTBOUND K_SHORTEST_PATHS 'places/StAndrews' TO 'places/Cologne' GRAPH 'shortestPathsGraph' OPTIONS { 'weightAttribute': 'travelTime', defaultWeight: '15'} LIMIT 3 RETURN p");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHKSP_05_StAndrews_to_Cologne
 
