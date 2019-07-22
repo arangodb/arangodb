@@ -3838,7 +3838,7 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // wait without gc
   double until = TRI_microtime() + n;
   while (TRI_microtime() < until) {
-    std::this_thread::sleep_for(std::chrono::microseconds(1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -5253,7 +5253,7 @@ bool TRI_RunGarbageCollectionV8(v8::Isolate* isolate, double availableTime) {
         }
       }
 
-      std::this_thread::sleep_for(std::chrono::microseconds(1000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
     return true;

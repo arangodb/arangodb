@@ -435,7 +435,7 @@ void Logger::shutdown() {
     int tries = 0;
     while (_loggingThread->hasMessages() && ++tries < 1000) {
       _loggingThread->wakeup();
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     _loggingThread->beginShutdown();
     _loggingThread.reset();

@@ -36,7 +36,7 @@
 
 namespace arangodb {
 
-template<typename T>
+template <typename T>
 struct SharedPtrComparer {
   bool operator()(std::shared_ptr<T> const& a, std::shared_ptr<T> const& b) {
     if (a == nullptr || b == nullptr) {
@@ -49,8 +49,6 @@ struct SharedPtrComparer {
 class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
   explicit MaintenanceFeature(application_features::ApplicationServer&);
-
-  MaintenanceFeature();
 
   virtual ~MaintenanceFeature() {}
 
@@ -71,7 +69,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   // Is maintenance paused?
   bool isPaused() const;
 
-  // Pause maintenance for 
+  // Pause maintenance for
   void pause(std::chrono::seconds const& s = std::chrono::seconds(10));
 
    // Proceed doing maintenance
@@ -165,7 +163,8 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
    * @brief Find and return first found not-done action or nullptr
    * @param desc Description of sought action
    */
-  std::shared_ptr<maintenance::Action> findFirstNotDoneAction(std::shared_ptr<maintenance::ActionDescription> const& desc);
+  std::shared_ptr<maintenance::Action> findFirstNotDoneAction(
+      std::shared_ptr<maintenance::ActionDescription> const& desc);
 
   /**
    * @brief add index error to bucket
@@ -307,19 +306,44 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
    */
   void delShardVersion(std::string const& shardId);
 
+  /**
+   * @brief Get the number of loadCurrent operations.
+   *        NOTE: The Counter functions can be removed
+   *        as soon as we use a push based approach on Plan and Current
+   * @return The most recent count for getCurrent calls
+   */
+  uint64_t getCurrentCounter() const;
+
+  /**
+   * @brief increase the counter for loadCurrent operations triggered
+   *        during maintenance. This is used to delay some Actions, that
+   *        require a recent current to continue
+   */
+  void increaseCurrentCounter();
+
+  /**
+   * @brief wait until the current counter is larger then the given old one
+   *        the idea here is to first request the `getCurrentCounter`.
+   * @param old  The last number of getCurrentCounter(). This function will
+   *             return only of the recent counter is larger than old.
+   */
+  void waitForLargerCurrentCounter(uint64_t old);
+
  private:
   /// @brief common code used by multiple constructors
   void init();
 
   /// @brief Search for first action matching hash and predicate
   /// @return shared pointer to action object if exists, empty shared_ptr if not
-  std::shared_ptr<maintenance::Action> findFirstActionHash(size_t hash,
-                                                           std::function<bool(std::shared_ptr<maintenance::Action> const&)> const& predicate);
+  std::shared_ptr<maintenance::Action> findFirstActionHash(
+      size_t hash,
+      std::function<bool(std::shared_ptr<maintenance::Action> const&)> const& predicate);
 
   /// @brief Search for first action matching hash and predicate (with lock already held by caller)
   /// @return shared pointer to action object if exists, empty shared_ptr if not
-  std::shared_ptr<maintenance::Action> findFirstActionHashNoLock(size_t hash,
-                                                                 std::function<bool(std::shared_ptr<maintenance::Action> const&)> const& predicate);
+  std::shared_ptr<maintenance::Action> findFirstActionHashNoLock(
+      size_t hash,
+      std::function<bool(std::shared_ptr<maintenance::Action> const&)> const& predicate);
 
   /// @brief Search for action by Id
   /// @return shared pointer to action object if exists, nullptr if not
@@ -330,7 +354,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   std::shared_ptr<maintenance::Action> findActionIdNoLock(uint64_t hash);
 
  protected:
-
   /// @brief option for forcing this feature to always be enable - used by the catch tests
   bool _forceActivation;
 
@@ -374,8 +397,8 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   // we need to leave the action in _prioQueue (since we cannot remove anything
   // but the top from it), and simply put it into a different state.
   std::priority_queue<std::shared_ptr<maintenance::Action>,
-                      std::vector<std::shared_ptr<maintenance::Action>>,
-                      SharedPtrComparer<maintenance::Action>> _prioQueue;
+                      std::vector<std::shared_ptr<maintenance::Action>>, SharedPtrComparer<maintenance::Action>>
+      _prioQueue;
 
   /// @brief lock to protect _actionRegistry and state changes to MaintenanceActions within
   mutable arangodb::basics::ReadWriteLock _actionRegistryLock;
@@ -415,7 +438,15 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   std::unordered_map<std::string, size_t> _shardVersion;
 
   std::atomic<std::chrono::steady_clock::duration> _pauseUntil;
-  
+
+  /// @brief Mutex for the current counter condition variable
+  mutable std::mutex _currentCounterLock;
+
+  /// @brief Condition variable where Actions can wait on until _currentCounter increased
+  std::condition_variable _currentCounterCondition;
+
+  /// @brief  counter for load_current requests.
+  uint64_t _currentCounter;
 };
 
 }  // namespace arangodb
