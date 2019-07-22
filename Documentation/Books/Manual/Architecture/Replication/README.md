@@ -38,10 +38,6 @@ factor. The number of _followers_ can be controlled using the
 `replicationFactor` parameter is the total number of copies being
 kept, that is, it is one plus the number of _followers_. 
 
-In addition to the `replicationFactor` we have a `minReplicationFactor`
-the locks down a collection as soon as we have lost too many followers.
-
-
 Asynchronous replication
 ------------------------
 
