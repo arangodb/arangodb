@@ -150,7 +150,7 @@ function optimizerRuleTestSuite () {
                COLLECT foo2 = g1[0].item2.foo INTO g2
                RETURN g2[0].i2`,
           [ {"foo" : "bar"}  ]
-        ]
+        ], 
 
       ];
 
@@ -169,7 +169,86 @@ function optimizerRuleTestSuite () {
         assertEqual(resultDisabled, query[1]);
         assertEqual(resultEnabled, query[1]);
       });
-    }
+    },
+
+    testNesting1 : function() {
+      const query = `
+         LET items = [{_id: 'ID'}]
+         FOR item1 IN items
+            FOR item2 IN items
+              FOR item3 IN items
+                COLLECT id = item1._id INTO first
+                COLLECT id2 = first[0].item2._id INTO other
+                RETURN other[0]
+         `;
+      const expected = [ 
+          { "first" : [ { "item1" : { "_id" : "ID" },
+                           "item2" : { "_id" : "ID" },
+                           "item3" : { "_id" : "ID" },
+                         } 
+                      ],
+            "item1" : { "_id" : "ID" },
+            "item2" : { "_id" : "ID" },
+            "item3" : { "_id" : "ID" },
+            "id" : "ID"
+          }
+        ];
+      let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
+      assertEqual(expected, resultEnabled);
+    },
+
+    testNesting2 : function() {
+      const query = `
+         LET items = [{_id: 'ID'}]
+         FOR item1 IN items
+            FOR item2 IN items
+              FOR item3 IN items
+                COLLECT id = item1._id INTO first
+                COLLECT id2 = first[0].item2._id INTO other
+                let b = other[0]
+                RETURN b
+         `;
+      const expected = [ 
+          { "first" : [ { "item1" : { "_id" : "ID" },
+                           "item2" : { "_id" : "ID" },
+                           "item3" : { "_id" : "ID" },
+                         } 
+                      ],
+            "item1" : { "_id" : "ID" },
+            "item2" : { "_id" : "ID" },
+            "item3" : { "_id" : "ID" },
+            "id" : "ID"
+          }
+        ];
+      let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
+      assertEqual(expected, resultEnabled);
+    },
+
+    testNesting3 : function() {
+      const query = `
+         LET items = [{_id: 'ID'}]
+         FOR item1 IN items
+            FOR item2 IN items
+              FOR item3 IN items
+                COLLECT id = item1._id INTO first
+                COLLECT id2 = first[0].item2._id INTO other
+                RETURN other
+         `;
+      const expected = [ 
+          { "first" : [ { "item1" : { "_id" : "ID" },
+                           "item2" : { "_id" : "ID" },
+                           "item3" : { "_id" : "ID" },
+                         } 
+                      ],
+            "item1" : { "_id" : "ID" },
+            "item2" : { "_id" : "ID" },
+            "item3" : { "_id" : "ID" },
+            "id" : "ID"
+          }
+        ];
+      let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
+      assertEqual(expected, resultEnabled);
+    },
 
   };
 }
