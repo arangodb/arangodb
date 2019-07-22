@@ -88,7 +88,6 @@ class EngineInfoContainerDBServer {
     explicit EngineInfo(size_t idOfRemoteNode) noexcept;
     EngineInfo(EngineInfo&& other) noexcept;
     ~EngineInfo();
-    EngineInfo(EngineInfo&) = delete;
     EngineInfo(EngineInfo const& other) = delete;
 
 #if (_MSC_VER != 0)
@@ -124,14 +123,11 @@ class EngineInfoContainerDBServer {
 
    private:
     struct CollectionSource {
-      explicit CollectionSource(aql::Collection* collection) noexcept
-        : collection(collection) {
-      }
-      CollectionSource(CollectionSource&&) = default;
-      CollectionSource& operator=(CollectionSource&&) = default;
+      explicit CollectionSource(aql::Collection* collection)
+        : collection(collection) {}
 
       aql::Collection* collection{};  // The collection used to connect to this engine
-      std::unordered_set<std::string> restrictedShards; // The shards this snippet is restricted to
+      std::unordered_set<std::string> restrictedShards{}; // The shards this snippet is restricted to
     };
 
     struct ViewSource {
