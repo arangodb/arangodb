@@ -127,8 +127,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
       TRI_ASSERT(_type == ExecutionNode::MAX_NODE_TYPE_VALUE);
       auto ecNode = ExecutionNode::castTo<EnumerateCollectionNode*>(node);
       if (ecNode->isRestricted()) {
-        TRI_ASSERT(_restrictedShard.empty());
-        _restrictedShard = ecNode->restrictedShard();
+        _restrictedShards.emplace(ecNode->restrictedShard());
       }
 
       // do not set '_type' of the engine here,
@@ -141,8 +140,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
       TRI_ASSERT(_type == ExecutionNode::MAX_NODE_TYPE_VALUE);
       auto idxNode = ExecutionNode::castTo<IndexNode*>(node);
       if (idxNode->isRestricted()) {
-        TRI_ASSERT(_restrictedShard.empty());
-        _restrictedShard = idxNode->restrictedShard();
+        _restrictedShards.emplace(idxNode->restrictedShard());
       }
 
       // do not set '_type' of the engine here,
@@ -173,8 +171,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
       TRI_ASSERT(_type == ExecutionNode::MAX_NODE_TYPE_VALUE);
       auto modNode = ExecutionNode::castTo<ModificationNode*>(node);
       if (modNode->isRestricted()) {
-        TRI_ASSERT(_restrictedShard.empty());
-        _restrictedShard = modNode->restrictedShard();
+        _restrictedShards.emplace(modNode->restrictedShard());
       }
       break;
     }
@@ -256,8 +253,8 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     Query& query, const ShardID& id, VPackBuilder& infoBuilder,
     bool isResponsibleForInitializeCursor) const {
-  if (!_restrictedShard.empty()) {
-    if (id != _restrictedShard) {
+  if (!_restrictedShards.empty()) {
+    if (_restrictedShards.find(id) == _restrictedShards.end()) {
       return;
     }
     // We only have one shard it has to be responsible!

@@ -1,6 +1,9 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Fixed a query abort error in smart joins when both collections were
+  restricted to a single shard.
+
 * Fixed potential thread handle leak on thread shutdown on Windows.
 
 * Fixed recovery of arangosearch remove operations with the RocksDB storage engine.

@@ -149,7 +149,7 @@ class EngineInfoContainerDBServer {
       Collection* _collection;  // The collection used to connect to this engine
       LogicalView const* _view;  // The view used to connect to this engine
     };
-    ShardID _restrictedShard;  // The shard this snippet is restricted to
+    std::unordered_set<ShardID> _restrictedShards;  // The shards this snippet is restricted to
     ExecutionNode::NodeType _type{ExecutionNode::MAX_NODE_TYPE_VALUE};  // type of the "main node"
   };
 
