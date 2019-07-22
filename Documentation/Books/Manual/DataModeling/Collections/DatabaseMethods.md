@@ -164,6 +164,15 @@ to the [naming conventions](../NamingConventions/README.md).
   dramatically when using joins in AQL at the costs of reduced write
   performance on these collections.
 
+- *minReplicationFactor* (optional, default is 1):  in a cluster, this
+  attribute determines how many copies of each shard are required
+  to be in sync on the different DBServers. If we have less then these
+  many copies in the cluster a shard will refuse to write. The
+  minReplicationFactor can not be larger than replicationFactor.
+  Please note: during server failures this might lead to writes
+  not beeing possible until the failover is sorted out and might cause
+  write slow downs in trade of data durability.
+
 - *distributeShardsLike*: distribute the shards of this collection
   cloning the shard distribution of another. If this value is set,
   it will copy the attributes *replicationFactor*, *numberOfShards* and 

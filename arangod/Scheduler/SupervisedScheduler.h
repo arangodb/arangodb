@@ -92,7 +92,7 @@ class SupervisedScheduler final : public Scheduler {
   //
   // The last submit time is a thread local variable that stores the time of the last
   // queue operation.
-  alignas(64) std::atomic<uint64_t> _wakeupQueueLength;                        // q1
+  alignas(64) std::atomic<uint64_t> _wakeupQueueLength;            // q1
   std::atomic<uint64_t> _wakeupTime_ns, _definitiveWakeupTime_ns;  // t3, t4
 
   // each worker thread has a state block which contains configuration values.
@@ -147,6 +147,10 @@ class SupervisedScheduler final : public Scheduler {
 
   bool cleanupAbandonedThreads();
   void sortoutLongRunningThreads();
+
+  // Check if we are allowed to pull from a queue with the given index
+  // This is used to give priority to "FAST" and "MED" lanes accordingly.
+  inline bool canPullFromQueue(uint64_t queueIdx) const;
 };
 
 }  // namespace arangodb

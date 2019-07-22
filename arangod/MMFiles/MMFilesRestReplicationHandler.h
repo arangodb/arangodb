@@ -37,10 +37,6 @@ class MMFilesRestReplicationHandler : public RestReplicationHandler {
   ~MMFilesRestReplicationHandler();
 
  public:
-  RequestLane lane() const override final {
-    return RequestLane::SERVER_REPLICATION;
-  }
-
   char const* name() const override final {
     return "MMFilesRestReplicationHandler";
   }

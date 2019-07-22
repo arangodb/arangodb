@@ -200,7 +200,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
         break;
       }
       // sleep
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     if (vocbase == nullptr) {

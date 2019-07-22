@@ -196,9 +196,14 @@ std::string const StaticStrings::EncodingDeflate("deflate");
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
 std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
+std::string const StaticStrings::CacheEnabled("cacheEnabled");
+std::string const StaticStrings::IndexBuckets("indexBuckets");
+std::string const StaticStrings::JournalSize("journalSize");
+std::string const StaticStrings::DoCompact("doCompact");
 std::string const StaticStrings::ReplicationFactor("replicationFactor");
 std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
 std::string const StaticStrings::ShardKeys("shardKeys");
+std::string const StaticStrings::ShardingStrategy("shardingStrategy");
 std::string const StaticStrings::SmartJoinAttribute("smartJoinAttribute");
 std::string const StaticStrings::Sharding("sharding");
 std::string const StaticStrings::Satellite("satellite");
@@ -225,6 +230,7 @@ std::string const StaticStrings::GraphCreateCollection("createCollection");
 
 // Replication
 std::string const StaticStrings::ReplicationSoftLockOnly("doSoftLockOnly");
+std::string const StaticStrings::FailoverCandidates("failoverCandidates");
 
 // misc strings
 std::string const StaticStrings::LastValue("lastValue");

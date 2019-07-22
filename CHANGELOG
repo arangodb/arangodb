@@ -1,7 +1,7 @@
 devel
 -----
 
-* Add new JavaScipt function `db._properties()` and REST router `GET /_api/database/properties`
+* Add new JavaScipt function `db._properties()` and REST route `GET /_api/database/properties`
   that provides information about the current database's properties.
 
 * Add new options `sharding` and `replicationFactor` for database creation methods. The
@@ -9,10 +9,17 @@ devel
 
   Valid values for `sharding` are `""`, "flexible", "single". The first 2 values are
   treated equally. Values for `replicationFactor` are natural numbers or the string
-  `satellite`. `satellite` is internally encoded as `0` and can be passed as `0`.
+  `satellite`.
 
 * Add new server option `--cluster.default-replication-factor` that allows to set the
   default replication factor for non-system collections (default: 1).
+
+* MinReplicationFactor:
+  Collections can now be created with a minimal replication factor (minReplicationFactor) default 1.
+  If minReplicationFactor > 1 a collection will go into "read-only" mode as soon as it has less then minReplicationFactor
+  many insync followers. With this mechanism users can avoid to have collections diverge too much in case of failure scenarios.
+  minReplicationFactor can have the values: 1 <= minReplicationFactor <= replicationFactor.
+  Having minReplicationFactor == 1 ArangoDB behaves the same way as in any previous version.
 
 * Fixed a performance regression of COLLECT WITH COUNT INTO.
 
@@ -24,7 +31,6 @@ devel
 
 * Replication requests on Document API are now on higher priority then client-triggered requests.
   This should help to keep in sync replication up and running even if the server is overloaded.
-
 
 * Bugfix: Save distinct WAL ticks for multiple replication clients from the same
   server. Also, when a follower is added for synchronous replication, the WAL

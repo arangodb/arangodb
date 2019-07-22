@@ -36,11 +36,11 @@ namespace tests {
 namespace replication {
 
 class ReplicationClientsProgressTrackerTest_SingleClient
-    : public ::testing::TestWithParam<std::pair<SyncerId, std::string>> {
+    : public ::testing::TestWithParam<std::pair<SyncerId, TRI_server_id_t>> {
  protected:
   ReplicationClientsProgressTracker testee{};
   SyncerId syncerId{};
-  std::string clientId{};
+  TRI_server_id_t clientId{};
 
   virtual void SetUp() {
     auto const& parm = GetParam();
@@ -97,9 +97,9 @@ TEST_P(ReplicationClientsProgressTrackerTest_SingleClient, test_track_untrack) {
 
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
 
-  testee.track(syncerId, clientId, 1, ttl);
+  testee.track(syncerId, clientId, "", 1, ttl);
   ASSERT_EQ(1, testee.lowestServedValue());
-  testee.untrack(syncerId, clientId);
+  testee.untrack(syncerId, clientId, "");
 
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
 }
@@ -110,19 +110,19 @@ TEST_P(ReplicationClientsProgressTrackerTest_SingleClient, test_track_tick) {
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
 
   // set last tick
-  testee.track(syncerId, clientId, 1, ttl);
+  testee.track(syncerId, clientId, "", 1, ttl);
   ASSERT_EQ(1, testee.lowestServedValue());
 
   // increase last tick
-  testee.track(syncerId, clientId, 2, ttl);
+  testee.track(syncerId, clientId, "", 2, ttl);
   ASSERT_EQ(2, testee.lowestServedValue());
 
   // decrease last tick
-  testee.track(syncerId, clientId, 1, ttl);
+  testee.track(syncerId, clientId, "", 1, ttl);
   ASSERT_EQ(1, testee.lowestServedValue());
 
   // zero should let the tick unchanged
-  testee.track(syncerId, clientId, 0, ttl);
+  testee.track(syncerId, clientId, "", 0, ttl);
   ASSERT_EQ(1, testee.lowestServedValue());
 }
 
@@ -133,7 +133,7 @@ TEST_P(ReplicationClientsProgressTrackerTest_SingleClient, test_garbage_collect)
   // Allow 3 retries of theoretical timing problems
   retryUpTo(3, [&]() {
     double const beforeTrack = now();
-    testee.track(syncerId, clientId, 1, ttl);
+    testee.track(syncerId, clientId, "", 1, ttl);
     double const afterTrack = now();
     if (afterTrack - beforeTrack >= ttl) {
       // retry, took too long for the test to work
@@ -163,7 +163,7 @@ TEST_P(ReplicationClientsProgressTrackerTest_SingleClient, test_extend_ttl) {
     // track client
     double const beforeTrack = now();
     EXPECT_LT(0.0, beforeTrack);
-    testee.track(syncerId, clientId, 1, ttl);
+    testee.track(syncerId, clientId, "", 1, ttl);
     double const afterTrack = now();
     EXPECT_LE(beforeTrack, afterTrack);
     if (afterTrack - beforeTrack >= ttl) {
@@ -176,7 +176,7 @@ TEST_P(ReplicationClientsProgressTrackerTest_SingleClient, test_extend_ttl) {
     // able to extend the time:
     EXPECT_EQ(1, testee.lowestServedValue());
     double const beforeExtend = now();
-    testee.extend(syncerId, clientId, ttl);
+    testee.extend(syncerId, clientId, "", ttl);
     double const afterExtend = now();
     EXPECT_LE(beforeExtend, afterExtend);
     if (afterExtend - beforeExtend >= ttl) {
@@ -208,7 +208,7 @@ TEST_P(ReplicationClientsProgressTrackerTest_SingleClient, test_track_ttl) {
     // track client
     double const beforeTrack = now();
     EXPECT_LT(0.0, beforeTrack);
-    testee.track(syncerId, clientId, 1, ttl);
+    testee.track(syncerId, clientId, "", 1, ttl);
     double const afterTrack = now();
     EXPECT_LE(beforeTrack, afterTrack);
     if (afterTrack - beforeTrack >= ttl) {
@@ -221,7 +221,7 @@ TEST_P(ReplicationClientsProgressTrackerTest_SingleClient, test_track_ttl) {
     // able to extend the time by calling track() again:
     EXPECT_EQ(1, testee.lowestServedValue());
     double const beforeReTrack = now();
-    testee.track(syncerId, clientId, 1, ttl);
+    testee.track(syncerId, clientId, "", 1, ttl);
     double const afterReTrack = now();
     EXPECT_LE(beforeReTrack, afterReTrack);
     if (afterReTrack - beforeReTrack >= ttl) {
@@ -245,9 +245,9 @@ TEST_P(ReplicationClientsProgressTrackerTest_SingleClient, test_track_ttl) {
 
 INSTANTIATE_TEST_CASE_P(ReplicationClientsProgressTrackerTest_SingleClient,
                         ReplicationClientsProgressTrackerTest_SingleClient,
-                        testing::Values(std::make_pair(SyncerId{0}, std::string{"23"}),
-                                        std::make_pair(SyncerId{42}, std::string{""}),
-                                        std::make_pair(SyncerId{42}, std::string{"23"})));
+                        testing::Values(std::make_pair(SyncerId{0}, 23),
+                                        std::make_pair(SyncerId{42}, 0),
+                                        std::make_pair(SyncerId{42}, 23)));
 
 class ReplicationClientsProgressTrackerTest_MultiClient : public ::testing::Test {
  protected:
@@ -257,20 +257,19 @@ class ReplicationClientsProgressTrackerTest_MultiClient : public ::testing::Test
 
   struct Client {
     SyncerId const syncerId;
-    std::string const clientId;
+    TRI_server_id_t const clientId;
     bool operator==(Client const& other) const noexcept {
       return syncerId == other.syncerId && clientId == other.clientId;
     }
   };
-  Client const clientA{SyncerId{42}, ""};
-  Client const clientB{SyncerId{0}, "23"};
+  Client const clientA{SyncerId{42}, 0};
+  Client const clientB{SyncerId{0}, 23};
   // should not clash with clientB, as the syncerId should have preference!
-  Client const clientC{SyncerId{69}, "23"};
+  Client const clientC{SyncerId{69}, 23};
   // all clientD*s should behave the same, as clientId should be ignored iff syncerId != 0.
-  Client const clientD1{SyncerId{23}, ""};
-  Client const clientD2{SyncerId{23}, "foo"};
-  // also, `none` should not be special as long as syncerId is set
-  Client const clientD3{SyncerId{23}, "none"};
+  Client const clientD1{SyncerId{23}, 0};
+  Client const clientD2{SyncerId{23}, 27};
+  Client const clientD3{SyncerId{23}, 3};
 
   uint64_t tickOfA{UINT64_MAX}, tickOfB{UINT64_MAX}, tickOfC{UINT64_MAX},
       tickOfD{UINT64_MAX};
@@ -280,19 +279,19 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient, intermittent_tracks_wi
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
   // Track first client, A
   // State {A: 100}
-  testee.track(clientA.syncerId, clientA.clientId, tickOfA = 100, ttl);
+  testee.track(clientA.syncerId, clientA.clientId, "", tickOfA = 100, ttl);
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
   // Add B with a lower tick
   // State {A: 100, B: 99}
-  testee.track(clientB.syncerId, clientB.clientId, tickOfB = 99, ttl);
+  testee.track(clientB.syncerId, clientB.clientId, "", tickOfB = 99, ttl);
   ASSERT_EQ(tickOfB, testee.lowestServedValue());
   // Add C with a lower tick
   // State {A: 100, B: 99, C: 98}
-  testee.track(clientC.syncerId, clientC.clientId, tickOfC = 98, ttl);
+  testee.track(clientC.syncerId, clientC.clientId, "", tickOfC = 98, ttl);
   ASSERT_EQ(tickOfC, testee.lowestServedValue());
   // Reset B, make sure the lowest tick given by C doesn't change
   // State {A: 100, B: 99, C: 98}
-  testee.track(clientB.syncerId, clientB.clientId, tickOfB = 99, ttl);
+  testee.track(clientB.syncerId, clientB.clientId, "", tickOfB = 99, ttl);
   ASSERT_EQ(tickOfC, testee.lowestServedValue());
 
   // a and b should always refer to the same client.
@@ -300,11 +299,11 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient, intermittent_tracks_wi
     for (auto const& b : {clientD1, clientD2, clientD3}) {
       // Track D with a low tick
       // State {A: 100, B: 99, C: 98, D: 90}
-      testee.track(a.syncerId, a.clientId, tickOfD = 90, ttl);
+      testee.track(a.syncerId, a.clientId, "", tickOfD = 90, ttl);
       ASSERT_EQ(tickOfD, testee.lowestServedValue());
       // Track D with a higher tick
       // State {A: 100, B: 99, C: 98, D: 95}
-      testee.track(b.syncerId, b.clientId, tickOfD = 95, ttl);
+      testee.track(b.syncerId, b.clientId, "", tickOfD = 95, ttl);
       ASSERT_EQ(tickOfD, testee.lowestServedValue());
     }
   }
@@ -312,28 +311,27 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient, intermittent_tracks_wi
 
 TEST_F(ReplicationClientsProgressTrackerTest_MultiClient,
        intermittent_untracks_with_mixed_id_types) {
-
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
   // Init,
   // State {A: 100, B: 110, C: 120}
-  testee.track(clientA.syncerId, clientA.clientId, tickOfA = 100, ttl);
-  testee.track(clientB.syncerId, clientB.clientId, tickOfB = 110, ttl);
-  testee.track(clientC.syncerId, clientC.clientId, tickOfC = 120, ttl);
+  testee.track(clientA.syncerId, clientA.clientId, "", tickOfA = 100, ttl);
+  testee.track(clientB.syncerId, clientB.clientId, "", tickOfB = 110, ttl);
+  testee.track(clientC.syncerId, clientC.clientId, "", tickOfC = 120, ttl);
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
   // Untracking untracked clients should do nothing
-  testee.untrack(clientD1.syncerId, clientD1.clientId);
+  testee.untrack(clientD1.syncerId, clientD1.clientId, "");
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
-  testee.untrack(clientD2.syncerId, clientD2.clientId);
+  testee.untrack(clientD2.syncerId, clientD2.clientId, "");
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
-  testee.untrack(clientD3.syncerId, clientD3.clientId);
+  testee.untrack(clientD3.syncerId, clientD3.clientId, "");
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
   // Untrack B, should not change the lowest tick
   // State {A: 100, C: 120}
-  testee.untrack(clientB.syncerId, clientB.clientId);
+  testee.untrack(clientB.syncerId, clientB.clientId, "");
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
   // Untrack A
   // State {C: 120}
-  testee.untrack(clientA.syncerId, clientA.clientId);
+  testee.untrack(clientA.syncerId, clientA.clientId, "");
   ASSERT_EQ(tickOfC, testee.lowestServedValue());
 
   // a and b should always refer to the same client.
@@ -341,22 +339,21 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient,
     for (auto const& b : {clientD1, clientD2, clientD3}) {
       // Track D
       // State {C: 120, D: 90}
-      testee.track(a.syncerId, a.clientId, tickOfD = 90, ttl);
+      testee.track(a.syncerId, a.clientId, "", tickOfD = 90, ttl);
       ASSERT_EQ(tickOfD, testee.lowestServedValue());
       // Untrack D
       // State {C: 120}
-      testee.untrack(b.syncerId, b.clientId);
+      testee.untrack(b.syncerId, b.clientId, "");
       ASSERT_EQ(tickOfC, testee.lowestServedValue());
     }
   }
   // State {}
-  testee.untrack(clientC.syncerId, clientC.clientId);
+  testee.untrack(clientC.syncerId, clientC.clientId, "");
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
 }
 
 TEST_F(ReplicationClientsProgressTrackerTest_MultiClient, test_ignored_clients) {
-  Client ignoredClient1{SyncerId{0}, ""};
-  Client ignoredClient2{SyncerId{0}, "none"};
+  Client ignoredClient{SyncerId{0}, 0};
 
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
 
@@ -364,45 +361,33 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient, test_ignored_clients) 
 
   // tracking, extending, or untracking ignored clients should do nothing:
   // State {} for all following statements:
-  testee.track(ignoredClient1.syncerId, ignoredClient1.clientId, 1, ttl);
+  testee.track(ignoredClient.syncerId, ignoredClient.clientId, "", 1, ttl);
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
-  testee.track(ignoredClient2.syncerId, ignoredClient2.clientId, 1, ttl);
+  testee.extend(ignoredClient.syncerId, ignoredClient.clientId, "", ttl);
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
-  testee.extend(ignoredClient1.syncerId, ignoredClient1.clientId, ttl);
-  ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
-  testee.extend(ignoredClient2.syncerId, ignoredClient2.clientId, ttl);
-  ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
-  testee.untrack(ignoredClient1.syncerId, ignoredClient1.clientId);
-  ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
-  testee.untrack(ignoredClient2.syncerId, ignoredClient2.clientId);
+  testee.untrack(ignoredClient.syncerId, ignoredClient.clientId, "");
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
 
   // State {A: 100}
-  testee.track(clientA.syncerId, clientA.clientId, tickOfA = 100, ttl);
+  testee.track(clientA.syncerId, clientA.clientId, "", tickOfA = 100, ttl);
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
   // State {A: 100, D: 101}
-  testee.track(clientD3.syncerId, clientD3.clientId, tickOfD = 101, ttl);
+  testee.track(clientD3.syncerId, clientD3.clientId, "", tickOfD = 101, ttl);
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
 
   // Again, tracking ignored clients should do nothing:
   // State {A: 100, D: 101}
-  testee.track(ignoredClient1.syncerId, ignoredClient1.clientId, 1, ttl);
-  ASSERT_EQ(tickOfA, testee.lowestServedValue());
-  testee.track(ignoredClient2.syncerId, ignoredClient2.clientId, 1, ttl);
+  testee.track(ignoredClient.syncerId, ignoredClient.clientId, "", 1, ttl);
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
 
   // Untracking ignored clients should do nothing:
   // State {A: 100, D: 101}
-  testee.untrack(ignoredClient1.syncerId, ignoredClient1.clientId);
-  ASSERT_EQ(tickOfA, testee.lowestServedValue());
-  testee.untrack(ignoredClient2.syncerId, ignoredClient2.clientId);
+  testee.untrack(ignoredClient.syncerId, ignoredClient.clientId, "");
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
 
   // Extending ignored clients should do nothing:
   // State {A: 100, D: 101}
-  testee.extend(ignoredClient1.syncerId, ignoredClient1.clientId, 0.1);
-  ASSERT_EQ(tickOfA, testee.lowestServedValue());
-  testee.extend(ignoredClient2.syncerId, ignoredClient2.clientId, 0.1);
+  testee.extend(ignoredClient.syncerId, ignoredClient.clientId, "", 0.1);
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
   double const afterExtend = now();
   double const collectAt = std::nextafter(afterExtend, infty);
@@ -419,7 +404,7 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient, test_ignored_clients) 
 
   // Now untrack A, to make sure D is still there and wasn't removed in between:
   // State {D: 101}
-  testee.untrack(clientA.syncerId, clientA.clientId);
+  testee.untrack(clientA.syncerId, clientA.clientId, "");
   ASSERT_EQ(tickOfD, testee.lowestServedValue());
 }
 

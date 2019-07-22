@@ -646,7 +646,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
 
     // sleep for a while
     std::this_thread::yield();
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   TRI_ASSERT(writeLocker.isLocked());
@@ -1394,7 +1394,7 @@ arangodb::Result TRI_vocbase_t::renameCollection(TRI_voc_cid_t cid,
 
     // sleep for a while
     std::this_thread::yield();
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   TRI_ASSERT(writeLocker.isLocked());
@@ -1644,7 +1644,7 @@ arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem
 
     // sleep for a while
     std::this_thread::yield();
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   TRI_ASSERT(writeLocker.isLocked());
@@ -1680,19 +1680,18 @@ arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem
 
 /// @brief create a vocbase object
 TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
-                             arangodb::velocypack::Slice args)
-    : _id(id),
-      _name(args.get("name").copyString()),
-      _type(type),
-      _refCount(0),
-      _state(TRI_vocbase_t::State::NORMAL),
-      _isOwnAppsDirectory(true),
-      _replicationFactor(1) ,
-      _minReplicationFactor(1) ,
-      _sharding(),
-      _deadlockDetector(false),
-      _userStructures(nullptr)
-    {
+                           arangodb::velocypack::Slice args)
+  : _id(id),
+    _name(args.get("name").copyString()),
+    _type(type),
+    _refCount(0),
+    _state(TRI_vocbase_t::State::NORMAL),
+    _isOwnAppsDirectory(true),
+    _replicationFactor(1) ,
+    _minReplicationFactor(1) ,
+    _sharding(),
+    _deadlockDetector(false),
+    _userStructures(nullptr) {
 
   TRI_ASSERT(args.isObject());
 
@@ -2154,20 +2153,20 @@ VocbaseOptions arangodb::getVocbaseOptions(VPackSlice const& options) {
   }
 
   {
-   VPackSlice minReplicationSlice = options.get(StaticStrings::MinReplicationFactor);
-   bool isNumber = (minReplicationSlice.isNumber() && minReplicationSlice.getUInt() > 0 );
-   if(!isNumber){
-     if(cluster) {
-       minReplicationFactor = cluster->minReplicationFactor();
-     } else {
-       LOG_TOPIC("eeeed", ERR, Logger::CLUSTER) << "Can not access ClusterFeature to determine database minReplicationFactor";
-     }
-   } else if (isNumber) {
-     minReplicationFactor = static_cast<decltype(replicationFactor)>(minReplicationSlice.getUInt());
-   }
+    VPackSlice minReplicationSlice = options.get(StaticStrings::MinReplicationFactor);
+    bool isNumber = (minReplicationSlice.isNumber() && minReplicationSlice.getUInt() > 0 );
+    if(!isNumber){
+      if(cluster) {
+        minReplicationFactor = cluster->minReplicationFactor();
+      } else {
+        LOG_TOPIC("eeeed", ERR, Logger::CLUSTER) << "Can not access ClusterFeature to determine database minReplicationFactor";
+      }
+    } else if (isNumber) {
+      minReplicationFactor = static_cast<decltype(replicationFactor)>(minReplicationSlice.getUInt());
+    }
   }
 
-  return {sharding, replicationFactor, minReplicationFactor};
+  return VocbaseOptions{sharding, replicationFactor, minReplicationFactor};
 }
 
 void arangodb::addVocbaseOptionsToOpenObject(VPackBuilder& builder, std::string const& sharding, std::uint32_t replicationFactor, std::uint32_t minReplicationFactor) {

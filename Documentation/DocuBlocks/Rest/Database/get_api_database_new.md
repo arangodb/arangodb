@@ -8,7 +8,7 @@
 Has to contain a valid database name.
 
 @RESTBODYPARAM{options,object,optional,get_api_database_new_USERS}
-Optional Object which can contain the following attributes:
+Optional object which can contain the following attributes:
 
 @RESTSTRUCT{sharing,get_api_database_new_USERS,string,optional,string}
 A flag indicating the sharding method to use. Valid values are: 
