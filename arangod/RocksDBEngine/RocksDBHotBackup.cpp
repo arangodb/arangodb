@@ -1074,6 +1074,11 @@ bool RocksDBHotBackupRestore::createRestoringDirectory(std::string& restoreDirOu
     //  copy contents of selected hotbackup to new "restoring" directory
     //  (both directories must exists)
     if (retFlag) {
+      if (ServerState::instance()->isSingleServer()) {
+        // touch the RESTORE file
+        std::string restoreFile = restoreDirOutput + TRI_DIR_SEPARATOR_CHAR + "RESTORE";
+        basics::FileUtils::spit(restoreFile, std::string("RESTORE"), true);
+      }
       std::function<basics::FileUtils::TRI_copy_recursive_e(std::string const&)>  filter = copyVersusLink;
       retFlag = basics::FileUtils::copyRecursive(fullDirectoryRestore, restoreDirOutput,
                                                  filter, errors);
