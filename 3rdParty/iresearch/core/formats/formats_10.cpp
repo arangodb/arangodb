@@ -5285,7 +5285,7 @@ class format10 : public irs::version10::format {
 
   format10() NOEXCEPT : format10(format10::type()) { }
 
-  virtual index_meta_writer::ptr get_index_meta_writer() const override final;
+  virtual index_meta_writer::ptr get_index_meta_writer() const override;
   virtual index_meta_reader::ptr get_index_meta_reader() const override final;
 
   virtual segment_meta_writer::ptr get_segment_meta_writer() const override;
@@ -5312,7 +5312,7 @@ class format10 : public irs::version10::format {
   }
 }; // format10
 
-index_meta_writer::ptr format10::get_index_meta_writer() const  {
+index_meta_writer::ptr format10::get_index_meta_writer() const {
   return irs::index_meta_writer::make<::index_meta_writer>(
     int32_t(::index_meta_writer::FORMAT_MIN)
   );
@@ -5414,12 +5414,20 @@ class format11 final : public format10 {
 
   format11() NOEXCEPT : format10(format11::type()) { }
 
+  virtual index_meta_writer::ptr get_index_meta_writer() const override final;
+
   virtual field_writer::ptr get_field_writer(bool volatile_state) const override final;
 
   virtual segment_meta_writer::ptr get_segment_meta_writer() const override final;
 
   virtual column_meta_writer::ptr get_column_meta_writer() const override final;
-}; // format10
+}; // format11
+
+index_meta_writer::ptr format11::get_index_meta_writer() const {
+  return irs::index_meta_writer::make<::index_meta_writer>(
+    int32_t(::index_meta_writer::FORMAT_MAX)
+  );
+}
 
 field_writer::ptr format11::get_field_writer(bool volatile_state) const {
   return irs::field_writer::make<burst_trie::field_writer>(

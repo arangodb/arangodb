@@ -59,6 +59,7 @@ struct ChunkHeader {
   // Return message ID of this chunk (in host byte order)
   inline uint64_t messageID() const { return _messageID; }
   // Return total message length (in host byte order)
+  // for VST1.0 only known in first chunk, 0 otherwise
   inline uint64_t messageLength() const { return _messageLength; }
   // isFirst returns true when the "first chunk" flag has been set.
   inline bool isFirst() const { return ((_chunkX & 0x01) == 1); }
@@ -117,20 +118,20 @@ void prepareForNetwork(VSTVersion vstVersion,
 /////////////////////////////////////////////////////////////////////////////////////
 
 namespace parser {
-
-// isChunkComplete returns the length of the chunk that starts at the given
-// begin
-// if the entire chunk is available.
-// Otherwise 0 is returned.
-std::size_t isChunkComplete(uint8_t const* const begin,
-                            std::size_t const length);
-
-// readChunkHeaderVST1_0 reads a chunk header in VST1.0 format.
-Chunk readChunkHeaderVST1_0(uint8_t const*);
-
-// readChunkHeaderVST1_1 reads a chunk header in VST1.1 format.
-Chunk readChunkHeaderVST1_1(uint8_t const*);
   
+enum class ChunkState : char{
+  Invalid = 0,
+  Incomplete = 1,
+  Complete = 2,
+};
+
+/// @brief readChunkVST1_0 reads a chunk header in VST1.0 format.
+ChunkState readChunkVST1_0(Chunk& chunk, uint8_t const*, std::size_t avail);
+
+/// @brief readChunkVST1_1 reads a chunk header in VST1.1 format.
+/// @return true if chunk is complete
+ChunkState readChunkVST1_1(Chunk& chunk, uint8_t const*, std::size_t avail);
+
 /// @brief verifies header input and checks correct length
 /// @return message type or MessageType::Undefined on an error
 MessageType validateAndExtractMessageType(uint8_t const* const vpStart,

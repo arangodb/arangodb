@@ -309,7 +309,7 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
     e.nameStart = ::findAttrName(objBase + e.offset, e.nameSize);
     ::sortEntries->push_back(e);
   }
-  VELOCYPACK_ASSERT(::sortEntries.size() == n);
+  VELOCYPACK_ASSERT(::sortEntries->size() == n);
   std::sort(::sortEntries->begin(), ::sortEntries->end(), [](SortEntry const& a, 
                                                              SortEntry const& b) 
 #ifdef VELOCYPACK_64BIT

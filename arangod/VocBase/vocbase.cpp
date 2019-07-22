@@ -645,7 +645,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
 
     // sleep for a while
     std::this_thread::yield();
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   TRI_ASSERT(writeLocker.isLocked());
@@ -1393,7 +1393,7 @@ arangodb::Result TRI_vocbase_t::renameCollection(TRI_voc_cid_t cid,
 
     // sleep for a while
     std::this_thread::yield();
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   TRI_ASSERT(writeLocker.isLocked());
@@ -1643,7 +1643,7 @@ arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem
 
     // sleep for a while
     std::this_thread::yield();
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   TRI_ASSERT(writeLocker.isLocked());
