@@ -246,7 +246,6 @@ void HttpCommTask<T>::start() {
   });
 }
 
-
 /// @brief send error response including response body
 template <SocketType T>
 void HttpCommTask<T>::addSimpleResponse(rest::ResponseCode code,
@@ -283,6 +282,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     size_t parsedBytes = 0;
     for (auto const& buffer : this->_protocol->buffer.data()) {
       const char* data = reinterpret_cast<const char*>(buffer.data());
+            
       err = llhttp_execute(&_parser, data, buffer.size());
       if (err != HPE_OK) {
         parsedBytes += llhttp_get_error_pos(&_parser) - data;
@@ -721,6 +721,27 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     header->append(TRI_CHAR_LENGTH_PAIR("Server: ArangoDB\r\n"));
   }
   
+  // turn on the keepAlive timer
+  double secs = GeneralServerFeature::keepAliveTimeout();
+  if (_shouldKeepAlive && secs > 0) {
+    int64_t millis = static_cast<int64_t>(secs * 1000);
+    this->_protocol->timer.expires_after(std::chrono::milliseconds(millis));
+    this->_protocol->timer.async_wait([this](asio_ns::error_code ec) {
+      if (!ec) {
+        LOG_TOPIC("5c1e0", DEBUG, Logger::REQUESTS)
+        << "keep alive timeout, closing stream!";
+        this->close();
+      }
+    });
+    
+    header->append(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
+    //    header->append(TRI_CHAR_LENGTH_PAIR("Keep-Alive: timeout="));
+    //    header->append(std::to_string(static_cast<int64_t>(secs)));
+    //    header->append("\r\n", 2);
+  } else {
+    header->append(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
+  }
+  
   // add "Content-Type" header
   switch (response.contentType()) {
     case ContentType::UNSET:
@@ -753,32 +774,12 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     header->append(it);
     header->append("\r\n", 2);
   }
-
-  header->append(TRI_CHAR_LENGTH_PAIR("Content-Length: "));
-  header->append(std::to_string(response.bodySize()));
-  header->append("\r\n", 2);
   
-  // turn on the keepAlive timer
-  double secs = GeneralServerFeature::keepAliveTimeout();
-  if (_shouldKeepAlive && secs > 0) {
-    int64_t millis = static_cast<int64_t>(secs * 1000);
-    this->_protocol->timer.expires_after(std::chrono::milliseconds(millis));
-    this->_protocol->timer.async_wait([this](asio_ns::error_code ec) {
-      if (!ec) {
-        LOG_TOPIC("5c1e0", DEBUG, Logger::REQUESTS)
-        << "keep alive timeout, closing stream!";
-        this->close();
-      }
-    });
-    
-    header->append(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
-    header->append(TRI_CHAR_LENGTH_PAIR("Keep-Alive: timeout="));
-    header->append(std::to_string(static_cast<int64_t>(secs)));
-    header->append("\r\n\r\n", 4);
-  } else {
-    header->append(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n\r\n"));
-  }
-
+  size_t len = response.bodySize();
+  header->append(TRI_CHAR_LENGTH_PAIR("Content-Length: "));
+  header->append(std::to_string(len));
+  header->append("\r\n\r\n", 4);
+  
   std::unique_ptr<basics::StringBuffer> body = response.stealBody();
   // append write buffer and statistics
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
@@ -793,6 +794,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   buffers[0] = asio_ns::buffer(header->data(), header->size());
   if (HTTP_HEAD != _parser.method) {
     buffers[1] = asio_ns::buffer(body->data(), body->size());
+    TRI_ASSERT(len == body->size());
   }
   
   // FIXME measure performance w/o sync write
@@ -810,6 +812,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
       }
       thisPtr->close();
     } else {  // ec == HPE_PAUSED
+
       llhttp_resume(&thisPtr->_parser);
       thisPtr->asyncReadSome();
     }
