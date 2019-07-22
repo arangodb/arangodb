@@ -434,7 +434,7 @@
           try {
             if (Number.parseInt(minReplicationFactor) > Number.parseInt(replicationFactor)) {
               // validation here, as our Joi integration misses some core features
-              arangoHelper.arangoError("New Collection", "Minimal replication factor is not allowed to be greater then replication factor");
+              arangoHelper.arangoError("New Collection", "Minimal replication factor is not allowed to be greater than replication factor");
               abort = true;
             }
           } catch (ignore) {
