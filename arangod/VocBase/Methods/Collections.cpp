@@ -273,14 +273,13 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     helper.add(arangodb::StaticStrings::DataSourceName,
                arangodb::velocypack::Value(info.name));
 
-    //auto shardingSlice = info.properties.get(StaticStrings::Sharding);
+
     auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
     if(replicationFactorSlice.isNone()) {
       auto factor = vocbase.replicationFactor();
       if(factor > 0 && vocbase.IsSystemName(info.name)) {
         auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>("Cluster");
-        // system collections should at least be replicated twice
-        factor = std::max(vocbase.replicationFactor(), cl ? cl->systemReplicationFactor() : 2u);
+        factor = std::max(vocbase.replicationFactor(), cl->systemReplicationFactor());
       }
       helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
     }
