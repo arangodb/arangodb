@@ -67,29 +67,28 @@ class RebootId {
 
   bool initialized() const noexcept { return value() != 0; }
 
+  bool operator==(RebootId other) const noexcept {
+    return value() == other.value();
+  }
+  bool operator!=(RebootId other) const noexcept {
+    return value() != other.value();
+  }
+  bool operator<(RebootId other) const noexcept {
+    return value() < other.value();
+  }
+  bool operator>(RebootId other) const noexcept {
+    return value() > other.value();
+  }
+  bool operator<=(RebootId other) const noexcept {
+    return value() <= other.value();
+  }
+  bool operator>=(RebootId other) const noexcept {
+    return value() >= other.value();
+  }
  private:
   uint64_t _value;
 };
 
-
-bool operator==(RebootId left, RebootId right) noexcept {
-  return left.value() == right.value();
-}
-bool operator!=(RebootId left, RebootId right) noexcept {
-  return left.value() != right.value();
-}
-bool operator<(RebootId left, RebootId right) noexcept {
-  return left.value() < right.value();
-}
-bool operator>(RebootId left, RebootId right) noexcept {
-  return left.value() > right.value();
-}
-bool operator<=(RebootId left, RebootId right) noexcept {
-  return left.value() <= right.value();
-}
-bool operator>=(RebootId left, RebootId right) noexcept {
-  return left.value() >= right.value();
-}
 
 
 std::ostream& operator<<(std::ostream& ostream, RebootId rebootId);
