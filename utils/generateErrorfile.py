@@ -65,6 +65,7 @@ def genCFile(errors, filename):
 
   impl = prologue\
          + "#include \"Basics/Common.h\"\n"\
+         + "#include \"Basics/error.h\"\n"\
          + "#include \"Basics/voc-errors.h\"\n"\
          + "\n"\
          + "/// helper macro to define an error string\n"\
