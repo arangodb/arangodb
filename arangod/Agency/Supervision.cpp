@@ -684,8 +684,8 @@ bool Supervision::updateSnapshot() {
   }
 
   _agent->executeLockedRead([&]() {
-    if (_agent->readDB().has(_agencyPrefix)) {
-      _snapshot = _agent->readDB().get(_agencyPrefix);
+    if (_agent->spearhead().has(_agencyPrefix)) {
+      _snapshot = _agent->spearhead().get(_agencyPrefix);
     }
     if (_agent->transient().has(_agencyPrefix)) {
       _transient = _agent->transient().get(_agencyPrefix);
@@ -1211,7 +1211,7 @@ void Supervision::workJobs() {
   // per second. Therefore, we have - for now - chosen to limit the number of
   // jobs actually worked on to 1000 in ToDo and 1000 in Pending. However,
   // since some jobs are just waiting, we cannot work on the same 1000
-  // jobs in each round. This is where the randomization comes in. We work 
+  // jobs in each round. This is where the randomization comes in. We work
   // on up to 1000 *random* jobs. This will eventually cover everything with
   // very high probability. Note that the snapshot does not change, so
   // `todos.size()` is constant for the loop, even though we do agency
@@ -1220,42 +1220,46 @@ void Supervision::workJobs() {
   bool selectRandom = todos.size() > maximalJobsPerRound;
 
   LOG_TOPIC("00567", TRACE, Logger::SUPERVISION) << "Begin ToDos of type Failed*";
+  bool doneFailedJob = false;
   while (it != todos.end()) {
-    if (selectRandom && RandomGenerator::interval(static_cast<uint64_t>(todos.size())) > maximalJobsPerRound) {
-      LOG_TOPIC("675fe", TRACE, Logger::SUPERVISION) << "Skipped ToDo Job";
-      ++it;
-      continue;
-    }
- 
     auto const& jobNode = *(it->second);
     if (jobNode.hasAsString("type").first.compare(0, FAILED.length(), FAILED) == 0) {
+      if (selectRandom && RandomGenerator::interval(static_cast<uint64_t>(todos.size())) > maximalJobsPerRound) {
+        LOG_TOPIC("675fe", TRACE, Logger::SUPERVISION) << "Skipped ToDo Job";
+        ++it;
+        continue;
+      }
+
       LOG_TOPIC("87812", TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
       JobContext(TODO, jobNode.hasAsString("jobId").first, _snapshot, _agent)
         .run(_haveAborts);
       LOG_TOPIC("98115", TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
       it = todos.erase(it);
+      doneFailedJob = true;
     } else {
       ++it;
     }
   }
 
   // Do not start other jobs, if above resilience jobs aborted stuff
-  if (!_haveAborts) {
+  if (!_haveAborts && !doneFailedJob) {
     LOG_TOPIC("00654", TRACE, Logger::SUPERVISION) << "Begin ToDos";
     for (auto const& todoEnt : todos) {
       if (selectRandom && RandomGenerator::interval(static_cast<uint64_t>(todos.size())) > maximalJobsPerRound) {
         LOG_TOPIC("77889", TRACE, Logger::SUPERVISION) << "Skipped ToDo Job";
         continue;
       }
-
-      auto const& jobNode = *(todoEnt.second);
-      LOG_TOPIC("aa667", TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
-      JobContext(TODO, jobNode.hasAsString("jobId").first, _snapshot, _agent)
-        .run(dummy);
-      LOG_TOPIC("65bcd", TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
+      auto const& jobNode = *todoEnt.second;
+      if (jobNode.hasAsString("type").first.compare(0, FAILED.length(), FAILED) != 0) {
+        LOG_TOPIC("aa667", TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
+        JobContext(TODO, jobNode.hasAsString("jobId").first, _snapshot, _agent)
+          .run(dummy);
+        LOG_TOPIC("65bcd", TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
+      }
     }
   }
-
+  LOG_TOPIC("a55ce", DEBUG, Logger::SUPERVISION) << "Updating snapshot after ToDo";
+  updateSnapshot();
 
   LOG_TOPIC("08641", TRACE, Logger::SUPERVISION) << "Begin Pendings";
   auto const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
@@ -1314,7 +1318,7 @@ void Supervision::readyOrphanedIndexCreations() {
                           currentDBs(colPath + shname + "/indexes").slice();
                       for (auto const& curIndex : VPackArrayIterator(curIndexes)) {
                         auto const& curId = curIndex.get("id");
-                        if (planId == curId) {
+                        if (basics::VelocyPackHelper::equal(planId, curId, false)) {
                           ++nIndexes;
                         }
                       }

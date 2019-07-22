@@ -11,6 +11,9 @@ project(${IResearch_TARGET_NAME})
 # attach additional cmake modules
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
+# load cmake utils
+include(Utils)
+
 if (NOT MSVC)
   # put GCC version into GCC_VERSION variable
   execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
@@ -24,6 +27,7 @@ option(USE_TESTS "Build tests" OFF)
 option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
+add_option_gprof(FALSE)
 
 if (USE_VALGRIND)
   add_definitions(-DIRESEARCH_VALGRIND)
@@ -38,6 +42,9 @@ if (MSVC)
   if (MSVC_BUILD_THREADS)
     set(CMAKE_C_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_CXX_FLAGS}")
+  else ()
+    set(CMAKE_C_FLAGS "/MP ${CMAKE_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}")
   endif()
 endif()
 
@@ -183,7 +190,7 @@ if (USE_TESTS)
     include(CodeCoverage)
 
     # exclude directories from coverage report
-    SET(LCOV_EXCLUDE "external/*;boost/*")
+    SET(LCOV_EXCLUDE "external/*;boost/*;${LCOV_EXCLUDE}")
 
     setup_target_for_coverage(
       ${IResearch_TARGET_NAME}-coverage 
@@ -192,12 +199,12 @@ if (USE_TESTS)
       "--ires_output"
     )
     add_dependencies(${IResearch_TARGET_NAME}-coverage
-      ${IResearchTests_TARGET_NAME}
+      ${IResearchTests_TARGET_NAME}-static
     )
 
     if (PYTHON_EXECUTABLE AND GCOVR_PATH)   
       # exclude directories from coverage report
-      SET(GCOVR_EXTRA_ARGS "-e;${PROJECT_SOURCE_DIR}/external/")
+      SET(GCOVR_EXTRA_ARGS "-e;${PROJECT_SOURCE_DIR}/external/;${GCOVR_EXTRA_ARGS}")
 
       setup_target_for_coverage_cobertura(
         ${IResearch_TARGET_NAME}-coverage-cobertura
@@ -206,7 +213,7 @@ if (USE_TESTS)
         "--ires_output"
       )
       add_dependencies(${IResearch_TARGET_NAME}-coverage-cobertura
-        ${IResearchTests_TARGET_NAME}
+        ${IResearchTests_TARGET_NAME}-static
       )
     endif()
   endif()

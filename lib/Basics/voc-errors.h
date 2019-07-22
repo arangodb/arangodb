@@ -437,11 +437,6 @@ constexpr int TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED                          
 /// Will be raised when an invalid collection type is used in a request.
 constexpr int TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID                          = 1218;
 
-/// 1219: ERROR_ARANGO_VALIDATION_FAILED
-/// "validator failed"
-/// Will be raised when the validation of an attribute of a structure failed.
-constexpr int TRI_ERROR_ARANGO_VALIDATION_FAILED                                = 1219;
-
 /// 1220: ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED
 /// "parsing attribute name definition failed"
 /// Will be raised when parsing an attribute name definition failed.
@@ -496,11 +491,6 @@ constexpr int TRI_ERROR_ARANGO_DATABASE_NAME_INVALID                            
 /// system database.
 constexpr int TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE                              = 1230;
 
-/// 1231: ERROR_ARANGO_ENDPOINT_NOT_FOUND
-/// "endpoint not found"
-/// Will be raised when there is an attempt to delete a non-existing endpoint.
-constexpr int TRI_ERROR_ARANGO_ENDPOINT_NOT_FOUND                               = 1231;
-
 /// 1232: ERROR_ARANGO_INVALID_KEY_GENERATOR
 /// "invalid key generator"
 /// Will be raised when an invalid key generator description is used.
@@ -511,13 +501,6 @@ constexpr int TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR                            
 /// will be raised when the _from or _to values of an edge are undefined or
 /// contain an invalid value.
 constexpr int TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE                           = 1233;
-
-/// 1234: ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING
-/// "index insertion warning - attribute missing in document"
-/// Will be raised when an attempt to insert a document into an index is caused
-/// by in the document not having one or more attributes which the index is
-/// built on.
-constexpr int TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING                 = 1234;
 
 /// 1235: ERROR_ARANGO_INDEX_CREATION_FAILED
 /// "index creation failed"
@@ -546,6 +529,11 @@ constexpr int TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED                            
 /// Will be raised when a document revision is corrupt or is missing where
 /// needed.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_REV_BAD                                 = 1239;
+
+/// 1240: ERROR_ARANGO_INCOMPLETE_READ
+/// "incomplete read"
+/// Will be raised by the storage engine when a read cannot be completed.
+constexpr int TRI_ERROR_ARANGO_INCOMPLETE_READ                                  = 1240;
 
 /// 1300: ERROR_ARANGO_DATAFILE_FULL
 /// "datafile full"
@@ -670,23 +658,6 @@ constexpr int TRI_ERROR_REPLICATION_WRONG_CHECKSUM                              
 /// Will be raised when a shard is not empty and the follower tries a shortcut
 constexpr int TRI_ERROR_REPLICATION_SHARD_NONEMPTY                              = 1417;
 
-/// 1450: ERROR_CLUSTER_NO_AGENCY
-/// "could not connect to agency"
-/// Will be raised when none of the agency servers can be connected to.
-constexpr int TRI_ERROR_CLUSTER_NO_AGENCY                                       = 1450;
-
-/// 1451: ERROR_CLUSTER_NO_COORDINATOR_HEADER
-/// "missing coordinator header"
-/// Will be raised when a DB server in a cluster receives a HTTP request
-/// without a coordinator header.
-constexpr int TRI_ERROR_CLUSTER_NO_COORDINATOR_HEADER                           = 1451;
-
-/// 1452: ERROR_CLUSTER_COULD_NOT_LOCK_PLAN
-/// "could not lock plan in agency"
-/// Will be raised when a coordinator in a cluster cannot lock the Plan
-/// hierarchy in the agency.
-constexpr int TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN                             = 1452;
-
 /// 1453: ERROR_CLUSTER_COLLECTION_ID_EXISTS
 /// "collection ID already exists"
 /// Will be raised when a coordinator in a cluster tries to create a collection
@@ -698,12 +669,6 @@ constexpr int TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS                            
 /// Will be raised when a coordinator in a cluster cannot create an entry for a
 /// new collection in the Plan hierarchy in the agency.
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN             = 1454;
-
-/// 1455: ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION
-/// "could not read version in current in agency"
-/// Will be raised when a coordinator in a cluster cannot read the Version
-/// entry in the Current hierarchy in the agency.
-constexpr int TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION                  = 1455;
 
 /// 1456: ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION
 /// "could not create collection"
@@ -821,19 +786,6 @@ constexpr int TRI_ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION                   
 /// produces an error.
 constexpr int TRI_ERROR_CLUSTER_AQL_COMMUNICATION                               = 1474;
 
-/// 1475: ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED
-/// "document not found or sharding attributes changed"
-/// Will be raised when a document with a given identifier or handle is
-/// unknown, or if the sharding attributes have been changed in a REPLACE
-/// operation in the cluster.
-constexpr int TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED = 1475;
-
-/// 1476: ERROR_CLUSTER_COULD_NOT_DETERMINE_ID
-/// "could not determine my ID from my local info"
-/// Will be raised if a cluster server at startup could not determine its own
-/// ID from the local info provided.
-constexpr int TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID                          = 1476;
-
 /// 1477: ERROR_CLUSTER_ONLY_ON_DBSERVER
 /// "this operation is only valid on a DBserver in a cluster"
 /// Will be raised if there is an attempt to run a DBserver-only operation on a
@@ -844,16 +796,6 @@ constexpr int TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER                                
 /// "A cluster backend which was required for the operation could not be reached"
 /// Will be raised if a required db server can't be reached.
 constexpr int TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE                             = 1478;
-
-/// 1479: ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT
-/// "An endpoint couldn't be found"
-/// An endpoint couldn't be found
-constexpr int TRI_ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT                       = 1479;
-
-/// 1480: ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID
-/// "Invalid agency structure"
-/// The structure in the agency is invalid
-constexpr int TRI_ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID                        = 1480;
 
 /// 1481: ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC
 /// "collection is out of sync"
@@ -930,19 +872,6 @@ constexpr int TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED                           
 /// Will be raised if after various retries an agency operation could not be
 /// performed successfully.
 constexpr int TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED                     = 1492;
-
-/// 1493: ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR
-/// "conflicting replication factor with distributeShardsLike parameter
-/// "assignment"
-/// Will be raised if intended replication factor does not match that of the
-/// prototype shard given in distributeShardsLike parameter.
-constexpr int TRI_ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR       = 1493;
-
-/// 1494: ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS
-/// "conflicting shard number with distributeShardsLike parameter assignment"
-/// Will be raised if intended number of shards does not match that of the
-/// prototype shard given in distributeShardsLike parameter.
-constexpr int TRI_ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS         = 1494;
 
 /// 1495: ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING
 /// "leadership challenge is ongoing"
@@ -1196,12 +1125,6 @@ constexpr int TRI_ERROR_QUERY_BAD_JSON_PLAN                                     
 /// Will be raised when an Id of a query is not found by the HTTP API.
 constexpr int TRI_ERROR_QUERY_NOT_FOUND                                         = 1591;
 
-/// 1592: ERROR_QUERY_IN_USE
-/// "query with this ID is in use"
-/// Will be raised when an Id of a query is found by the HTTP API but the query
-/// is in use.
-constexpr int TRI_ERROR_QUERY_IN_USE                                            = 1592;
-
 /// 1593: ERROR_QUERY_USER_ASSERT
 /// "%s"
 /// Will be raised if and user provided expression fails to evalutate to true
@@ -1261,11 +1184,6 @@ constexpr int TRI_ERROR_TRANSACTION_NOT_FOUND                                   
 /// Will be raised when an invalid user name is used.
 constexpr int TRI_ERROR_USER_INVALID_NAME                                       = 1700;
 
-/// 1701: ERROR_USER_INVALID_PASSWORD
-/// "invalid password"
-/// Will be raised when an invalid password is used.
-constexpr int TRI_ERROR_USER_INVALID_PASSWORD                                   = 1701;
-
 /// 1702: ERROR_USER_DUPLICATE
 /// "duplicate user"
 /// Will be raised when a user name already exists.
@@ -1280,16 +1198,6 @@ constexpr int TRI_ERROR_USER_NOT_FOUND                                          
 /// "user is external"
 /// Will be raised when the user is authenicated by an external server.
 constexpr int TRI_ERROR_USER_EXTERNAL                                           = 1705;
-
-/// 1750: ERROR_SERVICE_INVALID_NAME
-/// "invalid service name"
-/// Will be raised when an invalid service name is specified.
-constexpr int TRI_ERROR_SERVICE_INVALID_NAME                                    = 1750;
-
-/// 1751: ERROR_SERVICE_INVALID_MOUNT
-/// "invalid mount"
-/// Will be raised when an invalid mount is specified.
-constexpr int TRI_ERROR_SERVICE_INVALID_MOUNT                                   = 1751;
 
 /// 1752: ERROR_SERVICE_DOWNLOAD_FAILED
 /// "service download failed"
@@ -1550,35 +1458,35 @@ constexpr int TRI_ERROR_SESSION_UNKNOWN                                         
 /// Will be raised when a session is expired.
 constexpr int TRI_ERROR_SESSION_EXPIRED                                         = 1951;
 
-/// 2000: SIMPLE_CLIENT_UNKNOWN_ERROR
+/// 2000: ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR
 /// "unknown client error"
 /// This error should not happen.
-constexpr int TRI_SIMPLE_CLIENT_UNKNOWN_ERROR                                   = 2000;
+constexpr int TRI_ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR                             = 2000;
 
-/// 2001: SIMPLE_CLIENT_COULD_NOT_CONNECT
+/// 2001: ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT
 /// "could not connect to server"
 /// Will be raised when the client could not connect to the server.
-constexpr int TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT                               = 2001;
+constexpr int TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT                         = 2001;
 
-/// 2002: SIMPLE_CLIENT_COULD_NOT_WRITE
+/// 2002: ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE
 /// "could not write to server"
 /// Will be raised when the client could not write data.
-constexpr int TRI_SIMPLE_CLIENT_COULD_NOT_WRITE                                 = 2002;
+constexpr int TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE                           = 2002;
 
-/// 2003: SIMPLE_CLIENT_COULD_NOT_READ
+/// 2003: ERROR_SIMPLE_CLIENT_COULD_NOT_READ
 /// "could not read from server"
 /// Will be raised when the client could not read data.
-constexpr int TRI_SIMPLE_CLIENT_COULD_NOT_READ                                  = 2003;
+constexpr int TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_READ                            = 2003;
 
-/// 2100: COMMUNICATOR_REQUEST_ABORTED
+/// 2100: ERROR_COMMUNICATOR_REQUEST_ABORTED
 /// "Request aborted"
 /// Request was aborted.
-constexpr int TRI_COMMUNICATOR_REQUEST_ABORTED                                  = 2100;
+constexpr int TRI_ERROR_COMMUNICATOR_REQUEST_ABORTED                            = 2100;
 
-/// 2101: COMMUNICATOR_DISABLED
+/// 2101: ERROR_COMMUNICATOR_DISABLED
 /// "Communication was disabled"
 /// Communication was disabled.
-constexpr int TRI_COMMUNICATOR_DISABLED                                         = 2101;
+constexpr int TRI_ERROR_COMMUNICATOR_DISABLED                                   = 2101;
 
 /// 2200: ERROR_INTERNAL_AQL
 /// "General internal AQL error"
@@ -1679,6 +1587,11 @@ constexpr int TRI_ERROR_SERVICE_SOURCE_ERROR                                    
 /// "unknown script"
 /// The service does not have a script with this name.
 constexpr int TRI_ERROR_SERVICE_UNKNOWN_SCRIPT                                  = 3016;
+
+/// 3099: ERROR_SERVICE_API_DISABLED
+/// "service api disabled"
+/// The API for managing Foxx services has been disabled on this server.
+constexpr int TRI_ERROR_SERVICE_API_DISABLED                                    = 3099;
 
 /// 3100: ERROR_MODULE_NOT_FOUND
 /// "cannot locate module"
@@ -1820,11 +1733,6 @@ constexpr int TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED                         
 /// executing it.
 constexpr int TRI_ERROR_CLUSTER_REPAIRS_OPERATION_FAILED                        = 5010;
 
-/// 20001: ERROR_AGENCY_INQUIRY_SYNTAX
-/// "Illegal inquiry syntax"
-/// Inquiry handles a list of string clientIds: [<clientId>,...].
-constexpr int TRI_ERROR_AGENCY_INQUIRY_SYNTAX                                   = 20001;
-
 /// 20011: ERROR_AGENCY_INFORM_MUST_BE_OBJECT
 /// "Inform message must be an object."
 /// The inform message in the agency must be an object.
@@ -1865,11 +1773,6 @@ constexpr int TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING                     
 /// The inform message in the agency must contain an object 'timeoutMult'.
 constexpr int TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT                 = 20018;
 
-/// 20020: ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING
-/// "Inquiry failed"
-/// Inquiry by clientId failed
-constexpr int TRI_ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING                 = 20020;
-
 /// 20021: ERROR_AGENCY_CANNOT_REBUILD_DBS
 /// "Cannot rebuild readDB and spearHead"
 /// Will be raised if the readDB or the spearHead cannot be rebuilt from the
@@ -1881,40 +1784,15 @@ constexpr int TRI_ERROR_AGENCY_CANNOT_REBUILD_DBS                               
 /// General supervision failure.
 constexpr int TRI_ERROR_SUPERVISION_GENERAL_FAILURE                             = 20501;
 
-/// 21001: ERROR_DISPATCHER_IS_STOPPING
-/// "dispatcher stopped"
-/// Will be returned if a shutdown is in progress.
-constexpr int TRI_ERROR_DISPATCHER_IS_STOPPING                                  = 21001;
-
-/// 21002: ERROR_QUEUE_UNKNOWN
-/// "named queue does not exist"
-/// Will be returned if a queue with this name does not exist.
-constexpr int TRI_ERROR_QUEUE_UNKNOWN                                           = 21002;
-
 /// 21003: ERROR_QUEUE_FULL
 /// "named queue is full"
 /// Will be returned if a queue with this name is full.
 constexpr int TRI_ERROR_QUEUE_FULL                                              = 21003;
 
-/// 6001: ERROR_ACTION_ALREADY_REGISTERED
-/// "maintenance action already registered"
-/// Action with this description has been registered already
-constexpr int TRI_ERROR_ACTION_ALREADY_REGISTERED                               = 6001;
-
 /// 6002: ERROR_ACTION_OPERATION_UNABORTABLE
 /// "this maintenance action cannot be stopped"
 /// This maintenance action cannot be stopped once it is started
 constexpr int TRI_ERROR_ACTION_OPERATION_UNABORTABLE                            = 6002;
-
-/// 6003: ERROR_ACTION_UNFINISHED
-/// "maintenance action still processing"
-/// This maintenance action is still processing
-constexpr int TRI_ERROR_ACTION_UNFINISHED                                       = 6003;
-
-/// 6004: ERROR_NO_SUCH_ACTION
-/// "no such maintenance action"
-/// No such maintenance action exists
-constexpr int TRI_ERROR_NO_SUCH_ACTION                                          = 6004;
 
 
 /// register all errors for ArangoDB

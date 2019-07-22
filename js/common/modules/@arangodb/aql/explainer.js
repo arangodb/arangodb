@@ -344,10 +344,16 @@ function printIndexes(indexes) {
         ranges = '[ ' + indexes[i].ranges + ' ]';
       }
 
-      var selectivity = (indexes[i].hasOwnProperty('selectivityEstimate') ?
-        (indexes[i].selectivityEstimate * 100).toFixed(2) + ' %' :
-        'n/a'
-      );
+      let estimate;
+      if (indexes[i].hasOwnProperty('selectivityEstimate')) {
+        estimate = (indexes[i].selectivityEstimate * 100).toFixed(2) + ' %';
+      } else if (indexes[i].unique) {
+        // hard-code estimate to 100%
+        estimate = '100.00 %';
+      } else {
+        estimate = 'n/a';
+      }
+
       line = ' ' +
         pad(1 + maxIdLen - String(indexes[i].node).length) + variable(String(indexes[i].node)) + '   ' +
         collection(indexes[i].name) + pad(1 + maxNameLen - indexes[i].name.length) + '   ' +
@@ -355,7 +361,7 @@ function printIndexes(indexes) {
         collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + '   ' +
         value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + '   ' +
         value(sparsity) + pad(1 + maxSparseLen - sparsity.length) + '   ' +
-        pad(1 + maxSelectivityLen - selectivity.length) + value(selectivity) + '   ' +
+        pad(1 + maxSelectivityLen - estimate.length) + value(estimate) + '   ' +
         fields + pad(1 + maxFieldsLen - fieldsLen) + '   ' +
         ranges;
 
@@ -1075,9 +1081,11 @@ function processQuery(query, explain, planIndex) {
   };
 
   var label = function (node) {
-    var rc, v, e, edgeCols;
+    var rc, v, e, edgeCols, i, d, directions, isLast;
     var parts = [];
     var types = [];
+    // index in this array gives the traversal direction
+    const translate = ['ANY', 'INBOUND', 'OUTBOUND'];
     switch (node.type) {
       case 'SingletonNode':
         return keyword('ROOT');
@@ -1091,7 +1099,19 @@ function processQuery(query, explain, planIndex) {
       case 'EnumerateViewNode':
         var condition = '';
         if (node.condition && node.condition.hasOwnProperty('type')) {
-          condition = ' ' + keyword('SEARCH') + ' ' + buildExpression(node.condition);
+          condition = keyword(' SEARCH ') + buildExpression(node.condition);
+        }
+
+        var sortCondition = '';
+        if (node.primarySort && Array.isArray(node.primarySort)) {
+          var primarySortBuckets = node.primarySort.length;
+          if (typeof node.primarySortBuckets === 'number') {
+            primarySortBuckets = Math.min(node.primarySortBuckets, primarySortBuckets);
+          }
+
+          sortCondition = keyword(' SORT ') + node.primarySort.slice(0, primarySortBuckets).map(function (element) {
+            return variableName(node.outVariable) + '.' + attribute(element.field) + ' ' + keyword(element.direction ? 'ASC' : 'DESC');
+          }).join(', ');
         }
 
         var scorers = '';
@@ -1101,7 +1121,7 @@ function processQuery(query, explain, planIndex) {
           }).join(', ');
         }
 
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + condition + scorers + '   ' + annotation('/* view query */');
+        return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') + view(node.view) + condition + sortCondition + scorers + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
@@ -1131,10 +1151,9 @@ function processQuery(query, explain, planIndex) {
         rc += parts.join(', ') + ' ' + keyword('IN') + ' ' +
           value(node.minMaxDepth) + '  ' + annotation('/* min..maxPathDepth */') + ' ';
 
-        var translate = ['ANY', 'INBOUND', 'OUTBOUND'];
-        var directions = [], d;
-        for (var i = 0; i < node.edgeCollections.length; ++i) {
-          var isLast = (i + 1 === node.edgeCollections.length);
+        directions = [];
+        for (i = 0; i < node.edgeCollections.length; ++i) {
+          isLast = (i + 1 === node.edgeCollections.length);
           d = node.directions[i];
           if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
             // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
@@ -1246,8 +1265,7 @@ function processQuery(query, explain, planIndex) {
         if (node.hasOwnProperty('edgeOutVariable')) {
           parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge */'));
         }
-        translate = ['ANY', 'INBOUND', 'OUTBOUND'];
-        let defaultDirection = node.directions[0];
+        let defaultDirection = node.defaultDirection;
         rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${keyword(translate[defaultDirection])} ${keyword("SHORTEST_PATH")} `;
         if (node.hasOwnProperty('startVertexId')) {
           rc += `'${value(node.startVertexId)}'`;
@@ -1264,13 +1282,25 @@ function processQuery(query, explain, planIndex) {
         rc += ` ${annotation("/* targetnode */")} `;
 
         if (Array.isArray(node.graph)) {
-          rc += node.graph.map(function (g, index) {
+          directions = [];
+          for (i = 0; i < node.edgeCollections.length; ++i) {
+              isLast = (i + 1 === node.edgeCollections.length);
+              d = node.directions[i];
+              if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
+                  // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
+                  // on the same collection
+                  d = 0; // ANY
+                  ++i;
+              }
+              directions.push({ collection: node.edgeCollections[i], direction: d });
+          }
+          rc += directions.map(function (g, index) {
             var tmp = '';
-            if (node.directions[index] !== defaultDirection) {
-              tmp += keyword(translate[node.directions[index]]);
+            if (g.direction !== defaultDirection) {
+              tmp += keyword(translate[g.direction]);
               tmp += ' ';
             }
-            return tmp + collection(g);
+            return tmp + collection(g.collection);
           }).join(', ');
         } else {
           rc += keyword('GRAPH') + " '" + value(node.graph) + "'";
@@ -1306,8 +1336,7 @@ function processQuery(query, explain, planIndex) {
         if (node.hasOwnProperty('pathOutVariable')) {
           parts.push(variableName(node.pathOutVariable) + '  ' + annotation('/* path */'));
         }
-        translate = ['ANY', 'INBOUND', 'OUTBOUND'];
-        let defaultDirection = node.directions[0];
+        let defaultDirection = node.defaultDirection;
         rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${keyword(translate[defaultDirection])} ${keyword("K_SHORTEST_PATHS")} `;
         if (node.hasOwnProperty('startVertexId')) {
           rc += `'${value(node.startVertexId)}'`;
@@ -1324,13 +1353,25 @@ function processQuery(query, explain, planIndex) {
         rc += ` ${annotation("/* targetnode */")} `;
 
         if (Array.isArray(node.graph)) {
-          rc += node.graph.map(function (g, index) {
+          directions = [];
+          for (i = 0; i < node.edgeCollections.length; ++i) {
+              isLast = (i + 1 === node.edgeCollections.length);
+              d = node.directions[i];
+              if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
+                  // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
+                  // on the same collection
+                  d = 0; // ANY
+                  ++i;
+              }
+              directions.push({ collection: node.edgeCollections[i], direction: d });
+          }
+          rc += directions.map(function (g, index) {
             var tmp = '';
-            if (node.directions[index] !== defaultDirection) {
-              tmp += keyword(translate[node.directions[index]]);
+            if (g.direction !== defaultDirection) {
+              tmp += keyword(translate[g.direction]);
               tmp += ' ';
             }
-            return tmp + collection(g);
+            return tmp + collection(g.collection);
           }).join(', ');
         } else {
           rc += keyword('GRAPH') + " '" + value(node.graph) + "'";

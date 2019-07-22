@@ -174,7 +174,11 @@ void DatabaseManagerThread::run() {
           }
 
           try {
-            engine->dropDatabase(*database);
+            Result res = engine->dropDatabase(*database);
+            if (res.fail()) {
+              LOG_TOPIC("fb244", ERR, Logger::FIXME)
+                << "dropping database '" << database->name() << "' failed: " << res.errorMessage();
+            }
           } catch (std::exception const& ex) {
             LOG_TOPIC("d30a2", ERR, Logger::FIXME) << "dropping database '" << database->name()
                                           << "' failed: " << ex.what();
@@ -223,7 +227,11 @@ void DatabaseManagerThread::run() {
               vocbase->cursorRepository()->garbageCollect(force);
             } catch (...) {
             }
-            vocbase->replicationClients().garbageCollect(TRI_microtime());
+            double const now = []() {
+              using namespace std::chrono;
+              return duration<double>(steady_clock::now().time_since_epoch()).count();
+            }();
+            vocbase->replicationClients().garbageCollect(now);
           }
         }
       }
@@ -482,7 +490,7 @@ void DatabaseFeature::unprepare() {
     _databaseManager->beginShutdown();
 
     while (_databaseManager->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(5000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
   }
 
@@ -494,10 +502,10 @@ void DatabaseFeature::unprepare() {
 
   _databaseManager.reset();
 
-#ifdef ARANGODB_USE_CATCH_TESTS
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   // This is to avoid heap use after free errors in the iresearch tests, because
   // the destruction a callback uses a database.
-  // I don't know if this is save to do, thus I enclosed it in ARANGODB_USE_CATCH_TESTS
+  // I don't know if this is save to do, thus I enclosed it in ARANGODB_USE_GOOGLE_TESTS
   // to prevent accidentally breaking anything. However,
   // TODO Find out if this is okay and may be merged (maybe without the #ifdef),
   // or if this has to be done differently in the tests instead. The errors may
@@ -601,10 +609,9 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
   // create database in storage engine
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
-
+        
   // the create lock makes sure no one else is creating a database while we're
-  // inside
-  // this function
+  // inside this function
   MUTEX_LOCKER(mutexLocker, _databaseCreateLock);
   {
     {

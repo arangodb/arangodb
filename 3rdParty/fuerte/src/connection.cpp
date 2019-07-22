@@ -38,7 +38,7 @@ std::unique_ptr<Response> Connection::sendRequest(
 
   WaitGroup wg;
   auto rv = std::unique_ptr<Response>(nullptr);
-  ::arangodb::fuerte::v1::Error error = 0;
+  ::arangodb::fuerte::v1::Error error = Error::NoError;
 
   auto cb = [&](::arangodb::fuerte::v1::Error e,
                 std::unique_ptr<Request> request,
@@ -60,8 +60,8 @@ std::unique_ptr<Response> Connection::sendRequest(
 
   FUERTE_LOG_TRACE << "sendRequest (sync): done" << std::endl;
 
-  if (error != 0) {
-    throw intToError(error);
+  if (error != Error::NoError) {
+    throw error;
   }
 
   return rv;

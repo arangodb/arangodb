@@ -63,6 +63,8 @@ add_library(${LIB_ARANGO_IRESEARCH}
   IResearch/IResearchRocksDBRecoveryHelper.cpp
   IResearch/IResearchRocksDBRecoveryHelper.h
   IResearch/IResearchView.cpp IResearch/IResearchView.h
+  IResearch/IResearchVPackComparer.cpp IResearch/IResearchVPackComparer.h
+  IResearch/IResearchViewSort.cpp IResearch/IResearchViewSort.h
   IResearch/IResearchViewCoordinator.cpp IResearch/IResearchViewCoordinator.h
   IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
   IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
@@ -108,6 +110,18 @@ add_dependencies(${LIB_ARANGO_IRESEARCH}
   ${IRESEARCH_TARGET_DEPENDENCY}
   v8_build # for ICU required by iResearch
 )
+
+################################################################################
+# llhttp
+################################################################################
+
+
+SET(LLHTTP_SOURCES
+  ${PROJECT_SOURCE_DIR}/3rdParty/llhttp/src/api.c
+  ${PROJECT_SOURCE_DIR}/3rdParty/llhttp/src/http.c
+  ${PROJECT_SOURCE_DIR}/3rdParty/llhttp/src/llhttp.c
+)
+
 
 ################################################################################
 ## arangod
@@ -316,6 +330,7 @@ SET(ARANGOD_SOURCES
   Cluster/ActionDescription.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
+  Cluster/ClusterCollectionCreationInfo.cpp
   Cluster/ClusterComm.cpp
   Cluster/ClusterEdgeCursor.cpp
   Cluster/ClusterFeature.cpp
@@ -356,18 +371,15 @@ SET(ARANGOD_SOURCES
   GeneralServer/AcceptorTcp.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
+  GeneralServer/CommTask.cpp
   GeneralServer/GeneralCommTask.cpp
-  GeneralServer/GeneralListenTask.cpp
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
   GeneralServer/HttpCommTask.cpp
-  GeneralServer/IoTask.cpp
-  GeneralServer/ListenTask.cpp
+  GeneralServer/IoContext.cpp
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/ServerSecurityFeature.cpp
-  GeneralServer/SocketSslTcp.cpp
-  GeneralServer/SocketTask.cpp
   GeneralServer/Task.cpp
   GeneralServer/VstCommTask.cpp
   GeoIndex/Index.cpp
@@ -377,7 +389,6 @@ SET(ARANGOD_SOURCES
   Graph/BreadthFirstEnumerator.cpp
   Graph/ClusterTraverserCache.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
-  Graph/EdgeCollectionInfo.cpp
   Graph/Graph.cpp
   Graph/GraphManager.cpp
   Graph/GraphOperations.cpp
@@ -419,6 +430,7 @@ SET(ARANGOD_SOURCES
   Pregel/Conductor.cpp
   Pregel/GraphStore.cpp
   Pregel/IncomingCache.cpp
+  Pregel/IndexHelpers.cpp
   Pregel/OutgoingCache.cpp
   Pregel/PregelFeature.cpp
   Pregel/Recovery.cpp
@@ -441,6 +453,7 @@ SET(ARANGOD_SOURCES
   Replication/ReplicationClients.cpp
   Replication/ReplicationFeature.cpp
   Replication/Syncer.cpp
+  Replication/SyncerId.cpp
   Replication/TailingSyncer.cpp
   Replication/common-defines.cpp
   Replication/utilities.cpp
@@ -556,6 +569,7 @@ SET(ARANGOD_SOURCES
   Utils/FlushThread.cpp
   Utils/OperationCursor.cpp
   Utils/SingleCollectionTransaction.cpp
+  Utils/UrlHelper.cpp
   V8Server/FoxxQueuesFeature.cpp
   V8Server/V8Context.cpp
   V8Server/V8DealerFeature.cpp
@@ -602,14 +616,22 @@ if (USE_MAINTAINER_MODE)
 endif()
 
 if (NOT MSVC)
-  set(ARANGOD_SOURCES ${ARANGOD_SOURCES} GeneralServer/AcceptorUnixDomain.cpp GeneralServer/SocketUnixDomain.cpp)
+  set(ARANGOD_SOURCES ${ARANGOD_SOURCES} GeneralServer/AcceptorUnixDomain.cpp)
 endif()
 
 include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
 include(MMFiles/CMakeLists.txt)
 
-add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${CLUSTER_ENGINE_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_SOURCES})
+add_library(arangoserver STATIC 
+  ${ARANGOD_SOURCES} 
+  ${CLUSTER_ENGINE_SOURCES} 
+  ${MMFILES_SOURCES} 
+  ${ROCKSDB_SOURCES} 
+  ${LLHTTP_SOURCES}
+)
+
+target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
 
 target_link_libraries(arangoserver
   ${LIB_ARANGO_FE}
@@ -622,8 +644,10 @@ target_link_libraries(arangoserver
   ${ROCKSDB_LIBS}
   ${LIB_ARANGO_IRESEARCH}
   s2
+  fuerte
   boost_boost
   boost_system
+  snappy
   ${SYSTEM_LIBRARIES}
 )
 
@@ -669,6 +693,16 @@ endif ()
 if (USE_JEMALLOC)
   add_dependencies(arangod jemalloc)
 endif ()
+
+if(MSVC)
+  target_compile_options(arangoserver PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arangod PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangoserver PRIVATE -Werror)
+  target_compile_options(arangod PRIVATE -Werror)
+endif()
 
 ################################################################################
 ## arango-dfdb

@@ -2,7 +2,7 @@
 @startDocuBlock put_api_collection_properties
 @brief changes a collection
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/properties, Change properties of a collection}
+@RESTHEADER{PUT /_api/collection/{collection-name}/properties, Change properties of a collection, handleCommandPut:modifyProperties}
 
 @HINTS
 {% hint 'warning' %}

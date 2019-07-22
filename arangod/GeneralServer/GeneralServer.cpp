@@ -25,16 +25,16 @@
 #include "GeneralServer.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/exitcodes.h"
 #include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointList.h"
+#include "GeneralServer/Acceptor.h"
+#include "GeneralServer/CommTask.h"
 #include "GeneralServer/GeneralDefinitions.h"
-#include "GeneralServer/GeneralListenTask.h"
-#include "GeneralServer/SocketTask.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Ssl/SslServerFeature.h"
 
 #include <chrono>
 #include <thread>
@@ -47,22 +47,38 @@ using namespace arangodb::rest;
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 GeneralServer::GeneralServer(uint64_t numIoThreads)
-    : _numIoThreads(numIoThreads), _contexts(numIoThreads) {}
+    : _endpointList(nullptr), _contexts(numIoThreads) {}
 
 GeneralServer::~GeneralServer() {}
-  
-void GeneralServer::registerTask(std::shared_ptr<rest::SocketTask> const& task) {
+
+void GeneralServer::registerTask(std::shared_ptr<CommTask> task) {
   if (application_features::ApplicationServer::isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
-
-  MUTEX_LOCKER(locker, _tasksLock);
-  _commTasks.emplace(task->id(), task);
+  auto* t = task.get();
+  LOG_TOPIC("29da9", TRACE, Logger::REQUESTS)
+      << "registering CommTask with ptr " << t;
+  {
+    auto* t = task.get();
+    std::lock_guard<std::recursive_mutex> guard(_tasksLock);
+    _commTasks.emplace(t, std::move(task));
+  }
+  t->start();
 }
 
-void GeneralServer::unregisterTask(uint64_t id) {
-  MUTEX_LOCKER(locker, _tasksLock);
-  _commTasks.erase(id);
+void GeneralServer::unregisterTask(CommTask* task) {
+  LOG_TOPIC("090d8", TRACE, Logger::REQUESTS)
+      << "unregistering CommTask with ptr " << task;
+  std::shared_ptr<CommTask> old;
+  {
+    std::lock_guard<std::recursive_mutex> guard(_tasksLock);
+    auto it = _commTasks.find(task);
+    if (it != _commTasks.end()) {
+      old = std::move(it->second);
+      _commTasks.erase(it);
+    }
+  }
+  old.reset();
 }
 
 void GeneralServer::setEndpointList(EndpointList const* list) {
@@ -77,11 +93,12 @@ void GeneralServer::startListening() {
         << "trying to bind to endpoint '" << it.first << "' for requests";
 
     // distribute endpoints across all io contexts
-    IoContext& ioContext = _contexts[i++ % _numIoThreads];
+    IoContext& ioContext = _contexts[i++ % _contexts.size()];
     bool ok = openEndpoint(ioContext, it.second);
 
     if (ok) {
-      LOG_TOPIC("dc45a", DEBUG, arangodb::Logger::FIXME) << "bound to endpoint '" << it.first << "'";
+      LOG_TOPIC("dc45a", DEBUG, arangodb::Logger::FIXME)
+          << "bound to endpoint '" << it.first << "'";
     } else {
       LOG_TOPIC("c81f6", FATAL, arangodb::Logger::FIXME)
           << "failed to bind to endpoint '" << it.first
@@ -94,36 +111,19 @@ void GeneralServer::startListening() {
 }
 
 void GeneralServer::stopListening() {
-  for (auto& task : _listenTasks) {
-    task->stop();
+  for (std::unique_ptr<Acceptor>& acceptor : _acceptors) {
+    acceptor->close();
   }
-  
+
   // close connections of all socket tasks so the tasks will
   // eventually shut themselves down
-  MUTEX_LOCKER(lock, _tasksLock);
-  for (auto& task : _commTasks) {
-    task.second->closeStream();
-  }
+  std::lock_guard<std::recursive_mutex> guard(_tasksLock);
+  _commTasks.clear();
 }
 
 void GeneralServer::stopWorking() {
-  for (auto& context : _contexts) {
-    context.stop();
-  }
-  
-  _listenTasks.clear();
-
-  while (true) {
-    {
-      MUTEX_LOCKER(lock, _tasksLock);
-      if (_commTasks.empty()) {
-        break;
-      }
-    }
-
-    LOG_TOPIC("f1549", DEBUG, Logger::FIXME) << "waiting for " << _commTasks.size() << " comm tasks to shut down";
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
-  }
+  _acceptors.clear();
+  _contexts.clear();  // stops threads
 }
 
 // -----------------------------------------------------------------------------
@@ -131,50 +131,22 @@ void GeneralServer::stopWorking() {
 // -----------------------------------------------------------------------------
 
 bool GeneralServer::openEndpoint(IoContext& ioContext, Endpoint* endpoint) {
-  ProtocolType protocolType;
-
-  if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    protocolType = ProtocolType::HTTPS;
-  } else {
-    protocolType = ProtocolType::HTTP;
+  auto acceptor = rest::Acceptor::factory(*this, ioContext, endpoint);
+  try {
+    acceptor->open();
+  } catch (...) {
+    return false;
   }
-
-  auto task = std::make_shared<GeneralListenTask>(*this, ioContext, endpoint, protocolType);
-  _listenTasks.emplace_back(task);
-
-  return task->start();
+  _acceptors.emplace_back(std::move(acceptor));
+  return true;
 }
 
-GeneralServer::IoThread::IoThread(IoContext& iocontext)
-    : Thread("Io"), _iocontext(iocontext) {}
-
-GeneralServer::IoThread::~IoThread() { shutdown(); }
-
-void GeneralServer::IoThread::run() {
-  // run the asio io context
-  _iocontext._asioIoContext.run();
-}
-
-GeneralServer::IoContext::IoContext()
-    : _clients(0),
-      _thread(*this),
-      _asioIoContext(1),  // only a single thread per context
-      _asioWork(_asioIoContext) {
-  _thread.start();
-}
-
-GeneralServer::IoContext::~IoContext() { stop(); }
-
-void GeneralServer::IoContext::stop() { 
-  _asioIoContext.stop(); 
-}
-
-GeneralServer::IoContext& GeneralServer::selectIoContext() {
-  uint64_t low = _contexts[0]._clients.load();
+IoContext& GeneralServer::selectIoContext() {
+  uint64_t low = _contexts[0].clients();
   size_t lowpos = 0;
 
   for (size_t i = 1; i < _contexts.size(); ++i) {
-    uint64_t x = _contexts[i]._clients.load();
+    uint64_t x = _contexts[i].clients();
     if (x < low) {
       low = x;
       lowpos = i;
@@ -182,4 +154,12 @@ GeneralServer::IoContext& GeneralServer::selectIoContext() {
   }
 
   return _contexts[lowpos];
+}
+
+asio_ns::ssl::context& GeneralServer::sslContext() {
+  std::lock_guard<std::mutex> guard(_sslContextMutex);
+  if (!_sslContext) {
+    _sslContext.reset(new asio_ns::ssl::context(SslServerFeature::SSL->createSslContext()));
+  }
+  return *_sslContext;
 }

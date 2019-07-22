@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Result.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/process-utils.h"
 #include "Logger/Logger.h"
@@ -49,9 +50,8 @@ ApplicationServer* ApplicationServer::server = nullptr;
 
 ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
                                      const char* binaryPath)
-    : _state(ServerState::UNINITIALIZED),
+    : _state(State::UNINITIALIZED),
       _options(options),
-      _stopping(false),
       _binaryPath(binaryPath) {
   // register callback function for failures
   fail = failCallback;
@@ -76,6 +76,35 @@ ApplicationServer::~ApplicationServer() {
   }
 
   ApplicationServer::server = nullptr;
+}
+
+bool ApplicationServer::isPrepared() {
+  if (server == nullptr) {
+    return false;
+  }
+
+  auto tmp = server->state();
+  return tmp == State::IN_START || 
+         tmp == State::IN_WAIT ||
+         tmp == State::IN_SHUTDOWN ||
+         tmp == State::IN_STOP;
+}
+
+bool ApplicationServer::isStopping() {
+  if (server == nullptr) {
+    return false;
+  }
+
+  auto tmp = server->state();
+  return isStoppingState(tmp);
+}
+
+bool ApplicationServer::isStoppingState(State state) {
+  return state == State::IN_SHUTDOWN ||
+         state == State::IN_STOP ||
+         state == State::IN_UNPREPARE ||
+         state == State::STOPPED ||
+         state == State::ABORTED; 
 }
 
 void ApplicationServer::throwFeatureNotFoundException(std::string const& name) {
@@ -126,7 +155,7 @@ void ApplicationServer::disableFeatures(std::vector<std::string> const& names, b
 // will take ownership of the feature object and destroy it in its
 // destructor
 void ApplicationServer::addFeature(ApplicationFeature* feature) {
-  TRI_ASSERT(feature->state() == FeatureState::UNINITIALIZED);
+  TRI_ASSERT(feature->state() == ApplicationFeature::State::UNINITIALIZED);
   _features.emplace(feature->name(), feature);
 }
 
@@ -173,8 +202,8 @@ void ApplicationServer::run(int argc, char* argv[]) {
 
   // collect options from all features
   // in this phase, all features are order-independent
-  _state.store(ServerState::IN_COLLECT_OPTIONS, std::memory_order_relaxed);
-  reportServerProgress(ServerState::IN_COLLECT_OPTIONS);
+  _state.store(State::IN_COLLECT_OPTIONS, std::memory_order_relaxed);
+  reportServerProgress(State::IN_COLLECT_OPTIONS);
   collectOptions();
 
   // setup dependency, but ignore any failure for now
@@ -193,8 +222,8 @@ void ApplicationServer::run(int argc, char* argv[]) {
   _options->seal();
 
   // validate options of all features
-  _state.store(ServerState::IN_VALIDATE_OPTIONS, std::memory_order_relaxed);
-  reportServerProgress(ServerState::IN_VALIDATE_OPTIONS);
+  _state.store(State::IN_VALIDATE_OPTIONS, std::memory_order_relaxed);
+  reportServerProgress(State::IN_VALIDATE_OPTIONS);
   validateOptions();
 
   // setup and validate all feature dependencies
@@ -212,8 +241,8 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // furthermore, they must not write any files under elevated privileges
   // if they want other features to access them, or if they want to access
   // these files with dropped privileges
-  _state.store(ServerState::IN_PREPARE, std::memory_order_relaxed);
-  reportServerProgress(ServerState::IN_PREPARE);
+  _state.store(State::IN_PREPARE, std::memory_order_relaxed);
+  reportServerProgress(State::IN_PREPARE);
   prepare();
 
   // turn off all features that depend on other features that have been
@@ -225,62 +254,79 @@ void ApplicationServer::run(int argc, char* argv[]) {
   dropPrivilegesPermanently();
 
   // start features. now features are allowed to start threads, write files etc.
-  _state.store(ServerState::IN_START, std::memory_order_relaxed);
-  reportServerProgress(ServerState::IN_START);
+  _state.store(State::IN_START, std::memory_order_relaxed);
+  reportServerProgress(State::IN_START);
   start();
 
   // wait until we get signaled the shutdown request
-  _state.store(ServerState::IN_WAIT, std::memory_order_relaxed);
-  reportServerProgress(ServerState::IN_WAIT);
+  _state.store(State::IN_WAIT, std::memory_order_relaxed);
+  reportServerProgress(State::IN_WAIT);
   wait();
 
+  // beginShutdown is called asynchronously ----------
+
   // stop all features
-  _state.store(ServerState::IN_STOP, std::memory_order_relaxed);
-  reportServerProgress(ServerState::IN_STOP);
+  _state.store(State::IN_STOP, std::memory_order_relaxed);
+  reportServerProgress(State::IN_STOP);
   stop();
 
   // unprepare all features
-  _state.store(ServerState::IN_UNPREPARE, std::memory_order_relaxed);
-  reportServerProgress(ServerState::IN_UNPREPARE);
+  _state.store(State::IN_UNPREPARE, std::memory_order_relaxed);
+  reportServerProgress(State::IN_UNPREPARE);
   unprepare();
 
   // stopped
-  _state.store(ServerState::STOPPED, std::memory_order_relaxed);
-  reportServerProgress(ServerState::STOPPED);
+  _state.store(State::STOPPED, std::memory_order_relaxed);
+  reportServerProgress(State::STOPPED);
 }
 
 // signal the server to shut down
 void ApplicationServer::beginShutdown() {
+  // fetch the old state, check if somebody already called shutdown, and only
+  // proceed if not.
+  State old = State::UNINITIALIZED;
+  do {
+    old = state();
+    if (isStoppingState(old)) {
+      // beginShutdown already called, nothing to do now
+      return;
+    }
+    // try to enter the new state, but make sure nobody changed it in between
+  } while (!_state.compare_exchange_weak(old, State::IN_SHUTDOWN, std::memory_order_relaxed));
+  
   LOG_TOPIC("c7911", TRACE, Logger::STARTUP) << "ApplicationServer::beginShutdown";
 
-  bool old = _stopping.exchange(true);
+  // make sure that we advance the state when we get out of here
+  auto waitAborter = scopeGuard([this]() { 
+    CONDITION_LOCKER(guard, _shutdownCondition);
+
+    _abortWaiting = true;
+    guard.signal();
+  });
+  
+  // now we can execute the actual shutdown sequence
 
   // fowards the begin shutdown signal to all features
-  if (!old) {
-    for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
-      if ((*it)->isEnabled()) {
-        LOG_TOPIC("e181f", TRACE, Logger::STARTUP) << (*it)->name() << "::beginShutdown";
-        try {
-          (*it)->beginShutdown();
-        } catch (std::exception const& ex) {
-          LOG_TOPIC("b2cf4", ERR, Logger::STARTUP)
-              << "caught exception during beginShutdown of feature '"
-              << (*it)->name() << "': " << ex.what();
-        } catch (...) {
-          LOG_TOPIC("3f708", ERR, Logger::STARTUP)
-              << "caught unknown exception during beginShutdown of feature '"
-              << (*it)->name() << "'";
-        }
+  for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
+    if ((*it)->isEnabled()) {
+      LOG_TOPIC("e181f", TRACE, Logger::STARTUP) << (*it)->name() << "::beginShutdown";
+      try {
+        (*it)->beginShutdown();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("b2cf4", ERR, Logger::STARTUP)
+            << "caught exception during beginShutdown of feature '"
+            << (*it)->name() << "': " << ex.what();
+      } catch (...) {
+        LOG_TOPIC("3f708", ERR, Logger::STARTUP)
+            << "caught unknown exception during beginShutdown of feature '"
+            << (*it)->name() << "'";
       }
     }
   }
-
-  CONDITION_LOCKER(guard, _shutdownCondition);
-  guard.signal();
 }
 
 void ApplicationServer::shutdownFatalError() {
-  reportServerProgress(ServerState::ABORT);
+  reportServerProgress(State::ABORTED);
 }
 
 // return VPack options, with optional filters applied to filter
@@ -384,7 +430,7 @@ void ApplicationServer::validateOptions() {
     if (feature->isEnabled()) {
       LOG_TOPIC("fa73c", TRACE, Logger::STARTUP) << feature->name() << "::validateOptions";
       feature->validateOptions(_options);
-      feature->state(FeatureState::VALIDATED);
+      feature->state(ApplicationFeature::State::VALIDATED);
       reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
     }
   }
@@ -487,7 +533,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
   for (auto it = features.begin(); it != features.end(); /* no hoisting */) {
     if ((*it)->isEnabled()) {
       // keep feature
-      (*it)->state(FeatureState::INITIALIZED);
+      (*it)->state(ApplicationFeature::State::INITIALIZED);
       ++it;
     } else {
       // remove feature
@@ -566,7 +612,7 @@ void ApplicationServer::prepare() {
       try {
         LOG_TOPIC("d4e57", TRACE, Logger::STARTUP) << feature->name() << "::prepare";
         feature->prepare();
-        feature->state(FeatureState::PREPARED);
+        feature->state(ApplicationFeature::State::PREPARED);
       } catch (std::exception const& ex) {
         LOG_TOPIC("37921", ERR, Logger::STARTUP)
             << "caught exception during prepare of feature '" << feature->name()
@@ -606,7 +652,7 @@ void ApplicationServer::start() {
 
     try {
       feature->start();
-      feature->state(FeatureState::STARTED);
+      feature->state(ApplicationFeature::State::STARTED);
       reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
     } catch (basics::Exception const& ex) {
       res.reset(
@@ -643,13 +689,13 @@ void ApplicationServer::start() {
         if (!feature->isEnabled()) {
           continue;
         }
-        if (feature->state() == FeatureState::STARTED) {
+        if (feature->state() == ApplicationFeature::State::STARTED) {
           LOG_TOPIC("e5cfd", TRACE, Logger::STARTUP)
               << "forcefully stopping feature '" << feature->name() << "'";
           try {
             feature->beginShutdown();
             feature->stop();
-            feature->state(FeatureState::STOPPED);
+            feature->state(ApplicationFeature::State::STOPPED);
           } catch (...) {
             // ignore errors on shutdown
             LOG_TOPIC("13223", TRACE, Logger::STARTUP)
@@ -661,12 +707,12 @@ void ApplicationServer::start() {
       // try to unprepare all feature that we just started
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
         auto feature = *it;
-        if (feature->state() == FeatureState::STOPPED) {
+        if (feature->state() == ApplicationFeature::State::STOPPED) {
           LOG_TOPIC("6ba4f", TRACE, Logger::STARTUP)
               << "forcefully unpreparing feature '" << feature->name() << "'";
           try {
             feature->unprepare();
-            feature->state(FeatureState::UNPREPARED);
+            feature->state(ApplicationFeature::State::UNPREPARED);
           } catch (...) {
             // ignore errors on shutdown
             LOG_TOPIC("7d68f", TRACE, Logger::STARTUP)
@@ -707,7 +753,7 @@ void ApplicationServer::stop() {
           << "caught unknown exception during stop of feature '"
           << feature->name() << "'";
     }
-    feature->state(FeatureState::STOPPED);
+    feature->state(ApplicationFeature::State::STOPPED);
     reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
   }
 }
@@ -717,6 +763,9 @@ void ApplicationServer::unprepare() {
 
   for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
     auto feature = *it;
+    if (!feature->isEnabled()) {
+      continue;
+    }
 
     LOG_TOPIC("98be4", TRACE, Logger::STARTUP) << feature->name() << "::unprepare";
     try {
@@ -730,7 +779,7 @@ void ApplicationServer::unprepare() {
           << "caught unknown exception during unprepare of feature '"
           << feature->name() << "'";
     }
-    feature->state(FeatureState::UNPREPARED);
+    feature->state(ApplicationFeature::State::UNPREPARED);
     reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
   }
 }
@@ -738,9 +787,18 @@ void ApplicationServer::unprepare() {
 void ApplicationServer::wait() {
   LOG_TOPIC("f86df", TRACE, Logger::STARTUP) << "ApplicationServer::wait";
 
-  while (!_stopping) {
+  // wait here until beginShutdown has been called and finished
+  while (true) {
+    // wait until somebody calls beginShutdown and it finishes
     CONDITION_LOCKER(guard, _shutdownCondition);
-    guard.wait(100000);
+    
+    if (_abortWaiting) {
+      // yippieh!
+      break;
+    }
+
+    using namespace std::chrono_literals;
+    guard.wait(100ms);
   }
 }
 
@@ -786,14 +844,44 @@ void ApplicationServer::dropPrivilegesPermanently() {
   _privilegesDropped = true;
 }
 
-void ApplicationServer::reportServerProgress(ServerState state) {
+void ApplicationServer::reportServerProgress(State state) {
   for (auto reporter : _progressReports) {
     reporter._state(state);
   }
 }
 
-void ApplicationServer::reportFeatureProgress(ServerState state, std::string const& name) {
+void ApplicationServer::reportFeatureProgress(State state, std::string const& name) {
   for (auto reporter : _progressReports) {
     reporter._feature(state, name);
   }
+}
+
+char const* ApplicationServer::stringifyState() const { 
+  switch (_state.load()) {
+    case State::UNINITIALIZED: 
+      return "uninitialized";
+    case State::IN_COLLECT_OPTIONS:
+      return "in collect options";
+    case State::IN_VALIDATE_OPTIONS:
+      return "in validate options";
+    case State::IN_PREPARE:
+      return "in prepare";
+    case State::IN_START:
+      return "in start";
+    case State::IN_WAIT:
+      return "in wait";
+    case State::IN_SHUTDOWN:
+      return "in beginShutdown";
+    case State::IN_STOP:
+      return "in stop";
+    case State::IN_UNPREPARE:
+      return "in unprepare";
+    case State::STOPPED:
+      return "in stopped";
+    case State::ABORTED:
+      return "in aborted";
+  }
+  // we should never get here
+  TRI_ASSERT(false);
+  return "unknown";
 }

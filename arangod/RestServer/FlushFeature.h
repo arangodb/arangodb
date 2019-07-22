@@ -18,6 +18,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_REST_SERVER_FLUSH_FEATURE_H
@@ -25,82 +26,65 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ReadWriteLock.h"
+#include "VocBase/voc-types.h"
 
-struct TRI_vocbase_t;  // forward declaration
+#include <list>
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
 
 class FlushThread;
 
+//////////////////////////////////////////////////////////////////////////////
+/// @struct FlushSubscription
+/// @brief subscription is intenteded to notify FlushFeature
+///        on the WAL tick which can be safely released
+//////////////////////////////////////////////////////////////////////////////
+struct FlushSubscription {
+  virtual ~FlushSubscription() = default;
+  virtual TRI_voc_tick_t tick() const = 0;
+};
+
 class FlushFeature final : public application_features::ApplicationFeature {
  public:
-
   /// @brief handle a 'Flush' marker during recovery
   /// @param vocbase the vocbase the marker applies to
   /// @param slice the originally stored marker body
   /// @return success
   typedef std::function<Result(TRI_vocbase_t const& vocbase, velocypack::Slice const& slice)> FlushRecoveryCallback;
 
-  /// @brief write a 'Flush' marker to the WAL, on success update the
-  ///        corresponding TRI_voc_tick_t for the subscription
-  struct FlushSubscription {
-    virtual ~FlushSubscription() = default;
-    virtual Result commit(velocypack::Slice const& data) = 0;
-  };
-  class FlushSubscriptionBase; // forward declaration
-
-  // used by catch tests
-  #ifdef ARANGODB_USE_CATCH_TESTS
-    typedef std::function<Result(std::string const&, TRI_vocbase_t const&, velocypack::Slice const&)> DefaultFlushSubscription;
-    static DefaultFlushSubscription _defaultFlushSubscription;
-  #endif
-
   explicit FlushFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions> options) override;
 
-  /// @brief add a callback for 'Flush' recovery markers of the specified type
-  ///        encountered during recovery
-  /// @param type the 'Flush' marker type to invoke callback for
-  /// @param callback the callback to invoke
-  /// @return success, false == handler for the specified type already registered
-  /// @note not thread-safe on the assumption of static factory registration
-  static bool registerFlushRecoveryCallback( // register callback
-    std::string const& type, // marker type
-    FlushRecoveryCallback const& callback // marker callback
-  );
-
   /// @brief register a flush subscription that will ensure replay of all WAL
   ///        entries after the latter of registration or the last successful
   ///        token commit
-  /// @param type the 'Flush' marker type to invoke callback for
-  /// @param vocbase the associate vocbase
-  /// @return a token used for marking flush synchronization
-  ///         release of the token will unregister the subscription
-  ///         nullptr == error
-  std::shared_ptr<FlushSubscription> registerFlushSubscription( // register subscription
-      std::string const& type, // marker type
-      TRI_vocbase_t const& vocbase // marker vocbase
-  );
+  /// @param subscription to register
+  void registerFlushSubscription(const std::shared_ptr<FlushSubscription>& subscription);
 
   /// @brief release all ticks not used by the flush subscriptions
-  arangodb::Result releaseUnusedTicks();
+  /// @param 'count' a number of released subscriptions
+  /// @param 'tick' released tick
+  arangodb::Result releaseUnusedTicks(size_t& count, TRI_voc_tick_t& tick);
 
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override;
   void start() override;
   void beginShutdown() override;
   void stop() override;
-  void unprepare() override;
+  void unprepare() override { }
 
   static bool isRunning() { return _isRunning.load(); }
 
  private:
+  static std::atomic<bool> _isRunning;
+
   uint64_t _flushInterval;
   std::unique_ptr<FlushThread> _flushThread;
-  static std::atomic<bool> _isRunning;
   basics::ReadWriteLock _threadLock;
-  std::unordered_set<std::shared_ptr<FlushSubscriptionBase>> _flushSubscriptions;
+  std::list<std::weak_ptr<FlushSubscription>> _flushSubscriptions;
   std::mutex _flushSubscriptionsMutex;
   bool _stopped;
 };

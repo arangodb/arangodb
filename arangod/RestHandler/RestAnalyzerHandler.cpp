@@ -25,19 +25,12 @@
 #include "Basics/StringUtils.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "utils/string.hpp"
 #include "velocypack/Iterator.h"
-
-namespace {
-
-std::string ANALYZER_FEAURES_FIELD("features");
-std::string ANALYZER_NAME_FIELD("name");
-std::string ANALYZER_PROPERTIES_FIELD("properties");
-std::string ANALYZER_TYPE_FIELD("type");
-
-}
+#include "velocypack/Parser.h"
 
 namespace arangodb {
 namespace iresearch {
@@ -79,12 +72,9 @@ void RestAnalyzerHandler::createAnalyzer( // create
   }
 
   irs::string_ref name;
-  std::string nameBuf;
-  auto nameSlice = body.get(ANALYZER_NAME_FIELD);
+  auto nameSlice = body.get(StaticStrings::AnalyzerNameField);
 
-  if (nameSlice.isString()) {
-    name = getStringRef(nameSlice);
-  } else if (!nameSlice.isNull()) {
+  if (!nameSlice.isString()) {
     generateError(arangodb::Result( // generate error
       TRI_ERROR_BAD_PARAMETER, // code
       "invalid 'name', expecting body to be of the form { name: <string>, type: <string>[, properties: <object|string>[, features: <string-array>]] }"
@@ -93,17 +83,27 @@ void RestAnalyzerHandler::createAnalyzer( // create
     return;
   }
 
+  name = getStringRef(nameSlice);
+
+  if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(name.c_str(), name.size()))) {
+    generateError(arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      "invalid characters in analyzer name '" + static_cast<std::string>(name) + "'"
+    ));
+
+    return;
+  }
+
+  std::string nameBuf;
   if (sysVocbase) {
     nameBuf = IResearchAnalyzerFeature::normalize(name, _vocbase, *sysVocbase); // normalize
     name = nameBuf;
   };
 
   irs::string_ref type;
-  auto typeSlice = body.get(ANALYZER_TYPE_FIELD);
+  auto typeSlice = body.get(StaticStrings::AnalyzerTypeField);
 
-  if (typeSlice.isString()) {
-    type = getStringRef(typeSlice);
-  } else if (!typeSlice.isNull()) {
+  if (!typeSlice.isString()) {
     generateError(arangodb::Result( // generate error
       TRI_ERROR_BAD_PARAMETER, // code
       "invalid 'type', expecting body to be of the form { name: <string>, type: <string>[, properties: <object|string>[, features: <string-array>]] }"
@@ -112,31 +112,28 @@ void RestAnalyzerHandler::createAnalyzer( // create
     return;
   }
 
-  irs::string_ref properties;
-  std::string propertiesBuf;
-
-  if (body.hasKey(ANALYZER_PROPERTIES_FIELD)) { // optional parameter
-    auto propertiesSlice = body.get(ANALYZER_PROPERTIES_FIELD);
-
-    if (propertiesSlice.isObject()) {
-      propertiesBuf = propertiesSlice.toString();
-      properties = propertiesBuf;
-    } else if (propertiesSlice.isString()) {
-      properties = getStringRef(propertiesSlice);
-    } else if (!propertiesSlice.isNull()) {
-      generateError(arangodb::Result( // generate error
-        TRI_ERROR_BAD_PARAMETER, // code
-        "invalid 'properties', expecting body to be of the form { name: <string>, type: <string>[, properties: <object>[, features: <string-array>]] }"
-      ));
-
-      return;
-    }
+  type = getStringRef(typeSlice);
+  
+  std::shared_ptr<VPackBuilder> propertiesFromStringBuilder;
+  auto properties = body.get(StaticStrings::AnalyzerPropertiesField);
+  if(properties.isString()) { // string still could be parsed to an object
+    auto string_ref = getStringRef(properties);
+    propertiesFromStringBuilder = arangodb::velocypack::Parser::fromJson(string_ref);
+    properties = propertiesFromStringBuilder->slice();
+  }
+  
+  if (!properties.isNone() && !properties.isObject()) { // optional parameter
+    generateError(arangodb::Result( // generate error
+      TRI_ERROR_BAD_PARAMETER, // code
+      "invalid 'properties', expecting body to be of the form { name: <string>, type: <string>[, properties: <object>[, features: <string-array>]] }"
+    ));
+    return;
   }
 
   irs::flags features;
 
-  if (body.hasKey(ANALYZER_FEAURES_FIELD)) { // optional parameter
-    auto featuresSlice = body.get(ANALYZER_FEAURES_FIELD);
+  if (body.hasKey(StaticStrings::AnalyzerFeaturesField)) { // optional parameter
+    auto featuresSlice = body.get(StaticStrings::AnalyzerFeaturesField);
 
     if (featuresSlice.isArray()) {
       for (arangodb::velocypack::ArrayIterator itr(featuresSlice);
@@ -213,22 +210,8 @@ void RestAnalyzerHandler::createAnalyzer( // create
   auto pool = result.first;
   arangodb::velocypack::Builder builder;
 
-  builder.openObject();
-    addStringRef(builder, ANALYZER_NAME_FIELD, pool->name());
-    addStringRef(builder, ANALYZER_TYPE_FIELD, pool->type());
-    addStringRef(builder, ANALYZER_PROPERTIES_FIELD, pool->properties());
-    builder.add( // add features
-      ANALYZER_FEAURES_FIELD, // key
-      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Array) // value
-    );
+  pool->toVelocyPack(builder);
 
-      for (auto& feature: pool->features()) {
-        TRI_ASSERT(feature); // has to be non-nullptr
-        addStringRef(builder, feature->name());
-      }
-
-    builder.close();
-  builder.close();
   generateResult( // generate result
     result.second // new analyzer v.s. existing analyzer
     ? arangodb::rest::ResponseCode::CREATED : arangodb::rest::ResponseCode::OK,
@@ -377,22 +360,7 @@ void RestAnalyzerHandler::getAnalyzer( // get analyzer
 
   arangodb::velocypack::Builder builder;
 
-  builder.openObject();
-    addStringRef(builder, ANALYZER_NAME_FIELD, pool->name());
-    addStringRef(builder, ANALYZER_TYPE_FIELD, pool->type());
-    addStringRef(builder, ANALYZER_PROPERTIES_FIELD, pool->properties());
-    builder.add( // add features
-      ANALYZER_FEAURES_FIELD, // key
-      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Array) // value
-    );
-
-      for (auto& feature: pool->features()) {
-        TRI_ASSERT(feature); // has to be non-nullptr
-        addStringRef(builder, feature->name());
-      }
-
-    builder.close();
-  builder.close();
+  pool->toVelocyPack(builder);
 
   // generate result + 'error' field + 'code' field
   // 2nd param must be Builder and not Slice
@@ -413,27 +381,13 @@ void RestAnalyzerHandler::getAnalyzers( // get all analyzers
       return true; // continue with next analyzer
     }
 
-    builder.openObject();
-      addStringRef(builder, ANALYZER_NAME_FIELD, analyzer->name());
-      addStringRef(builder, ANALYZER_TYPE_FIELD, analyzer->type());
-      addStringRef(builder, ANALYZER_PROPERTIES_FIELD, analyzer->properties());
-      builder.add( // add features
-        ANALYZER_FEAURES_FIELD, // key
-        arangodb::velocypack::Value(arangodb::velocypack::ValueType::Array) // value
-      );
-
-        for (auto& feature: analyzer->features()) {
-          TRI_ASSERT(feature); // has to be non-nullptr
-          addStringRef(builder, feature->name());
-        }
-
-      builder.close();
-    builder.close();
+    analyzer->toVelocyPack(builder);
 
     return true; // continue with next analyzer
   };
 
   builder.openArray();
+  analyzers.visit(visitor, nullptr); // include static analyzers
 
   if (IResearchAnalyzerFeature::canUse(_vocbase, auth::Level::RO)) {
     analyzers.visit(visitor, &_vocbase);
@@ -493,7 +447,7 @@ void RestAnalyzerHandler::removeAnalyzer( // remove
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
-  builder.add(ANALYZER_NAME_FIELD, arangodb::velocypack::Value(name));
+  builder.add(StaticStrings::AnalyzerNameField, arangodb::velocypack::Value(name));
   builder.close();
 
   // generate result + 'error' field + 'code' field

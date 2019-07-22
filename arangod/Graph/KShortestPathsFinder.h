@@ -68,7 +68,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
     double _weight;
 
     // Where this path branched off the previous shortest path
-    // This is an optimisation because we only need to consider
+    // This is an optimization because we only need to consider
     // spur paths from after the branch point
     size_t _branchpoint;
 
@@ -88,6 +88,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
       // Only append paths where the first vertex of p
       // is the same as the last vertex of this.
       TRI_ASSERT((_vertices.back().equals(p._vertices.front())));
+      TRI_ASSERT(!_weights.empty());
 
       double ew = _weights.back();
       double pw = p._weights.at(a);
@@ -98,7 +99,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
         _weights.emplace_back(ew + (p._weights.at(a) - pw));
       }
       _weight = _weights.back();
-    };
+    }
     // TODO: implement == for EdgeDocumentToken and VertexRef
     // so these things become less cluttery
     bool operator==(Path const& rhs) const {
@@ -107,12 +108,12 @@ class KShortestPathsFinder : public ShortestPathFinder {
         return false;
       }
       for (size_t i = 0; i < _vertices.size(); ++i) {
-        if (!_vertices.at(i).equals(rhs._vertices.at(i))) {
+        if (!_vertices[i].equals(rhs._vertices[i])) {
           return false;
         }
       }
       for (size_t i = 0; i < _edges.size(); ++i) {
-        if (!_edges.at(i).equals(rhs._edges.at(i))) {
+        if (!_edges[i].equals(rhs._edges[i])) {
           return false;
         }
       }
@@ -135,13 +136,13 @@ class KShortestPathsFinder : public ShortestPathFinder {
     bool _done;
 
     // Interface needed for ShortestPathPriorityQueue
-    double weight() { return _weight; };
-    VertexRef getKey() { return _vertex; };
-    void setWeight(double weight) { _weight = weight; };
+    double weight() const { return _weight; }
+    VertexRef getKey() const { return _vertex; }
+    void setWeight(double weight) { _weight = weight; }
 
     DijkstraInfo(VertexRef const& vertex, Edge const&& edge, VertexRef const& pred, double weight)
       : _vertex(vertex), _edge(std::move(edge)), _pred(pred), _weight(weight), _done(false) {}
-    DijkstraInfo(VertexRef const& vertex)
+    explicit DijkstraInfo(VertexRef const& vertex)
       : _vertex(vertex), _weight(0), _done(true) {}
   };
 
@@ -154,7 +155,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
     Direction _direction;
     Frontier _frontier;
 
-    Ball(void) {}
+    Ball() {}
     Ball(VertexRef const& centre, Direction direction)
         : _centre(centre), _direction(direction) {
       _frontier.insert(centre, std::make_unique<DijkstraInfo>(centre));
@@ -175,7 +176,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
     double _weight;
 
     Step(Edge&& edge, VertexRef const& vertex, double weight)
-        : _edge(edge), _vertex(vertex), _weight(weight) {}
+        : _edge(std::move(edge)), _vertex(vertex), _weight(weight) {}
   };
 
   // A vertex that was discovered while computing
@@ -225,7 +226,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
   bool getNextPathShortestPathResult(ShortestPathResult& path);
   // get the next available path as a Path
   bool getNextPath(Path& path);
-  bool isPathAvailable(void) { return _pathAvailable; }
+  bool isPathAvailable() const { return _pathAvailable; }
 
  private:
   // Compute the first shortest path

@@ -2,7 +2,7 @@
 @startDocuBlock get_admin_log
 @brief returns the server logs
 
-@RESTHEADER{GET /_admin/log, Read global logs from the server}
+@RESTHEADER{GET /_admin/log, Read global logs from the server, setLogLevel:read}
 
 @RESTQUERYPARAMETERS
 

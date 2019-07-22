@@ -33,6 +33,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimedAction.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
@@ -503,11 +504,12 @@ void V8DealerFeature::copyInstallationFiles() {
       if (filename.size() >= nodeModulesPath.size()) {
         std::string normalized = filename;
         FileUtils::normalizePath(normalized);
-        TRI_ASSERT(filename.size() == normalized.size());
-        if (normalized.substr(normalized.size() - nodeModulesPath.size(),
-                              nodeModulesPath.size()) == nodeModulesPath ||
-            normalized.substr(normalized.size() - nodeModulesPathVersioned.size(),
-                              nodeModulesPathVersioned.size()) == nodeModulesPathVersioned) {
+        if ((!nodeModulesPath.empty() && 
+             normalized.size() >= nodeModulesPath.size() &&
+             normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath) ||
+            (!nodeModulesPathVersioned.empty() &&
+             normalized.size() >= nodeModulesPathVersioned.size() &&
+             normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned)) {
           // filter it out!
           return true;
         }
@@ -1265,7 +1267,7 @@ void V8DealerFeature::shutdownContexts() {
 
     // wait until garbage collector thread is done
     while (!_gcFinished) {
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     LOG_TOPIC("ea409", DEBUG, arangodb::Logger::V8)

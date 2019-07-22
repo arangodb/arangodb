@@ -2,7 +2,7 @@
 @startDocuBlock DeleteApiQueryKill
 @brief kills an AQL query
 
-@RESTHEADER{DELETE /_api/query/{query-id}, Kills a running AQL query}
+@RESTHEADER{DELETE /_api/query/{query-id}, Kills a running AQL query, deleteQuery}
 
 @RESTURLPARAMETERS
 

@@ -34,6 +34,7 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/vocbase.h"
 #include "velocypack/Parser.h"
+#include "velocypack/StringRef.h"
 
 namespace {
 
@@ -187,12 +188,7 @@ void JS_AnalyzerProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    if (analyzer->properties().null()) {
-      TRI_V8_RETURN(v8::Null(isolate));
-    }
-
-    auto result = // result
-      TRI_V8_STD_STRING(isolate, std::string(analyzer->properties()));
+    auto result = TRI_VPackToV8(isolate, analyzer->properties());
 
     TRI_V8_RETURN(result);
   } catch (arangodb::basics::Exception const& ex) {
@@ -272,23 +268,28 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::iresearch::IResearchAnalyzerFeature // feature type
+  auto* analyzers = arangodb::application_features::ApplicationServer::getFeature<
+    arangodb::iresearch::IResearchAnalyzerFeature
   >();
 
-  if (!analyzers) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
-      TRI_ERROR_INTERNAL, // code
-      std::string("failure to find feature '") + arangodb::iresearch::IResearchAnalyzerFeature::name() + "'" // message
-    );
-  }
+  TRI_ASSERT(analyzers);
 
-  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::SystemDatabaseFeature // featue type
+  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
   >();
   auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
 
   auto name = TRI_ObjectToString(isolate, args[0]);
+
+  if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      "invalid characters in analyzer name '" + name + "'"
+    );
+
+    return;
+  }
+
   std::string nameBuf;
 
   if (sysVocbase) {
@@ -300,28 +301,28 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto type = TRI_ObjectToString(isolate, args[1]);
 
-  irs::string_ref properties;
-  std::string propertiesBuf;
+  VPackSlice propertiesSlice = VPackSlice::emptyObjectSlice();
+  VPackBuilder propertiesBuilder;
 
   if (args.Length() > 2) { // have properties
     if (args[2]->IsString()) {
-      propertiesBuf = TRI_ObjectToString(isolate, args[2]);
-      properties = propertiesBuf;
+      std::string const propertiesBuf = TRI_ObjectToString(isolate, args[2]);
+      arangodb::velocypack::Parser(propertiesBuilder).parse(propertiesBuf);
+      propertiesSlice = propertiesBuilder.slice();
     } else if (args[2]->IsObject()) {
-      auto value = // value
-        args[2]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
-      arangodb::velocypack::Builder builder;
-      auto res = TRI_V8ToVPack(isolate, builder, value, false);
-
+      auto value = args[2]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      auto res = TRI_V8ToVPack(isolate, propertiesBuilder, value, false);
       if (TRI_ERROR_NO_ERROR != res) {
         TRI_V8_THROW_EXCEPTION(res);
       }
-
-      propertiesBuf = builder.toString();
-      properties = propertiesBuf;
+      propertiesSlice = propertiesBuilder.slice();
     } else if (!args[2]->IsNull()) {
       TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
     }
+  }
+  // properties at the end should be parsed into object 
+  if (!propertiesSlice.isObject()) {
+    TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
   }
 
   irs::flags features;
@@ -364,7 +365,9 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   try {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    auto res = analyzers->emplace(result, name, type, properties, features);
+    auto res = analyzers->emplace(result, name, type, 
+      propertiesSlice, 
+      features);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -415,16 +418,11 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::iresearch::IResearchAnalyzerFeature // feature type
+  auto* analyzers = arangodb::application_features::ApplicationServer::getFeature<
+    arangodb::iresearch::IResearchAnalyzerFeature
   >();
 
-  if (!analyzers) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
-      TRI_ERROR_INTERNAL, // code
-      std::string("failure to find feature '") + arangodb::iresearch::IResearchAnalyzerFeature::name() + "'" // message
-    );
-  }
+  TRI_ASSERT(analyzers);
 
   auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
     arangodb::SystemDatabaseFeature // featue type
@@ -486,16 +484,11 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::iresearch::IResearchAnalyzerFeature // feature type
+  auto* analyzers = arangodb::application_features::ApplicationServer::getFeature<
+    arangodb::iresearch::IResearchAnalyzerFeature
   >();
 
-  if (!analyzers) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
-      TRI_ERROR_INTERNAL, // code
-      std::string("failure to find feature '") + arangodb::iresearch::IResearchAnalyzerFeature::name() + "'" // message
-    );
-  }
+  TRI_ASSERT(analyzers);
 
   auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
     arangodb::SystemDatabaseFeature // featue type
@@ -523,6 +516,8 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   };
 
   try {
+    analyzers->visit(visitor, nullptr); // include static analyzers
+
     if (arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RO)) {
       analyzers->visit(visitor, &vocbase);
     }
@@ -541,11 +536,11 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
     for (size_t i = 0, count = result.size(); i < count; ++i) {
       auto analyzer = WrapAnalyzer(isolate, result[i]);
 
-      if (analyzer.IsEmpty()) {
+      if (analyzer.IsEmpty() || i > std::numeric_limits<uint32_t>::max()) {
         TRI_V8_THROW_EXCEPTION_MEMORY();
       }
 
-      v8Result->Set(i, analyzer);
+      v8Result->Set(static_cast<uint32_t>(i), analyzer); // cast safe because of check above
     }
 
     TRI_V8_RETURN(v8Result);
@@ -580,16 +575,11 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::iresearch::IResearchAnalyzerFeature // feature type
+  auto* analyzers = arangodb::application_features::ApplicationServer::getFeature<
+    arangodb::iresearch::IResearchAnalyzerFeature
   >();
 
-  if (!analyzers) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
-      TRI_ERROR_INTERNAL, // code
-      std::string("failure to find feature '") + arangodb::iresearch::IResearchAnalyzerFeature::name() + "'" // message
-    );
-  }
+  TRI_ASSERT(analyzers);
 
   auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
     arangodb::SystemDatabaseFeature // featue type
@@ -694,6 +684,11 @@ void TRI_InitV8Analyzers(TRI_v8_global_t& v8g, v8::Isolate* isolate) {
     TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "type"), JS_AnalyzerType);
 
     v8g.IResearchAnalyzerTempl.Reset(isolate, objTemplate);
+    TRI_AddGlobalFunctionVocbase( // required only for pretty-printing via JavaScript (must to be defined AFTER v8g.IResearchAnalyzerTempl.Reset(...))
+      isolate, // isolate
+      TRI_V8_ASCII_STRING(isolate, "ArangoAnalyzer"), // name
+      fnTemplate->GetFunction() // impl
+    );
   }
 }
 

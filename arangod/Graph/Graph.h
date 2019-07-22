@@ -26,6 +26,7 @@
 #include <velocypack/Buffer.h>
 #include <chrono>
 #include <utility>
+#include <set>
 
 #include "Aql/Query.h"
 #include "Aql/VariableGenerator.h"
@@ -167,6 +168,7 @@ class Graph {
 
   uint64_t numberOfShards() const;
   uint64_t replicationFactor() const;
+  uint64_t minReplicationFactor() const;
   std::string const id() const;
   std::string const& rev() const;
 
@@ -253,6 +255,9 @@ class Graph {
   /// @brief Set replicationFactor to the graph definition
   void setReplicationFactor(uint64_t setReplicationFactor);
 
+  /// @brief Set minReplicationFactor to the graph definition
+  void setMinReplicationFactor(uint64_t setMinReplicationFactor);
+
   /// @brief Set rev to the graph definition
   void setRev(std::string&& rev);
 
@@ -283,6 +288,9 @@ class Graph {
 
   /// @brief replication factor of this graph
   uint64_t _replicationFactor;
+
+  /// @brief minimal replication factor of this graph
+  uint64_t _minReplicationFactor;
 
   /// @brief revision of this graph
   std::string _rev;

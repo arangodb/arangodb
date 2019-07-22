@@ -1,6 +1,8 @@
 3rd Party components and what to do on update
 =============================================
 
+** EDIT ../LICENSES-OTHER-COMPONENTS.md **
+
 ## boost
 
 https://www.boost.org/
@@ -11,10 +13,6 @@ To remove some unused doc files, you can run something as follows:
     cd 3rdParty/boost/1.69.0
     for i in `find -type d -name "doc"`; do git rm -r "$i"; done
 
-
-## catch
-
-https://github.com/catchorg/Catch2
 
 ## cmake
 
@@ -51,7 +49,6 @@ Forward port of C++20 date/time class
 ## fakeit
 
 Mocking library. https://github.com/eranpeer/FakeIt
-
 
 ## fuerte
 
@@ -91,7 +88,8 @@ Most changes can be ported upstream:
 https://github.com/facebook/rocksdb
 
 On Upgrade:
-- `./thirdparty.inc` needs to be adjusted to use the snappy we specify see old commit
+- `./thirdparty.inc``needs to be adjusted to use the snappy we specify. This can be
+   adjusted by commenting out the section that sets Snappy-related CMake variables:
 
     -set(SNAPPY_HOME $ENV{THIRDPARTY_HOME}/Snappy.Library)
     -set(SNAPPY_INCLUDE ${SNAPPY_HOME}/build/native/inc/inc)
@@ -107,7 +105,6 @@ On Upgrade:
     -string(TIMESTAMP GIT_DATE_TIME "%Y/%m/%d %H:%M:%S" UTC)
     +string(TIMESTAMP TS "%Y/%m/%d %H:%M:%S" UTC )
     +set(GIT_DATE_TIME "${TS}" CACHE STRING "the time we first built rocksdb")
-
 
 
 ## s2geometry

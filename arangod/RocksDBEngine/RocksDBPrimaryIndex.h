@@ -90,22 +90,22 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   bool lookupRevision(transaction::Methods* trx, arangodb::velocypack::StringRef key,
                       LocalDocumentId& id, TRI_voc_rid_t& revisionId) const;
 
-  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                               arangodb::aql::AstNode const*,
-                               arangodb::aql::Variable const*, size_t, size_t&,
-                               double&) const override;
+  Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                             arangodb::aql::AstNode const* node,
+                                             arangodb::aql::Variable const* reference, 
+                                             size_t itemsInIndex) const override;
   
-  bool supportsSortCondition(arangodb::aql::SortCondition const*,
-                             arangodb::aql::Variable const*, size_t, double&,
-                             size_t&) const override;
+  Index::SortCosts supportsSortCondition(arangodb::aql::SortCondition const* node,
+                                         arangodb::aql::Variable const* reference, 
+                                         size_t itemsInIndex) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, 
-                                      arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      IndexIteratorOptions const&) override;
+  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
+                                                      arangodb::aql::AstNode const* node,
+                                                      arangodb::aql::Variable const* reference,
+                                                      IndexIteratorOptions const& opts) override;
 
-  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
-                                              arangodb::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
+                                              arangodb::aql::Variable const* reference) const override;
 
   void invokeOnAllElements(transaction::Methods* trx,
                            std::function<bool(LocalDocumentId const&)> callback) const;
@@ -127,12 +127,12 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
  private:
   /// @brief create the iterator, for a single attribute, IN operator
-  IndexIterator* createInIterator(transaction::Methods*, arangodb::aql::AstNode const*,
-                                  arangodb::aql::AstNode const*, bool ascending);
+  std::unique_ptr<IndexIterator> createInIterator(transaction::Methods*, arangodb::aql::AstNode const*,
+                                                  arangodb::aql::AstNode const*, bool ascending);
 
   /// @brief create the iterator, for a single attribute, EQ operator
-  IndexIterator* createEqIterator(transaction::Methods*, arangodb::aql::AstNode const*,
-                                  arangodb::aql::AstNode const*);
+  std::unique_ptr<IndexIterator> createEqIterator(transaction::Methods*, arangodb::aql::AstNode const*,
+                                                  arangodb::aql::AstNode const*);
   
   /// @brief populate the keys builder with the keys from the array, in either
   /// forward or backward order

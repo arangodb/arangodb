@@ -328,7 +328,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
           TRI_ERROR_REPLICATION_INVALID_RESPONSE,
           "create database marker did not contain data");
     }
-    TRI_ASSERT(data.get("name") == nameSlice);
+    TRI_ASSERT(basics::VelocyPackHelper::equal(data.get("name"), nameSlice, false));
 
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
 
@@ -1649,11 +1649,13 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tic
                           "&from=" + StringUtils::itoa(fromTick) +
                           "&to=" + StringUtils::itoa(toTick);
 
-  std::string const progress = "fetching initial master state with from tick " +
-                               StringUtils::itoa(fromTick) + ", to tick " +
-                               StringUtils::itoa(toTick);
+  {
+    std::string const progress = "fetching initial master state with from tick " +
+                                 StringUtils::itoa(fromTick) + ", to tick " +
+                                 StringUtils::itoa(toTick);
 
-  setProgress(progress);
+    setProgress(progress);
+  }
 
   // send request
   std::unique_ptr<httpclient::SimpleHttpResult> response;

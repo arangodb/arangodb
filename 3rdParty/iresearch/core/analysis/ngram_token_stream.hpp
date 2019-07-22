@@ -37,31 +37,41 @@ NS_BEGIN(analysis)
 ////////////////////////////////////////////////////////////////////////////////
 class ngram_token_stream: public analyzer, util::noncopyable {
  public:
+  struct options_t {
+    options_t() : min_gram(0), max_gram(0), preserve_original(true) {}
+    options_t(size_t min, size_t max, bool original) {
+      min_gram = min;
+      max_gram = max;
+      preserve_original = original;
+    }
+
+    size_t min_gram;
+    size_t max_gram;
+    bool preserve_original; // emit input data as a token
+  };
+
   DECLARE_ANALYZER_TYPE();
 
-  DECLARE_FACTORY(size_t min_gram, size_t max_gram, bool preserve_original);
+  DECLARE_FACTORY(const options_t& options);
 
   static void init(); // for trigering registration in a static build
 
-  ngram_token_stream(size_t n, bool preserve_original)
-    : ngram_token_stream(n, n, preserve_original) {
-  }
+  //ngram_token_stream(size_t n, bool preserve_original)
+  //  : ngram_token_stream(n, n, preserve_original) {
+ //}
 
-  ngram_token_stream(size_t min_gram, size_t max_gram, bool preserve_original);
+  ngram_token_stream(const options_t& options);
 
   virtual const attribute_view& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
   virtual bool next() NOEXCEPT override;
-
   virtual bool reset(const string_ref& data) NOEXCEPT override;
 
-  size_t min_gram() const NOEXCEPT { return min_gram_; }
-
-  size_t max_gram() const NOEXCEPT { return max_gram_; }
-
-  bool preserve_original() const NOEXCEPT { return preserve_original_; }
+  size_t min_gram() const NOEXCEPT { return options_.min_gram; }
+  size_t max_gram() const NOEXCEPT { return options_.max_gram; }
+  bool preserve_original() const NOEXCEPT { return options_.preserve_original; }
 
  private:
   class term_attribute final: public irs::term_attribute {
@@ -69,17 +79,14 @@ class ngram_token_stream: public analyzer, util::noncopyable {
     void value(const bytes_ref& value) { value_ = value; }
   };
 
+  options_t options_;
   attribute_view attrs_;
-  size_t min_gram_;
-  size_t max_gram_;
   bytes_ref data_; // data to process
   increment inc_;
   offset offset_;
   term_attribute term_;
   const byte_type* begin_{};
   size_t length_{};
-
-  bool preserve_original_{ false }; // emit input data as a token
   bool emit_original_{ false };
 }; // ngram_token_stream
 

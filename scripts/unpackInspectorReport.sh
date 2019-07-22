@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 filename=arango-inspector.json
 outdir=arango-inspector

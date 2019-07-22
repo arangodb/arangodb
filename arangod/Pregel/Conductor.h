@@ -94,6 +94,7 @@ class Conductor {
   double _computationStartTimeSecs = 0;
   double _finalizationStartTimeSecs = 0;
   double _endTimeSecs = 0;
+  double _stepStartTimeSecs = 0; // start time of current gss
   Scheduler::WorkHandle _workHandle;
 
   bool _startGlobalStep();
@@ -121,7 +122,7 @@ class Conductor {
   void start();
   void cancel();
   void startRecovery();
-  void collectAQLResults(velocypack::Builder& outBuilder);
+  void collectAQLResults(velocypack::Builder& outBuilder, bool withId);
   VPackBuilder toVelocyPack() const;
 
   double totalRuntimeSecs() const {

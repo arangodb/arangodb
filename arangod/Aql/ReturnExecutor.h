@@ -27,6 +27,7 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 
 namespace arangodb {
@@ -36,16 +37,13 @@ class Methods;
 
 namespace aql {
 
-template <bool>
-class SingleRowFetcher;
 class ExecutorInfos;
 class NoStats;
 
 class ReturnExecutorInfos : public ExecutorInfos {
  public:
   ReturnExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
-                      RegisterId nrOutputRegisters, bool doCount,
-                      bool returnInheritedResults);
+                      RegisterId nrOutputRegisters, bool doCount);
 
   ReturnExecutorInfos() = delete;
   ReturnExecutorInfos(ReturnExecutorInfos&&) = default;
@@ -54,34 +52,34 @@ class ReturnExecutorInfos : public ExecutorInfos {
 
   RegisterId getInputRegisterId() const { return _inputRegisterId; }
 
-  RegisterId getOutputRegisterId() const {
-    // Should not be used with returnInheritedResults.
-    TRI_ASSERT(!returnInheritedResults());
-    return 0;
-  }
+  RegisterId getOutputRegisterId() const { return 0; }
 
   bool doCount() const { return _doCount; }
-
-  bool returnInheritedResults() const { return _returnInheritedResults; }
 
  private:
   /// @brief the variable produced by Return
   RegisterId _inputRegisterId;
   bool _doCount;
-  bool _returnInheritedResults;
 };
 
 /**
  * @brief Implementation of Return Node
+ *
+ *
+ * The return executor projects some column, given by _infos.getInputRegisterId(),
+ * to the first and only column in the output. This is used for return nodes
+ * in subqueries.
+ * Return nodes on the top level use the IdExecutor instead.
  */
-template <bool passBlocksThrough>
 class ReturnExecutor {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = passBlocksThrough;
-    /* This could be set to true after some investigation/fixes */
-    static const bool inputSizeRestrictsOutputSize = false;
+    // The return executor is now only used for projecting some register to
+    // register 0. So it does not pass through, but copy one column into a new
+    // block with only this column.
+    static const bool allowsBlockPassthrough = false;
+    static const bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = ReturnExecutorInfos;
@@ -112,29 +110,21 @@ class ReturnExecutor {
       return {state, stats};
     }
 
-    TRI_ASSERT(passBlocksThrough == _infos.returnInheritedResults());
-    if (_infos.returnInheritedResults()) {
-      output.copyRow(inputRow);
-    } else {
-      AqlValue val = inputRow.stealValue(_infos.getInputRegisterId());
-      AqlValueGuard guard(val, true);
-      TRI_IF_FAILURE("ReturnBlock::getSome") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-      output.moveValueInto(_infos.getOutputRegisterId(), inputRow, guard);
+    AqlValue val = inputRow.stealValue(_infos.getInputRegisterId());
+    AqlValueGuard guard(val, true);
+    TRI_IF_FAILURE("ReturnBlock::getSome") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
+    output.moveValueInto(_infos.getOutputRegisterId(), inputRow, guard);
 
     if (_infos.doCount()) {
       stats.incrCounted();
     }
     return {state, stats};
   }
-  
-  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "Logic_error, prefetching number fo rows not supported");
+
+  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {
+    return _fetcher.preFetchNumberOfRows(atMost);
   }
 
  private:

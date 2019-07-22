@@ -34,6 +34,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
 #include <velocypack/velocypack-aliases.h>
+#include <set>
 
 #include "Basics/ReadLocker.h"
 #include "Basics/StringBuffer.h"
@@ -46,8 +47,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -1014,7 +1014,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
   while (tries++ < maxTries) {
     result = getValues("Sync/LatestID");
     if (!result.successful()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(500000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
       continue;
     }
 
@@ -1050,7 +1050,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
     try {
       newBuilder.add(VPackValue(newValue));
     } catch (...) {
-      std::this_thread::sleep_for(std::chrono::microseconds(500000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
       continue;
     }
 
@@ -1309,6 +1309,14 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
                                               double const timeout,
                                               std::string const& initialUrl,
                                               VPackSlice inBody) {
+  AgencyCommResult result;
+  if (!AgencyCommManager::isEnabled()) {
+    LOG_TOPIC("42fae", ERR, Logger::AGENCYCOMM)
+      << "No AgencyCommManager.  Inappropriate agent usage?";
+    result.set(503, "No AgencyCommManager. Inappropriate agent usage?");
+    return result;
+  } // if
+
   std::string endpoint;
   std::unique_ptr<GeneralClientConnection> connection =
       AgencyCommManager::MANAGER->acquire(endpoint);
@@ -1326,7 +1334,6 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
       }
     }
   }
-  AgencyCommResult result;
   std::string url;
 
   std::chrono::duration<double> waitInterval(.0);  // seconds
@@ -1338,7 +1345,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
   auto waitSomeTime = [&waitInterval, &result]() -> bool {
     // Returning true means timeout because of shutdown:
-    if (!application_features::ApplicationServer::isRetryOK()) {
+    if (application_features::ApplicationServer::isStopping()) {
       LOG_TOPIC("53e58", INFO, Logger::AGENCYCOMM)
           << "Unsuccessful AgencyComm: Timeout because of shutdown "
           << "errorCode: " << result.errorCode()
@@ -1358,7 +1365,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
     }
 
     // Check again for shutdown, since some time has passed:
-    if (!application_features::ApplicationServer::isRetryOK()) {
+    if (application_features::ApplicationServer::isStopping()) {
       LOG_TOPIC("afe45", INFO, Logger::AGENCYCOMM)
           << "Unsuccessful AgencyComm: Timeout because of shutdown "
           << "errorCode: " << result.errorCode()
@@ -1403,30 +1410,12 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
     // Some reporting:
     if (tries > 20) {
-      auto serverState = application_features::ApplicationServer::server->state();
-      std::string serverStateStr;
-      switch (serverState) {
-        case arangodb::application_features::ServerState::UNINITIALIZED:
-        case arangodb::application_features::ServerState::IN_COLLECT_OPTIONS:
-        case arangodb::application_features::ServerState::IN_VALIDATE_OPTIONS:
-        case arangodb::application_features::ServerState::IN_PREPARE:
-        case arangodb::application_features::ServerState::IN_START:
-          serverStateStr = "in startup";
-          break;
-        case arangodb::application_features::ServerState::IN_WAIT:
-          serverStateStr = "running";
-          break;
-        case arangodb::application_features::ServerState::IN_STOP:
-        case arangodb::application_features::ServerState::IN_UNPREPARE:
-        case arangodb::application_features::ServerState::STOPPED:
-        case arangodb::application_features::ServerState::ABORT:
-          serverStateStr = "in shutdown";
-      }
+      std::string serverState = application_features::ApplicationServer::server->stringifyState();
       LOG_TOPIC("2f181", INFO, Logger::AGENCYCOMM)
           << "Flaky agency communication to " << endpoint
           << ". Unsuccessful consecutive tries: " << tries << " (" << elapsed
           << "s). Network checks advised."
-          << " Server " << serverStateStr << ".";
+          << " Server " << serverState << ".";
     }
 
     if (1 < tries) {
@@ -1599,7 +1588,7 @@ AgencyCommResult AgencyComm::send(arangodb::httpclient::GeneralClientConnection*
   AgencyCommResult result;
 
   LOG_TOPIC("47733", TRACE, Logger::AGENCYCOMM)
-      << "sending " << arangodb::HttpRequest::translateMethod(method)
+      << "sending " << arangodb::GeneralRequest::translateMethod(method)
       << " request to agency at endpoint '"
       << connection->getEndpoint()->specification() << "', url '" << url
       << "': " << body;
@@ -1846,14 +1835,14 @@ bool AgencyComm::shouldInitializeStructure() {
       // Sanity
       if (result.slice().isArray() && result.slice().length() == 1) {
 
-        // No plan entry? Should initialise
-        if (result.slice()[0] == VPackSlice::emptyObjectSlice()) {
+        // No plan entry? Should initialize
+        if (result.slice()[0].isObject() && result.slice()[0].length() == 0) {
           LOG_TOPIC("98732", DEBUG, Logger::AGENCYCOMM)
-            << "agency initialisation should be performed";
+            << "agency initialization should be performed";
           return true;
         } else {
           LOG_TOPIC("abedb", DEBUG, Logger::AGENCYCOMM)
-            << "agency initialisation under way or done";
+            << "agency initialization under way or done";
           return false;
         }
       } else {

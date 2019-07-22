@@ -33,6 +33,7 @@
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 
 #include <velocypack/AttributeTranslator.h>
@@ -43,6 +44,13 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
+
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 extern "C" {
 unsigned long long XXH64(const void* input, size_t length, unsigned long long seed);
@@ -292,7 +300,7 @@ size_t VelocyPackHelper::VPackStringHash::operator()(VPackSlice const& slice) co
 
 bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs,
                                               VPackSlice const& rhs) const {
-  return VelocyPackHelper::compare(lhs, rhs, false, _options) == 0;
+  return VelocyPackHelper::equal(lhs, rhs, false, _options);
 }
 
 static inline int8_t TypeWeight(VPackSlice& slice) {
@@ -669,6 +677,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     return false;
   }
 
+#ifndef _WIN32
   if (syncFile) {
     // also sync target directory
     std::string const dir = TRI_Dirname(filename.c_str());
@@ -676,21 +685,22 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     if (fd < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       LOG_TOPIC("fd84e", WARN, arangodb::Logger::FIXME)
-          << "cannot sync directory '" << tmp << "': " << TRI_LAST_ERROR_STR;
+          << "cannot sync directory '" << filename << "': " << TRI_LAST_ERROR_STR;
     } else {
       if (fsync(fd) < 0) {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC("6b8f6", WARN, arangodb::Logger::FIXME)
-            << "cannot sync directory '" << tmp << "': " << TRI_LAST_ERROR_STR;
+            << "cannot sync directory '" << filename << "': " << TRI_LAST_ERROR_STR;
       }
       res = TRI_CLOSE(fd);
       if (res < 0) {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC("7ceee", WARN, arangodb::Logger::FIXME)
-            << "cannot close directory '" << dir << "': " << TRI_LAST_ERROR_STR;
+            << "cannot close directory '" << filename << "': " << TRI_LAST_ERROR_STR;
       }
     }
   }
+#endif
 
   return true;
 }

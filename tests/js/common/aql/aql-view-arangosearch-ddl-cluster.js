@@ -36,8 +36,6 @@ var ERRORS = require("@arangodb").errors;
 function IResearchFeatureDDLTestSuite () {
   return {
     setUpAll : function () {
-      analyzers.save(db._name() + "::text_de", "text", "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
-      analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
     },
 
     tearDownAll : function () {
@@ -159,6 +157,51 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(0, Object.keys(properties.links).length);
     },
 
+    testAddDuplicateAnalyzers : function() {
+      db._useDatabase("_system");
+      try { db._dropDatabase("TestDuplicateDB"); } catch (e) {}
+      try { analyzers.remove("myIdentity", true); } catch (e) {}
+        
+      analyzers.save("myIdentity", "identity");
+      db._createDatabase("TestDuplicateDB");
+      db._useDatabase("TestDuplicateDB");
+      analyzers.save("myIdentity", "identity");
+      db._create("TestCollection0");
+
+      var view = db._createView("TestView", "arangosearch", 
+        { links : 
+          { "TestCollection0" : 
+            { includeAllFields: true, analyzers: 
+                [ "identity", "identity", 
+                "TestDuplicateDB::myIdentity" , "myIdentity", 
+                "::myIdentity", "_system::myIdentity" 
+                ]
+            } 
+          }
+        }
+        );
+      var properties = view.properties();
+      assertEqual(3, Object.keys(properties.links.TestCollection0.analyzers).length);
+      
+      let expectedAnalyzers = new Set();
+      expectedAnalyzers.add("identity");
+      expectedAnalyzers.add("myIdentity");
+      expectedAnalyzers.add("::myIdentity");
+
+      for (var i = 0; i < Object.keys(properties.links.TestCollection0.analyzers).length; i++) {
+        assertTrue(String === properties.links.TestCollection0.analyzers[i].constructor);
+        expectedAnalyzers.delete(properties.links.TestCollection0.analyzers[i]);
+      }
+      assertEqual(0, expectedAnalyzers.size);
+
+      db._dropView("TestView");
+      db._drop("TestCollection0");
+      analyzers.remove("myIdentity", true);
+      db._useDatabase("_system");
+      db._dropDatabase("TestDuplicateDB");
+      analyzers.remove("myIdentity", true);
+    },
+
     testViewDDL: function() {
       // collections
       db._drop("TestCollection0");
@@ -211,25 +254,29 @@ function IResearchFeatureDDLTestSuite () {
 
       properties = view.properties();
       assertTrue(Object === properties.constructor);
-      assertEqual(10, properties.cleanupIntervalStep);
+      assertEqual(2, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(60000, properties.consolidationIntervalMsec);
+      assertEqual(10000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
-      assertEqual(2, Object.keys(properties.consolidationPolicy).length);
-      assertEqual("bytes_accum", properties.consolidationPolicy.type);
-      assertEqual((0.1).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
+      assertEqual(6, Object.keys(properties.consolidationPolicy).length);
+      assertEqual("tier", properties.consolidationPolicy.type);
+      assertEqual(1, properties.consolidationPolicy.segmentsMin);
+      assertEqual(10, properties.consolidationPolicy.segmentsMax);
+      assertEqual(5*(1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(2*(1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
+      assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
 
       meta = {
         commitIntervalMsec: 12345,
-        consolidationIntervalMsec: 10000,
+        consolidationIntervalMsec: 20000,
         consolidationPolicy: { threshold: 0.5, type: "bytes_accum" },
       };
       view.properties(meta, true); // partial update
       properties = view.properties();
       assertTrue(Object === properties.constructor);
-      assertEqual(10, properties.cleanupIntervalStep);
+      assertEqual(2, properties.cleanupIntervalStep);
       assertEqual(12345, properties.commitIntervalMsec);
-      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(20000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("bytes_accum", properties.consolidationPolicy.type);
@@ -244,7 +291,7 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Object === properties.constructor);
       assertEqual(20, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(60000, properties.consolidationIntervalMsec);
+      assertEqual(10000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("bytes_accum", properties.consolidationPolicy.type);
@@ -681,15 +728,98 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(0, result.length);
       properties = view.properties();
       assertTrue(Object === properties.constructor);
-      assertEqual(10, properties.cleanupIntervalStep);
+      assertEqual(2, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(60000, properties.consolidationIntervalMsec);
+      assertEqual(10000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
-      assertEqual(2, Object.keys(properties.consolidationPolicy).length);
-      assertEqual("bytes_accum", properties.consolidationPolicy.type);
-      assertEqual((0.1).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
+      assertEqual(6, Object.keys(properties.consolidationPolicy).length);
+      assertEqual("tier", properties.consolidationPolicy.type);
+      assertEqual(1, properties.consolidationPolicy.segmentsMin);
+      assertEqual(10, properties.consolidationPolicy.segmentsMax);
+      assertEqual(5*(1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(2*(1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
+      assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
       assertTrue(Object === properties.links.constructor);
       assertEqual(0, Object.keys(properties.links).length);
+    },
+
+    testViewModifyImmutableProperties: function() {
+      db._dropView("TestView");
+
+      var view = db._createView("TestView", "arangosearch", { 
+        writebufferActive: 25,
+        writebufferIdle: 12,
+        writebufferSizeMax: 44040192,
+        locale: "C",
+        version: 1,
+        primarySort: [
+          { field: "my.Nested.field", direction: "asc" },
+          { field: "another.field", asc: false }
+        ],
+        "cleanupIntervalStep": 42,
+        "commitIntervalMsec": 12345 
+      });
+
+      var properties = view.properties();
+      assertTrue(Object === properties.constructor);
+      assertEqual(25, properties.writebufferActive);
+      assertEqual(12, properties.writebufferIdle);
+      assertEqual(44040192, properties.writebufferSizeMax);
+      assertEqual(undefined, properties.locale);
+      assertEqual(undefined, properties.version);
+      var primarySort = properties.primarySort;
+      assertTrue(Array === primarySort.constructor);
+      assertEqual(2, primarySort.length);
+      assertEqual("my.Nested.field", primarySort[0].field);
+      assertEqual(true, primarySort[0].asc);
+      assertEqual("another.field", primarySort[1].field);
+      assertEqual(false, primarySort[1].asc);
+      assertEqual(42, properties.cleanupIntervalStep);
+      assertEqual(12345, properties.commitIntervalMsec);
+      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(6, Object.keys(properties.consolidationPolicy).length);
+      assertEqual("tier", properties.consolidationPolicy.type);
+      assertEqual(1, properties.consolidationPolicy.segmentsMin);
+      assertEqual(10, properties.consolidationPolicy.segmentsMax);
+      assertEqual(5*(1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(2*(1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
+      assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
+
+      view.properties({ 
+        writebufferActive: 225,
+        writebufferIdle: 112,
+        writebufferSizeMax: 414040192,
+        locale: "en_EN.UTF-8",
+        version: 2,
+        primarySort: [ { field: "field", asc: false } ],
+        "cleanupIntervalStep": 442
+      }, false); // full update
+
+      // check properties after upgrade
+      properties = view.properties();
+      assertTrue(Object === properties.constructor);
+      assertEqual(25, properties.writebufferActive);
+      assertEqual(12, properties.writebufferIdle);
+      assertEqual(44040192, properties.writebufferSizeMax);
+      assertEqual(undefined, properties.locale);
+      assertEqual(undefined, properties.version);
+      primarySort = properties.primarySort;
+      assertTrue(Array === primarySort.constructor);
+      assertEqual(2, primarySort.length);
+      assertEqual("my.Nested.field", primarySort[0].field);
+      assertEqual(true, primarySort[0].asc);
+      assertEqual("another.field", primarySort[1].field);
+      assertEqual(false, primarySort[1].asc);
+      assertEqual(442, properties.cleanupIntervalStep);
+      assertEqual(1000, properties.commitIntervalMsec);
+      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(6, Object.keys(properties.consolidationPolicy).length);
+      assertEqual("tier", properties.consolidationPolicy.type);
+      assertEqual(1, properties.consolidationPolicy.segmentsMin);
+      assertEqual(10, properties.consolidationPolicy.segmentsMax);
+      assertEqual(5*(1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(2*(1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
+      assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
     },
 
     testLinkModify: function() {

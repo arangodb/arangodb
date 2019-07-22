@@ -91,7 +91,6 @@
     "ERROR_ARANGO_DOCUMENT_TOO_LARGE" : { "code" : 1216, "message" : "document too large" },
     "ERROR_ARANGO_COLLECTION_NOT_UNLOADED" : { "code" : 1217, "message" : "collection must be unloaded" },
     "ERROR_ARANGO_COLLECTION_TYPE_INVALID" : { "code" : 1218, "message" : "collection type invalid" },
-    "ERROR_ARANGO_VALIDATION_FAILED" : { "code" : 1219, "message" : "validator failed" },
     "ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED" : { "code" : 1220, "message" : "parsing attribute name definition failed" },
     "ERROR_ARANGO_DOCUMENT_KEY_BAD" : { "code" : 1221, "message" : "illegal document key" },
     "ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED" : { "code" : 1222, "message" : "unexpected document key" },
@@ -102,15 +101,14 @@
     "ERROR_ARANGO_DATABASE_NOT_FOUND" : { "code" : 1228, "message" : "database not found" },
     "ERROR_ARANGO_DATABASE_NAME_INVALID" : { "code" : 1229, "message" : "database name invalid" },
     "ERROR_ARANGO_USE_SYSTEM_DATABASE" : { "code" : 1230, "message" : "operation only allowed in system database" },
-    "ERROR_ARANGO_ENDPOINT_NOT_FOUND" : { "code" : 1231, "message" : "endpoint not found" },
     "ERROR_ARANGO_INVALID_KEY_GENERATOR" : { "code" : 1232, "message" : "invalid key generator" },
     "ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE" : { "code" : 1233, "message" : "edge attribute missing or invalid" },
-    "ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING" : { "code" : 1234, "message" : "index insertion warning - attribute missing in document" },
     "ERROR_ARANGO_INDEX_CREATION_FAILED" : { "code" : 1235, "message" : "index creation failed" },
     "ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT" : { "code" : 1236, "message" : "write-throttling timeout" },
     "ERROR_ARANGO_COLLECTION_TYPE_MISMATCH" : { "code" : 1237, "message" : "collection type mismatch" },
     "ERROR_ARANGO_COLLECTION_NOT_LOADED" : { "code" : 1238, "message" : "collection not loaded" },
     "ERROR_ARANGO_DOCUMENT_REV_BAD" : { "code" : 1239, "message" : "illegal document revision" },
+    "ERROR_ARANGO_INCOMPLETE_READ" : { "code" : 1240, "message" : "incomplete read" },
     "ERROR_ARANGO_DATAFILE_FULL"   : { "code" : 1300, "message" : "datafile full" },
     "ERROR_ARANGO_EMPTY_DATADIR"   : { "code" : 1301, "message" : "server database directory is empty" },
     "ERROR_ARANGO_TRY_AGAIN"       : { "code" : 1302, "message" : "operation should be tried again" },
@@ -133,12 +131,8 @@
     "ERROR_REPLICATION_START_TICK_NOT_PRESENT" : { "code" : 1414, "message" : "start tick not present" },
     "ERROR_REPLICATION_WRONG_CHECKSUM" : { "code" : 1416, "message" : "wrong checksum" },
     "ERROR_REPLICATION_SHARD_NONEMPTY" : { "code" : 1417, "message" : "shard not empty" },
-    "ERROR_CLUSTER_NO_AGENCY"      : { "code" : 1450, "message" : "could not connect to agency" },
-    "ERROR_CLUSTER_NO_COORDINATOR_HEADER" : { "code" : 1451, "message" : "missing coordinator header" },
-    "ERROR_CLUSTER_COULD_NOT_LOCK_PLAN" : { "code" : 1452, "message" : "could not lock plan in agency" },
     "ERROR_CLUSTER_COLLECTION_ID_EXISTS" : { "code" : 1453, "message" : "collection ID already exists" },
     "ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN" : { "code" : 1454, "message" : "could not create collection in plan" },
-    "ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION" : { "code" : 1455, "message" : "could not read version in current in agency" },
     "ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION" : { "code" : 1456, "message" : "could not create collection" },
     "ERROR_CLUSTER_TIMEOUT"        : { "code" : 1457, "message" : "timeout in cluster operation" },
     "ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN" : { "code" : 1458, "message" : "could not remove collection from plan" },
@@ -158,12 +152,8 @@
     "ERROR_CLUSTER_READING_PLAN_AGENCY" : { "code" : 1472, "message" : "error reading Plan in agency" },
     "ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION" : { "code" : 1473, "message" : "could not truncate collection" },
     "ERROR_CLUSTER_AQL_COMMUNICATION" : { "code" : 1474, "message" : "error in cluster internal communication for AQL" },
-    "ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED" : { "code" : 1475, "message" : "document not found or sharding attributes changed" },
-    "ERROR_CLUSTER_COULD_NOT_DETERMINE_ID" : { "code" : 1476, "message" : "could not determine my ID from my local info" },
     "ERROR_CLUSTER_ONLY_ON_DBSERVER" : { "code" : 1477, "message" : "this operation is only valid on a DBserver in a cluster" },
     "ERROR_CLUSTER_BACKEND_UNAVAILABLE" : { "code" : 1478, "message" : "A cluster backend which was required for the operation could not be reached" },
-    "ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT" : { "code" : 1479, "message" : "An endpoint couldn't be found" },
-    "ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID" : { "code" : 1480, "message" : "Invalid agency structure" },
     "ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC" : { "code" : 1481, "message" : "collection is out of sync" },
     "ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN" : { "code" : 1482, "message" : "could not create index in plan" },
     "ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN" : { "code" : 1483, "message" : "could not drop index in plan" },
@@ -176,8 +166,6 @@
     "ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION" : { "code" : 1490, "message" : "a shard follower refuses to perform an operation that is not a replication" },
     "ERROR_CLUSTER_SHARD_LEADER_RESIGNED" : { "code" : 1491, "message" : "a (former) shard leader refuses to perform an operation, because it has resigned in the meantime" },
     "ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED" : { "code" : 1492, "message" : "some agency operation failed" },
-    "ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR" : { "code" : 1493, "message" : "conflicting replication factor with distributeShardsLike parameter assignment" },
-    "ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS" : { "code" : 1494, "message" : "conflicting shard number with distributeShardsLike parameter assignment" },
     "ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING" : { "code" : 1495, "message" : "leadership challenge is ongoing" },
     "ERROR_CLUSTER_NOT_LEADER"     : { "code" : 1496, "message" : "not a leader" },
     "ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN" : { "code" : 1497, "message" : "could not create view in plan" },
@@ -224,7 +212,6 @@
     "ERROR_QUERY_FUNCTION_RUNTIME_ERROR" : { "code" : 1583, "message" : "user function runtime error: %s" },
     "ERROR_QUERY_BAD_JSON_PLAN"    : { "code" : 1590, "message" : "bad execution plan JSON" },
     "ERROR_QUERY_NOT_FOUND"        : { "code" : 1591, "message" : "query ID not found" },
-    "ERROR_QUERY_IN_USE"           : { "code" : 1592, "message" : "query with this ID is in use" },
     "ERROR_QUERY_USER_ASSERT"      : { "code" : 1593, "message" : "%s" },
     "ERROR_QUERY_USER_WARN"        : { "code" : 1594, "message" : "%s" },
     "ERROR_CURSOR_NOT_FOUND"       : { "code" : 1600, "message" : "cursor not found" },
@@ -236,12 +223,9 @@
     "ERROR_TRANSACTION_ABORTED"    : { "code" : 1654, "message" : "transaction aborted" },
     "ERROR_TRANSACTION_NOT_FOUND"  : { "code" : 1655, "message" : "transaction not found" },
     "ERROR_USER_INVALID_NAME"      : { "code" : 1700, "message" : "invalid user name" },
-    "ERROR_USER_INVALID_PASSWORD"  : { "code" : 1701, "message" : "invalid password" },
     "ERROR_USER_DUPLICATE"         : { "code" : 1702, "message" : "duplicate user" },
     "ERROR_USER_NOT_FOUND"         : { "code" : 1703, "message" : "user not found" },
     "ERROR_USER_EXTERNAL"          : { "code" : 1705, "message" : "user is external" },
-    "ERROR_SERVICE_INVALID_NAME"   : { "code" : 1750, "message" : "invalid service name" },
-    "ERROR_SERVICE_INVALID_MOUNT"  : { "code" : 1751, "message" : "invalid mount" },
     "ERROR_SERVICE_DOWNLOAD_FAILED" : { "code" : 1752, "message" : "service download failed" },
     "ERROR_SERVICE_UPLOAD_FAILED"  : { "code" : 1753, "message" : "service upload failed" },
     "ERROR_LDAP_CANNOT_INIT"       : { "code" : 1800, "message" : "cannot init a LDAP connection" },
@@ -293,12 +277,12 @@
     "ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT" : { "code" : 1944, "message" : "edge definition collection is a document collection" },
     "ERROR_SESSION_UNKNOWN"        : { "code" : 1950, "message" : "unknown session" },
     "ERROR_SESSION_EXPIRED"        : { "code" : 1951, "message" : "session expired" },
-    "SIMPLE_CLIENT_UNKNOWN_ERROR"  : { "code" : 2000, "message" : "unknown client error" },
-    "SIMPLE_CLIENT_COULD_NOT_CONNECT" : { "code" : 2001, "message" : "could not connect to server" },
-    "SIMPLE_CLIENT_COULD_NOT_WRITE" : { "code" : 2002, "message" : "could not write to server" },
-    "SIMPLE_CLIENT_COULD_NOT_READ" : { "code" : 2003, "message" : "could not read from server" },
-    "COMMUNICATOR_REQUEST_ABORTED" : { "code" : 2100, "message" : "Request aborted" },
-    "COMMUNICATOR_DISABLED"        : { "code" : 2101, "message" : "Communication was disabled" },
+    "ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR" : { "code" : 2000, "message" : "unknown client error" },
+    "ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT" : { "code" : 2001, "message" : "could not connect to server" },
+    "ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE" : { "code" : 2002, "message" : "could not write to server" },
+    "ERROR_SIMPLE_CLIENT_COULD_NOT_READ" : { "code" : 2003, "message" : "could not read from server" },
+    "ERROR_COMMUNICATOR_REQUEST_ABORTED" : { "code" : 2100, "message" : "Request aborted" },
+    "ERROR_COMMUNICATOR_DISABLED"  : { "code" : 2101, "message" : "Communication was disabled" },
     "ERROR_INTERNAL_AQL"           : { "code" : 2200, "message" : "General internal AQL error" },
     "ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS" : { "code" : 2201, "message" : "An AQL block wrote too few output registers" },
     "ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS" : { "code" : 2202, "message" : "An AQL block wrote too many output registers" },
@@ -319,6 +303,7 @@
     "ERROR_SERVICE_SOURCE_NOT_FOUND" : { "code" : 3014, "message" : "source path not found" },
     "ERROR_SERVICE_SOURCE_ERROR"   : { "code" : 3015, "message" : "error resolving source" },
     "ERROR_SERVICE_UNKNOWN_SCRIPT" : { "code" : 3016, "message" : "unknown script" },
+    "ERROR_SERVICE_API_DISABLED"   : { "code" : 3099, "message" : "service api disabled" },
     "ERROR_MODULE_NOT_FOUND"       : { "code" : 3100, "message" : "cannot locate module" },
     "ERROR_MODULE_SYNTAX_ERROR"    : { "code" : 3101, "message" : "syntax error in module" },
     "ERROR_MODULE_FAILURE"         : { "code" : 3103, "message" : "failed to invoke module" },
@@ -343,7 +328,6 @@
     "ERROR_CLUSTER_REPAIRS_JOB_FAILED" : { "code" : 5008, "message" : "move shard job failed during cluster repairs" },
     "ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED" : { "code" : 5009, "message" : "move shard job disappeared during cluster repairs" },
     "ERROR_CLUSTER_REPAIRS_OPERATION_FAILED" : { "code" : 5010, "message" : "agency transaction failed during cluster repairs" },
-    "ERROR_AGENCY_INQUIRY_SYNTAX"  : { "code" : 20001, "message" : "Illegal inquiry syntax" },
     "ERROR_AGENCY_INFORM_MUST_BE_OBJECT" : { "code" : 20011, "message" : "Inform message must be an object." },
     "ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM" : { "code" : 20012, "message" : "Inform message must contain uint parameter 'term'" },
     "ERROR_AGENCY_INFORM_MUST_CONTAIN_ID" : { "code" : 20013, "message" : "Inform message must contain string parameter 'id'" },
@@ -352,57 +336,13 @@
     "ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING" : { "code" : 20016, "message" : "Inform message must contain object 'min ping'" },
     "ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING" : { "code" : 20017, "message" : "Inform message must contain object 'max ping'" },
     "ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT" : { "code" : 20018, "message" : "Inform message must contain object 'timeoutMult'" },
-    "ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING" : { "code" : 20020, "message" : "Inquiry failed" },
     "ERROR_AGENCY_CANNOT_REBUILD_DBS" : { "code" : 20021, "message" : "Cannot rebuild readDB and spearHead" },
     "ERROR_SUPERVISION_GENERAL_FAILURE" : { "code" : 20501, "message" : "general supervision failure" },
-    "ERROR_DISPATCHER_IS_STOPPING" : { "code" : 21001, "message" : "dispatcher stopped" },
-    "ERROR_QUEUE_UNKNOWN"          : { "code" : 21002, "message" : "named queue does not exist" },
     "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "named queue is full" },
-    "ERROR_ACTION_ALREADY_REGISTERED" : { "code" : 6001, "message" : "maintenance action already registered" },
-    "ERROR_ACTION_OPERATION_UNABORTABLE" : { "code" : 6002, "message" : "this maintenance action cannot be stopped" },
-    "ERROR_ACTION_UNFINISHED"      : { "code" : 6003, "message" : "maintenance action still processing" },
-    "ERROR_NO_SUCH_ACTION"         : { "code" : 6004, "message" : "no such maintenance action" }
+    "ERROR_ACTION_OPERATION_UNABORTABLE" : { "code" : 6002, "message" : "this maintenance action cannot be stopped" }
   };
 
   // For compatibility with <= 3.3
   internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-
-  //arg1 can be a code or error object
-  internal.throwArangoError = function (arg1, message, httpCode) {
-    let errorNum;
-
-    if (typeof arg1 === "object" && typeof arg1.code === "number") {
-      errorNum = arg1.code;
-      if(message === undefined && arg1.message) {
-        message = arg1.message;
-      }
-    } else if ( typeof arg1 === "number" ) {
-      errorNum = arg1;
-    } else {
-      errorNum = internal.errors.ERROR_INTERNAL.code;
-    }
-
-    if (message === undefined) {
-      message = "could not resolve errorMessage";
-      for(var key in internal.errors) {
-        let attribute = internal.errors[key];
-        if(attribute.code === errorNum){
-          message = attribute.message;
-          break;
-        }
-      }
-    }
-
-    if (httpCode === undefined) {
-      httpCode = internal.errorNumberToHttpCode(errorNum);
-    }
-
-    throw new internal.ArangoError({
-      errorNum: errorNum,
-      errorMessage: message,
-      code: httpCode
-    });
-  };
-
 }());
 

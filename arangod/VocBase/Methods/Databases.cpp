@@ -29,7 +29,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Utils/Events.h"
@@ -240,7 +239,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
         break;
       }
       // sleep
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     if (vocbase == nullptr) {
@@ -371,7 +370,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
     }
   }
 
-  int res;
+  Result res;
   V8DealerFeature* dealer = V8DealerFeature::DEALER;
   if (dealer != nullptr && dealer->isEnabled()) {
     try {
@@ -392,8 +391,8 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
       } else {
         res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);
 
-        if (res != TRI_ERROR_NO_ERROR) {
-          events::DropDatabase(dbName, res);
+        if (res.fail()) {
+          events::DropDatabase(dbName, res.errorNumber());
           return Result(res);
         }
 
@@ -423,9 +422,11 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
   }
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-  if (res == TRI_ERROR_NO_ERROR && um != nullptr) {
-    return um->enumerateUsers(
-        [&](auth::User& entry) -> bool { return entry.removeDatabase(dbName); });
+  if (res.ok() && um != nullptr) {
+    auto cb = [&](auth::User& entry) -> bool {
+      return entry.removeDatabase(dbName);
+    };
+    res = um->enumerateUsers(cb, /*retryOnConflict*/true);
   }
 
   return res;

@@ -95,6 +95,10 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     : str_(std::move(rhs.str_)) {
   }
 
+  explicit StringLeftWeight(const irs::basic_string_ref<Label>& rhs)
+    : str_(rhs.c_str(), rhs.size()) {
+  }
+
   StringLeftWeight& operator=(StringLeftWeight&& rhs) NOEXCEPT {
     if (this != &rhs) {
       str_ = std::move(rhs.str_);
@@ -106,6 +110,11 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     if (this != &rhs) {
       str_ = rhs.str_;
     }
+    return *this;
+  }
+
+  StringLeftWeight& operator=(const irs::basic_string_ref<Label>& rhs) {
+    str_.assign(rhs.c_str(), rhs.size());
     return *this;
   }
 
@@ -211,7 +220,8 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
   iterator begin() const NOEXCEPT { return str_.begin(); }
   iterator end() const NOEXCEPT { return str_.end(); }
 
-  explicit operator irs::basic_string_ref<Label>() const NOEXCEPT {
+  // intentionally implicit
+  operator irs::basic_string_ref<Label>() const NOEXCEPT {
     return str_;
   }
 
@@ -471,10 +481,11 @@ inline std::istream& operator>>(
 // For binary strings that's impossible to use
 // Zero() or NoWeight() as they may interfere
 // with real values
-inline StringLeftWeight<irs::byte_type> Plus(
+inline irs::bytes_ref Plus(
     const StringLeftWeight<irs::byte_type>& lhs,
     const StringLeftWeight<irs::byte_type>& rhs) {
-  typedef StringLeftWeight<irs::byte_type> Weight;
+  typedef irs::bytes_ref Weight;
+
   const auto* plhs = &lhs;
   const auto* prhs = &rhs;
 
@@ -488,8 +499,11 @@ inline StringLeftWeight<irs::byte_type> Plus(
   assert(prhs->Size() <= plhs->Size());
 
   return Weight(
-    prhs->begin(),
-    std::mismatch(prhs->begin(), prhs->end(), plhs->begin()).first
+    prhs->c_str(),
+    std::distance(
+      prhs->c_str(),
+      std::mismatch(prhs->c_str(), (prhs->c_str() + prhs->Size()), plhs->c_str()).first
+    )
   );
 }
 
@@ -508,14 +522,44 @@ inline StringLeftWeight<irs::byte_type> Times(
   return product;
 }
 
+// For binary strings that's impossible to use
+// Zero() or NoWeight() as they may interfere
+// with real values
+inline StringLeftWeight<irs::byte_type> Times(
+    const irs::bytes_ref& lhs,
+    const StringLeftWeight<irs::byte_type>& rhs) {
+  typedef StringLeftWeight<irs::byte_type> Weight;
+
+  Weight product;
+  product.Reserve(lhs.size() + rhs.Size());
+  product.PushBack(lhs.begin(), lhs.end());
+  product.PushBack(rhs.begin(), rhs.end());
+  return product;
+}
+
+// For binary strings that's impossible to use
+// Zero() or NoWeight() as they may interfere
+// with real values
+inline StringLeftWeight<irs::byte_type> Times(
+    const StringLeftWeight<irs::byte_type>& lhs,
+    const irs::bytes_ref& rhs) {
+  typedef StringLeftWeight<irs::byte_type> Weight;
+
+  Weight product;
+  product.Reserve(lhs.Size() + rhs.size());
+  product.PushBack(lhs.begin(), lhs.end());
+  product.PushBack(rhs.begin(), rhs.end());
+  return product;
+}
+
 // Left division in a left string semiring.
 // For binary strings that's impossible to use
 // Zero() or NoWeight() as they may interfere
 // with real values
-inline StringLeftWeight<irs::byte_type> DivideLeft(
+inline irs::bytes_ref DivideLeft(
     const StringLeftWeight<irs::byte_type>& lhs,
     const StringLeftWeight<irs::byte_type>& rhs) {
-  typedef StringLeftWeight<irs::byte_type> Weight;
+  typedef irs::bytes_ref Weight;
 
   if (rhs.Size() > lhs.Size()) {
     return Weight();
@@ -526,7 +570,57 @@ inline StringLeftWeight<irs::byte_type> DivideLeft(
     irs::basic_string_ref<irs::byte_type>(rhs)
   ));
 
-  return Weight(lhs.begin() + rhs.Size(), lhs.end());
+  return Weight(lhs.c_str() + rhs.Size(), lhs.Size() - rhs.Size());
+}
+
+// Left division in a left string semiring.
+// For binary strings that's impossible to use
+// Zero() or NoWeight() as they may interfere
+// with real values
+inline irs::bytes_ref DivideLeft(
+    const irs::bytes_ref& lhs,
+    const StringLeftWeight<irs::byte_type>& rhs) {
+  typedef irs::bytes_ref Weight;
+
+  if (rhs.Size() > lhs.size()) {
+    return Weight();
+  }
+
+  assert(irs::starts_with(
+    irs::basic_string_ref<irs::byte_type>(lhs),
+    irs::basic_string_ref<irs::byte_type>(rhs)
+  ));
+
+  return Weight(lhs.c_str() + rhs.Size(), lhs.size() - rhs.Size());
+}
+
+// Left division in a left string semiring.
+// For binary strings that's impossible to use
+// Zero() or NoWeight() as they may interfere
+// with real values
+inline irs::bytes_ref DivideLeft(
+    const StringLeftWeight<irs::byte_type>& lhs,
+    const irs::bytes_ref& rhs) {
+  typedef irs::bytes_ref Weight;
+
+  if (rhs.size() > lhs.Size()) {
+    return Weight();
+  }
+
+  assert(irs::starts_with(
+    irs::basic_string_ref<irs::byte_type>(lhs),
+    irs::basic_string_ref<irs::byte_type>(rhs)
+  ));
+
+  return Weight(lhs.c_str() + rhs.size(), lhs.Size() - rhs.size());
+}
+
+inline StringLeftWeight<irs::byte_type> Divide(
+    const StringLeftWeight<irs::byte_type>& lhs,
+    const StringLeftWeight<irs::byte_type>& rhs,
+    DivideType typ) {
+  assert(DIVIDE_LEFT == typ);
+  return StringLeftWeight<irs::byte_type>(DivideLeft(lhs, rhs));
 }
 
 NS_END // fst

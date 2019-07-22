@@ -30,7 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/CachedValue.h"
 #include "Cache/TransactionalCache.h"
-#include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "Indexes/SortedIndexAttributeMatcher.h"
 #include "RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -325,6 +325,9 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       _builder.add(VPackValuePair(vertexId.data(), vertexId.size(), VPackValueType::String));
     }
     _builder.close();
+
+    // validate that Iterator is in a good shape and hasn't failed
+    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
     
     if (cc != nullptr) {
       // TODO Add cache retry on next call
@@ -516,16 +519,15 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
 }
 
 /// @brief checks whether the index supports the condition
-bool RocksDBEdgeIndex::supportsFilterCondition(
+Index::FilterCosts RocksDBEdgeIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
-    size_t itemsInIndex, size_t& estimatedItems, double& estimatedCost) const {
-  SimpleAttributeEqualityMatcher matcher(this->_fields);
-  return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems, estimatedCost);
+    size_t itemsInIndex) const {
+  return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
 }
 
 /// @brief creates an IndexIterator for the given Condition
-IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
+std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
@@ -551,15 +553,13 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
   }
 
   // operator type unsupported
-  return new EmptyIndexIterator(&_collection, trx);
+  return std::make_unique<EmptyIndexIterator>(&_collection, trx);
 }
 
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* RocksDBEdgeIndex::specializeCondition(
     arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference) const {
-  // SimpleAttributeEqualityMatcher matcher(IndexAttributes);
-  SimpleAttributeEqualityMatcher matcher(this->_fields);
-  return matcher.specializeOne(this, node, reference);
+  return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
 }
 
 static std::string FindMedian(rocksdb::Iterator* it, std::string const& start,
@@ -734,7 +734,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
         while (cc->isBusy()) {
           // We should wait here, the cache will reject
           // any inserts anyways.
-          std::this_thread::sleep_for(std::chrono::microseconds(10000));
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
 
         auto entry =
@@ -821,27 +821,27 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
 // ===================== Helpers ==================
 
 /// @brief create the iterator
-IndexIterator* RocksDBEdgeIndex::createEqIterator(transaction::Methods* trx,
-                                                  arangodb::aql::AstNode const* attrNode,
-                                                  arangodb::aql::AstNode const* valNode) const {
+std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createEqIterator(transaction::Methods* trx,
+                                                                  arangodb::aql::AstNode const* attrNode,
+                                                                  arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
   transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
 
   fillLookupValue(*(keys.get()), valNode);
-  return new RocksDBEdgeIndexLookupIterator(&_collection, trx, this, std::move(keys), _cache);
+  return std::make_unique<RocksDBEdgeIndexLookupIterator>(&_collection, trx, this, std::move(keys), _cache);
 }
 
 /// @brief create the iterator
-IndexIterator* RocksDBEdgeIndex::createInIterator(transaction::Methods* trx,
-                                                  arangodb::aql::AstNode const* attrNode,
-                                                  arangodb::aql::AstNode const* valNode) const {
+std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createInIterator(transaction::Methods* trx,
+                                                                  arangodb::aql::AstNode const* attrNode,
+                                                                  arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
   transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
 
   fillInLookupValues(trx, *(keys.get()), valNode);
-  return new RocksDBEdgeIndexLookupIterator(&_collection, trx, this, std::move(keys), _cache);
+  return std::make_unique<RocksDBEdgeIndexLookupIterator>(&_collection, trx, this, std::move(keys), _cache);
 }
 
 void RocksDBEdgeIndex::fillLookupValue(VPackBuilder& keys,

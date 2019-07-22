@@ -25,6 +25,7 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 
@@ -75,16 +76,6 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   void stop() override;
   void unprepare() override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get a callback for writing 'Flush' markers into the WAL
-  /// @param link the link that will be notified of the marker during recovery
-  /// @return false on registration failure with FlushFeature
-  /// @note invocation of 'WalFlushCallback' will return if write was successful
-  /// @note WalFlushCallback argument is what is passsed to the link on recovery
-  //////////////////////////////////////////////////////////////////////////////
-  typedef std::function<arangodb::Result(arangodb::velocypack::Slice const&)> WalFlushCallback;
-  static WalFlushCallback walFlushCallback(IResearchLink const& link);
 
  private:
   class Async;  // forward declaration

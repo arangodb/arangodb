@@ -23,7 +23,7 @@
 #include "ManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/MutexLocker.h"
+#include "Logger/Logger.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -56,23 +56,22 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
     auto off = std::chrono::seconds(1);
     
     std::lock_guard<std::mutex> guard(_workItemMutex);
-    if (!ApplicationServer::isStopping() && !canceled) {
+    if (!ApplicationServer::isStopping()) {
       _workItem = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
     }
   };
 }
 
 void ManagerFeature::prepare() {
-  TRI_ASSERT(MANAGER == nullptr);
+  TRI_ASSERT(MANAGER.get() == nullptr);
   TRI_ASSERT(EngineSelectorFeature::ENGINE != nullptr);
   MANAGER = EngineSelectorFeature::ENGINE->createTransactionManager();
 }
   
 void ManagerFeature::start() {
-  auto off = std::chrono::seconds(1);
-
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler != nullptr) {  // is nullptr in catch tests
+    auto off = std::chrono::seconds(1);
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem = scheduler->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
   }
@@ -80,15 +79,25 @@ void ManagerFeature::start() {
   
 void ManagerFeature::beginShutdown() {
   {
+    // when we get here, ApplicationServer::isStopping() will always return
+    // true already. So it is ok to wait here until the workItem has been
+    // fully canceled. We are grabbing the mutex here, so the workItem cannot
+    // reschedule itself if it doesn't have the mutex. If it is executed
+    // directly afterwards, it will check isStopping(), which will return
+    // false, so no rescheduled will be performed
+    // if it doesn't hold the mutex, we will cancel it here (under the mutex)
+    // and when the callback is executed, it will check isStopping(), which 
+    // will always return false
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
+
   MANAGER->disallowInserts();
   // at this point all cursors should have been aborted already
   MANAGER->garbageCollect(/*abortAll*/true);
   // make sure no lingering managed trx remain
   while (MANAGER->garbageCollect(/*abortAll*/true)) {
-    LOG_TOPIC("96298", WARN, Logger::TRANSACTIONS) << "still waiting for managed transaction";
+    LOG_TOPIC("96298", INFO, Logger::TRANSACTIONS) << "still waiting for managed transaction";
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 }
@@ -100,6 +109,7 @@ void ManagerFeature::stop() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
+
   // at this point all cursors should have been aborted already
   MANAGER->garbageCollect(/*abortAll*/true);
 }

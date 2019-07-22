@@ -202,6 +202,9 @@ class RDBNearIterator final : public IndexIterator {
         _near.reportFound(documentId, RocksDBValue::centroid(_iter->value()));
         _iter->Next();
       }
+    
+      // validate that Iterator is in a good shape and hasn't failed
+      arangodb::rocksutils::checkIteratorStatus(_iter.get());
     }
 
     _near.didScanIntervals();  // calculate next bounds
@@ -329,7 +332,7 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 }
 
 /// @brief creates an IndexIterator for the given Condition
-IndexIterator* RocksDBGeoIndex::iteratorForCondition(
+std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
@@ -360,11 +363,9 @@ IndexIterator* RocksDBGeoIndex::iteratorForCondition(
   }
 
   if (params.ascending) {
-    return new RDBNearIterator<geo_index::DocumentsAscending>(&_collection, trx, this,
-                                                              std::move(params));
+    return std::make_unique<RDBNearIterator<geo_index::DocumentsAscending>>(&_collection, trx, this, std::move(params));
   } else {
-    return new RDBNearIterator<geo_index::DocumentsDescending>(&_collection, trx, this,
-                                                               std::move(params));
+    return std::make_unique<RDBNearIterator<geo_index::DocumentsDescending>>(&_collection, trx, this, std::move(params));
   }
 }
 

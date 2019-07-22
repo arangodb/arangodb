@@ -129,16 +129,12 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
     }
   }
 
-  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        LPValue* value, size_t maxSize) override {
-    value->currentCommunity = vertexIdRange++;
-    return sizeof(LPValue);
+  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                      LPValue& value) override {
+    value.currentCommunity = vertexIdRange++;
   }
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document, int8_t* targetPtr,
-                      size_t maxSize) override {
-    return 0;
-  }
+  void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b, const LPValue* ptr,
                            size_t size) const override {

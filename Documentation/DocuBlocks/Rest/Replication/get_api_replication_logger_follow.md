@@ -2,7 +2,7 @@
 @startDocuBlock get_api_replication_logger_follow
 @brief Fetch log lines from the server
 
-@RESTHEADER{GET /_api/replication/logger-follow, Returns log entries}
+@RESTHEADER{GET /_api/replication/logger-follow, Returns log entries, handleCommandLoggerFollow}
 
 @HINTS
 {% hint 'warning' %}

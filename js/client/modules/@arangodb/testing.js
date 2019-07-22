@@ -58,6 +58,7 @@ let optionsDocumentation = [
   '   - `loopEternal`: to loop one test over and over.',
   '   - `loopSleepWhen`: sleep every nth iteration',
   '   - `loopSleepSec`: sleep seconds between iterations',
+  '   - `sleepBeforeStart` : sleep at tcpdump info - use this dump traffic or attach debugger',
   '',
   '   - `storageEngine`: set to `rocksdb` or `mmfiles` - defaults to `rocksdb`',
   '',
@@ -74,11 +75,17 @@ let optionsDocumentation = [
   '   - `agency`: if set to true agency tests are done',
   '   - `agencySize`: number of agents in agency',
   '   - `agencySupervision`: run supervision in agency',
+  '   - `oneTestTimeout`: how long a single testsuite (.js, .rb)  should run',
+  '   - `isAsan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
   '   - `test`: path to single test to execute for "single" test target',
   '   - `cleanup`: if set to true (the default), the cluster data files',
   '     and logs are removed after termination of the test.',
   '',
   '   - `protocol`: the protocol to talk to the server - [tcp (default), ssl, unix]',
+  '   - `sniff`: if we should try to launch tcpdump / windump for a testrun',
+  '              false / true / sudo',
+  '   - `sniffDevice`: the device tcpdump / tshark should use',
+  '   - `sniffProgram`: specify your own programm',
   '   - `build`: the directory containing the binaries',
   '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
   '   - `configDir`: the directory containing the config files, defaults to',
@@ -149,7 +156,6 @@ const optionsDefaults = {
   'loopSleepWhen': 1,
   'minPort': 1024,
   'maxPort': 32768,
-  'mochaGrep': undefined,
   'onlyNightly': false,
   'password': '',
   'protocol': 'tcp',
@@ -160,12 +166,17 @@ const optionsDefaults = {
   'sanitizer': false,
   'activefailover': false,
   'singles': 2,
+  'sniff': false,
+  'sniffDevice': undefined,
+  'sniffProgram': undefined,
   'skipLogAnalysis': true,
   'skipMemoryIntense': false,
   'skipNightly': true,
   'skipNondeterministic': false,
   'skipGrey': false,
   'onlyGrey': false,
+  'oneTestTimeout': 2700,
+  'isAsan': false,
   'skipTimeCritical': false,
   'storageEngine': 'rocksdb',
   'test': undefined,
@@ -181,7 +192,8 @@ const optionsDefaults = {
   'writeXmlReport': false,
   'testFailureText': 'testfailures.txt',
   'testCase': undefined,
-  'disableMonitor': false
+  'disableMonitor': false,
+  'sleepBeforeStart' : 0,
 };
 
 const _ = require('lodash');
@@ -398,8 +410,8 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
               failedMessages += '\n';
               onlyFailedMessages += '\n';
             }
-            failedMessages += RED + '      "' + one + '" failed: ' + details[one] + RESET + '\n';
-            onlyFailedMessages += '      "' + one + '" failed: ' + details[one] + '\n';
+            failedMessages += RED + '      "' + one + '" failed: ' + details[one] + RESET + '\n\n';
+            onlyFailedMessages += '      "' + one + '" failed: ' + details[one] + '\n\n';
             count++;
           }
         }
@@ -411,7 +423,7 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
 
     let color = (!res.crashed && res.status === true) ? GREEN : RED;
     let crashText = '';
-    let crashedText = '\n';
+    let crashedText = '';
     if (res.crashed === true) {
       for (let failed in failedRuns) {
         crashedText += ' [' + failed + '] : ' + failedRuns[failed].replace(/^/mg, '    ');
@@ -427,7 +439,13 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
       print(color + failText + RESET);
     }
 
-    failedMessages = onlyFailedMessages + crashedText + '\n\n' + cu.GDB_OUTPUT + failText + '\n';
+    failedMessages = onlyFailedMessages;
+    if (crashedText !== '') {
+      failedMessages += '\n' + crashedText;
+    }
+    if (cu.GDB_OUTPUT !== '' || failText !== '') {
+      failedMessages += '\n\n' + cu.GDB_OUTPUT + failText + '\n';
+    }
     fs.write(testOutputDirectory + options.testFailureText, failedMessages);
   } catch (x) {
     print('exception caught while pretty printing result: ');
@@ -483,7 +501,7 @@ function findTestCases(options) {
   let allTestFiles = {};
   for (let testSuiteName in allTestPaths) {
     var myList = [];
-    let files = tu.scanTestPaths(allTestPaths[testSuiteName]);
+    let files = tu.scanTestPaths(allTestPaths[testSuiteName], options);
     if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
       for (let j = 0; j < files.length; j++) {
         let foo = {};
@@ -677,6 +695,7 @@ function iterateTests(cases, options, jsonReply) {
 
     let result;
     let status = true;
+    let shutdownSuccess = true;
 
     if (skipTest("SUITE", currentTest)) {
       result = {
@@ -692,6 +711,10 @@ function iterateTests(cases, options, jsonReply) {
       delete result.status;
       delete result.failed;
       delete result.crashed;
+      if (result.hasOwnProperty('shutdown')) {
+        shutdownSuccess = result['shutdown'];
+        delete result.shutdown;
+      }
 
       status = Object.values(result).every(testCase => testCase.status === true);
       let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
@@ -704,7 +727,7 @@ function iterateTests(cases, options, jsonReply) {
 
     results[currentTest] = result;
 
-    if (status && localOptions.cleanup) {
+    if (status && localOptions.cleanup && shutdownSuccess ) {
       pu.cleanupLastDirectory(localOptions);
     } else {
       cleanup = false;
@@ -770,7 +793,21 @@ function unitTest (cases, options) {
     };
   }
 
-  pu.setupBinaries(options.build, options.buildType, options.configDir);
+  try {
+    pu.setupBinaries(options.build, options.buildType, options.configDir);
+  }
+  catch (err) {
+    print(err);
+    return {
+      status: false,
+      crashed: true,
+      ALL: [{
+        status: false,
+        failed: 1,
+        message: err.message
+      }]
+    };
+  }
   const jsonReply = options.jsonReply;
   delete options.jsonReply;
 

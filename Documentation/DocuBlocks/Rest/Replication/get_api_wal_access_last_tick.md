@@ -2,7 +2,7 @@
 @startDocuBlock get_api_wal_access_last_tick
 @brief Return last available tick value
 
-@RESTHEADER{GET /_api/wal/lastTick, Return last available tick value}
+@RESTHEADER{GET /_api/wal/lastTick, Return last available tick value, handleCommandLastTick}
 
 @RESTDESCRIPTION
 Returns the last available tick value that can be served from the server's

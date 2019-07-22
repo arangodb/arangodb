@@ -24,8 +24,6 @@
 #include "RestAgencyCallbacksHandler.h"
 
 #include "Cluster/AgencyCallbackRegistry.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -58,7 +56,7 @@ RestStatus RestAgencyCallbacksHandler::execute() {
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess || body.isNone()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid JSON");
+                  "invalid agency callback body");
     return RestStatus::DONE;
   }
 
@@ -71,13 +69,11 @@ RestStatus RestAgencyCallbacksHandler::execute() {
     LOG_TOPIC("76a8a", DEBUG, Logger::CLUSTER)
         << "Agency callback has been triggered. refetching!";
 
-    // SchedulerFeature::SCHEDULER->queue(RequestPriority::MED, [cb] {
     try {
       cb->refetchAndUpdate(true, false);
     } catch (arangodb::basics::Exception const& e) {
       LOG_TOPIC("c3910", WARN, Logger::AGENCYCOMM) << "Error executing callback: " << e.message();
     }
-    //});
     resetResponse(arangodb::rest::ResponseCode::ACCEPTED);
   }
 

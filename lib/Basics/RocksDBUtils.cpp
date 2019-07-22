@@ -78,76 +78,73 @@ static VPackBuilder& stripObjectIdsImpl(VPackBuilder& builder, VPackSlice const&
   return builder;
 }
 
-arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint,
-                               std::string const& prefix, std::string const& postfix) {
-  std::string message = prefix + status.ToString() + postfix;
+arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
   switch (status.code()) {
     case rocksdb::Status::Code::kOk:
       return {TRI_ERROR_NO_ERROR};
     case rocksdb::Status::Code::kNotFound:
       switch (hint) {
         case StatusHint::collection:
-          return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, std::move(message)};
+          return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, status.ToString()};
         case StatusHint::database:
-          return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, std::move(message)};
+          return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, status.ToString()};
         case StatusHint::document:
-          return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, std::move(message)};
+          return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, status.ToString()};
         case StatusHint::index:
-          return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND, std::move(message)};
+          return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND, status.ToString()};
         case StatusHint::view:
-          return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, std::move(message)};
+          return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, status.ToString()};
         case StatusHint::wal:
           // suppress this error if the WAL is queried for changes that are not
           // available
           return {TRI_ERROR_NO_ERROR};
         default:
-          return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, std::move(message)};
+          return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, status.ToString()};
       }
     case rocksdb::Status::Code::kCorruption:
-      return {TRI_ERROR_ARANGO_CORRUPTED_DATAFILE, std::move(message)};
+      return {TRI_ERROR_ARANGO_CORRUPTED_DATAFILE, status.ToString()};
     case rocksdb::Status::Code::kNotSupported:
-      return {TRI_ERROR_NOT_IMPLEMENTED, std::move(message)};
+      return {TRI_ERROR_NOT_IMPLEMENTED, status.ToString()};
     case rocksdb::Status::Code::kInvalidArgument:
-      return {TRI_ERROR_BAD_PARAMETER, std::move(message)};
+      return {TRI_ERROR_BAD_PARAMETER, status.ToString()};
     case rocksdb::Status::Code::kIOError:
       if (status.subcode() == rocksdb::Status::SubCode::kNoSpace) {
-        return {TRI_ERROR_ARANGO_FILESYSTEM_FULL, std::move(message)};
+        return {TRI_ERROR_ARANGO_FILESYSTEM_FULL, status.ToString()};
       }
-      return {TRI_ERROR_ARANGO_IO_ERROR, std::move(message)};
+      return {TRI_ERROR_ARANGO_IO_ERROR, status.ToString()};
     case rocksdb::Status::Code::kMergeInProgress:
-      return {TRI_ERROR_ARANGO_MERGE_IN_PROGRESS, std::move(message)};
+      return {TRI_ERROR_ARANGO_MERGE_IN_PROGRESS, status.ToString()};
     case rocksdb::Status::Code::kIncomplete:
-      return {TRI_ERROR_INTERNAL,
-              prefix + "'incomplete' error in storage engine" + postfix};
+      return {TRI_ERROR_ARANGO_INCOMPLETE_READ, "'incomplete' error in storage engine: " + status.ToString()};
     case rocksdb::Status::Code::kShutdownInProgress:
-      return {TRI_ERROR_SHUTTING_DOWN, std::move(message)};
+      return {TRI_ERROR_SHUTTING_DOWN, status.ToString()};
     case rocksdb::Status::Code::kTimedOut:
       if (status.subcode() == rocksdb::Status::SubCode::kMutexTimeout) {
-        return {TRI_ERROR_LOCK_TIMEOUT, std::move(message)};
+        return {TRI_ERROR_LOCK_TIMEOUT, status.ToString()};
       }
       if (status.subcode() == rocksdb::Status::SubCode::kLockTimeout) {
         return {TRI_ERROR_ARANGO_CONFLICT,
-                prefix + "timeout waiting to lock key" + postfix};
+                "timeout waiting to lock key " + status.ToString()};
       }
-      return {TRI_ERROR_LOCK_TIMEOUT, std::move(message)};
+      return {TRI_ERROR_LOCK_TIMEOUT, status.ToString()};
     case rocksdb::Status::Code::kAborted:
-      return {TRI_ERROR_TRANSACTION_ABORTED, std::move(message)};
+      return {TRI_ERROR_TRANSACTION_ABORTED, status.ToString()};
     case rocksdb::Status::Code::kBusy:
       if (status.subcode() == rocksdb::Status::SubCode::kDeadlock) {
-        return {TRI_ERROR_DEADLOCK};
+        return {TRI_ERROR_DEADLOCK, status.ToString()};
       }
       if (status.subcode() == rocksdb::Status::SubCode::kLockLimit) {
         // should actually not occur with our RocksDB configuration
         return {TRI_ERROR_RESOURCE_LIMIT,
-                prefix + "failed to acquire lock due to lock number limit" + postfix};
+                "failed to acquire lock due to lock number limit " + status.ToString()};
       }
       return {TRI_ERROR_ARANGO_CONFLICT, "write-write conflict"};
     case rocksdb::Status::Code::kExpired:
-      return {TRI_ERROR_INTERNAL, prefix + "key expired; TTL was set in error" + postfix};
+      return {TRI_ERROR_INTERNAL, "key expired; TTL was set in error " + status.ToString()};
     case rocksdb::Status::Code::kTryAgain:
-      return {TRI_ERROR_ARANGO_TRY_AGAIN, std::move(message)};
+      return {TRI_ERROR_ARANGO_TRY_AGAIN, status.ToString()};
     default:
-      return {TRI_ERROR_INTERNAL, prefix + "unknown RocksDB status code" + postfix};
+      return {TRI_ERROR_INTERNAL, "unknown RocksDB status code " + status.ToString()};
   }
 }
 

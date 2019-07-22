@@ -25,14 +25,15 @@
 #define ARANGOD_SCHEDULER_SCHEDULER_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "GeneralServer/Socket.h"  // This is required for asio_ns::signal_set
+#include "Basics/asio_ns.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SupervisedScheduler.h"
 
 namespace arangodb {
 
 class SchedulerFeature final : public application_features::ApplicationFeature {
  public:
-  static Scheduler* SCHEDULER;
+  static SupervisedScheduler* SCHEDULER;
 
   explicit SchedulerFeature(application_features::ApplicationServer& server);
   ~SchedulerFeature();

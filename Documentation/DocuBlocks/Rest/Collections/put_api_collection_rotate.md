@@ -2,7 +2,7 @@
 @startDocuBlock put_api_collection_rotate
 @brief rotates the journal of a collection
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/rotate, Rotate journal of a collection}
+@RESTHEADER{PUT /_api/collection/{collection-name}/rotate, Rotate journal of a collection, handleCommandPut:collectionRotate}
 
 @HINTS
 {% hint 'warning' %}
@@ -43,7 +43,7 @@ If the *collection-name* is unknown, then a *HTTP 404* is returned.
 
 Rotating the journal:
 
-@EXAMPLE_ARANGOSH_RUN{RestCollectionRotate}
+@EXAMPLE_ARANGOSH_RUN{RestCollectionRotate_mmfiles}
     var cn = "products";
     db._drop(cn);
     var coll = db._create(cn);
@@ -62,7 +62,7 @@ Rotating the journal:
 
 Rotating if no journal exists:
 
-@EXAMPLE_ARANGOSH_RUN{RestCollectionRotateNoJournal}
+@EXAMPLE_ARANGOSH_RUN{RestCollectionRotateNoJournal_mmfiles}
     var cn = "products";
     db._drop(cn);
     var coll = db._create(cn);

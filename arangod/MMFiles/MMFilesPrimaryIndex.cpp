@@ -449,16 +449,16 @@ void MMFilesPrimaryIndex::invokeOnAllElementsForRemoval(
 }
 
 /// @brief checks whether the index supports the condition
-bool MMFilesPrimaryIndex::supportsFilterCondition(
+Index::FilterCosts MMFilesPrimaryIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const&,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
-    size_t itemsInIndex, size_t& estimatedItems, double& estimatedCost) const {
+    size_t itemsInIndex) const {
   SimpleAttributeEqualityMatcher matcher(IndexAttributes);
-  return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems, estimatedCost);
+  return matcher.matchOne(this, node, reference, itemsInIndex);
 }
 
-/// @brief creates an IndexIterator for the given Condition
-IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
+/// @brief creates an IndexIterator for the given condition
+std::unique_ptr<IndexIterator> MMFilesPrimaryIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
@@ -483,7 +483,7 @@ IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
   }
 
   // operator type unsupported or IN used on non-array
-  return new EmptyIndexIterator(&_collection, trx);
+  return std::make_unique<EmptyIndexIterator>(&_collection, trx);
 }
 
 /// @brief specializes the condition for use with the index
@@ -494,9 +494,9 @@ arangodb::aql::AstNode* MMFilesPrimaryIndex::specializeCondition(
 }
 
 /// @brief create the iterator, for a single attribute, IN operator
-IndexIterator* MMFilesPrimaryIndex::createInIterator(transaction::Methods* trx,
-                                                     arangodb::aql::AstNode const* attrNode,
-                                                     arangodb::aql::AstNode const* valNode) const {
+std::unique_ptr<IndexIterator> MMFilesPrimaryIndex::createInIterator(transaction::Methods* trx,
+                                                                     arangodb::aql::AstNode const* attrNode,
+                                                                     arangodb::aql::AstNode const* valNode) const {
   // _key or _id?
   bool const isId = (attrNode->stringEquals(StaticStrings::IdString));
 
@@ -523,13 +523,13 @@ IndexIterator* MMFilesPrimaryIndex::createInIterator(transaction::Methods* trx,
 
   keys->close();
 
-  return new MMFilesPrimaryIndexInIterator(&_collection, trx, this, std::move(keys));
+  return std::make_unique<MMFilesPrimaryIndexInIterator>(&_collection, trx, this, std::move(keys));
 }
 
 /// @brief create the iterator, for a single attribute, EQ operator
-IndexIterator* MMFilesPrimaryIndex::createEqIterator(transaction::Methods* trx,
-                                                     arangodb::aql::AstNode const* attrNode,
-                                                     arangodb::aql::AstNode const* valNode) const {
+std::unique_ptr<IndexIterator> MMFilesPrimaryIndex::createEqIterator(transaction::Methods* trx,
+                                                                     arangodb::aql::AstNode const* attrNode,
+                                                                     arangodb::aql::AstNode const* valNode) const {
   // _key or _id?
   bool const isId = (attrNode->stringEquals(StaticStrings::IdString));
 
@@ -545,10 +545,10 @@ IndexIterator* MMFilesPrimaryIndex::createEqIterator(transaction::Methods* trx,
   }
 
   if (!key->isEmpty()) {
-    return new MMFilesPrimaryIndexEqIterator(&_collection, trx, this, std::move(key));
+    return std::make_unique<MMFilesPrimaryIndexEqIterator>(&_collection, trx, this, std::move(key));
   }
 
-  return new EmptyIndexIterator(&_collection, trx);
+  return std::make_unique<EmptyIndexIterator>(&_collection, trx);
 }
 
 /// @brief add a single value node to the iterator's keys

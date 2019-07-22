@@ -645,7 +645,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
 
     // sleep for a while
     std::this_thread::yield();
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   TRI_ASSERT(writeLocker.isLocked());
@@ -928,7 +928,8 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
       });
       result.add("parameters", VPackValue(VPackValueType::Object));
       collection->toVelocyPackIgnore(
-          result, {"objectId", "path", "statusString", "indexes"}, true, false);
+          result, {"objectId", "path", "statusString", "indexes"},
+          LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed));
       result.close();
 
       result.close();
@@ -940,10 +941,10 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
   LogicalView::enumerate(*this, [&result](LogicalView::ptr const& view) -> bool {
     if (view) {
       result.openObject();
-      view->properties(result, true,
-                       false);  // details, !forPersistence because on
-                                // restore any datasource ids will differ,
-                                // so need an end-user representation
+      view->properties(result, LogicalDataSource::makeFlags(
+                                   LogicalDataSource::Serialize::Detailed));
+      // details, !forPersistence because on  restore any datasource ids will
+      // differ, so need an end-user representation
       result.close();
     }
 
@@ -1392,7 +1393,7 @@ arangodb::Result TRI_vocbase_t::renameCollection(TRI_voc_cid_t cid,
 
     // sleep for a while
     std::this_thread::yield();
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   TRI_ASSERT(writeLocker.isLocked());
@@ -1543,10 +1544,12 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
       n = VelocyPackHelper::getStringValue(parameters,
                                            StaticStrings::DataSourceName, "");
     }
-    events::CreateView(name(), n, TRI_ERROR_INTERNAL);
+    events::CreateView(name(), n, res.errorNumber());
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to instantiate view from definition: ") + parameters.toString());
+        res.errorNumber(),
+        res.errorMessage().empty()
+          ? std::string("failed to instantiate view from definition: ") + parameters.toString()
+          : res.errorMessage());
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
@@ -1640,7 +1643,7 @@ arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem
 
     // sleep for a while
     std::this_thread::yield();
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   TRI_ASSERT(writeLocker.isLocked());

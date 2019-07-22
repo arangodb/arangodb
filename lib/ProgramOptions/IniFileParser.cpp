@@ -69,6 +69,14 @@ bool IniFileParser::parse(std::string const& filename, bool endPassAfterwards) {
     return _options->fail(std::string("Couldn't open configuration file: '") +
                           filename + "' - " + ex.what());
   }
+  
+  return parseContent(filename, buf, endPassAfterwards);
+}
+
+// parse a config file, with the contents already read into <buf>. 
+// returns true if all is well, false otherwise
+// errors that occur during parse are reported to _options
+bool IniFileParser::parseContent(std::string const& filename, std::string const& buf, bool endPassAfterwards) {
   bool isCommunity = false;
   bool isEnterprise = false;
   std::string currentSection;

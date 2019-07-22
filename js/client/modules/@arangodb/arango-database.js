@@ -173,7 +173,7 @@ ArangoDatabase.prototype._indexurl = function (id, expectedName) {
   if (typeof id === 'string') {
     var pa = ArangoDatabase.indexRegex.exec(id);
 
-    if (pa === null && expectedName !== undefined) {
+    if (pa === null && expectedName !== undefined && !id.startsWith(expectedName + '/')) {
       id = expectedName + '/' + id;
     }
   } else if (typeof id === 'number' && expectedName !== undefined) {
@@ -346,7 +346,7 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     [ 'waitForSync', 'journalSize', 'isSystem', 'isVolatile',
       'doCompact', 'keyOptions', 'shardKeys', 'numberOfShards',
       'distributeShardsLike', 'indexBuckets', 'id', 'isSmart',
-      'replicationFactor', 'shardingStrategy', 'smartGraphAttribute',
+      'replicationFactor', 'minReplicationFactor', 'shardingStrategy', 'smartGraphAttribute',
       'smartJoinAttribute', 'avoidServers', 'cacheEnabled'].forEach(function (p) {
       if (properties.hasOwnProperty(p)) {
         body[p] = properties[p];

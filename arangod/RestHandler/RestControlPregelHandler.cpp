@@ -30,7 +30,6 @@
 #include "Graph/GraphManager.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
-#include "Rest/HttpRequest.h"
 #include "Transaction/StandaloneContext.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
@@ -218,7 +217,6 @@ void RestControlPregelHandler::cancelExecution() {
   }
 
   c->cancel();
-  pf->cleanupConductor(executionNumber);
 
   VPackBuilder builder;
   builder.add(VPackValue(""));

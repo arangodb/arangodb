@@ -74,7 +74,7 @@ LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice const& definition, u
 }
 
 Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
-                                     bool detailed, bool forPersistence) const {
+                                     std::underlying_type<Serialize>::type flags) const {
   if (!builder.isOpenObject()) {
     return Result(TRI_ERROR_BAD_PARAMETER,
                   std::string(
@@ -83,7 +83,7 @@ Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
 
   builder.add(StaticStrings::DataSourceType, arangodb::velocypack::Value(type().name()));
 
-  return appendVelocyPackImpl(builder, detailed, forPersistence);
+  return appendVelocyPackImpl(builder, flags);
 }
 
 bool LogicalView::canUse(arangodb::auth::Level const& level) {
@@ -266,9 +266,10 @@ Result LogicalView::rename(std::string&& newName) {
     velocypack::Builder builder;
 
     builder.openObject();
-    res = impl->properties(builder, true,
-                           true);  // include links so that Agency will always
-                                   // have a full definition
+    // include links so that Agency will always have a full definition
+    res = impl->properties(builder,
+                           LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                                        LogicalDataSource::Serialize::ForPersistence));
 
     if (!res.ok()) {
       return res;
@@ -287,9 +288,9 @@ Result LogicalView::rename(std::string&& newName) {
                            std::to_string(impl->id()));  // refresh view from Agency
 
     if (view) {
-      view->open();  // open view to match the behaviour in
+      view->open();  // open view to match the behavior in
                      // StorageEngine::openExistingDatabase(...) and original
-                     // behaviour of TRI_vocbase_t::createView(...)
+                     // behavior of TRI_vocbase_t::createView(...)
     }
 
     return Result();
@@ -351,7 +352,10 @@ Result LogicalView::rename(std::string&& newName) {
 
     builder.openObject();
 
-    auto res = view.properties(builder, true, true);
+    auto res =
+        view.properties(builder,
+                        LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                                     LogicalDataSource::Serialize::ForPersistence));
 
     if (!res.ok()) {
       return res;

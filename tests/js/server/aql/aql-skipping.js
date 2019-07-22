@@ -1,5 +1,6 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, AQL_EXECUTE */
+/*global assertEqual, assertNotEqual, assertTrue, AQL_EXECUTE, AQL_EXPLAIN */
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, simple queries
@@ -28,12 +29,12 @@
 /// @author Copyright 2019, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-// var errors = require("internal").errors;
-var internal = require("internal");
-var analyzers = require("@arangodb/analyzers");
-var helper = require("@arangodb/aql-helper");
-var db = internal.db;
+const _ = require('lodash');
+const analyzers = require("@arangodb/analyzers");
+const internal = require("internal");
+const jsunity = require("jsunity");
+
+const db = internal.db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -46,7 +47,7 @@ function aqlSkippingTestsuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       var c = db._createDocumentCollection('skipCollection', { numberOfShards: 5 });
       // c size > 1000 because of internal batchSize of 1000
       for (var i = 0; i < 2000; i++) {
@@ -58,7 +59,7 @@ function aqlSkippingTestsuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop('skipCollection');
     },
 
@@ -68,7 +69,7 @@ function aqlSkippingTestsuite () {
       var queryOptions = {};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
-      assertEqual(result.json, [ 93, 94, 95, 96, 97, 98, 99, 100, 101, 102 ]);
+      assertEqual([ 93, 94, 95, 96, 97, 98, 99, 100, 101, 102 ], result.json);
     },
 
     testDefaultSkipOffsetWithFullCount: function () {
@@ -77,8 +78,8 @@ function aqlSkippingTestsuite () {
       var queryOptions = {fullCount: true};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
-      assertEqual(result.json, [ 93, 94, 95, 96, 97, 98, 99, 100, 101, 102 ]);
-      assertEqual(result.stats.fullCount, 100);
+      assertEqual([ 93, 94, 95, 96, 97, 98, 99, 100, 101, 102 ], result.json);
+      assertEqual(100, result.stats.fullCount);
     },
 
     testPassSkipOffset: function () {
@@ -88,7 +89,7 @@ function aqlSkippingTestsuite () {
       var queryOptions = {optimizer: {"rules": ["-move-calculations-down"]}};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
-      assertEqual(result.json, [ 93, 94, 95, 96, 97, 98, 99, 100, 101, 102 ]);
+      assertEqual([ 93, 94, 95, 96, 97, 98, 99, 100, 101, 102 ], result.json);
     },
 
     testPassSkipOffsetWithFullCount: function () {
@@ -98,8 +99,8 @@ function aqlSkippingTestsuite () {
       var queryOptions = {fullCount: true, optimizer: {"rules": ["-move-calculations-down"]}};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
-      assertEqual(result.json, [ 93, 94, 95, 96, 97, 98, 99, 100, 101, 102 ]);
-      assertEqual(result.stats.fullCount, 100);
+      assertEqual([ 93, 94, 95, 96, 97, 98, 99, 100, 101, 102 ], result.json);
+      assertEqual(100, result.stats.fullCount);
     },
 
     testPassSkipEnumerateCollection: function () {
@@ -108,8 +109,8 @@ function aqlSkippingTestsuite () {
       var queryOptions = {};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
-      assertEqual(result.json.length, 10);
-      assertEqual(result.stats.scannedFull, 20);
+      assertEqual(10, result.json.length);
+      assertEqual(20, result.stats.scannedFull);
     },
 
     testPassSkipEnumerateCollectionWithFullCount1: function () {
@@ -118,6 +119,33 @@ function aqlSkippingTestsuite () {
       var queryOptions = {fullCount: true};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
+      assertEqual(20, result.json.length);
+      assertEqual(2000, result.stats.scannedFull);
+      assertEqual(2000, result.stats.fullCount);
+    },
+
+    // FIXME uncomment
+    //testPassSkipEnumerateCollectionWithFullCountHeapSort: function () {
+    //  var query = "FOR i IN skipCollection SORT i.i DESC LIMIT 10, 20 return i";
+    //  var bindParams = {};
+    //  var queryOptions = { fullCount: true };
+
+    //  var result = AQL_EXECUTE(query, bindParams, queryOptions);
+    //  assertEqual(result.json.length, 20);
+    //  assertEqual(result.stats.scannedFull, 2000);
+    //  assertEqual(result.stats.fullCount, 2000);
+    //  assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("constrained-heap"));
+    //},
+
+    testPassSkipEnumerateCollectionWithFullCountDefaultSort: function () {
+      var query = "FOR i IN skipCollection SORT i.i DESC LIMIT 10, 20 return i";
+      var bindParams = {};
+      var queryOptions = {optimizer : { rules : [ "-sort-limit" ] }, fullCount: true};
+
+      var result = AQL_EXPLAIN(query, bindParams, queryOptions);
+      assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("standard"));
+
+      result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(result.json.length, 20);
       assertEqual(result.stats.scannedFull, 2000);
       assertEqual(result.stats.fullCount, 2000);
@@ -129,9 +157,9 @@ function aqlSkippingTestsuite () {
       var queryOptions = {fullCount: true};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
-      assertEqual(result.json.length, 300);
-      assertEqual(result.stats.scannedFull, 2000);
-      assertEqual(result.stats.fullCount, 2000);
+      assertEqual(300, result.json.length);
+      assertEqual(2000, result.stats.scannedFull);
+      assertEqual(2000, result.stats.fullCount);
     },
 
     testPassSkipEnumerateCollectionWithFullCount3: function () {
@@ -141,9 +169,9 @@ function aqlSkippingTestsuite () {
       var queryOptions = {fullCount: true};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
-      assertEqual(result.json.length, 0);
-      assertEqual(result.stats.scannedFull, 2000);
-      assertEqual(result.stats.fullCount, 2000);
+      assertEqual(0, result.json.length);
+      assertEqual(2000, result.stats.scannedFull);
+      assertEqual(2000, result.stats.fullCount);
     },
 
     testPassSkipEnumerateCollectionWithFullCount4: function () {
@@ -153,10 +181,257 @@ function aqlSkippingTestsuite () {
       var queryOptions = {fullCount: true};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
-      assertEqual(result.json.length, 0);
-      assertEqual(result.stats.scannedFull, 2000);
-      assertEqual(result.stats.fullCount, 2000);
-    }
+      assertEqual(0, result.json.length);
+      assertEqual(2000, result.stats.scannedFull);
+      assertEqual(2000, result.stats.fullCount);
+    },
+
+  };
+
+}
+
+function aqlSkippingIndexTestsuite () {
+  const skipCollection = 'skipCollection';
+
+  const explainPlanNodes = (q, b, o) => {
+    var res = AQL_EXPLAIN(q, b, o);
+
+    return res.plan.nodes;
+  };
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUpAll : function () {
+      const col = db._createDocumentCollection(skipCollection, { numberOfShards: 5 });
+      col.ensureIndex({ type: "hash", fields: [ "a" ]});
+      col.ensureIndex({ type: "hash", fields: [ "b" ]});
+      col.ensureIndex({ type: "hash", fields: [ "c" ]});
+
+      const values = _.range(7); // 0..6
+
+      // insert a total of 7^4 = 2401 documents:
+      for (const a of values) {
+        for (const b of values) {
+          for (const c of values) {
+            for (const d of values) {
+              col.insert({a, b, c, d});
+            }
+          }
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDownAll : function () {
+      db._drop(skipCollection);
+    },
+
+    testOffsetSingleIndex: function () {
+      // there is a total of 7^3 = 343 documents with a == 1
+      const query = `FOR doc IN ${skipCollection}
+        FILTER doc.a == 1
+        LIMIT 43, 1000
+        RETURN doc`;
+      const bindParams = {};
+      const queryOptions = {};
+
+      const nodes = explainPlanNodes(query, bindParams, queryOptions);
+      assertEqual('IndexNode', nodes[1].type);
+      assertEqual(1, nodes[1].indexes.length);
+      assertEqual(["a"], nodes[1].indexes[0].fields);
+
+      const result = AQL_EXECUTE(query, bindParams, queryOptions);
+      assertEqual(300, result.json.length);
+      assertEqual(343, result.stats.scannedIndex);
+    },
+
+    testOffsetLimitSingleIndex: function () {
+      // there is a total of 7^3 = 343 documents with a == 1
+      const query = `FOR doc IN ${skipCollection}
+        FILTER doc.a == 1
+        LIMIT 43, 100
+        RETURN doc`;
+      const bindParams = {};
+      const queryOptions = {};
+
+      const nodes = explainPlanNodes(query, bindParams, queryOptions);
+      assertEqual('IndexNode', nodes[1].type);
+      assertEqual(1, nodes[1].indexes.length);
+      assertEqual(["a"], nodes[1].indexes[0].fields);
+
+      const result = AQL_EXECUTE(query, bindParams, queryOptions);
+      assertEqual(100, result.json.length);
+      assertEqual(143, result.stats.scannedIndex);
+    },
+
+    testOffsetLimitFullCountSingleIndex: function () {
+      // there is a total of 7^3 = 343 documents with a == 1
+      const query = `FOR doc IN ${skipCollection}
+        FILTER doc.a == 1
+        LIMIT 43, 100
+        RETURN doc`;
+      const bindParams = {};
+      const queryOptions = {fullCount: true};
+
+      const nodes = explainPlanNodes(query, bindParams, queryOptions);
+      assertEqual('IndexNode', nodes[1].type);
+      assertEqual(1, nodes[1].indexes.length);
+      assertEqual(["a"], nodes[1].indexes[0].fields);
+
+      const result = AQL_EXECUTE(query, bindParams, queryOptions);
+      assertEqual(100, result.json.length);
+      assertEqual(343, result.stats.scannedIndex);
+      assertEqual(343, result.stats.fullCount);
+    },
+
+    testOffsetTwoIndexes: function () {
+      // there is a total of 7^3 = 343 documents with a == 1, same for b == 1,
+      // and there are 7^2 = 49 documents with a == 1 and b == 1, thus
+      // 343 + 343 - 49 = 637 documents.
+      const query = `FOR doc IN ${skipCollection}
+        FILTER doc.a == 1 || doc.b == 1
+        LIMIT 37, 1000
+        RETURN doc`;
+      const bindParams = {};
+      const queryOptions = {};
+
+      const nodes = explainPlanNodes(query, bindParams, queryOptions);
+      assertEqual('IndexNode', nodes[1].type);
+      assertEqual(2, nodes[1].indexes.length);
+      assertEqual(["a"], nodes[1].indexes[0].fields);
+      assertEqual(["b"], nodes[1].indexes[1].fields);
+
+      const result = AQL_EXECUTE(query, bindParams, queryOptions);
+      assertEqual(600, result.json.length);
+      assertEqual(637, result.stats.scannedIndex);
+    },
+
+    testOffsetLimitTwoIndexes: function () {
+      // there is a total of 7^3 = 343 documents with a == 1, same for b == 1,
+      // and there are 7^2 = 49 documents with a == 1 and b == 1, thus
+      // 343 + 343 - 49 = 637 documents.
+      const query = `FOR doc IN ${skipCollection}
+        FILTER doc.a == 1 || doc.b == 1
+        LIMIT 37, 100
+        RETURN doc`;
+      const bindParams = {};
+      const queryOptions = {};
+
+      const nodes = explainPlanNodes(query, bindParams, queryOptions);
+      assertEqual('IndexNode', nodes[1].type);
+      assertEqual(2, nodes[1].indexes.length);
+      assertEqual(["a"], nodes[1].indexes[0].fields);
+      assertEqual(["b"], nodes[1].indexes[1].fields);
+
+
+      const result = AQL_EXECUTE(query, bindParams, queryOptions);
+      assertEqual(100, result.json.length);
+      assertEqual(137, result.stats.scannedIndex);
+    },
+
+    testOffsetLimitFullCountTwoIndexes: function () {
+      // there is a total of 7^3 = 343 documents with a == 1, same for b == 1,
+      // and there are 7^2 = 49 documents with a == 1 and b == 1, thus
+      // 343 + 343 - 49 = 637 documents.
+      const query = `FOR doc IN ${skipCollection}
+        FILTER doc.a == 1 || doc.b == 1
+        LIMIT 37, 100
+        RETURN doc`;
+      const bindParams = {};
+      const queryOptions = {fullCount: true};
+
+      const nodes = explainPlanNodes(query, bindParams, queryOptions);
+      assertEqual('IndexNode', nodes[1].type);
+      assertEqual(2, nodes[1].indexes.length);
+      assertEqual(["a"], nodes[1].indexes[0].fields);
+      assertEqual(["b"], nodes[1].indexes[1].fields);
+
+      const result = AQL_EXECUTE(query, bindParams, queryOptions);
+      assertEqual(100, result.json.length);
+      assertEqual(637, result.stats.scannedIndex);
+      assertEqual(637, result.stats.fullCount);
+    },
+
+    testOffsetThreeIndexes: function () {
+      // There are respectively 7^3 = 343 documents with a == 1, b == 1, or c == 1.
+      // For every two of {a, b, c}, there are 7^2 = 49 documents where both are one.
+      // And there are 7 documents where all three are one.
+      // Thus the filter matches 3 * 7^3 - (3 * 7^2 - 7) = 889 documents
+      const query = `FOR doc IN ${skipCollection}
+        FILTER doc.a == 1 || doc.b == 1 || doc.c == 1
+        LIMIT 89, 1000
+        RETURN doc`;
+      const bindParams = {};
+      const queryOptions = {};
+
+      const nodes = explainPlanNodes(query, bindParams, queryOptions);
+      assertEqual('IndexNode', nodes[1].type);
+      assertEqual(3, nodes[1].indexes.length);
+      assertEqual(["a"], nodes[1].indexes[0].fields);
+      assertEqual(["b"], nodes[1].indexes[1].fields);
+      assertEqual(["c"], nodes[1].indexes[2].fields);
+
+      const result = AQL_EXECUTE(query, bindParams, queryOptions);
+      assertEqual(800, result.json.length);
+      assertEqual(889, result.stats.scannedIndex);
+    },
+
+    testOffsetLimitThreeIndexes: function () {
+      // There are respectively 7^3 = 343 documents with a == 1, b == 1, or c == 1.
+      // For every two of {a, b, c}, there are 7^2 = 49 documents where both are one.
+      // And there are 7 documents where all three are one.
+      // Thus the filter matches 3 * 7^3 - (3 * 7^2 - 7) = 889 documents
+      const query = `FOR doc IN ${skipCollection}
+        FILTER doc.a == 1 || doc.b == 1 || doc.c == 1
+        LIMIT 89, 100
+        RETURN doc`;
+      const bindParams = {};
+      const queryOptions = {};
+
+      const nodes = explainPlanNodes(query, bindParams, queryOptions);
+      assertEqual('IndexNode', nodes[1].type);
+      assertEqual(3, nodes[1].indexes.length);
+      assertEqual(["a"], nodes[1].indexes[0].fields);
+      assertEqual(["b"], nodes[1].indexes[1].fields);
+      assertEqual(["c"], nodes[1].indexes[2].fields);
+
+
+      const result = AQL_EXECUTE(query, bindParams, queryOptions);
+      assertEqual(100, result.json.length);
+      assertEqual(189, result.stats.scannedIndex);
+    },
+
+    testOffsetLimitFullCountThreeIndexes: function () {
+      // There are respectively 7^3 = 343 documents with a == 1, b == 1, or c == 1.
+      // For every two of {a, b, c}, there are 7^2 = 49 documents where both are one.
+      // And there are 7 documents where all three are one.
+      // Thus the filter matches 3 * 7^3 - (3 * 7^2 - 7) = 889 documents
+      const query = `FOR doc IN ${skipCollection}
+        FILTER doc.a == 1 || doc.b == 1 || doc.c == 1
+        LIMIT 89, 100
+        RETURN doc`;
+      const bindParams = {};
+      const queryOptions = {fullCount: true};
+
+      const nodes = explainPlanNodes(query, bindParams, queryOptions);
+      assertEqual('IndexNode', nodes[1].type);
+      assertEqual(3, nodes[1].indexes.length);
+      assertEqual(["a"], nodes[1].indexes[0].fields);
+      assertEqual(["b"], nodes[1].indexes[1].fields);
+      assertEqual(["c"], nodes[1].indexes[2].fields);
+
+      const result = AQL_EXECUTE(query, bindParams, queryOptions);
+      assertEqual(100, result.json.length);
+      assertEqual(889, result.stats.scannedIndex);
+      assertEqual(889, result.stats.fullCount);
+    },
 
   };
 
@@ -174,8 +449,7 @@ function aqlSkippingIResearchTestsuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
-      analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
@@ -188,8 +462,8 @@ function aqlSkippingIResearchTestsuite () {
       db._dropView("UnitTestsView");
       v = db._createView("UnitTestsView", "arangosearch", {});
       var meta = {
-        links: { 
-          "UnitTestsCollection": { 
+        links: {
+          "UnitTestsCollection": {
             includeAllFields: true,
             storeValues: "id",
             fields: {
@@ -237,7 +511,7 @@ function aqlSkippingIResearchTestsuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       var meta = { links : { "UnitTestsCollection": null } };
       v.properties(meta);
       v.drop();
@@ -253,9 +527,9 @@ function aqlSkippingIResearchTestsuite () {
         + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } "
         + "LIMIT 3,3 RETURN doc");
 
-      assertEqual(result.json.length, 3);
+      assertEqual(3, result.json.length);
       result.json.forEach(function(res) {
-        assertEqual(res.a, "foo");
+        assertEqual("foo", res.a);
         assertTrue(res._id.startsWith('UnitTestsCollection/'));
       });
     },
@@ -267,9 +541,9 @@ function aqlSkippingIResearchTestsuite () {
         + "SORT BM25(doc) "
         + "LIMIT 3,3 RETURN doc");
 
-      assertEqual(result.json.length, 3);
+      assertEqual(3, result.json.length);
       result.json.forEach(function(res) {
-        assertEqual(res.a, "foo");
+        assertEqual("foo", res.a);
         assertTrue(res._id.startsWith('UnitTestsCollection/'));
       });
     },
@@ -281,25 +555,57 @@ function aqlSkippingIResearchTestsuite () {
         + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } "
         + "LIMIT 3,3 RETURN doc", {}, opts);
 
-      assertEqual(result.json.length, 3);
+      assertEqual(3, result.json.length);
       result.json.forEach(function(res) {
-        assertEqual(res.a, "foo");
+        assertEqual("foo", res.a);
         assertTrue(res._id.startsWith('UnitTestsCollection/'));
       });
       assertEqual(10, result.stats.fullCount);
     },
 
-    testPassSkipArangoSearchSortedFullCount: function () {
-      const opts = {fullCount: true};
-      // skip 3, return 3, out of 10
-      var result = AQL_EXECUTE("FOR doc IN CompoundView SEARCH doc.a == 'foo' "
-        + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } "
-        + "SORT BM25(doc) "
-        + "LIMIT 3,3 RETURN doc", {}, opts);
+    //FIXME uncomment
+    //testPassSkipArangoSearchSortedFullCountHeapSort: function () {
+    //  const opts = {fullCount: true};
 
-      assertEqual(result.json.length, 3);
+    //  const query = "FOR doc IN CompoundView SEARCH doc.a == 'foo' "
+    //    + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } "
+    //    + "SORT doc.a "
+    //    + "LIMIT 3,3 RETURN doc";
+
+    //  result = AQL_EXPLAIN(query, {}, opts);
+    //  assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("constrained-heap"));
+
+    //  // skip 3, return 3, out of 10
+    //  result = AQL_EXECUTE(query, {}, opts);
+
+    //  assertEqual(result.json.length, 3);
+    //  result.json.forEach(function(res) {
+    //    assertEqual(res.a, "foo");
+    //    assertTrue(res._id.startsWith('UnitTestsCollection/'));
+    //  });
+    //  assertEqual(10, result.stats.fullCount);
+    //},
+
+    testPassSkipArangoSearchSortedFullCountDefaultSort: function () {
+      const opts = {
+        optimizer: { rules : ["-sort-limit"] },
+        fullCount: true
+      };
+
+      const query = "FOR doc IN CompoundView SEARCH doc.a == 'foo' "
+        + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } "
+        + "SORT doc.a "
+        + "LIMIT 3,3 RETURN doc";
+
+      var result = AQL_EXPLAIN(query, {}, opts);
+      assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("standard"));
+
+      // skip 3, return 3, out of 10
+      result = AQL_EXECUTE(query, {}, opts);
+
+      assertEqual(3, result.json.length);
       result.json.forEach(function(res) {
-        assertEqual(res.a, "foo");
+        assertEqual("foo", res.a);
         assertTrue(res._id.startsWith('UnitTestsCollection/'));
       });
       assertEqual(10, result.stats.fullCount);
@@ -314,10 +620,7 @@ function aqlSkippingIResearchTestsuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(aqlSkippingTestsuite);
+jsunity.run(aqlSkippingIndexTestsuite);
 jsunity.run(aqlSkippingIResearchTestsuite);
-
-// jsunity.run(aqlSkippingIndexTestsuite);
-// not needed, tests already in cluded in:
-// tests/js/server/aql/aql-skipping.js
 
 return jsunity.done();

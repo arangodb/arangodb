@@ -32,6 +32,12 @@
 #include "MMFiles/MMFilesWalSlots.h"
 #include "Transaction/Manager.h"
 #include "VocBase/voc-types.h"
+#include "StorageEngine/StorageEngine.h"
+
+// for sig_atomic_t: 
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
 
 namespace arangodb {
 class MMFilesAllocatorThread;
@@ -93,7 +99,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // whether or not it is safe to retrieve the instance yet
-  static bool SafeToUseInstance;
+  static std::atomic<bool> SafeToUseInstance;
 #endif
 
   // status of whether the last tick value was found on startup
@@ -174,7 +180,12 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   inline void historicLogfiles(uint32_t value) { _historicLogfiles = value; }
 
   // whether or not we are in the recovery phase
-  inline bool isInRecovery() const { return _inRecovery; }
+  inline bool isInRecovery() const { return _recoveryState < RecoveryState::DONE; }
+
+  // current recovery state
+  inline RecoveryState recoveryState() const noexcept { return _recoveryState; }
+
+  TRI_voc_tick_t recoveryTick() const noexcept { return _recoveryTick; }
 
   // whether or not we are in the shutdown phase
   inline bool isInShutdown() const { return (_shutdown != 0); }
@@ -491,8 +502,11 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   // whether or not writes to the WAL are allowed
   bool _allowWrites;
 
-  // whether or not the recovery procedure is running
-  bool _inRecovery;
+  // current recovery state
+  RecoveryState _recoveryState;
+
+  // current recovery tick
+  TRI_voc_tick_t _recoveryTick;
 
   // a lock protecting the _logfiles map and the logfiles' statuses
   basics::ReadWriteLock _logfilesLock;

@@ -1,4 +1,3 @@
-<script id="replicationView.ejs" type="text/template">
   <div id="replicationContent" class="innerContent replicationContent">
 
     <% if (mode !== 0) { %>
@@ -204,7 +203,9 @@
         <table class="pure-table" id="repl-logger-clients">
             <thead>
               <tr>
+                <th>Syncer ID</th>
                 <th>Server ID</th>
+                <th>Client info</th>
                 <th>Time</th>
                 <th>Last served tick</th>
               </tr>
@@ -245,4 +246,3 @@
     <% } %>
 
   </div>
-</script>

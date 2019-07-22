@@ -21,6 +21,12 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <sys/types.h>
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include "ManagedDirectory.h"
 
 #include "Basics/FileUtils.h"
@@ -466,7 +472,7 @@ void ManagedDirectory::File::write(char const* data, size_t length) {
   }
 #endif
   if (isGzip()) {
-    gzwrite(_gzFile, data, length);
+    gzwrite(_gzFile, data, static_cast<unsigned int>(length));
   } else {
     ::rawWrite(_fd, data, length, _status, _path, _flags);
   }
@@ -488,7 +494,7 @@ ssize_t ManagedDirectory::File::read(char* buffer, size_t length) {
   }
 #endif
   if (isGzip()) {
-    bytesRead = gzread(_gzFile, buffer, length);
+    bytesRead = gzread(_gzFile, buffer, static_cast<unsigned int>(length));
   } else {
     bytesRead = ::rawRead(_fd, buffer, length, _status, _path, _flags);
   } // else

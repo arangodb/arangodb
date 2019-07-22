@@ -104,8 +104,45 @@ class Index {
     TRI_IDX_TYPE_NO_ACCESS_INDEX
   };
 
-  // mode to signal how operation should behave
+  /// @brief: mode to signal how operation should behave
   enum OperationMode { normal, internal, rollback };
+  
+  /// @brief: helper struct returned by index methods that determine the costs
+  /// of index usage for filtering
+  struct FilterCosts {
+    /// @brief whether or not the index supports the filter condition
+    bool supportsCondition = false;
+
+    /// @brief number of attributes of filter condition covered by this index
+    size_t coveredAttributes = 0;
+
+    /// @brief estimated items to be returned for this condition.
+    size_t estimatedItems = 0;
+
+    /// @brief estimated costs for this filter condition
+    double estimatedCosts = 0.0;
+    
+    static FilterCosts zeroCosts();
+
+    static FilterCosts defaultCosts(size_t itemsInIndex);
+  };
+  
+  /// @brief: helper struct returned by index methods that determine the costs
+  /// of index usage
+  struct SortCosts {
+    /// @brief whether or not the index supports the sort clause
+    bool supportsCondition = false;
+
+    /// @brief number of attributes of the sort clause covered by this index
+    size_t coveredAttributes = 0;
+    
+    /// @brief estimated costs for this sort clause
+    double estimatedCosts = 0.0;
+    
+    static SortCosts zeroCosts(size_t coveredAttributes);
+    
+    static SortCosts defaultCosts(size_t itemsInIndex, bool isPersistent);
+  };
 
  public:
   /// @brief return the index id
@@ -230,8 +267,14 @@ class Index {
   /// @brief validate an index id
   static bool validateId(char const*);
 
+  /// @brief validate an index name
+  static bool validateName(char const*);
+
   /// @brief validate an index handle (collection name + / + index id)
   static bool validateHandle(char const*, size_t*);
+
+  /// @brief validate an index handle (by name) (collection name + / + index name)
+  static bool validateHandleName(char const*, size_t*);
 
   /// @brief generate a new index id
   static TRI_idx_iid_t generateId();
@@ -264,6 +307,9 @@ class Index {
 
   /// @brief if true this index should not be shown externally
   virtual bool isHidden() const = 0;
+
+  /// @brief if true this index should not be shown externally
+  virtual bool inProgress() const { return false; };
 
   /// @brief whether or not the index has a selectivity estimate
   virtual bool hasSelectivityEstimate() const = 0;
@@ -334,27 +380,36 @@ class Index {
 
   /// @brief called after the collection was truncated
   /// @param tick at which truncate was applied
-  virtual void afterTruncate(TRI_voc_tick_t tick){};
+  virtual void afterTruncate(TRI_voc_tick_t tick) {}
 
-  // give index a hint about the expected size
-  virtual Result sizeHint(transaction::Methods& trx, size_t size);
+  /// @brief whether or not the filter condition is supported by the index
+  /// returns detailed information about the costs associated with using this index
+  virtual FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                              arangodb::aql::AstNode const* node,
+                                              arangodb::aql::Variable const* reference, 
+                                              size_t itemsInIndex) const;
 
-  virtual bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                                       arangodb::aql::AstNode const*,
-                                       arangodb::aql::Variable const*, size_t,
-                                       size_t&, double&) const;
+  /// @brief whether or not the sort condition is supported by the index
+  /// returns detailed information about the costs associated with using this index
+  virtual SortCosts supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                          arangodb::aql::Variable const* reference, 
+                                          size_t itemsInIndex) const;
 
-  virtual bool supportsSortCondition(arangodb::aql::SortCondition const*,
-                                     arangodb::aql::Variable const*, size_t,
-                                     double&, size_t&) const;
+  /// @brief specialize the condition for use with this index. this will remove all 
+  /// elements from the condition that are not supported by the index.
+  /// for example, if the condition is `doc.value1 == 38 && doc.value2 > 9`, but the index is
+  /// only on `doc.value1`, this will return a new AstNode that points to just the condition
+  /// `doc.value1 == 38`.
+  /// must only be called if supportsFilterCondition has indicated that the index supports
+  /// at least a part of the filter condition
+  virtual arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
+                                                      arangodb::aql::Variable const* reference) const;
 
-  virtual arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
-                                                      arangodb::aql::Variable const*) const;
-
-  virtual IndexIterator* iteratorForCondition(transaction::Methods* trx,
-                                              aql::AstNode const* condNode,
-                                              aql::Variable const* var,
-                                              IndexIteratorOptions const& opts) = 0;
+  /// @brief create a new index iterator for the (specialized) condition
+  virtual std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx,
+                                                              aql::AstNode const* node,
+                                                              aql::Variable const* reference,
+                                                              IndexIteratorOptions const& opts);
 
   bool canUseConditionPart(arangodb::aql::AstNode const* access,
                            arangodb::aql::AstNode const* other,

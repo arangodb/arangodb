@@ -28,6 +28,42 @@
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
   
+namespace {
+template <typename SocketT, typename F>
+void resolveConnect(detail::ConnectionConfiguration const& config,
+                    asio_ns::ip::tcp::resolver& resolver,
+                    SocketT& socket,
+                    F&& done) {
+  auto cb = [&socket, done = std::forward<F>(done)]
+  (asio_ns::error_code const& ec,
+   asio_ns::ip::tcp::resolver::iterator it) {
+    if (ec) { // error
+      done(ec);
+      return;
+    }
+    
+    // A successful resolve operation is guaranteed to pass a
+    // non-empty range to the handler.
+    auto cb = [done](asio_ns::error_code const& ec,
+                     asio_ns::ip::tcp::resolver::iterator const&) {
+      done(ec);
+    };
+    asio_ns::async_connect(socket, it, std::move(cb));
+  };
+  
+  // windows does not like async_resolve
+#ifdef _WIN32
+  asio_ns::error_code ec;
+  auto it = resolver.resolve(config._host, config._port, ec);
+  cb(ec, it);
+#else
+  // Resolve the host asynchronous into a series of endpoints
+  resolver.async_resolve(config._host, config._port, std::move(cb));
+#endif
+}
+}
+  
+  
 template<SocketType T>
 struct Socket {};
 
@@ -44,30 +80,18 @@ struct Socket<SocketType::Tcp>  {
     } catch(...) {}
   }
   
-  template<typename CallbackT>
-  void connect(detail::ConnectionConfiguration const& config, CallbackT done) {
-    auto cb = [this, done](asio_ns::error_code const& ec,
-                     asio_ns::ip::tcp::resolver::iterator it) {
-      if (ec) { // error
-        done(ec);
-        return;
-      }
-      // A successful resolve operation is guaranteed to pass a
-      // non-empty range to the handler.
-      asio_ns::async_connect(socket, it,
-                             [done](asio_ns::error_code const& ec,
-                                    asio_ns::ip::tcp::resolver::iterator const&) {
-                               done(ec);
-                             });
-    };
-    // Resolve the host asynchronous into a series of endpoints
-    resolver.async_resolve({config._host, config._port}, cb);
+  template<typename F>
+  void connect(detail::ConnectionConfiguration const& config, F&& done) {
+    resolveConnect(config, resolver, socket, std::forward<F>(done));
   }
+  
   void shutdown() {
     if (socket.is_open()) {
       asio_ns::error_code ec; // prevents exceptions
       socket.cancel(ec);
+      ec.clear();
       socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+      ec.clear();
       socket.close(ec);
     }
   }
@@ -89,51 +113,39 @@ struct Socket<fuerte::SocketType::Ssl> {
     } catch(...) {}
   }
   
-  template<typename CallbackT>
-  void connect(detail::ConnectionConfiguration const& config, CallbackT done) {
-    auto rcb = [this, done, &config](asio_ns::error_code const& ec,
-                            asio_ns::ip::tcp::resolver::iterator it) {
-      if (ec) { // error
+  template<typename F>
+  void connect(detail::ConnectionConfiguration const& config, F&& done) {
+    auto cb = [this, &config, done = std::forward<F>(done)](asio_ns::error_code const& ec) {
+      if (ec) {
         done(ec);
         return;
       }
-      // A successful resolve operation is guaranteed to pass a
-      // non-empty range to the handler.
-      auto cbc = [this, done, &config](asio_ns::error_code const& ec,
-                                       asio_ns::ip::tcp::resolver::iterator const&) {
-        if (ec) {
-          done(ec);
-          return;
-        }
-        
-        // Perform SSL handshake and verify the remote host's certificate.
-        socket.lowest_layer().set_option(asio_ns::ip::tcp::no_delay(true));
-        if (config._verifyHost) {
-          socket.set_verify_mode(asio_ns::ssl::verify_peer);
-          socket.set_verify_callback(asio_ns::ssl::rfc2818_verification(config._host));
-        } else {
-          socket.set_verify_mode(asio_ns::ssl::verify_none);
-        }
-        
-        socket.async_handshake(asio_ns::ssl::stream_base::client,
-                               [done](asio_ns::error_code const& ec) {
-                                 done(ec);
-                               });
-      };
       
-      // Start the asynchronous connect operation.
-      asio_ns::async_connect(socket.lowest_layer(), it, cbc);
+      // Perform SSL handshake and verify the remote host's certificate.
+      socket.next_layer().set_option(asio_ns::ip::tcp::no_delay(true));
+      if (config._verifyHost) {
+        socket.set_verify_mode(asio_ns::ssl::verify_peer);
+        socket.set_verify_callback(asio_ns::ssl::rfc2818_verification(config._host));
+      } else {
+        socket.set_verify_mode(asio_ns::ssl::verify_none);
+      }
+      
+      socket.async_handshake(asio_ns::ssl::stream_base::client, std::move(done));
     };
-    // Resolve the host asynchronous into a series of endpoints
-    resolver.async_resolve({config._host, config._port}, rcb);
+    
+    resolveConnect(config, resolver, socket.next_layer(), std::move(cb));
   }
+  
   void shutdown() {
-    if (socket.lowest_layer().is_open()) {
-      asio_ns::error_code ec;
-      socket.lowest_layer().cancel(ec);
+    if (socket.next_layer().is_open()) {
+      asio_ns::error_code ec; // ignored
+      socket.next_layer().cancel(ec);
+      ec.clear();
       socket.shutdown(ec);
-      socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
-      socket.lowest_layer().close(ec);
+      ec.clear();
+      socket.next_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+      ec.clear();
+      socket.next_layer().close(ec);
     }
   }
   
@@ -169,10 +181,6 @@ struct Socket<fuerte::SocketType::Unix> {
   asio_ns::local::stream_protocol::socket socket;
 };
 #endif // ASIO_HAS_LOCAL_SOCKETS
-  
-inline ErrorCondition checkEOFError(asio_ns::error_code e, ErrorCondition c) {
-  return e == asio_ns::error::misc_errors::eof ? ErrorCondition::ConnectionClosed : c;
-}
 
 }}}  // namespace arangodb::fuerte::v1
 #endif

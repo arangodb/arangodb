@@ -23,6 +23,7 @@
 
 #include "InternalRestTraverserHandler.h"
 
+#include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"

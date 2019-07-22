@@ -23,8 +23,9 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "gtest/gtest.h"
+
 #include "RowFetcherHelper.h"
-#include "catch.hpp"
 #include "fakeit.hpp"
 
 #include "Aql/AqlItemBlock.h"
@@ -50,671 +51,674 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-SCENARIO("HashedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
+class HashedCollectExecutorTestNoRows : public ::testing::Test {
+ protected:
+  ExecutionState state;
+  ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager;
+
+  mocks::MockAqlServer server;
+  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  arangodb::transaction::Methods* trx;
+
+  std::unordered_set<RegisterId> const regToClear;
+  std::unordered_set<RegisterId> const regToKeep;
+  std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
+
+  std::vector<std::string> aggregateTypes;
+
+  std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
+
+  // if count = true, then we need to set a countRegister
+  RegisterId collectRegister;
+  bool count;
+
+  std::unordered_set<RegisterId> readableInputRegisters;
+  std::unordered_set<RegisterId> writeableOutputRegisters;
+
+  HashedCollectExecutorInfos infos;
+
+  SharedAqlItemBlockPtr block;
+  VPackBuilder input;
+  NoStats stats;
+
+  HashedCollectExecutorTestNoRows()
+      : itemBlockManager(&monitor),
+        fakedQuery(server.createFakeQuery()),
+        trx(fakedQuery->trx()),
+        groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 2)},
+        collectRegister(0),
+        count(false),
+        infos(2 /*nrIn*/, 2 /*nrOut*/, regToClear, regToKeep,
+              std::move(readableInputRegisters),
+              std::move(writeableOutputRegisters), std::move(groupRegisters), 0,
+              std::move(aggregateTypes), std::move(aggregateRegisters), trx, false),
+        block(new AqlItemBlock(itemBlockManager, 1000, 2)) {}
+};
+
+TEST_F(HashedCollectExecutorTestNoRows, the_producer_doesnt_wait) {
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
+  HashedCollectExecutor testee(fetcher, infos);
+
+  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!result.produced());
+}
+
+TEST_F(HashedCollectExecutorTestNoRows, the_producer_waits) {
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
+  HashedCollectExecutor testee(fetcher, infos);
+
+  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(!result.produced());
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!result.produced());
+}
+
+class HashedCollectExecutorTestRowsNoCount : public ::testing::Test {
+ protected:
+  ExecutionState state;
+  ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager;
+
+  mocks::MockAqlServer server;
+  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  arangodb::transaction::Methods* trx;
+
+  std::unordered_set<RegisterId> regToClear;
+  std::unordered_set<RegisterId> regToKeep;
+  std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
+
+  std::unordered_set<RegisterId> readableInputRegisters;
+
+  std::unordered_set<RegisterId> writeableOutputRegisters;
+
+  RegisterId nrOutputRegister;
+
+  std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
+  std::vector<std::string> aggregateTypes;
+
+  // if count = true, then we need to set a valid countRegister
+  RegisterId collectRegister;
+  bool count;
+
+  HashedCollectExecutorInfos infos;
+
+  SharedAqlItemBlockPtr block;
+  NoStats stats;
+
+  HashedCollectExecutorTestRowsNoCount()
+      : itemBlockManager(&monitor),
+        fakedQuery(server.createFakeQuery()),
+        trx(fakedQuery->trx()),
+        groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
+        readableInputRegisters{0},
+        writeableOutputRegisters{1},
+        nrOutputRegister(2),
+        collectRegister(0),
+        count(false),
+        infos(1, nrOutputRegister, regToClear, regToKeep, std::move(readableInputRegisters),
+              std::move(writeableOutputRegisters), std::move(groupRegisters), 0,
+              std::move(aggregateTypes), std::move(aggregateRegisters), trx, false),
+        block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {}
+};
+
+TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_1) {
+  auto input = VPackParser::fromJson("[ [1], [2] ]");
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  HashedCollectExecutor testee(fetcher, infos);
+
+  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!result.produced());
+
+  std::vector<int64_t> myNumbers;
+  auto block = result.stealBlock();
+
+  // check for types
+  AqlValue x = block->getValue(0, 1);
+  ASSERT_TRUE(x.isNumber());
+  myNumbers.emplace_back(x.slice().getInt());
+
+  AqlValue z = block->getValue(1, 1);
+  ASSERT_TRUE(z.isNumber());
+  myNumbers.emplace_back(z.slice().getInt());
+
+  // now sort vector and check for appearances
+  std::sort(myNumbers.begin(), myNumbers.end());
+  ASSERT_TRUE(myNumbers.at(0) == 1);
+  ASSERT_TRUE(myNumbers.at(1) == 2);
+}
+
+TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_2) {
+  auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  HashedCollectExecutor testee(fetcher, infos);
+
+  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!result.produced());
+
+  std::vector<int64_t> myNumbers;
+  auto block = result.stealBlock();
+
+  // check for types
+  AqlValue x = block->getValue(0, 1);
+  ASSERT_TRUE(x.isNumber());
+  myNumbers.emplace_back(x.slice().getInt());
+
+  AqlValue y = block->getValue(1, 1);
+  ASSERT_TRUE(y.isNumber());
+  myNumbers.emplace_back(y.slice().getInt());
+
+  AqlValue z = block->getValue(2, 1);
+  ASSERT_TRUE(z.isNumber());
+  myNumbers.emplace_back(z.slice().getInt());
+
+  // now sort vector and check for appearances
+  std::sort(myNumbers.begin(), myNumbers.end());
+  ASSERT_TRUE(myNumbers.at(0) == 1);
+  ASSERT_TRUE(myNumbers.at(1) == 2);
+  ASSERT_TRUE(myNumbers.at(2) == 3);
+}
+
+TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_3) {
+  auto input = VPackParser::fromJson("[ [1], [2], [3], [1], [2] ]");
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  HashedCollectExecutor testee(fetcher, infos);
+
+  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!result.produced());
+
+  std::vector<int64_t> myNumbers;
+  auto block = result.stealBlock();
+
+  // check for types
+  AqlValue x = block->getValue(0, 1);
+  ASSERT_TRUE(x.isNumber());
+  myNumbers.emplace_back(x.slice().getInt());
+
+  AqlValue y = block->getValue(1, 1);
+  ASSERT_TRUE(y.isNumber());
+  myNumbers.emplace_back(y.slice().getInt());
+
+  AqlValue z = block->getValue(2, 1);
+  ASSERT_TRUE(z.isNumber());
+  myNumbers.emplace_back(z.slice().getInt());
+
+  // now sort vector and check for appearances
+  std::sort(myNumbers.begin(), myNumbers.end());
+  ASSERT_TRUE(myNumbers.at(0) == 1);
+  ASSERT_TRUE(myNumbers.at(1) == 2);
+  ASSERT_TRUE(myNumbers.at(2) == 3);
+}
+
+TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_4) {
+  auto input = VPackParser::fromJson("[ [1], [2], [1], [2] ]");
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  HashedCollectExecutor testee(fetcher, infos);
+
+  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!result.produced());
+
+  std::vector<int64_t> myNumbers;
+  auto block = result.stealBlock();
+
+  // check for types
+  AqlValue x = block->getValue(0, 1);
+  ASSERT_TRUE(x.isNumber());
+  myNumbers.emplace_back(x.slice().getInt());
+
+  AqlValue y = block->getValue(1, 1);
+  ASSERT_TRUE(y.isNumber());
+  myNumbers.emplace_back(y.slice().getInt());
+
+  // now sort vector and check for appearances
+  std::sort(myNumbers.begin(), myNumbers.end());
+  ASSERT_TRUE(myNumbers.at(0) == 1);
+  ASSERT_TRUE(myNumbers.at(1) == 2);
+}
+
+TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_waits) {
+  auto input = VPackParser::fromJson("[ [1], [2] ]");
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  HashedCollectExecutor testee(fetcher, infos);
+
+  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(!result.produced());
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(!result.produced());
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!result.produced());
+
+  std::vector<int64_t> myNumbers;
+  auto block = result.stealBlock();
+
+  // check for types
+  AqlValue x = block->getValue(0, 1);
+  ASSERT_TRUE(x.isNumber());
+  myNumbers.emplace_back(x.slice().getInt());
+
+  AqlValue z = block->getValue(1, 1);
+  ASSERT_TRUE(z.isNumber());
+  myNumbers.emplace_back(z.slice().getInt());
+
+  // now sort vector and check for appearances
+  std::sort(myNumbers.begin(), myNumbers.end());
+  ASSERT_TRUE(myNumbers.at(0) == 1);
+  ASSERT_TRUE(myNumbers.at(1) == 2);
+}
+
+TEST(HashedCollectExecutorTestRowsCount, the_producer_doesnt_wait) {
   ExecutionState state;
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager{&monitor};
 
-  GIVEN("there are no rows upstream") {
-    mocks::MockAqlServer server{};
-    std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
-    arangodb::transaction::Methods* trx = fakedQuery->trx();
-
-    std::unordered_set<RegisterId> const regToClear;
-    std::unordered_set<RegisterId> const regToKeep;
-    std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
-    groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 2));
-
-    std::vector<std::string> aggregateTypes;
-
-    std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
-
-    // if count = true, then we need to set a countRegister
-    RegisterId collectRegister = 0;
-    bool count = false;
-
-    std::unordered_set<RegisterId> readableInputRegisters;
-    std::unordered_set<RegisterId> writeableOutputRegisters;
-
-    HashedCollectExecutorInfos infos(2 /*nrIn*/, 2 /*nrOut*/, regToClear,
-                                     regToKeep, std::move(readableInputRegisters),
-                                     std::move(writeableOutputRegisters),
-                                     std::move(groupRegisters), collectRegister,
-                                     std::move(aggregateTypes),
-                                     std::move(aggregateRegisters), trx, count);
-
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
-    VPackBuilder input;
-    NoStats stats{};
-
-    WHEN("the producer does not wait") {
-      SingleRowFetcherHelper<false> fetcher(input.steal(), false);
-      HashedCollectExecutor testee(fetcher, infos);
-
-      THEN("the executor should return DONE") {
-        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                                infos.registersToKeep(), infos.registersToClear());
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result.produced());
-      }
-    }
-
-    WHEN("the producer waits") {
-      SingleRowFetcherHelper<false> fetcher(input.steal(), true);
-      HashedCollectExecutor testee(fetcher, infos);
-
-      THEN("the executor should first return WAIT") {
-        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                                infos.registersToKeep(), infos.registersToClear());
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result.produced());
-
-        AND_THEN("the executor should return DONE") {
-          std::tie(state, stats) = testee.produceRows(result);
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(!result.produced());
-        }
-      }
-    }
-  }
-
-  GIVEN("there are rows in the upstream - count is false") {
-    mocks::MockAqlServer server{};
-    std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
-    arangodb::transaction::Methods* trx = fakedQuery->trx();
-
-    std::unordered_set<RegisterId> regToClear;
-    std::unordered_set<RegisterId> regToKeep;
-    std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
-    groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
-
-    std::unordered_set<RegisterId> readableInputRegisters;
-    readableInputRegisters.insert(0);
-
-    std::unordered_set<RegisterId> writeableOutputRegisters;
-    writeableOutputRegisters.insert(1);
-
-    RegisterId nrOutputRegister = 2;
-
-    std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
-    std::vector<std::string> aggregateTypes;
-
-    // if count = true, then we need to set a valid countRegister
-    RegisterId collectRegister = 0;
-    bool count = false;
-
-    HashedCollectExecutorInfos infos(1, nrOutputRegister, regToClear, regToKeep,
-                                     std::move(readableInputRegisters),
-                                     std::move(writeableOutputRegisters),
-                                     std::move(groupRegisters), collectRegister,
-                                     std::move(aggregateTypes),
-                                     std::move(aggregateRegisters), trx, count);
-
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
-    NoStats stats{};
-
-    WHEN("the producer does not wait") {
-      auto input = VPackParser::fromJson("[ [1], [2] ]");
-      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
-      HashedCollectExecutor testee(fetcher, infos);
-
-      THEN("the executor should return DONE") {
-        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                                infos.registersToKeep(), infos.registersToClear());
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result.produced());
-
-        std::vector<int> myNumbers;
-        auto block = result.stealBlock();
-
-        // check for types
-        AqlValue x = block->getValue(0, 1);
-        REQUIRE(x.isNumber());
-        myNumbers.emplace_back(x.slice().getInt());
-
-        AqlValue z = block->getValue(1, 1);
-        REQUIRE(z.isNumber());
-        myNumbers.emplace_back(z.slice().getInt());
-
-        // now sort vector and check for appearances
-        std::sort(myNumbers.begin(), myNumbers.end());
-        REQUIRE(myNumbers.at(0) == 1);
-        REQUIRE(myNumbers.at(1) == 2);
-      }
-    }
-
-    WHEN("the producer does not wait") {
-      auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
-      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
-      HashedCollectExecutor testee(fetcher, infos);
-
-      THEN("the executor should return DONE") {
-        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                                infos.registersToKeep(), infos.registersToClear());
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result.produced());
-
-        std::vector<int> myNumbers;
-        auto block = result.stealBlock();
-
-        // check for types
-        AqlValue x = block->getValue(0, 1);
-        REQUIRE(x.isNumber());
-        myNumbers.emplace_back(x.slice().getInt());
-
-        AqlValue y = block->getValue(1, 1);
-        REQUIRE(y.isNumber());
-        myNumbers.emplace_back(y.slice().getInt());
-
-        AqlValue z = block->getValue(2, 1);
-        REQUIRE(z.isNumber());
-        myNumbers.emplace_back(z.slice().getInt());
-
-        // now sort vector and check for appearances
-        std::sort(myNumbers.begin(), myNumbers.end());
-        REQUIRE(myNumbers.at(0) == 1);
-        REQUIRE(myNumbers.at(1) == 2);
-        REQUIRE(myNumbers.at(2) == 3);
-      }
-    }
-
-    WHEN("the producer does not wait") {
-      auto input = VPackParser::fromJson("[ [1], [2], [3], [1], [2] ]");
-      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
-      HashedCollectExecutor testee(fetcher, infos);
-
-      THEN("the executor should return DONE") {
-        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                                infos.registersToKeep(), infos.registersToClear());
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result.produced());
-
-        std::vector<int> myNumbers;
-        auto block = result.stealBlock();
-
-        // check for types
-        AqlValue x = block->getValue(0, 1);
-        REQUIRE(x.isNumber());
-        myNumbers.emplace_back(x.slice().getInt());
-
-        AqlValue y = block->getValue(1, 1);
-        REQUIRE(y.isNumber());
-        myNumbers.emplace_back(y.slice().getInt());
-
-        AqlValue z = block->getValue(2, 1);
-        REQUIRE(z.isNumber());
-        myNumbers.emplace_back(z.slice().getInt());
-
-        // now sort vector and check for appearances
-        std::sort(myNumbers.begin(), myNumbers.end());
-        REQUIRE(myNumbers.at(0) == 1);
-        REQUIRE(myNumbers.at(1) == 2);
-        REQUIRE(myNumbers.at(2) == 3);
-      }
-    }
-
-    WHEN("the producer does not wait") {
-      auto input = VPackParser::fromJson("[ [1], [2], [1], [2] ]");
-      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
-      HashedCollectExecutor testee(fetcher, infos);
-
-      THEN("the executor should return DONE") {
-        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                                infos.registersToKeep(), infos.registersToClear());
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result.produced());
-
-        std::vector<int> myNumbers;
-        auto block = result.stealBlock();
-
-        // check for types
-        AqlValue x = block->getValue(0, 1);
-        REQUIRE(x.isNumber());
-        myNumbers.emplace_back(x.slice().getInt());
-
-        AqlValue y = block->getValue(1, 1);
-        REQUIRE(y.isNumber());
-        myNumbers.emplace_back(y.slice().getInt());
-
-        // now sort vector and check for appearances
-        std::sort(myNumbers.begin(), myNumbers.end());
-        REQUIRE(myNumbers.at(0) == 1);
-        REQUIRE(myNumbers.at(1) == 2);
-      }
-    }
-
-    WHEN("the producer does wait") {
-      auto input = VPackParser::fromJson("[ [1], [2] ]");
-      SingleRowFetcherHelper<false> fetcher(input->steal(), true);
-      HashedCollectExecutor testee(fetcher, infos);
-
-      THEN("the executor should return WAIT first") {
-        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                                infos.registersToKeep(), infos.registersToClear());
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result.produced());
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result.produced());
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result.produced());
-
-        std::vector<int> myNumbers;
-        auto block = result.stealBlock();
-
-        // check for types
-        AqlValue x = block->getValue(0, 1);
-        REQUIRE(x.isNumber());
-        myNumbers.emplace_back(x.slice().getInt());
-
-        AqlValue z = block->getValue(1, 1);
-        REQUIRE(z.isNumber());
-        myNumbers.emplace_back(z.slice().getInt());
-
-        // now sort vector and check for appearances
-        std::sort(myNumbers.begin(), myNumbers.end());
-        REQUIRE(myNumbers.at(0) == 1);
-        REQUIRE(myNumbers.at(1) == 2);
-      }
-    }
-  }
-  GIVEN("there are rows in the upstream - count is true") {
-    mocks::MockAqlServer server{};
-    std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
-    arangodb::transaction::Methods* trx = fakedQuery->trx();
-
-    std::unordered_set<RegisterId> regToClear;
-    std::unordered_set<RegisterId> regToKeep;
-    std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
-    groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
-
-    std::unordered_set<RegisterId> readableInputRegisters;
-    readableInputRegisters.insert(0);
-
-    std::unordered_set<RegisterId> writeableOutputRegisters;
-    writeableOutputRegisters.insert(1);
-
-    RegisterId nrOutputRegister = 3;
-
-    std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
-    aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
-
-    std::vector<std::string> aggregateTypes;
-    aggregateTypes.emplace_back("SUM");
-
-    // if count = true, then we need to set a valid countRegister
-    bool count = true;
-    RegisterId collectRegister = 2;
-    writeableOutputRegisters.insert(2);
-
-    HashedCollectExecutorInfos infos(1, nrOutputRegister, regToClear, regToKeep,
-                                     std::move(readableInputRegisters),
-                                     std::move(writeableOutputRegisters),
-                                     std::move(groupRegisters), collectRegister,
-                                     std::move(aggregateTypes),
-                                     std::move(aggregateRegisters), trx, count);
-
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
-    NoStats stats{};
-
-    WHEN("the producer does not wait") {
-      auto input = VPackParser::fromJson("[ [1], [2] ]");
-      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
-      HashedCollectExecutor testee(fetcher, infos);
-
-      THEN("the executor should return DONE") {
-        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                                infos.registersToKeep(), infos.registersToClear());
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result.produced());
-
-        std::vector<int> myNumbers;
-        std::vector<double> myCountNumbers;
-        auto block = result.stealBlock();
-
-        // check for types
-        AqlValue x = block->getValue(0, 1);
-        REQUIRE(x.isNumber());
-        myNumbers.emplace_back(x.slice().getInt());
-
-        // Check the count register
-        AqlValue xx = block->getValue(0, 2);
-        REQUIRE(xx.isNumber());
-        myCountNumbers.emplace_back(xx.slice().getDouble());
-
-        AqlValue z = block->getValue(1, 1);
-        REQUIRE(z.isNumber());
-        myNumbers.emplace_back(z.slice().getInt());
-
-        // Check the count register
-        AqlValue zz = block->getValue(1, 2);
-        REQUIRE(zz.isNumber());
-        myCountNumbers.emplace_back(zz.slice().getDouble());
-
-        // now sort vector and check for appearances
-        std::sort(myNumbers.begin(), myNumbers.end());
-
-        std::sort(myCountNumbers.begin(), myCountNumbers.end());
-        REQUIRE(myNumbers.at(0) == 1);
-        REQUIRE(myNumbers.at(1) == 2);
-        REQUIRE(myCountNumbers.at(0) == 1);
-        REQUIRE(myCountNumbers.at(1) == 2);
-      }
-    }
-  }
-
-  GIVEN("there are rows in the upstream - count is true - using numbers") {
-    mocks::MockAqlServer server{};
-    std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
-    arangodb::transaction::Methods* trx = fakedQuery->trx();
-
-    std::unordered_set<RegisterId> regToClear;
-    std::unordered_set<RegisterId> regToKeep;
-    std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
-    groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
-
-    std::unordered_set<RegisterId> readableInputRegisters;
-    readableInputRegisters.insert(0);
-
-    std::unordered_set<RegisterId> writeableOutputRegisters;
-    writeableOutputRegisters.insert(1);
-
-    RegisterId nrOutputRegister = 3;
-
-    std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
-    aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
-
-    std::vector<std::string> aggregateTypes;
-    aggregateTypes.emplace_back("LENGTH");
-
-    // if count = true, then we need to set a valid countRegister
-    bool count = true;
-    RegisterId collectRegister = 2;
-    writeableOutputRegisters.insert(2);
-
-    HashedCollectExecutorInfos infos(1, nrOutputRegister, regToClear, regToKeep,
-                                     std::move(readableInputRegisters),
-                                     std::move(writeableOutputRegisters),
-                                     std::move(groupRegisters), collectRegister,
-                                     std::move(aggregateTypes),
-                                     std::move(aggregateRegisters), trx, count);
-
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
-    NoStats stats{};
-
-    WHEN("the producer does not wait") {
-      auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
-      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
-      HashedCollectExecutor testee(fetcher, infos);
-
-      THEN("the executor should return DONE") {
-        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                                infos.registersToKeep(), infos.registersToClear());
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result.produced());
-
-        std::vector<int> myNumbers;
-        std::vector<int> myCountNumbers;
-        auto block = result.stealBlock();
-
-        // check for types
-        AqlValue x = block->getValue(0, 1);
-        REQUIRE(x.isNumber());
-        myNumbers.emplace_back(x.slice().getInt());
-
-        // Check the count register
-        AqlValue xx = block->getValue(0, 2);
-        REQUIRE(xx.isNumber());
-        myCountNumbers.emplace_back(xx.slice().getInt());
-
-        AqlValue z = block->getValue(1, 1);
-        REQUIRE(z.isNumber());
-        myNumbers.emplace_back(z.slice().getInt());
-
-        // Check the count register
-        AqlValue zz = block->getValue(1, 2);
-        REQUIRE(zz.isNumber());
-        myCountNumbers.emplace_back(zz.slice().getInt());
-
-        AqlValue y = block->getValue(2, 1);
-        REQUIRE(y.isNumber());
-        myNumbers.emplace_back(y.slice().getInt());
-
-        // Check the count register
-        AqlValue yy = block->getValue(2, 2);
-        REQUIRE(yy.isNumber());
-        myCountNumbers.emplace_back(yy.slice().getInt());
-
-        // now sort vector and check for appearances
-        std::sort(myNumbers.begin(), myNumbers.end());
-
-        std::sort(myCountNumbers.begin(), myCountNumbers.end());
-        REQUIRE(myNumbers.at(0) == 1);
-        REQUIRE(myNumbers.at(1) == 2);
-        REQUIRE(myNumbers.at(2) == 3);
-        REQUIRE(myCountNumbers.at(0) == 1);
-        REQUIRE(myCountNumbers.at(1) == 1);
-        REQUIRE(myCountNumbers.at(2) == 1);
-      }
-    }
-  }
-
-  GIVEN("there are rows in the upstream - count is true - using strings") {
-    mocks::MockAqlServer server{};
-    std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
-    arangodb::transaction::Methods* trx = fakedQuery->trx();
-
-    std::unordered_set<RegisterId> regToClear;
-    std::unordered_set<RegisterId> regToKeep;
-    std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
-    groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
-
-    std::unordered_set<RegisterId> readableInputRegisters;
-    readableInputRegisters.insert(0);
-
-    std::unordered_set<RegisterId> writeableOutputRegisters;
-    writeableOutputRegisters.insert(1);
-
-    RegisterId nrOutputRegister = 3;
-
-    std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
-    aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
-
-    std::vector<std::string> aggregateTypes;
-    aggregateTypes.emplace_back("LENGTH");
-
-    // if count = true, then we need to set a valid countRegister
-    bool count = true;
-    RegisterId collectRegister = 2;
-    writeableOutputRegisters.insert(2);
-
-    HashedCollectExecutorInfos infos(1, nrOutputRegister, regToClear, regToKeep,
-                                     std::move(readableInputRegisters),
-                                     std::move(writeableOutputRegisters),
-                                     std::move(groupRegisters), collectRegister,
-                                     std::move(aggregateTypes),
-                                     std::move(aggregateRegisters), trx, count);
-
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
-    NoStats stats{};
-
-    WHEN("the producer does not wait") {
-      auto input = VPackParser::fromJson("[ [\"a\"], [\"aa\"], [\"aaa\"] ]");
-      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
-      HashedCollectExecutor testee(fetcher, infos);
-
-      THEN("the executor should return DONE") {
-        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                                infos.registersToKeep(), infos.registersToClear());
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result.produced());
-
-        std::vector<std::string> myStrings;
-        std::vector<int> myCountNumbers;
-        auto block = result.stealBlock();
-
-        // check for types
-        AqlValue x = block->getValue(0, 1);
-        REQUIRE(x.isString());
-        myStrings.emplace_back(x.slice().copyString());
-
-        // Check the count register
-        AqlValue xx = block->getValue(0, 2);
-        REQUIRE(xx.isNumber());
-        myCountNumbers.emplace_back(xx.slice().getInt());
-
-        AqlValue z = block->getValue(1, 1);
-        REQUIRE(z.isString());
-        myStrings.emplace_back(z.slice().copyString());
-
-        // Check the count register
-        AqlValue zz = block->getValue(1, 2);
-        REQUIRE(zz.isNumber());
-        myCountNumbers.emplace_back(zz.slice().getInt());
-
-        AqlValue y = block->getValue(2, 1);
-        REQUIRE(y.isString());
-        myStrings.emplace_back(y.slice().copyString());
-
-        // Check the count register
-        AqlValue yy = block->getValue(2, 2);
-        REQUIRE(yy.isNumber());
-        myCountNumbers.emplace_back(yy.slice().getInt());
-
-        // now sort vector and check for appearances
-        std::sort(myStrings.begin(), myStrings.end());
-
-        std::sort(myCountNumbers.begin(), myCountNumbers.end());
-        REQUIRE(myStrings.at(0) == "a");
-        REQUIRE(myStrings.at(1) == "aa");
-        REQUIRE(myStrings.at(2) == "aaa");
-        REQUIRE(myCountNumbers.at(0) == 1);
-        REQUIRE(myCountNumbers.at(1) == 1);
-        REQUIRE(myCountNumbers.at(2) == 1);
-      }
-    }
-  }
+  mocks::MockAqlServer server{};
+  std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
+  arangodb::transaction::Methods* trx = fakedQuery->trx();
+
+  std::unordered_set<RegisterId> regToClear;
+  std::unordered_set<RegisterId> regToKeep;
+  std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
+  groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
+
+  std::unordered_set<RegisterId> readableInputRegisters;
+  readableInputRegisters.insert(0);
+
+  std::unordered_set<RegisterId> writeableOutputRegisters;
+  writeableOutputRegisters.insert(1);
+
+  RegisterId nrOutputRegister = 3;
+
+  std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
+  aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
+
+  std::vector<std::string> aggregateTypes;
+  aggregateTypes.emplace_back("SUM");
+
+  // if count = true, then we need to set a valid countRegister
+  bool count = true;
+  RegisterId collectRegister = 2;
+  writeableOutputRegisters.insert(2);
+
+  HashedCollectExecutorInfos infos(1, nrOutputRegister, regToClear, regToKeep,
+                                   std::move(readableInputRegisters),
+                                   std::move(writeableOutputRegisters),
+                                   std::move(groupRegisters), collectRegister,
+                                   std::move(aggregateTypes),
+                                   std::move(aggregateRegisters), trx, count);
+
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
+  NoStats stats{};
+
+  auto input = VPackParser::fromJson("[ [1], [2] ]");
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  HashedCollectExecutor testee(fetcher, infos);
+
+  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!result.produced());
+
+  std::vector<int64_t> myNumbers;
+  std::vector<double> myCountNumbers;
+  auto newBlock = result.stealBlock();
+
+  // check for types
+  AqlValue x = newBlock->getValue(0, 1);
+  ASSERT_TRUE(x.isNumber());
+  myNumbers.emplace_back(x.slice().getInt());
+
+  // Check the count register
+  AqlValue xx = newBlock->getValue(0, 2);
+  ASSERT_TRUE(xx.isNumber());
+  myCountNumbers.emplace_back(xx.slice().getDouble());
+
+  AqlValue z = newBlock->getValue(1, 1);
+  ASSERT_TRUE(z.isNumber());
+  myNumbers.emplace_back(z.slice().getInt());
+
+  // Check the count register
+  AqlValue zz = newBlock->getValue(1, 2);
+  ASSERT_TRUE(zz.isNumber());
+  myCountNumbers.emplace_back(zz.slice().getDouble());
+
+  // now sort vector and check for appearances
+  std::sort(myNumbers.begin(), myNumbers.end());
+
+  std::sort(myCountNumbers.begin(), myCountNumbers.end());
+  ASSERT_TRUE(myNumbers.at(0) == 1);
+  ASSERT_TRUE(myNumbers.at(1) == 2);
+  ASSERT_TRUE(myCountNumbers.at(0) == 1);
+  ASSERT_TRUE(myCountNumbers.at(1) == 2);
+}
+
+TEST(HashedCollectExecutorTestRowsCountNumbers, the_producer_doesnt_wait) {
+  ExecutionState state;
+  ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager{&monitor};
+
+  mocks::MockAqlServer server{};
+  std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
+  arangodb::transaction::Methods* trx = fakedQuery->trx();
+
+  std::unordered_set<RegisterId> regToClear;
+  std::unordered_set<RegisterId> regToKeep;
+  std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
+  groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
+
+  std::unordered_set<RegisterId> readableInputRegisters;
+  readableInputRegisters.insert(0);
+
+  std::unordered_set<RegisterId> writeableOutputRegisters;
+  writeableOutputRegisters.insert(1);
+
+  RegisterId nrOutputRegister = 3;
+
+  std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
+  aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
+
+  std::vector<std::string> aggregateTypes;
+  aggregateTypes.emplace_back("LENGTH");
+
+  // if count = true, then we need to set a valid countRegister
+  bool count = true;
+  RegisterId collectRegister = 2;
+  writeableOutputRegisters.insert(2);
+
+  HashedCollectExecutorInfos infos(1, nrOutputRegister, regToClear, regToKeep,
+                                   std::move(readableInputRegisters),
+                                   std::move(writeableOutputRegisters),
+                                   std::move(groupRegisters), collectRegister,
+                                   std::move(aggregateTypes),
+                                   std::move(aggregateRegisters), trx, count);
+
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
+  NoStats stats{};
+
+  auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  HashedCollectExecutor testee(fetcher, infos);
+
+  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!result.produced());
+
+  std::vector<int64_t> myNumbers;
+  std::vector<int64_t> myCountNumbers;
+  auto newBlock = result.stealBlock();
+
+  // check for types
+  AqlValue x = newBlock->getValue(0, 1);
+  ASSERT_TRUE(x.isNumber());
+  myNumbers.emplace_back(x.slice().getInt());
+
+  // Check the count register
+  AqlValue xx = newBlock->getValue(0, 2);
+  ASSERT_TRUE(xx.isNumber());
+  myCountNumbers.emplace_back(xx.slice().getInt());
+
+  AqlValue z = newBlock->getValue(1, 1);
+  ASSERT_TRUE(z.isNumber());
+  myNumbers.emplace_back(z.slice().getInt());
+
+  // Check the count register
+  AqlValue zz = newBlock->getValue(1, 2);
+  ASSERT_TRUE(zz.isNumber());
+  myCountNumbers.emplace_back(zz.slice().getInt());
+
+  AqlValue y = newBlock->getValue(2, 1);
+  ASSERT_TRUE(y.isNumber());
+  myNumbers.emplace_back(y.slice().getInt());
+
+  // Check the count register
+  AqlValue yy = newBlock->getValue(2, 2);
+  ASSERT_TRUE(yy.isNumber());
+  myCountNumbers.emplace_back(yy.slice().getInt());
+
+  // now sort vector and check for appearances
+  std::sort(myNumbers.begin(), myNumbers.end());
+
+  std::sort(myCountNumbers.begin(), myCountNumbers.end());
+  ASSERT_TRUE(myNumbers.at(0) == 1);
+  ASSERT_TRUE(myNumbers.at(1) == 2);
+  ASSERT_TRUE(myNumbers.at(2) == 3);
+  ASSERT_TRUE(myCountNumbers.at(0) == 1);
+  ASSERT_TRUE(myCountNumbers.at(1) == 1);
+  ASSERT_TRUE(myCountNumbers.at(2) == 1);
+}
+
+TEST(HashedCollectExecutorTestRowsCountStrings, the_producer_doesnt_wait) {
+  ExecutionState state;
+  ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager{&monitor};
+
+  mocks::MockAqlServer server{};
+  std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
+  arangodb::transaction::Methods* trx = fakedQuery->trx();
+
+  std::unordered_set<RegisterId> regToClear;
+  std::unordered_set<RegisterId> regToKeep;
+  std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
+  groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
+
+  std::unordered_set<RegisterId> readableInputRegisters;
+  readableInputRegisters.insert(0);
+
+  std::unordered_set<RegisterId> writeableOutputRegisters;
+  writeableOutputRegisters.insert(1);
+
+  RegisterId nrOutputRegister = 3;
+
+  std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
+  aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
+
+  std::vector<std::string> aggregateTypes;
+  aggregateTypes.emplace_back("LENGTH");
+
+  // if count = true, then we need to set a valid countRegister
+  bool count = true;
+  RegisterId collectRegister = 2;
+  writeableOutputRegisters.insert(2);
+
+  HashedCollectExecutorInfos infos(1, nrOutputRegister, regToClear, regToKeep,
+                                   std::move(readableInputRegisters),
+                                   std::move(writeableOutputRegisters),
+                                   std::move(groupRegisters), collectRegister,
+                                   std::move(aggregateTypes),
+                                   std::move(aggregateRegisters), trx, count);
+
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
+  NoStats stats{};
+
+  auto input = VPackParser::fromJson("[ [\"a\"], [\"aa\"], [\"aaa\"] ]");
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  HashedCollectExecutor testee(fetcher, infos);
+
+  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(result.produced());
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!result.produced());
+
+  std::vector<std::string> myStrings;
+  std::vector<int64_t> myCountNumbers;
+  auto newBlock = result.stealBlock();
+
+  // check for types
+  AqlValue x = newBlock->getValue(0, 1);
+  ASSERT_TRUE(x.isString());
+  myStrings.emplace_back(x.slice().copyString());
+
+  // Check the count register
+  AqlValue xx = newBlock->getValue(0, 2);
+  ASSERT_TRUE(xx.isNumber());
+  myCountNumbers.emplace_back(xx.slice().getInt());
+
+  AqlValue z = newBlock->getValue(1, 1);
+  ASSERT_TRUE(z.isString());
+  myStrings.emplace_back(z.slice().copyString());
+
+  // Check the count register
+  AqlValue zz = newBlock->getValue(1, 2);
+  ASSERT_TRUE(zz.isNumber());
+  myCountNumbers.emplace_back(zz.slice().getInt());
+
+  AqlValue y = newBlock->getValue(2, 1);
+  ASSERT_TRUE(y.isString());
+  myStrings.emplace_back(y.slice().copyString());
+
+  // Check the count register
+  AqlValue yy = newBlock->getValue(2, 2);
+  ASSERT_TRUE(yy.isNumber());
+  myCountNumbers.emplace_back(yy.slice().getInt());
+
+  // now sort vector and check for appearances
+  std::sort(myStrings.begin(), myStrings.end());
+
+  std::sort(myCountNumbers.begin(), myCountNumbers.end());
+  ASSERT_TRUE(myStrings.at(0) == "a");
+  ASSERT_TRUE(myStrings.at(1) == "aa");
+  ASSERT_TRUE(myStrings.at(2) == "aaa");
+  ASSERT_TRUE(myCountNumbers.at(0) == 1);
+  ASSERT_TRUE(myCountNumbers.at(1) == 1);
+  ASSERT_TRUE(myCountNumbers.at(2) == 1);
 }
 
 }  // namespace aql

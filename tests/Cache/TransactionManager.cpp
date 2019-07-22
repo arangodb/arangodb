@@ -25,80 +25,78 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/TransactionManager.h"
 #include "Basics/Common.h"
 #include "Cache/Transaction.h"
+#include "Cache/TransactionManager.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include <stdint.h>
 
 using namespace arangodb::cache;
 
-TEST_CASE("cache::TransactionManager", "[cache]") {
-  SECTION("verify that transaction term is maintained correctly") {
-    TransactionManager transactions;
-    Transaction* tx1;
-    Transaction* tx2;
-    Transaction* tx3;
+TEST(CacheTransactionalManagerTest, verify_that_transaction_term_is_maintained_correctly) {
+  TransactionManager transactions;
+  Transaction* tx1;
+  Transaction* tx2;
+  Transaction* tx3;
 
-    REQUIRE(0ULL == transactions.term());
+  ASSERT_TRUE(0ULL == transactions.term());
 
-    tx1 = transactions.begin(false);
-    REQUIRE(1ULL == transactions.term());
-    transactions.end(tx1);
-    REQUIRE(2ULL == transactions.term());
+  tx1 = transactions.begin(false);
+  ASSERT_TRUE(1ULL == transactions.term());
+  transactions.end(tx1);
+  ASSERT_TRUE(2ULL == transactions.term());
 
-    tx1 = transactions.begin(false);
-    REQUIRE(3ULL == transactions.term());
-    tx2 = transactions.begin(false);
-    REQUIRE(3ULL == transactions.term());
-    transactions.end(tx1);
-    REQUIRE(3ULL == transactions.term());
-    transactions.end(tx2);
-    REQUIRE(4ULL == transactions.term());
+  tx1 = transactions.begin(false);
+  ASSERT_TRUE(3ULL == transactions.term());
+  tx2 = transactions.begin(false);
+  ASSERT_TRUE(3ULL == transactions.term());
+  transactions.end(tx1);
+  ASSERT_TRUE(3ULL == transactions.term());
+  transactions.end(tx2);
+  ASSERT_TRUE(4ULL == transactions.term());
 
-    tx1 = transactions.begin(true);
-    REQUIRE(4ULL == transactions.term());
-    tx2 = transactions.begin(false);
-    REQUIRE(5ULL == transactions.term());
-    transactions.end(tx2);
-    REQUIRE(5ULL == transactions.term());
-    transactions.end(tx1);
-    REQUIRE(6ULL == transactions.term());
+  tx1 = transactions.begin(true);
+  ASSERT_TRUE(4ULL == transactions.term());
+  tx2 = transactions.begin(false);
+  ASSERT_TRUE(5ULL == transactions.term());
+  transactions.end(tx2);
+  ASSERT_TRUE(5ULL == transactions.term());
+  transactions.end(tx1);
+  ASSERT_TRUE(6ULL == transactions.term());
 
-    tx1 = transactions.begin(true);
-    REQUIRE(6ULL == transactions.term());
-    tx2 = transactions.begin(false);
-    REQUIRE(7ULL == transactions.term());
-    transactions.end(tx2);
-    REQUIRE(7ULL == transactions.term());
-    tx3 = transactions.begin(true);
-    REQUIRE(7ULL == transactions.term());
-    transactions.end(tx1);
-    REQUIRE(8ULL == transactions.term());
-    transactions.end(tx3);
-    REQUIRE(8ULL == transactions.term());
+  tx1 = transactions.begin(true);
+  ASSERT_TRUE(6ULL == transactions.term());
+  tx2 = transactions.begin(false);
+  ASSERT_TRUE(7ULL == transactions.term());
+  transactions.end(tx2);
+  ASSERT_TRUE(7ULL == transactions.term());
+  tx3 = transactions.begin(true);
+  ASSERT_TRUE(7ULL == transactions.term());
+  transactions.end(tx1);
+  ASSERT_TRUE(8ULL == transactions.term());
+  transactions.end(tx3);
+  ASSERT_TRUE(8ULL == transactions.term());
 
-    tx1 = transactions.begin(true);
-    REQUIRE(8ULL == transactions.term());
-    tx2 = transactions.begin(false);
-    REQUIRE(9ULL == transactions.term());
-    transactions.end(tx2);
-    REQUIRE(9ULL == transactions.term());
-    tx3 = transactions.begin(true);
-    REQUIRE(9ULL == transactions.term());
-    transactions.end(tx3);
-    REQUIRE(9ULL == transactions.term());
-    tx2 = transactions.begin(false);
-    REQUIRE(9ULL == transactions.term());
-    tx3 = transactions.begin(false);
-    REQUIRE(9ULL == transactions.term());
-    transactions.end(tx3);
-    REQUIRE(9ULL == transactions.term());
-    transactions.end(tx2);
-    REQUIRE(9ULL == transactions.term());
-    transactions.end(tx1);
-    REQUIRE(10ULL == transactions.term());
-  }
+  tx1 = transactions.begin(true);
+  ASSERT_TRUE(8ULL == transactions.term());
+  tx2 = transactions.begin(false);
+  ASSERT_TRUE(9ULL == transactions.term());
+  transactions.end(tx2);
+  ASSERT_TRUE(9ULL == transactions.term());
+  tx3 = transactions.begin(true);
+  ASSERT_TRUE(9ULL == transactions.term());
+  transactions.end(tx3);
+  ASSERT_TRUE(9ULL == transactions.term());
+  tx2 = transactions.begin(false);
+  ASSERT_TRUE(9ULL == transactions.term());
+  tx3 = transactions.begin(false);
+  ASSERT_TRUE(9ULL == transactions.term());
+  transactions.end(tx3);
+  ASSERT_TRUE(9ULL == transactions.term());
+  transactions.end(tx2);
+  ASSERT_TRUE(9ULL == transactions.term());
+  transactions.end(tx1);
+  ASSERT_TRUE(10ULL == transactions.term());
 }

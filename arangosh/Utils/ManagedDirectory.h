@@ -38,6 +38,10 @@
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 namespace arangodb {
 /**
  * Manages a single directory in the file system, transparently handling

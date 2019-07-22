@@ -22,20 +22,22 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RocksDBReplicationContext.h"
+
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
-#include "Replication/common-defines.h"
 #include "Replication/ReplicationFeature.h"
+#include "Replication/Syncer.h"
+#include "Replication/common-defines.h"
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
-#include "RocksDBReplicationContext.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Utils/DatabaseGuard.h"
@@ -66,18 +68,18 @@ TRI_voc_cid_t normalizeIdentifier(TRI_vocbase_t& vocbase, std::string const& ide
 
 }  // namespace
 
-RocksDBReplicationContext::RocksDBReplicationContext(double ttl, std::string const& clientId)
-    : _clientId{clientId},
-      _id{TRI_NewTickServer()},
+RocksDBReplicationContext::RocksDBReplicationContext(double ttl, SyncerId syncerId,
+                                                    TRI_server_id_t clientId)
+    : _id{TRI_NewTickServer()},
+      _syncerId{syncerId},
+    // buggy clients may not send the serverId
+      _clientId{clientId != 0 ? clientId : _id},
       _snapshotTick{0},
       _snapshot{nullptr},
       _ttl{ttl > 0.0 ? ttl : replutils::BatchInfo::DefaultTimeout},
       _expires{TRI_microtime() + _ttl},
       _isDeleted{false},
       _users{1} {
-  if (_clientId.empty() || _clientId == "none") {
-    _clientId = std::to_string(_id);
-  }
   TRI_ASSERT(_ttl > 0.0);
 }
 
@@ -223,7 +225,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
 
   TRI_ASSERT(_snapshot != nullptr);
   // FIXME is it technically correct to include newly created collections ?
-  // simon: I think no, but this has been the behaviour since 3.2
+  // simon: I think no, but this has been the behavior since 3.2
   TRI_voc_tick_t tick = TRI_NewTickServer();  // = _lastArangoTick
   if (global) {
     // global inventory
@@ -232,7 +234,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
     // database-specific inventory
     vocbase.inventory(result, tick, nameFilter);
   }
-  vocbase.replicationClients().track(replicationClientId(), _snapshotTick, _ttl);
+  vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
 
   return Result();
 }
@@ -741,7 +743,7 @@ void RocksDBReplicationContext::use(double ttl) {
     dbs.emplace(&pair.second->vocbase);
   }
   for (TRI_vocbase_t* vocbase : dbs) {
-    vocbase->replicationClients().track(replicationClientId(), _snapshotTick, ttl);
+    vocbase->replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, ttl);
   }
 }
 
@@ -758,7 +760,7 @@ void RocksDBReplicationContext::release() {
     dbs.emplace(&pair.second->vocbase);
   }
   for (TRI_vocbase_t* vocbase : dbs) {
-    vocbase->replicationClients().track(replicationClientId(), _snapshotTick, _ttl);
+    vocbase->replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
   }
 }
 
@@ -927,7 +929,7 @@ RocksDBReplicationContext::CollectionIterator* RocksDBReplicationContext::getCol
     // for initial synchronization. the inventory request and collection
     // dump requests will all happen after the batch creation, so the
     // current tick value here is good
-    cIter->vocbase.replicationClients().track(replicationClientId(), _snapshotTick, _ttl);
+    cIter->vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
   }
 
   return cIter;
@@ -937,8 +939,8 @@ void RocksDBReplicationContext::releaseDumpIterator(CollectionIterator* it) {
   if (it) {
     TRI_ASSERT(it->isUsed());
     if (!it->hasMore()) {
-      it->vocbase.replicationClients().track(replicationClientId(), _snapshotTick, _ttl);
       MUTEX_LOCKER(locker, _contextLock);
+      it->vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
       _iterators.erase(it->logical->id());
     } else {  // Context::release() will update the replication client
       it->release();
