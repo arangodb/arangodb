@@ -117,13 +117,7 @@ function TransactionsIResearchSuite() {
   
             c.save({ _key: "other_half", text: "the brown jumps the dog" });
             c.save({ _key: "quarter", text: "quick over" });
-  
-            /*let result = db._query(qqWithSync).toArray();
-            assertEqual(result.length, 4);
-            assertEqual(result[0]._key, 'half');
-            assertEqual(result[1]._key, 'quarter');
-            assertEqual(result[2]._key, 'other_half');
-            assertEqual(result[3]._key, 'full');*/
+
             throw "myerror";
           }
         });
@@ -134,8 +128,6 @@ function TransactionsIResearchSuite() {
       let result = db._query(qqWithSync).toArray();
       assertEqual(result.length, 2);
       assertEqual(result[0]._key, 'half');
-      //assertEqual(result[1]._key, 'quarter');
-      //assertEqual(result[1]._key, 'other_half');
       assertEqual(result[1]._key, 'full');
     },
 
@@ -171,7 +163,6 @@ function TransactionsIResearchSuite() {
       let result = db._query(qqWithSync).toArray();
       assertEqual(result.length, 3);
       assertEqual(result[0]._key, 'half');
-      //assertEqual(result[1]._key, 'quarter');
       assertEqual(result[1]._key, 'other_half');
       assertEqual(result[2]._key, 'full');
     },
@@ -208,7 +199,6 @@ function TransactionsIResearchSuite() {
       let result = db._query(qqWithSync).toArray();
       assertEqual(result.length, 3);
       assertEqual(result[0]._key, 'half');
-      //assertEqual(result[1]._key, 'quarter');
       assertEqual(result[1]._key, 'other_half');
       assertEqual(result[2]._key, 'full');
     },
@@ -243,6 +233,7 @@ function TransactionsIResearchSuite() {
             throw "myerror";
           }
         });
+        fail();
       } catch(err) {
         assertEqual(err.errorMessage, "myerror");
       }
@@ -286,6 +277,7 @@ function TransactionsIResearchSuite() {
             fail();
           }
         });
+        fail();
       } catch(err) {
         //assertEqual(err.errorMessage, "myerror");
         assertEqual(err.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
