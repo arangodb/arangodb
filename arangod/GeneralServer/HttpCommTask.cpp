@@ -735,9 +735,9 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     });
     
     header->append(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
-    //    header->append(TRI_CHAR_LENGTH_PAIR("Keep-Alive: timeout="));
-    //    header->append(std::to_string(static_cast<int64_t>(secs)));
-    //    header->append("\r\n", 2);
+    header->append(TRI_CHAR_LENGTH_PAIR("Keep-Alive: timeout="));
+    header->append(std::to_string(static_cast<int64_t>(secs)));
+    header->append("\r\n", 2);
   } else {
     header->append(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
   }
