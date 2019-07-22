@@ -33,7 +33,7 @@
 
 using namespace arangodb;
 
-static std::string const inline reportName(bool isRemove) {
+static std::string inline reportName(bool isRemove) {
   if (isRemove) {
     return "FollowerInfo::remove";
   } else {
