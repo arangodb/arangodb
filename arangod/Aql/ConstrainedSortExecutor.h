@@ -85,7 +85,7 @@ class ConstrainedSortExecutor {
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
-  bool compareInput(uint32_t const& rosPos, InputAqlItemRow& row) const;
+  bool compareInput(size_t const& rosPos, InputAqlItemRow& row) const;
   arangodb::Result pushRow(InputAqlItemRow& row);
 
  private:
@@ -93,7 +93,7 @@ class ConstrainedSortExecutor {
   Fetcher& _fetcher;
   ExecutionState _state;
   size_t _returnNext;
-  std::vector<uint32_t> _rows;
+  std::vector<size_t> _rows;
   size_t _rowsPushed;
   SharedAqlItemBlockPtr _heapBuffer;
   std::unique_ptr<ConstrainedLessThan> _cmpHeap;  // in pointer to avoid

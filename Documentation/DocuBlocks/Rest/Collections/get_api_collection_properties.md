@@ -2,7 +2,7 @@
 @startDocuBlock get_api_collection_properties
 @brief reads the properties of the specified collection
 
-@RESTHEADER{GET /_api/collection/{collection-name}/properties, Read properties of a collection}
+@RESTHEADER{GET /_api/collection/{collection-name}/properties, Read properties of a collection, handleCommandGet:collectionProperties}
 
 @HINTS
 {% hint 'warning' %}

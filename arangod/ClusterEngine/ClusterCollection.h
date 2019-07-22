@@ -62,7 +62,7 @@ class ClusterCollection final : public PhysicalCollection {
   /// @brief fetches current index selectivity estimates
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
   /// to fetch current values!
-  IndexEstMap clusterIndexEstimates(bool allowUpdate, TRI_voc_tick_t tid) const override;
+  IndexEstMap clusterIndexEstimates(bool allowUpdating, TRI_voc_tick_t tid) override;
 
   /// @brief sets the current index selectivity estimates
   void setClusterIndexEstimates(IndexEstMap&& estimates) override;
@@ -167,7 +167,7 @@ class ClusterCollection final : public PhysicalCollection {
  private:
   void addIndex(std::shared_ptr<arangodb::Index> idx);
 
-  // keep locks just to adhere to behaviour in other collections
+  // keep locks just to adhere to behavior in other collections
   mutable basics::ReadWriteLock _exclusiveLock;
   ClusterEngineType _engineType;
   velocypack::Builder _info;

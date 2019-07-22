@@ -138,7 +138,7 @@ class MMFilesCollection final : public PhysicalCollection {
                           char*& resultPosition, MMFilesDatafile*& resultDatafile);
 
   /// @brief create compactor file
-  MMFilesDatafile* createCompactor(TRI_voc_fid_t fid, uint32_t maximalSize);
+  MMFilesDatafile* createCompactor(TRI_voc_fid_t fid, size_t maximalSize);
 
   /// @brief close an existing compactor
   int closeCompactor(MMFilesDatafile* datafile);
@@ -242,7 +242,8 @@ class MMFilesCollection final : public PhysicalCollection {
                            std::function<bool(LocalDocumentId const&)> callback) override;
 
   std::shared_ptr<Index> createIndex(arangodb::velocypack::Slice const& info,
-                                     bool restore, bool& created) override;
+                                     bool restore,
+                                     bool& created) override;
 
   std::shared_ptr<Index> createIndex(transaction::Methods& trx,
                                      velocypack::Slice const& info,

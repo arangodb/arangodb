@@ -563,7 +563,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   }
 
   if (!syncer._state.isChildSyncer) {
-    syncer._batch.extend(syncer._state.connection, syncer._progress);
+    syncer._batch.extend(syncer._state.connection, syncer._progress, syncer._state.syncerId);
     syncer._state.barrier.extend(syncer._state.connection);
   }
 
@@ -675,7 +675,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     auto resetChunk = [&]() -> void {
       if (!syncer._state.isChildSyncer) {
-        syncer._batch.extend(syncer._state.connection, syncer._progress);
+        syncer._batch.extend(syncer._state.connection, syncer._progress, syncer._state.syncerId);
         syncer._state.barrier.extend(syncer._state.connection);
       }
 

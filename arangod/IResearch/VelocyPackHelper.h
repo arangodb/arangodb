@@ -46,6 +46,32 @@ namespace iresearch {
 uint8_t const COMPACT_ARRAY = 0x13;
 uint8_t const COMPACT_OBJECT = 0x14;
 
+template<typename Char>
+irs::basic_string_ref<Char> ref(VPackSlice slice) {
+  static_assert(sizeof(Char) == sizeof(uint8_t),
+                "sizeof(Char) != sizeof(uint8_t)");
+
+  return irs::basic_string_ref<Char>(
+    reinterpret_cast<Char const*>(slice.begin()),
+    slice.byteSize());
+}
+
+template<typename Char>
+VPackSlice slice(irs::basic_string_ref<Char> const& ref) {
+  static_assert(sizeof(Char) == sizeof(uint8_t),
+                "sizeof(Char) != sizeof(uint8_t)");
+
+  return VPackSlice(reinterpret_cast<uint8_t const*>(ref.c_str()));
+}
+
+template<typename Char>
+VPackSlice slice(std::basic_string<Char> const& ref) {
+  static_assert(sizeof(Char) == sizeof(uint8_t),
+                "sizeof(Char) != sizeof(uint8_t)");
+
+  return VPackSlice(reinterpret_cast<uint8_t const*>(ref.c_str()));
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a string_ref value to the 'builder' (for JSON arrays)
 ////////////////////////////////////////////////////////////////////////////////
@@ -206,6 +232,29 @@ inline bool getString(irs::string_ref& buf, arangodb::velocypack::Slice const& s
   buf = getStringRef(field);
 
   return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief look for the specified attribute path inside an Object
+/// @return a value denoted by 'fallback' if not found
+//////////////////////////////////////////////////////////////////////////////
+template<typename T>
+VPackSlice get(VPackSlice slice,
+               const T& attributePath,
+               VPackSlice fallback = VPackSlice::nullSlice()) {
+  if (attributePath.empty()) {
+    return fallback;
+  }
+
+  for (size_t i = 0, size = attributePath.size(); i < size; ++i) {
+    slice = slice.get(attributePath[i].name);
+
+    if (slice.isNone() || (i + 1 < size && !slice.isObject())) {
+      return fallback;
+    }
+  }
+
+  return slice;
 }
 
 //////////////////////////////////////////////////////////////////////////////

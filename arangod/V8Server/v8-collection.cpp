@@ -24,9 +24,7 @@
 #include "v8-collection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/Query.h"
 #include "Basics/FileUtils.h"
-#include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -35,7 +33,6 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/FollowerInfo.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Pregel/AggregatorHandler.h"
@@ -63,7 +60,6 @@
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "V8Server/v8-vocindex.h"
-#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 
@@ -973,7 +969,7 @@ static void JS_FiguresVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args
 static void JS_GetResponsibleShardVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   if (!ServerState::instance()->isCoordinator()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
   }
@@ -986,8 +982,8 @@ static void JS_GetResponsibleShardVocbaseCol(v8::FunctionCallbackInfo<v8::Value>
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleShard(<data>)");
   }
-  
-  VPackBuilder builder;      
+
+  VPackBuilder builder;
   int res = TRI_V8ToVPack(isolate, builder, args[0], false);
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1133,6 +1129,29 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
 
       TRI_ASSERT(builder.isClosed());
 
+      // replication checks
+      if (builder.slice().get(StaticStrings::ReplicationFactor).isNumber() &&
+          builder.slice().get(StaticStrings::ReplicationFactor).getInt() > 0) {
+        uint64_t replicationFactor =
+            builder.slice().get(StaticStrings::ReplicationFactor).getUInt();
+        if (ServerState::instance()->isRunningInCluster() &&
+            replicationFactor > ClusterInfo::instance()->getCurrentDBServers().size()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+        }
+      }
+
+      // min replication checks
+      if (builder.slice().get(StaticStrings::MinReplicationFactor).isNumber() &&
+          builder.slice().get(StaticStrings::MinReplicationFactor).getInt() > 0) {
+        uint64_t minReplicationFactor =
+            builder.slice().get(StaticStrings::MinReplicationFactor).getUInt();
+        if (ServerState::instance()->isRunningInCluster() &&
+            minReplicationFactor >
+                ClusterInfo::instance()->getCurrentDBServers().size()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+        }
+      }
+
       auto res = methods::Collections::updateProperties(*consoleColl, builder.slice(), false  // always a full-update
       );
 
@@ -1149,9 +1168,8 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
   // properties, which will break tests. We need an extra lookup
   VPackBuilder builder;
 
-  methods::Collections::lookup(
-    consoleColl->vocbase(), // vocbase to search
-    consoleColl->name(), // collection to find
+  methods::Collections::lookup(consoleColl->vocbase(),  // vocbase to search
+                               consoleColl->name(),     // collection to find
                                [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
                                  TRI_ASSERT(coll);
 
@@ -1694,16 +1712,17 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // TODO extend this for named graphs, use the Graph class
     TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>]");
   }
-  
+
   std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
   if (feature == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
-  
+
   uint64_t executionNum = TRI_ObjectToUInt64(isolate, args[0], true);
   auto c = feature->conductor(executionNum);
   if (!c) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND, "Execution number is invalid");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND,
+                                   "Execution number is invalid");
   }
 
   VPackBuilder builder = c->toVelocyPack();
@@ -1721,19 +1740,19 @@ static void JS_PregelCancel(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // TODO extend this for named graphs, use the Graph class
     TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>)");
   }
-  
+
   std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
   if (feature == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
-  
+
   uint64_t executionNum = TRI_ObjectToUInt64(isolate, args[0], true);
   auto c = feature->conductor(executionNum);
   if (!c) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND, "Execution number is invalid");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND,
+                                   "Execution number is invalid");
   }
   c->cancel();
-  feature->cleanupConductor(executionNum);
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -1745,9 +1764,14 @@ static void JS_PregelAQLResult(v8::FunctionCallbackInfo<v8::Value> const& args) 
 
   // check the arguments
   uint32_t const argLength = args.Length();
-  if (argLength != 1 || !(args[0]->IsNumber() || args[0]->IsString())) {
+  if (argLength <= 1 || !(args[0]->IsNumber() || args[0]->IsString())) {
     // TODO extend this for named graphs, use the Graph class
-    TRI_V8_THROW_EXCEPTION_USAGE("_pregelAqlResult(<executionNum>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("_pregelAqlResult(<executionNum>[, <withId])");
+  }
+
+  bool withId = false;
+  if (argLength == 2) {
+    withId = TRI_ObjectToBoolean(isolate, args[1]);
   }
 
   std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
@@ -1763,7 +1787,7 @@ static void JS_PregelAQLResult(v8::FunctionCallbackInfo<v8::Value> const& args) 
     }
 
     VPackBuilder docs;
-    c->collectAQLResults(docs);
+    c->collectAQLResults(docs, withId);
     if (docs.isEmpty()) {
       TRI_V8_RETURN_NULL();
     }
@@ -1818,7 +1842,6 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
-  
   auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
@@ -2514,7 +2537,7 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context, TRI_vocbase_t* vocba
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoCollection"));
 
   rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(2); // SLOT_CLASS_TYPE + SLOT_CLASS
+  rt->SetInternalFieldCount(2);  // SLOT_CLASS_TYPE + SLOT_CLASS
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "count"), JS_CountVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "document"),
@@ -2525,7 +2548,9 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context, TRI_vocbase_t* vocba
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "drop"), JS_DropVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "exists"), JS_ExistsVocbaseVPack);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "figures"), JS_FiguresVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getResponsibleShard"), JS_GetResponsibleShardVocbaseCol);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "getResponsibleShard"),
+                       JS_GetResponsibleShardVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "insert"), JS_InsertVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "_binaryInsert"),

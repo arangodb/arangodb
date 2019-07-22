@@ -1,7 +1,7 @@
 @startDocuBlock delete_api_analyzer
 @brief removes an analyzer configuration
 
-@RESTHEADER{DELETE /_api/analyzer/{analyzer-name}, Remove an analyzer}
+@RESTHEADER{DELETE /_api/analyzer/{analyzer-name}, Remove an analyzer, RestAnalyzerHandler:Delete}
 
 @RESTURLPARAMETERS
 
@@ -48,8 +48,8 @@ Removing without *force*:
 @EXAMPLE_ARANGOSH_RUN{RestAnalyzerDelete}
   var analyzers = require("@arangodb/analyzers");
   var db = require("@arangodb").db;
-  var analyzerName = db._name() + "::testAnalyzer";
-  analyzers.save(analyzerName, "identity", "test properties");
+  var analyzerName = "testAnalyzer";
+  analyzers.save(analyzerName, "identity");
 
   // removal
   var url = "/_api/analyzer/" + encodeURIComponent(analyzerName);
@@ -65,8 +65,8 @@ Removing with *force*:
 @EXAMPLE_ARANGOSH_RUN{RestAnalyzerDeleteForce}
   var analyzers = require("@arangodb/analyzers");
   var db = require("@arangodb").db;
-  var analyzerName = db._name() + "::testAnalyzer";
-  analyzers.save(analyzerName, "identity", "test properties");
+  var analyzerName = "testAnalyzer";
+  analyzers.save(analyzerName, "identity");
 
   // create analyzer reference
   var url = "/_api/collection";

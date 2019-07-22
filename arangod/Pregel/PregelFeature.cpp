@@ -31,6 +31,7 @@
 #include "Cluster/ServerState.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Conductor.h"
+#include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker.h"
 #include "Scheduler/Scheduler.h"
@@ -81,6 +82,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
     TRI_vocbase_t& vocbase, std::string algorithm,
     std::vector<std::string> const& vertexCollections,
     std::vector<std::string> const& edgeCollections, VPackSlice const& params) {
+
 
   // make sure no one removes the PregelFeature while in use
   std::shared_ptr<PregelFeature> instance = ::instance;
@@ -161,10 +163,21 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
 
         if (!coll->isSmart()) {
           std::vector<std::string> eKeys = coll->shardKeys();
-          if (eKeys.size() != 1 || eKeys[0] != "vertex") {
+
+          std::string shardKeyAttribute = "vertex";
+          if(params.hasKey("shardKeyAttribute")) {
+           shardKeyAttribute =  params.get("shardKeyAttribute").copyString();
+          }
+
+          if (eKeys.size() != 1 || eKeys[0] != shardKeyAttribute) {
             return std::make_pair(Result{TRI_ERROR_BAD_PARAMETER,
                                          "Edge collection needs to be sharded "
-                                         "after 'vertex', or use smart graphs"},
+                                         "after shardKeyAttribute parameter ('"
+                                         + shardKeyAttribute
+                                         + "'), or use smart graphs. The current shardKey is: "
+                                         + (eKeys.empty() ? "undefined" : "'" + eKeys[0] + "'")
+
+                                         },
                                   0);
           }
         }
@@ -214,9 +227,9 @@ PregelFeature::PregelFeature(application_features::ApplicationServer& server)
 }
 
 PregelFeature::~PregelFeature() {
-  /*if (_recoveryManager) {
+  if (_recoveryManager) {
     _recoveryManager.reset();
-  }*/
+  }
   cleanupAll();
 }
 
@@ -236,12 +249,14 @@ void PregelFeature::start() {
     return;
   }
 
-  /*if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::instance()->isCoordinator()) {
     _recoveryManager.reset(new RecoveryManager());
-  }*/
+  }
 }
 
-void PregelFeature::beginShutdown() { cleanupAll(); }
+void PregelFeature::beginShutdown() {
+  cleanupAll();
+}
 
 void PregelFeature::stop() {}
 
@@ -301,12 +316,16 @@ void PregelFeature::cleanupWorker(uint64_t executionNumber) {
 
 void PregelFeature::cleanupAll() {
   MUTEX_LOCKER(guard, _mutex);
-  _conductors.clear();
-  for (auto it : _workers) {
+  decltype(_conductors) cs = std::move(_conductors);
+  decltype(_workers) ws = std::move(_workers);
+  guard.unlock();
+
+  // cleanup all workers & conductors without holding the lock    
+  cs.clear();
+  for (auto it : ws) {
     it.second.second->cancelGlobalStep(VPackSlice());
   }
-  std::this_thread::sleep_for(std::chrono::microseconds(1000 * 100));  // 100ms to send out cancel calls
-  _workers.clear();
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));  // 100ms to send out cancel calls
 }
 
 void PregelFeature::handleConductorRequest(std::string const& path, VPackSlice const& body,
@@ -336,9 +355,11 @@ void PregelFeature::handleConductorRequest(std::string const& path, VPackSlice c
     co->finishedWorkerStartup(body);
   } else if (path == Utils::finishedWorkerStepPath) {
     outBuilder = co->finishedWorkerStep(body);
-  }/* else if (path == Utils::finishedRecoveryPath) {
+  } else if (path == Utils::finishedWorkerFinalizationPath) {
+    co->finishedWorkerFinalize(body);
+  } else if (path == Utils::finishedRecoveryPath) {
     co->finishedRecoveryStep(body);
-  }*/
+  }
 }
 
 /*static*/ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
@@ -348,7 +369,7 @@ void PregelFeature::handleConductorRequest(std::string const& path, VPackSlice c
   if (application_features::ApplicationServer::isStopping()) {
     return;  // shutdown ongoing
   }
-  
+
   // make sure no one removes the PregelFeature while in use
   std::shared_ptr<PregelFeature> instance = ::instance;
   if (!instance) {
@@ -403,7 +424,7 @@ void PregelFeature::handleConductorRequest(std::string const& path, VPackSlice c
   } else if (path == Utils::cancelGSSPath) {
     w->cancelGlobalStep(body);
   } else if (path == Utils::finalizeExecutionPath) {
-    w->finalizeExecution(body, [exeNum, instance] {
+    w->finalizeExecution(body, [exeNum, instance]() {
       instance->cleanupWorker(exeNum);
     });
   } else if (path == Utils::continueRecoveryPath) {
@@ -411,6 +432,11 @@ void PregelFeature::handleConductorRequest(std::string const& path, VPackSlice c
   } else if (path == Utils::finalizeRecoveryPath) {
     w->finalizeRecovery(body);
   } else if (path == Utils::aqlResultsPath) {
-    w->aqlResult(outBuilder);
+    bool withId = false;
+    if (body.isObject()) {
+      VPackSlice slice = body.get("withId");
+      withId = slice.isBoolean() && slice.getBool();
+    }
+    w->aqlResult(outBuilder, withId);
   }
 }

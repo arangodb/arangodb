@@ -23,18 +23,21 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_HTTP_SERVER_H
-#define ARANGOD_HTTP_SERVER_HTTP_SERVER_H 1
+#ifndef ARANGOD_GENERAL_SERVER_GENERAL_SERVER_H
+#define ARANGOD_GENERAL_SERVER_GENERAL_SERVER_H 1
 
-#include "Basics/Common.h"
 #include "Basics/Thread.h"
-#include "Basics/asio_ns.h"
-#include "Endpoint/Endpoint.h"
+#include "GeneralServer/IoContext.h"
+
+#include <mutex>
 
 namespace arangodb {
+class Endpoint;
 class EndpointList;
 
 namespace rest {
+class Acceptor;
+class CommTask;
 
 class GeneralServer {
   GeneralServer(GeneralServer const&) = delete;
@@ -42,105 +45,34 @@ class GeneralServer {
 
  public:
   explicit GeneralServer(uint64_t numIoThreads);
+  ~GeneralServer();
 
  public:
+  void registerTask(std::shared_ptr<rest::CommTask>);
+  void unregisterTask(rest::CommTask*);
   void setEndpointList(EndpointList const* list);
   void startListening();
   void stopListening();
+  void stopWorking();
 
-  class IoContext;
-
- private:
-  class IoThread final : public Thread {
-   public:
-    explicit IoThread(IoContext& iocontext);
-    ~IoThread();
-    void run() override;
-
-   private:
-    IoContext& _iocontext;
-  };
-
- public:
-  class IoContext {
-    friend class IoThread;
-    friend class GeneralServer;
-
-   public:
-    std::atomic<uint64_t> _clients;
-
-   private:
-    IoThread _thread;
-    asio_ns::io_context _asioIoContext;
-    asio_ns::io_context::work _asioWork;
-    std::atomic<bool> _stopped;
-
-   public:
-    IoContext();
-    ~IoContext();
-
-    template <typename T>
-    asio_ns::deadline_timer* newDeadlineTimer(T timeout) {
-      return new asio_ns::deadline_timer(_asioIoContext, timeout);
-    }
-
-    asio_ns::steady_timer* newSteadyTimer() {
-      return new asio_ns::steady_timer(_asioIoContext);
-    }
-
-    asio_ns::io_context::strand* newStrand() {
-      return new asio_ns::io_context::strand(_asioIoContext);
-    }
-
-    asio_ns::ip::tcp::acceptor* newAcceptor() {
-      return new asio_ns::ip::tcp::acceptor(_asioIoContext);
-    }
-
-#ifndef _WIN32
-    asio_ns::local::stream_protocol::acceptor* newDomainAcceptor() {
-      return new asio_ns::local::stream_protocol::acceptor(_asioIoContext);
-    }
-#endif
-
-    asio_ns::ip::tcp::socket* newSocket() {
-      return new asio_ns::ip::tcp::socket(_asioIoContext);
-    }
-
-#ifndef _WIN32
-    asio_ns::local::stream_protocol::socket* newDomainSocket() {
-      return new asio_ns::local::stream_protocol::socket(_asioIoContext);
-    }
-#endif
-
-    asio_ns::ssl::stream<asio_ns::ip::tcp::socket>* newSslSocket(asio_ns::ssl::context& sslContext) {
-      return new asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(_asioIoContext, sslContext);
-    }
-
-    asio_ns::ip::tcp::resolver* newResolver() {
-      return new asio_ns::ip::tcp::resolver(_asioIoContext);
-    }
-
-    void post(std::function<void()>&& handler) {
-      _asioIoContext.post(std::move(handler));
-    }
-
-    void start();
-    void stop();
-    bool runningInThisThread() const { return _thread.runningInThisThread(); }
-  };
-
-  GeneralServer::IoContext& selectIoContext();
+  IoContext& selectIoContext();
+  asio_ns::ssl::context& sslContext();
 
  protected:
   bool openEndpoint(IoContext& ioContext, Endpoint* endpoint);
 
  private:
-  friend class IoThread;
-  friend class IoContext;
-
-  uint64_t _numIoThreads;
+  EndpointList const* _endpointList;
   std::vector<IoContext> _contexts;
-  EndpointList const* _endpointList = nullptr;
+
+  std::recursive_mutex _tasksLock;
+  std::vector<std::unique_ptr<Acceptor>> _acceptors;
+  std::map<void*, std::shared_ptr<rest::CommTask>> _commTasks;
+
+  /// protect ssl context creation
+  std::mutex _sslContextMutex;
+  /// global SSL context to use here
+  std::unique_ptr<asio_ns::ssl::context> _sslContext;
 };
 }  // namespace rest
 }  // namespace arangodb

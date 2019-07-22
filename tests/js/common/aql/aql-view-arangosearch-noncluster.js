@@ -45,7 +45,6 @@ function iResearchAqlTestSuite () {
 
   return {
     setUp : function () {
-      analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
@@ -70,7 +69,7 @@ function iResearchAqlTestSuite () {
       };
       v.properties(meta);
 
-      db._drop("CompoundView");
+      db._dropView("CompoundView");
       v2 = db._createView("CompoundView", "arangosearch",
         { links : {
           UnitTestsCollection: { includeAllFields: true },
@@ -876,6 +875,18 @@ function iResearchAqlTestSuite () {
       assertEqual(result.length, 12);
       result.forEach(function(res) {
         assertTrue(res.c >= 1 && res.c <= 3);
+      });
+    },
+
+    testMutlipleScorers : function() {
+      var result = db._query(
+        "LET score = FIRST(FOR doc IN UnitTestsView SEARCH doc.a == 'foo' OPTIONS { waitForSync : true } RETURN BM25(doc)) " +
+        "FOR doc IN UnitTestsView SEARCH doc.a == 'foo' FILTER BM25(doc) == score && BM25(doc, 1.2, 0.75) == score RETURN doc"
+      ).toArray();
+
+      assertEqual(result.length, 10);
+      result.forEach(function (res) {
+        assertTrue(res.a === "foo");
       });
     }
   };

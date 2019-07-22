@@ -85,11 +85,9 @@ actions.defineHttp({
     let msg = "";
     let used = [];
     while (++count <= 60) {
-      let preconditions = {};
-      preconditions['/arango/Supervision/Health/' + serverId + '/Status'] = {'old': 'FAILED'};
       // need to make sure it is not responsible for anything
       used = [];
-      preconditions = reducePlanServers(function (data, agencyKey, servers) {
+      let preconditions = reducePlanServers(function (data, agencyKey, servers) {
         data[agencyKey] = {'old': servers};
         if (servers.indexOf(serverId) !== -1) {
           used.push(agencyKey);
@@ -104,6 +102,7 @@ actions.defineHttp({
         return data;
       }, preconditions);
 
+      preconditions['/arango/Supervision/Health/' + serverId + '/Status'] = {'old': 'FAILED'};
       preconditions["/arango/Supervision/DBServers/" + serverId]
         = { "oldEmpty": true };
 
@@ -112,12 +111,15 @@ actions.defineHttp({
         operations['/arango/Plan/Coordinators/' + serverId] = {'op': 'delete'};
         operations['/arango/Plan/DBServers/' + serverId] = {'op': 'delete'};
         operations['/arango/Current/ServersRegistered/' + serverId] = {'op': 'delete'};
+        operations['/arango/Current/DBServers/' + serverId] = {'op': 'delete'};
         operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
         operations['/arango/Target/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
+        operations['/arango/Target/RemovedServers/' + serverId] = {'op': 'set', 'new': (new Date()).toISOString()};
 
         try {
           global.ArangoAgency.write([[operations, preconditions]]);
           actions.resultOk(req, res, actions.HTTP_OK, true);
+          console.info("Removed server " + serverId + " from cluster");
           return;
         } catch (e) {
           if (e.code === 412) {
@@ -154,7 +156,7 @@ actions.defineHttp({
 
   callback: function (req, res) {
     let role = global.ArangoServerState.role();
-    if (req.requestType !== actions.PUT || 
+    if (req.requestType !== actions.PUT ||
         (role !== 'COORDINATOR' && role !== 'SINGLE')) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only GET and PUT requests are allowed and only to coordinators or singles');
@@ -203,7 +205,7 @@ actions.defineHttp({
     while (true) {
       var mode = global.ArangoAgency.read([["/arango/Supervision/State/Mode"]])[0].
           arango.Supervision.State.Mode;
-      
+
       if (body === "on" && mode === "Maintenance") {
         res.body = JSON.stringify({
           error: false,
@@ -217,7 +219,7 @@ actions.defineHttp({
       }
 
       wait(0.1);
-      
+
       if (new Date().getTime() > waitUntil) {
         res.responseCode = actions.HTTP_GATEWAY_TIMEOUT;
         res.body = JSON.stringify({
@@ -227,10 +229,10 @@ actions.defineHttp({
         });
         return;
       }
-      
+
     }
 
-    return ; 
+    return ;
 
   }});
   // //////////////////////////////////////////////////////////////////////////////
@@ -572,7 +574,7 @@ actions.defineHttp({
 
       var options = { timeout: 5 };
       var op = ArangoClusterComm.asyncRequest(
-        'GET', value, req.database, '/_api/agency/config', '', {}, options);
+        'GET', value, '_system', '/_api/agency/config', '', {}, options);
       var r = ArangoClusterComm.wait(op);
 
       if (r.status === 'RECEIVED') {
@@ -1078,7 +1080,7 @@ actions.defineHttp({
     }
 
     // at least RW rights on db to move a shard
-    if (!req.isAdminUser && 
+    if (!req.isAdminUser &&
         users.permission(req.user, body.database) !== 'rw') {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'insufficent permissions on database to move shard');

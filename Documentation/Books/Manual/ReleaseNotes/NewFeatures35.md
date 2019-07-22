@@ -62,6 +62,12 @@ AQL now allows the usage of floating point values without leading zeros, e.g.
 `.1234`. Previous versions of ArangoDB required a leading zero in front of
 the decimal separator, i.e `0.1234`.
 
+### k Shortest Paths queries
+
+AQL now allows to perform k Shortest Paths queries, that is, query a number of
+paths of increasing length from a start vertex to a target vertex. For more details,
+see the [k Shortest Paths documentation](../../AQL/Graphs/KShortestPaths.html).
+
 
 Smart Joins
 -----------
@@ -211,6 +217,18 @@ operations in user-land AQL queries.
 Also see the [TTL Indexes](../Indexing/Ttl.md) page.
 
 
+Collections
+-----------
+
+All collections now support a minimum replication factor (minReplicationFactor) property.
+This is default set to `1`, which is identical to previous behaviour.
+If in a failover scenario a shard of a collection has less than minReplicationFactor many insync followers it will go into "read-only" mode and will reject writes until enough followers are insync again.
+In more detail:
+Having `minReplicationFactor == 1` means as soon as a "master-copy" is available of the data
+writes are allowed.
+Having `minReplicationFactor > 1` requires additional insync copies on follower servers to allow writes.
+The feature is used to reduce the diverging of data in case of server failures and to help new followers to catch up.
+
 HTTP API extensions
 -------------------
 
@@ -259,6 +277,12 @@ Note that this requires client applications to abort transactions which are no
 longer necessary. Otherwise resources and locks acquired by the transactions
 will hang around until the server decides to garbage-collect them.
 
+### Minimal replication Factor
+
+Within the properties of a collection we can now define a minReplicationFactor.
+This affects all routes that can create or modify the properties of a collection, including
+the graph API `_api/gharial`. All places where a replicationFactor can be modified, can now
+modify the minReplicationFactor as well.
 
 Web interface
 -------------

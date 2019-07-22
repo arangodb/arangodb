@@ -24,6 +24,8 @@
 #ifndef ARANGOD_MMFILES_MMFILES_FULLTEXT_INDEX_H
 #define ARANGOD_MMFILES_MMFILES_FULLTEXT_INDEX_H 1
 
+#include <set>
+
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 #include "mmfiles-fulltext-common.h"

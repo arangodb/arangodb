@@ -34,20 +34,19 @@
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
-
 class SupervisedSchedulerWorkerThread;
 class SupervisedSchedulerManagerThread;
 
-class SupervisedScheduler : public Scheduler {
+class SupervisedScheduler final : public Scheduler {
  public:
   SupervisedScheduler(uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
                       uint64_t fifo1Size, uint64_t fifo2Size);
   virtual ~SupervisedScheduler();
 
-  bool queue(RequestLane lane, std::function<void()>) override;
+  bool queue(RequestLane lane, std::function<void()>, bool allowDirectHandling = false) override;
 
  private:
-  std::atomic<size_t> _numWorker;
+  std::atomic<size_t> _numWorkers;
   std::atomic<bool> _stopping;
 
  protected:
@@ -57,24 +56,23 @@ class SupervisedScheduler : public Scheduler {
   bool start() override;
   void shutdown() override;
 
-  void addQueueStatistics(velocypack::Builder&) const override;
+  void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
-  std::string infoStatus() const override;
 
  private:
   friend class SupervisedSchedulerManagerThread;
   friend class SupervisedSchedulerWorkerThread;
 
-  struct WorkItem {
+  struct WorkItem final {
     std::function<void()> _handler;
 
     explicit WorkItem(std::function<void()> const& handler)
         : _handler(handler) {}
     explicit WorkItem(std::function<void()>&& handler)
         : _handler(std::move(handler)) {}
-    virtual ~WorkItem() {}
+    ~WorkItem() {}
 
-    virtual void operator()() { _handler(); }
+    void operator()() { _handler(); }
   };
 
   // Since the lockfree queue can only handle PODs, one has to wrap lambdas
@@ -85,6 +83,7 @@ class SupervisedScheduler : public Scheduler {
   alignas(64) std::atomic<uint64_t> _jobsSubmitted;
   alignas(64) std::atomic<uint64_t> _jobsDequeued;
   alignas(64) std::atomic<uint64_t> _jobsDone;
+  alignas(64) std::atomic<uint64_t> _jobsDirectExec;
 
   // During a queue operation there a two reasons to manually wake up a worker
   //  1. the queue length is bigger than _wakeupQueueLength and the last submit time
@@ -93,7 +92,7 @@ class SupervisedScheduler : public Scheduler {
   //
   // The last submit time is a thread local variable that stores the time of the last
   // queue operation.
-  alignas(64) std::atomic<uint64_t> _wakeupQueueLength;                        // q1
+  alignas(64) std::atomic<uint64_t> _wakeupQueueLength;            // q1
   std::atomic<uint64_t> _wakeupTime_ns, _definitiveWakeupTime_ns;  // t3, t4
 
   // each worker thread has a state block which contains configuration values.
@@ -110,21 +109,20 @@ class SupervisedScheduler : public Scheduler {
   // _working indicates if the thread is currently processing a job.
   //    Hence if you want to know, if the thread has a long running job, test for
   //    _working && (now - _lastJobStarted) > eps
-  struct WorkerState {
+
+  struct alignas(64) WorkerState {
     uint64_t _queueRetryCount;  // t1
     uint64_t _sleepTimeout_ms;  // t2
     std::atomic<bool> _stop, _working;
     clock::time_point _lastJobStarted;
     std::unique_ptr<SupervisedSchedulerWorkerThread> _thread;
-    char _padding[40];
 
     // initialize with harmless defaults: spin once, sleep forever
     explicit WorkerState(SupervisedScheduler& scheduler);
-    WorkerState(WorkerState&& that);
+    WorkerState(WorkerState&& that) noexcept;
 
     bool start();
   };
-
   size_t _maxNumWorker;
   size_t _numIdleWorker;
   std::list<std::shared_ptr<WorkerState>> _workerStates;
@@ -140,6 +138,8 @@ class SupervisedScheduler : public Scheduler {
   std::condition_variable _conditionSupervisor;
   std::unique_ptr<SupervisedSchedulerManagerThread> _manager;
 
+  size_t _maxFifoSize;
+
   std::unique_ptr<WorkItem> getWork(std::shared_ptr<WorkerState>& state);
 
   void startOneThread();
@@ -147,7 +147,12 @@ class SupervisedScheduler : public Scheduler {
 
   bool cleanupAbandonedThreads();
   void sortoutLongRunningThreads();
+
+  // Check if we are allowed to pull from a queue with the given index
+  // This is used to give priority to "FAST" and "MED" lanes accordingly.
+  inline bool canPullFromQueue(uint64_t queueIdx) const;
 };
+
 }  // namespace arangodb
 
 #endif

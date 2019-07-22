@@ -26,13 +26,14 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Replication/SyncerId.h"
 
 namespace arangodb {
 namespace velocypack {
 class Builder;
 }
 
-/// @brief struct representing how far a replication client
+/// @brief struct representing how far a replication client (syncer)
 /// has come in terms of WAL tailing
 struct ReplicationClientProgress {
   /// @brief timestamp of when client last contacted us
@@ -40,49 +41,150 @@ struct ReplicationClientProgress {
   /// @brief timestamp of when this entry will be considered expired
   double expireStamp;
   /// @brief last log tick/WAL tick that was served for this client
-  uint64_t lastServedTick;
+  TRI_voc_tick_t lastServedTick;
+  /// @brief syncer id of the client
+  SyncerId const syncerId;
+  /// @brief server id of the client
+  TRI_server_id_t const clientId;
+  /// @brief short descriptive information about the client
+  std::string const clientInfo;
 
-  ReplicationClientProgress(double lastSeenStamp, double expireStamp, uint64_t lastServedTick)
+  ReplicationClientProgress(double lastSeenStamp, double expireStamp,
+                            uint64_t lastServedTick, SyncerId syncerId,
+                            TRI_server_id_t clientId, std::string clientInfo)
       : lastSeenStamp(lastSeenStamp),
         expireStamp(expireStamp),
-        lastServedTick(lastServedTick) {}
+        lastServedTick(lastServedTick),
+        syncerId(syncerId),
+        clientId(clientId),
+        clientInfo(std::move(clientInfo)) {}
+
+  static double steadyClockToSystemClock(double steadyTimestamp);
 };
 
-/// @brief class to track progress of individual replication clients
+/// @brief class to track progress of individual replication clients (syncers)
 /// for a particular database
 class ReplicationClientsProgressTracker {
  public:
   ReplicationClientsProgressTracker() = default;
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
   ~ReplicationClientsProgressTracker() = default;
+#else
+  ~ReplicationClientsProgressTracker();
+#endif
 
   ReplicationClientsProgressTracker(ReplicationClientsProgressTracker const&) = delete;
   ReplicationClientsProgressTracker& operator=(ReplicationClientsProgressTracker const&) = delete;
 
-  /// @brief simply extend the lifetime of a specific client, so that its entry does not expire
-  /// does not update the client's lastServedTick value
-  void extend(std::string const& clientId, double ttl);
-  
-  /// @brief simply update the progress of a specific client, so that its entry does not expire
-  /// this will update the client's lastServedTick value
-  void track(std::string const& clientId, uint64_t lastServedTick, double ttl);
+  /// @brief simply extend the lifetime of a specific syncer, so that its entry
+  /// does not expire does not update the syncer's lastServedTick value
+  void extend(SyncerId syncerId, TRI_server_id_t clientId,
+              std::string const& clientInfo, double ttl);
 
-  /// @brief serialize the existing clients to a VelocyPack builder
+  /// @brief simply update the progress of a specific syncer, so that its entry
+  /// does not expire this will update the syncer's lastServedTick value
+  void track(SyncerId syncerId, TRI_server_id_t clientId, std::string const& clientInfo,
+             TRI_voc_tick_t lastServedTick, double ttl);
+
+  /// @brief remove a specific syncer's entry
+  void untrack(SyncerId syncerId, TRI_server_id_t clientId, std::string const& clientInfo);
+
+  /// @brief serialize the existing syncers to a VelocyPack builder
   void toVelocyPack(velocypack::Builder& builder) const;
 
-  /// @brief garbage-collect the existing list of clients
+  /// @brief garbage-collect the existing list of syncers
   /// thresholdStamp is the timestamp before all older entries will
   /// be collected
   void garbageCollect(double thresholdStamp);
 
-  /// @brief return the lowest lastServedTick value for all clients
-  /// returns UINT64_MAX in case no clients are registered
-  uint64_t lowestServedValue() const;
+  /// @brief return the lowest lastServedTick value for all syncers
+  /// returns UINT64_MAX in case no syncers are registered
+  TRI_voc_tick_t lowestServedValue() const;
+
+ private:
+  // Make sure the underlying integer types for SyncerIDs and ClientIDs are the
+  // same, so we can use one entry
+  static_assert(std::is_same<decltype(SyncerId::value), TRI_server_id_t>::value,
+                "Assuming identical underlying integer types. If these are "
+                "changed, the client-map key must be changed, too.");
+  enum class KeyType { INVALID, SYNCER_ID, SERVER_ID };
+  union ClientKeyUnion {
+    SyncerId syncerId;
+    TRI_server_id_t clientId;
+  };
+  using ClientKey = std::pair<KeyType, ClientKeyUnion>;
+  class ClientHash {
+   public:
+    inline size_t operator()(ClientKey const key) const noexcept {
+      switch (key.first) {
+        case KeyType::SYNCER_ID: {
+          auto rv = key.second.syncerId.value;
+          return std::hash<decltype(rv)>()(rv);
+        }
+        case KeyType::SERVER_ID: {
+          auto rv = key.second.clientId;
+          return std::hash<decltype(rv)>()(rv);
+        }
+        case KeyType::INVALID: {
+          // Should never be added to the map
+          TRI_ASSERT(false);
+          return 0;
+        }
+      }
+      TRI_ASSERT(false);
+      return 0;
+    };
+  };
+  class ClientEqual {
+   public:
+    inline bool operator()(ClientKey const& left, ClientKey const& right) const noexcept {
+      if (left.first != right.first) {
+        return false;
+      }
+      switch (left.first) {
+        case KeyType::SYNCER_ID:
+          return left.second.syncerId == right.second.syncerId;
+        case KeyType::SERVER_ID:
+          return left.second.clientId == right.second.clientId;
+        case KeyType::INVALID:
+          // Should never be added to the map
+          TRI_ASSERT(false);
+          return true;
+      }
+      TRI_ASSERT(false);
+      return true;
+    }
+  };
+
+  static inline ClientKey getKey(SyncerId const syncerId, TRI_server_id_t const clientId) {
+    // For backwards compatible APIs, we might not have a syncer ID;
+    // fall back to the clientId in that case. SyncerId was introduced in 3.4.9 and 3.5.0.
+    // The only public API using this, /_api/wal/tail, marked the serverId
+    // parameter (corresponding to clientId here) as deprecated in 3.5.0.
+
+    // Also, so these values cannot interfere with each other, prefix them to
+    // make them disjoint.
+
+    ClientKeyUnion keyUnion{};
+    KeyType keyType = KeyType::INVALID;
+
+    if (syncerId.value != 0) {
+      keyUnion.syncerId = syncerId;
+      keyType = KeyType::SYNCER_ID;
+    }
+    else if (clientId != 0) {
+      keyUnion.clientId = clientId;
+      keyType = KeyType::SERVER_ID;
+    }
+
+    return {keyType, keyUnion};
+  }
 
  private:
   mutable basics::ReadWriteLock _lock;
 
-  /// @brief mapping from client id -> progress
-  std::unordered_map<std::string, ReplicationClientProgress> _clients; 
+  /// @brief mapping from (SyncerId | ClientServerId) -> progress
+  std::unordered_map<ClientKey, ReplicationClientProgress, ClientHash, ClientEqual> _clients;
 };
 
 }  // namespace arangodb

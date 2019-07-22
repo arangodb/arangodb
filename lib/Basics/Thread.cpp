@@ -26,14 +26,22 @@
 
 #include <errno.h>
 #include <signal.h>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 
 #include <chrono>
 #include <thread>
+
+#ifdef TRI_HAVE_PROCESS_H
+#include <process.h>
+#endif
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -193,7 +201,7 @@ void Thread::shutdown() {
   LOG_TOPIC("93614", TRACE, Logger::THREADS) << "shutdown(" << _name << ")";
 
   beginShutdown();
-  if (_threadStructInitialized) {
+  if (_threadStructInitialized.exchange(false, std::memory_order_acquire)) {
     if (TRI_IsSelfThread(&_thread)) {
       // we must ignore any errors here, but TRI_DetachThread will log them
       TRI_DetachThread(&_thread);
@@ -281,7 +289,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
     LOG_TOPIC("f5915", ERR, Logger::THREADS)
         << "could not start thread '" << _name << "': " << TRI_last_error();
   } else {
-    _threadStructInitialized = true;
+    _threadStructInitialized.store(true, std::memory_order_release);
   }
 
   releaseRef();

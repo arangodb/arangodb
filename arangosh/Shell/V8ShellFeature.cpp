@@ -34,7 +34,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/CommonDefines.h"
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
 #include "Shell/V8ClientConnection.h"
@@ -1066,6 +1066,8 @@ void V8ShellFeature::initGlobals() {
     modules += sep + FileUtils::currentDirectory().result();
     v8security->addToInternalWhitelist(FileUtils::currentDirectory().result(), FSAccessType::READ);
   }
+
+  v8security->dumpAccessLists();
 
   // we take the last entry in _startupDirectory as global path;
   // all the other entries are only used for the modules

@@ -29,7 +29,6 @@
 #include "Agency/AgencyComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Rest/HttpRequest.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/ExecContext.h"
@@ -53,7 +52,7 @@ RestStatus RestShutdownHandler::execute() {
 
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isActive() && !_request->user().empty()) {
-    auth::Level lvl = auth::Level::NONE;
+    auth::Level lvl;
     if (af->userManager() != nullptr) {
       lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system",
                                                  /*configured*/ true);

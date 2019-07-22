@@ -31,12 +31,20 @@
 #include "Basics/hashes.h"
 #include "Basics/memory-map.h"
 #include "Basics/tri-strings.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "VocBase/ticks.h"
 
 #include <iomanip>
 #include <sstream>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -1718,7 +1726,7 @@ DatafileScan MMFilesDatafile::scanHelper() {
 
     if (ok) {
       if (type == TRI_DF_MARKER_VPACK_DOCUMENT || type == TRI_DF_MARKER_VPACK_REMOVE) {
-        VPackSlice const slice(reinterpret_cast<char const*>(marker) +
+        VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) +
                                MMFilesDatafileHelper::VPackOffset(type));
         TRI_ASSERT(slice.isObject());
         try {

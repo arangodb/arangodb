@@ -325,7 +325,7 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
   // _data.capacity() might have been more accurate. Now, _data.size() stays at
   // _data.capacity(), or at least, is never reduced.
   // So I decided for now to report the memory usage based on numEntries() only,
-  // to mimic the previous behaviour. I'm not sure whether it should stay this
+  // to mimic the previous behavior. I'm not sure whether it should stay this
   // way; because currently, we are tracking the memory we need, instead of the
   // memory we have.
   if (targetSize > _data.size()) {
@@ -423,7 +423,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(size_t from, size_t to) const {
 /// @brief slice/clone, this does a deep copy of all entries
 SharedAqlItemBlockPtr AqlItemBlock::slice(size_t row,
                                           std::unordered_set<RegisterId> const& registers,
-                                          size_t newNrRegs) const {
+                                          RegisterCount newNrRegs) const {
   TRI_ASSERT(_nrRegs <= newNrRegs);
 
   std::unordered_set<AqlValue> cache;

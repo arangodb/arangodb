@@ -18,21 +18,20 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "../Mocks/StorageEngineMock.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/encoding.h"
 #include "Cluster/ClusterFeature.h"
-#include "catch.hpp"
+#include "Cluster/ClusterComm.h"
+#include "gtest/gtest.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
 #include "GeneralServer/AuthenticationFeature.h"
-#include "MMFiles/MMFilesWalRecoverState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -49,12 +48,19 @@
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct FlushFeatureSetup {
+class FlushFeatureTest : public ::testing::Test {
+ protected:
+  struct ClusterCommControl : arangodb::ClusterComm {
+    static void reset() {
+      arangodb::ClusterComm::_theInstanceInit.store(0);
+    }
+  };
+
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  FlushFeatureSetup() : engine(server), server(nullptr, nullptr) {
+  FlushFeatureTest() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // suppress log messages since tests check error conditions
@@ -95,7 +101,7 @@ struct FlushFeatureSetup {
     }
   }
 
-  ~FlushFeatureSetup() {
+  ~FlushFeatureTest() {
     arangodb::application_features::ApplicationServer::server = nullptr;
 
     // destroy application features
@@ -108,6 +114,8 @@ struct FlushFeatureSetup {
     for (auto& f : features) {
       f.first->unprepare();
     }
+
+    ClusterCommControl::reset();
 
     arangodb::LogTopic::setLogLevel(arangodb::Logger::ENGINES.name(),
                                     arangodb::LogLevel::DEFAULT);
@@ -123,329 +131,62 @@ struct FlushFeatureSetup {
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setup
-////////////////////////////////////////////////////////////////////////////////
-
-TEST_CASE("FlushFeature", "[serverfeature][serverfeature-flush]") {
-  FlushFeatureSetup s;
-  (void)(s);
-
-  SECTION("test_WAL_recover") {
-    auto* dbFeature =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
-            "Database");
-    REQUIRE((dbFeature));
-    TRI_vocbase_t* vocbase;
-    REQUIRE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "testDatabase", vocbase)));
-
-    arangodb::FlushFeature feature(s.server);
-    feature.prepare();  // register handler
-    arangodb::FlushFeature::registerFlushRecoveryCallback(
-        "test_fail",
-        [](TRI_vocbase_t const&, arangodb::velocypack::Slice const&) -> arangodb::Result {
-          return arangodb::Result(TRI_ERROR_INTERNAL);
-        });
-    arangodb::FlushFeature::registerFlushRecoveryCallback(
-        "test_pass",
-        [](TRI_vocbase_t const&, arangodb::velocypack::Slice const&) -> arangodb::Result {
-          return arangodb::Result();
-        });
-
-    // non-object body (MMFiles)
-    {
-      auto json = arangodb::velocypack::Parser::fromJson("[]");
-      std::basic_string<uint8_t> buf;
-      buf.resize(sizeof(::MMFilesMarker) + sizeof(TRI_voc_tick_t));  // reserve space for header
-      arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)],
-                                      TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
-      buf.append(json->slice().begin(), json->slice().byteSize());
-      auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-      marker->setSize(buf.size());
-      marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-      arangodb::MMFilesWalRecoverState state(false);
-      CHECK((0 == state.errorCount));
-      CHECK((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
-      CHECK((1 == state.errorCount));
+TEST_F(FlushFeatureTest, test_subscription_retention) {
+  struct TestFlushSubscripion : arangodb::FlushSubscription {
+    TRI_voc_tick_t tick() const noexcept {
+      return _tick;
     }
 
-    // non-object body (RocksDB)
+    TRI_voc_tick_t _tick{};
+  };
+
+  auto* dbFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
+          "Database");
+  ASSERT_TRUE((dbFeature));
+  TRI_vocbase_t* vocbase;
+  ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "testDatabase", vocbase)));
+  ASSERT_NE(nullptr, vocbase);
+
+  arangodb::FlushFeature feature(server);
+  feature.prepare();
+
+  {
+    auto subscription = std::make_shared<TestFlushSubscripion>();
+    feature.registerFlushSubscription(subscription);
+
+    auto const subscriptionTick = engine.currentTick();
+    auto const currentTick = TRI_NewTickServer();
+    ASSERT_EQ(currentTick, engine.currentTick());
+    ASSERT_LT(subscriptionTick, engine.currentTick());
+    subscription->_tick = subscriptionTick;
+
     {
-      auto json = arangodb::velocypack::Parser::fromJson("[]");
-      std::string buf;
-      buf.push_back(static_cast<char>(arangodb::RocksDBLogType::FlushSync));
-      arangodb::rocksutils::setRocksDBKeyFormatEndianess(
-          arangodb::RocksDBEndianness::Big);  // required for uint64ToPersistent(...)
-      arangodb::rocksutils::uint64ToPersistent(buf, 1);
-      buf.append(json->slice().startAs<char>(), json->slice().byteSize());
-      rocksdb::Slice marker(buf);
-      size_t throwCount = 0;
-
-      for (auto& helper : arangodb::RocksDBEngine::recoveryHelpers()) {  // one of them is for FlushFeature
-        try {
-          helper->LogData(marker);  // will throw on error
-        } catch (...) {
-          ++throwCount;
-        }
-      }
-
-      CHECK((1 == throwCount));
+      size_t removed = 42;
+      TRI_voc_tick_t releasedTick = 42;
+      feature.releaseUnusedTicks(removed, releasedTick);
+      ASSERT_EQ(0, removed); // reference is being held
+      ASSERT_EQ(subscription->_tick, releasedTick); // min tick released
     }
 
-    // missing type (MMFiles)
+    auto const newSubscriptionTick = currentTick;
+    auto const newCurrentTick = TRI_NewTickServer();
+    ASSERT_EQ(newCurrentTick, engine.currentTick());
+    ASSERT_LT(subscriptionTick, engine.currentTick());
+    subscription->_tick = newSubscriptionTick;
+
     {
-      auto json = arangodb::velocypack::Parser::fromJson("{}");
-      std::basic_string<uint8_t> buf;
-      buf.resize(sizeof(::MMFilesMarker) + sizeof(TRI_voc_tick_t));  // reserve space for header
-      arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)],
-                                      TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
-      buf.append(json->slice().begin(), json->slice().byteSize());
-      auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-      marker->setSize(buf.size());
-      marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-      arangodb::MMFilesWalRecoverState state(false);
-      CHECK((0 == state.errorCount));
-      CHECK((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
-      CHECK((1 == state.errorCount));
-    }
-
-    // missing type (RocksDB)
-    {
-      auto json = arangodb::velocypack::Parser::fromJson("{}");
-      std::string buf;
-      buf.push_back(static_cast<char>(arangodb::RocksDBLogType::FlushSync));
-      arangodb::rocksutils::setRocksDBKeyFormatEndianess(
-          arangodb::RocksDBEndianness::Big);  // required for uint64ToPersistent(...)
-      arangodb::rocksutils::uint64ToPersistent(buf, 1);
-      buf.append(json->slice().startAs<char>(), json->slice().byteSize());
-      rocksdb::Slice marker(buf);
-      size_t throwCount = 0;
-
-      for (auto& helper : arangodb::RocksDBEngine::recoveryHelpers()) {  // one of them is for FlushFeature
-        try {
-          helper->LogData(marker);  // will throw on error
-        } catch (...) {
-          ++throwCount;
-        }
-      }
-
-      CHECK((1 == throwCount));
-    }
-
-    // non-string type (MMFiles)
-    {
-      auto json = arangodb::velocypack::Parser::fromJson("{ \"type\": 42 }");
-      std::basic_string<uint8_t> buf;
-      buf.resize(sizeof(::MMFilesMarker) + sizeof(TRI_voc_tick_t));  // reserve space for header
-      arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)],
-                                      TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
-      buf.append(json->slice().begin(), json->slice().byteSize());
-      auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-      marker->setSize(buf.size());
-      marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-      arangodb::MMFilesWalRecoverState state(false);
-      CHECK((0 == state.errorCount));
-      CHECK((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
-      CHECK((1 == state.errorCount));
-    }
-
-    // non-string type (RocksDB)
-    {
-      auto json = arangodb::velocypack::Parser::fromJson("{ \"type\": 42 }");
-      std::string buf;
-      buf.push_back(static_cast<char>(arangodb::RocksDBLogType::FlushSync));
-      arangodb::rocksutils::setRocksDBKeyFormatEndianess(
-          arangodb::RocksDBEndianness::Big);  // required for uint64ToPersistent(...)
-      arangodb::rocksutils::uint64ToPersistent(buf, 1);
-      buf.append(json->slice().startAs<char>(), json->slice().byteSize());
-      rocksdb::Slice marker(buf);
-      size_t throwCount = 0;
-
-      for (auto& helper : arangodb::RocksDBEngine::recoveryHelpers()) {  // one of them is for FlushFeature
-        try {
-          helper->LogData(marker);  // will throw on error
-        } catch (...) {
-          ++throwCount;
-        }
-      }
-
-      CHECK((1 == throwCount));
-    }
-
-    // missing type handler (MMFiles)
-    {
-      auto json =
-          arangodb::velocypack::Parser::fromJson("{ \"type\": \"test\" }");
-      std::basic_string<uint8_t> buf;
-      buf.resize(sizeof(::MMFilesMarker) + sizeof(TRI_voc_tick_t));  // reserve space for header
-      arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)],
-                                      TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
-      buf.append(json->slice().begin(), json->slice().byteSize());
-      auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-      marker->setSize(buf.size());
-      marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-      arangodb::MMFilesWalRecoverState state(false);
-      CHECK((0 == state.errorCount));
-      CHECK((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
-      CHECK((1 == state.errorCount));
-    }
-
-    // missing type handler (RocksDB)
-    {
-      auto json =
-          arangodb::velocypack::Parser::fromJson("{ \"type\": \"test\" }");
-      std::string buf;
-      buf.push_back(static_cast<char>(arangodb::RocksDBLogType::FlushSync));
-      arangodb::rocksutils::setRocksDBKeyFormatEndianess(
-          arangodb::RocksDBEndianness::Big);  // required for uint64ToPersistent(...)
-      arangodb::rocksutils::uint64ToPersistent(buf, 1);
-      buf.append(json->slice().startAs<char>(), json->slice().byteSize());
-      rocksdb::Slice marker(buf);
-      size_t throwCount = 0;
-
-      for (auto& helper : arangodb::RocksDBEngine::recoveryHelpers()) {  // one of them is for FlushFeature
-        try {
-          helper->LogData(marker);  // will throw on error
-        } catch (...) {
-          ++throwCount;
-        }
-      }
-
-      CHECK((1 == throwCount));
-    }
-
-    // missing vocbase (MMFiles)
-    {
-      auto json =
-          arangodb::velocypack::Parser::fromJson("{ \"type\": \"test_pass\" }");
-      std::basic_string<uint8_t> buf;
-      buf.resize(sizeof(::MMFilesMarker) + sizeof(TRI_voc_tick_t));  // reserve space for header
-      arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)],
-                                      TRI_voc_tick_t(42), sizeof(TRI_voc_tick_t));
-      buf.append(json->slice().begin(), json->slice().byteSize());
-      auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-      marker->setSize(buf.size());
-      marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-      arangodb::MMFilesWalRecoverState state(false);
-      CHECK((0 == state.errorCount));
-      CHECK((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
-      CHECK((1 == state.errorCount));
-    }
-
-    // missing vocbase (RocksDB)
-    {
-      auto json =
-          arangodb::velocypack::Parser::fromJson("{ \"type\": \"test_pass\" }");
-      std::string buf;
-      buf.push_back(static_cast<char>(arangodb::RocksDBLogType::FlushSync));
-      arangodb::rocksutils::setRocksDBKeyFormatEndianess(
-          arangodb::RocksDBEndianness::Big);  // required for uint64ToPersistent(...)
-      arangodb::rocksutils::uint64ToPersistent(buf, 42);
-      buf.append(json->slice().startAs<char>(), json->slice().byteSize());
-      rocksdb::Slice marker(buf);
-      size_t throwCount = 0;
-
-      for (auto& helper : arangodb::RocksDBEngine::recoveryHelpers()) {  // one of them is for FlushFeature
-        try {
-          helper->LogData(marker);  // will throw on error
-        } catch (...) {
-          ++throwCount;
-        }
-      }
-
-      CHECK((1 == throwCount));
-    }
-
-    // type handler processing fail (MMFiles)
-    {
-      auto json =
-          arangodb::velocypack::Parser::fromJson("{ \"type\": \"test_fail\" }");
-      std::basic_string<uint8_t> buf;
-      buf.resize(sizeof(::MMFilesMarker) + sizeof(TRI_voc_tick_t));  // reserve space for header
-      arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)],
-                                      TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
-      buf.append(json->slice().begin(), json->slice().byteSize());
-      auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-      marker->setSize(buf.size());
-      marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-      arangodb::MMFilesWalRecoverState state(false);
-      CHECK((0 == state.errorCount));
-      CHECK((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
-      CHECK((1 == state.errorCount));
-    }
-
-    // type handler processing fail (RocksDB)
-    {
-      auto json =
-          arangodb::velocypack::Parser::fromJson("{ \"type\": \"test_fail\" }");
-      std::string buf;
-      buf.push_back(static_cast<char>(arangodb::RocksDBLogType::FlushSync));
-      arangodb::rocksutils::setRocksDBKeyFormatEndianess(
-          arangodb::RocksDBEndianness::Big);  // required for uint64ToPersistent(...)
-      arangodb::rocksutils::uint64ToPersistent(buf, 1);
-      buf.append(json->slice().startAs<char>(), json->slice().byteSize());
-      rocksdb::Slice marker(buf);
-      size_t throwCount = 0;
-
-      for (auto& helper : arangodb::RocksDBEngine::recoveryHelpers()) {  // one of them is for FlushFeature
-        try {
-          helper->LogData(marker);  // will throw on error
-        } catch (...) {
-          ++throwCount;
-        }
-      }
-
-      CHECK((1 == throwCount));
-    }
-
-    // type handler processing pass (MMFiles)
-    {
-      auto json =
-          arangodb::velocypack::Parser::fromJson("{ \"type\": \"test_pass\" }");
-      std::basic_string<uint8_t> buf;
-      buf.resize(sizeof(::MMFilesMarker) + sizeof(TRI_voc_tick_t));  // reserve space for header
-      arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)],
-                                      TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
-      buf.append(json->slice().begin(), json->slice().byteSize());
-      auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-      marker->setSize(buf.size());
-      marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
-      arangodb::MMFilesWalRecoverState state(false);
-      CHECK((0 == state.errorCount));
-      CHECK((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
-      CHECK((0 == state.errorCount));
-    }
-
-    // type handler processing pass (MMFiles)
-    {
-      auto json =
-          arangodb::velocypack::Parser::fromJson("{ \"type\": \"test_pass\" }");
-      std::string buf;
-      buf.push_back(static_cast<char>(arangodb::RocksDBLogType::FlushSync));
-      arangodb::rocksutils::setRocksDBKeyFormatEndianess(
-          arangodb::RocksDBEndianness::Big);  // required for uint64ToPersistent(...)
-      arangodb::rocksutils::uint64ToPersistent(buf, 1);
-      buf.append(json->slice().startAs<char>(), json->slice().byteSize());
-      rocksdb::Slice marker(buf);
-      size_t throwCount = 0;
-
-      for (auto& helper : arangodb::RocksDBEngine::recoveryHelpers()) {  // one of them is for FlushFeature
-        try {
-          helper->LogData(marker);  // will throw on error
-        } catch (...) {
-          ++throwCount;
-        }
-      }
-
-      CHECK((0 == throwCount));
+      size_t removed = 42;
+      TRI_voc_tick_t releasedTick = 42;
+      feature.releaseUnusedTicks(removed, releasedTick);
+      ASSERT_EQ(0, removed); // reference is being held
+      ASSERT_EQ(subscription->_tick, releasedTick); // min tick released
     }
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief generate tests
-  ////////////////////////////////////////////////////////////////////////////////
+  size_t removed = 42;
+  TRI_voc_tick_t releasedTick = 42;
+  feature.releaseUnusedTicks(removed, releasedTick);
+  ASSERT_EQ(1, removed); // stale subscription was removed
+  ASSERT_EQ(engine.currentTick(), releasedTick); // min tick released
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

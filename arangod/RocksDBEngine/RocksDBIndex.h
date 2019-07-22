@@ -80,12 +80,6 @@ class RocksDBIndex : public Index {
   /// compact the index, should reduce read amplification
   void compact();
 
-  /// @brief provides a size hint for the index
-  Result sizeHint(transaction::Methods& /*trx*/, size_t /*size*/
-                  ) override final {
-    return Result();  // nothing to do here
-  }
-
   void setCacheEnabled(bool enable) {
     // allow disabling and enabling of caches for the primary index
     _cacheEnabled = enable;
@@ -138,7 +132,7 @@ class RocksDBIndex : public Index {
                arangodb::velocypack::Slice const& info,
                rocksdb::ColumnFamilyHandle* cf, bool useCache);
 
-  inline bool useCache() const { return (_cacheEnabled && _cachePresent); }
+  inline bool useCache() const { return (_cacheEnabled && _cache); }
   void blackListKey(char const* data, std::size_t len);
   void blackListKey(arangodb::velocypack::StringRef& ref) {
     blackListKey(ref.data(), ref.size());
@@ -149,9 +143,6 @@ class RocksDBIndex : public Index {
   rocksdb::ColumnFamilyHandle* _cf;
 
   mutable std::shared_ptr<cache::Cache> _cache;
-  // we use this boolean for testing whether _cache is set.
-  // it's quicker than accessing the shared_ptr each time
-  bool _cachePresent;
   bool _cacheEnabled;
 };
 }  // namespace arangodb

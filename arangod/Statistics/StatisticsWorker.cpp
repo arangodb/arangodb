@@ -939,7 +939,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
 
   // export threads statistics
   builder.add("threads", VPackValue(VPackValueType::Object));
-  SchedulerFeature::SCHEDULER->addQueueStatistics(builder);
+  SchedulerFeature::SCHEDULER->toVelocyPack(builder);
   builder.close();
   
   // export ttl statistics
@@ -1096,7 +1096,7 @@ void StatisticsWorker::run() {
       // startup aborted
       return;
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(100000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 
   try {

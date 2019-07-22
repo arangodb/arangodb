@@ -24,7 +24,7 @@
 
 #include <lib/Basics/Common.h>
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 namespace arangodb {
 namespace tests {
@@ -70,7 +70,7 @@ DependencyProxyMock<passBlocksThrough>::fetchBlock(size_t) {
     bool didInsert;
     std::tie(std::ignore, didInsert) = _fetchedBlocks.insert(blockPtr);
     // DependencyProxyMock<passBlocksThrough>::fetchBlock() should not return the same block twice:
-    REQUIRE(didInsert);
+    TRI_ASSERT(didInsert);
   }
 
   return returnValue;

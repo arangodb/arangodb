@@ -87,6 +87,11 @@ Result ViewTypesFeature::emplace(LogicalDataSource::Type const& type,
             "view factory registration is only allowed during server startup"));
   }
 
+  if (!isEnabled()) { // should not be called
+    TRI_ASSERT(false);
+    return arangodb::Result();
+  }
+  
   if (!_factories.emplace(&type, &factory).second) {
     return arangodb::Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, std::string("view factory previously registered during view factory "
                                                                                "registration for view type '") +

@@ -45,11 +45,8 @@
 
 NS_ROOT
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                             forward declarations 
-// ----------------------------------------------------------------------------
-
-class bitvector; // forward declaration
+class comparer;
+class bitvector;
 struct directory;
 class directory_reader;
 
@@ -193,7 +190,9 @@ class IRESEARCH_API index_writer:
     documents_context(documents_context&& other) NOEXCEPT
       : segment_(std::move(other.segment_)),
         segment_use_count_(std::move(other.segment_use_count_)),
+        tick_(other.tick_),
         writer_(other.writer_) {
+      other.tick_ = 0;
       other.segment_use_count_ = 0;
     }
 
@@ -268,7 +267,6 @@ class IRESEARCH_API index_writer:
     ////////////////////////////////////////////////////////////////////////////
     template<typename Filter, typename Func>
     bool replace(Filter&& filter, Func func) {
-      typedef type_limits<type_t::doc_id_t> doc_limits;
       flush_context* ctx;
       segment_context_ptr segment;
 
@@ -362,9 +360,13 @@ class IRESEARCH_API index_writer:
     ////////////////////////////////////////////////////////////////////////////
     void reset() NOEXCEPT;
 
+    void tick(uint64_t tick) NOEXCEPT { tick_ = tick; }
+    uint64_t tick() const NOEXCEPT { return tick_; }
+
    private:
     active_segment_context segment_; // the segment_context used for storing changes (lazy-initialized)
-    long segment_use_count_{0}; // segment_.ctx().use_count() at constructor/destructor time must equal
+    uint64_t segment_use_count_{0}; // segment_.ctx().use_count() at constructor/destructor time must equal
+    uint64_t tick_{0}; // transaction tick
     index_writer& writer_;
 
     // refresh segment if required (guarded by flush_context::flush_mutex_)
@@ -427,10 +429,11 @@ class IRESEARCH_API index_writer:
   //////////////////////////////////////////////////////////////////////////////
   struct init_options: public segment_options {
     ////////////////////////////////////////////////////////////////////////////
-    /// @brief aquire an exclusive lock on the repository to guard against index
-    ///        corruption from multiple index_writers
+    /// @brief comparator defines physical order of documents in each segment
+    ///        produced by an index_writer.
+    ///        empty == use default system sorting order
     ////////////////////////////////////////////////////////////////////////////
-    bool lock_repository{true};
+    const comparer* comparator{nullptr};
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief number of memory blocks to cache by the internal memory pool
@@ -444,7 +447,13 @@ class IRESEARCH_API index_writer:
     ////////////////////////////////////////////////////////////////////////////
     size_t segment_pool_size{128}; // arbitrary size
 
-    init_options() {}; // GCC5 requires non-default definition
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief aquire an exclusive lock on the repository to guard against index
+    ///        corruption from multiple index_writers
+    ////////////////////////////////////////////////////////////////////////////
+    bool lock_repository{true};
+
+    init_options() {} // GCC5 requires non-default definition
   };
 
   struct segment_hash {
@@ -573,16 +582,29 @@ class IRESEARCH_API index_writer:
   /// @brief modify the runtime segment options as per the specified values
   ///        options will apply no later than after the next commit()
   ////////////////////////////////////////////////////////////////////////////
-  void options(const segment_options& opts);
+  void options(const segment_options& opts) NOEXCEPT {
+    segment_limits_ = opts;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @returns comparator using for sorting documents by a primary key
+  ///          nullptr == default sort order
+  ////////////////////////////////////////////////////////////////////////////
+  const comparer* comparator() const NOEXCEPT {
+    return comparator_;
+  }
+
+  typedef std::function<bool(uint64_t, bstring&)> before_commit_f;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief begins the two-phase transaction
+  /// @param payload arbitrary user supplied data to store in the index
   /// @returns true if transaction has been sucessflully started
   ////////////////////////////////////////////////////////////////////////////
-  bool begin() {
+  bool begin(const before_commit_f& before_commit = {}) {
     SCOPED_LOCK(commit_lock_);
 
-    return start();
+    return start(before_commit);
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -596,14 +618,15 @@ class IRESEARCH_API index_writer:
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief make all buffered changes visible for readers
+  /// @param payload arbitrary user supplied data to store in the index
   ///
-  /// Note that if begin() has been already called commit() is 
+  /// @note that if begin() has been already called commit() is
   /// relatively lightweight operation 
   ////////////////////////////////////////////////////////////////////////////
-  void commit() {
+  void commit(const before_commit_f& before_commit = {}) {
     SCOPED_LOCK(commit_lock_);
 
-    start();
+    start(before_commit);
     finish();
   }
 
@@ -778,14 +801,14 @@ class IRESEARCH_API index_writer:
     segment_writer::ptr writer_;
     index_meta::index_segment_t writer_meta_; // the segment_meta this writer was initialized with
 
-    DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator);
-    segment_context(directory& dir, segment_meta_generator_t&& meta_generator);
+    DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator, const comparer* comparator);
+    segment_context(directory& dir, segment_meta_generator_t&& meta_generator, const comparer* comparator);
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief flush current writer state into a materialized segment
-    /// @return success
+    /// @return tick of last committed transaction
     ////////////////////////////////////////////////////////////////////////////
-    void flush();
+    uint64_t flush();
 
     // returns context for "insert" operation
     segment_writer::update_context make_update_context();
@@ -987,23 +1010,25 @@ class IRESEARCH_API index_writer:
     format::ptr codec,
     size_t segment_pool_size,
     const segment_options& segment_limits,
+    const comparer* comparator,
     index_meta&& meta, 
     committed_state_t&& committed_state
   ) NOEXCEPT;
 
-  pending_context_t flush_all();
+  pending_context_t flush_all(const before_commit_f& before_commit);
 
   flush_context_ptr get_flush_context(bool shared = true);
   active_segment_context get_segment_context(flush_context& ctx); // return a usable segment or a nullptr segment if retry is required (e.g. no free segments available)
 
-  bool start(); // starts transaction
+  bool start(const before_commit_f& before_commit); // starts transaction
   void finish(); // finishes transaction
   void abort(); // aborts transaction
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  const comparer* comparator_;
   readers_cache cached_readers_; // readers by segment name
   format::ptr codec_;
-  std::mutex commit_lock_; // guard for cached_segment_readers_, commit_pool_, meta_ (modification during commit()/defragment())
+  std::mutex commit_lock_; // guard for cached_segment_readers_, commit_pool_, meta_ (modification during commit()/defragment()), paylaod_buf_
   committed_state_t committed_state_; // last successfully committed state
   std::recursive_mutex consolidation_lock_;
   consolidating_segments_t consolidating_segments_; // segments that are under consolidation

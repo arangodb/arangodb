@@ -23,6 +23,8 @@
 
 #include "HeartbeatThread.h"
 
+#include <map>
+
 #include <date/date.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -41,6 +43,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Pregel/PregelFeature.h"
+#include "Pregel/Recovery.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -240,7 +243,7 @@ void HeartbeatThread::run() {
         // startup aborted
         return;
       }
-      std::this_thread::sleep_for(std::chrono::microseconds(100000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
   }
 
@@ -991,6 +994,16 @@ void HeartbeatThread::runCoordinator() {
           }
           ClusterInfo::instance()->setFailedServers(failedServers);
           transaction::cluster::abortTransactionsWithFailedServers();
+
+          std::shared_ptr<pregel::PregelFeature> prgl = pregel::PregelFeature::instance();
+          if (prgl) {
+            pregel::RecoveryManager* mngr = prgl->recoveryManager();
+            if (mngr != nullptr) {
+              mngr->updatedFailedServers(failedServers);
+            }
+          }
+
+
         } else {
           LOG_TOPIC("cd95f", WARN, Logger::HEARTBEAT)
               << "FailedServers is not an object. ignoring for now";

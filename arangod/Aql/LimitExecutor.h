@@ -34,6 +34,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
 
+#include <iosfwd>
 #include <memory>
 
 namespace arangodb {
@@ -57,6 +58,7 @@ class LimitExecutorInfos : public ExecutorInfos {
   ~LimitExecutorInfos() = default;
 
   size_t getOffset() const noexcept { return _offset; };
+  size_t getLimit() const noexcept { return _limit; };
   size_t getLimitPlusOffset() const noexcept { return _offset + _limit; };
   bool isFullCountEnabled() const noexcept { return _fullCount; };
 
@@ -79,9 +81,8 @@ class LimitExecutor {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
-    /* This could be set to true after some investigation/fixes */
-    static const bool inputSizeRestrictsOutputSize = true;
+    static const bool allowsBlockPassthrough = true;
+    static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = LimitExecutorInfos;
@@ -100,17 +101,31 @@ class LimitExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
-  
+  /**
+   * @brief Custom skipRows() implementation. This is obligatory to increase
+   * _counter!
+   *
+   * Semantically, we first skip until our local offset. We may not report the
+   * number of rows skipped this way. Second, we skip up to the number of rows
+   * requested; but at most up to our limit.
+   */
+  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkipRequested);
+
+  std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
+
  private:
   Infos const& infos() const noexcept { return _infos; };
 
   size_t maxRowsLeftToFetch() const noexcept {
-    if (infos().isFullCountEnabled()) {
-      return ExecutionBlock::DefaultBatchSize();
-    } else {
-      return infos().getLimitPlusOffset() - _counter;
-    }
+    // counter should never exceed this count!
+    TRI_ASSERT(infos().getLimitPlusOffset() >= _counter);
+    return infos().getLimitPlusOffset() - _counter;
+  }
+
+  size_t maxRowsLeftToSkip() const noexcept {
+    // should not be called after skipping the offset!
+    TRI_ASSERT(infos().getOffset() >= _counter);
+    return infos().getOffset() - _counter;
   }
 
   enum class LimitState {
@@ -118,8 +133,8 @@ class LimitExecutor {
     SKIPPING,
     // state is RETURNING until the limit is reached
     RETURNING,
-    // state is RETURNING_LAST_ROW only if fullCount is disabled, and we've seen
-    // the second to last row until the limit is reached
+    // state is RETURNING_LAST_ROW if we've seen the second to last row before
+    // the limit is reached
     RETURNING_LAST_ROW,
     // state is COUNTING when the limit is reached and fullcount is enabled
     COUNTING,
@@ -140,7 +155,7 @@ class LimitExecutor {
     if (_counter < infos().getOffset()) {
       return LimitState::SKIPPING;
     }
-    if (!infos().isFullCountEnabled() && _counter + 1 == infos().getLimitPlusOffset()) {
+    if (_counter + 1 == infos().getLimitPlusOffset()) {
       return LimitState::RETURNING_LAST_ROW;
     }
     if (_counter < infos().getLimitPlusOffset()) {
@@ -153,9 +168,14 @@ class LimitExecutor {
     return LimitState::LIMIT_REACHED;
   }
 
+  std::pair<ExecutionState, Stats> skipOffset();
+  std::pair<ExecutionState, Stats> skipRestForFullCount();
+
  private:
   Infos const& _infos;
   Fetcher& _fetcher;
+  InputAqlItemRow _lastRowToOutput;
+  ExecutionState _stateOfLastRowToOutput;
   // Number of input lines seen
   size_t _counter = 0;
 };

@@ -24,7 +24,12 @@
 
 #include <ctime>
 #include <iomanip>
+#include <fstream>
 #include <iostream>
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
@@ -223,7 +228,7 @@ void BenchFeature::start() {
 
     // give all threads a chance to start so they will not miss the broadcast
     while (getStartCounter() < (int)_concurreny) {
-      std::this_thread::sleep_for(std::chrono::microseconds(5000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
     if (_delay) {
@@ -259,7 +264,7 @@ void BenchFeature::start() {
         nextReportValue += stepValue;
       }
 
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     double time = TRI_microtime() - start;

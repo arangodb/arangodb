@@ -5,7 +5,7 @@
 The ArangoDB server can listen for incoming requests on multiple *endpoints*.
 
 The endpoints are normally specified either in ArangoDB's configuration file or
-on the command-line, using the `--server.endpoint`.  ArangoDB supports different
+on the command-line like `--server.endpoint`. ArangoDB supports different
 types of endpoints:
 
 - tcp://ipv4-address:port - TCP/IP endpoint, using IPv4
@@ -15,7 +15,7 @@ types of endpoints:
 - unix:///path/to/socket - Unix domain socket endpoint
 
 If a TCP/IP endpoint is specified without a port number, then the default port
-(8529) will be used.  If multiple endpoints need to be used, the option can be
+(8529) will be used. If multiple endpoints need to be used, the option can be
 repeated multiple times.
 
 The default endpoint for ArangoDB is *tcp://127.0.0.1:8529* or
@@ -27,11 +27,15 @@ The default endpoint for ArangoDB is *tcp://127.0.0.1:8529* or
 unix> ./arangod --server.endpoint tcp://127.0.0.1:8529
                 --server.endpoint ssl://127.0.0.1:8530
                 --ssl.keyfile server.pem /tmp/vocbase
-2012-07-26T07:07:47Z [8161] INFO using SSL protocol version 'TLSv1'
-2012-07-26T07:07:48Z [8161] INFO using endpoint 'ssl://127.0.0.1:8530' for http ssl requests
-2012-07-26T07:07:48Z [8161] INFO using endpoint 'tcp://127.0.0.1:8529' for http tcp requests
-2012-07-26T07:07:49Z [8161] INFO ArangoDB (version 1.1.alpha) is ready for business
-2012-07-26T07:07:49Z [8161] INFO Have Fun!
+2019-05-06T07:30:42Z [9228] INFO ArangoDB 3.4.5 [linux] 64bit, using jemalloc, build tags/v3.4.5-0-g648fbb8191, VPack 0.1.33, RocksDB 5.16.0, ICU 58.1, V8 5.7.492.77, OpenSSL 1.1.0j  20 Nov 2018
+2019-05-06T07:30:43Z [9228] INFO {authentication} Jwt secret not specified, generating...
+2019-05-06T07:30:43Z [9228] INFO using storage engine rocksdb
+2019-05-06T07:30:43Z [9228] INFO {cluster} Starting up with role SINGLE
+2019-05-06T07:50:53Z [9228] INFO {syscall} file-descriptors (nofiles) hard limit is 1048576, soft limit is 1048576
+2019-05-06T07:50:53Z [9228] INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
+2019-05-06T07:30:43Z [9228] INFO using endpoint 'http+tcp://127.0.0.1:8529' for non-encrypted requests
+2019-05-06T07:30:43Z [9228] INFO using endpoint 'http+ssl://127.0.0.1:8530' for ssl-encrypted requests
+2019-05-06T07:30:44Z [9228] INFO ArangoDB (version 3.4.5 [linux]) is ready for business. Have fun!
 ```
 
 Given a hostname:

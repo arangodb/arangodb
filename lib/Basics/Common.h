@@ -30,14 +30,6 @@
 #define WIN32_LEAN_AND_MEAN 1
 #endif
 
-// debug malloc for Windows (only used when DEBUG is set)
-#define _CRTDBG_MAP_ALLOC
-
-// clang-format off
-#include <stdlib.h>
-#include <crtdbg.h>
-// clang-format on
-
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -46,130 +38,19 @@
 
 #define TRI_WITHIN_COMMON 1
 // clang-format off
+#include "Basics/Result.h"
 #include "Basics/operating-system.h"
 #include "Basics/application-exit.h"
 // clang-format on
 #undef TRI_WITHIN_COMMON
 
-#include <assert.h>
-#include <ctype.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <limits.h>
-#include <math.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
-#ifdef TRI_HAVE_DIRENT_H
-#include <dirent.h>
-#endif
-
-#ifdef TRI_HAVE_DIRECT_H
-#include <direct.h>
-#endif
-
-#ifdef TRI_HAVE_POSIX_THREADS
-#ifdef _GNU_SOURCE
-#include <pthread.h>
-#else
-#define _GNU_SOURCE
-#include <pthread.h>
-#undef _GNU_SOURCE
-#endif
-#endif
-
-#ifdef TRI_HAVE_PROCESS_H
-#include <process.h>
-#endif
-
-#ifdef TRI_HAVE_SIGNAL_H
-#include <signal.h>
-#endif
-
-#ifdef TRI_HAVE_STDBOOL_H
-#include <stdbool.h>
-#endif
-
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-
-#ifdef TRI_HAVE_STRINGS_H
-#include <strings.h>
-#endif
-
-#ifdef TRI_HAVE_NETDB_H
-#include <netdb.h>
-#endif
-
-#ifdef TRI_HAVE_NETINET_STAR_H
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#endif
-
-#ifdef TRI_HAVE_ARPA_INET_H
-#include <arpa/inet.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_FILE_H
-#include <sys/file.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_RESOURCE_H
-#include <sys/resource.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_PRCTL_H
-#include <sys/prctl.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_WAIT_H
-#include <sys/wait.h>
-#endif
-
-#include <sys/stat.h>
-
-// .............................................................................
-// The problem we have for visual studio is that if we include WinSock2.h here
-// it may conflict later in some other source file. The conflict arises when
-// windows.h is included BEFORE WinSock2.h -- this is a visual studio issue. For
-// now be VERY careful to ensure that if you need windows.h, then you include
-// this file AFTER common.h.
-// .............................................................................
-
-#ifdef TRI_HAVE_WINSOCK2_H
-#include <WinSock2.h>
-typedef long suseconds_t;
-#endif
-
 #include <algorithm>
 #include <atomic>
 #include <cmath>
-#include <deque>
 #include <functional>
-#include <map>
 #include <memory>
-#include <set>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #define TRI_WITHIN_COMMON 1
@@ -180,7 +61,6 @@ typedef long suseconds_t;
 #include "Basics/memory.h"
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
-#include "Basics/ScopeGuard.h"
 // clang-format on
 #undef TRI_WITHIN_COMMON
 
@@ -192,9 +72,9 @@ typedef long suseconds_t;
 // Windows debug mode also seems to define DEBUG preproc symbol
 #undef DEBUG
 #endif
-  
-  
-#ifdef ARANGODB_USE_CATCH_TESTS
+
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 #define TEST_VIRTUAL virtual
 #else
 #define TEST_VIRTUAL

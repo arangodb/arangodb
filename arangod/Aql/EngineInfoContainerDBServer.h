@@ -31,6 +31,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/AccessMode.h"
 
+#include <map>
+#include <set>
 #include <stack>
 #include <boost/variant.hpp>
 
@@ -86,6 +88,8 @@ class EngineInfoContainerDBServer {
     explicit EngineInfo(size_t idOfRemoteNode) noexcept;
     EngineInfo(EngineInfo&& other) noexcept;
     ~EngineInfo();
+    EngineInfo(EngineInfo&) = delete;
+    EngineInfo(EngineInfo const& other) = delete;
 
 #if (_MSC_VER != 0)
 #pragma warning(disable : 4521)  // stfu wintendo.
@@ -97,12 +101,12 @@ class EngineInfoContainerDBServer {
     Collection const* collection() const noexcept;
     void collection(Collection* col) noexcept;
 
-    void serializeSnippet(Query& query, ShardID id, velocypack::Builder& infoBuilder,
-                          bool isResponsibleForInit) const;
+    void serializeSnippet(Query& query, ShardID const& id, velocypack::Builder& infoBuilder,
+                          bool isResponsibleForInitializeCursor) const;
 
     void serializeSnippet(ServerID const& serverId, Query& query,
-                          std::vector<ShardID> const& shards,
-                          velocypack::Builder& infoBuilder) const;
+                          std::vector<ShardID> const& shards, VPackBuilder& infoBuilder,
+                          bool isResponsibleForInitializeCursor) const;
 
     /// @returns type of the engine
     EngineType type() const noexcept {
@@ -111,6 +115,12 @@ class EngineInfoContainerDBServer {
 
     LogicalView const* view() const noexcept;
     void addClient(ServerID const& server);
+
+    QueryId getParentQueryId() const noexcept { return _otherId; }
+
+    std::vector<ExecutionNode*> const& nodes() const noexcept {
+      return _nodes;
+    }
 
    private:
     struct CollectionSource {
@@ -137,11 +147,8 @@ class EngineInfoContainerDBServer {
       LogicalView const* view{};  // The view used to connect to this engine
       GatherNode* gather{};  // The gather associated with the engine
       ScatterNode* scatter{}; // The scatter associated with the engine
-      size_t numClients{}; // A number of db servers the engine is distributed accross
+      size_t numClients{}; // A number of db servers the engine is distributed across
     };
-
-    EngineInfo(EngineInfo&) = delete;
-    EngineInfo(EngineInfo const& other) = delete;
 
     std::vector<ExecutionNode*> _nodes;
     size_t _idOfRemoteNode;  // id of the remote node
@@ -153,7 +160,9 @@ class EngineInfoContainerDBServer {
    public:
     void addShardLock(AccessMode::Type const& lock, ShardID const& id);
 
-    void addEngine(std::shared_ptr<EngineInfo> info, ShardID const& id);
+    void addEngine(std::shared_ptr<EngineInfo> const& info, ShardID const& id);
+
+    void setShardAsResponsibleForInitializeCursor(ShardID const& id);
 
     void buildMessage(ServerID const& serverId, EngineInfoContainerDBServer const& context,
                       Query& query, velocypack::Builder& infoBuilder) const;
@@ -171,6 +180,8 @@ class EngineInfoContainerDBServer {
 
     // @brief Map of all EngineInfos with their shards
     std::unordered_map<std::shared_ptr<EngineInfo>, std::vector<ShardID>> _engineInfos;
+
+    std::unordered_set<ShardID> _shardsResponsibleForInitializeCursor;
 
     // @brief List of all information required for traverser engines
     std::vector<std::pair<GraphNode*, TraverserEngineShardLists>> _traverserEngineInfos;

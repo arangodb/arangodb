@@ -23,6 +23,8 @@
 #ifndef ARANGOD_AQL_CALACULATION_EXECUTOR_H
 #define ARANGOD_AQL_CALACULATION_EXECUTOR_H
 
+#include "Basics/Common.h"
+#include "Basics/ScopeGuard.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/Expression.h"
@@ -60,17 +62,17 @@ struct CalculationExecutorInfos : public ExecutorInfos {
   CalculationExecutorInfos(CalculationExecutorInfos const&) = delete;
   ~CalculationExecutorInfos() = default;
 
-  RegisterId getOutputRegisterId() const { return _outputRegisterId; }
+  RegisterId getOutputRegisterId() const noexcept { return _outputRegisterId; }
 
-  Query& getQuery() const { return _query; }
+  Query& getQuery() const noexcept { return _query; }
 
-  Expression& getExpression() const { return _expression; }
+  Expression& getExpression() const noexcept { return _expression; }
 
-  std::vector<Variable const*> const& getExpInVars() const {
+  std::vector<Variable const*> const& getExpInVars() const noexcept {
     return _expInVars;
   }
 
-  std::vector<RegisterId> const& getExpInRegs() const { return _expInRegs; }
+  std::vector<RegisterId> const& getExpInRegs() const noexcept { return _expInRegs; }
 
  private:
   RegisterId _outputRegisterId;
@@ -106,11 +108,9 @@ class CalculationExecutor {
    */
   inline std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
-  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "Logic_error, prefetching number fo rows not supported");
+  inline std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost) {
+    auto rv = _fetcher.fetchBlockForPassthrough(atMost);
+    return {rv.first, {}, std::move(rv.second)};
   }
 
  private:
@@ -182,7 +182,10 @@ inline void CalculationExecutor<CalculationType::Reference>::doEvaluation(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  output.cloneValueInto(_infos.getOutputRegisterId(), input, input.getValue(inRegs[0]));
+  // We assume here that the output block (which must be the same as the input
+  // block) is already responsible for this value.
+  // Thus we do not want to clone it.
+  output.copyBlockInternalRegister(input, inRegs[0], _infos.getOutputRegisterId());
 }
 
 template <CalculationType calculationType>

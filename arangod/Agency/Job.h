@@ -102,7 +102,7 @@ struct Job {
     }
   }
 
-  virtual Result abort() = 0;
+  virtual Result abort(std::string const& reason) = 0;
 
   virtual bool finish(std::string const& server, std::string const& shard,
                       bool success = true, std::string const& reason = std::string(),
@@ -178,6 +178,7 @@ struct Job {
                                           std::string const& health);
   static void addPreconditionShardNotBlocked(Builder& pre, std::string const& shard);
   static void addPreconditionUnchanged(Builder& pre, std::string const& key, Slice value);
+  static void addPreconditionJobStillInPending(Builder& pre, std::string const& jobId);
   static std::string checkServerHealth(Node const& snapshot, std::string const& server);
 };
 

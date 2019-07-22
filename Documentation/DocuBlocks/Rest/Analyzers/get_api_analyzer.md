@@ -1,7 +1,7 @@
 @startDocuBlock get_api_analyzer
 @brief returns an analyzer definition
 
-@RESTHEADER{GET /_api/analyzer/{analyzer-name}, Return the analyzer definition}
+@RESTHEADER{GET /_api/analyzer/{analyzer-name}, Return the analyzer definition, RestAnalyzerHandler:GetDefinition}
 
 @RESTURLPARAMETERS
 
@@ -31,8 +31,8 @@ Retrieve an analyzer definition:
 @EXAMPLE_ARANGOSH_RUN{RestAnalyzerGet}
   var analyzers = require("@arangodb/analyzers");
   var db = require("@arangodb").db;
-  var analyzerName = db._name() + "::testAnalyzer";
-  analyzers.save(analyzerName, "identity", "test properties");
+  var analyzerName = "testAnalyzer";
+  analyzers.save(analyzerName, "identity");
 
   // retrieval
   var url = "/_api/analyzer/" + encodeURIComponent(analyzerName);

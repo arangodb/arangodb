@@ -1,3 +1,4 @@
+
 /* jshint strict: false, sub: true */
 /* global print */
 'use strict';
@@ -99,9 +100,9 @@ class DumpRestoreHelper {
       this.restoreOldConfig.setDatabase('_system');
     }
 
-    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceInfo.rootDir);
-    this.arangorestoreOld = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreOldConfig, this.restoreOptions, this.instanceInfo.rootDir);
-    this.arangodump = pu.run.arangoDumpRestoreWithConfig.bind(this, this.dumpConfig, this.dumpOptions, this.instanceInfo.rootDir);
+    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceInfo.rootDir, this.options.coreCheck);
+    this.arangorestoreOld = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreOldConfig, this.restoreOptions, this.instanceInfo.rootDir, this.options.coreCheck);
+    this.arangodump = pu.run.arangoDumpRestoreWithConfig.bind(this, this.dumpConfig, this.dumpOptions, this.instanceInfo.rootDir, this.options.coreCheck);
   }
 
   print (s) {
@@ -122,7 +123,7 @@ class DumpRestoreHelper {
       fs.remove(this.fn);
     }
     print(CYAN + 'Shutting down...' + RESET);
-    pu.shutdownInstance(this.instanceInfo, this.options);
+    this.results['shutdown'] = pu.shutdownInstance(this.instanceInfo, this.options);
     print(CYAN + 'done.' + RESET);
 
     print();

@@ -67,7 +67,7 @@ void RestAdminServerHandler::handleId() {
 
   auto instance = ServerState::instance();
   if (!instance->isRunningInCluster()) {
-    // old behaviour...klingt komisch, is aber so
+    // old behavior...klingt komisch, is aber so
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
     return;
   }
@@ -141,7 +141,7 @@ void RestAdminServerHandler::handleMode() {
   } else if (requestType == rest::RequestType::PUT) {
     AuthenticationFeature* af = AuthenticationFeature::instance();
     if (af->isActive() && !_request->user().empty()) {
-      auth::Level lvl = auth::Level::NONE;
+      auth::Level lvl;
       if (af->userManager() != nullptr) {
         lvl = af->userManager()->databaseAuthLevel(_request->user(), TRI_VOC_SYSTEM_DATABASE,
                                                    /*configured*/ true);

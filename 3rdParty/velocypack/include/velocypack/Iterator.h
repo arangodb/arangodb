@@ -28,7 +28,6 @@
 #define VELOCYPACK_ITERATOR_H 1
 
 #include <iosfwd>
-#include <functional>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
@@ -47,11 +46,11 @@ class ArrayIterator {
     
     uint8_t const head = slice.head();     
 
-    if (slice.type(head) != ValueType::Array) {
+    if (VELOCYPACK_UNLIKELY(slice.type(head) != ValueType::Array)) {
       throw Exception(Exception::InvalidValueType, "Expecting Array slice");
     }
 
-    _size = slice.arrayLength(head);
+    _size = slice.arrayLength();
 
     if (_size > 0) {
       VELOCYPACK_ASSERT(head != 0x01); // no empty array allowed here
@@ -62,12 +61,6 @@ class ArrayIterator {
       }
     }
   }
-
-  ArrayIterator(ArrayIterator const& other) noexcept = default;
-  ArrayIterator(ArrayIterator&& other) noexcept = default;
-
-  ArrayIterator& operator=(ArrayIterator const& other) = delete;
-  ArrayIterator& operator=(ArrayIterator&& other) = default;
 
   // prefix ++
   ArrayIterator& operator++() {
@@ -99,25 +92,13 @@ class ArrayIterator {
     // be performed by Slice::getNthOffset()
     return Slice(_slice.begin() + _slice.getNthOffset(_position));
   }
-
-  ArrayIterator begin() { 
-    auto it = ArrayIterator(*this);
-    it._position = 0;
-    return it;
-  }
-
+  
   ArrayIterator begin() const { 
     auto it = ArrayIterator(*this);
     it._position = 0;
     return it;
   }
-
-  ArrayIterator end() {
-    auto it = ArrayIterator(*this);
-    it._position = it._size;
-    return it;
-  }
-
+  
   ArrayIterator end() const {
     auto it = ArrayIterator(*this);
     it._position = it._size;
@@ -185,7 +166,7 @@ class ArrayIterator {
 class ObjectIterator {
  public:
   struct ObjectPair {
-    ObjectPair(Slice key, Slice value) : key(key), value(value) {}
+    ObjectPair(Slice key, Slice value) noexcept : key(key), value(value) {}
     Slice const key;
     Slice const value;
   };
@@ -196,16 +177,15 @@ class ObjectIterator {
   // simply jumps from key/value pair to key/value pair without using the
   // index. The default `false` is to use the index if it is there.
   explicit ObjectIterator(Slice slice, bool useSequentialIteration = false)
-      : _slice(slice), _size(0), _position(0), _current(nullptr),
-        _useSequentialIteration(useSequentialIteration) {
+      : _slice(slice), _size(0), _position(0), _current(nullptr) {
     
     uint8_t const head = slice.head();     
 
-    if (slice.type(head) != ValueType::Object) {
+    if (VELOCYPACK_UNLIKELY(slice.type(head) != ValueType::Object)) {
       throw Exception(Exception::InvalidValueType, "Expecting Object slice");
     }
 
-    _size = slice.objectLength(head);
+    _size = slice.objectLength();
 
     if (_size > 0) {
       VELOCYPACK_ASSERT(head != 0x0a); // no empty object allowed here
@@ -216,12 +196,6 @@ class ObjectIterator {
       }
     }
   }
-
-  ObjectIterator(ObjectIterator const& other) noexcept = default;
-  ObjectIterator(ObjectIterator&& other) noexcept = default;
-
-  ObjectIterator& operator=(ObjectIterator const& other) = delete;
-  ObjectIterator& operator=(ObjectIterator&& other) = default;
 
   // prefix ++
   ObjectIterator& operator++() {
@@ -250,27 +224,16 @@ class ObjectIterator {
 
   ObjectPair operator*() const {
     if (_current != nullptr) {
-      Slice key = Slice(_current);
+      Slice key(_current);
       return ObjectPair(key.makeKey(), Slice(_current + key.byteSize()));
     }
-    return ObjectPair(_slice.getNthKey(_position, true), _slice.getNthValue(_position));
+    Slice key(_slice.getNthKeyUntranslated(_position));
+    return ObjectPair(key.makeKey(), Slice(key.begin() + key.byteSize()));
   }
-
-  ObjectIterator begin() { 
-    auto it = ObjectIterator(*this);
-    it._position = 0;
-    return it;
-  }
-
+  
   ObjectIterator begin() const { 
     auto it = ObjectIterator(*this);
     it._position = 0;
-    return it;
-  }
-
-  ObjectIterator end() {
-    auto it = ObjectIterator(*this);
-    it._position = it._size;
     return it;
   }
 
@@ -298,7 +261,7 @@ class ObjectIterator {
       throw Exception(Exception::IndexOutOfBounds);
     }
     if (_current != nullptr) {
-      Slice key = Slice(_current);
+      Slice key(_current);
       return Slice(_current + key.byteSize());
     }
     return _slice.getNthValue(_position);
@@ -321,7 +284,6 @@ class ObjectIterator {
   ValueLength _size;
   ValueLength _position;
   uint8_t const* _current;
-  bool _useSequentialIteration;
 };
 
 }  // namespace arangodb::velocypack

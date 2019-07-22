@@ -231,7 +231,10 @@ class RocksDBEngine final : public StorageEngine {
   void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
 
   // wal in recovery
-  bool inRecovery() override;
+  RecoveryState recoveryState() noexcept override;
+
+  /// @brief current recovery tick
+  TRI_voc_tick_t recoveryTick() noexcept override;
 
   // start compactor thread and delete files form collections marked as deleted
   void recoveryDone(TRI_vocbase_t& vocbase) override;
@@ -363,10 +366,6 @@ class RocksDBEngine final : public StorageEngine {
 #endif
   }
 
-  /// @brief allow / disbable removal of WAL files
-  void disableWalFilePruning(bool disable);
-  bool disableWalFilePruning() const;
-
   rocksdb::Options const& rocksDBOptions() const { return _options; }
 
   /// @brief recovery manager
@@ -455,6 +454,9 @@ class RocksDBEngine final : public StorageEngine {
 
   // use write-throttling
   bool _useThrottle;
+
+  /// @brief whether or not to use _releasedTick when determining the WAL files to prune
+  bool _useReleasedTick;
 
   // activate rocksdb's debug logging
   bool _debugLogging;

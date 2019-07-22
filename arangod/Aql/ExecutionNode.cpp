@@ -617,7 +617,8 @@ ExecutionNode const* ExecutionNode::getLoop() const {
     auto type = node->getType();
 
     if (type == ENUMERATE_COLLECTION || type == INDEX || type == TRAVERSAL ||
-        type == ENUMERATE_LIST || type == SHORTEST_PATH || type == ENUMERATE_IRESEARCH_VIEW) {
+        type == ENUMERATE_LIST || type == SHORTEST_PATH ||
+        type == K_SHORTEST_PATHS || type == ENUMERATE_IRESEARCH_VIEW) {
       return node;
     }
   }
@@ -1769,7 +1770,8 @@ bool SubqueryNode::mayAccessCollections() {
                                                       ExecutionNode::REMOVE,
                                                       ExecutionNode::UPSERT,
                                                       ExecutionNode::TRAVERSAL,
-                                                      ExecutionNode::SHORTEST_PATH};
+                                                      ExecutionNode::SHORTEST_PATH,
+                                                      ExecutionNode::K_SHORTEST_PATHS};
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
@@ -1810,8 +1812,13 @@ std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
                               getRegisterPlan()->nrRegs[getDepth()],
                               getRegsToClear(), calcRegsToKeep(), *subquery,
                               outReg, const_cast<SubqueryNode*>(this)->isConst());
-  return std::make_unique<ExecutionBlockImpl<SubqueryExecutor>>(&engine, this,
-                                                                std::move(infos));
+  if (isModificationSubquery()) {
+    return std::make_unique<ExecutionBlockImpl<SubqueryExecutor<true>>>(&engine, this,
+                                                                        std::move(infos));
+  } else {
+    return std::make_unique<ExecutionBlockImpl<SubqueryExecutor<false>>>(&engine, this,
+                                                                         std::move(infos));
+  }
 }
 
 ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -2039,18 +2046,21 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   // and do not modify it in any way.
   // In the other case it is important to shrink the matrix to exactly
   // one register that is stored within the DOCVEC.
+  RegisterId const numberInputRegisters =
+      getRegisterPlan()->nrRegs[previousNode->getDepth()];
   RegisterId const numberOutputRegisters =
-      returnInheritedResults ? getRegisterPlan()->nrRegs[getDepth()] : 1;
+    returnInheritedResults ? getRegisterPlan()->nrRegs[getDepth()] : 1;
 
-  ReturnExecutorInfos infos(inputRegister,
-                            getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                            numberOutputRegisters, _count, returnInheritedResults);
   if (returnInheritedResults) {
-    return std::make_unique<ExecutionBlockImpl<ReturnExecutor<true>>>(&engine, this,
-                                                                      std::move(infos));
+    return std::make_unique<ExecutionBlockImpl<IdExecutor<void>>>(&engine, this,
+                                                                  inputRegister, _count);
   } else {
-    return std::make_unique<ExecutionBlockImpl<ReturnExecutor<false>>>(&engine, this,
-                                                                       std::move(infos));
+    TRI_ASSERT(!returnInheritedResults);
+    ReturnExecutorInfos infos(inputRegister, numberInputRegisters,
+                              numberOutputRegisters, _count);
+
+    return std::make_unique<ExecutionBlockImpl<ReturnExecutor>>(&engine, this,
+                                                                std::move(infos));
   }
 }
 

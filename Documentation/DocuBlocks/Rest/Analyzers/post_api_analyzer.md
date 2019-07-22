@@ -1,7 +1,7 @@
 @startDocuBlock post_api_analyzer
 @brief creates a new analyzer based on the provided definition
 
-@RESTHEADER{POST /_api/analyzer, Create an analyzer with the suppiled definition}
+@RESTHEADER{POST /_api/analyzer, Create an analyzer with the suppiled definition, RestAnalyzerHandler:Create}
 
 @RESTBODYPARAM{name,string,required,string}
 The analyzer name.
@@ -41,12 +41,12 @@ The user does not have permission to create and analyzer with this configuration
 @EXAMPLE_ARANGOSH_RUN{RestAnalyzerPost}
   var analyzers = require("@arangodb/analyzers");
   var db = require("@arangodb").db;
-  var analyzerName = db._name() + "::testAnalyzer";
+  var analyzerName = "testAnalyzer";
 
   // creation
   var url = "/_api/analyzer";
   var body = {
-    name: db._name() + "::testAnalyzer",
+    name: "testAnalyzer",
     type: "identity"
   };
   var response = logCurlRequest('POST', url, body);

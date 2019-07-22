@@ -28,6 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
@@ -72,7 +73,7 @@ RestStatus RestAdminExecuteHandler::execute() {
   }
 
   try {
-    LOG_TOPIC("c838e", WARN, Logger::FIXME) << "about to execute: '" << Logger::CHARS(body, bodySize) << "'";
+    LOG_TOPIC("c838e", DEBUG, Logger::SECURITY) << "about to execute: '" << Logger::CHARS(body, bodySize) << "'";
 
     // get a V8 context
     bool const allowUseDatabase = ActionFeature::ACTION->allowUseDatabase();
@@ -132,12 +133,8 @@ RestStatus RestAdminExecuteHandler::execute() {
         _response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
         switch (_response->transportType()) {
           case Endpoint::TransportType::HTTP: {
-            HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
-            if (httpResponse == nullptr) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to cast response object");
-            }
             _response->setContentType(rest::ContentType::TEXT);
-            httpResponse->body().appendText(errorMessage.data(), errorMessage.size());
+            _response->addRawPayload(VPackStringRef(errorMessage));
             break;
           }
           case Endpoint::TransportType::VST: {

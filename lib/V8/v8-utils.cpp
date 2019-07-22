@@ -24,13 +24,17 @@
 #include "v8-utils.h"
 
 #ifdef _WIN32
+#include <windef.h>
+#include <io.h>
 #include <conio.h>
+#include <WinSock2.h>
 #include "Basics/win-utils.h"
 #endif
 
 #include <signal.h>
 #include <unicode/locid.h>
 #include <fstream>
+#include <fcntl.h>
 #include <iostream>
 
 #include "unicode/normalizer2.h"
@@ -52,10 +56,11 @@
 #include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tri-zip.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Random/UniformCharacter.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -764,7 +769,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
           TRI_ObjectToString(isolate, TRI_GetProperty(context, isolate, options,
                                                       "method"));
 
-      method = HttpRequest::translateMethod(methodString);
+      method = GeneralRequest::translateMethod(methodString);
     }
 
     // headers
@@ -1050,7 +1055,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
             validationOptions.disallowCustom = true;
             VPackValidator validator(&validationOptions);
             validator.validate(sb.data(), sb.length());  // throws on error
-            json.assign(VPackSlice(sb.data()).toJson());
+            json.assign(VPackSlice(reinterpret_cast<uint8_t const*>(sb.data())).toJson());
             body = arangodb::velocypack::StringRef(json);
           }
 
@@ -2650,7 +2655,7 @@ static void JS_CopyFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (destinationIsDirectory) {
     char const* file = strrchr(source.c_str(), TRI_DIR_SEPARATOR_CHAR);
     if (file == nullptr) {
-      if (destination[destination.length()] == TRI_DIR_SEPARATOR_CHAR) {
+      if (!destination.empty() && destination.back() != TRI_DIR_SEPARATOR_CHAR) {
         destination += TRI_DIR_SEPARATOR_CHAR;
       }
       destination += source;
@@ -2845,16 +2850,6 @@ static void JS_Output(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_ProcessStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
-
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-  TRI_ASSERT(v8security != nullptr);
-
-  if (v8security->isInternalModuleHardened(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to provide this information");
-  }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
@@ -3843,7 +3838,7 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // wait without gc
   double until = TRI_microtime() + n;
   while (TRI_microtime() < until) {
-    std::this_thread::sleep_for(std::chrono::microseconds(1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -4042,6 +4037,9 @@ static char const* convertProcessStatusToString(TRI_external_status_e processSta
     case TRI_EXT_STOPPED:
       status = "STOPPED";
       break;
+    case TRI_EXT_TIMEOUT:
+      status = "TIMEOUT";
+      break;
   }
   return status;
 }
@@ -4130,7 +4128,7 @@ static void convertProcessInfoToV8(v8::FunctionCallbackInfo<v8::Value> const& ar
 
   v8::Handle<v8::Array> arguments =
       v8::Array::New(isolate, static_cast<int>(external_process._numberArguments));
-  for (size_t i = 0; i < external_process._numberArguments; i++) {
+  for (uint32_t i = 0; i < external_process._numberArguments; i++) {
     arguments->Set(i, TRI_V8_ASCII_STRING(isolate, external_process._arguments[i]));
   }
   result->Set(TRI_V8_ASCII_STRING(isolate, "arguments"), arguments);
@@ -4268,9 +4266,9 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   // extract the arguments
-  if (args.Length() < 1 || args.Length() > 2) {
+  if (args.Length() < 1 || args.Length() > 3) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "statusExternal(<external-identifier>[, <wait>])");
+        "statusExternal(<external-identifier>[, <wait>[, <timeoutms>]])");
   }
 
   V8SecurityFeature* v8security =
@@ -4292,11 +4290,15 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(isolate, args[0], true));
 #endif
   bool wait = false;
-  if (args.Length() == 2) {
+  if (args.Length() >= 2) {
     wait = TRI_ObjectToBoolean(isolate, args[1]);
   }
+  uint32_t timeoutms = 0;
+  if (args.Length() >= 2) {
+    timeoutms = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[2], true));
+  }
 
-  ExternalProcessStatus external = TRI_CheckExternalProcess(pid, wait);
+  ExternalProcessStatus external = TRI_CheckExternalProcess(pid, wait, timeoutms);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
@@ -4327,9 +4329,9 @@ static void JS_ExecuteAndWaitExternal(v8::FunctionCallbackInfo<v8::Value> const&
   v8::HandleScope scope(isolate);
 
   // extract the arguments
-  if (3 < args.Length() || args.Length() < 1) {
+  if (4 < args.Length() || args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "executeAndWaitExternal(<filename>[, <arguments> [,<usePipes>] ])");
+        "executeAndWaitExternal(<filename>[, <arguments> [,<usePipes>, [, <timoutms>]] ])");
   }
 
   TRI_Utf8ValueNFC name(isolate, args[0]);
@@ -4384,8 +4386,12 @@ static void JS_ExecuteAndWaitExternal(v8::FunctionCallbackInfo<v8::Value> const&
     }
   }
   bool usePipes = false;
-  if (3 <= args.Length()) {
+  if (args.Length() >= 3) {
     usePipes = TRI_ObjectToBoolean(isolate, args[2]);
+  }
+  uint32_t timeoutms = 0;
+  if (args.Length() >= 4) {
+    timeoutms = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[3], true));
   }
 
   ExternalId external;
@@ -4399,7 +4405,7 @@ static void JS_ExecuteAndWaitExternal(v8::FunctionCallbackInfo<v8::Value> const&
   ExternalId pid;
   pid._pid = external._pid;
 
-  auto external_status = TRI_CheckExternalProcess(pid, true);
+  auto external_status = TRI_CheckExternalProcess(pid, true, timeoutms);
 
   convertStatusToV8(args, result, external_status, external);
 
@@ -4686,7 +4692,7 @@ static void JS_VPackToV8(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     validator.validate(value.c_str(), value.size(), false);
 
-    VPackSlice slice(value.c_str());
+    VPackSlice slice(reinterpret_cast<uint8_t const*>(value.data()));
     v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, slice);
     TRI_V8_RETURN(result);
   } else if (args[0]->IsObject() && V8Buffer::hasInstance(isolate, args[0])) {
@@ -4696,7 +4702,7 @@ static void JS_VPackToV8(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     validator.validate(data, size, false);
 
-    VPackSlice slice(data);
+    VPackSlice slice(reinterpret_cast<uint8_t const*>(data));
     v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, slice);
     TRI_V8_RETURN(result);
   } else {
@@ -5247,7 +5253,7 @@ bool TRI_RunGarbageCollectionV8(v8::Isolate* isolate, double availableTime) {
         }
       }
 
-      std::this_thread::sleep_for(std::chrono::microseconds(1000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
     return true;
@@ -5308,7 +5314,7 @@ static void JS_ErrorNumberToHttpCode(v8::FunctionCallbackInfo<v8::Value> const& 
   }
 
   auto num = TRI_ObjectToInt64(isolate, args[0]);
-  auto code = arangodb::GeneralResponse::responseCode(num);
+  auto code = arangodb::GeneralResponse::responseCode(static_cast<int>(num));
 
   using Type = typename std::underlying_type<arangodb::rest::ResponseCode>::type;
   TRI_V8_RETURN_INTEGER(static_cast<Type>(code));

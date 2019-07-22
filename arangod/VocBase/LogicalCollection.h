@@ -166,11 +166,11 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
 
-  bool hasSmartJoinAttribute() const { return !smartJoinAttribute().empty(); } 
-  
+  bool hasSmartJoinAttribute() const { return !smartJoinAttribute().empty(); }
+
   /// @brief return the name of the smart join attribute (empty string
   /// if no smart join attribute is present)
-  std::string const& smartJoinAttribute() const { return _smartJoinAttribute; } 
+  std::string const& smartJoinAttribute() const { return _smartJoinAttribute; }
 
   // SECTION: sharding
   ShardingInfo* shardingInfo() const;
@@ -178,6 +178,7 @@ class LogicalCollection : public LogicalDataSource {
   // proxy methods that will use the sharding info in the background
   size_t numberOfShards() const;
   size_t replicationFactor() const;
+  size_t minReplicationFactor() const;
   std::string distributeShardsLike() const;
   std::vector<std::string> const& avoidServers() const;
   bool isSatellite() const;
@@ -212,7 +213,7 @@ class LogicalCollection : public LogicalDataSource {
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
   /// to fetch current values!
   /// @param tid the optional transaction ID to use
-  IndexEstMap clusterIndexEstimates(bool allowUpdate, TRI_voc_tid_t tid = 0);
+  IndexEstMap clusterIndexEstimates(bool allowUpdating, TRI_voc_tid_t tid = 0);
 
   /// @brief sets the current index selectivity estimates
   void setClusterIndexEstimates(IndexEstMap&& estimates);
@@ -222,7 +223,7 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @brief return all indexes of the collection
   std::vector<std::shared_ptr<Index>> getIndexes() const;
-  
+
   void getIndexesVPack(velocypack::Builder&, uint8_t,
                        std::function<bool(arangodb::Index const*)> const& filter =
                            [](arangodb::Index const*) -> bool { return true; }) const;
@@ -244,10 +245,10 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Serialization
   void toVelocyPackIgnore(velocypack::Builder& result,
                           std::unordered_set<std::string> const& ignoreKeys,
-                          bool translateCids, bool forPersistence) const;
+                          std::underlying_type<Serialize>::type flags) const;
 
   velocypack::Builder toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys,
-                                         bool translateCids, bool forPersistence) const;
+                                         std::underlying_type<Serialize>::type flags) const;
 
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&, bool useSystem,
                                                bool isReady, bool allInSync) const;
@@ -291,14 +292,13 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @brief processes a truncate operation
   Result truncate(transaction::Methods& trx, OperationOptions& options);
-  
+
   /// @brief compact-data operation
   Result compact();
 
   // convenience function for downwards-compatibility
   Result insert(transaction::Methods* trx, velocypack::Slice const slice,
-                ManagedDocumentResult& result, OperationOptions& options,
-                bool lock) {
+                ManagedDocumentResult& result, OperationOptions& options, bool lock) {
     return insert(trx, slice, result, options, lock, nullptr, nullptr);
   }
 
@@ -308,20 +308,19 @@ class LogicalCollection : public LogicalDataSource {
    * successful, it isn't called. May be nullptr.
    */
   Result insert(transaction::Methods* trx, velocypack::Slice slice,
-                ManagedDocumentResult& result, OperationOptions& options,
-                bool lock, KeyLockInfo* keyLockInfo, std::function<void()> const& cbDuringLock);
+                ManagedDocumentResult& result, OperationOptions& options, bool lock,
+                KeyLockInfo* keyLockInfo, std::function<void()> const& cbDuringLock);
 
   Result update(transaction::Methods*, velocypack::Slice newSlice,
-                ManagedDocumentResult& result, OperationOptions&,
-                bool lock, ManagedDocumentResult& previousMdr);
+                ManagedDocumentResult& result, OperationOptions&, bool lock,
+                ManagedDocumentResult& previousMdr);
 
   Result replace(transaction::Methods*, velocypack::Slice newSlice,
-                 ManagedDocumentResult& result, OperationOptions&,
-                 bool lock, ManagedDocumentResult& previousMdr);
+                 ManagedDocumentResult& result, OperationOptions&, bool lock,
+                 ManagedDocumentResult& previousMdr);
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                OperationOptions& options,
-                bool lock, ManagedDocumentResult& previousMdr,
+                OperationOptions& options, bool lock, ManagedDocumentResult& previousMdr,
                 KeyLockInfo* keyLockInfo, std::function<void()> const& cbDuringLock);
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
@@ -358,7 +357,7 @@ class LogicalCollection : public LogicalDataSource {
 
  protected:
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
-                                            bool detailed, bool forPersistence) const override;
+                                            std::underlying_type<Serialize>::type flags) const override;
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);

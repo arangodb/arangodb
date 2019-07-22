@@ -61,7 +61,7 @@ class WaitGroup {
     std::unique_lock<std::mutex> lock(_mutex);
     _counter--;
     if (_counter == 0) {
-      //lock.unlock();
+      // lock.unlock();
       _conditionVar.notify_all();
     }
   }

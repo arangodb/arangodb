@@ -29,7 +29,6 @@
 #include "Basics/tri-strings.h"
 #include "GeneralServer/GeneralServer.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -61,18 +60,7 @@ RestStatus RestUploadHandler::execute() {
     }
   }
 
-  std::string relativeString;
-  {
-    char* relative = TRI_GetFilename(filename.c_str());
-
-    if (relative == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    relativeString.append(relative);
-    TRI_FreeString(relative);
-  }
-
+  std::string relativeString = TRI_GetFilename(filename);
   arangodb::velocypack::StringRef bodyStr = _request->rawPayload();
   char const* body = bodyStr.data();
   size_t bodySize = bodyStr.size();
@@ -129,16 +117,13 @@ RestStatus RestUploadHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestUploadHandler::parseMultiPart(char const*& body, size_t& length) {
-  // cast is ok because http requst is required
-  HttpRequest* request = dynamic_cast<HttpRequest*>(_request.get());
-
-  if (request == nullptr) {
+  if (_request->transportType() != Endpoint::TransportType::HTTP) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
 
-  std::string const& bodyStr = request->body();
-  char const* beg = bodyStr.c_str();
-  char const* end = beg + bodyStr.size();
+  VPackStringRef bodyPtr = _request->rawPayload();
+  char const* beg = bodyPtr.data();
+  char const* end = beg + bodyPtr.size();
 
   while (beg < end && (*beg == '\r' || *beg == '\n' || *beg == ' ')) {
     ++beg;

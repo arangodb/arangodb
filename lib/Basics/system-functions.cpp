@@ -25,6 +25,9 @@
 
 #include <chrono>
 #include <thread>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 using namespace arangodb;
 using namespace arangodb::utilities;

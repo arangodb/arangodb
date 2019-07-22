@@ -2,7 +2,7 @@
 @startDocuBlock put_replace_document
 @brief replaces a document
 
-@RESTHEADER{PUT /_api/document/{document-handle},Replace document}
+@RESTHEADER{PUT /_api/document/{document-handle},Replace document, replaceDocument}
 
 @RESTALLBODYPARAM{document,json,required}
 A JSON representation of a single document.

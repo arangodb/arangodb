@@ -31,12 +31,11 @@
 #include <string>
 
 #include "velocypack/velocypack-common.h"
-#include "velocypack/Exception.h"
-#include "velocypack/StringRef.h"
 #include "velocypack/ValueType.h"
 
 namespace arangodb {
 namespace velocypack {
+class StringRef;
 
 class Value {
   // Convenience class for more compact notation
@@ -80,13 +79,7 @@ class Value {
 #endif
 
   // creates a Value with the specified type Array or Object
-  explicit Value(ValueType t, bool allowUnindexed = false)
-      : _valueType(t), _cType(CType::None), _unindexed(allowUnindexed) {
-    if (allowUnindexed &&
-        (_valueType != ValueType::Array && _valueType != ValueType::Object)) {
-      throw Exception(Exception::InvalidValueType, "Expecting compound type");
-    }
-  }
+  explicit Value(ValueType t, bool allowUnindexed = false);
 
   explicit Value(bool b, ValueType t = ValueType::Bool) noexcept
       : _valueType(t), _cType(CType::Bool), _unindexed(false) {
@@ -207,9 +200,8 @@ class ValuePair {
 
   explicit ValuePair(uint64_t size, ValueType type = ValueType::Binary) noexcept
       : _start(nullptr), _size(size), _type(type) {}
-  
-  explicit ValuePair(StringRef const& value, ValueType type = ValueType::Binary) noexcept
-      : ValuePair(value.data(), value.size(), type) {}
+
+  explicit ValuePair(StringRef const& value, ValueType type = ValueType::Binary) noexcept;
 
   uint8_t const* getStart() const { return _start; }
 

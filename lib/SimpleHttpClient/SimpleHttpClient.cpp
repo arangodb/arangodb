@@ -25,12 +25,15 @@
 
 #include "SimpleHttpClient.h"
 
-#include "ApplicationFeatures/CommunicationPhase.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
+#include "ApplicationFeatures/CommunicationPhase.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+
+#include <boost/algorithm/string.hpp>
 
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
@@ -330,7 +333,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
           this->close();  // this sets the state to IN_CONNECT for a retry
           LOG_TOPIC("e5154", DEBUG, arangodb::Logger::HTTPCLIENT) << _errorMessage;
 
-          std::this_thread::sleep_for(std::chrono::microseconds(5000));
+          std::this_thread::sleep_for(std::chrono::milliseconds(5));
           break;
         }
 
@@ -520,7 +523,7 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
   _writeBuffer.clear();
 
   // append method
-  HttpRequest::appendMethod(method, &_writeBuffer);
+  GeneralRequest::appendMethod(method, &_writeBuffer);
 
   // append location
   std::string const* l = &location;
@@ -576,6 +579,10 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
   }
 
   for (auto const& header : headers) {
+    if (boost::iequals(StaticStrings::ContentLength, header.first)) {
+      continue; // skip content-length header
+    }
+    
     _writeBuffer.appendText(header.first);
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR(": "));
     _writeBuffer.appendText(header.second);

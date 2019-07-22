@@ -25,16 +25,24 @@
 #ifndef ARANGODB_BASICS_UTF8HELPER_H
 #define ARANGODB_BASICS_UTF8HELPER_H 1
 
-#include <velocypack/StringRef.h>
-
+#include <set>
 #include "Basics/Common.h"
+
+#include <velocypack/StringRef.h>
 
 #include <unicode/coll.h>
 #include <unicode/regex.h>
 #include <unicode/ustring.h>
+#include <unicode/locid.h>
 
 namespace arangodb {
 namespace basics {
+
+#ifdef _WIN32
+std::wstring toWString(std::string const& validUTF8String);
+std::string fromWString(wchar_t const* validUTF16String, std::size_t size);
+std::string fromWString(std::wstring const& validUTF16String);
+#endif
 
 class Utf8Helper {
   Utf8Helper(Utf8Helper const&) = delete;

@@ -237,8 +237,10 @@ Here is how its details work:
   - an example start is marked with *@EXAMPLE_ARANGOSH_OUTPUT* or *@EXAMPLE_ARANGOSH_RUN*
   - the example is named by the string provided in brackets after the above key
   - the output is written to `Documentation/Examples/<name>.generated`
+  - if your example depends on a storage engine, prepend `<name>` with `_rocksdb` or `_mmfiles` to run it against such a server
   - examples end with *@END_EXAMPLE_[OUTPUT|RUN|AQL]*
   - all code in between is executed as javascript in the **arangosh** while talking to a valid **arangod**.
+  - you should strive to group your examples by naming them with a common prefix per topic.
   You may inspect the generated js code in `/tmp/arangosh.examples.js`
 
 ## OUTPUT, RUN and AQL specifics
@@ -336,10 +338,11 @@ Similar  to RESTBODYPARAM - just what the server will reply with.
 
 ## RESTHEADER
 
-Up to 2 parameters.
+Up to 3 parameters.
 * *[GET|POST|PUT|DELETE] <url>* url should start with a */*, it may contain parameters in curly brackets, that
   have to be documented in subsequent *RESTURLPARAM* tokens in the *RESTURLPARAMETERS* section.
-
+* long description
+* operationId - this is a uniq string that identifies the source parameter for this rest route. It defaults to a de-spaced `long description` - if set once it shouldn't be changed anymore.
 
 ## RESTURLPARAM
 

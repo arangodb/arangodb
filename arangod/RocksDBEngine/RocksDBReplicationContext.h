@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Indexes/IndexIterator.h"
+#include "Replication/SyncerId.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "Transaction/Methods.h"
@@ -118,7 +119,7 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
 
-  RocksDBReplicationContext(double ttl, std::string const& clientId);
+  RocksDBReplicationContext(double ttl, SyncerId syncerId, TRI_server_id_t clientId);
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const;  // batchId
@@ -202,9 +203,16 @@ class RocksDBReplicationContext {
   /// extend lifetime without using the context
   void extendLifetime(double ttl);
 
-  // buggy clients may not send the serverId
-  std::string const& replicationClientId() const {
+  SyncerId syncerId() const {
+    return _syncerId;
+  }
+
+  TRI_server_id_t replicationClientServerId() const {
     return _clientId;
+  }
+
+  std::string const& clientInfo() const {
+    return _clientInfo;
   }
 
  private:
@@ -216,9 +224,11 @@ class RocksDBReplicationContext {
   void releaseDumpIterator(CollectionIterator*);
 
  private:
-  mutable Mutex _contextLock;
-  std::string _clientId;
   TRI_voc_tick_t const _id;  // batch id
+  mutable Mutex _contextLock;
+  SyncerId const _syncerId;
+  TRI_server_id_t const _clientId;
+  std::string const _clientInfo;
 
   uint64_t _snapshotTick;  // tick in WAL from _snapshot
   rocksdb::Snapshot const* _snapshot;

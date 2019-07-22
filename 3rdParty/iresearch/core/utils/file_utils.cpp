@@ -732,7 +732,7 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
 // --SECTION--                                                        path utils
 // -----------------------------------------------------------------------------
 
-bool mkdir(const file_path_t path) NOEXCEPT {
+bool mkdir(const file_path_t path, bool createNew) NOEXCEPT {
   bool result;
 
   if (!exists_directory(result, path)) {
@@ -740,21 +740,18 @@ bool mkdir(const file_path_t path) NOEXCEPT {
   }
 
   if (result) {
-    return true; // already exists
+    return !createNew;  // directory already exists.
   }
 
-  if (!exists(result, path) || result) {
-    return false; // failure checking existence or something else exists with the same name
-  }
+  // we do not check existence of anything other than directory, as race conditions will arise on second check. Just rely on OS file manager to deal with all name conflicts.
 
   auto parts = path_parts(path);
 
   if (!parts.dirname.empty()) {
     // need a null terminated string for use with ::mkdir()/::CreateDirectoryW()
     std::basic_string<std::remove_pointer<file_path_t>::type> parent(parts.dirname);
-
-    if (!mkdir(parent.c_str())) {
-      return false; // failed to create parent
+    if (!mkdir(parent.c_str(), false)) { // intermediate path parts can exist, this is ok anyway
+      return false;
     }
   }
 
@@ -768,16 +765,18 @@ bool mkdir(const file_path_t path) NOEXCEPT {
     // '\\?\' cannot be used with relative paths
     if (!abs) {
       if (0 == ::CreateDirectoryW(path, nullptr)) {
-        typedef std::remove_pointer<file_path_t>::type char_t;
-        auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-        std::string utf8path;
+        if (::GetLastError() != ERROR_ALREADY_EXISTS || createNew) {
+          // failed to create directory  or directory exist, but we are asked to perform creation
+          typedef std::remove_pointer<file_path_t>::type char_t;
+          auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true);  // utf8 internal and external
+          std::string utf8path;
 
-        irs::locale_utils::append_external<char_t>(utf8path, path, locale);
-        IR_FRMT_ERROR("Failed to create path: '%s', error %d", utf8path.c_str(), GetLastError());
-
-        return false;
+          irs::locale_utils::append_external<char_t>(utf8path, path, locale);
+          IR_FRMT_ERROR("Failed to create path: '%s', error %d",
+                        utf8path.c_str(), GetLastError());
+          return false;
+        }
       }
-
       return true;
     }
 
@@ -790,24 +789,25 @@ bool mkdir(const file_path_t path) NOEXCEPT {
     );
 
     if (0 == ::CreateDirectoryW(dirname.c_str(), nullptr)) {
-      typedef std::remove_pointer<file_path_t>::type char_t;
-      auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-      std::string utf8path;
+      if (::GetLastError() != ERROR_ALREADY_EXISTS || createNew) {
+        // failed to create directory  or directory exist, but we are asked to perform creation
+        typedef std::remove_pointer<file_path_t>::type char_t;
+        auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
+        std::string utf8path;
 
-      irs::locale_utils::append_external<char_t>(utf8path, path, locale);
-      IR_FRMT_ERROR("Failed to create path: '%s', error %d", utf8path.c_str(), GetLastError());
+        irs::locale_utils::append_external<char_t>(utf8path, path, locale);
+        IR_FRMT_ERROR("Failed to create path: '%s', error %d", utf8path.c_str(), GetLastError());
 
-      return false;
+        return false;
+      }
     }
   #else
     if (0 != ::mkdir(path, S_IRWXU|S_IRWXG|S_IRWXO)) {
-      if (errno == EEXIST && exists_directory(result, path) && result) {
-        return true;
+      if (errno != EEXIST || createNew) {
+        // failed to create directory  or directory exist, but we are asked to perform creation
+        IR_FRMT_ERROR("Failed to create path: '%s', error %d", path, errno);
+        return false;
       }
-
-      IR_FRMT_ERROR("Failed to create path: '%s', error %d", path, errno);
-
-      return false;
     }
   #endif
 

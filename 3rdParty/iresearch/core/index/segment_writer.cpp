@@ -39,18 +39,26 @@
 
 NS_ROOT
 
-segment_writer::column::column(
+segment_writer::stored_column::stored_column(
     const string_ref& name, 
-    columnstore_writer& columnstore) {
-  this->name.assign(name.c_str(), name.size());
-  this->handle = columnstore.push_column();
+    columnstore_writer& columnstore,
+    bool cache
+) : name(name.c_str(), name.size()) {
+  if (!cache) {
+    std::tie(id, writer) = columnstore.push_column();
+  } else {
+    writer = [this](irs::doc_id_t doc)->columnstore_writer::column_output& {
+      this->stream.prepare(doc);
+      return this->stream;
+    };
+  }
 }
 
 doc_id_t segment_writer::begin(
     const update_context& ctx,
     size_t reserve_rollback_extra /*= 0*/
 ) {
-  assert(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1 < type_limits<type_t::doc_id_t>::eof());
+  assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
   valid_ = true;
   norm_fields_.clear(); // clear norm fields
 
@@ -66,64 +74,82 @@ doc_id_t segment_writer::begin(
 
   docs_context_.emplace_back(ctx);
 
-  return doc_id_t(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1); // -1 for 0-based offset
+  return doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
 }
 
-segment_writer::ptr segment_writer::make(directory& dir) {
-  // can't use make_unique becuase of the private constructor
-  return memory::maker<segment_writer>::make(dir);
+segment_writer::ptr segment_writer::make(directory& dir, const comparer* comparator) {
+  return memory::maker<segment_writer>::make(dir, comparator);
 }
 
 size_t segment_writer::memory_active() const NOEXCEPT {
   const auto docs_mask_extra = docs_mask_.size() % sizeof(bitvector::word_t)
-      ? sizeof(bitvector::word_t) : 0;
+    ? sizeof(bitvector::word_t) : 0;
+
+  const auto column_cache_active = std::accumulate(
+    columns_.begin(), columns_.end(), size_t(0),
+    [](size_t lhs, const std::pair<const hashed_string_ref, stored_column>& rhs) NOEXCEPT {
+      return lhs + rhs.second.stream.memory_active();
+  });
 
   return (docs_context_.size() * sizeof(update_contexts::value_type))
     + (docs_mask_.size() / 8 + docs_mask_extra) // FIXME too rough
-    + fields_.memory_active();
+    + fields_.memory_active()
+    + sort_.stream.memory_active()
+    + column_cache_active;
 }
 
 size_t segment_writer::memory_reserved() const NOEXCEPT {
   const auto docs_mask_extra = docs_mask_.size() % sizeof(bitvector::word_t)
-      ? sizeof(bitvector::word_t) : 0;
+    ? sizeof(bitvector::word_t) : 0;
+
+  const auto column_cache_reserved = std::accumulate(
+    columns_.begin(), columns_.end(), size_t(0),
+    [](size_t lhs, const std::pair<const hashed_string_ref, stored_column>& rhs) NOEXCEPT {
+      return lhs + rhs.second.stream.memory_reserved();
+  });
 
   return sizeof(segment_writer)
     + (sizeof(update_contexts::value_type) * docs_context_.size())
     + (sizeof(bitvector) + docs_mask_.size() / 8 + docs_mask_extra)
-    + fields_.memory_reserved();
+    + fields_.memory_reserved()
+    + sort_.stream.memory_reserved()
+    + column_cache_reserved;
 }
 
 bool segment_writer::remove(doc_id_t doc_id) {
-  if (!type_limits<type_t::doc_id_t>::valid(doc_id)
-      || (doc_id - type_limits<type_t::doc_id_t>::min()) >= docs_cached()
-      || docs_mask_.test(doc_id - type_limits<type_t::doc_id_t>::min())) {
+  if (!doc_limits::valid(doc_id)
+      || (doc_id - doc_limits::min()) >= docs_cached()
+      || docs_mask_.test(doc_id - doc_limits::min())) {
     return false;
   }
 
-  docs_mask_.set(doc_id - type_limits<type_t::doc_id_t>::min());
+  docs_mask_.set(doc_id - doc_limits::min());
 
   return true;
 }
 
-segment_writer::segment_writer(directory& dir) NOEXCEPT
-  : dir_(dir), initialized_(false) {
+segment_writer::segment_writer(
+    directory& dir,
+    const comparer* comparator
+) NOEXCEPT
+  : fields_(comparator),
+    dir_(dir),
+    initialized_(false) {
 }
 
 bool segment_writer::index(
     const hashed_string_ref& name,
-    token_stream& tokens,
-    const flags& features) {
+    const doc_id_t doc,
+    const flags& features,
+    token_stream& tokens) {
   REGISTER_TIMER_DETAILED();
 
-  assert(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1 < type_limits<type_t::doc_id_t>::eof()); // user should check return of begin() != eof()
-  auto doc_id =
-    doc_id_t(docs_cached() + type_limits<type_t::doc_id_t>::min() - 1); // -1 for 0-based offset
-  auto& slot = fields_.get(name);
+  auto& slot = fields_.emplace(name);
   auto& slot_features = slot.meta().features;
 
   // invert only if new field features are a subset of slot features
   if ((slot.empty() || features.is_subset_of(slot_features)) &&
-      slot.invert(tokens, slot.empty() ? features : slot_features, doc_id)) {
+      slot.invert(tokens, slot.empty() ? features : slot_features, doc)) {
     if (features.check<norm>()) {
       norm_fields_.insert(&slot);
     }
@@ -135,13 +161,19 @@ bool segment_writer::index(
   return false;
 }
 
+columnstore_writer::column_output& segment_writer::sorted_stream(const doc_id_t doc_id) {
+  sort_.stream.prepare(doc_id);
+  return sort_.stream;
+}
+
 columnstore_writer::column_output& segment_writer::stream(
-    doc_id_t doc_id, const hashed_string_ref& name) {
+    const hashed_string_ref& name,
+    const doc_id_t doc_id) {
   REGISTER_TIMER_DETAILED();
 
-  static auto generator = [](
+  auto generator = [](
       const hashed_string_ref& key,
-      const column& value) NOEXCEPT {
+      const stored_column& value) NOEXCEPT {
     // reuse hash but point ref at value
     return hashed_string_ref(key.hash(), value.name);
   };
@@ -149,11 +181,11 @@ columnstore_writer::column_output& segment_writer::stream(
   // replace original reference to 'name' provided by the caller
   // with a reference to the cached copy in 'value'
   return map_utils::try_emplace_update_key(
-    columns_,                                     // container
-    generator,                                    // key generator
-    name,                                         // key
-    name, *col_writer_                            // value
-  ).first->second.handle.second(doc_id);
+    columns_,                                           // container
+    generator,                                          // key generator
+    name,                                               // key
+    name, *col_writer_, nullptr != fields_.comparator() // value // FIXME
+  ).first->second.writer(doc_id);
 }
 
 void segment_writer::finish() {
@@ -173,14 +205,14 @@ void segment_writer::finish() {
 void segment_writer::flush_column_meta(const segment_meta& meta) {
   struct less_t {
     bool operator()(
-        const column* lhs,
-        const column* rhs
+        const stored_column* lhs,
+        const stored_column* rhs
     ) const NOEXCEPT {
       return lhs->name < rhs->name;
-    };
+    }
   };
 
-  std::set<const column*, less_t> columns;
+  std::set<const stored_column*, less_t> columns;
 
   // ensure columns are sorted
   for (auto& entry : columns_) {
@@ -191,7 +223,7 @@ void segment_writer::flush_column_meta(const segment_meta& meta) {
   try {
     col_meta_writer_->prepare(dir_, meta);
     for (auto& column: columns) {
-      col_meta_writer_->write(column->name, column->handle.first);
+      col_meta_writer_->write(column->name, column->id);
     }
     col_meta_writer_->flush();
   } catch (...) {
@@ -201,11 +233,12 @@ void segment_writer::flush_column_meta(const segment_meta& meta) {
   }
 }
 
-void segment_writer::flush_fields() {
+void segment_writer::flush_fields(const doc_map& docmap) {
   flush_state state;
   state.dir = &dir_;
   state.doc_count = docs_cached();
   state.name = seg_name_;
+  state.docmap = fields_.comparator() && !docmap.empty() ? &docmap : nullptr;
 
   try {
     fields_.flush(*field_writer_, state);
@@ -224,10 +257,8 @@ size_t segment_writer::flush_doc_mask(const segment_meta &meta) {
        doc_id < doc_id_end;
        ++doc_id) {
     if (docs_mask_.test(doc_id)) {
-      assert(size_t(integer_traits<doc_id_t>::const_max) >= doc_id + type_limits<type_t::doc_id_t>::min());
-      docs_mask.emplace(
-        doc_id_t(doc_id + type_limits<type_t::doc_id_t>::min())
-      );
+      assert(size_t(integer_traits<doc_id_t>::const_max) >= doc_id + doc_limits::min());
+      docs_mask.emplace(doc_id_t(doc_id + doc_limits::min()));
     }
   }
 
@@ -242,15 +273,40 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
 
   auto& meta = segment.meta;
 
-  // flush columnstore and columns indices
-  if (col_writer_->commit() && !columns_.empty()) {
-    flush_column_meta(meta);
+  doc_map docmap;
+
+  if (fields_.comparator()) {
+    std::tie(docmap, sort_.id) = sort_.stream.flush(
+      *col_writer_,
+      doc_id_t(docs_cached()),
+      *fields_.comparator()
+    );
+
+    irs::sorted_column::flush_buffer_t buffer;
+    for (auto& column_entry : columns_) {
+      auto& column = column_entry.second;
+
+      if (!field_limits::valid(column.id)) {
+        // cached column
+        column.id = column.stream.flush(*col_writer_, docmap, buffer);
+      }
+    }
+
+    meta.sort = sort_.id; // store sorted column id in segment meta
+  }
+
+  // flush columnstore
+  if (col_writer_->commit()) {
+    if (!columns_.empty()) {
+      flush_column_meta(meta);
+    }
+
     meta.column_store = true;
   }
 
   // flush fields metadata & inverted data
   if (docs_cached()) {
-    flush_fields();
+    flush_fields(docmap);
   }
 
   // write non-empty document mask
@@ -272,11 +328,13 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
 
 void segment_writer::reset() NOEXCEPT {
   initialized_ = false;
+  tick_ = 0;
   dir_.clear_tracked();
   docs_context_.clear();
   docs_mask_.clear();
   fields_.reset();
   columns_.clear();
+  sort_.stream.clear();
 
   if (col_writer_) {
     col_writer_->rollback();

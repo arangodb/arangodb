@@ -25,6 +25,7 @@
 #include "UpdateCollection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
@@ -76,21 +77,36 @@ UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescriptio
   }
   TRI_ASSERT(desc.has(FOLLOWERS_TO_DROP));
 
+  TRI_ASSERT(desc.has(OLD_CURRENT_COUNTER));
+
   if (!error.str().empty()) {
-    LOG_TOPIC("a6e4c", ERR, Logger::MAINTENANCE) << "UpdateCollection: " << error.str();
+    LOG_TOPIC("a6e4c", ERR, Logger::MAINTENANCE)
+        << "UpdateCollection: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
 }
 
 void handleLeadership(LogicalCollection& collection, std::string const& localLeader,
-                      std::string const& plannedLeader, std::string const& followersToDrop) {
+                      std::string const& plannedLeader,
+                      std::string const& followersToDrop, std::string const& databaseName,
+                      uint64_t oldCounter, MaintenanceFeature& feature) {
   auto& followers = collection.followers();
 
   if (plannedLeader.empty()) {   // Planned to lead
     if (!localLeader.empty()) {  // We were not leader, assume leadership
-      followers->setTheLeader(std::string());
-      followers->clear();
+      // This will block the thread until we fetched a new current version
+      // in maintenance main thread.
+      feature.waitForLargerCurrentCounter(oldCounter);
+      auto currentInfo = ClusterInfo::instance()->getCollectionCurrent(
+          databaseName, std::to_string(collection.planId()));
+      if (currentInfo == nullptr) {
+        // Collection has been dropped we cannot continue here.
+        return;
+      }
+      TRI_ASSERT(currentInfo != nullptr);
+      auto failoverCandidates = currentInfo->failoverCandidates(collection.name());
+      followers->takeOverLeadership(failoverCandidates);
       transaction::cluster::abortFollowerTransactionsOnShard(collection.id());
     } else {
       // If someone (the Supervision most likely) has thrown
@@ -137,6 +153,8 @@ bool UpdateCollection::first() {
   auto const& localLeader = _description.get(LOCAL_LEADER);
   auto const& followersToDrop = _description.get(FOLLOWERS_TO_DROP);
   auto const& props = properties();
+  auto const& oldCounterString = _description.get(OLD_CURRENT_COUNTER);
+  uint64_t oldCounter = basics::StringUtils::uint64(oldCounterString);
 
   try {
     DatabaseGuard guard(database);
@@ -151,7 +169,8 @@ bool UpdateCollection::first() {
           // resignation case is not handled here, since then
           // ourselves does not appear in shards[shard] but only
           // "_" + ourselves.
-          handleLeadership(*coll, localLeader, plannedLeader, followersToDrop);
+          handleLeadership(*coll, localLeader, plannedLeader, followersToDrop,
+                           vocbase.name(), oldCounter, feature());
           _result = Collections::updateProperties(*coll, props, false);  // always a full-update
 
           if (!_result.ok()) {
@@ -172,7 +191,8 @@ bool UpdateCollection::first() {
     std::stringstream error;
 
     error << "action " << _description << " failed with exception " << e.what();
-    LOG_TOPIC("79442", WARN, Logger::MAINTENANCE) << "UpdateCollection: " << error.str();
+    LOG_TOPIC("79442", WARN, Logger::MAINTENANCE)
+        << "UpdateCollection: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
   }
 

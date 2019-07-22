@@ -28,7 +28,6 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Replication/ReplicationFeature.h"
-#include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 
 #include <velocypack/Builder.h>
@@ -74,7 +73,7 @@ void RestClusterHandler::handleAgencyDump() {
 
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isActive() && !_request->user().empty()) {
-    auth::Level lvl = auth::Level::NONE;
+    auth::Level lvl;
     if (af->userManager() != nullptr) {
       lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", true);
     } else {

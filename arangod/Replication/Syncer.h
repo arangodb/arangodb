@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/SyncerId.h"
 #include "Replication/common-defines.h"
 #include "Replication/utilities.h"
 #include "Utils/DatabaseGuard.h"
@@ -122,6 +123,8 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
   };
 
   struct SyncerState {
+    SyncerId syncerId;
+
     /// @brief configuration
     ReplicationApplierConfiguration applier;
 
@@ -179,6 +182,8 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
 
   // TODO worker-safety
   virtual bool isAborted() const;
+
+  SyncerId syncerId() const noexcept;
 
  protected:
   /// @brief reload all users

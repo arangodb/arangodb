@@ -33,6 +33,7 @@
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 
 #include <velocypack/AttributeTranslator.h>
@@ -43,6 +44,13 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
+
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 extern "C" {
 unsigned long long XXH64(const void* input, size_t length, unsigned long long seed);
@@ -58,6 +66,7 @@ static arangodb::velocypack::StringRef const cidRef("cid");
 
 static std::unique_ptr<VPackAttributeTranslator> translator;
 static std::unique_ptr<VPackCustomTypeHandler>customTypeHandler;
+static VPackOptions optionsWithUniquenessCheck;
 
 template<bool useUtf8, typename Comparator>
 int compareObjects(VPackSlice const& lhs, 
@@ -197,6 +206,9 @@ void VelocyPackHelper::initialize() {
   // allow dumping of Object attributes in "arbitrary" order (i.e. non-sorted
   // order)
   VPackOptions::Defaults.dumpAttributesInIndexOrder = false;
+  
+  ::optionsWithUniquenessCheck = VPackOptions::Defaults;
+  ::optionsWithUniquenessCheck.checkAttributeUniqueness = true;
 
   // run quick selfs test with the attribute translator
   TRI_ASSERT(VPackSlice(::translator->translate(StaticStrings::KeyString)).getUInt() ==
@@ -230,6 +242,11 @@ void VelocyPackHelper::disableAssemblerFunctions() {
 /// @brief return the (global) attribute translator instance
 arangodb::velocypack::AttributeTranslator* VelocyPackHelper::getTranslator() {
   return ::translator.get();
+}
+
+/// @brief return the (global) attribute translator instance
+arangodb::velocypack::Options* VelocyPackHelper::optionsWithUniquenessCheck() {
+  return &::optionsWithUniquenessCheck;
 }
 
 bool VelocyPackHelper::AttributeSorterUTF8::operator()(std::string const& l,
@@ -283,7 +300,7 @@ size_t VelocyPackHelper::VPackStringHash::operator()(VPackSlice const& slice) co
 
 bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs,
                                               VPackSlice const& rhs) const {
-  return VelocyPackHelper::compare(lhs, rhs, false, _options) == 0;
+  return VelocyPackHelper::equal(lhs, rhs, false, _options);
 }
 
 static inline int8_t TypeWeight(VPackSlice& slice) {
@@ -468,7 +485,7 @@ void VelocyPackHelper::ensureStringValue(VPackSlice const& slice, std::string co
     arangodb::velocypack::Slice slice, std::string const& key,
     arangodb::velocypack::StringRef const& defaultValue) noexcept {
   if (slice.isExternal()) {
-    slice = arangodb::velocypack::Slice(slice.getExternal());
+    slice = arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
   }
 
   if (!slice.isObject() || !slice.hasKey(key)) {
@@ -495,7 +512,7 @@ std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
 std::string VelocyPackHelper::getStringValue(VPackSlice slice, char const* name,
                                              std::string const& defaultValue) {
   if (slice.isExternal()) {
-    slice = VPackSlice(slice.getExternal());
+    slice = VPackSlice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
   }
   TRI_ASSERT(slice.isObject());
   if (!slice.hasKey(name)) {
@@ -514,7 +531,7 @@ std::string VelocyPackHelper::getStringValue(VPackSlice slice, char const* name,
 std::string VelocyPackHelper::getStringValue(VPackSlice slice, std::string const& name,
                                              std::string const& defaultValue) {
   if (slice.isExternal()) {
-    slice = VPackSlice(slice.getExternal());
+    slice = VPackSlice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
   }
   TRI_ASSERT(slice.isObject());
   if (!slice.hasKey(name)) {
@@ -660,6 +677,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     return false;
   }
 
+#ifndef _WIN32
   if (syncFile) {
     // also sync target directory
     std::string const dir = TRI_Dirname(filename.c_str());
@@ -667,21 +685,22 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     if (fd < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       LOG_TOPIC("fd84e", WARN, arangodb::Logger::FIXME)
-          << "cannot sync directory '" << tmp << "': " << TRI_LAST_ERROR_STR;
+          << "cannot sync directory '" << filename << "': " << TRI_LAST_ERROR_STR;
     } else {
       if (fsync(fd) < 0) {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC("6b8f6", WARN, arangodb::Logger::FIXME)
-            << "cannot sync directory '" << tmp << "': " << TRI_LAST_ERROR_STR;
+            << "cannot sync directory '" << filename << "': " << TRI_LAST_ERROR_STR;
       }
       res = TRI_CLOSE(fd);
       if (res < 0) {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC("7ceee", WARN, arangodb::Logger::FIXME)
-            << "cannot close directory '" << dir << "': " << TRI_LAST_ERROR_STR;
+            << "cannot close directory '" << filename << "': " << TRI_LAST_ERROR_STR;
       }
     }
   }
+#endif
 
   return true;
 }

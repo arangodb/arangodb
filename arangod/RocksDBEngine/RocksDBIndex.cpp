@@ -63,7 +63,6 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,
       _objectId(::ensureObjectId(objectId)),
       _cf(cf),
       _cache(nullptr),
-      _cachePresent(false),
       _cacheEnabled(useCache && !collection.system() && CacheManagerFeature::MANAGER != nullptr) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
 
@@ -83,7 +82,6 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,
       _objectId(::ensureObjectId(basics::VelocyPackHelper::stringUInt64(info.get("objectId")))),
       _cf(cf),
       _cache(nullptr),
-      _cachePresent(false),
       _cacheEnabled(useCache && !collection.system() && CacheManagerFeature::MANAGER != nullptr) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
 
@@ -143,7 +141,7 @@ void RocksDBIndex::load() {
 void RocksDBIndex::unload() {
   if (useCache()) {
     destroyCache();
-    TRI_ASSERT(!_cachePresent);
+    TRI_ASSERT(_cache.get() == nullptr);
   }
 }
 
@@ -159,7 +157,7 @@ void RocksDBIndex::toVelocyPack(VPackBuilder& builder,
 }
 
 void RocksDBIndex::createCache() {
-  if (!_cacheEnabled || _cachePresent || _collection.isAStub() ||
+  if (!_cacheEnabled || _cache != nullptr || _collection.isAStub() ||
       ServerState::instance()->isCoordinator()) {
     // we leave this if we do not need the cache
     // or if cache already created
@@ -171,12 +169,11 @@ void RocksDBIndex::createCache() {
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   LOG_TOPIC("49e6c", DEBUG, Logger::CACHE) << "Creating index cache";
   _cache = CacheManagerFeature::MANAGER->createCache(cache::CacheType::Transactional);
-  _cachePresent = (_cache.get() != nullptr);
   TRI_ASSERT(_cacheEnabled);
 }
 
 void RocksDBIndex::destroyCache() {
-  if (!_cachePresent) {
+  if (!_cache) {
     return;
   }
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
@@ -185,7 +182,6 @@ void RocksDBIndex::destroyCache() {
   LOG_TOPIC("b5d85", DEBUG, Logger::CACHE) << "Destroying index cache";
   CacheManagerFeature::MANAGER->destroyCache(_cache);
   _cache.reset();
-  _cachePresent = false;
 }
 
 Result RocksDBIndex::drop() {
@@ -200,13 +196,12 @@ Result RocksDBIndex::drop() {
                                    prefixSameAsStart, useRangeDelete);
 
   // Try to drop the cache as well.
-  if (_cachePresent) {
+  if (_cache) {
     try {
       TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
       CacheManagerFeature::MANAGER->destroyCache(_cache);
       // Reset flag
       _cache.reset();
-      _cachePresent = false;
     } catch (...) {
     }
   }
@@ -232,7 +227,7 @@ void RocksDBIndex::afterTruncate(TRI_voc_tick_t) {
   if (_cacheEnabled) {
     destroyCache();
     createCache();
-    TRI_ASSERT(_cachePresent);
+    TRI_ASSERT(_cache.get() != nullptr);
   }
 }  
 

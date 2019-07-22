@@ -28,25 +28,11 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
-
-std::string GeneralRequest::translateVersion(ProtocolVersion version) {
-  switch (version) {
-    case ProtocolVersion::VST_1_1:
-      return "VST/1.1";
-    case ProtocolVersion::VST_1_0:
-      return "VST/1.0";
-    case ProtocolVersion::HTTP_1_1:
-      return "HTTP/1.1";
-    case ProtocolVersion::HTTP_1_0:
-      return "HTTP/1.0";
-    case ProtocolVersion::UNKNOWN:
-    default: { return "HTTP/1.0"; }
-  }
-}
 
 std::string GeneralRequest::translateMethod(RequestType method) {
   switch (method) {
@@ -70,15 +56,6 @@ std::string GeneralRequest::translateMethod(RequestType method) {
 
     case RequestType::PUT:
       return "PUT";
-
-    case RequestType::VSTREAM_CRED:
-      return "CRED";
-
-    case RequestType::VSTREAM_REGISTER:
-      return "REGISTER";
-
-    case RequestType::VSTREAM_STATUS:
-      return "STATUS";
 
     case RequestType::ILLEGAL:
       LOG_TOPIC("62a53", WARN, arangodb::Logger::FIXME)
@@ -106,12 +83,6 @@ rest::RequestType GeneralRequest::translateMethod(std::string const& method) {
     return RequestType::POST;
   } else if (methodString == "PUT") {
     return RequestType::PUT;
-  } else if (methodString == "CRED") {
-    return RequestType::VSTREAM_CRED;
-  } else if (methodString == "REGISTER") {
-    return RequestType::VSTREAM_REGISTER;
-  } else if (methodString == "STATUS") {
-    return RequestType::VSTREAM_STATUS;
   }
 
   return RequestType::ILLEGAL;
@@ -141,9 +112,6 @@ rest::RequestType GeneralRequest::findRequestType(char const* ptr, size_t const 
       if (ptr[0] == 'h' && ptr[1] == 'e' && ptr[2] == 'a' && ptr[3] == 'd') {
         return RequestType::HEAD;
       }
-      if (ptr[0] == 'c' && ptr[1] == 'r' && ptr[2] == 'e' && ptr[3] == 'd') {
-        return RequestType::VSTREAM_CRED;
-      }
       break;
 
     case 5:
@@ -157,23 +125,12 @@ rest::RequestType GeneralRequest::findRequestType(char const* ptr, size_t const 
           ptr[4] == 't' && ptr[5] == 'e') {
         return RequestType::DELETE_REQ;
       }
-      if (ptr[0] == 's' && ptr[1] == 't' && ptr[2] == 'a' && ptr[3] == 't' &&
-          ptr[4] == 'u' && ptr[5] == 's') {
-        return RequestType::VSTREAM_STATUS;
-      }
       break;
 
     case 7:
       if (ptr[0] == 'o' && ptr[1] == 'p' && ptr[2] == 't' && ptr[3] == 'i' &&
           ptr[4] == 'o' && ptr[5] == 'n' && ptr[6] == 's') {
         return RequestType::OPTIONS;
-      }
-      break;
-
-    case 8:
-      if (ptr[0] == 'r' && ptr[1] == 'e' && ptr[2] == 'g' && ptr[3] == 'i' &&
-          ptr[4] == 's' && ptr[5] == 't' && ptr[6] == 'e' && ptr[7] == 'r') {
-        return RequestType::VSTREAM_REGISTER;
       }
       break;
   }
@@ -204,12 +161,9 @@ void GeneralRequest::setRequestContext(RequestContext* requestContext, bool isRe
   _isRequestContextOwner = isRequestContextOwner;
 }
 
-void GeneralRequest::setFullUrl(char const* begin, char const* end) {
-  TRI_ASSERT(begin != nullptr);
-  TRI_ASSERT(end != nullptr);
-  TRI_ASSERT(begin <= end);
-
-  _fullUrl = std::string(begin, end - begin);
+void GeneralRequest::addSuffix(std::string part) {
+  // part will not be URL-decoded here!
+  _suffixes.emplace_back(std::move(part));
 }
 
 std::vector<std::string> GeneralRequest::decodedSuffixes() const {
@@ -220,11 +174,6 @@ std::vector<std::string> GeneralRequest::decodedSuffixes() const {
     result.emplace_back(StringUtils::urlDecodePath(it));
   }
   return result;
-}
-
-void GeneralRequest::addSuffix(std::string&& part) {
-  // part will not be URL-decoded here!
-  _suffixes.emplace_back(std::move(part));
 }
 
 std::string const& GeneralRequest::header(std::string const& key, bool& found) const {
@@ -294,4 +243,9 @@ double GeneralRequest::parsedValue(std::string const& key, double valueNotFound)
   }
   return valueNotFound;
 }
+  
+std::shared_ptr<VPackBuilder> GeneralRequest::toVelocyPackBuilderPtr() {
+  auto* opts = VelocyPackHelper::optionsWithUniquenessCheck();
+  return std::make_shared<VPackBuilder>(payload(opts), opts);
+};
 }  // namespace arangodb

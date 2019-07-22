@@ -245,13 +245,13 @@ Task::Task(std::string const& id, std::string const& name, TRI_vocbase_t& vocbas
 Task::~Task() {}
 
 void Task::setOffset(double offset) {
-  _offset = std::chrono::microseconds(static_cast<long long>(offset * 1000000));
+  _offset = std::chrono::milliseconds(static_cast<long long>(offset * 1000));
   _periodic.store(false);
 }
 
 void Task::setPeriod(double offset, double period) {
-  _offset = std::chrono::microseconds(static_cast<long long>(offset * 1000000));
-  _interval = std::chrono::microseconds(static_cast<long long>(period * 1000000));
+  _offset = std::chrono::milliseconds(static_cast<long long>(offset * 1000));
+  _interval = std::chrono::milliseconds(static_cast<long long>(period * 1000));
   _periodic.store(true);
 }
 
@@ -262,9 +262,7 @@ void Task::setParameter(std::shared_ptr<arangodb::velocypack::Builder> const& pa
 void Task::setUser(std::string const& user) { _user = user; }
 
 std::function<void(bool cancelled)> Task::callbackFunction() {
-  auto self = shared_from_this();
-
-  return [self, this](bool cancelled) {
+  return [self = shared_from_this(), this](bool cancelled) {
     if (cancelled) {
       MUTEX_LOCKER(guard, _tasksLock);
 

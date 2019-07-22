@@ -34,6 +34,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterInfo.h"
@@ -368,7 +369,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
     id = getPersistedId();
     LOG_TOPIC("db3ce", DEBUG, Logger::CLUSTER) << "Restarting with persisted UUID " << id;
   }
-  _id = id;
+  setId(id);
   _myEndpoint = myEndpoint;
   _advertisedEndpoint = advEndpoint;
   TRI_ASSERT(!_myEndpoint.empty());
@@ -553,7 +554,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
 
   // coordinator is already/still registered from an previous unclean shutdown;
   // must establish a new short ID
-  bool forceChangeShortId = (!res.successful() && isCoordinator(role));
+  bool forceChangeShortId = isCoordinator(role);
 
   std::string targetIdPath = "Target/" + latestIdKey;
   std::string targetUrl = "Target/MapUniqueToShortID/" + _id;
@@ -625,7 +626,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
 
     preconditions.push_back(*(latestIdPrecondition.get()));
     preconditions.push_back(AgencyPrecondition(targetUrl, AgencyPrecondition::Type::EMPTY,
-                                               !forceChangeShortId));
+                                               mapSlice.isNone()));
 
     AgencyWriteTransaction trx(operations, preconditions);
     result = comm.sendTransactionWithFailover(trx, 0.0);
@@ -690,7 +691,7 @@ void ServerState::setRole(ServerState::RoleEnum role) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ServerState::getId() const {
-  READ_LOCKER(readLocker, _lock);
+  std::lock_guard<std::mutex> guard(_idLock);
   return _id;
 }
 
@@ -703,7 +704,7 @@ void ServerState::setId(std::string const& id) {
     return;
   }
 
-  WRITE_LOCKER(writeLocker, _lock);
+  std::lock_guard<std::mutex> guard(_idLock);
   _id = id;
 }
 

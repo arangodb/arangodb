@@ -819,10 +819,53 @@ AstNode* Ast::createNodeUnaryOperator(AstNodeType type, AstNode const* operand) 
 /// @brief create an AST binary operator node
 AstNode* Ast::createNodeBinaryOperator(AstNodeType type, AstNode const* lhs,
                                        AstNode const* rhs) {
+  // do a bit of normalization here, so that attribute accesses are normally
+  // on the left side of a comparison. this may allow future simplifications
+  // of code that check filter conditions
+  // note that there will still be cases in which both sides of the comparsion
+  // contain an attribute access, e.g.  doc.value1 == doc.value2
+  bool swap = false;
+  if (type == NODE_TYPE_OPERATOR_BINARY_EQ &&
+      rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && 
+      lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // value == doc.value  =>  doc.value == value
+    swap = true;
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_NE &&
+             rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && 
+             lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // value != doc.value  =>  doc.value != value
+    swap = true;
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_GT &&
+             rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+             lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // value > doc.value  =>  doc.value < value
+    type = NODE_TYPE_OPERATOR_BINARY_LT;
+    swap = true;
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_LT &&
+             rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+             lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // value < doc.value  =>  doc.value > value
+    type = NODE_TYPE_OPERATOR_BINARY_GT;
+    swap = true;
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_GE &&
+             rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+             lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // value >= doc.value  =>  doc.value <= value
+    type = NODE_TYPE_OPERATOR_BINARY_LE;
+    swap = true;
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_LE &&
+             rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+             lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // value <= doc.value  =>  doc.value >= value
+    type = NODE_TYPE_OPERATOR_BINARY_GE;
+    swap = true;
+  }
+
   AstNode* node = createNode(type);
   node->reserve(2);
-  node->addMember(lhs);
-  node->addMember(rhs);
+
+  node->addMember(swap ? rhs : lhs);
+  node->addMember(swap ? lhs : rhs);
 
   // initialize sortedness information (currently used for the IN/NOT IN
   // operators only) for nodes of type ==, < or <=, the bool means if the range
@@ -2499,7 +2542,7 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
       auto member = node->getMemberUnchecked(i);
       VPackSlice rhs = member->computeValue();
 
-      if (arangodb::basics::VelocyPackHelper::compare(lhs, rhs, false, nullptr) == 0) {
+      if (arangodb::basics::VelocyPackHelper::equal(lhs, rhs, false, nullptr)) {
         unique = false;
         break;
       }
@@ -3502,8 +3545,9 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
     node->members.reserve(static_cast<size_t>(it.size()));
 
     while (it.valid()) {
+      auto current = (*it);
       VPackValueLength nameLength;
-      char const* attributeName = it.key().getString(nameLength);
+      char const* attributeName = current.key.getString(nameLength);
 
       if (copyStringValues) {
         // create a copy of the string value
@@ -3513,7 +3557,7 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
 
       node->addMember(
           createNodeObjectElement(attributeName, static_cast<size_t>(nameLength),
-                                  nodeFromVPack(it.value(), copyStringValues)));
+                                  nodeFromVPack(current.value, copyStringValues)));
       it.next();
     }
 

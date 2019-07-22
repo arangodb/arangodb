@@ -32,6 +32,8 @@
 
 #include <velocypack/StringRef.h>
 
+#include <list>
+
 namespace arangodb {
 
 namespace velocypack {
@@ -54,6 +56,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
   enum Direction { FORWARD, BACKWARD };
 
   // TODO: This could be merged with ShortestPathResult
+  //       or become a class to pass around paths
   struct Path {
     std::deque<VertexRef> _vertices;
     std::deque<Edge> _edges;
@@ -64,11 +67,17 @@ class KShortestPathsFinder : public ShortestPathFinder {
     std::deque<double> _weights;
     double _weight;
 
+    // Where this path branched off the previous shortest path
+    // This is an optimization because we only need to consider
+    // spur paths from after the branch point
+    size_t _branchpoint;
+
     void clear() {
       _vertices.clear();
       _edges.clear();
       _weights.clear();
       _weight = 0;
+      _branchpoint = 0;
     }
     size_t length() const { return _vertices.size(); }
     void append(Path const& p, size_t a, size_t b) {
@@ -79,6 +88,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
       // Only append paths where the first vertex of p
       // is the same as the last vertex of this.
       TRI_ASSERT((_vertices.back().equals(p._vertices.front())));
+      TRI_ASSERT(!_weights.empty());
 
       double ew = _weights.back();
       double pw = p._weights.at(a);
@@ -89,7 +99,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
         _weights.emplace_back(ew + (p._weights.at(a) - pw));
       }
       _weight = _weights.back();
-    };
+    }
     // TODO: implement == for EdgeDocumentToken and VertexRef
     // so these things become less cluttery
     bool operator==(Path const& rhs) const {
@@ -98,66 +108,98 @@ class KShortestPathsFinder : public ShortestPathFinder {
         return false;
       }
       for (size_t i = 0; i < _vertices.size(); ++i) {
-        if (!_vertices.at(i).equals(rhs._vertices.at(i))) {
+        if (!_vertices[i].equals(rhs._vertices[i])) {
           return false;
         }
       }
       for (size_t i = 0; i < _edges.size(); ++i) {
-        if (!_edges.at(i).equals(rhs._edges.at(i))) {
+        if (!_edges[i].equals(rhs._edges[i])) {
           return false;
         }
       }
       return true;
     }
   };
-  struct Step {
+
+  //
+  // Datastructures required for Dijkstra
+  //
+  struct DijkstraInfo {
+    VertexRef _vertex;
     Edge _edge;
-    VertexRef _vertex;
-    double _weight;
-
-    Step(Edge const& edge, VertexRef const& vertex, double weight)
-        : _edge(edge), _vertex(vertex), _weight(weight) {}
-  };
-
-  struct FoundVertex {
-    VertexRef _vertex;
     VertexRef _pred;
-    Edge _edge;
     double _weight;
+
+    // If true, we know that the path leading from the centre of the Ball
+    // under consideration to this vertex following the _pred
+    // is the shortest/lowest weight amongst all paths leading to this vertex.
     bool _done;
 
-    explicit FoundVertex(VertexRef const& vertex)
-        : _vertex(vertex), _weight(0), _done(false) {}
-    FoundVertex(VertexRef const& vertex, VertexRef const& pred, Edge&& edge, double weight)
-        : _vertex(vertex), _pred(pred), _edge(std::move(edge)), _weight(weight), _done(false) {}
+    // Interface needed for ShortestPathPriorityQueue
     double weight() const { return _weight; }
+    VertexRef getKey() const { return _vertex; }
     void setWeight(double weight) { _weight = weight; }
-    VertexRef const& getKey() const { return _vertex; }
+
+    DijkstraInfo(VertexRef const& vertex, Edge const&& edge, VertexRef const& pred, double weight)
+      : _vertex(vertex), _edge(std::move(edge)), _pred(pred), _weight(weight), _done(false) {}
+    explicit DijkstraInfo(VertexRef const& vertex)
+      : _vertex(vertex), _weight(0), _done(true) {}
   };
-  typedef ShortestPathPriorityQueue<VertexRef, FoundVertex, double> Frontier;
 
-  // Contains the vertices that were found while searching
-  // for a shortest path between start and end together with
-  // the number of paths leading to that vertex and information
-  // how to trace paths from the vertex from start/to end.
-  typedef std::unordered_map<VertexRef, FoundVertex*> FoundVertices;
+  typedef ShortestPathPriorityQueue<VertexRef, DijkstraInfo, double> Frontier;
 
+  // Dijkstra is run using two Balls, one around the start vertex, one around
+  // the end vertex
   struct Ball {
     VertexRef _centre;
     Direction _direction;
     Frontier _frontier;
 
-    Ball(void) {}
+    Ball() {}
     Ball(VertexRef const& centre, Direction direction)
         : _centre(centre), _direction(direction) {
-      auto v = std::make_unique<FoundVertex>(centre);
-      v->_done = true;
-      _frontier.insert(centre, std::move(v));
+      _frontier.insert(centre, std::make_unique<DijkstraInfo>(centre));
     }
-    ~Ball() {
-      // TODO free all vertices
-    }
+    ~Ball() {}
   };
+
+  //
+  // Caching functionality
+  //
+
+  // one step in the neighbourhood of a vertex
+  // used for readability to not pass anonymous
+  // 3-tuples around
+  struct Step {
+    Edge _edge;
+    VertexRef _vertex;
+    double _weight;
+
+    Step(Edge&& edge, VertexRef const& vertex, double weight)
+        : _edge(std::move(edge)), _vertex(vertex), _weight(weight) {}
+  };
+
+  // A vertex that was discovered while computing
+  // a shortest path. Used for caching neightbours
+  // and path information
+  struct FoundVertex {
+    VertexRef _vertex;
+
+    bool _hasCachedOutNeighbours;
+    bool _hasCachedInNeighbours;
+    std::vector<Step> _outNeighbours;
+    std::vector<Step> _inNeighbours;
+
+    std::vector<size_t> _paths;
+
+    explicit FoundVertex(VertexRef const& vertex)
+      : _vertex(vertex), _hasCachedOutNeighbours(false), _hasCachedInNeighbours(false) {}
+  };
+  // Contains the vertices that were found while searching
+  // for a shortest path between start and end together with
+  // the number of paths leading to that vertex and information
+  // how to trace paths from the vertex from start/to end.
+  typedef std::unordered_map<VertexRef, FoundVertex> FoundVertexCache;
 
  public:
   explicit KShortestPathsFinder(ShortestPathOptions& options);
@@ -172,7 +214,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
     return false;
   }
 
-  //
+  // initialise k Shortest Paths
   bool startKShortestPathsTraversal(arangodb::velocypack::Slice const& start,
                                     arangodb::velocypack::Slice const& end);
 
@@ -184,9 +226,10 @@ class KShortestPathsFinder : public ShortestPathFinder {
   bool getNextPathShortestPathResult(ShortestPathResult& path);
   // get the next available path as a Path
   bool getNextPath(Path& path);
-  bool isPathAvailable(void) { return _pathAvailable; }
+  bool isPathAvailable() const { return _pathAvailable; }
 
  private:
+  // Compute the first shortest path
   bool computeShortestPath(VertexRef const& start, VertexRef const& end,
                            std::unordered_set<VertexRef> const& forbiddenVertices,
                            std::unordered_set<Edge> const& forbiddenEdges, Path& result);
@@ -195,11 +238,14 @@ class KShortestPathsFinder : public ShortestPathFinder {
   void reconstructPath(Ball const& left, Ball const& right,
                        VertexRef const& join, Path& result);
 
+  // make sure the neighbourhood of vertex is in the cache, and return
+  // that neighbourhood.
+  void computeNeighbourhoodOfVertexCache(VertexRef vertex, Direction direction,
+                                         std::vector<Step>*& steps);
+  // get the neighbourhood of the vertex in the given direction
   void computeNeighbourhoodOfVertex(VertexRef vertex, Direction direction,
                                     std::vector<Step>& steps);
 
-  // returns the number of paths found
-  // TODO: check why target can't be const
   bool advanceFrontier(Ball& source, Ball const& target,
                        std::unordered_set<VertexRef> const& forbiddenVertices,
                        std::unordered_set<Edge> const& forbiddenEdges, VertexRef& join);
@@ -209,9 +255,12 @@ class KShortestPathsFinder : public ShortestPathFinder {
 
   VertexRef _start;
   VertexRef _end;
+
+  FoundVertexCache _vertexCache;
+
   std::vector<Path> _shortestPaths;
-  // TODO: This should be a priority queue
-  std::vector<Path> _candidatePaths;
+
+  std::list<Path> _candidatePaths;
 };
 
 }  // namespace graph

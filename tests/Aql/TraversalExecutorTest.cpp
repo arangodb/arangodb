@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RowFetcherHelper.h"
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutorInfos.h"
@@ -80,14 +80,16 @@ class TestGraph {
     edge.add(StaticStrings::ToString, VPackValue(toVal));
     edge.close();
     auto eslice = edge.slice();
-    _outEdges[arangodb::velocypack::StringRef(eslice.get(StaticStrings::FromString))].emplace_back(eslice);
-    _inEdges[arangodb::velocypack::StringRef(eslice.get(StaticStrings::ToString))].emplace_back(eslice);
+    _outEdges[arangodb::velocypack::StringRef(eslice.get(StaticStrings::FromString))]
+        .emplace_back(eslice);
+    _inEdges[arangodb::velocypack::StringRef(eslice.get(StaticStrings::ToString))]
+        .emplace_back(eslice);
     _dataLake.emplace_back(edge.steal());
   }
 
   VPackSlice getVertexData(arangodb::velocypack::StringRef id) const {
     auto const& it = _vertices.find(id);
-    REQUIRE(it != _vertices.end());
+    TRI_ASSERT(it != _vertices.end());
     return it->second;
   }
 
@@ -140,7 +142,8 @@ class GraphEnumerator : public PathEnumerator {
     ++_idx;
     while (true) {
       if (_idx < _edges.size()) {
-        _nextDepth.emplace_back(arangodb::velocypack::StringRef(_edges.at(_idx).get(StaticStrings::ToString)));
+        _nextDepth.emplace_back(arangodb::velocypack::StringRef(
+            _edges.at(_idx).get(StaticStrings::ToString)));
         return true;
       } else {
         if (_currentDepth.empty()) {
@@ -206,7 +209,7 @@ class TraverserHelper : public Traverser {
   }
 
   void addVertexToVelocyPack(arangodb::velocypack::StringRef vid, VPackBuilder& builder) override {
-    REQUIRE(builder.isOpenArray());
+    TRI_ASSERT(builder.isOpenArray());
     VPackSlice v = _graph.getVertexData(vid);
     builder.add(v);
     return;
@@ -215,12 +218,12 @@ class TraverserHelper : public Traverser {
   void destroyEngines() override {}
 
   std::string const& startVertexUsedAt(uint64_t index) {
-    REQUIRE(index < _usedVertexAt.size());
+    TRI_ASSERT(index < _usedVertexAt.size());
     return _usedVertexAt[index];
   }
 
   std::string const& currentStartVertex() {
-    REQUIRE(!_usedVertexAt.empty());
+    TRI_ASSERT(!_usedVertexAt.empty());
     return _usedVertexAt.back();
   }
 
@@ -230,391 +233,422 @@ class TraverserHelper : public Traverser {
   TestGraph const& _graph;
 };
 
-SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
-  ExecutionState state;
-  mocks::MockAqlServer server{};
+static TraverserOptions generateOptions(arangodb::aql::Query* query, size_t min, size_t max) {
+  TraverserOptions options{query};
+  options.minDepth = min;
+  options.maxDepth = max;
+  return options;
+}
 
-  std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
+class TraversalExecutorTestInputStartVertex : public ::testing::Test {
+ protected:
+  ExecutionState state;
+  mocks::MockAqlServer server;
+
+  std::unique_ptr<arangodb::aql::Query> fakedQuery;
 
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
+  AqlItemBlockManager itemBlockManager;
+  SharedAqlItemBlockPtr block;
 
-  TraverserOptions traversalOptions(fakedQuery.get());
-  traversalOptions.minDepth = 1;
-  traversalOptions.maxDepth = 1;
-  arangodb::transaction::Methods* trx = fakedQuery->trx();
-  std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables{};
+  TraverserOptions traversalOptions;
+  arangodb::transaction::Methods* trx;
+  std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables;
 
-  TestGraph myGraph("v", "e");
-  auto traverserPtr = std::make_unique<TraverserHelper>(&traversalOptions, trx, myGraph);
-  GIVEN("using input as start vertex") {
-    RegisterId inReg = 0;
-    RegisterId outReg = 1;
-    auto traverser = traverserPtr.get();
-    auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{inReg});
-    auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{outReg});
-    std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId, TraversalExecutorInfos::OutputNameHash> registerMapping{
-        {TraversalExecutorInfos::OutputName::VERTEX, outReg}};
+  TestGraph myGraph;
+  std::unique_ptr<TraverserHelper> traverserPtr;
 
-    std::string const noFixed = "";
-    TraversalExecutorInfos infos(inputRegisters, outputRegisters, 1, 2, {}, {0},
-                                 std::move(traverserPtr), registerMapping,
-                                 noFixed, inReg, filterConditionVariables);
+  RegisterId inReg;
+  RegisterId outReg;
+  TraverserHelper* traverser;
+  std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters;
+  std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters;
+  std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId, TraversalExecutorInfos::OutputNameHash> registerMapping;
 
-    GIVEN("there are no rows upstream") {
-      VPackBuilder input;
+  std::string const noFixed;
+  TraversalExecutorInfos infos;
 
-      WHEN("the producer does not wait") {
-        SingleRowFetcherHelper<false> fetcher(input.steal(), false);
-        TraversalExecutor testee(fetcher, infos);
-        TraversalStats stats{};
+  TraversalExecutorTestInputStartVertex()
+      : fakedQuery(server.createFakeQuery()),
+        itemBlockManager(&monitor),
+        block(new AqlItemBlock(itemBlockManager, 1000, 2)),
+        traversalOptions(generateOptions(fakedQuery.get(), 1, 1)),
+        trx(fakedQuery->trx()),
+        myGraph("v", "e"),
+        traverserPtr(std::make_unique<TraverserHelper>(&traversalOptions, trx, myGraph)),
+        inReg(0),
+        outReg(1),
+        traverser(traverserPtr.get()),
+        inputRegisters(std::make_shared<std::unordered_set<RegisterId>>(
+            std::initializer_list<RegisterId>{inReg})),
+        outputRegisters(std::make_shared<std::unordered_set<RegisterId>>(
+            std::initializer_list<RegisterId>{outReg})),
+        registerMapping{{TraversalExecutorInfos::OutputName::VERTEX, outReg}},
+        noFixed(""),
+        infos(inputRegisters, outputRegisters, 1, 2, {}, {0}, std::move(traverserPtr),
+              registerMapping, noFixed, inReg, filterConditionVariables)
 
-        THEN("the executor should return DONE and no result") {
-          OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                                  infos.registersToKeep(), infos.registersToClear());
-          std::tie(state, stats) = testee.produceRows(result);
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(!result.produced());
-        }
-      }
+  {}
+};
 
-      WHEN("the producer waits") {
-        SingleRowFetcherHelper<false> fetcher(input.steal(), true);
-        TraversalExecutor testee(fetcher, infos);
-        TraversalStats stats{};
+TEST_F(TraversalExecutorTestInputStartVertex, there_are_no_rows_upstream_producer_doesnt_wait) {
+  VPackBuilder input;
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
+  TraversalExecutor testee(fetcher, infos);
+  TraversalStats stats{};
 
-        THEN("the executor should first return WAIT and no result") {
-          OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                                  infos.registersToKeep(), infos.registersToClear());
-          std::tie(state, stats) = testee.produceRows(result);
-          REQUIRE(state == ExecutionState::WAITING);
-          REQUIRE(!result.produced());
-          REQUIRE(stats.getFiltered() == 0);
+  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!result.produced());
+}
 
-          AND_THEN("the executor should return DONE and no result") {
-            std::tie(state, stats) = testee.produceRows(result);
-            REQUIRE(state == ExecutionState::DONE);
-            REQUIRE(!result.produced());
-            REQUIRE(stats.getFiltered() == 0);
-          }
-        }
-      }
-    }
+TEST_F(TraversalExecutorTestInputStartVertex, there_are_no_rows_upstream_producer_waits) {
+  VPackBuilder input;
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
+  TraversalExecutor testee(fetcher, infos);
+  TraversalStats stats{};
 
-    GIVEN("there are rows in the upstream") {
-      myGraph.addVertex("1");
-      myGraph.addVertex("2");
-      myGraph.addVertex("3");
-      auto input = VPackParser::fromJson(R"([["v/1"], ["v/2"], ["v/3"]])");
+  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(!result.produced());
+  ASSERT_TRUE(stats.getFiltered() == 0);
 
-      WHEN("the producer does not wait") {
-        SingleRowFetcherHelper<false> fetcher(input->steal(), false);
-        TraversalExecutor testee(fetcher, infos);
-        TraversalStats stats{};
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!result.produced());
+  ASSERT_TRUE(stats.getFiltered() == 0);
+}
 
-        WHEN("no edges are connected to vertices") {
-          THEN("the executor should fetch all rows, but not return") {
-            OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
-                                 infos.registersToKeep(), infos.registersToClear());
+TEST_F(TraversalExecutorTestInputStartVertex, there_are_rows_upstream_producer_doesnt_wait) {
+  myGraph.addVertex("1");
+  myGraph.addVertex("2");
+  myGraph.addVertex("3");
+  auto input = VPackParser::fromJson(R"([["v/1"], ["v/2"], ["v/3"]])");
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  TraversalExecutor testee(fetcher, infos);
+  TraversalStats stats{};
 
-            std::tie(state, stats) = testee.produceRows(row);
-            REQUIRE(state == ExecutionState::DONE);
-            REQUIRE(stats.getFiltered() == 0);
-            REQUIRE(!row.produced());
-            REQUIRE(fetcher.isDone());
-            REQUIRE(fetcher.nrCalled() == 3);
+  OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
+                       infos.registersToKeep(), infos.registersToClear());
 
-            REQUIRE(traverser->startVertexUsedAt(0) == "v/1");
-            REQUIRE(traverser->startVertexUsedAt(1) == "v/2");
-            REQUIRE(traverser->startVertexUsedAt(2) == "v/3");
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(stats.getFiltered() == 0);
+  ASSERT_TRUE(!row.produced());
+  ASSERT_TRUE(fetcher.isDone());
+  ASSERT_TRUE(fetcher.nrCalled() == 3);
 
-            AND_THEN("The output should stay stable") {
-              std::tie(state, stats) = testee.produceRows(row);
-              REQUIRE(state == ExecutionState::DONE);
-              REQUIRE(stats.getFiltered() == 0);
-              REQUIRE(!row.produced());
-              REQUIRE(fetcher.isDone());
-              REQUIRE(fetcher.nrCalled() == 3);
-            }
-          }
-        }
-      }
+  ASSERT_TRUE(traverser->startVertexUsedAt(0) == "v/1");
+  ASSERT_TRUE(traverser->startVertexUsedAt(1) == "v/2");
+  ASSERT_TRUE(traverser->startVertexUsedAt(2) == "v/3");
 
-      WHEN("the producer waits") {
-        SingleRowFetcherHelper<false> fetcher(input->steal(), true);
-        TraversalExecutor testee(fetcher, infos);
-        TraversalStats stats{};
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(stats.getFiltered() == 0);
+  ASSERT_TRUE(!row.produced());
+  ASSERT_TRUE(fetcher.isDone());
+  ASSERT_TRUE(fetcher.nrCalled() == 3);
+}
 
-        WHEN("no edges are connected to vertices") {
-          THEN("the executor should fetch all rows, but not return") {
-            OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
-                                 infos.registersToKeep(), infos.registersToClear());
+TEST_F(TraversalExecutorTestInputStartVertex,
+       there_are_rows_upstream_producer_waits_no_edges_are_connected) {
+  myGraph.addVertex("1");
+  myGraph.addVertex("2");
+  myGraph.addVertex("3");
+  auto input = VPackParser::fromJson(R"([["v/1"], ["v/2"], ["v/3"]])");
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  TraversalExecutor testee(fetcher, infos);
+  TraversalStats stats{};
 
-            for (size_t i = 0; i < 3; ++i) {
-              // We expect to wait 3 times
-              std::tie(state, stats) = testee.produceRows(row);
-              REQUIRE(state == ExecutionState::WAITING);
-            }
-            std::tie(state, stats) = testee.produceRows(row);
-            REQUIRE(state == ExecutionState::DONE);
-            REQUIRE(stats.getFiltered() == 0);
-            REQUIRE(!row.produced());
-            REQUIRE(fetcher.isDone());
-            REQUIRE(fetcher.nrCalled() == 3);
+  OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
+                       infos.registersToKeep(), infos.registersToClear());
 
-            REQUIRE(traverser->startVertexUsedAt(0) == "v/1");
-            REQUIRE(traverser->startVertexUsedAt(1) == "v/2");
-            REQUIRE(traverser->startVertexUsedAt(2) == "v/3");
-
-            AND_THEN("The output should stay stable") {
-              std::tie(state, stats) = testee.produceRows(row);
-              REQUIRE(state == ExecutionState::DONE);
-              REQUIRE(stats.getFiltered() == 0);
-              REQUIRE(!row.produced());
-              REQUIRE(fetcher.isDone());
-              // WAITING is not part of called counts
-              REQUIRE(fetcher.nrCalled() == 3);
-            }
-          }
-        }
-
-        WHEN("edges are connected to vertices") {
-          myGraph.addEdge("1", "2", "1->2");
-          myGraph.addEdge("2", "3", "2->3");
-          myGraph.addEdge("3", "1", "3->1");
-          ExecutionStats total;
-          THEN("the executor should fetch all rows") {
-            OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
-                                 infos.registersToKeep(), infos.registersToClear());
-
-            for (int64_t i = 0; i < 3; ++i) {
-              // We expect to wait 3 times
-              std::tie(state, stats) = testee.produceRows(row);
-              total += stats;
-              REQUIRE(state == ExecutionState::WAITING);
-              REQUIRE(!row.produced());
-              std::tie(state, stats) = testee.produceRows(row);
-              REQUIRE(row.produced());
-              REQUIRE(state == ExecutionState::HASMORE);
-              row.advanceRow();
-              total += stats;
-              REQUIRE(total.filtered == 0);
-              /* We cannot ASSERT this because of internally to complex
-              mechanism */
-              // REQUIRE(total.scannedIndex == i + 1);
-              REQUIRE(fetcher.nrCalled() == (uint64_t)(i + 1));
-            }
-            REQUIRE(fetcher.isDone());
-            // The traverser will lie
-            std::tie(state, stats) = testee.produceRows(row);
-            REQUIRE(state == ExecutionState::DONE);
-            REQUIRE(!row.produced());
-
-            REQUIRE(traverser->startVertexUsedAt(0) == "v/1");
-            REQUIRE(traverser->startVertexUsedAt(1) == "v/2");
-            REQUIRE(traverser->startVertexUsedAt(2) == "v/3");
-
-            std::vector<std::string> expectedResult{"v/2", "v/3", "v/1"};
-            auto block = row.stealBlock();
-            for (std::size_t index = 0; index < 3; index++) {
-              AqlValue value = block->getValue(index, outReg);
-              REQUIRE(value.isObject());
-              REQUIRE(arangodb::basics::VelocyPackHelper::compare(
-                          value.slice(),
-                          myGraph.getVertexData(arangodb::velocypack::StringRef(expectedResult.at(index))),
-                          false) == 0);
-            }
-          }
-        }
-      }
-    }
+  for (size_t i = 0; i < 3; ++i) {
+    // We expect to wait 3 times
+    std::tie(state, stats) = testee.produceRows(row);
+    ASSERT_TRUE(state == ExecutionState::WAITING);
   }
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(stats.getFiltered() == 0);
+  ASSERT_TRUE(!row.produced());
+  ASSERT_TRUE(fetcher.isDone());
+  ASSERT_TRUE(fetcher.nrCalled() == 3);
 
-  GIVEN("using constant as start vertex") {
-    RegisterId outReg = 1;
-    auto traverser = traverserPtr.get();
-    auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-    auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{1});
-    std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId, TraversalExecutorInfos::OutputNameHash> registerMapping{
-        {TraversalExecutorInfos::OutputName::VERTEX, outReg}};
+  ASSERT_TRUE(traverser->startVertexUsedAt(0) == "v/1");
+  ASSERT_TRUE(traverser->startVertexUsedAt(1) == "v/2");
+  ASSERT_TRUE(traverser->startVertexUsedAt(2) == "v/3");
 
-    std::string const fixed = "v/1";
-    TraversalExecutorInfos infos(inputRegisters, outputRegisters, 1, 2, {}, {0},
-                                 std::move(traverserPtr), registerMapping, fixed,
-                                 ExecutionNode::MaxRegisterId, filterConditionVariables);
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(stats.getFiltered() == 0);
+  ASSERT_TRUE(!row.produced());
+  ASSERT_TRUE(fetcher.isDone());
+  // WAITING is not part of called counts
+  ASSERT_TRUE(fetcher.nrCalled() == 3);
+}
 
-    GIVEN("there are no rows upstream") {
-      VPackBuilder input;
+TEST_F(TraversalExecutorTestInputStartVertex,
+       there_are_rows_upstream_producer_waits_edges_are_connected) {
+  myGraph.addVertex("1");
+  myGraph.addVertex("2");
+  myGraph.addVertex("3");
+  auto input = VPackParser::fromJson(R"([["v/1"], ["v/2"], ["v/3"]])");
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  TraversalExecutor testee(fetcher, infos);
+  TraversalStats stats{};
 
-      WHEN("the producer does not wait") {
-        SingleRowFetcherHelper<false> fetcher(input.steal(), false);
-        TraversalExecutor testee(fetcher, infos);
-        TraversalStats stats{};
+  myGraph.addEdge("1", "2", "1->2");
+  myGraph.addEdge("2", "3", "2->3");
+  myGraph.addEdge("3", "1", "3->1");
+  ExecutionStats total;
+  OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
+                       infos.registersToKeep(), infos.registersToClear());
 
-        THEN("the executor should return DONE and no result") {
-          OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                                  infos.registersToKeep(), infos.registersToClear());
-          std::tie(state, stats) = testee.produceRows(result);
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(!result.produced());
-        }
-      }
+  for (int64_t i = 0; i < 3; ++i) {
+    // We expect to wait 3 times
+    std::tie(state, stats) = testee.produceRows(row);
+    total += stats;
+    ASSERT_TRUE(state == ExecutionState::WAITING);
+    ASSERT_TRUE(!row.produced());
+    std::tie(state, stats) = testee.produceRows(row);
+    ASSERT_TRUE(row.produced());
+    ASSERT_TRUE(state == ExecutionState::HASMORE);
+    row.advanceRow();
+    total += stats;
+    ASSERT_TRUE(total.filtered == 0);
+    /* We cannot ASSERT this because of internally to complex
+    mechanism */
+    // ASSERT_TRUE(total.scannedIndex == i + 1);
+    ASSERT_TRUE(fetcher.nrCalled() == (uint64_t)(i + 1));
+  }
+  ASSERT_TRUE(fetcher.isDone());
+  // The traverser will lie
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!row.produced());
 
-      WHEN("the producer waits") {
-        SingleRowFetcherHelper<false> fetcher(input.steal(), true);
-        TraversalExecutor testee(fetcher, infos);
-        TraversalStats stats{};
+  ASSERT_TRUE(traverser->startVertexUsedAt(0) == "v/1");
+  ASSERT_TRUE(traverser->startVertexUsedAt(1) == "v/2");
+  ASSERT_TRUE(traverser->startVertexUsedAt(2) == "v/3");
 
-        THEN("the executor should first return WAIT and no result") {
-          OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                                  infos.registersToKeep(), infos.registersToClear());
-          std::tie(state, stats) = testee.produceRows(result);
-          REQUIRE(state == ExecutionState::WAITING);
-          REQUIRE(!result.produced());
-          REQUIRE(stats.getFiltered() == 0);
+  std::vector<std::string> expectedResult{"v/2", "v/3", "v/1"};
+  auto block = row.stealBlock();
+  for (std::size_t index = 0; index < 3; index++) {
+    AqlValue value = block->getValue(index, outReg);
+    ASSERT_TRUE(value.isObject());
+    ASSERT_TRUE(arangodb::basics::VelocyPackHelper::compare(value.slice(),
+                                                        myGraph.getVertexData(arangodb::velocypack::StringRef(
+                                                            expectedResult.at(index))),
+                                                        false) == 0);
+  }
+}
 
-          AND_THEN("the executor should return DONE and no result") {
-            std::tie(state, stats) = testee.produceRows(result);
-            REQUIRE(state == ExecutionState::DONE);
-            REQUIRE(!result.produced());
-            REQUIRE(stats.getFiltered() == 0);
-          }
-        }
-      }
-    }
+class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
+ protected:
+  ExecutionState state;
+  mocks::MockAqlServer server;
 
-    GIVEN("there are rows in the upstream") {
-      myGraph.addVertex("1");
-      myGraph.addVertex("2");
-      myGraph.addVertex("3");
-      auto input = VPackParser::fromJson(R"([ ["v/1"], ["v/2"], ["v/3"] ])");
+  std::unique_ptr<arangodb::aql::Query> fakedQuery;
 
-      WHEN("the producer does not wait") {
-        SingleRowFetcherHelper<false> fetcher(input->steal(), false);
-        TraversalExecutor testee(fetcher, infos);
-        TraversalStats stats{};
+  ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager;
+  SharedAqlItemBlockPtr block;
 
-        WHEN("no edges are connected to vertices") {
-          THEN("the executor should fetch all rows, but not return") {
-            OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
-                                 infos.registersToKeep(), infos.registersToClear());
+  TraverserOptions traversalOptions;
+  arangodb::transaction::Methods* trx;
+  std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables;
 
-            std::tie(state, stats) = testee.produceRows(row);
-            REQUIRE(state == ExecutionState::DONE);
-            REQUIRE(stats.getFiltered() == 0);
-            REQUIRE(!row.produced());
-            REQUIRE(fetcher.isDone());
-            REQUIRE(fetcher.nrCalled() == 3);
+  TestGraph myGraph;
+  std::unique_ptr<TraverserHelper> traverserPtr;
 
-            REQUIRE(traverser->startVertexUsedAt(0) == "v/1");
-            REQUIRE(traverser->startVertexUsedAt(1) == "v/1");
-            REQUIRE(traverser->startVertexUsedAt(2) == "v/1");
+  RegisterId outReg;
+  TraverserHelper* traverser;
+  std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters;
+  std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters;
+  std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId, TraversalExecutorInfos::OutputNameHash> registerMapping;
 
-            AND_THEN("The output should stay stable") {
-              std::tie(state, stats) = testee.produceRows(row);
-              REQUIRE(state == ExecutionState::DONE);
-              REQUIRE(stats.getFiltered() == 0);
-              REQUIRE(!row.produced());
-              REQUIRE(fetcher.isDone());
-              REQUIRE(fetcher.nrCalled() == 3);
-            }
-          }
-        }
-      }
+  std::string const fixed;
+  TraversalExecutorInfos infos;
 
-      WHEN("the producer waits") {
-        SingleRowFetcherHelper<false> fetcher(input->steal(), true);
-        TraversalExecutor testee(fetcher, infos);
-        TraversalStats stats{};
+  TraversalExecutorTestConstantStartVertex()
+      : fakedQuery(server.createFakeQuery()),
+        itemBlockManager(&monitor),
+        block(new AqlItemBlock(itemBlockManager, 1000, 2)),
+        traversalOptions(generateOptions(fakedQuery.get(), 1, 1)),
+        trx(fakedQuery->trx()),
+        myGraph("v", "e"),
+        traverserPtr(std::make_unique<TraverserHelper>(&traversalOptions, trx, myGraph)),
+        outReg(1),
+        traverser(traverserPtr.get()),
+        inputRegisters(std::make_shared<std::unordered_set<RegisterId>>(
+            std::initializer_list<RegisterId>{})),
+        outputRegisters(std::make_shared<std::unordered_set<RegisterId>>(
+            std::initializer_list<RegisterId>{1})),
+        registerMapping{{TraversalExecutorInfos::OutputName::VERTEX, outReg}},
+        fixed("v/1"),
+        infos(inputRegisters, outputRegisters, 1, 2, {}, {0},
+              std::move(traverserPtr), registerMapping, fixed,
+              ExecutionNode::MaxRegisterId, filterConditionVariables) {}
+};
 
-        WHEN("no edges are connected to vertices") {
-          THEN("the executor should fetch all rows, but not return") {
-            OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
-                                 infos.registersToKeep(), infos.registersToClear());
+TEST_F(TraversalExecutorTestConstantStartVertex, no_rows_upstream_producer_doesnt_wait) {
+  VPackBuilder input;
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
+  TraversalExecutor testee(fetcher, infos);
+  TraversalStats stats{};
 
-            for (size_t i = 0; i < 3; ++i) {
-              // We expect to wait 3 times
-              std::tie(state, stats) = testee.produceRows(row);
-              REQUIRE(state == ExecutionState::WAITING);
-            }
-            std::tie(state, stats) = testee.produceRows(row);
-            REQUIRE(state == ExecutionState::DONE);
-            REQUIRE(stats.getFiltered() == 0);
-            REQUIRE(!row.produced());
-            REQUIRE(fetcher.isDone());
-            REQUIRE(fetcher.nrCalled() == 3);
+  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!result.produced());
+}
 
-            REQUIRE(traverser->startVertexUsedAt(0) == "v/1");
-            REQUIRE(traverser->startVertexUsedAt(1) == "v/1");
-            REQUIRE(traverser->startVertexUsedAt(2) == "v/1");
+TEST_F(TraversalExecutorTestConstantStartVertex, no_rows_upstream_producer_waits) {
+  VPackBuilder input;
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
+  TraversalExecutor testee(fetcher, infos);
+  TraversalStats stats{};
 
-            AND_THEN("The output should stay stable") {
-              std::tie(state, stats) = testee.produceRows(row);
-              REQUIRE(state == ExecutionState::DONE);
-              REQUIRE(stats.getFiltered() == 0);
-              REQUIRE(!row.produced());
-              REQUIRE(fetcher.isDone());
-              // WAITING is not part of called counts
-              REQUIRE(fetcher.nrCalled() == 3);
-            }
-          }
-        }
+  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(!result.produced());
+  ASSERT_TRUE(stats.getFiltered() == 0);
 
-        WHEN("edges are connected to vertices") {
-          myGraph.addEdge("1", "2", "1->2");
-          myGraph.addEdge("2", "3", "2->3");
-          myGraph.addEdge("3", "1", "3->1");
-          ExecutionStats total;
-          THEN("the executor should fetch all rows, but not return") {
-            OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
-                                 infos.registersToKeep(), infos.registersToClear());
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!result.produced());
+  ASSERT_TRUE(stats.getFiltered() == 0);
+}
 
-            for (int64_t i = 0; i < 3; ++i) {
-              // We expect to wait 3 times
-              std::tie(state, stats) = testee.produceRows(row);
-              total += stats;
-              REQUIRE(state == ExecutionState::WAITING);
-              REQUIRE(!row.produced());
-              std::tie(state, stats) = testee.produceRows(row);
-              REQUIRE(row.produced());
-              REQUIRE(state == ExecutionState::HASMORE);
-              row.advanceRow();
-              total += stats;
-              REQUIRE(total.filtered == 0);
-              /* We cannot ASSERT this because of internally to complex
-              mechanism */
-              // REQUIRE(total.scannedIndex == i + 1);
-              REQUIRE(fetcher.nrCalled() == (uint64_t)(i + 1));
-            }
-            REQUIRE(fetcher.isDone());
-            // The traverser will lie
-            std::tie(state, stats) = testee.produceRows(row);
-            REQUIRE(state == ExecutionState::DONE);
-            REQUIRE(!row.produced());
+TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_doesnt_wait) {
+  myGraph.addVertex("1");
+  myGraph.addVertex("2");
+  myGraph.addVertex("3");
+  auto input = VPackParser::fromJson(R"([ ["v/1"], ["v/2"], ["v/3"] ])");
 
-            REQUIRE(traverser->startVertexUsedAt(0) == "v/1");
-            REQUIRE(traverser->startVertexUsedAt(1) == "v/1");
-            REQUIRE(traverser->startVertexUsedAt(2) == "v/1");
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  TraversalExecutor testee(fetcher, infos);
+  TraversalStats stats{};
 
-            std::vector<std::string> expectedResult{"v/2", "v/2", "v/2"};
-            auto block = row.stealBlock();
-            for (std::size_t index = 0; index < 3; index++) {
-              AqlValue value = block->getValue(index, outReg);
-              REQUIRE(value.isObject());
-              REQUIRE(arangodb::basics::VelocyPackHelper::compare(
-                          value.slice(),
-                          myGraph.getVertexData(arangodb::velocypack::StringRef(expectedResult.at(index))),
-                          false) == 0);
-            }
-          }
-        }
-      }
-    }
+  OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
+                       infos.registersToKeep(), infos.registersToClear());
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(stats.getFiltered() == 0);
+  ASSERT_TRUE(!row.produced());
+  ASSERT_TRUE(fetcher.isDone());
+  ASSERT_TRUE(fetcher.nrCalled() == 3);
+
+  ASSERT_TRUE(traverser->startVertexUsedAt(0) == "v/1");
+  ASSERT_TRUE(traverser->startVertexUsedAt(1) == "v/1");
+  ASSERT_TRUE(traverser->startVertexUsedAt(2) == "v/1");
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(stats.getFiltered() == 0);
+  ASSERT_TRUE(!row.produced());
+  ASSERT_TRUE(fetcher.isDone());
+  ASSERT_TRUE(fetcher.nrCalled() == 3);
+}
+
+TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_waits_no_edges_connected) {
+  myGraph.addVertex("1");
+  myGraph.addVertex("2");
+  myGraph.addVertex("3");
+  auto input = VPackParser::fromJson(R"([ ["v/1"], ["v/2"], ["v/3"] ])");
+
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  TraversalExecutor testee(fetcher, infos);
+  TraversalStats stats{};
+  OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
+                       infos.registersToKeep(), infos.registersToClear());
+
+  for (size_t i = 0; i < 3; ++i) {
+    // We expect to wait 3 times
+    std::tie(state, stats) = testee.produceRows(row);
+    ASSERT_TRUE(state == ExecutionState::WAITING);
+  }
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(stats.getFiltered() == 0);
+  ASSERT_TRUE(!row.produced());
+  ASSERT_TRUE(fetcher.isDone());
+  ASSERT_TRUE(fetcher.nrCalled() == 3);
+
+  ASSERT_TRUE(traverser->startVertexUsedAt(0) == "v/1");
+  ASSERT_TRUE(traverser->startVertexUsedAt(1) == "v/1");
+  ASSERT_TRUE(traverser->startVertexUsedAt(2) == "v/1");
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(stats.getFiltered() == 0);
+  ASSERT_TRUE(!row.produced());
+  ASSERT_TRUE(fetcher.isDone());
+  // WAITING is not part of called counts
+  ASSERT_TRUE(fetcher.nrCalled() == 3);
+}
+
+TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_waits_edges_connected) {
+  myGraph.addVertex("1");
+  myGraph.addVertex("2");
+  myGraph.addVertex("3");
+  auto input = VPackParser::fromJson(R"([ ["v/1"], ["v/2"], ["v/3"] ])");
+
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  TraversalExecutor testee(fetcher, infos);
+  TraversalStats stats{};
+  myGraph.addEdge("1", "2", "1->2");
+  myGraph.addEdge("2", "3", "2->3");
+  myGraph.addEdge("3", "1", "3->1");
+  ExecutionStats total;
+  OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
+                       infos.registersToKeep(), infos.registersToClear());
+
+  for (int64_t i = 0; i < 3; ++i) {
+    // We expect to wait 3 times
+    std::tie(state, stats) = testee.produceRows(row);
+    total += stats;
+    ASSERT_TRUE(state == ExecutionState::WAITING);
+    ASSERT_TRUE(!row.produced());
+    std::tie(state, stats) = testee.produceRows(row);
+    ASSERT_TRUE(row.produced());
+    ASSERT_TRUE(state == ExecutionState::HASMORE);
+    row.advanceRow();
+    total += stats;
+    ASSERT_TRUE(total.filtered == 0);
+    /* We cannot ASSERT this because of internally to complex
+    mechanism */
+    // ASSERT_TRUE(total.scannedIndex == i + 1);
+    ASSERT_TRUE(fetcher.nrCalled() == (uint64_t)(i + 1));
+  }
+  ASSERT_TRUE(fetcher.isDone());
+  // The traverser will lie
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!row.produced());
+
+  ASSERT_TRUE(traverser->startVertexUsedAt(0) == "v/1");
+  ASSERT_TRUE(traverser->startVertexUsedAt(1) == "v/1");
+  ASSERT_TRUE(traverser->startVertexUsedAt(2) == "v/1");
+
+  std::vector<std::string> expectedResult{"v/2", "v/2", "v/2"};
+  auto block = row.stealBlock();
+  for (std::size_t index = 0; index < 3; index++) {
+    AqlValue value = block->getValue(index, outReg);
+    ASSERT_TRUE(value.isObject());
+    ASSERT_TRUE(arangodb::basics::VelocyPackHelper::compare(value.slice(),
+                                                        myGraph.getVertexData(arangodb::velocypack::StringRef(
+                                                            expectedResult.at(index))),
+                                                        false) == 0);
   }
 }
 

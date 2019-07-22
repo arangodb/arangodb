@@ -24,7 +24,11 @@
 
 #include <chrono>
 #include <thread>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
 
+#include "Basics/process-utils.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Logger/LogAppender.h"
@@ -32,6 +36,18 @@
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
+#ifdef TRI_HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -374,7 +390,7 @@ int DaemonFeature::waitForChildProcess(int pid) {
     }
 
     // sleep a while and retry
-    std::this_thread::sleep_for(std::chrono::microseconds(500 * 1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
   // enough time has elapsed... we now abort our loop

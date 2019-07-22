@@ -2,7 +2,7 @@
 @startDocuBlock put_api_replication_serverID
 @brief fetch this server's unique identifier
 
-@RESTHEADER{GET /_api/replication/server-id, Return server id}
+@RESTHEADER{GET /_api/replication/server-id, Return server id, handleCommandServerId}
 
 @RESTDESCRIPTION
 Returns the servers id. The id is also returned by other replication API

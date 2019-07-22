@@ -105,8 +105,6 @@ void NearUtils<CMP>::reset() {
 /// to the target coordinates
 template <typename CMP>
 void NearUtils<CMP>::estimateDensity(S2Point const& found) {
-  TRI_ASSERT(!_params.fullRange);  // don't call in this case
-
   S1ChordAngle minAngle = S1ChordAngle::Radians(250 / geo::kEarthRadiusInMeters);
   S1ChordAngle delta(_origin, found);
   if (minAngle < delta) {
@@ -312,12 +310,6 @@ void NearUtils<CMP>::estimateDelta() {
 /// @brief estimate the scan bounds
 template <typename CMP>
 void NearUtils<CMP>::calculateBounds() {
-  if (_params.fullRange) {
-    _innerAngle = _minAngle;
-    _outerAngle = _maxAngle;
-    _allIntervalsCovered = true;
-    return;
-  }
   TRI_ASSERT(!_deltaAngle.is_zero() && _deltaAngle.is_valid());
   if (isAscending()) {
     _innerAngle = _outerAngle;  // initially _outerAngles == _innerAngles

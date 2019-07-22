@@ -16,6 +16,28 @@ set(SKIP_INSTALL_ALL ON)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
 
 ################################################################################
+## SNAPPY
+################################################################################
+
+set(SNAPPY_VERSION "1.1.7")
+set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
+set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}")
+set(SNAPPY_LIB "snappy")
+set(SNAPPY_LIB "${SNAPPY_LIB}" PARENT_SCOPE)
+add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
+
+################################################################################
+## JEMALLOC
+################################################################################
+
+if (USE_JEMALLOC)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
+  include_directories(SYSTEM "${JEMALLOC_HOME}/include")
+  link_directories("${JEMALLOC_HOME}/lib")
+  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB} PARENT_SCOPE)
+endif ()
+
+################################################################################
 ## V8 and ICU
 ################################################################################
 
@@ -102,6 +124,13 @@ endif ()
 
 add_subdirectory(s2geometry)
 set(ARANGO_S2GEOMETRY_VERSION "${ARANGO_S2GEOMETRY_VERSION}" PARENT_SCOPE)
+
+################################################################################
+## Googletest
+################################################################################
+
+#add_subdirectory(googletest)
+#set(ARANGO_GOOGLETEST_VERSION "${ARANGO_GOOGLETEST_VERSION}" PARENT_SCOPE)
 
 ################################################################################
 ## BOOST
@@ -221,28 +250,6 @@ set(CURL_SRC_DIR "${CURL_SRC_DIR}" PARENT_SCOPE)
 set(CURL_CONFIG_HAS_BEEN_RUN_BEFORE true PARENT_SCOPE)
 
 ################################################################################
-## SNAPPY
-################################################################################
-
-set(SNAPPY_VERSION "1.1.7")
-set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
-set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}")
-set(SNAPPY_LIB "snappy")
-set(SNAPPY_LIB "${SNAPPY_LIB}" PARENT_SCOPE)
-add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
-
-################################################################################
-## JEMALLOC
-################################################################################
-
-if (USE_JEMALLOC)
-  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
-  include_directories(SYSTEM "${JEMALLOC_HOME}/include")
-  link_directories("${JEMALLOC_HOME}/lib")
-  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB} PARENT_SCOPE)
-endif ()
-
-################################################################################
 ## ROCKSDB
 ################################################################################
 
@@ -284,3 +291,27 @@ if (EXISTS ${STARTER_SOURCE})
     MESSAGE(WARNING "arangodb starter source present, but no go command to build it found.")
   endif()
 endif()
+
+add_library(fuerte STATIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/ConnectionBuilder.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/GeneralConnection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/helper.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/http.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/HttpConnection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/jwt.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/loop.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/message.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/requests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/types.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/vst.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/VstConnection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/http_parser/http_parser.c
+  )
+
+target_include_directories(fuerte SYSTEM PRIVATE
+  "${Boost_INCLUDE_DIRS}/"
+  "${CMAKE_CURRENT_SOURCE_DIR}/velocypack/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/fuerte/include")
+

@@ -34,6 +34,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VocBase/vocbase.h"
@@ -111,7 +112,7 @@ void Agent::waitForThreadsStop() {
   while (_constituent.isRunning() || _compactor.isRunning() ||
          (_config.supervision() && _supervision.isRunning()) ||
          (_inception != nullptr && _inception->isRunning())) {
-    std::this_thread::sleep_for(std::chrono::microseconds(100000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     // fail fatally after 5 mins:
     if (++counter >= 10 * 60 * 5) {
@@ -966,7 +967,6 @@ trans_ret_t Agent::transact(query_t const& queries) {
     // own conclusions. The map of ongoing trxs is only to cover the time
     // from when we receive the request until we have appended the trxs
     // ourselves.
-    ret = std::make_shared<arangodb::velocypack::Builder>();
     failed = 0;
     ret->openArray();
     // Only leader else redirect

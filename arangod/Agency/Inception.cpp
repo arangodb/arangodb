@@ -408,7 +408,7 @@ void Inception::reportVersionForEp(std::string const& endpoint, size_t version) 
 void Inception::run() {
   auto server = ServerState::instance();
   while (server->isMaintenance() && !this->isStopping() && !_agent->isStopping()) {
-    std::this_thread::sleep_for(std::chrono::microseconds(1000000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     LOG_TOPIC("1b613", DEBUG, Logger::AGENCY)
         << "Waiting for RestHandlerFactory to exit maintenance mode before we "
            " start gossip protocol...";

@@ -141,7 +141,7 @@ static bool ScanMarker(MMFilesMarker const* marker, void* data, MMFilesDatafile*
         break;
       }
 
-      VPackSlice slice(reinterpret_cast<char const*>(marker) +
+      VPackSlice slice(reinterpret_cast<uint8_t const*>(marker) + 
                        MMFilesDatafileHelper::VPackOffset(type));
       state->documentOperations[collectionId][transaction::helpers::extractKeyFromDocument(slice)
                                                   .copyString()] = marker;
@@ -556,7 +556,7 @@ void MMFilesCollectorThread::clearQueuedOperations() {
         break;
       }
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   TRI_ASSERT(_operationsQueueInUse);  // by us
@@ -642,7 +642,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     auto& dfi = cache->createDfi(fid);
     dfi.numberUncollected--;
 
-    VPackSlice slice(reinterpret_cast<char const*>(walMarker) +
+    VPackSlice slice(reinterpret_cast<uint8_t const*>(walMarker) +
                      MMFilesDatafileHelper::VPackOffset(type));
     TRI_ASSERT(slice.isObject());
 
@@ -683,7 +683,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     dfi.numberUncollected--;
     dfi.numberDeletions++;
 
-    VPackSlice slice(reinterpret_cast<char const*>(walMarker) +
+    VPackSlice slice(reinterpret_cast<uint8_t const*>(walMarker) + 
                      MMFilesDatafileHelper::VPackOffset(type));
     TRI_ASSERT(slice.isObject());
 
@@ -1042,7 +1042,7 @@ void MMFilesCollectorThread::queueOperations(arangodb::MMFilesWalLogfile* logfil
     }
 
     // wait outside the mutex for the flag to be cleared
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   if (maxNumPendingOperations > 0 && _numPendingOperations < maxNumPendingOperations &&

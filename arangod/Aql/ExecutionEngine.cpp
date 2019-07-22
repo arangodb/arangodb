@@ -32,6 +32,7 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/GraphNode.h"
+#include "Aql/IdExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/RemoteExecutor.h"
@@ -218,7 +219,8 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
     ExecutionBlock* block = nullptr;
     {
       if (en->getType() == ExecutionNode::TRAVERSAL ||
-          en->getType() == ExecutionNode::SHORTEST_PATH) {
+          en->getType() == ExecutionNode::SHORTEST_PATH ||
+          en->getType() == ExecutionNode::K_SHORTEST_PATHS) {
         // We have to prepare the options before we build the block
         ExecutionNode::castTo<GraphNode*>(en)->prepareOptions();
       }
@@ -468,7 +470,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(size_t
       return {res.first, nullptr};
     }
   }
-  return _root->getSome(atMost);
+  return _root->getSome((std::min)(atMost, ExecutionBlock::DefaultBatchSize()));
 }
 
 std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
@@ -587,14 +589,12 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegist
 
       bool const returnInheritedResults = !isDBServer;
       if (returnInheritedResults) {
-        auto returnNode = dynamic_cast<ExecutionBlockImpl<ReturnExecutor<true>>*>(root);
+        auto returnNode = dynamic_cast<ExecutionBlockImpl<IdExecutor<void>>*>(root);
         TRI_ASSERT(returnNode != nullptr);
-        engine->resultRegister(returnNode->infos().getInputRegisterId());
-        TRI_ASSERT(returnNode->infos().returnInheritedResults() == returnInheritedResults);
+        engine->resultRegister(returnNode->getOutputRegisterId());
       } else {
-        auto returnNode = dynamic_cast<ExecutionBlockImpl<ReturnExecutor<false>>*>(root);
+        auto returnNode = dynamic_cast<ExecutionBlockImpl<ReturnExecutor>*>(root);
         TRI_ASSERT(returnNode != nullptr);
-        TRI_ASSERT(returnNode->infos().returnInheritedResults() == returnInheritedResults);
       }
     }
 

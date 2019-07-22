@@ -1,4 +1,3 @@
-<script id="indicesView.ejs" type="text/template">
   <% if (typeof supported !== 'undefined') { %>
     <div class="contentIn" id="indexHeaderContent">
         <div id="indexEditView">
@@ -63,7 +62,7 @@
                 </th>
                 <th class="tooltipInfoTh">
                   <div class="tooltipDiv">
-                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Type of index to create. <% if (supported.indexOf('persistent') <= -1) { %>Please note that for the RocksDB engine the index types hash, skiplist and persistent are identical, so that they are not offered seperately here.<% } %>">
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Type of index to create. <% if (supported.indexOf('hash') <= -1) { %>Please note that for the RocksDB engine the index types hash, skiplist and persistent are identical, so that they are not offered seperately here.<% } %>">
                       <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                     </a>
                   </div>
@@ -469,4 +468,3 @@
         </div>
       </div>
     <% } %>
-</script>

@@ -85,7 +85,6 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <algorithm>
-#include <regex>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -714,8 +713,7 @@ bool listContainsElement(transaction::Methods* trx, VPackOptions const* options,
 
   VPackArrayIterator it(slice);
   while (it.valid()) {
-    if (arangodb::basics::VelocyPackHelper::compare(testeeSlice, it.value(),
-                                                    false, options) == 0) {
+    if (arangodb::basics::VelocyPackHelper::equal(testeeSlice, it.value(), false, options)) {
       index = static_cast<size_t>(it.index());
       return true;
     }
@@ -730,7 +728,7 @@ bool listContainsElement(VPackOptions const* options, VPackSlice const& list,
                          VPackSlice const& testee, size_t& index) {
   TRI_ASSERT(list.isArray());
   for (size_t i = 0; i < static_cast<size_t>(list.length()); ++i) {
-    if (arangodb::basics::VelocyPackHelper::compare(testee, list.at(i), false, options) == 0) {
+    if (arangodb::basics::VelocyPackHelper::equal(testee, list.at(i), false, options)) {
       index = i;
       return true;
     }
@@ -4048,7 +4046,7 @@ AqlValue Functions::Sleep(ExpressionContext* expressionContext,
   double const until = TRI_microtime() + value.toDouble();
 
   while (TRI_microtime() < until) {
-    std::this_thread::sleep_for(std::chrono::microseconds(30000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
     if (expressionContext->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
@@ -5594,8 +5592,7 @@ AqlValue Functions::Matches(ExpressionContext* expressionContext, transaction::M
 
       if (keySlice.isNone() ||
           // compare inner content
-          basics::VelocyPackHelper::compare(keySlice, it.value, false, options,
-                                            &docSlice, &example) != 0) {
+          !basics::VelocyPackHelper::equal(keySlice, it.value, false, options, &docSlice, &example)) {
         foundMatch = false;
         break;
       }
@@ -5962,7 +5959,8 @@ AqlValue Functions::Append(ExpressionContext* expressionContext, transaction::Me
     return AqlValue(AqlValueHintNull());
   }
 
-  std::unordered_set<VPackSlice> added;
+  std::unordered_set<VPackSlice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> added(
+      11, basics::VelocyPackHelper::VPackHash(), basics::VelocyPackHelper::VPackEqual());
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -6116,7 +6114,7 @@ AqlValue Functions::RemoveValue(ExpressionContext* expressionContext,
       builder->add(it);
       continue;
     }
-    if (arangodb::basics::VelocyPackHelper::compare(r, it, false, options) == 0) {
+    if (arangodb::basics::VelocyPackHelper::equal(r, it, false, options)) {
       --limit;
       continue;
     }
@@ -6711,6 +6709,11 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
   if (!arg1.isNumber()) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
   }
+  bool withId = false;
+  AqlValue arg2 = extractFunctionParameterValue(parameters, 1);
+  if (arg2.isBoolean()) {
+    withId = arg2.slice().getBool();
+  }
 
   uint64_t execNr = arg1.toInt64();
   std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
@@ -6727,7 +6730,7 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
       ::registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
       return AqlValue(AqlValueHintEmptyArray());
     }
-    c->collectAQLResults(builder);
+    c->collectAQLResults(builder, withId);
 
   } else {
     std::shared_ptr<pregel::IWorker> worker = feature->worker(execNr);
@@ -6735,7 +6738,7 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
       ::registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
       return AqlValue(AqlValueHintEmptyArray());
     }
-    worker->aqlResult(builder);
+    worker->aqlResult(builder, withId);
   }
 
   if (builder.isEmpty()) {

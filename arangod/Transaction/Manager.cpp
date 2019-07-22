@@ -185,6 +185,10 @@ using namespace arangodb;
 /// @brief tid global transaction shard
 /// @param cid the optional transaction ID (use 0 for a single shard trx)
 void Manager::registerAQLTrx(TransactionState* state) {
+  if (_disallowInserts.load(std::memory_order_acquire)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+  
   TRI_ASSERT(state != nullptr);
   const size_t bucket = getBucket(state->id());
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
@@ -229,6 +233,9 @@ void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
 Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
                                  TRI_voc_tid_t tid, VPackSlice const trxOpts) {
   Result res;
+  if (_disallowInserts) {
+    return res.reset(TRI_ERROR_SHUTTING_DOWN);
+  }
 
   // parse the collections to register
   if (!trxOpts.isObject() || !trxOpts.get("collections").isObject()) {
@@ -281,6 +288,9 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                                  std::vector<std::string> const& exclusiveCollections,
                                  transaction::Options const& options) {
   Result res;
+  if (_disallowInserts.load(std::memory_order_acquire)) {
+    return res.reset(TRI_ERROR_SHUTTING_DOWN);
+  }
 
   const size_t bucket = getBucket(tid);
 
@@ -347,6 +357,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
   res = state->beginTransaction(hints);  // registers with transaction manager
   if (res.fail()) {
+    TRI_ASSERT(!state->isRunning());
     return res;
   }
 
@@ -374,8 +385,11 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
 /// @brief lease the transaction, increases nesting
 std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid,
                                                                AccessMode::Type mode) {
+  if (_disallowInserts.load(std::memory_order_acquire)) {
+    return nullptr;
+  }
+  
   const size_t bucket = getBucket(tid);
-
   int i = 0;
   TransactionState* state = nullptr;
   do {

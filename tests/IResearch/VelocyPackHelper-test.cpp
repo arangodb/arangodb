@@ -21,64 +21,50 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
+#include <unordered_set>
 
 #include "IResearch/VelocyPackHelper.h"
 
-#include "velocypack/Iterator.h"
 #include "velocypack/Builder.h"
+#include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
-struct IResearchVelocyPackHelperSetup { };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setup
-////////////////////////////////////////////////////////////////////////////////
-
-TEST_CASE("IResearchVelocyPackHelperTest", "[iresearch][iresearch-vpack]") {
-  IResearchVelocyPackHelperSetup s;
-  UNUSED(s);
-
-SECTION("test_defaults") {
+TEST(IResearchVelocyPackHelperTest, test_defaults) {
   arangodb::iresearch::ObjectIterator it;
-  CHECK(0U == it.depth());
-  CHECK(!it.valid());
-  CHECK(arangodb::iresearch::ObjectIterator() == it);
+  EXPECT_TRUE(0U == it.depth());
+  EXPECT_TRUE(!it.valid());
+  EXPECT_TRUE(arangodb::iresearch::ObjectIterator() == it);
 
   size_t calls_count = 0;
   auto visitor = [&calls_count](arangodb::iresearch::IteratorValue const&) {
     ++calls_count;
   };
   it.visit(visitor);
-  CHECK(0U == calls_count);
+  EXPECT_TRUE(0U == calls_count);
   // we not able to move the invalid iterator forward
 }
 
-SECTION("test_getstring") {
+TEST(IResearchVelocyPackHelperTest, test_getstring) {
   // string value
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"key\": \"value\" }");
+    auto json =
+        arangodb::velocypack::Parser::fromJson("{ \"key\": \"value\" }");
     auto slice = json->slice();
     std::string buf0;
     irs::string_ref buf1;
     bool seen;
 
-    CHECK((arangodb::iresearch::getString(buf0, slice, "key", seen, "abc")));
-    CHECK((seen));
-    CHECK((buf0 == "value"));
+    EXPECT_TRUE(
+        (arangodb::iresearch::getString(buf0, slice, "key", seen, "abc")));
+    EXPECT_TRUE((seen));
+    EXPECT_TRUE((buf0 == "value"));
 
-    CHECK((arangodb::iresearch::getString(buf1, slice, "key", seen, "abc")));
-    CHECK((seen));
-    CHECK((buf1 == "value"));
+    EXPECT_TRUE(
+        (arangodb::iresearch::getString(buf1, slice, "key", seen, "abc")));
+    EXPECT_TRUE((seen));
+    EXPECT_TRUE((buf1 == "value"));
   }
 
   // missing key
@@ -89,15 +75,17 @@ SECTION("test_getstring") {
     irs::string_ref buf1;
     bool seen = true;
 
-    CHECK((arangodb::iresearch::getString(buf0, slice, "key", seen, "abc")));
-    CHECK((!seen));
-    CHECK((buf0 == "abc"));
-    
+    EXPECT_TRUE(
+        (arangodb::iresearch::getString(buf0, slice, "key", seen, "abc")));
+    EXPECT_TRUE((!seen));
+    EXPECT_TRUE((buf0 == "abc"));
+
     seen = true;
 
-    CHECK((arangodb::iresearch::getString(buf1, slice, "key", seen, "abc")));
-    CHECK((!seen));
-    CHECK((buf1 == "abc"));
+    EXPECT_TRUE(
+        (arangodb::iresearch::getString(buf1, slice, "key", seen, "abc")));
+    EXPECT_TRUE((!seen));
+    EXPECT_TRUE((buf1 == "abc"));
   }
 
   // non-string value
@@ -108,89 +96,91 @@ SECTION("test_getstring") {
     irs::string_ref buf1;
     bool seen;
 
-    CHECK((!arangodb::iresearch::getString(buf0, slice, "key", seen, "abc")));
-    CHECK((seen));
+    EXPECT_TRUE(
+        (!arangodb::iresearch::getString(buf0, slice, "key", seen, "abc")));
+    EXPECT_TRUE((seen));
 
-    CHECK((!arangodb::iresearch::getString(buf1, slice, "key", seen, "abc")));
-    CHECK((seen));
+    EXPECT_TRUE(
+        (!arangodb::iresearch::getString(buf1, slice, "key", seen, "abc")));
+    EXPECT_TRUE((seen));
   }
 }
 
-SECTION("test_empty_object") {
+TEST(IResearchVelocyPackHelperTest, test_empty_object) {
   auto json = arangodb::velocypack::Parser::fromJson("{ }");
   auto slice = json->slice();
 
   arangodb::iresearch::ObjectIterator it(slice);
 
-  CHECK(1U == it.depth());
-  CHECK(it.valid());
-  CHECK(arangodb::iresearch::ObjectIterator(slice) == it);
+  EXPECT_TRUE(1U == it.depth());
+  EXPECT_TRUE(it.valid());
+  EXPECT_TRUE(arangodb::iresearch::ObjectIterator(slice) == it);
 
-  auto& value = it.value(0); // value at level 0
-  CHECK(0U == value.pos);
-  CHECK(VPackValueType::Object == value.type);
-  CHECK(value.key.isNone());
-  CHECK(value.value.isNone());
-  CHECK(&value == &*it);
+  auto& value = it.value(0);  // value at level 0
+  EXPECT_TRUE(0U == value.pos);
+  EXPECT_TRUE(VPackValueType::Object == value.type);
+  EXPECT_TRUE(value.key.isNone());
+  EXPECT_TRUE(value.value.isNone());
+  EXPECT_TRUE(&value == &*it);
 
   ++it;
 
-  CHECK(0U == it.depth());
-  CHECK(!it.valid());
-  CHECK(arangodb::iresearch::ObjectIterator() == it);
+  EXPECT_TRUE(0U == it.depth());
+  EXPECT_TRUE(!it.valid());
+  EXPECT_TRUE(arangodb::iresearch::ObjectIterator() == it);
 }
 
-SECTION("test_subarray_of_emptyobjects") {
+TEST(IResearchVelocyPackHelperTest, test_subarray_of_emptyobjects) {
   auto json = arangodb::velocypack::Parser::fromJson("[ {}, {}, {} ]");
   auto slice = json->slice();
 
   arangodb::iresearch::ObjectIterator it(slice);
 
-  CHECK(2U == it.depth());
-  CHECK(it.valid());
-  CHECK(arangodb::iresearch::ObjectIterator(slice) == it);
+  EXPECT_TRUE(2U == it.depth());
+  EXPECT_TRUE(it.valid());
+  EXPECT_TRUE(arangodb::iresearch::ObjectIterator(slice) == it);
 
   // check value at level 0
   {
     auto& value = it.value(0);
-    CHECK(0U == value.pos);
-    CHECK(VPackValueType::Array == value.type);
-    CHECK(value.key.isObject());
-    CHECK(value.value.isObject());
+    EXPECT_TRUE(0U == value.pos);
+    EXPECT_TRUE(VPackValueType::Array == value.type);
+    EXPECT_TRUE(value.key.isObject());
+    EXPECT_TRUE(value.value.isObject());
   }
 
   // check value at level 1
   {
     auto& value = it.value(1);
-    CHECK(0U == value.pos);
-    CHECK(VPackValueType::Object == value.type);
-    CHECK(value.key.isNone());
-    CHECK(value.value.isNone());
-    CHECK(&value == &*it);
+    EXPECT_TRUE(0U == value.pos);
+    EXPECT_TRUE(VPackValueType::Object == value.type);
+    EXPECT_TRUE(value.key.isNone());
+    EXPECT_TRUE(value.value.isNone());
+    EXPECT_TRUE(&value == &*it);
   }
 
   {
     auto const prev = it;
-    CHECK(prev == it++);
+    EXPECT_TRUE(prev == it++);
   }
 
   // check value at level 0
   {
     auto& value = it.value(0);
-    CHECK(1U == value.pos);
-    CHECK(VPackValueType::Array == value.type);
-    CHECK(value.key.isObject());
-    CHECK(value.value.isObject());
+    EXPECT_TRUE(1U == value.pos);
+    EXPECT_TRUE(VPackValueType::Array == value.type);
+    EXPECT_TRUE(value.key.isObject());
+    EXPECT_TRUE(value.value.isObject());
   }
 
   // check value at level 1
   {
     auto& value = it.value(1);
-    CHECK(0U == value.pos);
-    CHECK(VPackValueType::Object == value.type);
-    CHECK(value.key.isNone());
-    CHECK(value.value.isNone());
-    CHECK(&value == &*it);
+    EXPECT_TRUE(0U == value.pos);
+    EXPECT_TRUE(VPackValueType::Object == value.type);
+    EXPECT_TRUE(value.key.isNone());
+    EXPECT_TRUE(value.value.isNone());
+    EXPECT_TRUE(&value == &*it);
   }
 
   ++it;
@@ -198,200 +188,205 @@ SECTION("test_subarray_of_emptyobjects") {
   // check value at level 0
   {
     auto& value = it.value(0);
-    CHECK(2U == value.pos);
-    CHECK(VPackValueType::Array == value.type);
-    CHECK(value.key.isObject());
-    CHECK(value.value.isObject());
+    EXPECT_TRUE(2U == value.pos);
+    EXPECT_TRUE(VPackValueType::Array == value.type);
+    EXPECT_TRUE(value.key.isObject());
+    EXPECT_TRUE(value.value.isObject());
   }
 
   // check value at level 1
   {
     auto& value = it.value(1);
-    CHECK(0U == value.pos);
-    CHECK(VPackValueType::Object == value.type);
-    CHECK(value.key.isNone());
-    CHECK(value.value.isNone());
-    CHECK(&value == &*it);
+    EXPECT_TRUE(0U == value.pos);
+    EXPECT_TRUE(VPackValueType::Object == value.type);
+    EXPECT_TRUE(value.key.isNone());
+    EXPECT_TRUE(value.value.isNone());
+    EXPECT_TRUE(&value == &*it);
   }
 
   {
     auto const prev = it;
-    CHECK(prev == it++);
+    EXPECT_TRUE(prev == it++);
   }
 
-  CHECK(0U == it.depth());
-  CHECK(!it.valid());
-  CHECK(arangodb::iresearch::ObjectIterator() == it);
+  EXPECT_TRUE(0U == it.depth());
+  EXPECT_TRUE(!it.valid());
+  EXPECT_TRUE(arangodb::iresearch::ObjectIterator() == it);
 }
 
-SECTION("test_small_plain_object") {
-  auto json = arangodb::velocypack::Parser::fromJson("{ \
+TEST(IResearchVelocyPackHelperTest, test_small_plain_object) {
+  auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \
     \"boost\": \"10\" \
   }");
   auto slice = json->slice();
 
   arangodb::iresearch::ObjectIterator it(slice);
 
-  CHECK(1U == it.depth());
-  CHECK(it.valid());
-  CHECK(arangodb::iresearch::ObjectIterator(slice) == it);
+  EXPECT_TRUE(1U == it.depth());
+  EXPECT_TRUE(it.valid());
+  EXPECT_TRUE(arangodb::iresearch::ObjectIterator(slice) == it);
 
   auto& value = *it;
 
-  CHECK(0U == value.pos);
-  CHECK(VPackValueType::Object == value.type);
-  CHECK(value.key.isString());
-  CHECK("boost" == value.key.copyString());
-  CHECK(value.value.isString());
-  CHECK("10" == value.value.copyString());
+  EXPECT_TRUE(0U == value.pos);
+  EXPECT_TRUE(VPackValueType::Object == value.type);
+  EXPECT_TRUE(value.key.isString());
+  EXPECT_TRUE("boost" == value.key.copyString());
+  EXPECT_TRUE(value.value.isString());
+  EXPECT_TRUE("10" == value.value.copyString());
 
   ++it;
 
-  CHECK(0U == it.depth());
-  CHECK(!it.valid());
-  CHECK(arangodb::iresearch::ObjectIterator() == it);
+  EXPECT_TRUE(0U == it.depth());
+  EXPECT_TRUE(!it.valid());
+  EXPECT_TRUE(arangodb::iresearch::ObjectIterator() == it);
 }
 
-SECTION("test_empty_subarray") {
+TEST(IResearchVelocyPackHelperTest, test_empty_subarray) {
   auto json = arangodb::velocypack::Parser::fromJson("[ [ [ ] ] ]");
   auto slice = json->slice();
 
   arangodb::iresearch::ObjectIterator it(slice);
 
-  CHECK(3U == it.depth());
-  CHECK(it.valid());
-  CHECK(arangodb::iresearch::ObjectIterator(slice) == it);
+  EXPECT_TRUE(3U == it.depth());
+  EXPECT_TRUE(it.valid());
+  EXPECT_TRUE(arangodb::iresearch::ObjectIterator(slice) == it);
 
   // check that ObjectIterator::visit & ObjectIterator::value operates on the same values
   {
     bool result = true;
     size_t level = 0;
-    auto check_levels = [&it, level, &result](arangodb::iresearch::IteratorValue const& value) mutable {
+    auto check_levels = [&it, level,
+                         &result](arangodb::iresearch::IteratorValue const& value) mutable {
       result &= (&(it.value(level++)) == &value);
     };
     it.visit(check_levels);
-    CHECK(result);
+    EXPECT_TRUE(result);
   }
 
   // check value at level 0
   {
     auto& value = it.value(0);
-    CHECK(0U == value.pos);
-    CHECK(VPackValueType::Array == value.type);
-    CHECK(value.key.isArray());
-    CHECK(value.value.isArray());
+    EXPECT_TRUE(0U == value.pos);
+    EXPECT_TRUE(VPackValueType::Array == value.type);
+    EXPECT_TRUE(value.key.isArray());
+    EXPECT_TRUE(value.value.isArray());
   }
 
   // check value at level 1
   {
     auto& value = it.value(1);
-    CHECK(0U == value.pos);
-    CHECK(VPackValueType::Array == value.type);
-    CHECK(value.key.isArray());
-    CHECK(value.value.isArray());
+    EXPECT_TRUE(0U == value.pos);
+    EXPECT_TRUE(VPackValueType::Array == value.type);
+    EXPECT_TRUE(value.key.isArray());
+    EXPECT_TRUE(value.value.isArray());
   }
 
   // check value at level 2
   {
     auto& value = it.value(2);
-    CHECK(0U == value.pos);
-    CHECK(VPackValueType::Array == value.type);
-    CHECK(value.key.isNone());
-    CHECK(value.value.isNone());
-    CHECK(&value == &*it);
+    EXPECT_TRUE(0U == value.pos);
+    EXPECT_TRUE(VPackValueType::Array == value.type);
+    EXPECT_TRUE(value.key.isNone());
+    EXPECT_TRUE(value.value.isNone());
+    EXPECT_TRUE(&value == &*it);
   }
 
   ++it;
 
-  CHECK(0U == it.depth());
-  CHECK(!it.valid());
-  CHECK(arangodb::iresearch::ObjectIterator() == it);
+  EXPECT_TRUE(0U == it.depth());
+  EXPECT_TRUE(!it.valid());
+  EXPECT_TRUE(arangodb::iresearch::ObjectIterator() == it);
 }
 
-SECTION("test_empty_subobject") {
-  auto json = arangodb::velocypack::Parser::fromJson("{ \"sub0\" : { \"sub1\" : { } } }");
+TEST(IResearchVelocyPackHelperTest, test_empty_subobject) {
+  auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"sub0\" : { \"sub1\" : { } } }");
   auto slice = json->slice();
 
   arangodb::iresearch::ObjectIterator it(slice);
 
-  CHECK(3U == it.depth());
-  CHECK(it.valid());
-  CHECK(arangodb::iresearch::ObjectIterator(slice) == it);
+  EXPECT_TRUE(3U == it.depth());
+  EXPECT_TRUE(it.valid());
+  EXPECT_TRUE(arangodb::iresearch::ObjectIterator(slice) == it);
 
   // check that ObjectIterator::visit & ObjectIterator::value operates on the same values
   {
     bool result = true;
     size_t level = 0;
-    auto check_levels = [&it, level, &result](arangodb::iresearch::IteratorValue const& value) mutable {
+    auto check_levels = [&it, level,
+                         &result](arangodb::iresearch::IteratorValue const& value) mutable {
       result &= (&(it.value(level++)) == &value);
     };
     it.visit(check_levels);
-    CHECK(result);
+    EXPECT_TRUE(result);
   }
 
   // check value at level 0
   {
     auto& value = it.value(0);
-    CHECK(0U == value.pos);
-    CHECK(VPackValueType::Object == value.type);
-    CHECK(value.key.isString());
-    CHECK("sub0" == value.key.copyString());
-    CHECK(value.value.isObject());
+    EXPECT_TRUE(0U == value.pos);
+    EXPECT_TRUE(VPackValueType::Object == value.type);
+    EXPECT_TRUE(value.key.isString());
+    EXPECT_TRUE("sub0" == value.key.copyString());
+    EXPECT_TRUE(value.value.isObject());
   }
 
   // check value at level 1
   {
     auto& value = it.value(1);
-    CHECK(0U == value.pos);
-    CHECK(VPackValueType::Object == value.type);
-    CHECK(value.key.isString());
-    CHECK("sub1" == value.key.copyString());
-    CHECK(value.value.isObject());
+    EXPECT_TRUE(0U == value.pos);
+    EXPECT_TRUE(VPackValueType::Object == value.type);
+    EXPECT_TRUE(value.key.isString());
+    EXPECT_TRUE("sub1" == value.key.copyString());
+    EXPECT_TRUE(value.value.isObject());
   }
 
   // check value at level 2
   {
     auto& value = it.value(2);
-    CHECK(0U == value.pos);
-    CHECK(VPackValueType::Object == value.type);
-    CHECK(value.key.isNone());
-    CHECK(value.value.isNone());
-    CHECK(&value == &*it);
+    EXPECT_TRUE(0U == value.pos);
+    EXPECT_TRUE(VPackValueType::Object == value.type);
+    EXPECT_TRUE(value.key.isNone());
+    EXPECT_TRUE(value.value.isNone());
+    EXPECT_TRUE(&value == &*it);
   }
 
   ++it;
 
-  CHECK(0U == it.depth());
-  CHECK(!it.valid());
-  CHECK(arangodb::iresearch::ObjectIterator() == it);
+  EXPECT_TRUE(0U == it.depth());
+  EXPECT_TRUE(!it.valid());
+  EXPECT_TRUE(arangodb::iresearch::ObjectIterator() == it);
 }
 
-SECTION("test_empty_array") {
+TEST(IResearchVelocyPackHelperTest, test_empty_array) {
   auto json = arangodb::velocypack::Parser::fromJson("[ ]");
   auto slice = json->slice();
 
   arangodb::iresearch::ObjectIterator it(slice);
 
-  CHECK(1U == it.depth());
-  CHECK(it.valid());
-  CHECK(arangodb::iresearch::ObjectIterator(slice) == it);
+  EXPECT_TRUE(1U == it.depth());
+  EXPECT_TRUE(it.valid());
+  EXPECT_TRUE(arangodb::iresearch::ObjectIterator(slice) == it);
 
-  auto& value = it.value(0); // value at level 0
-  CHECK(0U == value.pos);
-  CHECK(VPackValueType::Array == value.type);
-  CHECK(value.key.isNone());
-  CHECK(value.value.isNone());
-  CHECK(&value == &*it);
+  auto& value = it.value(0);  // value at level 0
+  EXPECT_TRUE(0U == value.pos);
+  EXPECT_TRUE(VPackValueType::Array == value.type);
+  EXPECT_TRUE(value.key.isNone());
+  EXPECT_TRUE(value.value.isNone());
+  EXPECT_TRUE(&value == &*it);
 
   ++it;
 
-  CHECK(0U == it.depth());
-  CHECK(!it.valid());
-  CHECK(arangodb::iresearch::ObjectIterator() == it);
+  EXPECT_TRUE(0U == it.depth());
+  EXPECT_TRUE(!it.valid());
+  EXPECT_TRUE(arangodb::iresearch::ObjectIterator() == it);
 }
 
-SECTION("test_complex_object") {
-  auto json = arangodb::velocypack::Parser::fromJson("{ \
+TEST(IResearchVelocyPackHelperTest, test_complex_object) {
+  auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
     \"analyzers\": {}, \
@@ -407,37 +402,37 @@ SECTION("test_complex_object") {
     ] \
   }");
 
-  std::unordered_multiset<std::string> expectedValues {
-    "nested{0}.foo{0}=str",
-    "keys{1}[0]=1",
-    "keys{1}[1]=2",
-    "keys{1}[2]=3",
-    "keys{1}[3]=4",
-    "analyzers{2}=",
-    "boost{3}=10",
-    "depth{4}=20",
-    "fields{5}.fieldA{0}.name{0}=a",
-    "fields{5}.fieldB{1}.name{0}=b",
-    "listValuation{6}=ignored",
-    "locale{7}=ru_RU.KOI8-R",
+  std::unordered_multiset<std::string> expectedValues{
+      "nested{0}.foo{0}=str",
+      "keys{1}[0]=1",
+      "keys{1}[1]=2",
+      "keys{1}[2]=3",
+      "keys{1}[3]=4",
+      "analyzers{2}=",
+      "boost{3}=10",
+      "depth{4}=20",
+      "fields{5}.fieldA{0}.name{0}=a",
+      "fields{5}.fieldB{1}.name{0}=b",
+      "listValuation{6}=ignored",
+      "locale{7}=ru_RU.KOI8-R",
 
-    "array{8}[0].id{0}=1",
-    "array{8}[0].subarr{1}[0]=1",
-    "array{8}[0].subarr{1}[1]=2",
-    "array{8}[0].subarr{1}[2]=3",
-    "array{8}[0].subobj{2}.id{0}=1",
+      "array{8}[0].id{0}=1",
+      "array{8}[0].subarr{1}[0]=1",
+      "array{8}[0].subarr{1}[1]=2",
+      "array{8}[0].subarr{1}[2]=3",
+      "array{8}[0].subobj{2}.id{0}=1",
 
-    "array{8}[1].subarr{0}[0]=4",
-    "array{8}[1].subarr{0}[1]=5",
-    "array{8}[1].subarr{0}[2]=6",
-    "array{8}[1].subobj{1}.name{0}=foo",
-    "array{8}[1].id{2}=2",
+      "array{8}[1].subarr{0}[0]=4",
+      "array{8}[1].subarr{0}[1]=5",
+      "array{8}[1].subarr{0}[2]=6",
+      "array{8}[1].subobj{1}.name{0}=foo",
+      "array{8}[1].id{2}=2",
 
-    "array{8}[2].id{0}=3",
-    "array{8}[2].subarr{1}[0]=7",
-    "array{8}[2].subarr{1}[1]=8",
-    "array{8}[2].subarr{1}[2]=9",
-    "array{8}[2].subobj{2}.id{0}=2",
+      "array{8}[2].id{0}=3",
+      "array{8}[2].subarr{1}[0]=7",
+      "array{8}[2].subarr{1}[1]=8",
+      "array{8}[2].subarr{1}[2]=9",
+      "array{8}[2].subobj{2}.id{0}=2",
   };
 
   auto slice = json->slice();
@@ -473,20 +468,10 @@ SECTION("test_complex_object") {
       name += value.value.copyString();
     }
 
-    CHECK(expectedValues.erase(name) > 0);
+    EXPECT_TRUE(expectedValues.erase(name) > 0);
 
     name.clear();
   }
 
-  CHECK(expectedValues.empty());
+  EXPECT_TRUE(expectedValues.empty());
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate tests
-////////////////////////////////////////////////////////////////////////////////
-
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

@@ -28,522 +28,548 @@
 #include "Basics/Common.h"
 #include "Basics/HashSet.h"
 
-#include "catch.hpp"
-
-TEST_CASE("HashSetTest", "[HashSet]") {
+#include "gtest/gtest.h"
 
 /// @brief test size
-SECTION("test_size") {
+TEST(HashSetTest, test_size) {
   arangodb::HashSet<size_t> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (size_t i = 0; i < 1000; ++i) {
-    CHECK(values.size() == i); 
+    EXPECT_TRUE(values.size() == i);
     values.insert(i);
-    CHECK(values.size() == i + 1); 
-    CHECK(!values.empty());
+    EXPECT_TRUE(values.size() == i + 1);
+    EXPECT_TRUE(!values.empty());
   }
 
   // insert same values again
   for (size_t i = 0; i < 1000; ++i) {
-    CHECK(values.size() == 1000); 
+    EXPECT_TRUE(values.size() == 1000);
     values.insert(i);
-    CHECK(values.size() == 1000); 
-    CHECK(!values.empty());
+    EXPECT_TRUE(values.size() == 1000);
+    EXPECT_TRUE(!values.empty());
   }
-  
+
   for (size_t i = 0; i < 1000; ++i) {
-    CHECK(values.size() == 1000 - i); 
-    CHECK(!values.empty());
+    EXPECT_TRUE(values.size() == 1000 - i);
+    EXPECT_TRUE(!values.empty());
     values.erase(i);
-    CHECK(values.size() == 999 - i); 
+    EXPECT_TRUE(values.size() == 999 - i);
   }
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (size_t i = 0; i < 1000; ++i) {
-    CHECK(values.size() == i); 
+    EXPECT_TRUE(values.size() == i);
     values.insert(i);
-    CHECK(values.size() == i + 1); 
-    CHECK(!values.empty());
+    EXPECT_TRUE(values.size() == i + 1);
+    EXPECT_TRUE(!values.empty());
   }
 
   values.clear();
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
 }
 
 /// @brief test with int
-SECTION("test_int") {
+TEST(HashSetTest, test_int) {
   arangodb::HashSet<int> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
-  for (int i = 0; i < 100; ++i) {
-    CHECK(values.size() == i); 
-    values.insert(i);
-    CHECK(values.size() == i + 1); 
-    CHECK(!values.empty());
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
+  for (size_t i = 0; i < 100; ++i) {
+    EXPECT_TRUE(values.size() == i);
+    values.insert(static_cast<int>(i));
+    EXPECT_TRUE(values.size() == i + 1);
+    EXPECT_TRUE(!values.empty());
   }
 
-  CHECK(values.size() == 100); 
-  CHECK(!values.empty());
-  
+  EXPECT_TRUE(values.size() == 100);
+  EXPECT_TRUE(!values.empty());
+
   for (int i = 0; i < 100; ++i) {
-    CHECK(values.find(i) != values.end());
+    EXPECT_TRUE(values.find(i) != values.end());
   }
-    
-  CHECK(values.find(123) == values.end());
-  CHECK(values.find(999) == values.end());
-  CHECK(values.find(100) == values.end());
-  CHECK(values.find(-1) == values.end());
+
+  EXPECT_TRUE(values.find(123) == values.end());
+  EXPECT_TRUE(values.find(999) == values.end());
+  EXPECT_TRUE(values.find(100) == values.end());
+  EXPECT_TRUE(values.find(-1) == values.end());
 }
 
 /// @brief test with std::string
-SECTION("test_string") {
+TEST(HashSetTest, test_string) {
   arangodb::HashSet<std::string> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (size_t i = 0; i < 100; ++i) {
-    CHECK(values.size() == i); 
+    EXPECT_TRUE(values.size() == i);
     values.insert(std::string("test") + std::to_string(i));
-    CHECK(values.size() == i + 1); 
-    CHECK(!values.empty());
+    EXPECT_TRUE(values.size() == i + 1);
+    EXPECT_TRUE(!values.empty());
   }
 
-  CHECK(values.size() == 100); 
-  CHECK(!values.empty());
-  
+  EXPECT_TRUE(values.size() == 100);
+  EXPECT_TRUE(!values.empty());
+
   for (size_t i = 0; i < 100; ++i) {
     std::string value = std::string("test") + std::to_string(i);
-    CHECK(values.find(value) != values.end());
+    EXPECT_TRUE(values.find(value) != values.end());
   }
-    
-  CHECK(values.find(std::string("test")) == values.end());
-  CHECK(values.find(std::string("foo")) == values.end());
-  CHECK(values.find(std::string("test100")) == values.end());
-  CHECK(values.find(std::string("")) == values.end());
+
+  EXPECT_TRUE(values.find(std::string("test")) == values.end());
+  EXPECT_TRUE(values.find(std::string("foo")) == values.end());
+  EXPECT_TRUE(values.find(std::string("test100")) == values.end());
+  EXPECT_TRUE(values.find(std::string("")) == values.end());
 }
 
 /// @brief test with std::string
-SECTION("test_long_string") {
+TEST(HashSetTest, test_long_string) {
   arangodb::HashSet<std::string> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (size_t i = 0; i < 100; ++i) {
-    CHECK(values.size() == i); 
-    values.insert(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
-    CHECK(values.size() == i + 1); 
-    CHECK(!values.empty());
+    EXPECT_TRUE(values.size() == i);
+    values.insert(
+        std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+    EXPECT_TRUE(values.size() == i + 1);
+    EXPECT_TRUE(!values.empty());
   }
 
-  CHECK(values.size() == 100); 
-  CHECK(!values.empty());
-  
+  EXPECT_TRUE(values.size() == 100);
+  EXPECT_TRUE(!values.empty());
+
   for (size_t i = 0; i < 100; ++i) {
-    std::string value = std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i);
-    CHECK(values.find(value) != values.end());
+    std::string value =
+        std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i);
+    EXPECT_TRUE(values.find(value) != values.end());
   }
-    
-  CHECK(values.find(std::string("test")) == values.end());
-  CHECK(values.find(std::string("foo")) == values.end());
-  CHECK(values.find(std::string("test100")) == values.end());
-  CHECK(values.find(std::string("")) == values.end());
+
+  EXPECT_TRUE(values.find(std::string("test")) == values.end());
+  EXPECT_TRUE(values.find(std::string("foo")) == values.end());
+  EXPECT_TRUE(values.find(std::string("test100")) == values.end());
+  EXPECT_TRUE(values.find(std::string("")) == values.end());
 }
 
 /// @brief test with std::string
-SECTION("test_string_duplicates") {
+TEST(HashSetTest, test_string_duplicates) {
   arangodb::HashSet<std::string> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (size_t i = 0; i < 100; ++i) {
-    CHECK(values.size() == i); 
+    EXPECT_TRUE(values.size() == i);
     auto res = values.emplace(std::string("test") + std::to_string(i));
-    CHECK(res.first != values.end());
-    CHECK(res.second);
-    CHECK(values.size() == i + 1); 
-    CHECK(!values.empty());
+    EXPECT_TRUE(res.first != values.end());
+    EXPECT_TRUE(res.second);
+    EXPECT_TRUE(values.size() == i + 1);
+    EXPECT_TRUE(!values.empty());
   }
 
-  CHECK(values.size() == 100); 
-  CHECK(!values.empty());
-  
+  EXPECT_TRUE(values.size() == 100);
+  EXPECT_TRUE(!values.empty());
+
   for (size_t i = 0; i < 100; ++i) {
-    CHECK(values.size() == 100); 
+    EXPECT_TRUE(values.size() == 100);
     auto res = values.emplace(std::string("test") + std::to_string(i));
-    CHECK(res.first != values.end());
-    CHECK(!res.second);
-    CHECK(values.size() == 100); 
-    CHECK(!values.empty());
+    EXPECT_TRUE(res.first != values.end());
+    EXPECT_TRUE(!res.second);
+    EXPECT_TRUE(values.size() == 100);
+    EXPECT_TRUE(!values.empty());
   }
-  
+
   for (size_t i = 0; i < 100; ++i) {
     std::string value = std::string("test") + std::to_string(i);
-    CHECK(values.find(value) != values.end());
+    EXPECT_TRUE(values.find(value) != values.end());
   }
-    
-  CHECK(values.find(std::string("test")) == values.end());
-  CHECK(values.find(std::string("foo")) == values.end());
-  CHECK(values.find(std::string("test100")) == values.end());
-  CHECK(values.find(std::string("")) == values.end());
+
+  EXPECT_TRUE(values.find(std::string("test")) == values.end());
+  EXPECT_TRUE(values.find(std::string("foo")) == values.end());
+  EXPECT_TRUE(values.find(std::string("test100")) == values.end());
+  EXPECT_TRUE(values.find(std::string("")) == values.end());
 }
 
 /// @brief test erase
-SECTION("test_erase") {
+TEST(HashSetTest, test_erase) {
   arangodb::HashSet<int> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
 
-  CHECK(values.erase(1234) == 0);
-  CHECK(values.erase(0) == 0);
-  
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
+  EXPECT_TRUE(values.erase(1234) == 0);
+  EXPECT_TRUE(values.erase(0) == 0);
+
   for (int i = 0; i < 1000; ++i) {
     values.insert(i);
   }
-  
-  CHECK(values.erase(1234) == 0);
-  CHECK(values.erase(0) == 1);
 
-  CHECK(values.find(0) == values.end());
+  EXPECT_TRUE(values.erase(1234) == 0);
+  EXPECT_TRUE(values.erase(0) == 1);
+
+  EXPECT_TRUE(values.find(0) == values.end());
   for (int i = 1; i < 100; ++i) {
-    CHECK(values.find(i) != values.end());
-    CHECK(values.erase(i) == 1);
-    CHECK(values.find(i) == values.end());
-  }
-  
-  CHECK(values.size() == 900); 
-  
-  for (int i = 100; i < 1000; ++i) {
-    CHECK(values.find(i) != values.end());
-    CHECK(values.erase(i) == 1);
-    CHECK(values.find(i) == values.end());
+    EXPECT_TRUE(values.find(i) != values.end());
+    EXPECT_TRUE(values.erase(i) == 1);
+    EXPECT_TRUE(values.find(i) == values.end());
   }
 
-  CHECK(values.size() == 0); 
-  CHECK(values.empty()); 
+  EXPECT_TRUE(values.size() == 900);
+
+  for (int i = 100; i < 1000; ++i) {
+    EXPECT_TRUE(values.find(i) != values.end());
+    EXPECT_TRUE(values.erase(i) == 1);
+    EXPECT_TRUE(values.find(i) == values.end());
+  }
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
 }
 
 /// @brief test reserve
-SECTION("test_reserve") {
+TEST(HashSetTest, test_reserve) {
   arangodb::HashSet<size_t> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
- 
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   values.reserve(10000);
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-   
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (size_t i = 0; i < 32; ++i) {
     values.insert(i);
   }
 
-  CHECK(values.size() == 32);
-  CHECK(!values.empty());
+  EXPECT_TRUE(values.size() == 32);
+  EXPECT_TRUE(!values.empty());
 
   values.reserve(10);
-  CHECK(values.size() == 32); 
-  CHECK(!values.empty());
+  EXPECT_TRUE(values.size() == 32);
+  EXPECT_TRUE(!values.empty());
 
   values.reserve(20000);
-  CHECK(values.size() == 32); 
-  CHECK(!values.empty());
+  EXPECT_TRUE(values.size() == 32);
+  EXPECT_TRUE(!values.empty());
 
   for (size_t i = 0; i < 32; ++i) {
-    CHECK(values.find(i) != values.end());
+    EXPECT_TRUE(values.find(i) != values.end());
   }
 }
 
 /// @brief test few values
-SECTION("test_few") {
+TEST(HashSetTest, test_few) {
   arangodb::HashSet<size_t> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (size_t i = 0; i < 32; ++i) {
-    CHECK(values.size() == i); 
+    EXPECT_TRUE(values.size() == i);
     values.insert(i);
-    CHECK(values.size() == i + 1); 
-    CHECK(!values.empty());
+    EXPECT_TRUE(values.size() == i + 1);
+    EXPECT_TRUE(!values.empty());
   }
 
-  CHECK(values.size() == 32); 
-  CHECK(!values.empty());
-  
+  EXPECT_TRUE(values.size() == 32);
+  EXPECT_TRUE(!values.empty());
+
   for (size_t i = 0; i < 32; ++i) {
-    CHECK(values.find(i) != values.end());
+    EXPECT_TRUE(values.find(i) != values.end());
   }
 }
 
 /// @brief test many values
-SECTION("test_many") {
+TEST(HashSetTest, test_many) {
   arangodb::HashSet<size_t> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (size_t i = 0; i < 200000; ++i) {
-    CHECK(values.size() == i); 
+    EXPECT_TRUE(values.size() == i);
     values.insert(i);
-    CHECK(values.size() == i + 1); 
-    CHECK(!values.empty());
+    EXPECT_TRUE(values.size() == i + 1);
+    EXPECT_TRUE(!values.empty());
   }
 
-  CHECK(values.size() == 200000); 
-  CHECK(!values.empty());
-  
+  EXPECT_TRUE(values.size() == 200000);
+  EXPECT_TRUE(!values.empty());
+
   for (size_t i = 0; i < 200000; ++i) {
-    CHECK(values.find(i) != values.end());
+    EXPECT_TRUE(values.find(i) != values.end());
   }
 }
 
 /// @brief test copying
-SECTION("test_copy_construct_local") {
+TEST(HashSetTest, test_copy_construct_local) {
   arangodb::HashSet<int> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (int i = 0; i < 2; ++i) {
     values.insert(i);
   }
 
-  // copy 
+  // copy
   arangodb::HashSet<int> copy(values);
 
-  CHECK(values.size() == 2); 
-  CHECK(!values.empty());
-  
-  CHECK(copy.size() == 2); 
-  CHECK(!copy.empty());
+  EXPECT_TRUE(values.size() == 2);
+  EXPECT_TRUE(!values.empty());
+
+  EXPECT_TRUE(copy.size() == 2);
+  EXPECT_TRUE(!copy.empty());
 
   for (int i = 0; i < 2; ++i) {
-    CHECK(values.find(i) != values.end());
-    CHECK(copy.find(i) != copy.end());
+    EXPECT_TRUE(values.find(i) != values.end());
+    EXPECT_TRUE(copy.find(i) != copy.end());
   }
 
   values.clear();
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  CHECK(copy.size() == 2); 
-  CHECK(!copy.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+  EXPECT_TRUE(copy.size() == 2);
+  EXPECT_TRUE(!copy.empty());
+
   for (int i = 0; i < 2; ++i) {
-    CHECK(values.find(i) == values.end());
-    CHECK(copy.find(i) != copy.end());
+    EXPECT_TRUE(values.find(i) == values.end());
+    EXPECT_TRUE(copy.find(i) != copy.end());
   }
 }
 
 /// @brief test copying
-SECTION("test_copy_construct_heap") {
+TEST(HashSetTest, test_copy_construct_heap) {
   arangodb::HashSet<int> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (int i = 0; i < 100; ++i) {
     values.insert(i);
   }
 
-  // copy 
+  // copy
   arangodb::HashSet<int> copy(values);
 
-  CHECK(values.size() == 100); 
-  CHECK(!values.empty());
-  
-  CHECK(copy.size() == 100); 
-  CHECK(!copy.empty());
+  EXPECT_TRUE(values.size() == 100);
+  EXPECT_TRUE(!values.empty());
+
+  EXPECT_TRUE(copy.size() == 100);
+  EXPECT_TRUE(!copy.empty());
 
   for (int i = 0; i < 100; ++i) {
-    CHECK(values.find(i) != values.end());
-    CHECK(copy.find(i) != copy.end());
+    EXPECT_TRUE(values.find(i) != values.end());
+    EXPECT_TRUE(copy.find(i) != copy.end());
   }
 
   values.clear();
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  CHECK(copy.size() == 100); 
-  CHECK(!copy.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+  EXPECT_TRUE(copy.size() == 100);
+  EXPECT_TRUE(!copy.empty());
+
   for (int i = 0; i < 100; ++i) {
-    CHECK(values.find(i) == values.end());
-    CHECK(copy.find(i) != copy.end());
+    EXPECT_TRUE(values.find(i) == values.end());
+    EXPECT_TRUE(copy.find(i) != copy.end());
   }
 }
 
 /// @brief test copying
-SECTION("test_copy_construct_heap_huge") {
+TEST(HashSetTest, test_copy_construct_heap_huge) {
   arangodb::HashSet<std::string> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (int i = 0; i < 100; ++i) {
-    values.insert(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+    values.insert(
+        std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
   }
 
-  // copy 
+  // copy
   arangodb::HashSet<std::string> copy(values);
 
-  CHECK(values.size() == 100); 
-  CHECK(!values.empty());
-  
-  CHECK(copy.size() == 100); 
-  CHECK(!copy.empty());
+  EXPECT_TRUE(values.size() == 100);
+  EXPECT_TRUE(!values.empty());
+
+  EXPECT_TRUE(copy.size() == 100);
+  EXPECT_TRUE(!copy.empty());
 
   for (int i = 0; i < 100; ++i) {
-    CHECK(values.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) != values.end());
-    CHECK(copy.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) != copy.end());
+    EXPECT_TRUE(
+        values.find(
+            std::string("test-this-will-hopefully-disable-sso-everywhere") +
+            std::to_string(i)) != values.end());
+    EXPECT_TRUE(
+        copy.find(
+            std::string("test-this-will-hopefully-disable-sso-everywhere") +
+            std::to_string(i)) != copy.end());
   }
 
   values.clear();
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  CHECK(copy.size() == 100); 
-  CHECK(!copy.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+  EXPECT_TRUE(copy.size() == 100);
+  EXPECT_TRUE(!copy.empty());
+
   for (int i = 0; i < 100; ++i) {
-    CHECK(values.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) == values.end());
-    CHECK(copy.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) != copy.end());
+    EXPECT_TRUE(
+        values.find(
+            std::string("test-this-will-hopefully-disable-sso-everywhere") +
+            std::to_string(i)) == values.end());
+    EXPECT_TRUE(
+        copy.find(
+            std::string("test-this-will-hopefully-disable-sso-everywhere") +
+            std::to_string(i)) != copy.end());
   }
 }
 
 /// @brief test copying
-SECTION("test_copy_assign_local") {
+TEST(HashSetTest, test_copy_assign_local) {
   arangodb::HashSet<int> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (int i = 0; i < 2; ++i) {
     values.insert(i);
   }
 
-  // copy 
+  // copy
   arangodb::HashSet<int> copy = values;
 
-  CHECK(values.size() == 2); 
-  CHECK(!values.empty());
-  
-  CHECK(copy.size() == 2); 
-  CHECK(!copy.empty());
+  EXPECT_TRUE(values.size() == 2);
+  EXPECT_TRUE(!values.empty());
+
+  EXPECT_TRUE(copy.size() == 2);
+  EXPECT_TRUE(!copy.empty());
 
   for (int i = 0; i < 2; ++i) {
-    CHECK(values.find(i) != values.end());
-    CHECK(copy.find(i) != copy.end());
+    EXPECT_TRUE(values.find(i) != values.end());
+    EXPECT_TRUE(copy.find(i) != copy.end());
   }
 
   values.clear();
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  CHECK(copy.size() == 2); 
-  CHECK(!copy.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+  EXPECT_TRUE(copy.size() == 2);
+  EXPECT_TRUE(!copy.empty());
+
   for (int i = 0; i < 2; ++i) {
-    CHECK(values.find(i) == values.end());
-    CHECK(copy.find(i) != copy.end());
+    EXPECT_TRUE(values.find(i) == values.end());
+    EXPECT_TRUE(copy.find(i) != copy.end());
   }
 }
 
 /// @brief test copying
-SECTION("test_copy_assign_heap") {
+TEST(HashSetTest, test_copy_assign_heap) {
   arangodb::HashSet<int> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (int i = 0; i < 100; ++i) {
     values.insert(i);
   }
 
-  // copy 
+  // copy
   arangodb::HashSet<int> copy = values;
 
-  CHECK(values.size() == 100); 
-  CHECK(!values.empty());
-  
-  CHECK(copy.size() == 100); 
-  CHECK(!copy.empty());
+  EXPECT_TRUE(values.size() == 100);
+  EXPECT_TRUE(!values.empty());
+
+  EXPECT_TRUE(copy.size() == 100);
+  EXPECT_TRUE(!copy.empty());
 
   for (int i = 0; i < 100; ++i) {
-    CHECK(values.find(i) != values.end());
-    CHECK(copy.find(i) != copy.end());
+    EXPECT_TRUE(values.find(i) != values.end());
+    EXPECT_TRUE(copy.find(i) != copy.end());
   }
 
   values.clear();
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  CHECK(copy.size() == 100); 
-  CHECK(!copy.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+  EXPECT_TRUE(copy.size() == 100);
+  EXPECT_TRUE(!copy.empty());
+
   for (int i = 0; i < 100; ++i) {
-    CHECK(values.find(i) == values.end());
-    CHECK(copy.find(i) != copy.end());
+    EXPECT_TRUE(values.find(i) == values.end());
+    EXPECT_TRUE(copy.find(i) != copy.end());
   }
 }
 
 /// @brief test copying
-SECTION("test_copy_assign_heap_huge") {
+TEST(HashSetTest, test_copy_assign_heap_huge) {
   arangodb::HashSet<std::string> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (int i = 0; i < 100; ++i) {
-    values.insert(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+    values.insert(
+        std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
   }
 
-  // copy 
+  // copy
   arangodb::HashSet<std::string> copy = values;
 
-  CHECK(values.size() == 100); 
-  CHECK(!values.empty());
-  
-  CHECK(copy.size() == 100); 
-  CHECK(!copy.empty());
+  EXPECT_TRUE(values.size() == 100);
+  EXPECT_TRUE(!values.empty());
+
+  EXPECT_TRUE(copy.size() == 100);
+  EXPECT_TRUE(!copy.empty());
 
   for (int i = 0; i < 100; ++i) {
-    CHECK(values.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) != values.end());
-    CHECK(copy.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) != copy.end());
+    EXPECT_TRUE(
+        values.find(
+            std::string("test-this-will-hopefully-disable-sso-everywhere") +
+            std::to_string(i)) != values.end());
+    EXPECT_TRUE(
+        copy.find(
+            std::string("test-this-will-hopefully-disable-sso-everywhere") +
+            std::to_string(i)) != copy.end());
   }
 
   values.clear();
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  CHECK(copy.size() == 100); 
-  CHECK(!copy.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+  EXPECT_TRUE(copy.size() == 100);
+  EXPECT_TRUE(!copy.empty());
+
   for (int i = 0; i < 100; ++i) {
-    CHECK(values.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) == values.end());
-    CHECK(copy.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) != copy.end());
+    EXPECT_TRUE(
+        values.find(
+            std::string("test-this-will-hopefully-disable-sso-everywhere") +
+            std::to_string(i)) == values.end());
+    EXPECT_TRUE(
+        copy.find(
+            std::string("test-this-will-hopefully-disable-sso-everywhere") +
+            std::to_string(i)) != copy.end());
   }
 }
 
 /// @brief test moving
-SECTION("test_move_construct_local") {
+TEST(HashSetTest, test_move_construct_local) {
   arangodb::HashSet<int> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (int i = 0; i < 2; ++i) {
     values.insert(i);
   }
@@ -551,25 +577,25 @@ SECTION("test_move_construct_local") {
   // move
   arangodb::HashSet<int> copy(std::move(values));
 
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
-  CHECK(copy.size() == 2); 
-  CHECK(!copy.empty());
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
+  EXPECT_TRUE(copy.size() == 2);
+  EXPECT_TRUE(!copy.empty());
 
   for (int i = 0; i < 2; ++i) {
-    CHECK(values.find(i) == values.end());
-    CHECK(copy.find(i) != copy.end());
+    EXPECT_TRUE(values.find(i) == values.end());
+    EXPECT_TRUE(copy.find(i) != copy.end());
   }
 }
 
 /// @brief test moving
-SECTION("test_move_construct_heap") {
+TEST(HashSetTest, test_move_construct_heap) {
   arangodb::HashSet<int> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (int i = 0; i < 100; ++i) {
     values.insert(i);
   }
@@ -577,51 +603,58 @@ SECTION("test_move_construct_heap") {
   // move
   arangodb::HashSet<int> copy(std::move(values));
 
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
-  CHECK(copy.size() == 100); 
-  CHECK(!copy.empty());
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
+  EXPECT_TRUE(copy.size() == 100);
+  EXPECT_TRUE(!copy.empty());
 
   for (int i = 0; i < 100; ++i) {
-    CHECK(values.find(i) == values.end());
-    CHECK(copy.find(i) != copy.end());
+    EXPECT_TRUE(values.find(i) == values.end());
+    EXPECT_TRUE(copy.find(i) != copy.end());
   }
 }
 
 /// @brief test moving
-SECTION("test_move_construct_heap_huge") {
+TEST(HashSetTest, test_move_construct_heap_huge) {
   arangodb::HashSet<std::string> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (int i = 0; i < 100; ++i) {
-    values.insert(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+    values.insert(
+        std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
   }
 
   // move
   arangodb::HashSet<std::string> copy(std::move(values));
 
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
-  CHECK(copy.size() == 100); 
-  CHECK(!copy.empty());
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
+  EXPECT_TRUE(copy.size() == 100);
+  EXPECT_TRUE(!copy.empty());
 
   for (int i = 0; i < 100; ++i) {
-    CHECK(values.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) == values.end());
-    CHECK(copy.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) != copy.end());
+    EXPECT_TRUE(
+        values.find(
+            std::string("test-this-will-hopefully-disable-sso-everywhere") +
+            std::to_string(i)) == values.end());
+    EXPECT_TRUE(
+        copy.find(
+            std::string("test-this-will-hopefully-disable-sso-everywhere") +
+            std::to_string(i)) != copy.end());
   }
 }
 
 /// @brief test moving
-SECTION("test_move_assign_local") {
+TEST(HashSetTest, test_move_assign_local) {
   arangodb::HashSet<int> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (int i = 0; i < 2; ++i) {
     values.insert(i);
   }
@@ -629,25 +662,25 @@ SECTION("test_move_assign_local") {
   // move
   arangodb::HashSet<int> copy = std::move(values);
 
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
-  CHECK(copy.size() == 2); 
-  CHECK(!copy.empty());
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
+  EXPECT_TRUE(copy.size() == 2);
+  EXPECT_TRUE(!copy.empty());
 
   for (int i = 0; i < 2; ++i) {
-    CHECK(values.find(i) == values.end());
-    CHECK(copy.find(i) != copy.end());
+    EXPECT_TRUE(values.find(i) == values.end());
+    EXPECT_TRUE(copy.find(i) != copy.end());
   }
 }
 
 /// @brief test moving
-SECTION("test_move_assign_heap") {
+TEST(HashSetTest, test_move_assign_heap) {
   arangodb::HashSet<int> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (int i = 0; i < 100; ++i) {
     values.insert(i);
   }
@@ -655,86 +688,91 @@ SECTION("test_move_assign_heap") {
   // move
   arangodb::HashSet<int> copy = std::move(values);
 
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
-  CHECK(copy.size() == 100); 
-  CHECK(!copy.empty());
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
+  EXPECT_TRUE(copy.size() == 100);
+  EXPECT_TRUE(!copy.empty());
 
   for (int i = 0; i < 100; ++i) {
-    CHECK(values.find(i) == values.end());
-    CHECK(copy.find(i) != copy.end());
+    EXPECT_TRUE(values.find(i) == values.end());
+    EXPECT_TRUE(copy.find(i) != copy.end());
   }
 }
 
 /// @brief test moving
-SECTION("test_move_assign_heap_huge") {
+TEST(HashSetTest, test_move_assign_heap_huge) {
   arangodb::HashSet<std::string> values;
-  
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
+
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
   for (int i = 0; i < 100; ++i) {
-    values.insert(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+    values.insert(
+        std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
   }
 
   // move
   arangodb::HashSet<std::string> copy = std::move(values);
 
-  CHECK(values.size() == 0); 
-  CHECK(values.empty());
-  
-  CHECK(copy.size() == 100); 
-  CHECK(!copy.empty());
+  EXPECT_TRUE(values.size() == 0);
+  EXPECT_TRUE(values.empty());
+
+  EXPECT_TRUE(copy.size() == 100);
+  EXPECT_TRUE(!copy.empty());
 
   for (int i = 0; i < 100; ++i) {
-    CHECK(values.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) == values.end());
-    CHECK(copy.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) != copy.end());
+    EXPECT_TRUE(
+        values.find(
+            std::string("test-this-will-hopefully-disable-sso-everywhere") +
+            std::to_string(i)) == values.end());
+    EXPECT_TRUE(
+        copy.find(
+            std::string("test-this-will-hopefully-disable-sso-everywhere") +
+            std::to_string(i)) != copy.end());
   }
 }
 
 /// @brief test iterator
-SECTION("test_iterator") {
+TEST(HashSetTest, test_iterator) {
   arangodb::HashSet<int> values;
-  
-  CHECK(values.begin() == values.end());
+
+  EXPECT_TRUE(values.begin() == values.end());
 
   for (int i = 0; i < 1000; ++i) {
     values.insert(i);
-    CHECK(values.begin() != values.end());
-    CHECK(values.find(i) != values.end());
-    CHECK(values.find(i + 1000) == values.end());
+    EXPECT_TRUE(values.begin() != values.end());
+    EXPECT_TRUE(values.find(i) != values.end());
+    EXPECT_TRUE(values.find(i + 1000) == values.end());
   }
 
   size_t count;
 
   count = 0;
   for (auto const& it : values) {
-    CHECK(it >= 0);
-    CHECK(it < 1000);
+    EXPECT_TRUE(it >= 0);
+    EXPECT_TRUE(it < 1000);
     ++count;
   }
-  CHECK(count == 1000);
-  
+  EXPECT_TRUE(count == 1000);
+
   count = 0;
   for (auto it = values.begin(); it != values.end(); ++it) {
-    CHECK(it != values.end());
+    EXPECT_TRUE(it != values.end());
     auto i = (*it);
-    CHECK(i >= 0);
-    CHECK(i < 1000);
+    EXPECT_TRUE(i >= 0);
+    EXPECT_TRUE(i < 1000);
     ++count;
   }
-  CHECK(count == 1000);
-  
+  EXPECT_TRUE(count == 1000);
+
   count = 0;
   for (auto it = values.cbegin(); it != values.cend(); ++it) {
-    CHECK(it != values.end());
+    EXPECT_TRUE(it != values.end());
     auto i = (*it);
-    CHECK(i >= 0);
-    CHECK(i < 1000);
+    EXPECT_TRUE(i >= 0);
+    EXPECT_TRUE(i < 1000);
     ++count;
   }
-  CHECK(count == 1000);
-}
-
+  EXPECT_TRUE(count == 1000);
 }

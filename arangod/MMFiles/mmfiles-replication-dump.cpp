@@ -172,7 +172,7 @@ static int StringifyMarker(MMFilesReplicationDumpContext* dump, TRI_voc_tick_t d
     case TRI_DF_MARKER_VPACK_DROP_VIEW: {
       Append(dump, ",\"data\":");
 
-      VPackSlice slice(reinterpret_cast<char const*>(marker) +
+      VPackSlice slice(reinterpret_cast<uint8_t const*>(marker) +
                        MMFilesDatafileHelper::VPackOffset(type));
       arangodb::basics::VPackStringBufferAdapter adapter(dump->_buffer);
       VPackDumper dumper(&adapter,
@@ -206,11 +206,7 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump, TRI_voc_tick_t da
   TRI_ASSERT(MustReplicateWalMarkerType(marker, false));
   MMFilesMarkerType const type = marker->getType();
 
-  VPackBuffer<uint8_t> buffer;
-  std::shared_ptr<VPackBuffer<uint8_t>> bufferPtr;
-  bufferPtr.reset(&buffer, arangodb::velocypack::BufferNonDeleter<uint8_t>());
-
-  VPackBuilder builder(bufferPtr, &dump->_vpackOptions);
+  VPackBuilder builder(dump->_slices, &dump->_vpackOptions);
   builder.openObject();
 
   if (!isDump) {
@@ -259,7 +255,7 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump, TRI_voc_tick_t da
     case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
     case TRI_DF_MARKER_VPACK_DROP_INDEX:
     case TRI_DF_MARKER_VPACK_DROP_VIEW: {
-      VPackSlice slice(reinterpret_cast<char const*>(marker) +
+      VPackSlice slice(reinterpret_cast<uint8_t const*>(marker) +
                        MMFilesDatafileHelper::VPackOffset(type));
       builder.add("data", slice);
       break;
@@ -281,8 +277,6 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump, TRI_voc_tick_t da
   }
 
   builder.close();
-
-  dump->_slices.push_back(std::move(buffer));
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -557,7 +551,7 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
           TRI_ASSERT(collectionId != 0);
 
           if (dump->_vocbase->id() == databaseId) {
-            VPackSlice slice(reinterpret_cast<char const*>(marker) +
+            VPackSlice slice(reinterpret_cast<uint8_t const*>(marker) +
                              MMFilesDatafileHelper::VPackOffset(type));
             VPackSlice name = slice.get("name");
             if (name.isString()) {
@@ -774,9 +768,8 @@ int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* d
       }
     }
 
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder builder(buffer);
     if (useVst) {
+      VPackBuilder builder(dump->_slices);
       if (transactions.empty()) {
         builder.add(VPackSlice::emptyArraySlice());
       } else {
@@ -817,7 +810,6 @@ int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* d
 
     dump->_fromTickIncluded = fromTickIncluded;
     dump->_lastFoundTick = lastFoundTick;
-    dump->_slices.push_back(std::move(buffer));
 
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC("e2136", ERR, arangodb::Logger::REPLICATION)

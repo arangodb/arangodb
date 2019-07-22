@@ -38,6 +38,10 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/vocbase.h"
 
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -57,7 +61,7 @@ ConsoleThread::~ConsoleThread() { shutdown(); }
 static char const* USER_ABORTED = "user aborted";
 
 void ConsoleThread::run() {
-  std::this_thread::sleep_for(std::chrono::microseconds(100 * 1000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   bool v8Enabled = V8DealerFeature::DEALER && V8DealerFeature::DEALER->isEnabled();
   if (!v8Enabled) {

@@ -72,10 +72,11 @@ class min_match_disjunction : public doc_iterator_base {
       doc_iterators_t&& itrs,
       size_t min_match_count = 1,
       const order::prepared& ord = order::prepared::unordered())
-    : doc_iterator_base(ord), itrs_(std::move(itrs)),
+    : itrs_(std::move(itrs)),
       min_match_count_(
         std::min(itrs_.size(), std::max(size_t(1), min_match_count))),
-      lead_(itrs_.size()), doc_(type_limits<type_t::doc_id_t>::invalid()) {
+      lead_(itrs_.size()), doc_(doc_limits::invalid()),
+      ord_(&ord) {
     assert(!itrs_.empty());
     assert(min_match_count_ >= 1 && min_match_count_ <= itrs_.size());
 
@@ -85,6 +86,9 @@ class min_match_disjunction : public doc_iterator_base {
       [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
         return cost::extract(lhs->attributes(), 0) < cost::extract(rhs->attributes(), 0);
     });
+
+    // make 'document' attribute accessible from outside
+    attrs_.emplace(doc_);
 
     // estimate disjunction
     estimate([this](){
@@ -96,38 +100,45 @@ class min_match_disjunction : public doc_iterator_base {
       });
     });
 
+    // prepare external heap
+    heap_.resize(itrs_.size());
+    std::iota(heap_.begin(), heap_.end(), size_t(0));
+
     // prepare score
-    prepare_score([this](byte_type* score) {
-      ord_->prepare_score(score);
-      score_impl(score);
+    prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+      auto& self = const_cast<min_match_disjunction&>(
+        *static_cast<const min_match_disjunction*>(ctx)
+      );
+      self.ord_->prepare_score(score);
+      self.score_impl(score);
     });
   }
 
   virtual doc_id_t value() const override {
-    return doc_;
+    return doc_.value;
   }
 
   virtual bool next() override {
-    if (type_limits<type_t::doc_id_t>::eof(doc_)) {
+    if (doc_limits::eof(doc_.value)) {
       return false;
     }
 
     while (check_size()) {
-      /* start next iteration. execute next for all lead iterators
-       * and move them to head */
+      // start next iteration. execute next for all lead iterators
+      // and move them to head
       if (!pop_lead()) {
-        doc_ = type_limits<type_t::doc_id_t>::eof();
+        doc_.value = doc_limits::eof();
         return false;
       }
 
       // make step for all head iterators less or equal current doc (doc_)
-      while (top()->value() <= doc_) {
-        const bool exhausted = top()->value() == doc_
+      while (top().value() <= doc_.value) {
+        const bool exhausted = top().value() == doc_.value
           ? !top()->next()
-          : type_limits<type_t::doc_id_t>::eof(top()->seek(doc_ + 1));
+          : doc_limits::eof(top()->seek(doc_.value + 1));
 
         if (exhausted && !remove_top()) {
-          doc_ = type_limits<type_t::doc_id_t>::eof();
+          doc_.value = doc_limits::eof();
           return false;
         } else {
           refresh_top();
@@ -135,33 +146,34 @@ class min_match_disjunction : public doc_iterator_base {
       }
 
       // count equal iterators
-      const auto top = this->top()->value();
+      const auto top = this->top().value();
 
       do {
         add_lead();
         if (lead_ >= min_match_count_) {
-          return !type_limits<type_t::doc_id_t>::eof(doc_ = top);
+          return !doc_limits::eof(doc_.value = top);
         }
-      } while (top == this->top()->value());
+      } while (top == this->top().value());
     }
 
-    doc_ = type_limits<type_t::doc_id_t>::eof();
+    doc_.value = doc_limits::eof();
     return false;
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (target <= doc_) {
-      return doc_;
+    if (target <= doc_.value) {
+      return doc_.value;
     }
 
-    if (type_limits<type_t::doc_id_t>::eof(doc_)) {
-      return doc_;
+    if (doc_limits::eof(doc_.value)) {
+      return doc_.value;
     }
 
     /* execute seek for all lead iterators and
      * move one to head if it doesn't hit the target */
-    for (auto it = lead(), end = itrs_.end();it != end;) {
-      const auto doc = (*it)->seek(target);
+    for (auto it = lead(), end = heap_.end();it != end;) {
+      assert(*it < itrs_.size());
+      const auto doc = itrs_[*it]->seek(target);
 
       if (doc == target) {
         // got hit here
@@ -169,12 +181,12 @@ class min_match_disjunction : public doc_iterator_base {
         continue;
       }
 
-      if (type_limits<type_t::doc_id_t>::eof(doc)) {
+      if (doc_limits::eof(doc)) {
         --lead_;
 
         // iterator exhausted
         if (!remove_lead(it)) {
-          return (doc_ = type_limits<type_t::doc_id_t>::eof());
+          return (doc_.value = doc_limits::eof());
         }
 
 #ifdef _MSC_VER
@@ -183,7 +195,7 @@ class min_match_disjunction : public doc_iterator_base {
 #endif
 
         // update end
-        end = itrs_.end();
+        end = heap_.end();
       } else { // doc != target
         // move back to head
         push_head(it);
@@ -194,24 +206,24 @@ class min_match_disjunction : public doc_iterator_base {
 
     // check if we still satisfy search criteria
     if (lead_ >= min_match_count_) {
-      return doc_ = target;
+      return doc_.value = target;
     }
 
     // main search loop
-    for(;;target = top()->value()) {
-      while (top()->value() <= target) {
+    for(;;target = top().value()) {
+      while (top().value() <= target) {
         const auto doc = top()->seek(target);
 
-        if (type_limits<type_t::doc_id_t>::eof(doc)) {
+        if (doc_limits::eof(doc)) {
           // iterator exhausted
           if (!remove_top()) {
-            return (doc_ = type_limits<type_t::doc_id_t>::eof());
+            return (doc_.value = doc_limits::eof());
           }
         } else if (doc == target) {
           // valid iterator, doc == target
           add_lead();
           if (lead_ >= min_match_count_) {
-            return (doc_ = target);
+            return (doc_.value = target);
           }
         } else {
           // invalid iterator, doc != target
@@ -223,7 +235,7 @@ class min_match_disjunction : public doc_iterator_base {
       // start next iteration. execute next for all lead iterators
       // and move them to head
       if (!pop_lead()) {
-        return doc_ = type_limits<type_t::doc_id_t>::eof();
+        return doc_.value = doc_limits::eof();
       }
     }
   }
@@ -232,20 +244,28 @@ class min_match_disjunction : public doc_iterator_base {
   template<typename Iterator>
   inline void push(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
-    std::push_heap(begin, end, [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
-      const auto lhs_doc = lhs->value();
-      const auto rhs_doc = rhs->value();
-      return (lhs_doc > rhs_doc || (lhs_doc == rhs_doc && lhs.est > rhs.est));
+    std::push_heap(begin, end, [this](const size_t lhs, const size_t rhs) NOEXCEPT {
+      assert(lhs < itrs_.size());
+      assert(rhs < itrs_.size());
+      const auto& lhs_it = itrs_[lhs];
+      const auto& rhs_it = itrs_[rhs];
+      const auto lhs_doc = lhs_it.value();
+      const auto rhs_doc = rhs_it.value();
+      return (lhs_doc > rhs_doc || (lhs_doc == rhs_doc && lhs_it.est > rhs_it.est));
     });
   }
 
   template<typename Iterator>
   inline void pop(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
-    detail::pop_heap(begin, end, [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
-      const auto lhs_doc = lhs->value();
-      const auto rhs_doc = rhs->value();
-      return (lhs_doc > rhs_doc || (lhs_doc == rhs_doc && lhs.est > rhs.est));
+    detail::pop_heap(begin, end, [this](const size_t lhs, const size_t rhs) NOEXCEPT {
+      assert(lhs < itrs_.size());
+      assert(rhs < itrs_.size());
+      const auto& lhs_it = itrs_[lhs];
+      const auto& rhs_it = itrs_[rhs];
+      const auto lhs_doc = lhs_it.value();
+      const auto rhs_doc = rhs_it.value();
+      return (lhs_doc > rhs_doc || (lhs_doc == rhs_doc && lhs_it.est > rhs_it.est));
     });
   }
 
@@ -255,25 +275,26 @@ class min_match_disjunction : public doc_iterator_base {
   ///          false - otherwise
   //////////////////////////////////////////////////////////////////////////////
   bool pop_lead() {
-    for (auto it = lead(), end = itrs_.end();it != end;) {
-      if (!(*it)->next()) {
+    for (auto it = lead(), end = heap_.end(); it != end;) {
+      assert(*it < itrs_.size());
+      if (!itrs_[*it]->next()) {
         --lead_;
 
-        /* remove iterator */
+        // remove iterator
         if (!remove_lead(it)) {
           return false;
         }
 
 #ifdef _MSC_VER
-        /* Microsoft invalidates iterator */
+        // Microsoft invalidates iterator
         it = lead();
 #endif
 
-        /* update end */
-        end = itrs_.end();
+        // update end
+        end = heap_.end();
       } else {
         // push back to head
-        push(itrs_.begin(), ++it);
+        push(heap_.begin(), ++it);
         --lead_;
       }
     }
@@ -289,10 +310,10 @@ class min_match_disjunction : public doc_iterator_base {
   //////////////////////////////////////////////////////////////////////////////
   template<typename Iterator>
   inline bool remove_lead(Iterator it) {
-    if (&*it != &itrs_.back()) {
-      std::swap(*it, itrs_.back());
+    if (&*it != &heap_.back()) {
+      std::swap(*it, heap_.back());
     }
-    itrs_.pop_back();
+    heap_.pop_back();
     return check_size();
   }
 
@@ -304,7 +325,7 @@ class min_match_disjunction : public doc_iterator_base {
   //////////////////////////////////////////////////////////////////////////////
   inline bool remove_top() {
     auto lead = this->lead();
-    pop(itrs_.begin(), lead);
+    pop(heap_.begin(), lead);
     return remove_lead(--lead);
   }
 
@@ -313,8 +334,8 @@ class min_match_disjunction : public doc_iterator_base {
   //////////////////////////////////////////////////////////////////////////////
   inline void refresh_top() {
     auto lead = this->lead();
-    pop(itrs_.begin(), lead);
-    push(itrs_.begin(), lead);
+    pop(heap_.begin(), lead);
+    push(heap_.begin(), lead);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -328,7 +349,7 @@ class min_match_disjunction : public doc_iterator_base {
       std::swap(*it, *lead);
     }
     ++lead;
-    push(itrs_.begin(), lead);
+    push(heap_.begin(), lead);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -336,45 +357,47 @@ class min_match_disjunction : public doc_iterator_base {
   ///          false - otherwise
   //////////////////////////////////////////////////////////////////////////////
   inline bool check_size() const {
-    return itrs_.size() >= min_match_count_;
+    return heap_.size() >= min_match_count_;
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns reference to the top of the head
   //////////////////////////////////////////////////////////////////////////////
   inline doc_iterator_t& top() {
-    return itrs_.front();
+    assert(!heap_.empty());
+    assert(heap_.front() < itrs_.size());
+    return itrs_[heap_.front()];
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns the first iterator in the lead group
   //////////////////////////////////////////////////////////////////////////////
-  inline doc_iterators_t::iterator lead() {
-    return itrs_.end() - lead_;
+  inline std::vector<size_t>::iterator lead() {
+    return heap_.end() - lead_;
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief adds iterator to the lead group
   //////////////////////////////////////////////////////////////////////////////
   inline void add_lead() {
-    pop(itrs_.begin(), lead());
+    pop(heap_.begin(), lead());
     ++lead_;
   }
 
   inline void score_impl(byte_type* lhs) {
-    assert(!itrs_.empty());
+    assert(!heap_.empty());
 
     // push all valid iterators to lead
     {
-      for(auto lead = this->lead(), begin = itrs_.begin();
-          lead != begin && top()->value() <= doc_;) {
+      for(auto lead = this->lead(), begin = heap_.begin();
+          lead != begin && top().value() <= doc_.value;) {
         // hitch head
-        if (top()->value() == doc_) {
+        if (top().value() == doc_.value) {
           // got hit here
           add_lead();
           --lead;
         } else {
-          if (type_limits<type_t::doc_id_t>::eof(top()->seek(doc_))) {
+          if (doc_limits::eof(top()->seek(doc_.value))) {
             // iterator exhausted
             remove_top();
           } else {
@@ -386,16 +409,19 @@ class min_match_disjunction : public doc_iterator_base {
 
     // score lead iterators
     std::for_each(
-      lead(), itrs_.end(),
-      [this, lhs](doc_iterator_t& it) {
-        detail::score_add(lhs, *ord_, it);
+      lead(), heap_.end(),
+      [this, lhs](size_t it) {
+        assert(it < itrs_.size());
+        detail::score_add(lhs, *ord_, itrs_[it]);
     });
   }
 
   doc_iterators_t itrs_; // sub iterators
+  std::vector<size_t> heap_;
   size_t min_match_count_; // minimum number of hits
   size_t lead_; // number of iterators in lead group
-  doc_id_t doc_; // current doc
+  document doc_; // current doc
+  const order::prepared* ord_;
 }; // min_match_disjunction
 
 NS_END // ROOT

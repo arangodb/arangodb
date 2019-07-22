@@ -25,6 +25,14 @@
 
 #include <chrono>
 #include <random>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#include <cstring>
 
 #ifdef _WIN32
 #include <Wincrypt.h>
@@ -404,7 +412,7 @@ class RandomDeviceWin32 : public RandomDevice {
     }
   }
 
-  uint32_t random() {
+  uint32_t random() override {
     if (pos >= N) {
       fillBuffer();
     }

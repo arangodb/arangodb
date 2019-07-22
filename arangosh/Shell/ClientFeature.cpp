@@ -31,6 +31,7 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Ssl/ssl-helper.h"
+#include "Basics/FileUtils.h"
 
 #include <chrono>
 #include <iostream>
@@ -89,7 +90,9 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--server.endpoint",
-      "endpoint to connect to, use 'none' to start without a server",
+      "endpoint to connect to. Use 'none' to start without a server. "
+      "Use http+ssl:// or vst+ssl:// as schema to connect to an SSL-secured "
+      "server endpoint, otherwise http+tcp://, vst+tcp:// or unix://",
       new StringParameter(&_endpoint));
 
   options->addOption("--server.password",
@@ -111,6 +114,16 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
         "created",
         new BooleanParameter(&_askJwtSecret),
         arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+
+    options->addOption("--server.jwt-secret-keyfile",
+                       "if this option is specified, the jwt secret will be loaded "
+                       "from the given file. This option is not compatible with "
+                       "--server.ask-jwt-secret, --server.username or --server.password. "
+                       "If specified, it will be used for all "
+                       "connections - even when a new connection to another server is "
+                       "created",
+                       new StringParameter(&_jwtSecretFile),
+                       arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
   }
 
   options->addOption("--server.connection-timeout",
@@ -158,6 +171,8 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     _authentication = false;
   }
 
+  bool hasJwtSecretFile = !_jwtSecretFile.empty();
+
   // check timeouts
   if (_connectionTimeout < 0.0) {
     LOG_TOPIC("81598", FATAL, arangodb::Logger::FIXME)
@@ -190,15 +205,21 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   _haveServerPassword = !options->processingResult().touched("server.password");
 
-  if (_askJwtSecret && options->processingResult().touched("server.password")) {
+  if ((_askJwtSecret || hasJwtSecretFile) && options->processingResult().touched("server.password")) {
     LOG_TOPIC("65475", FATAL, arangodb::Logger::FIXME)
-        << "cannot specify both --server.password and --server.ask-jwt-token";
+        << "cannot specify both --server.password and jwt secret source";
     FATAL_ERROR_EXIT();
   }
 
-  if (_askJwtSecret && options->processingResult().touched("server.username")) {
+  if ((_askJwtSecret || hasJwtSecretFile) && options->processingResult().touched("server.username")) {
     LOG_TOPIC("9d886", FATAL, arangodb::Logger::FIXME)
-        << "cannot specify both --server.username and --server.ask-jwt-token";
+        << "cannot specify both --server.username and jwt secret source";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_askJwtSecret && hasJwtSecretFile) {
+    LOG_TOPIC("aeaeb", FATAL, arangodb::Logger::FIXME)
+        << "multiple jwt secret sources specified";
     FATAL_ERROR_EXIT();
   }
 
@@ -243,6 +264,25 @@ void ClientFeature::readJwtSecret() {
   std::cout << std::endl << std::flush;
 }
 
+void ClientFeature::loadJwtSecretFile() {
+  try {
+      // Note that the secret is trimmed for whitespace, because whitespace
+      // at the end of a file can easily happen. We do not base64-encode,
+      // though, so the bytes count as given. Zero bytes might be a problem
+      // here.
+      _jwtSecret = basics::StringUtils::trim(
+          basics::FileUtils::slurp(_jwtSecretFile),
+          " \t\n\r");
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("aeaec", FATAL, Logger::STARTUP)
+          << "unable to read content of jwt-secret file '"
+          << _jwtSecretFile << "': " << ex.what()
+          << ". please make sure the file/directory is readable for the "
+             "arangod process and user";
+      FATAL_ERROR_EXIT();
+    }
+}
+
 void ClientFeature::prepare() {
   if (!isEnabled()) {
     return;
@@ -251,6 +291,8 @@ void ClientFeature::prepare() {
   if (_askJwtSecret) {
     // ask for a jwt secret
     readJwtSecret();
+  } else if(!_jwtSecretFile.empty()) {
+    loadJwtSecretFile();
   } else if (_authentication && _haveServerPassword) {
     // ask for a password
     readPassword();
@@ -337,7 +379,7 @@ std::string ClientFeature::buildConnectedMessage(
     std::string const& databaseName,
     std::string const& user
 ) {
-  return std::string("Connected to ArangoDB '") + endpointSpecification + 
+  return std::string("Connected to ArangoDB '") + endpointSpecification +
          ((version.empty() || version == "arango") ? "" : ", version: " + version) +
          (role.empty() ? "" : " [" + role + ", " + mode + "]") +
          ", database: '" + databaseName + "', username: '" + user + "'";

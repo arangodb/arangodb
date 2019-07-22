@@ -36,6 +36,9 @@
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
+#include <limits.h>
+
+#include <regex>
 
 namespace {
 
@@ -45,14 +48,12 @@ struct InvalidIndexFactory : public arangodb::IndexTypeFactory {
     return false;  // invalid definitions are never equal
   }
 
-  arangodb::Result instantiate(std::shared_ptr<arangodb::Index>&,
-                               arangodb::LogicalCollection&,
+  std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection&,
                                arangodb::velocypack::Slice const& definition,
                                TRI_idx_iid_t, bool) const override {
     std::string type = arangodb::basics::VelocyPackHelper::getStringValue(
         definition, arangodb::StaticStrings::IndexType, "");
-    return arangodb::Result(TRI_ERROR_BAD_PARAMETER,
-                            "invalid index type '" + type + "'");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid index type '" + type + "'");
   }
 
   arangodb::Result normalize(          // normalize definition
@@ -81,21 +82,17 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
   // unique must be identical if present
   auto value = lhs.get(arangodb::StaticStrings::IndexUnique);
 
-  if (value.isBoolean()) {
-    if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get(arangodb::StaticStrings::IndexUnique),
-                                                    false)) {
-      return false;
-    }
+  if (value.isBoolean() &&
+      !arangodb::basics::VelocyPackHelper::equal(value, rhs.get(arangodb::StaticStrings::IndexUnique), false)) {
+    return false;
   }
 
   // sparse must be identical if present
   value = lhs.get(arangodb::StaticStrings::IndexSparse);
 
-  if (value.isBoolean()) {
-    if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get(arangodb::StaticStrings::IndexSparse),
-                                                    false)) {
-      return false;
-    }
+  if (value.isBoolean() &&
+      !arangodb::basics::VelocyPackHelper::equal(value, rhs.get(arangodb::StaticStrings::IndexSparse), false)) {
+    return false;
   }
 
   if (arangodb::Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX == type ||
@@ -104,7 +101,7 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
     value = lhs.get("geoJson");
 
     if (value.isBoolean() &&
-        arangodb::basics::VelocyPackHelper::compare(value, rhs.get("geoJson"), false)) {
+        !arangodb::basics::VelocyPackHelper::equal(value, rhs.get("geoJson"), false)) {
       return false;
     }
   } else if (arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX == type) {
@@ -112,7 +109,7 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
     value = lhs.get("minLength");
 
     if (value.isNumber() &&
-        arangodb::basics::VelocyPackHelper::compare(value, rhs.get("minLength"), false)) {
+        !arangodb::basics::VelocyPackHelper::equal(value, rhs.get("minLength"), false)) {
       return false;
     }
   }
@@ -138,7 +135,7 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
         bool found = false;
 
         for (auto const& vr : VPackArrayIterator(r)) {
-          if (arangodb::basics::VelocyPackHelper::compare(v, vr, false) == 0) {
+          if (arangodb::basics::VelocyPackHelper::equal(v, vr, false)) {
             found = true;
             break;
           }
@@ -150,8 +147,8 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
       }
     } else {
       // attribute order matters
-      if (arangodb::basics::VelocyPackHelper::compare(
-              value, rhs.get(arangodb::StaticStrings::IndexFields), false) != 0) {
+      if (!arangodb::basics::VelocyPackHelper::equal(
+              value, rhs.get(arangodb::StaticStrings::IndexFields), false)) {
         return false;
       }
     }
@@ -270,24 +267,10 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(velocypack::Slice def
   }
 
   auto& factory = IndexFactory::factory(type.copyString());
-  std::shared_ptr<Index> index;
-  auto res = factory.instantiate(index, collection, definition, id, isClusterConstructor);
-
-  if (!res.ok()) {
-    TRI_set_errno(res.errorNumber());
-    LOG_TOPIC("77be6", ERR, arangodb::Logger::ENGINES)
-        << "failed to instantiate index, error: " << res.errorNumber() << " "
-        << res.errorMessage();
-
-    return nullptr;
-  }
+  std::shared_ptr<Index> index = factory.instantiate(collection, definition, id, isClusterConstructor);
 
   if (!index) {
-    TRI_set_errno(TRI_ERROR_INTERNAL);
-    LOG_TOPIC("5384c", ERR, arangodb::Logger::ENGINES)
-        << "failed to instantiate index, factory returned null instance";
-
-    return nullptr;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to instantiate index, factory returned null instance");
   }
 
   return index;
@@ -338,52 +321,82 @@ TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info,
   return iid;
 }
 
-/// @brief process the fields list, deduplicate it, and add it to the json
-Result IndexFactory::processIndexFields(VPackSlice definition, VPackBuilder& builder,
-                                        size_t minFields, size_t maxField,
-                                        bool create, bool allowExpansion) {
-  TRI_ASSERT(builder.isOpenObject());
+Result IndexFactory::validateFieldsDefinition(VPackSlice definition, size_t minFields, size_t maxFields) {
+  if (basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::Error, false)) {
+    // We have an error here.
+    return Result(TRI_ERROR_BAD_PARAMETER);
+  }
+  
   std::unordered_set<arangodb::velocypack::StringRef> fields;
   auto fieldsSlice = definition.get(arangodb::StaticStrings::IndexFields);
 
-  builder.add(arangodb::velocypack::Value(arangodb::StaticStrings::IndexFields));
-  builder.openArray();
-
   if (fieldsSlice.isArray()) {
+    std::regex const idRegex("^(.+\\.)?" + StaticStrings::IdString + "$", std::regex::ECMAScript);
+
     // "fields" is a list of fields
     for (auto const& it : VPackArrayIterator(fieldsSlice)) {
       if (!it.isString()) {
         return Result(TRI_ERROR_BAD_PARAMETER,
-                      "index field names must be strings");
+                      "index field names must be non-empty strings");
       }
-
+      
       arangodb::velocypack::StringRef f(it);
 
-      if (f.empty() || (create && f == StaticStrings::IdString)) {
-        // accessing internal attributes is disallowed
+      if (f.empty()) {
         return Result(TRI_ERROR_BAD_PARAMETER,
-                      "_id attribute cannot be indexed");
+                      "index field names must be non-empty strings");
       }
-
+      
       if (fields.find(f) != fields.end()) {
         // duplicate attribute name
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "duplicate attribute name in index fields list");
       }
-
-      std::vector<basics::AttributeName> temp;
-      TRI_ParseAttributeString(f, temp, allowExpansion);
-
+      
+      if (std::regex_match(f.toString(), idRegex)) {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "_id attribute cannot be indexed");
+      }
+      
       fields.insert(f);
-      builder.add(it);
     }
   }
-
+  
   size_t cc = fields.size();
-  if (cc == 0 || cc < minFields || cc > maxField) {
+  if (cc < minFields || cc > maxFields) {
     return Result(TRI_ERROR_BAD_PARAMETER,
                   "invalid number of index attributes");
   }
+
+  return Result();
+}
+
+/// @brief process the fields list, deduplicate it, and add it to the json
+Result IndexFactory::processIndexFields(VPackSlice definition, VPackBuilder& builder,
+                                        size_t minFields, size_t maxFields,
+                                        bool create, bool allowExpansion) {
+  TRI_ASSERT(builder.isOpenObject());
+
+  Result res = validateFieldsDefinition(definition, minFields, maxFields);
+  if (res.fail()) {
+    return res;
+  }
+
+  auto fieldsSlice = definition.get(arangodb::StaticStrings::IndexFields);
+  
+  TRI_ASSERT(fieldsSlice.isArray());
+
+  builder.add(arangodb::velocypack::Value(arangodb::StaticStrings::IndexFields));
+  builder.openArray();
+
+  // "fields" is a list of fields when we have got here
+  for (auto const& it : VPackArrayIterator(fieldsSlice)) {
+    std::vector<basics::AttributeName> temp;
+    TRI_ParseAttributeString(it.stringRef(), temp, allowExpansion);
+
+    builder.add(it);
+  }
+
 
   builder.close();
   return Result();

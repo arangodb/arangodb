@@ -94,28 +94,25 @@ class RocksDBVPackIndex : public RocksDBIndex {
   static constexpr size_t minimalPrefixSize() { return sizeof(TRI_voc_tick_t); }
 
   /// @brief attempts to locate an entry in the index
-  ///
-  /// Warning: who ever calls this function is responsible for destroying
-  /// the velocypack::Slice and the RocksDBVPackIndexIterator* results
-  IndexIterator* lookup(transaction::Methods*,
-                        arangodb::velocypack::Slice const, bool reverse) const;
+  std::unique_ptr<IndexIterator> lookup(transaction::Methods*,
+                                        arangodb::velocypack::Slice const, bool reverse) const;
 
-  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                               arangodb::aql::AstNode const*,
-                               arangodb::aql::Variable const*, size_t, size_t&,
-                               double&) const override;
+  Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                             arangodb::aql::AstNode const* node,
+                                             arangodb::aql::Variable const* reference, 
+                                             size_t itemsInIndex) const override;
 
-  bool supportsSortCondition(arangodb::aql::SortCondition const*,
-                             arangodb::aql::Variable const*, size_t, double&,
-                             size_t&) const override;
+  Index::SortCosts supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                         arangodb::aql::Variable const* reference, 
+                                         size_t itemsInIndex) const override;
 
-  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
-                                              arangodb::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
+                                              arangodb::aql::Variable const* reference) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, 
-                                      arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      IndexIteratorOptions const&) override;
+  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
+                                                      arangodb::aql::AstNode const* node,
+                                                      arangodb::aql::Variable const* reference,
+                                                      IndexIteratorOptions const& opts) override;
 
   void afterTruncate(TRI_voc_tick_t tick) override;
 

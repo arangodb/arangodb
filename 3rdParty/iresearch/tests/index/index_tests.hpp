@@ -175,6 +175,13 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   irs::directory& dir() const { return *dir_; }
   irs::format::ptr codec() { return codec_; }
   const index_t& index() const { return index_; }
+  index_t& index() { return index_; }
+
+  void sort(const irs::comparer& comparator) {
+    for (auto& segment : index_) {
+      segment.sort(comparator);
+    }
+  }
 
   irs::index_writer::ptr open_writer(
       irs::directory& dir,
@@ -228,12 +235,22 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     const document* src;
 
     while ((src = gen.next())) {
-      segment.add(src->indexed.begin(), src->indexed.end());
+      segment.add(
+        src->indexed.begin(),
+        src->indexed.end(),
+        src->sorted
+      );
+
       ASSERT_TRUE(insert(
         writer,
         src->indexed.begin(), src->indexed.end(),
-        src->stored.begin(), src->stored.end()
+        src->stored.begin(), src->stored.end(),
+        src->sorted
       ));
+    }
+
+    if (writer.comparator()) {
+      segment.sort(*writer.comparator());
     }
   }
 
@@ -255,9 +272,10 @@ class index_test_base : public virtual test_param_base<index_test_context> {
 
   void add_segment(
       tests::doc_generator_base& gen,
-      irs::OpenMode mode = irs::OM_CREATE
+      irs::OpenMode mode = irs::OM_CREATE,
+      const irs::index_writer::init_options& opts = {}
   ) {
-    auto writer = open_writer(mode);
+    auto writer = open_writer(mode, opts);
     add_segment(*writer, gen);
   }
 
@@ -297,7 +315,7 @@ class text_field : public tests::field_base {
  public:
   text_field(
       const irs::string_ref& name, bool payload = false
-  ): token_stream_(irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"C\", \"ignored_words\":[]}")) {
+  ): token_stream_(irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"C\", \"stopwords\":[]}")) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
          throw irs::illegal_state();
@@ -309,7 +327,7 @@ class text_field : public tests::field_base {
 
   text_field(
       const irs::string_ref& name, const T& value, bool payload = false
-  ): token_stream_(irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"C\", \"ignored_words\":[]}")),
+  ): token_stream_(irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"C\", \"stopwords\":[]}")),
      value_(value) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
@@ -327,7 +345,7 @@ class text_field : public tests::field_base {
   }
 
   irs::string_ref value() const { return value_; }
-  void value(const T& value) { value = value; }
+  void value(const T& value) { value_ = value; }
   void value(T&& value) { value_ = std::move(value); }
 
   const irs::flags& features() const {

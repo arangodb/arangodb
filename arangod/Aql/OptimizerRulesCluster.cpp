@@ -179,7 +179,7 @@ void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* new
 }
 
 bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPlan* plan,
-                                                    OptimizerRule const* rule) {
+                                                    OptimizerRule const& rule) {
   bool modified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
@@ -209,16 +209,26 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
           ::hasSingleParent(node, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE});
 
       if (parentModification) {
-        auto parentType = parentModification->getType();
         auto mod = ExecutionNode::castTo<ModificationNode*>(parentModification);
+        
+        if (!::parentIsReturnOrConstCalc(mod)) {
+          continue;
+        }
+
+        if (mod->collection() != indexNode->collection()) {
+          continue;
+        }
+        
+        auto parentType = parentModification->getType();
         Variable const* update = nullptr;
         Variable const* keyVar = nullptr;
 
-        if (parentType == EN::REMOVE) {
+        if (parentType == EN::INSERT) {
+          continue;
+        } else if (parentType == EN::REMOVE) {
           keyVar = ExecutionNode::castTo<RemoveNode const*>(mod)->inVariable();
-        } else if (parentType == EN::INSERT) {
-          keyVar = ExecutionNode::castTo<InsertNode const*>(mod)->inVariable();
         } else {
+          // update / replace
           auto updateReplaceNode = ExecutionNode::castTo<UpdateReplaceNode const*>(mod);
           update = updateReplaceNode->inDocVariable();
           if (updateReplaceNode->inKeyVariable() != nullptr) {
@@ -238,10 +248,6 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
           } else {
             continue;
           }
-        }
-
-        if (!::parentIsReturnOrConstCalc(mod)) {
-          continue;
         }
 
         ExecutionNode* singleOperationNode = plan->registerNode(new SingleRemoteOperationNode(
@@ -269,7 +275,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
 }
 
 bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionPlan* plan,
-                                                      OptimizerRule const* rule) {
+                                                      OptimizerRule const& rule) {
   bool modified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
@@ -382,8 +388,11 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
 
 }  // namespace
 
-void arangodb::aql::substituteClusterSingleDocumentOperations(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const* rule) {
+namespace arangodb {
+namespace aql {
+
+void substituteClusterSingleDocumentOperationsRule(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const& rule) {
   bool modified = false;
 
   for (auto const& fun : {&::substituteClusterSingleDocumentOperationsIndex,
@@ -395,4 +404,7 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(
   }
 
   opt->addPlan(std::move(plan), rule, modified);
+}
+
+}
 }
