@@ -221,7 +221,7 @@ Collections
 -----------
 
 All collections now support a minimum replication factor (minReplicationFactor) property.
-This is default set to `1`, which is identical to previous behaviour.
+This is default set to `1`, which is identical to previous behavior.
 If in a failover scenario a shard of a collection has less than minReplicationFactor many insync followers it will go into "read-only" mode and will reject writes until enough followers are insync again.
 In more detail:
 Having `minReplicationFactor == 1` means as soon as a "master-copy" is available of the data
