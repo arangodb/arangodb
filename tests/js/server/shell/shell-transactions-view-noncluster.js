@@ -248,7 +248,6 @@ function TransactionsIResearchSuite() {
       }
 
       let result = db._query(qqWithSync).toArray();
-      print(result);
       assertEqual(result.length, 4);
       assertEqual(result[0]._key, 'half');
       assertEqual(result[1]._key, 'quarter');
@@ -281,7 +280,7 @@ function TransactionsIResearchSuite() {
             let c = db._collection('UnitTestsCollection');
             c.remove("full");
             c.remove("half");
-            
+
             // it should not be possible to query with waitForSync
             db._query(qqWithSync);
             fail();
@@ -293,7 +292,6 @@ function TransactionsIResearchSuite() {
       }
 
       let result = db._query(qqWithSync).toArray();
-      print(result);
       assertEqual(result.length, 4);
       assertEqual(result[0]._key, 'half');
       assertEqual(result[1]._key, 'quarter');
