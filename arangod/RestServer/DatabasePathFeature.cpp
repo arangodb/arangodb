@@ -191,4 +191,9 @@ std::string DatabasePathFeature::subdirectoryName(std::string const& subDirector
   return basics::FileUtils::buildFilename(_directory, subDirectory);
 }
 
+bool DatabasePathFeature::isRestoreStart() {
+  std::string path = subdirectoryName("RESTORE");
+  return arangodb::basics::FileUtils::exists(path);
+}
+
 }  // namespace arangodb

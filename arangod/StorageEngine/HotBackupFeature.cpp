@@ -28,6 +28,9 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "IResearch/IResearchFeature.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "RestServer/UpgradeFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 
 using namespace arangodb::application_features;
@@ -35,11 +38,30 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb;
 
+namespace {
+
+bool recreateArangoSearchViewsAfterRestore(TRI_vocbase_t& vocbase,
+                                           velocypack::Slice const& slice) {
+  auto* databasePathFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabasePathFeature>("DatabasePathFeature");
+  if (databasePathFeature && databasePathFeature->isRestoreStart()) {
+    auto* arangoSearchFeature =
+        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchFeature>("ArangoSearch");
+    LOG_DEVEL << "Recreating ArangoSearch index for database " << vocbase.name();
+    return arangoSearchFeature->recreateLocalArangoSearchData(vocbase, slice);
+  } else {
+    return true;
+  }
+}
+
+}
+
 namespace arangodb {
 
 HotBackupFeature::HotBackupFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "HotBackup"), _backupEnabled(true) {
   setOptional(true);
+  startsAfter("Upgrade");
   startsAfter("DatabasePhase");
   startsBefore("GeneralServer");
 }
@@ -65,6 +87,7 @@ void HotBackupFeature::prepare() {
       rocksdb->setCreateShaFiles(true);
     }
   }
+  registerUpgradeTasks();  // register tasks after UpgradeFeature::prepare() has finished
 }
 
 void HotBackupFeature::start() {}
@@ -328,6 +351,28 @@ bool HotBackupFeature::cancelled(std::string const& transferId) const {
   }
 
   return false;
+}
+
+void HotBackupFeature::registerUpgradeTasks() {
+  auto* upgrade =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::UpgradeFeature>(
+          "Upgrade");
+
+  TRI_ASSERT(upgrade);
+
+  // move IResearch data-store from IResearchView to IResearchLink
+  {
+    arangodb::methods::Upgrade::Task task;
+
+    task.name = "recreateArangoSearchViewsAfterRestore";
+    task.description = "recreate ArangoSearch indexes on a single server after a hotbackup restore operation";
+    task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
+    task.clusterFlags = arangodb::methods::Upgrade::Flags::CLUSTER_NONE;
+    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_EXISTING;
+    task.action = &recreateArangoSearchViewsAfterRestore;
+    upgrade->addTask(std::move(task));
+  }
+
 }
 
 }  // namespaces

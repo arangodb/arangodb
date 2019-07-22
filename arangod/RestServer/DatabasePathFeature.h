@@ -47,6 +47,11 @@ class DatabasePathFeature final : public application_features::ApplicationFeatur
     _directory = path;
   }
 
+  /// @brief returns true if and only if the current restart of the server
+  /// is one from a hotbackup restore. This essentially tests existence of
+  /// a file called "RESTORE" in the database directory.
+  bool isRestoreStart();
+
  private:
   std::string _directory;
   std::string _requiredDirectoryState;

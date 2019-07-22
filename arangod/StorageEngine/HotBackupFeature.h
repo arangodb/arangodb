@@ -178,6 +178,7 @@ public:
   void registerLockCleaner(Scheduler::WorkHandle& handle) {
     _lockCleaner = handle;   // cancel any previous one
   }
+  void registerUpgradeTasks();
 };
 
 } // namespaces

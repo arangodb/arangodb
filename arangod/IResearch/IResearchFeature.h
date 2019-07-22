@@ -82,6 +82,7 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   //////////////////////////////////////////////////////////////////////////////
 
   void removeLocalArangoSearchData();
+  bool recreateLocalArangoSearchData(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
 
  private:
   class Async;  // forward declaration
