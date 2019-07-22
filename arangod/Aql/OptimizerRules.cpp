@@ -4535,6 +4535,11 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
   // are used in a smart join (and use distributeShardsLike on each other)
   auto forwardRestrictionToPrototype = [&plan](ExecutionNode const* current, std::string const& shardId) {
     auto collectionNode = dynamic_cast<CollectionAccessingNode const*>(current);
+    
+    if (collectionNode == nullptr) {
+      return;
+    }
+
     auto prototypeOutVariable = collectionNode->prototypeOutVariable();
 
     if (prototypeOutVariable == nullptr) {
