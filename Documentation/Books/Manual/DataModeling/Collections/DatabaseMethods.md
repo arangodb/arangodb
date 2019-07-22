@@ -170,7 +170,7 @@ to the [naming conventions](../NamingConventions/README.md).
   many copies in the cluster a shard will refuse to write. The
   minReplicationFactor can not be larger than replicationFactor.
   Please note: during server failures this might lead to writes
-  not beeing possible until the failover is sorted out and might cause
+  not being possible until the failover is sorted out and might cause
   write slow downs in trade of data durability.
 
 - *distributeShardsLike*: distribute the shards of this collection
