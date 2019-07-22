@@ -482,7 +482,7 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
                 ", value is not an array.");
       }
     }
-    // Guarantieed by if above
+    // Guaranteed by if above
     TRI_ASSERT(serverList.isArray());
     for (const auto& server : VPackArrayIterator(serverList)) {
       if (i++ == 0) {
