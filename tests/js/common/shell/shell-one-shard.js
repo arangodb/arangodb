@@ -107,7 +107,6 @@ function OneShardPropertiesSuite () {
         let graphsProperties = db._collection("_graphs").properties();
 
         if(isCluster) {
-          print(db._properties())
           assertEqual(colProperties.distributeShardsLike, undefined);
           assertEqual(colProperties.replicationFactor, 2);
         }
