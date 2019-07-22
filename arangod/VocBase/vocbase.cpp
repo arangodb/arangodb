@@ -2105,9 +2105,10 @@ VocbaseOptions arangodb::getVocbaseOptions(VPackSlice const& options) {
   // the risk of consulting the ClusterFeature, because defaults are provided
   // during the first call.
 
-  std::uint32_t replicationFactor =  1;   // real default will be read
-  std::uint32_t minReplicationFactor = 1; // from ClusterFeature if possible
-  std::string sharding;
+  VocbaseOptions vocbaseOptions;
+  vocbaseOptions.replicationFactor = 1;
+  vocbaseOptions.minReplicationFactor = 1;
+  vocbaseOptions.sharding = "";
 
   //  sanitize input for vocbase creation
   //  sharding -- must be "", "flexible" or "single"
@@ -2120,7 +2121,7 @@ VocbaseOptions arangodb::getVocbaseOptions(VPackSlice const& options) {
          )) {
       shardingSlice = VPackSlice::noneSlice();
     } else {
-      sharding = shardingSlice.copyString();
+      vocbaseOptions.sharding = shardingSlice.copyString();
     }
   }
 
@@ -2131,22 +2132,22 @@ VocbaseOptions arangodb::getVocbaseOptions(VPackSlice const& options) {
     bool isNumber = (replicationSlice.isNumber() && replicationSlice.getUInt() > 0 );
     if(!isSatellite && !isNumber){
       if(cluster) {
-        replicationFactor = cluster->defaultReplicationFactor();
+        vocbaseOptions.replicationFactor = cluster->defaultReplicationFactor();
       } else {
         LOG_TOPIC("eeeee", ERR, Logger::CLUSTER) << "Can not access ClusterFeature to determine database replicationFactor";
       }
     } else if (isSatellite) {
-      replicationFactor = 0;
+      vocbaseOptions.replicationFactor = 0;
     } else if (isNumber) {
-      replicationFactor = static_cast<decltype(replicationFactor)>(replicationSlice.getUInt());
+      vocbaseOptions.replicationFactor = replicationSlice.getNumber<decltype(vocbaseOptions.replicationFactor)>();
     }
 #ifndef USE_ENTERPRISE
-    if(replicationFactor == 0) {
+    if(vocbaseOptions.replicationFactor == 0) {
       if(cluster) {
-        replicationFactor = cluster->defaultReplicationFactor();
+        vocbaseOptions.replicationFactor = cluster->defaultReplicationFactor();
       } else {
         LOG_TOPIC("eeeef", ERR, Logger::CLUSTER) << "Can not access ClusterFeature to determine database replicationFactor";
-        replicationFactor = 1;
+        vocbaseOptions.replicationFactor = 1;
       }
     }
 #endif
@@ -2154,19 +2155,19 @@ VocbaseOptions arangodb::getVocbaseOptions(VPackSlice const& options) {
 
   {
     VPackSlice minReplicationSlice = options.get(StaticStrings::MinReplicationFactor);
-    bool isNumber = (minReplicationSlice.isNumber() && minReplicationSlice.getUInt() > 0 );
+    bool isNumber = (minReplicationSlice.isNumber() && minReplicationSlice.getNumber<int>() > 0 );
     if(!isNumber){
       if(cluster) {
-        minReplicationFactor = cluster->minReplicationFactor();
+        vocbaseOptions.minReplicationFactor = cluster->minReplicationFactor();
       } else {
         LOG_TOPIC("eeeed", ERR, Logger::CLUSTER) << "Can not access ClusterFeature to determine database minReplicationFactor";
       }
     } else if (isNumber) {
-      minReplicationFactor = static_cast<decltype(replicationFactor)>(minReplicationSlice.getUInt());
+      vocbaseOptions.minReplicationFactor = minReplicationSlice.getNumber<decltype(vocbaseOptions.replicationFactor)>();
     }
   }
 
-  return VocbaseOptions{sharding, replicationFactor, minReplicationFactor};
+  return vocbaseOptions;
 }
 
 void arangodb::addVocbaseOptionsToOpenObject(VPackBuilder& builder, std::string const& sharding, std::uint32_t replicationFactor, std::uint32_t minReplicationFactor) {
