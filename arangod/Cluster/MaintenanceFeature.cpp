@@ -165,7 +165,13 @@ void MaintenanceFeature::stop() {
   // There should be no new workers.
   // Current workers could be stuck on the condition variable.
   // Let's wake them up now.
-  _currentCounterCondition.notify_all();
+  {
+    // Only if we have flagged shutdown this operation is save, all other threads potentially
+    // trying to get this mutex get into the shutdown case now, instead of getting into wait state.
+    TRI_ASSERT(_isShuttingDown);
+    std::unique_lock<std::mutex> guard(_currentCounterLock);
+    _currentCounterCondition.notify_all();
+  }
   for (auto const& itWorker : _activeWorkers) {
     CONDITION_LOCKER(cLock, _workerCompletion);
 
