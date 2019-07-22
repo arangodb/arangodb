@@ -115,6 +115,7 @@ int TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout) {
   switch (result) {
     case WAIT_OBJECT_0: {
       // everything ok
+      CloseHandle(*thread);
       return TRI_ERROR_NO_ERROR;
     }
 

@@ -8,6 +8,9 @@ v3.5.0-rc.5 (2019-XX-XX)
   minReplicationFactor can have the values: 1 <= minReplicationFactor <= replicationFactor.
   Having minReplicationFactor == 1 ArangoDB behaves the same way as in any previous version.
   
+* Fixed a query abort error with smart joins if both collections were restricted to a
+  single shard using the "restrict-to-single-shard" optimizer rule.
+
 * Fixed a performance regression of COLLECT WITH COUNT INTO.
 
 * Fixed some races in cluster collection creation, which allowed collections with the
