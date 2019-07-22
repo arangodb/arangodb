@@ -104,7 +104,6 @@ class IResearchQueryInRangeTest : public ::testing::Test {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
-    features.emplace_back(new arangodb::FlushFeature(server), false);
     features.emplace_back(new arangodb::V8DealerFeature(server), false);  // for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::FlushFeature(server), false);
     features.emplace_back(new arangodb::ViewTypesFeature(server), true);
