@@ -1632,6 +1632,8 @@ function processQuery(query, explain, planIndex) {
           }
           return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
         }).join(', ') + (node.sortmode === 'unset' ? '' : '  ' + annotation('/* sort mode: ' + node.sortmode + ' */'));
+	  case 'Materialization':
+	    return keyword('MATERIALIZATION');
     }
 
     return 'unhandled node type (' + node.type + ')';

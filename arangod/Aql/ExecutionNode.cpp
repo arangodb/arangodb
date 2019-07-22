@@ -100,6 +100,8 @@ std::unordered_map<int, std::string const> const typeNames{
      "SingleRemoteOperationNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW),
      "EnumerateViewNode"},
+    {static_cast<int>(ExecutionNode::MATERIALIZATION ),
+     "Materialization"},
 };
 
 // FIXME -- this temporary function should be
@@ -994,7 +996,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       // sort sorts in place and does not produce new registers
       break;
     }
-
+ 
     case ExecutionNode::RETURN: {
       // return is special. it produces a result but is the last step in the
       // pipeline
@@ -1064,6 +1066,10 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
       break;
     }
+    
+    case ExecutionNode::MATERIALIZATION:
+      // no registers for now... but looks like we will need some
+      break;
 
     default: {
       // should not reach this point
