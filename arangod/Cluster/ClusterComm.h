@@ -487,6 +487,7 @@ class ClusterComm {
 
   void startBackgroundThreads();
   void stopBackgroundThreads();
+  void deleteBackgroundThreads();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief submit an HTTP request to a shard asynchronously.
@@ -688,7 +689,6 @@ class ClusterCommThread : public Thread {
  public:
   ClusterCommThread();
   ~ClusterCommThread();
-
  public:
   void beginShutdown() override;
   bool isSystem() override final { return true; }
