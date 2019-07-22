@@ -166,6 +166,30 @@ class CollectionInfoCurrent {
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the current failover candidates for the given shard
+  //////////////////////////////////////////////////////////////////////////////
+
+  TEST_VIRTUAL std::vector<ServerID> failoverCandidates(ShardID const& shardID) const {
+    std::vector<ServerID> v;
+
+    auto it = _vpacks.find(shardID);
+    if (it != _vpacks.end()) {
+      VPackSlice slice = it->second->slice();
+
+      VPackSlice servers = slice.get(StaticStrings::FailoverCandidates);
+      if (servers.isArray()) {
+        for (auto const& server : VPackArrayIterator(servers)) {
+          TRI_ASSERT(server.isString());
+          if (server.isString()) {
+            v.push_back(server.copyString());
+          }
+        }
+      }
+    }
+    return v;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the errorMessage entry for one shardID
   //////////////////////////////////////////////////////////////////////////////
 
@@ -369,40 +393,40 @@ class ClusterInfo final {
   /// If it is not found in the cache, the cache is reloaded once.
   //////////////////////////////////////////////////////////////////////////////
 
-  TEST_VIRTUAL std::shared_ptr<CollectionInfoCurrent> getCollectionCurrent(DatabaseID const&,
-                                                                           CollectionID const&);
+  TEST_VIRTUAL std::shared_ptr<CollectionInfoCurrent> getCollectionCurrent(
+      DatabaseID const&, CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create database in coordinator
   //////////////////////////////////////////////////////////////////////////////
-  Result createDatabaseCoordinator( // create database
-    std::string const& name, // database name
-    velocypack::Slice const& slice, // database definition
-    double timeout // request timeout
+  Result createDatabaseCoordinator(    // create database
+      std::string const& name,         // database name
+      velocypack::Slice const& slice,  // database definition
+      double timeout                   // request timeout
   );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop database in coordinator
   //////////////////////////////////////////////////////////////////////////////
-  Result dropDatabaseCoordinator( // drop database
-    std::string const& name, // database name
-    double timeout // request timeout
+  Result dropDatabaseCoordinator(  // drop database
+      std::string const& name,     // database name
+      double timeout               // request timeout
   );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
-  Result createCollectionCoordinator( // create collection
-    std::string const& databaseName, // database name
-                                  std::string const& collectionID, uint64_t numberOfShards,
-                                  uint64_t replicationFactor, bool waitForReplication,
-                                  arangodb::velocypack::Slice const& json,
-                                  double timeout // request timeout
+  Result createCollectionCoordinator(   // create collection
+      std::string const& databaseName,  // database name
+      std::string const& collectionID, uint64_t numberOfShards,
+      uint64_t replicationFactor, uint64_t minReplicationFactor,
+      bool waitForReplication, arangodb::velocypack::Slice const& json,
+      double timeout  // request timeout
   );
-  
-  /// @brief this method does an atomic check of the preconditions for the collections
-  /// to be created, using the currently loaded plan. it populates the plan version
-  /// used for the checks
+
+  /// @brief this method does an atomic check of the preconditions for the
+  /// collections to be created, using the currently loaded plan. it populates
+  /// the plan version used for the checks
   Result checkCollectionPreconditions(std::string const& databaseName,
                                       std::vector<ClusterCollectionCreationInfo> const& infos,
                                       uint64_t& planVersion);
@@ -413,13 +437,15 @@ class ClusterInfo final {
   /// Note that in contrast to most other methods here, this method does not
   /// get a timeout parameter, but an endTime parameter!!!
   Result createCollectionsCoordinator(std::string const& databaseName,
-                                      std::vector<ClusterCollectionCreationInfo>&, double endTime);
+                                      std::vector<ClusterCollectionCreationInfo>&,
+                                      double endTime);
 
   /// @brief drop collection in coordinator
-  Result dropCollectionCoordinator( // drop collection
-    std::string const& databaseName, // database name
-    std::string const& collectionID, // collection identifier
-    double timeout // request timeout
+  //////////////////////////////////////////////////////////////////////////////
+  Result dropCollectionCoordinator(     // drop collection
+      std::string const& databaseName,  // database name
+      std::string const& collectionID,  // collection identifier
+      double timeout                    // request timeout
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -441,18 +467,18 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create view in coordinator
   //////////////////////////////////////////////////////////////////////////////
-  Result createViewCoordinator( // create view
-    std::string const& databaseName, // database name
-    std::string const& viewID, // view identifier
-    velocypack::Slice json // view definition
+  Result createViewCoordinator(         // create view
+      std::string const& databaseName,  // database name
+      std::string const& viewID,        // view identifier
+      velocypack::Slice json            // view definition
   );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop view in coordinator
   //////////////////////////////////////////////////////////////////////////////
-  Result dropViewCoordinator( // drop view
-    std::string const& databaseName, // database name
-    std::string const& viewID // view identifier
+  Result dropViewCoordinator(           // drop view
+      std::string const& databaseName,  // database name
+      std::string const& viewID         // view identifier
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -465,22 +491,22 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
-  Result ensureIndexCoordinator( // create index
-    std::string const& databaseName, // database name
-    std::string const& collectionID, // collection identifier
-                             arangodb::velocypack::Slice const& slice, bool create,
-                             arangodb::velocypack::Builder& resultBuilder,
-    double timeout // request timeout
+  Result ensureIndexCoordinator(        // create index
+      std::string const& databaseName,  // database name
+      std::string const& collectionID,  // collection identifier
+      arangodb::velocypack::Slice const& slice, bool create,
+      arangodb::velocypack::Builder& resultBuilder,
+      double timeout  // request timeout
   );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
-  Result dropIndexCoordinator( // drop index
-    std::string const& databaseName, // database name
-    std::string const& collectionID, // collection identifier
-    TRI_idx_iid_t iid, // index identifier
-    double timeout // request timeout
+  Result dropIndexCoordinator(          // drop index
+      std::string const& databaseName,  // database name
+      std::string const& collectionID,  // collection identifier
+      TRI_idx_iid_t iid,                // index identifier
+      double timeout                    // request timeout
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -638,7 +664,7 @@ class ClusterInfo final {
    * @return         List of DB servers serving the shard
    */
   arangodb::Result getShardServers(ShardID const& shardId, std::vector<ServerID>&);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get an operation timeout
   //////////////////////////////////////////////////////////////////////////////
@@ -668,13 +694,13 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
-  Result ensureIndexCoordinatorInner( // create index
-    std::string const& databaseName, // database name
-                                  std::string const& collectionID, std::string const& idSlice,
-                                  arangodb::velocypack::Slice const& slice, bool create,
-                                  arangodb::velocypack::Builder& resultBuilder,
-    double timeout // request timeout
-);
+  Result ensureIndexCoordinatorInner(   // create index
+      std::string const& databaseName,  // database name
+      std::string const& collectionID, std::string const& idSlice,
+      arangodb::velocypack::Slice const& slice, bool create,
+      arangodb::velocypack::Builder& resultBuilder,
+      double timeout  // request timeout
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief object for agency communication

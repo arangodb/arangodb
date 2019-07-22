@@ -1,6 +1,13 @@
 v3.5.0-rc.5 (2019-XX-XX)
 ------------------------
 
+* MinReplicationFactor:
+  Collections can now be created with a minimal replication factor (minReplicationFactor), which defaults to 1.
+  If minReplicationFactor > 1 a collection will go into "read-only" mode as soon as it has less then minReplicationFactor
+  many insync followers. With this mechanism users can avoid to have collections diverge too much in case of failure scenarios.
+  minReplicationFactor can have the values: 1 <= minReplicationFactor <= replicationFactor.
+  Having minReplicationFactor == 1 ArangoDB behaves the same way as in any previous version.
+  
 * Fixed a query abort error with smart joins if both collections were restricted to a
   single shard using the "restrict-to-single-shard" optimizer rule.
 
