@@ -131,7 +131,7 @@ class EngineInfoContainerDBServer {
       CollectionSource& operator=(CollectionSource&&) = default;
 
       aql::Collection* collection{};  // The collection used to connect to this engine
-      std::string restrictedShard;    // The shard this snippet is restricted to
+      std::unordered_set<std::string> restrictedShards; // The shards this snippet is restricted to
     };
 
     struct ViewSource {
