@@ -133,14 +133,14 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
   if (!minReplicationFactorSlice.isNone()) {
     if (minReplicationFactorSlice.isNumber()) {
       _minReplicationFactor = minReplicationFactorSlice.getNumber<size_t>();
-      if (_minReplicationFactor > _replicationFactor) {
+      if (!isSatellite() && _minReplicationFactor > _replicationFactor) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
             "minReplicationFactor cannot be larger then replicationFactor (" +
                 basics::StringUtils::itoa(_minReplicationFactor) + " > " +
                 basics::StringUtils::itoa(_replicationFactor) + ")");
       }
-      if (_minReplicationFactor == 0 && _replicationFactor != 0) {
+      if (!isSatellite() && _minReplicationFactor == 0) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                        "minReplicationFactor cannot be 0");
       }
@@ -356,12 +356,12 @@ void ShardingInfo::avoidServers(std::vector<std::string> const& avoidServers) {
 }
 
 size_t ShardingInfo::replicationFactor() const {
-  TRI_ASSERT(_minReplicationFactor <= _replicationFactor);
+  TRI_ASSERT(isSatellite() || _minReplicationFactor <= _replicationFactor);
   return _replicationFactor;
 }
 
 void ShardingInfo::replicationFactor(size_t replicationFactor) {
-  if (replicationFactor < _minReplicationFactor) {
+  if (!isSatellite() && replicationFactor < _minReplicationFactor) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "replicationFactor cannot be smaller then minReplicationFactor (" +
@@ -372,12 +372,12 @@ void ShardingInfo::replicationFactor(size_t replicationFactor) {
 }
 
 size_t ShardingInfo::minReplicationFactor() const {
-  TRI_ASSERT(_minReplicationFactor <= _replicationFactor);
+  TRI_ASSERT(isSatellite() || _minReplicationFactor <= _replicationFactor);
   return _minReplicationFactor;
 }
 
 void ShardingInfo::minReplicationFactor(size_t minReplicationFactor) {
-  if (minReplicationFactor > _replicationFactor) {
+  if (!isSatellite() && minReplicationFactor > _replicationFactor) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "minReplicationFactor cannot be larger then replicationFactor (" +
