@@ -602,7 +602,7 @@
                 'new-min-replication-factor',
                 'Mininum replication factor',
                 '',
-                'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster.',
+                'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
                 '',
                 false,
                 [
