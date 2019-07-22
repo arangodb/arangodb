@@ -1,5 +1,0 @@
-arangosh&gt; db._query(
-........&gt; <span class="hljs-string">'FOR i IN 1..100000 SORT i RETURN i'</span>, {}, {
-........&gt;   memoryLimit: <span class="hljs-number">100000</span>
-........&gt; }).toArray();
-[ArangoError <span class="hljs-number">32</span>: AQL: query would use more memory than allowed (<span class="hljs-keyword">while</span> executing)]

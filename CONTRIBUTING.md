@@ -33,12 +33,8 @@ Contributing features, documentation, tests
   commit message so the issues will get updated automatically with comments.
 
 * If the modifications change any documented behavior or add new features,
-  document the changes. The documentation can be found in arangod/Documentation
-  directory. To recreate the documentation locally, run make doxygen. This will
-  re-create all documentation files in the Doxygen directory in your
-  repository. You can inspect the documentation in this folder using a text
-  editor or a browser. We recently agreed that future documentation should be
-  written in American English (AE).
+  document the changes. It should be written in American English.
+  The documentation can be found at https://github.com/arangodb/docs
 
 * When done, run the complete test suite and make sure all tests pass. You can
   check [README_maintainers.md](README_maintainers.md) for test run instructions.

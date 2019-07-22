@@ -182,9 +182,9 @@ var help = function () {
     version = ARANGODB_CLIENT_VERSION().replace(/^(\d+\.\d+).*/, "$1");
   } catch (err) {}
   if (!version.match(/^(\d+\.\d+)$/)) {
-    version = 'latest';
+    version = 'stable';
   }
-  arangodb.print('https://docs.arangodb.com/' + version + '/Manual/Foxx/');
+  arangodb.print('https://www.arangodb.com/docs/' + version + '/foxx.html');
 
   // additional newline
   arangodb.print();
@@ -556,8 +556,8 @@ var tests = function (mount, options) {
 
 var run = function (args) {
   var version = internal.version.split('.').slice(0, 2).join('.');
-  arangodb.print('NOTE: foxx-manager is deprecated and will be removed in ArangoDB 4.');
-  arangodb.print(`Please use foxx-cli instead: https://docs.arangodb.com/${version}/Manual/Programs/FoxxCLI/\n`);
+  arangodb.print('NOTE: foxx-manager is deprecated and will be removed in ArangoDB v4.0.');
+  arangodb.print(`Please use foxx-cli instead: https://www.arangodb.com/docs/${version}/programs-foxx-cli.html\n`);
 
   if (args === undefined || args.length === 0) {
     arangodb.print('Expecting a command, please try:\n');

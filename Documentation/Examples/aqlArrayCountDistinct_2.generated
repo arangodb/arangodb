@@ -1,7 +1,0 @@
-@Q:
-RETURN COUNT_DISTINCT([ <span class="hljs-string">"yes"</span>, <span class="hljs-string">"no"</span>, <span class="hljs-string">"yes"</span>, <span class="hljs-string">"sauron"</span>, <span class="hljs-string">"no"</span>, <span class="hljs-string">"yes"</span> ])
-
-@R
-[
-  <span class="hljs-number">3</span>
-]

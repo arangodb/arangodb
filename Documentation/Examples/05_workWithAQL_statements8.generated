@@ -1,8 +1,0 @@
-arangosh&gt; stmt = db._createStatement( { 
-........&gt;  <span class="hljs-string">"query"</span>: <span class="hljs-string">"FOR i IN [ @one, @two ] RETURN i * 2"</span>, 
-........&gt;  <span class="hljs-string">"bindVars"</span>: { 
-........&gt;    <span class="hljs-string">"one"</span>: <span class="hljs-number">1</span>, 
-........&gt;    <span class="hljs-string">"two"</span>: <span class="hljs-number">2</span> 
-........&gt;  } 
-........&gt; } );
-[object ArangoStatement]

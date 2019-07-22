@@ -1,5 +1,10 @@
 devel
 -----
+
+* removed content from Documentation/Books, but keeping the subfolders.
+  The documentation is in a separate repository (except DocuBlocks and Scripts):
+  https://github.com/arangodb/docs.git
+
 * TOKENS function updated to deal with primitive types and arrays
 
 * MinReplicationFactor:
