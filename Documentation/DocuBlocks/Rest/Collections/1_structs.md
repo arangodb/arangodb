@@ -45,7 +45,7 @@ contains how many copies of each shard are kept on different DBServers.; *Cluste
 
 @RESTSTRUCT{minReplicationFactor,collection_info,integer,optional,}
 contains how many minimal copies of each shard need to be in sync on different DBServers.
-The shards will refuse to write, if we have less then these many copies in sync.; *Cluster specific attribute.*
+The shards will refuse to write, if we have less then these many copies in sync. *Cluster specific attribute.*
 
 @RESTSTRUCT{shardingStrategy,collection_info,string,optional,}
 the sharding strategy selected for the collection; *Cluster specific attribute.*
