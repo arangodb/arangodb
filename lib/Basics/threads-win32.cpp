@@ -113,6 +113,7 @@ int TRI_JoinThread(TRI_thread_t* thread) {
 
     case WAIT_OBJECT_0: {
       // everything ok
+      CloseHandle(*thread);
       break;
     }
 
