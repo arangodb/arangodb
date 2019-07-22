@@ -283,14 +283,23 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
   // test run. Set flag for each view in query
    SmallVector<ExecutionNode*>::allocator_type::arena_type a;
    SmallVector<ExecutionNode*> nodes{a};
-   plan->findNodesOfType(nodes, EN::ENUMERATE_IRESEARCH_VIEW, true);
-   for(auto& node : nodes) {
-      auto& viewNode = *EN::castTo<IResearchViewNode*>(node);
-      //viewNode.view()->~LogicalDataSource;
+   plan->findNodesOfType(nodes, EN::LIMIT, false);
+   for (auto& node : nodes) {
+     auto const* loop = node->getLoop();
+     if (arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
+       auto const& viewNode = *EN::castTo<const IResearchViewNode*>(loop);
+       std::cerr << " Found View:" << viewNode.view()->name() << std::endl;
+       ExecutionNode* current = node->getFirstDependency();
+       while(current != loop) {
+         if (arangodb::aql::ExecutionNode::SORT == current->getType()) {
+           std::cerr << " Found SORT NODE" << std::endl;
+         }
+         current = current->getFirstDependency();  // inspect next node
+       }
+       modified = true;
+     }
+     //viewNode.view()->~LogicalDataSource;
    }
-
-   // make test rule appear in plan  - just to see what will happen
-   modified = true;
 }
 
 /// @brief move filters and sort conditions into views
