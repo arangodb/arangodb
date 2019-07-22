@@ -35,14 +35,14 @@ const ERRORS = arangodb.errors;
 const db = arangodb.db;
 
 const qqWithSync = `FOR doc IN UnitTestsView 
-                      SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') 
+                      SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'myText'), 'myText') 
                       OPTIONS { waitForSync : true } 
                       SORT TFIDF(doc) 
                       LIMIT 4 
                       RETURN doc`;
 
 const qq = `FOR doc IN UnitTestsView 
-              SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') 
+              SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'myText'), 'myText') 
               SORT TFIDF(doc) 
               LIMIT 4 
               RETURN doc`;
@@ -59,8 +59,12 @@ function TransactionsIResearchSuite() {
   return {
 
     setUpAll: function() {
-      analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", 
-                      [ "frequency", "norm", "position" ]);
+      analyzers.save(
+        "myText",
+        "text",
+        { locale: "en.UTF-8", stopwords: [ ] },
+        [ "frequency", "norm", "position" ]
+      );
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +100,7 @@ function TransactionsIResearchSuite() {
     ////////////////////////////////////////////////////////////////////////////
     testRollbackInsertWithLinks1 : function () {
 
-      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "text_en" ] } } } } };
+      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] } } } } };
       view = db._createView("UnitTestsView", "arangosearch", {});
       view.properties(meta);
       let links = view.properties().links;
@@ -141,7 +145,7 @@ function TransactionsIResearchSuite() {
     testRollbackInsertWithLinks2 : function () {
       c.ensureIndex({type: 'hash', fields:['val'], unique: true});
 
-      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "text_en" ] } } } } };
+      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] } } } } };
       view = db._createView("UnitTestsView", "arangosearch", {});
       view.properties(meta);
       let links = view.properties().links;
@@ -176,7 +180,7 @@ function TransactionsIResearchSuite() {
     /// @brief should honor rollbacks of inserts
     ////////////////////////////////////////////////////////////////////////////
     testRollbackInsertWithLinks3 : function () {
-      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "text_en" ] } } } } };
+      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] } } } } };
       view = db._createView("UnitTestsView", "arangosearch", {});
       view.properties(meta);
       let links = view.properties().links;
@@ -215,7 +219,7 @@ function TransactionsIResearchSuite() {
     testRollbackRemovalWithLinks1 : function () {
       c.ensureIndex({type: 'hash', fields:['val'], unique: true});
 
-      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "text_en" ] } } } } };
+      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] } } } } };
       view = db._createView("UnitTestsView", "arangosearch", {});
       view.properties(meta);
       let links = view.properties().links;
@@ -258,7 +262,7 @@ function TransactionsIResearchSuite() {
     testWaitForSyncError : function () {
       c.ensureIndex({type: 'hash', fields:['val'], unique: true});
 
-      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "text_en" ] } } } } };
+      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] } } } } };
       view = db._createView("UnitTestsView", "arangosearch", {});
       view.properties(meta);
       let links = view.properties().links;
