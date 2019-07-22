@@ -458,7 +458,6 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
     auto currentFailoverCandidatesPath =
         curColPrefix + sharedPath + clone.shard + "/servers";
     auto plannedShardPath = planColPrefix + sharedPath + "shards/" + clone.shard;
-    size_t i = 0;
 
     // start up race condition  ... current might not have everything in plan
     if (!snap.has(currentShardPath) || !snap.has(plannedShardPath)) {
@@ -484,6 +483,8 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
     }
     // Guaranteed by if above
     TRI_ASSERT(serverList.isArray());
+
+    size_t i = 0;
     for (const auto& server : VPackArrayIterator(serverList)) {
       if (i++ == 0) {
         // Skip leader
