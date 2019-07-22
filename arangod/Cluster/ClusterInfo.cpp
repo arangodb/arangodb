@@ -153,6 +153,10 @@ static std::string extractErrorMessage(std::string const& shardId, VPackSlice co
   return msg;
 }
 
+std::ostream& arangodb::operator<<(std::ostream& ostream, RebootId rebootId) {
+  return ostream << rebootId.value();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an empty collection info object
 ////////////////////////////////////////////////////////////////////////////////
@@ -3342,7 +3346,7 @@ void ClusterInfo::loadServers() {
       }
 
 
-      auto changedRebootIds = std::unordered_map<ServerID, std::pair<uint64_t, uint64_t>>{};
+      auto changedRebootIds = std::unordered_map<ServerID, std::pair<RebootId, RebootId>>{};
       {
         // rebootIds are expected to be at least 1 if set. Thus 0 means either
         // the rebootId, or the whole server entry, is missing.
@@ -3351,12 +3355,12 @@ void ClusterInfo::loadServers() {
           if (it != map.end()) {
             return it->second.rebootId();
           }
-          return UINT64_C(0);
+          return RebootId{0};
         };
 
         for (auto const& id : oldAndNewServers) {
-          uint64_t oldRebootId = getRebootIdOrZero(_serversRegistered, id);
-          uint64_t newRebootId = getRebootIdOrZero(newServersRegistered, id);
+          RebootId oldRebootId = getRebootIdOrZero(_serversRegistered, id);
+          RebootId newRebootId = getRebootIdOrZero(newServersRegistered, id);
           if (oldRebootId != newRebootId) {
             changedRebootIds.emplace(std::make_pair(id, std::make_pair(oldRebootId, newRebootId)));
           }
@@ -4009,14 +4013,15 @@ arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
 ClusterInfo::ServerRegisteredInfo ClusterInfo::ServerRegisteredInfo::fromSlice(VPackSlice slice) {
   auto endpoint = decltype(_endpoint){};
   auto advertisedEndpoint = decltype(_advertisedEndpoint){};
-  auto rebootId = decltype(_rebootId){};
+  auto rebootId = decltype(_rebootId){0};
   if (slice.isObject()) {
     using namespace arangodb::basics;
     endpoint = VelocyPackHelper::getStringValue(slice, "endpoint", "");
     advertisedEndpoint =
         VelocyPackHelper::getStringValue(slice, "advertisedEndpoint", "");
     rebootId =
-        VelocyPackHelper::getNumericValue<decltype(rebootId)>(slice, "rebootId", 0);
+        RebootId{VelocyPackHelper::getNumericValue<decltype(rebootId.value())>(slice,
+                                                                               "rebootId", 0)};
   }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   else {

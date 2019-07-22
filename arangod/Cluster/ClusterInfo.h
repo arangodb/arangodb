@@ -27,6 +27,7 @@
 
 #include "Basics/Common.h"
 
+#include <iosfwd>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -58,6 +59,40 @@ typedef uint32_t ServerShortID;       // Short ID of a server
 typedef std::string ServerShortName;  // Short name of a server
 
 struct ClusterCollectionCreationInfo;
+
+class RebootId {
+ public:
+  explicit RebootId(uint64_t rebootId) : _value(rebootId) {}
+  uint64_t value() const noexcept { return _value; }
+
+  bool initialized() const noexcept { return value() != 0; }
+
+ private:
+  uint64_t _value;
+};
+
+
+bool operator==(RebootId left, RebootId right) noexcept {
+  return left.value() == right.value();
+}
+bool operator!=(RebootId left, RebootId right) noexcept {
+  return left.value() != right.value();
+}
+bool operator<(RebootId left, RebootId right) noexcept {
+  return left.value() < right.value();
+}
+bool operator>(RebootId left, RebootId right) noexcept {
+  return left.value() > right.value();
+}
+bool operator<=(RebootId left, RebootId right) noexcept {
+  return left.value() <= right.value();
+}
+bool operator>=(RebootId left, RebootId right) noexcept {
+  return left.value() >= right.value();
+}
+
+
+std::ostream& operator<<(std::ostream& ostream, RebootId rebootId);
 
 class CollectionInfoCurrent {
   friend class ClusterInfo;
@@ -713,10 +748,10 @@ class ClusterInfo final {
     std::string const& advertisedEndpoint() const noexcept {
       return _advertisedEndpoint;
     }
-    uint64_t rebootId() const noexcept { return _rebootId; }
+    RebootId rebootId() const noexcept { return _rebootId; }
 
    private:
-    ServerRegisteredInfo(std::string&& endpoint, std::string&& advertisedEndpoint, uint64_t rebootId)
+    ServerRegisteredInfo(std::string&& endpoint, std::string&& advertisedEndpoint, RebootId rebootId)
         : _endpoint(std::move(endpoint)),
           _advertisedEndpoint(std::move(advertisedEndpoint)),
           _rebootId(rebootId) {}
@@ -726,7 +761,7 @@ class ClusterInfo final {
     /// @brief entry "advertisedEndpoint"
     std::string const _advertisedEndpoint;
     /// @brief entry "rebootId"
-    uint64_t const _rebootId{};
+    RebootId const _rebootId{0};
 
     // At the time of this writing, the following fields (may) also exist, but
     // are currently unused here:
