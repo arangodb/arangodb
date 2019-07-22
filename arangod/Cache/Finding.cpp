@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cache/Finding.h"
+
+#include "Basics/voc-errors.h"
 #include "Cache/CachedValue.h"
 
 using namespace arangodb;

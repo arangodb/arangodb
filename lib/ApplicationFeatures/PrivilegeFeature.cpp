@@ -20,9 +20,11 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <sys/types.h>
+
 #include "PrivilegeFeature.h"
 
-#include <sys/types.h>
+#include "Basics/error.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>

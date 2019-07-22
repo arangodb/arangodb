@@ -24,10 +24,6 @@
 #ifndef ARANGODB_BASICS_SYSTEM__FUNCTIONS_H
 #define ARANGODB_BASICS_SYSTEM__FUNCTIONS_H 1
 
-#ifndef TRI_WITHIN_COMMON
-#error use <Basics/Common.h>
-#endif
-
 #ifdef TRI_MISSING_MEMRCHR
 void* memrchr(void const* block, int c, size_t size);
 #endif

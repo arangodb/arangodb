@@ -23,6 +23,8 @@
 
 #include "Basics/Common.h"
 
+#include "system-functions.h"
+
 #include <chrono>
 #include <thread>
 #ifdef TRI_HAVE_UNISTD_H

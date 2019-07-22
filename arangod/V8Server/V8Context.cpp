@@ -24,6 +24,7 @@
 #include "V8Context.h"
 
 #include "Basics/MutexLocker.h"
+#include "Basics/system-functions.h"
 #include "Logger/Logger.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"

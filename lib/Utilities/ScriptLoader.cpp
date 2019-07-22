@@ -25,6 +25,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"

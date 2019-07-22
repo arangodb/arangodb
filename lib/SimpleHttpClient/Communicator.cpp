@@ -25,6 +25,7 @@
 
 #include "Basics/MutexLocker.h"
 #include "Basics/socket-utils.h"
+#include "Basics/system-functions.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 

@@ -22,12 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogTimeFormat.h"
-#include "Basics/Exceptions.h"
-#include "Basics/datetime.h"
 
 #include <chrono>
 #include <sstream>
 #include <iomanip>
+
+#include "Basics/Exceptions.h"
+#include "Basics/datetime.h"
+#include "Basics/system-functions.h"
 
 namespace {
 

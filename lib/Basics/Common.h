@@ -55,12 +55,8 @@
 
 #define TRI_WITHIN_COMMON 1
 // clang-format off
-#include "Basics/voc-errors.h"
-#include "Basics/error.h"
 #include "Basics/debugging.h"
-#include "Basics/memory.h"
 #include "Basics/system-compiler.h"
-#include "Basics/system-functions.h"
 // clang-format on
 #undef TRI_WITHIN_COMMON
 

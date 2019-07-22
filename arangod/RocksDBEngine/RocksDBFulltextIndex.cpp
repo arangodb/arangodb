@@ -27,6 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/memory.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"

@@ -25,10 +25,12 @@
 #ifndef ARANGODB_BASICS_EXCEPTIONS_H
 #define ARANGODB_BASICS_EXCEPTIONS_H 1
 
+#include <errno.h>
+
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-
-#include <errno.h>
+#include "Basics/error.h"
+#include "Basics/voc-errors.h"
 
 /// @brief diagnostic output
 #define DIAGNOSTIC_INFORMATION(e) e.what()

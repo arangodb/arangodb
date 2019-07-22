@@ -29,6 +29,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"

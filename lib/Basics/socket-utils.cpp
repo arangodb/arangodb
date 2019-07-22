@@ -23,8 +23,6 @@
 
 #include "socket-utils.h"
 
-#include "Logger/Logger.h"
-
 #ifdef TRI_HAVE_NETDB_H
 #include <netdb.h>
 #endif
@@ -34,6 +32,9 @@
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+
+#include "Basics/voc-errors.h"
+#include "Logger/Logger.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a socket

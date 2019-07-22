@@ -21,9 +21,11 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cstring>
+
 #include "Basics/Common.h"
 #include "Basics/exitcodes.h"
-#include <cstring>
+#include "Basics/voc-errors.h"
 
 /// @brief error number and system error
 struct ErrorContainer {

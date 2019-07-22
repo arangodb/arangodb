@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationPhase.h"
 #include "Basics/socket-utils.h"
+#include "Basics/system-functions.h"
 #include "Logger/Logger.h"
 #include "SimpleHttpClient/ClientConnection.h"
 #include "SimpleHttpClient/SslClientConnection.h"

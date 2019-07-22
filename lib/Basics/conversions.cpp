@@ -22,9 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "conversions.h"
-#include "Basics/tri-strings.h"
+
 #include <cstring>
 #include <time.h>
+
+#include "Basics/error.h"
+#include "Basics/system-functions.h"
+#include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
 
 static char const* const HEX = "0123456789ABCDEF";
 

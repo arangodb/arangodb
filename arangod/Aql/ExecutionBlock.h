@@ -26,11 +26,12 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/BlockCollector.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/Variable.h"
+#include "Basics/system-functions.h"
 #include "QueryOptions.h"
 
 #include <deque>

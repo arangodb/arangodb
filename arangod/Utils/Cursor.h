@@ -26,6 +26,7 @@
 
 #include "Aql/ExecutionState.h"
 #include "Basics/Common.h"
+#include "Basics/system-functions.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/voc-types.h"
 

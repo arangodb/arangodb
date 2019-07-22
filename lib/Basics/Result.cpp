@@ -20,8 +20,11 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/VelocyPackHelper.h"
 #include "Result.h"
+
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/error.h"
+#include "Basics/voc-errors.h"
 
 using namespace arangodb;
 
@@ -65,6 +68,8 @@ bool Result::is(int errorNumber) const noexcept {
 }
 
 bool Result::isNot(int errorNumber) const { return !is(errorNumber); }
+
+Result& Result::reset() { return reset(TRI_ERROR_NO_ERROR); }
 
 Result& Result::reset(int errorNumber) {
   _errorNumber = errorNumber;

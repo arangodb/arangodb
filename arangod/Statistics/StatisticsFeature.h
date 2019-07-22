@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
+#include "Basics/system-functions.h"
 #include "Rest/CommonDefines.h"
 #include "Statistics/figures.h"
 

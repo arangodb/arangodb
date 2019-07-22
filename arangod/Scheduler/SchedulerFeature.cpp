@@ -21,28 +21,29 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SchedulerFeature.h"
-
 #ifdef _WIN32
 #include <stdio.h>
 #include <windows.h>
 #endif
 
+#include <chrono>
+#include <thread>
+
+#include "SchedulerFeature.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/system-functions.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SupervisedScheduler.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-dispatcher.h"
 
-#include "Scheduler/SupervisedScheduler.h"
-
-#include <chrono>
-#include <thread>
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;

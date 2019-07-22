@@ -25,6 +25,7 @@
 #include "Utf8Helper.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/directories.h"
+#include "Basics/memory.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "unicode/brkiter.h"

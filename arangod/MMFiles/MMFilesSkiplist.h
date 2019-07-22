@@ -25,6 +25,8 @@
 #define ARANGOD_MMFILES_SKIP_LIST_H 1
 
 #include "Basics/Common.h"
+
+#include "Basics/memory.h"
 #include "Random/RandomGenerator.h"
 
 #include <velocypack/Builder.h>

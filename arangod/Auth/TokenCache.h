@@ -29,6 +29,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "Basics/system-functions.h"
 #include "Rest/CommonDefines.h"
 
 #include <velocypack/Builder.h>

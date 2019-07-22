@@ -31,6 +31,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/system-functions.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Logger/Logger.h"

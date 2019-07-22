@@ -30,8 +30,9 @@
 #include <unistd.h>
 #endif
 
-#include "Basics/conversions.h"
 #include "Basics/StringUtils.h"
+#include "Basics/conversions.h"
+#include "Basics/error.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
 #include "Logger/LogTimeFormat.h"

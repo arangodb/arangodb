@@ -24,6 +24,7 @@
 #include "tri-strings.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
+#include "Basics/memory.h"
 
 #include <openssl/sha.h>
 

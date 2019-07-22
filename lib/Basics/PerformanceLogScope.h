@@ -25,6 +25,7 @@
 #define ARANGODB_BASICS_PERFORMANCE_LOG_SCOPE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/system-functions.h"
 #include "Logger/Logger.h"
 
 namespace arangodb {

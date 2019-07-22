@@ -30,6 +30,7 @@
 #include "gtest/gtest.h"
 
 #include "Basics/ConditionLocker.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterComm.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/SupervisedScheduler.h"

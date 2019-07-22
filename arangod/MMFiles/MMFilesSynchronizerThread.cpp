@@ -26,6 +26,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/memory-map.h"
+#include "Basics/system-functions.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesWalSlots.h"

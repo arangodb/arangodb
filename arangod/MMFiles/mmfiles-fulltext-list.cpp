@@ -23,6 +23,8 @@
 
 #include "mmfiles-fulltext-list.h"
 
+#include "Basics/memory.h"
+
 /// @brief we'll set this bit (the highest of a uint32_t) if the list is sorted
 /// if the list is not sorted, this bit is cleared
 /// This is done as a space optimization. A big index will contain a lot of

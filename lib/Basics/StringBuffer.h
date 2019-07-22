@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+#include "Basics/memory.h"
 
 #include <iosfwd>
 #include <sstream>

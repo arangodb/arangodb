@@ -25,6 +25,7 @@
 #define ARANGOD_REPLICATION_REPLICATION_APPLIER_STATE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/voc-errors.h"
 #include "Replication/common-defines.h"
 #include "VocBase/voc-types.h"
 

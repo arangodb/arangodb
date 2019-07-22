@@ -27,6 +27,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/system-functions.h"
 #include "Cluster/TraverserEngine.h"
 #include "Logger/Logger.h"
 #include "Transaction/Context.h"

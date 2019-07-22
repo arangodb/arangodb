@@ -21,14 +21,16 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Exceptions.h"
-#include "Logger/Logger.h"
-
 #include <cstdarg>
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <cstring>
 #endif
+
+#include "Exceptions.h"
+
+#include "Basics/error.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

@@ -31,6 +31,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Thread.h"
 #include "Basics/hashes.h"
+#include "Basics/system-functions.h"
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
 #include "Logger/Logger.h"

@@ -24,12 +24,13 @@
 #ifndef ARANGOD_UTILS_COLLECTION_KEYS_H
 #define ARANGOD_UTILS_COLLECTION_KEYS_H 1
 
-#include "Basics/Common.h"
-#include "VocBase/voc-types.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Basics/Common.h"
+#include "Basics/system-functions.h"
+#include "VocBase/voc-types.h"
 
 struct TRI_vocbase_t;
 

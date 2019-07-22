@@ -21,10 +21,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IResearchMMFilesLink.h"
+
 #include "Cluster/ServerState.h"
-#include "IResearchCommon.h"
-#include "IResearchLinkHelper.h"
-#include "IResearchView.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchLinkHelper.h"
+#include "IResearch/IResearchView.h"
 #include "Indexes/IndexFactory.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -32,8 +34,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/LogicalCollection.h"
-
-#include "IResearchMMFilesLink.h"
 
 namespace arangodb {
 namespace iresearch {

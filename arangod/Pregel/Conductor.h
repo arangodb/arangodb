@@ -29,6 +29,7 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/asio_ns.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Statistics.h"

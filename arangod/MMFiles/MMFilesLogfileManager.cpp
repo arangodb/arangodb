@@ -34,6 +34,7 @@
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/memory-map.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesAllocatorThread.h"
@@ -50,8 +51,8 @@
 #include "RestServer/FlushFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Transaction/ManagerFeature.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/ManagerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;

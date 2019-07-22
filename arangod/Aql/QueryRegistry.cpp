@@ -28,6 +28,7 @@
 #include "Aql/Query.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Transaction/Methods.h"

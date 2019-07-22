@@ -27,6 +27,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/system-functions.h"
+
 using namespace arangodb::rest;
 
 namespace {

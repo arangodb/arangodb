@@ -27,6 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/system-functions.h"
 #include "Logger/Logger.h"
 #include "Replication/Syncer.h"
 #include "Replication/utilities.h"

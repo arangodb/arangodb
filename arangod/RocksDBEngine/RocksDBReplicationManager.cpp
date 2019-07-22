@@ -24,6 +24,7 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ResultT.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"

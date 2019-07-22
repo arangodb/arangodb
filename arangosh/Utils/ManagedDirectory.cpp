@@ -32,6 +32,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
+#include "Basics/voc-errors.h"
 #include "Logger/Logger.h"
 
 namespace {

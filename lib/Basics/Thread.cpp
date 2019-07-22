@@ -30,18 +30,19 @@
 #include <unistd.h>
 #endif
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/Exceptions.h"
-#include "Basics/ScopeGuard.h"
-#include "Logger/Logger.h"
+#ifdef TRI_HAVE_PROCESS_H
+#include <process.h>
+#endif
 
 #include <chrono>
 #include <thread>
 
-#ifdef TRI_HAVE_PROCESS_H
-#include <process.h>
-#endif
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ConditionLocker.h"
+#include "Basics/Exceptions.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/error.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;

@@ -66,6 +66,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "Basics/error.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 

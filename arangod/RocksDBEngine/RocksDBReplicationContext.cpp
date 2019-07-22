@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Basics/system-functions.h"
 #include "Logger/Logger.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"

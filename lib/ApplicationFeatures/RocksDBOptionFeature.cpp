@@ -23,6 +23,7 @@
 
 #include "RocksDBOptionFeature.h"
 #include "Basics/process-utils.h"
+#include "Basics/system-functions.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"

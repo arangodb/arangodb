@@ -32,10 +32,11 @@
 #include "ConsoleFeature.h"
 
 #include "ApplicationFeatures/ShellColorsFeature.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/messages.h"
+#include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
-#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"

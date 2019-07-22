@@ -4,6 +4,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/directories.h"
 #include "Basics/files.h"
+#include "Basics/memory.h"
 
 #include <iostream>
 
