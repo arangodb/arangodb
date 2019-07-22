@@ -1,5 +1,6 @@
 devel
 -----
+* TOKENS function updated to deal with primitive types and arrays
 
 * MinReplicationFactor:
   Collections can now be created with a minimal replication factor (minReplicationFactor) default 1.
