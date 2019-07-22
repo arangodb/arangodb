@@ -1307,7 +1307,6 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
   READ_LOCKER(guard, _indexesLock);
   
-  LOG_DEVEL << "inserting document " << documentId.id();
   bool needReversal = false;
   for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
@@ -1317,9 +1316,8 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     
     if (res.fail()) {
       if (needReversal && !state->isSingleOperation()) {
-        ::reverseIdxOps(_indexes, it, [&](RocksDBIndex* rid) {
-          LOG_DEVEL << "revering insert operation on " << rid->id() << " for document " << documentId.id();
-          rIdx->remove(*trx, mthds, documentId, doc, options.indexOperationMode);
+        ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc, &options](RocksDBIndex* rid) {
+          rid->remove(*trx, mthds, documentId, doc, options.indexOperationMode);
         });
       }
       break;

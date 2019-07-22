@@ -404,7 +404,6 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
 
     return true;
   }
-  LOG_DEVEL << "did not find documentID " << documentId.id();
 
   return false;
 }
