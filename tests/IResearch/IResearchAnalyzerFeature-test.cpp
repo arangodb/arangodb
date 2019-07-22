@@ -1394,7 +1394,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index) {
     auto* ci = arangodb::ClusterInfo::instance();
     ASSERT_NE(nullptr, ci);
 
-    ASSERT_TRUE((ci->createCollectionCoordinator(system()->name(), collectionId, 0, 1, false,
+    ASSERT_TRUE((ci->createCollectionCoordinator(system()->name(), collectionId, 0, 1, 1, false,
                                                  createCollectionJson->slice(), 0.0)
                      .ok()));
     auto logicalCollection = ci->getCollection(system()->name(), collectionId);
@@ -2173,8 +2173,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
+    auto restore = irs::make_finally([&before]() -> void {
+      StorageEngineMock::recoveryStateResult = before;
+    });
 
     EXPECT_TRUE((false == feature
                               .remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer0")
@@ -2342,8 +2343,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
+    auto restore = irs::make_finally([&before]() -> void {
+      StorageEngineMock::recoveryStateResult = before;
+    });
 
     EXPECT_TRUE((true == feature
                              ->remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2")
@@ -2465,8 +2467,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
 
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
+    auto restore = irs::make_finally([&before]() -> void {
+      StorageEngineMock::recoveryStateResult = before;
+    });
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
     feature.prepare();  // add static analyzers
     feature.start();    // load persisted analyzers
@@ -2523,8 +2526,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
 
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
+    auto restore = irs::make_finally([&before]() -> void {
+      StorageEngineMock::recoveryStateResult = before;
+    });
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
     feature.prepare();  // add static analyzers
     feature.start();    // load persisted analyzers
@@ -4123,8 +4127,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     auto vpack = VPackParser::fromJson(
-        "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"invalid_"
-        "parameter\":"
+        "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"invalid_parameter\":"
         "true,\"stopwords\":[],\"accent\":true,\"stemming\":false}");
     EXPECT_TRUE(feature
                     .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_text_analyzer1",
@@ -4273,9 +4276,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     auto vpack = VPackParser::fromJson(
-        "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"invalid_"
-        "parameter\":"
-        "true,\"accent\":true}");
+        "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"invalid_parameter\":true,\"accent\":true}");
     EXPECT_TRUE(feature
                     .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_norm_analyzer1",
                              "norm", vpack->slice())

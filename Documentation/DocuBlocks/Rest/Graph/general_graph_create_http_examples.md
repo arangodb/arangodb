@@ -42,6 +42,11 @@ Cannot be modified later.
 @RESTSTRUCT{replicationFactor,post_api_gharial_create_opts,integer,required,}
 The replication factor used when initially creating collections for this graph.
 
+@RESTSTRUCT{minReplicationFactor,post_api_gharial_create_opts,integer,optional,}
+The minimal replication factor used for every new collection in the graph.
+If one shard has less then minimal replication factor copies, we cannot write
+to this shard, but to all others.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}

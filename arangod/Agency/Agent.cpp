@@ -112,7 +112,7 @@ void Agent::waitForThreadsStop() {
   while (_constituent.isRunning() || _compactor.isRunning() ||
          (_config.supervision() && _supervision.isRunning()) ||
          (_inception != nullptr && _inception->isRunning())) {
-    std::this_thread::sleep_for(std::chrono::microseconds(100000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     // fail fatally after 5 mins:
     if (++counter >= 10 * 60 * 5) {
