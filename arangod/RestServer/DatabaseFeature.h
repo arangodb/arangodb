@@ -110,7 +110,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   std::vector<std::string> getDatabaseNames();
   std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
 
-  //options can contain id, replicationFactor (oneShardDB), sharding (oneShardDB)
+  //options can contain id, replicationFactor, sharding (oneShardDB)
   int createDatabase(TRI_voc_tick_t id, std::string const& name, VPackSlice options, TRI_vocbase_t*& result);
 
   int dropDatabase(std::string const& name, bool waitForDeletion, bool removeAppsDirectory);

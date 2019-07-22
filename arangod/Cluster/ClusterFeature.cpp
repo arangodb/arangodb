@@ -131,11 +131,11 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--cluster.default-replication-factor",
                      "default replication factor for non-system collections",
-                     new UInt32Parameter(&_defaultReplicationFactor)).setIntroducedIn(30500);
+                     new UInt32Parameter(&_defaultReplicationFactor)).setIntroducedIn(30600);
 
-  options->addOption("--cluster.mit-replication-factor",
+  options->addOption("--cluster.min-replication-factor",
                      "minimum replication factor for collections",
-                     new UInt32Parameter(&_minReplicationFactor)).setIntroducedIn(30500);
+                     new UInt32Parameter(&_minReplicationFactor)).setIntroducedIn(30600);
 
   options->addOption(
       "--cluster.create-waits-for-sync-replication",

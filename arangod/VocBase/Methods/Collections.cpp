@@ -278,13 +278,14 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     if(replicationFactorSlice.isNone()) {
       auto factor = vocbase.replicationFactor();
       if(factor > 0 && vocbase.IsSystemName(info.name)) {
+        auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>("Cluster");
         // system collections should at least be replicated twice
-        factor = std::max(vocbase.replicationFactor(), 2u);
+        factor = std::max(vocbase.replicationFactor(), cl ? cl->systemReplicationFactor() : 2u);
       }
-      helper.add(StaticStrings::ReplicationFactor, VPackValue(vocbase.replicationFactor()));
+      helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
     }
 
-    // system collections will be shareded normally - we avoid a self reference when creating _graphs
+    // system collections will be sharded normally - we avoid a self reference when creating _graphs
     if(vocbase.sharding() == "single" && !vocbase.IsSystemName(info.name)) {
       auto distribute = info.properties.get(StaticStrings::DistributeShardsLike);
       if(distribute.isNone()) {

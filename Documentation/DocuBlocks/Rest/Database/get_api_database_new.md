@@ -10,14 +10,14 @@ Has to contain a valid database name.
 @RESTBODYPARAM{options,object,optional,get_api_database_new_USERS}
 Optional object which can contain the following attributes:
 
-@RESTSTRUCT{sharing,get_api_database_new_USERS,string,optional,string}
-A flag indicating the sharding method to use. Valid values are: 
-"", "flexible", or "single". The first two are equivalent
+@RESTSTRUCT{sharding,get_api_database_new_USERS,string,optional,string}
+The sharding method to use for new collections in this databse. Valid values
+are: "", "flexible", or "single". The first two are equivalent
 
-@RESTSTRUC{sharing,get_api_database_new_USERS,string,optional,number}
-Default replication-factor for collections created in this new database.
-Special values include 0, which is equivalent to "satellite" and will replicate
-the collection to every DB-server, and 1, which disables replication.
+@RESTSTRUC{replicationFactor,get_api_database_new_USERS,string,optional,number}
+Default replication factor for new collections created in this database.
+Special values include "satellite", which will replicate the collection to
+every DB-server, and 1, which disables replication.
 
 @RESTBODYPARAM{users,array,optional,get_api_database_new_USERS}
 Has to be an array of user objects to initially create for the new database.
