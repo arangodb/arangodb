@@ -1223,16 +1223,6 @@ void arangodb::aql::removeUnnecessaryFiltersRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-
-namespace {
-bool startsWith(std::string const& in, std::string const& toMatch) {
- if(in.find(toMatch) == 0) {
-     return true;
-  }
-  return false;
-}
-}
-
 /// @brief remove INTO of a COLLECT if not used
 /// additionally remove all unused aggregate calculations from a COLLECT
 void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
@@ -1319,6 +1309,12 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
 
             } // end - other != nullptr
           }
+        } else if (p->getType() == EN::RETURN && other) {
+          auto here = p->getVariableIdsUsedHere();
+          if(here.find(other->outVariable()->id) != here.end()){
+            stop = true;
+          }
+
         } else if (p->getType() == EN::COLLECT) {
           if(nextCollectSeen){
               // there is the next collect which will set it's

@@ -234,7 +234,7 @@ function optimizerRuleTestSuite () {
                 COLLECT id2 = first[0].item2._id INTO other
                 RETURN other
          `;
-      const expected = [ 
+      const expected = [ [
           { "first" : [ { "item1" : { "_id" : "ID" },
                            "item2" : { "_id" : "ID" },
                            "item3" : { "_id" : "ID" },
@@ -245,7 +245,7 @@ function optimizerRuleTestSuite () {
             "item3" : { "_id" : "ID" },
             "id" : "ID"
           }
-        ];
+       ] ];
       let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
       assertEqual(expected, resultEnabled);
     },
