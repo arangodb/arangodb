@@ -289,6 +289,8 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       auto distribute = info.properties.get(StaticStrings::DistributeShardsLike);
       if(distribute.isNone()) {
         helper.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::GraphCollection));
+      } else if (distribute.isString() && distribute.compareString("")) {
+        helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); //delete empty string from info slice
       }
     }
 

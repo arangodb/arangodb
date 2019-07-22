@@ -77,14 +77,42 @@ function OneShardPropertiesSuite () {
         assertEqual(props.replicationFactor, 1);
       }
 
-      let col = db._create("oneshardcol");
-      let ulfProperties = col.properties();
-      let graphsProperties = db._collection("_graphs").properties();
+      {
+        let col = db._create("oneshardcol");
+        let colProperties = col.properties();
+        let graphsProperties = db._collection("_graphs").properties();
 
-      if(isCluster && isEnterprise) {
-        assertEqual(ulfProperties.distributeShardsLike, "_graphs");
-        assertEqual(ulfProperties.replicationFactor, graphsProperties.replicationFactor);
+        if(isCluster && isEnterprise) {
+          assertEqual(colProperties.distributeShardsLike, "_graphs");
+          assertEqual(colProperties.replicationFactor, graphsProperties.replicationFactor);
+        }
       }
+
+
+      {
+        let col = db._create("normalcol", { distributeShardsLike: ""});
+        let colProperties = col.properties();
+        let graphsProperties = db._collection("_graphs").properties();
+
+        if(isCluster) {
+          assertEqual(colProperties.distributeShardsLike, undefined);
+          assertEqual(colProperties.replicationFactor, db._properties().replicationFactor);
+        }
+      }
+
+
+      {
+        let col = db._create("normalcolrepl5", { distributeShardsLike: "", replicationFactor:2});
+        let colProperties = col.properties();
+        let graphsProperties = db._collection("_graphs").properties();
+
+        if(isCluster) {
+          print(db._properties())
+          assertEqual(colProperties.distributeShardsLike, undefined);
+          assertEqual(colProperties.replicationFactor, 2);
+        }
+      }
+
     },
   };
 }
