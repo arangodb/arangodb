@@ -30,6 +30,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Cluster/ServerState.h"
+#include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -997,6 +998,22 @@ void RocksDBHotBackupRestore::execute() {
 
       restartAction = new std::function<int()>();
       *restartAction = localRestoreAction;
+
+      // Now remove all local ArangoSearch view data, since it will not be
+      // valid after the restore. Note that on a single server there is no
+      // automatism to recreate the data and on a dbserver, the Maintenance
+      // is stopped before we get here.
+      iresearch::IResearchFeature* arangoSearchFeature =
+        application_features::ApplicationServer::getFeature<iresearch::IResearchFeature>("ArangoSearch");
+      arangoSearchFeature->removeLocalArangoSearchData();
+      // On a single server, the view and link meta data is held in RocksDB
+      // and some special startup method will initiate the creation of new
+      // index data in ArangoSearch according to the meta data restored with
+      // the hotbackup restore.
+      // On a dbserver, the view and link meta data is held in the agency
+      // and the maintenance after the cleanup will initiate the creation
+      // of new index data in ArangoSearch.
+
       startGlobalShutdown();
       _success = true;
 

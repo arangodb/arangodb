@@ -77,6 +77,12 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   void unprepare() override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief remove local data, this is for a restore operation for hotbackup
+  //////////////////////////////////////////////////////////////////////////////
+
+  void removeLocalArangoSearchData();
+
  private:
   class Async;  // forward declaration
 

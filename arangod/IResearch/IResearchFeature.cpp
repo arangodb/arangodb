@@ -52,6 +52,7 @@
 #include "Logger/LogMacros.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -538,6 +539,80 @@ void registerTransactionDataSourceRegistrationCallback() {
 std::string const FEATURE_NAME("ArangoSearch");
 IResearchLogTopic LIBIRESEARCH("libiresearch");
 
+void removeAllArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
+  using arangodb::application_features::ApplicationServer;
+
+  if (!arangodb::ServerState::instance()->isSingleServer() &&
+      !arangodb::ServerState::instance()->isDBServer()) {
+    return;   // not applicable for other ServerState roles
+  }
+
+  auto* dbPathFeature = ApplicationServer::lookupFeature<arangodb::DatabasePathFeature>("DatabasePath");
+
+  if (!dbPathFeature) {
+    LOG_TOPIC("abefd", ERR, arangodb::iresearch::TOPIC)
+        << "failure to find feature 'DatabasePath' while upgrading "
+           "IResearchView from version 0 to version 1";
+
+    return;  // required feature is missing
+  }
+
+  for (auto& view : vocbase.views()) {
+    if (!arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(view.get())) {
+      continue;  // not an IResearchView
+    }
+
+    arangodb::Result res;
+
+    irs::utf8_path dataPath;
+
+    // original algorithm for computing data-store path
+    static const std::string subPath("databases");
+    static const std::string dbPath("database-");
+
+    dataPath = irs::utf8_path(dbPathFeature->directory());
+    dataPath /= subPath;
+    dataPath /= dbPath;
+    dataPath += std::to_string(vocbase.id());
+    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+    dataPath += "-";
+    dataPath += std::to_string(view->id());
+
+    res = view->drop();  // drop view (including all links)
+
+    if (!res.ok()) {
+      LOG_TOPIC("aabbc", WARN, arangodb::iresearch::TOPIC)
+          << "failure to drop view while dropping all ArangoSearch data "
+             "for restore operation, message: " << res.errorMessage();
+      continue;  // at least try the next view
+    }
+
+    // non-version 0 IResearchView implementations no longer drop from vocbase
+    // on db-server, do it explicitly
+    if (arangodb::ServerState::instance()->isDBServer()) {
+      res = arangodb::LogicalViewHelperStorageEngine::drop(*view);
+
+      if (!res.ok()) {
+        LOG_TOPIC("efefe", WARN, arangodb::iresearch::TOPIC)
+            << "failure to drop view from vocbase while removing "
+               "all ArangoSearch data for restore operation, msg: "
+            << res.errorMessage();
+        continue;
+      }
+    }
+
+    bool exists;
+
+    // remove any stale data-store
+    if (!dataPath.exists(exists) || (exists && !dataPath.remove())) {
+      LOG_TOPIC("99776", WARN, arangodb::iresearch::TOPIC)
+          << "failure to remove old data-store path while removing "
+             "all ArangoSearch data, view id: " << view->id();
+      continue;
+    }
+  }
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -966,6 +1041,10 @@ void IResearchFeature::unprepare() {
 void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) {
   _running.store(false);
   ApplicationFeature::validateOptions(options);
+}
+
+void IResearchFeature::removeLocalArangoSearchData() {
+  DatabaseFeature::DATABASE->enumerateDatabases(removeAllArangoSearchDataForDatabase);
 }
 
 }  // namespace iresearch
