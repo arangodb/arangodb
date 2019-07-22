@@ -27,7 +27,6 @@
 
 #include "Basics/Common.h"
 
-#include <iosfwd>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -88,10 +87,6 @@ class RebootId {
  private:
   uint64_t _value;
 };
-
-
-
-std::ostream& operator<<(std::ostream& ostream, RebootId rebootId);
 
 class CollectionInfoCurrent {
   friend class ClusterInfo;

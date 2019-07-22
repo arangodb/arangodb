@@ -153,10 +153,6 @@ static std::string extractErrorMessage(std::string const& shardId, VPackSlice co
   return msg;
 }
 
-std::ostream& arangodb::operator<<(std::ostream& ostream, RebootId rebootId) {
-  return ostream << rebootId.value();
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an empty collection info object
 ////////////////////////////////////////////////////////////////////////////////
