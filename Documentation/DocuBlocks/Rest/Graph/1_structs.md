@@ -27,7 +27,7 @@ The replication factor used for every new collection in the graph.
 
 @RESTSTRUCT{minReplicationFactor,graph_representation,integer,optional,}
 The minimal replication factor used for every new collection in the graph.
-If one shard has less then minimal replication factor copies, we cannot write
+If one shard has less than minReplicationFactor copies, we cannot write
 to this shard, but to all others.
 
 @RESTSTRUCT{isSmart,graph_representation,boolean,required,}
