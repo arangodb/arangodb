@@ -633,7 +633,8 @@ bool recreateArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
   bool success = true;
 
   for (auto& view : vocbase.views()) {
-    LOG_DEVEL << "Doing view " << view->name();
+    LOG_TOPIC("54312", INFO, arangodb::iresearch::TOPIC)
+      << "Recreating ArangoSearch index: doing view " << view->name();
     if (!arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(view.get())) {
       continue;  // not an IResearchView
     }
