@@ -116,6 +116,8 @@ http://s2geometry.io/
 Compression library
 https://github.com/google/snappy
 
+We change the target `snappy` to `snapy-dyn` so cmake doesn't interfere targets with the static library (that we need)
+
 ## snowball
 
 http://snowball.tartarus.org/ stemming for IResearch. We use the latest provided cmake which we maintain.

@@ -72,8 +72,8 @@ configure_file(
   "${PROJECT_SOURCE_DIR}/snappy-stubs-public.h.in"
   "${PROJECT_BINARY_DIR}/snappy-stubs-public.h")
 
-add_library(snappy "")
-target_sources(snappy
+add_library(snappy-dyn "")
+target_sources(snappy-dyn
   PRIVATE
     "${PROJECT_SOURCE_DIR}/snappy-internal.h"
     "${PROJECT_SOURCE_DIR}/snappy-stubs-internal.h"
@@ -94,18 +94,18 @@ target_sources(snappy
     $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/snappy-stubs-public.h>
     $<INSTALL_INTERFACE:include/snappy-stubs-public.h>
 )
-target_include_directories(snappy
+target_include_directories(snappy-dyn
   PUBLIC
     $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
 )
-set_target_properties(snappy
+set_target_properties(snappy-dyn
   PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
 
-target_compile_definitions(snappy PRIVATE -DHAVE_CONFIG_H)
+target_compile_definitions(snappy-dyn PRIVATE -DHAVE_CONFIG_H)
 if(BUILD_SHARED_LIBS)
-  set_target_properties(snappy PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+  set_target_properties(snappy-dyn PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif(BUILD_SHARED_LIBS)
 
 ADD_LIBRARY(snappy-static STATIC
@@ -169,7 +169,7 @@ if(SNAPPY_BUILD_TESTS)
 endif(SNAPPY_BUILD_TESTS)
 
 include(GNUInstallDirs)
-install(TARGETS snappy snappy-static
+install(TARGETS snappy-dyn snappy-static
   EXPORT SnappyTargets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/$<CONFIG>

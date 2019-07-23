@@ -489,6 +489,8 @@ set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
 # to find those files the NO_DEFAULT_PATH
 # argument is passed
 if (NOT WINDOWS)
+  find_program (MAKE make gmake)
+
   find_program(
     CHMOD_EXECUTABLE chmod
     PATHS "/bin/" "/usr/bin/"
@@ -1061,10 +1063,11 @@ include_directories(${ROCKSDB_INCLUDE_DIR})
 
 set(ROCKSDB_LIBS rocksdb;${SNAPPY_LIB})
 
-add_dependencies(rocksdb ${SNAPPY_LIB})
+add_dependencies(rocksdb snappy-static)
 
 if (USE_JEMALLOC)
-  add_dependencies(rocksdb jemalloc)
+  add_dependencies(rocksdb jemalloc_build)
+  link_directories("${JEMALLOC_HOME}/lib")
 endif ()
 
 ################################################################################

@@ -250,6 +250,10 @@ target_include_directories(arangodbtests SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
 )
 
+if (USE_JEMALLOC)
+   add_dependencies(arangodbtests jemalloc_build)
+endif ()
+
 find_package(OpenSSL REQUIRED)
 list(APPEND IRESEARCH_LIB_RESOURCES
   "${LIB_EAY_DEBUG_DLL}"
