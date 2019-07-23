@@ -25,7 +25,9 @@
 #define ARANGODB_BASICS_ATTRIBUTE_NAME_PARSER_H 1
 
 #include <iosfwd>
-#include "Common.h"
+#include <vector>
+
+#include "Basics/Common.h"
 #include "Basics/fasthash.h"
 
 #include <velocypack/StringRef.h>

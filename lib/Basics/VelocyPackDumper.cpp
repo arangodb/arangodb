@@ -21,6 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cmath>
+
 #include "VelocyPackDumper.h"
 
 #include "Basics/Exceptions.h"

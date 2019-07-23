@@ -20,6 +20,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cmath>
+
 #include "SortedIndexAttributeMatcher.h"
 
 #include "Aql/Ast.h"

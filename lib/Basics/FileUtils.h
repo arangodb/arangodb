@@ -24,6 +24,8 @@
 #ifndef ARANGODB_BASICS_FILE_UTILS_H
 #define ARANGODB_BASICS_FILE_UTILS_H 1
 
+#include <functional>
+
 #include "Basics/Common.h"
 
 #include "Basics/FileResult.h"

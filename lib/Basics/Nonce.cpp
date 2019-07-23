@@ -22,8 +22,10 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Nonce.h"
+#include <cmath>
 #include <cstring>
+
+#include "Nonce.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"

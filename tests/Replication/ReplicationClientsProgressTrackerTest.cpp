@@ -20,6 +20,8 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cmath>
+
 #include "gtest/gtest.h"
 
 #include "Replication/ReplicationClients.h"

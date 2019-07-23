@@ -23,6 +23,7 @@
 #ifndef ARANGODB_IMPORT_QUICK_HIST_H
 #define ARANGODB_IMPORT_QUICK_HIST_H 1
 
+#include <algorithm>
 #include <chrono>
 #include <ctime>
 #include <future>

@@ -23,7 +23,10 @@
 
 #include "ShellBase.h"
 
+#include <algorithm>
 #include <cstring>
+#include <string>
+#include <vector>
 
 #include "Basics/operating-system.h"
 

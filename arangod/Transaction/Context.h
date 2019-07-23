@@ -24,6 +24,8 @@
 #ifndef ARANGOD_TRANSACTION_CONTEXT_H
 #define ARANGOD_TRANSACTION_CONTEXT_H 1
 
+#include <memory>
+
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
 #include "VocBase/voc-types.h"

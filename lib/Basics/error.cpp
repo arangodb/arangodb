@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <cstring>
+#include <unordered_map>
 
 #include "Basics/Common.h"
 #include "Basics/exitcodes.h"

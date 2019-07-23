@@ -26,6 +26,8 @@
 /// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cmath>
+
 #include "Basics/Common.h"
 #include "Basics/tri-strings.h"
 #include "V8/v8-json.h"

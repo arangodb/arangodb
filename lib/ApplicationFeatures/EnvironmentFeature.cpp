@@ -20,6 +20,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cmath>
+
 #include "EnvironmentFeature.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "Basics/FileUtils.h"

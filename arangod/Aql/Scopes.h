@@ -24,6 +24,9 @@
 #ifndef ARANGOD_AQL_SCOPES_H
 #define ARANGOD_AQL_SCOPES_H 1
 
+#include <memory>
+#include <vector>
+
 #include "Aql/Variable.h"
 #include "Basics/Common.h"
 

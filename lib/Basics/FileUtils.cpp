@@ -21,6 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
+
 #include "FileUtils.h"
 
 #include "Basics/operating-system.h"

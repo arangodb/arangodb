@@ -24,12 +24,13 @@
 #ifndef ARANGO_SHARED_COUNTER_H
 #define ARANGO_SHARED_COUNTER_H 1
 
+#include <atomic>
+#include <functional>
+
 #include "Basics/Common.h"
 #include "Basics/SharedAtomic.h"
 #include "Basics/Thread.h"
 #include "Basics/fasthash.h"
-
-#include <atomic>
 
 namespace arangodb {
 namespace basics {

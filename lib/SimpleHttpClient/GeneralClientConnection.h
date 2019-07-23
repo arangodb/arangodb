@@ -24,6 +24,9 @@
 #ifndef ARANGODB_SIMPLE_HTTP_CLIENT_GENERAL_CLIENT_CONNECTION_H
 #define ARANGODB_SIMPLE_HTTP_CLIENT_GENERAL_CLIENT_CONNECTION_H 1
 
+#include <atomic>
+#include <memory>
+
 #include "Basics/Common.h"
 
 #include "Basics/StringBuffer.h"

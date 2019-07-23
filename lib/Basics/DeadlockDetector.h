@@ -24,7 +24,9 @@
 #ifndef ARANGODB_BASICS_DEADLOCK_DETECTOR_H
 #define ARANGODB_BASICS_DEADLOCK_DETECTOR_H 1
 
+#include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"

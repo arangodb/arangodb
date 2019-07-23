@@ -21,6 +21,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cmath>
+#include <memory>
+
 #include "StringBuffer.h"
 
 #include "Basics/ScopeGuard.h"

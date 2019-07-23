@@ -36,15 +36,6 @@
 
 #endif
 
-#include <algorithm>
-#include <atomic>
-#include <cmath>
-#include <functional>
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <vector>
-
 #define TRI_WITHIN_COMMON 1
 // clang-format off
 #include "Basics/debugging.h"

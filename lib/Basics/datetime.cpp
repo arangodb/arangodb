@@ -20,6 +20,9 @@
 /// @author Manuel Baesler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cmath>
+#include <unordered_map>
+
 #include "Basics/datetime.h"
 #include "Basics/NumberUtils.h"
 #include "Logger/Logger.h"

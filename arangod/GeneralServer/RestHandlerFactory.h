@@ -24,6 +24,10 @@
 #ifndef ARANGOD_HTTP_SERVER_HTTP_HANDLER_FACTORY_H
 #define ARANGOD_HTTP_SERVER_HTTP_HANDLER_FACTORY_H 1
 
+#include <memory>
+#include <unordered_map>
+#include <vector>
+
 #include "Basics/Common.h"
 
 namespace arangodb {

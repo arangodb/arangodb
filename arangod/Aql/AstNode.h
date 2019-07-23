@@ -24,6 +24,10 @@
 #ifndef ARANGOD_AQL_AST_NODE_H
 #define ARANGOD_AQL_AST_NODE_H 1
 
+#include <iosfwd>
+#include <memory>
+#include <unordered_map>
+
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -32,8 +36,6 @@
 
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
-
-#include <iosfwd>
 
 namespace arangodb {
 namespace velocypack {

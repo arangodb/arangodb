@@ -23,6 +23,8 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_APPLICATION_SERVER_H
 #define ARANGODB_APPLICATION_FEATURES_APPLICATION_SERVER_H 1
 
+#include <atomic>
+
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 

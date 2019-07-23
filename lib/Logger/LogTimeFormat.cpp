@@ -21,11 +21,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LogTimeFormat.h"
-
 #include <chrono>
-#include <sstream>
 #include <iomanip>
+#include <sstream>
+#include <unordered_map>
+
+#include "LogTimeFormat.h"
 
 #include "Basics/Exceptions.h"
 #include "Basics/datetime.h"

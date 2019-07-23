@@ -24,6 +24,12 @@
 #ifndef ARANGODB_LOGGER_LOG_APPENDER_H
 #define ARANGODB_LOGGER_LOG_APPENDER_H 1
 
+#include <functional>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "Basics/Common.h"
 
 #include "Basics/Mutex.h"

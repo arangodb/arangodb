@@ -23,6 +23,9 @@
 
 #include "EndpointSrv.h"
 
+#include <algorithm>
+#include <vector>
+
 #ifndef _WIN32
 
 #define BIND_4_COMPAT 1  // LINUX
