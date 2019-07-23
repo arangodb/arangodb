@@ -23,6 +23,7 @@
 #include "DatabasePathFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/TempFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -90,18 +91,34 @@ void DatabasePathFeature::validateOptions(std::shared_ptr<ProgramOptions> option
 
   // strip trailing separators
   _directory = basics::StringUtils::rTrim(_directory, TRI_DIR_SEPARATOR_STR);
-
+  
   auto ctx = ArangoGlobalContext::CONTEXT;
 
   if (ctx == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to get global context.";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "failed to get global context.";
     FATAL_ERROR_EXIT();
   }
 
   ctx->normalizePath(_directory, "database.directory", false);
+
 }
 
 void DatabasePathFeature::prepare() {
+  // check if temporary directory and database directory are identical
+  {
+    std::string directoryCopy = _directory;
+    basics::FileUtils::makePathAbsolute(directoryCopy);
+
+    std::string tempPathCopy = application_features::ApplicationServer::getFeature<TempFeature>("Temp")->path();
+    basics::FileUtils::makePathAbsolute(tempPathCopy);
+    tempPathCopy = basics::StringUtils::rTrim(tempPathCopy, TRI_DIR_SEPARATOR_STR);
+
+    if (directoryCopy == tempPathCopy) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) 
+        << "database directory '" << directoryCopy << "' is identical to the temporary directory. This can cause follow-up problems, including data loss. Please review your setup!";
+    }
+  }
+
   if (_requiredDirectoryState == "any") {
     // database directory can have any state. this is the default
     return;
