@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBOptionFeature.h"
+
+#include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
 #include "Logger/Logger.h"

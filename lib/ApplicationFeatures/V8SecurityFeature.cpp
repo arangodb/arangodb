@@ -24,6 +24,7 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"

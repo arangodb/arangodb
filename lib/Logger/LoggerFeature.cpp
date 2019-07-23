@@ -31,6 +31,7 @@
 #endif
 
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/conversions.h"
 #include "Basics/error.h"
 #include "Logger/LogAppender.h"

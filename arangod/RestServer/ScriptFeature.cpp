@@ -22,6 +22,7 @@
 
 #include "ScriptFeature.h"
 
+#include "Basics/application-exit.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"

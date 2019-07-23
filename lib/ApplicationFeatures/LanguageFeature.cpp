@@ -25,6 +25,7 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/application-exit.h"
 #include "Basics/directories.h"
 #include "Basics/error.h"
 #include "Basics/files.h"

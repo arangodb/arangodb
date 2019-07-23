@@ -23,6 +23,7 @@
 #include "ServerFeature.h"
 
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"

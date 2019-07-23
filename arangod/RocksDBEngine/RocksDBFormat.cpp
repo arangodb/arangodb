@@ -22,6 +22,7 @@
 
 #include "RocksDBFormat.h"
 
+#include "Basics/application-exit.h"
 #include "Logger/Logger.h"
 
 namespace {

@@ -40,7 +40,6 @@
 // clang-format off
 #include "Basics/debugging.h"
 #include "Basics/system-compiler.h"
-#include "Basics/application-exit.h"
 // clang-format on
 #undef TRI_WITHIN_COMMON
 

@@ -25,6 +25,7 @@
 #include "GeneralServer.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointList.h"

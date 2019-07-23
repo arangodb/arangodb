@@ -33,6 +33,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"

@@ -28,6 +28,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/application-exit.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "Rest/Version.h"

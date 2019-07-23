@@ -24,6 +24,7 @@
 #include "ClientManager.h"
 
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
 #include "Logger/Logger.h"
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"

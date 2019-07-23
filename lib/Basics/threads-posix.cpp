@@ -25,6 +25,7 @@
 
 #include "threads.h"
 
+#include "Basics/application-exit.h"
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
 

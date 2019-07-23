@@ -48,6 +48,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/application-exit.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterInfo.h"

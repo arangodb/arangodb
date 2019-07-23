@@ -42,6 +42,7 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"

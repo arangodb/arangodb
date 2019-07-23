@@ -30,6 +30,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"

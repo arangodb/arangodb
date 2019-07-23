@@ -30,6 +30,7 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Thread.h"
+#include "Basics/application-exit.h"
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Benchmark/BenchmarkCounter.h"

@@ -23,7 +23,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyComm.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/application-exit.h"
 #include "RestServer/ServerFeature.h"
 
 #include <thread>

@@ -30,6 +30,7 @@
 #include "Agency/RestAgencyPrivHandler.h"
 #include "Aql/RestAqlHandler.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceRestHandler.h"

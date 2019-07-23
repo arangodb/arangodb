@@ -23,6 +23,7 @@
 #include "CheckVersionFeature.h"
 
 #include "Basics/FileUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"

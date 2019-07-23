@@ -22,16 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesDatafile.h"
+
 #include "ApplicationFeatures/PageSizeFeature.h"
 #include "Basics/FileUtils.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/encoding.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/memory-map.h"
 #include "Basics/tri-strings.h"
-#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "VocBase/ticks.h"

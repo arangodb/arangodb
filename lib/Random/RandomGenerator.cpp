@@ -41,6 +41,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Thread.h"
+#include "Basics/application-exit.h"
 #include "Basics/hashes.h"
 #include "Logger/Logger.h"
 

@@ -28,6 +28,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/directories.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/IniFileParser.h"

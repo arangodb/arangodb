@@ -33,6 +33,7 @@
 #include <sys/time.h>
 #endif
 
+#include "Basics/application-exit.h"
 #include "Logger/Logger.h"
 
 /// @brief initializes a new condition variable

@@ -34,6 +34,7 @@
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
 #include "Basics/build.h"
 #include "Basics/system-functions.h"
 #include "Cache/CacheManagerFeature.h"

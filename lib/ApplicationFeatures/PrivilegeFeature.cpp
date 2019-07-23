@@ -24,6 +24,7 @@
 
 #include "PrivilegeFeature.h"
 
+#include "Basics/application-exit.h"
 #include "Basics/error.h"
 
 #ifdef TRI_HAVE_UNISTD_H

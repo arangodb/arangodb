@@ -22,9 +22,10 @@
 
 #include "SupervisorFeature.h"
 
-#include "Basics/process-utils.h"
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/application-exit.h"
+#include "Basics/process-utils.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"

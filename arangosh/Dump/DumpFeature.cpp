@@ -40,6 +40,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
 #include "Maskings/Maskings.h"
 #include "ProgramOptions/ProgramOptions.h"

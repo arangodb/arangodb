@@ -26,6 +26,7 @@
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
 #include "Agency/Supervision.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"

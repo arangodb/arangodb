@@ -25,6 +25,7 @@
 #include <unordered_map>
 
 #include "Basics/Common.h"
+#include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Basics/voc-errors.h"
 

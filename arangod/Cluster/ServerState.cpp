@@ -37,6 +37,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/Logger.h"
 #include "Rest/Version.h"

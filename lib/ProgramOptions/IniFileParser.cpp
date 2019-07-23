@@ -21,8 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-#include "Basics/StringUtils.h"
 #include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Logger/Logger.h"
 
 #include <sstream>

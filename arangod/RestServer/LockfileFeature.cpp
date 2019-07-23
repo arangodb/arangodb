@@ -23,6 +23,7 @@
 #include "LockfileFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"

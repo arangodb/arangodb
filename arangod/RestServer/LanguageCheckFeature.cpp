@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
 #include "Basics/directories.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"

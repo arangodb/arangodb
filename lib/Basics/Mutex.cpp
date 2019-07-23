@@ -22,11 +22,13 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Mutex.h"
-#include "Logger/Logger.h"
-
-#include <limits>
 #include <cstring>
+#include <limits>
+
+#include "Mutex.h"
+
+#include "Basics/application-exit.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 

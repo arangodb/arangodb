@@ -22,6 +22,7 @@
 
 #include "UpgradeFeature.h"
 
+#include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
