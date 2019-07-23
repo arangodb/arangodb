@@ -1283,13 +1283,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
 
             if(other != nullptr) {
 
-              std::string myName = outVariable->name;
               auto otherOutvar = other->outVariable();
-              std::string otherName = otherOutvar->name;
-
-              //LOG_DEVEL << "   my name: " << myName ;
-              //LOG_DEVEL << "other name: " << otherName;
-              //exp->node()->dump(4);
 
               // check if the name of the current variable turns up as attribute access in the next collect
               bool isSafeForOptimization;
