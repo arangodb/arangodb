@@ -1284,6 +1284,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
             if(other != nullptr) {
 
               auto otherOutvar = other->outVariable();
+              nextCollectSeen = true;
 
               // check if the name of the current variable turns up as attribute access in the next collect
               bool isSafeForOptimization;
@@ -1311,9 +1312,9 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
 
         } else if (p->getType() == EN::COLLECT) {
           if(nextCollectSeen){
-              // there is the next collect which will set it's
-              // scope variables in another loop
-              other = nullptr;
+            // there is the next collect which will set its
+            // scope variables in another loop
+            other = nullptr;
           } else {
             auto collectNode = ExecutionNode::castTo<CollectNode const*>(p);
             if (collectNode->hasOutVariable()) {

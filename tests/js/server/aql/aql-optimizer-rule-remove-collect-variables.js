@@ -273,8 +273,7 @@ function optimizerRuleTestSuite () {
                 let b = 1 + other[0].first[0].item1._id
                 RETURN b
          `;
-      const expected = [ 43 ]
-      print(query)
+      const expected = [ 43 ];
       let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
       assertEqual(expected, resultEnabled);
 
@@ -296,7 +295,7 @@ function optimizerRuleTestSuite () {
       const expected = [
           [ { "item3" : { "_id" : 42 },
               "item1" : { "_id" : 42 },
-              "item2" : { "_id" : 42 } } , "blub" ] ]
+              "item2" : { "_id" : 42 } } , "blub" ] ];
 
       let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
       assertEqual(expected, resultEnabled);
@@ -335,7 +334,7 @@ function optimizerRuleTestSuite () {
          `;
       const expected = [ [ { "item3" : { "_id" : "ID" },
                              "item1" : { "_id" : "ID" },
-                             "item2" : { "_id" : "ID" } } ] ]
+                             "item2" : { "_id" : "ID" } } ] ];
       let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
       assertEqual(expected, resultEnabled);
 
@@ -355,7 +354,7 @@ function optimizerRuleTestSuite () {
          `;
       const expected = [ { "item3" : { "_id" : "ID" },
                            "item1" : { "_id" : "ID" },
-                           "item2" : { "_id" : "ID" } } ]
+                           "item2" : { "_id" : "ID" } } ];
       let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
       assertEqual(expected, resultEnabled);
 
