@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyMock.h"
+
 #include "Agency/Store.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/NumberUtils.h"

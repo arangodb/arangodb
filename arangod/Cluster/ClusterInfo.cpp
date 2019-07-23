@@ -34,6 +34,7 @@
 #include "Basics/hashes.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterHelpers.h"
+#include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
@@ -109,6 +110,7 @@ static inline arangodb::AgencyOperation CreateCollectionSuccess(
 #endif
 
 using namespace arangodb;
+using namespace arangodb::cluster;
 
 static std::unique_ptr<ClusterInfo> _instance;
 
@@ -3306,13 +3308,13 @@ void ClusterInfo::loadServers() {
                                 AgencyCommManager::path(mapUniqueToShortId)})));
 
   if (result.successful()) {
-    velocypack::Slice serversRegistered = result.slice()[0].get(std::vector<std::string>(
+    velocypack::Slice serversRegisteredSlice = result.slice()[0].get(std::vector<std::string>(
         {AgencyCommManager::path(), "Current", "ServersRegistered"}));
 
-    velocypack::Slice serversAliases = result.slice()[0].get(std::vector<std::string>(
+    velocypack::Slice serversAliasesSlice = result.slice()[0].get(std::vector<std::string>(
         {AgencyCommManager::path(), "Target", "MapUniqueToShortID"}));
 
-    if (serversRegistered.isObject()) {
+    if (serversRegisteredSlice.isObject()) {
       decltype(_serverAliases) newAliases;
 
       auto newServersRegistered = decltype(_serversRegistered){};
@@ -3321,7 +3323,7 @@ void ClusterInfo::loadServers() {
         oldAndNewServers.emplace(it.first);
       }
 
-      for (auto const& res : VPackObjectIterator(serversRegistered)) {
+      for (auto const& res : VPackObjectIterator(serversRegisteredSlice)) {
         auto const serverId = res.key.copyString();
         velocypack::Slice slice = res.value;
 
@@ -3331,7 +3333,7 @@ void ClusterInfo::loadServers() {
 
         try {
           velocypack::Slice serverSlice;
-          serverSlice = serversAliases.get(serverId);
+          serverSlice = serversAliasesSlice.get(serverId);
           if (serverSlice.isObject()) {
             std::string alias = arangodb::basics::VelocyPackHelper::getStringValue(
                 serverSlice, "ShortName", "");
@@ -3341,6 +3343,9 @@ void ClusterInfo::loadServers() {
         }
       }
 
+      // TODO This object obviously has to live somewhere else!
+      // RebootTracker rebootTracker{SchedulerFeature::SCHEDULER};
+      // rebootTracker.setNewServerStates(newServersRegistered);
 
       auto changedRebootIds = std::unordered_map<ServerID, std::pair<RebootId, RebootId>>{};
       {
