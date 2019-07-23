@@ -336,6 +336,25 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(std::stri
   return file;
 }
 
+std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(int fileDescriptor) {
+
+  std::unique_ptr<File> file{nullptr};
+
+  if (_status.fail()) {  // directory is in a bad state
+    return file;
+  }
+
+  try {
+    file = std::make_unique<File>(*this, fileDescriptor, false);
+  } catch (...) {
+    _status.reset(TRI_ERROR_CANNOT_READ_FILE, "error opening console pipe"
+                                                  " for reading");
+    return {nullptr};
+  }
+
+  return file;
+}
+
 std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
   std::string const& filename, bool overwrite, int flags, bool gzipOk) {
   std::unique_ptr<File> file{nullptr};

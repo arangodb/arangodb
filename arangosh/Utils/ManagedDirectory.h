@@ -223,6 +223,7 @@ class ManagedDirectory {
    * @return          Unique pointer to file, if opened
    */
   std::unique_ptr<File> readableFile(std::string const& filename, int flags = 0);
+  std::unique_ptr<File> readableFile(int fileDescriptor);
 
   /**
    * @brief Opens a writable file
