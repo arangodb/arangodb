@@ -68,46 +68,11 @@
 #undef DEBUG
 #endif
 
-
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 #define TEST_VIRTUAL virtual
 #else
 #define TEST_VIRTUAL
 #endif
-
-/// @brief helper macro for calculating strlens for static strings at
-/// a compile-time (unless compiled with fno-builtin-strlen etc.)
-#define TRI_CHAR_LENGTH_PAIR(value) (value), strlen(value)
-
-/// @brief assert
-#ifndef TRI_ASSERT
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
-#define TRI_ASSERT(expr)                             \
-  do {                                               \
-    if (!(ADB_LIKELY(expr))) {                       \
-      TRI_FlushDebugging(__FILE__, __LINE__, #expr); \
-      TRI_PrintBacktrace();                          \
-      std::abort();                                  \
-    }                                                \
-  } while (0)
-
-#else
-
-#define TRI_ASSERT(expr) \
-  while (0) {            \
-    (void)(expr);        \
-  }                      \
-  do {                   \
-  } while (0)
-
-#endif
-
-#endif
-
-#undef TRI_SHOW_LOCK_TIME
-#define TRI_SHOW_LOCK_THRESHOLD 0.000199
 
 #ifdef sleep
 #undef sleep

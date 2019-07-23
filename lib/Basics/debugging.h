@@ -202,4 +202,31 @@ operator<< (std::ostream& o, T const& t) {
   return o;  
 }
 
+/// @brief assert
+#ifndef TRI_ASSERT
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+
+#define TRI_ASSERT(expr)                             \
+  do {                                               \
+    if (!(ADB_LIKELY(expr))) {                       \
+      TRI_FlushDebugging(__FILE__, __LINE__, #expr); \
+      TRI_PrintBacktrace();                          \
+      std::abort();                                  \
+    }                                                \
+  } while (0)
+
+#else
+
+#define TRI_ASSERT(expr) \
+  while (0) {            \
+    (void)(expr);        \
+  }                      \
+  do {                   \
+  } while (0)
+
+#endif
+
+#endif
+
 #endif
