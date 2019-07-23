@@ -23,23 +23,63 @@
 
 #include "HotBackupFeature.h"
 
+#include "Basics/FileUtils.h"
 #include "Basics/Result.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "IResearch/IResearchFeature.h"
+#include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb;
 
+namespace {
+
+void recreateArangoSearchViewsAfterRestore() {
+  auto* arangoSearchFeature =
+        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchFeature>("ArangoSearch");
+  LOG_TOPIC("fdeda", INFO, Logger::BACKUP)
+    << "Recreating ArangoSearch indexes...";
+  DatabaseFeature::DATABASE->enumerateDatabases(
+    [arangoSearchFeature](TRI_vocbase_t& vocbase) {
+      LOG_TOPIC("efdab", INFO, Logger::BACKUP)
+        << "Recreating ArangoSearch index for database " << vocbase.name();
+      bool res = arangoSearchFeature->recreateLocalArangoSearchData(vocbase);
+      LOG_TOPIC("efdaa", INFO, Logger::BACKUP)
+        << "Done recreating ArangoSearch index for database " << vocbase.name()
+        << ", result was: " << (res ? "GOOD" : "BAD");
+    });
+  // And remove the RESTORE marker:
+  auto* hotBackupFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::HotBackupFeature>("HotBackup");
+  hotBackupFeature->removeRestoreStartMarker();
+}
+
+void scheduleRecreateArangoSearchViewsAfterRestore() {
+  LOG_TOPIC("65272", INFO, Logger::BACKUP)
+    << "This is a restore start of a single server, we need to recreate "
+       "all ArangoSearch indexes in the background, scheduling...";
+  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                     recreateArangoSearchViewsAfterRestore);
+}
+
+}
+
 namespace arangodb {
 
 HotBackupFeature::HotBackupFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "HotBackup"), _backupEnabled(false) {
   setOptional(true);
+  startsAfter("Upgrade");
+  startsAfter("IResearchFeature");
   startsAfter("DatabasePhase");
   startsBefore("GeneralServer");
 }
@@ -67,7 +107,15 @@ void HotBackupFeature::prepare() {
   }
 }
 
-void HotBackupFeature::start() {}
+void HotBackupFeature::start() {
+  // Potentially recreate all ArangoSearch indexes if this is a single
+  // server and we are performing a RESTORE restart:
+  if (ServerState::instance()->isSingleServer()) {
+    if (isRestoreStart()) {
+      ::scheduleRecreateArangoSearchViewsAfterRestore();
+    }
+  }
+}
 
 void HotBackupFeature::beginShutdown() {
   // Call off uploads / downloads?
@@ -255,6 +303,7 @@ arangodb::Result HotBackupFeature::getTransferRecord(
     report.add(
       (ts.operation == "Upload") ? "UploadId" : "DownloadId",
       VPackValue(t->first));
+    report.add("Cancelled", VPackValue(ts.status == "CANCELLED"));
     report.add("BackupId", VPackValue(ts.backupId));
     report.add(VPackValue("DBServers"));
     {
@@ -323,6 +372,24 @@ bool HotBackupFeature::cancelled(std::string const& transferId) const {
   }
 
   return false;
+}
+
+bool HotBackupFeature::isRestoreStart() {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  std::string path = arangodb::basics::FileUtils::buildFilename(
+      engine->dataPath(), "RESTORE");
+  return arangodb::basics::FileUtils::exists(path);
+}
+
+void HotBackupFeature::removeRestoreStartMarker() {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  std::string path = arangodb::basics::FileUtils::buildFilename(
+      engine->dataPath(), "RESTORE");
+  bool res = arangodb::basics::FileUtils::remove(path);
+  if (res == false) {
+    LOG_TOPIC("54feb", INFO, arangodb::Logger::STARTUP)
+      << "Could not remove RESTORE start marker.";
+  }
 }
 
 }  // namespaces

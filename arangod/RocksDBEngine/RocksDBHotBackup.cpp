@@ -30,6 +30,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Cluster/ServerState.h"
+#include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -91,6 +92,36 @@ static uint64_t getSerialNumber() {
   } // if
   return temp;
 } // getSerialNumber
+
+// @brief This function schedules a lock cleanup job in the future using
+// the scheduler. The only subtlety here is that we must be able to
+// cancel that action on server shutdown. We are using the stop method
+// of the HotBackupFeature here:
+static void scheduleLockCleaning(uint64_t serialNumber, uint32_t timeout) {
+  Scheduler::WorkHandle handle
+    = SchedulerFeature::SCHEDULER->queueDelay(
+        RequestLane::INTERNAL_LOW,
+        std::chrono::seconds(timeout),
+        [serialNumber](bool cancelled) {
+          MUTEX_LOCKER (mLock, serialNumberMutex);
+          // only unlock if creation of this object instance was due to
+          //  the taking of current transaction lock
+          if (lockingSerialNumber == serialNumber) {
+            LOG_TOPIC("a20be", INFO, arangodb::Logger::BACKUP)
+              << "RocksDBHotBackup removing lost transaction lock.";
+            // would prefer virtual releaseRocksDBTransactions() ... but would
+            //   require copy of RocksDBHotBackupLock object used from RestHandler or unit test.
+            transaction::ManagerFeature::manager()->releaseTransactions();
+            lockingSerialNumber = 0;
+          } else {
+            LOG_TOPIC("efaed", DEBUG, arangodb::Logger::BACKUP)
+              << "RocksDBHotBackup not removing transaction lock since there is already a new one or it is already removed.";
+          }
+        });
+  // Finally, inform the HotbackupFeature about this delayed task
+  // such that it can be cancelled on shutdown:
+  application_features::ApplicationServer::getFeature<HotBackupFeature>("HotBackup")->registerLockCleaner(handle);
+}
 
 //
 // @brief static function to pick proper operation object and then have it
@@ -967,6 +998,22 @@ void RocksDBHotBackupRestore::execute() {
 
       restartAction = new std::function<int()>();
       *restartAction = localRestoreAction;
+
+      // Now remove all local ArangoSearch view data, since it will not be
+      // valid after the restore. Note that on a single server there is no
+      // automatism to recreate the data and on a dbserver, the Maintenance
+      // is stopped before we get here.
+      iresearch::IResearchFeature* arangoSearchFeature =
+        application_features::ApplicationServer::getFeature<iresearch::IResearchFeature>("ArangoSearch");
+      arangoSearchFeature->removeLocalArangoSearchData();
+      // On a single server, the view and link meta data is held in RocksDB
+      // and some special startup method will initiate the creation of new
+      // index data in ArangoSearch according to the meta data restored with
+      // the hotbackup restore.
+      // On a dbserver, the view and link meta data is held in the agency
+      // and the maintenance after the cleanup will initiate the creation
+      // of new index data in ArangoSearch.
+
       startGlobalShutdown();
       _success = true;
 
@@ -1044,6 +1091,11 @@ bool RocksDBHotBackupRestore::createRestoringDirectory(std::string& restoreDirOu
     //  copy contents of selected hotbackup to new "restoring" directory
     //  (both directories must exists)
     if (retFlag) {
+      if (ServerState::instance()->isSingleServer()) {
+        // touch the RESTORE file
+        std::string restoreFile = restoreDirOutput + TRI_DIR_SEPARATOR_CHAR + "RESTORE";
+        basics::FileUtils::spit(restoreFile, std::string("RESTORE"), true);
+      }
       std::function<basics::FileUtils::TRI_copy_recursive_e(std::string const&)>  filter = copyVersusLink;
       retFlag = basics::FileUtils::copyRecursive(fullDirectoryRestore, restoreDirOutput,
                                                  filter, errors);

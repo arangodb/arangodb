@@ -114,6 +114,10 @@ class ClusterEngine final : public StorageEngine {
     // the cluster engine does not have any versioning information
     return std::string();
   }
+  std::string dataPath() const override {
+    // the cluster engine does not have any data path
+    return std::string();
+  }
   std::string databasePath(TRI_vocbase_t const* vocbase) const override {
     // the cluster engine does not have any database path
     return std::string();

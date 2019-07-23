@@ -27,6 +27,9 @@
 
 #include "Agency/TimeString.h"
 #include "Basics/Mutex.h"
+#include "Scheduler/Scheduler.h"
+
+#include <map>
 
 namespace arangodb {
 
@@ -167,6 +170,15 @@ private:
 
 public:
   bool isAPIEnabled() { return _backupEnabled; }
+  
+  /// @brief returns true if and only if the current restart of the server
+  /// is one from a hotbackup restore. This essentially tests existence of
+  /// a file called "RESTORE" in the database directory.
+  bool isRestoreStart();
+
+  /// @brief removes the restore start marker "RESTORE", such that the next
+  /// startup will be a non-restore startup.
+  void removeRestoreStartMarker();
 };
 
 } // namespaces
