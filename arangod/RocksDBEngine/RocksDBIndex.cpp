@@ -21,6 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RocksDBIndex.h"
+
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Common.h"
@@ -32,7 +34,6 @@
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "RocksDBIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -45,12 +46,7 @@
 using namespace arangodb;
 using namespace arangodb::rocksutils;
 
-// This is the number of distinct elements the index estimator can reliably
-// store
-// This correlates directly with the memory of the estimator:
-// memory == ESTIMATOR_SIZE * 6 bytes
-
-uint64_t const arangodb::RocksDBIndex::ESTIMATOR_SIZE = 4096;
+constexpr uint64_t arangodb::RocksDBIndex::ESTIMATOR_SIZE;
 
 namespace {
 inline uint64_t ensureObjectId(uint64_t oid) {

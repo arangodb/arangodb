@@ -1266,6 +1266,21 @@ void RocksDBCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Bu
   }
 }
 
+namespace {
+template<typename F>
+void reverseIdxOps(std::vector<std::shared_ptr<Index>> const& vector,
+                   std::vector<std::shared_ptr<Index>>::const_iterator& it,
+                   F&& op) {
+  while (it != vector.begin()) {
+    it--;
+    auto* rIdx = static_cast<RocksDBIndex*>(it->get());
+    if (rIdx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+      std::forward<F>(op)(rIdx);
+    }
+  }
+}
+}
+
 Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
                                          LocalDocumentId const& documentId,
                                          VPackSlice const& doc,
@@ -1286,7 +1301,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     
   RocksDBMethods* mthds = state->rocksdbMethods();
   // disable indexing in this transaction if we are allowed to
-  IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
+  IndexingDisabler disabler(mthds, state->isSingleOperation());
 
   TRI_ASSERT(key->containsLocalDocumentId(documentId));
   rocksdb::Status s =
@@ -1298,11 +1313,20 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   }
 
   READ_LOCKER(guard, _indexesLock);
-  for (std::shared_ptr<Index> const& idx : _indexes) {
-    RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
+  
+  bool needReversal = false;
+  for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
+    RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
     res = rIdx->insert(*trx, mthds, documentId, doc, options.indexOperationMode);
-
+    
+    needReversal = needReversal || rIdx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK;
+    
     if (res.fail()) {
+      if (needReversal && !state->isSingleOperation()) {
+        ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc, &options](RocksDBIndex* rid) {
+          rid->remove(*trx, mthds, documentId, doc, options.indexOperationMode);
+        });
+      }
       break;
     }
   }

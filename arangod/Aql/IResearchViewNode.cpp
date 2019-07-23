@@ -1062,6 +1062,13 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   LOG_TOPIC("82af6", TRACE, arangodb::iresearch::TOPIC)
       << "Start getting snapshot for view '" << view.name() << "'";
 
+  if (options().forceSync &&
+      trx->state()->hasHint(arangodb::transaction::Hints::Hint::GLOBAL_MANAGED)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "cannot use waitForSync with "
+                                   "views and transactions");
+  }
+  
   // we manage snapshot differently in single-server/db server,
   // see description of functions below to learn how
   if (ServerState::instance()->isDBServer()) {
