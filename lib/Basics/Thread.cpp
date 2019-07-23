@@ -30,10 +30,6 @@
 #include <unistd.h>
 #endif
 
-#ifdef TRI_HAVE_PROCESS_H
-#include <process.h>
-#endif
-
 #include <chrono>
 #include <thread>
 
@@ -43,6 +39,10 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/error.h"
 #include "Logger/Logger.h"
+
+#ifdef TRI_HAVE_PROCESS_H
+#include <process.h>
+#endif
 
 using namespace arangodb;
 using namespace arangodb::application_features;
