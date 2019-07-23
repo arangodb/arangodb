@@ -483,9 +483,8 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_same_id) {
     // State is empty { }
 
     // Register callback
-    guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{1}},
-        callback, "");
-    guards.emplace_back(std::move(guard));
+    auto guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{1}},
+                                              callback, "");
     waitForSchedulerEmpty();
     ASSERT_EQ(0, numCalled) << "Callback must not be called before a change";
 
@@ -493,7 +492,8 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_same_id) {
     state.emplace(serverA, RebootId{1});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
-    ASSERT_EQ(0, numCalled) << "Callback must not be called when the state is set to the same RebootId";
+    ASSERT_EQ(0, numCalled) << "Callback must not be called when the state is "
+                               "set to the same RebootId";
 
     // Set state to { serverA => 2 }
     state.at(serverA) = RebootId{2};
@@ -519,9 +519,8 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_older_id) {
     // State is empty { }
 
     // Register callback
-    guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{2}},
-        callback, "");
-    guards.emplace_back(std::move(guard));
+    auto guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{2}},
+                                              callback, "");
     waitForSchedulerEmpty();
     ASSERT_EQ(0, numCalled) << "Callback must not be called before a change";
 
@@ -529,13 +528,15 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_older_id) {
     state.emplace(serverA, RebootId{1});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
-    ASSERT_EQ(0, numCalled) << "Callback must not be called when the state is set to an older RebootId";
+    ASSERT_EQ(0, numCalled) << "Callback must not be called when the state is "
+                               "set to an older RebootId";
 
     // Set state to { serverA => 2 }
     state.at(serverA) = RebootId{2};
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
-    ASSERT_EQ(0, numCalled) << "Callback must not be called when the state is set to the same RebootId";
+    ASSERT_EQ(0, numCalled) << "Callback must not be called when the state is "
+                               "set to the same RebootId";
 
     // Set state to { serverA => 3 }
     state.at(serverA) = RebootId{3};
@@ -548,7 +549,6 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_older_id) {
   waitForSchedulerEmpty();
   ASSERT_EQ(1, numCalled) << "Callback must not be called during destruction";
 }
-
 
 TEST_F(RebootTrackerTest, two_servers_call_interleaved) {
   auto state = std::unordered_map<ServerID, RebootId>{{serverA, RebootId{1}}};
