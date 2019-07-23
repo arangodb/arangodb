@@ -446,8 +446,7 @@ bool recreateArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
     arangodb::Result res;
 
     builder.openObject();
-    res = view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                        arangodb::LogicalDataSource::Serialize::Detailed));  // get JSON with end-user definition
+    res = view->appendVelocyPackDetailed(builder, false);  // get JSON with end-user definition
     builder.close();
 
     if (!res.ok()) {
