@@ -1,7 +1,0 @@
-arangosh&gt; var examples = require("@arangodb/graph-examples/example-graph.js");
-arangosh&gt; var graph = examples.loadGraph("social");
-arangosh&gt; graph.relation.save(
-........&gt;  "relation/aliceAndBob",
-........&gt;   "female/alice",
-........&gt; {type: "married", _key: "bobAndAlice"});
-[ArangoError 1906: invalid edge between relation/aliceAndBob and female/alice. Doesn't conform to any edge definition]
