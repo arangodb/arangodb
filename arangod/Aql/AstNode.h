@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
