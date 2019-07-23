@@ -279,7 +279,6 @@ function TransactionsIResearchSuite() {
         });
         fail();
       } catch(err) {
-        //assertEqual(err.errorMessage, "myerror");
         assertEqual(err.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
       }
 
