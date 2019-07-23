@@ -38,7 +38,7 @@ var isEqual = helper.isEqual;
 
 function optimizerRuleTestSuite () {
   var ruleName = "remove-collect-variables";
-  // various choices to control the optimizer: 
+  // various choices to control the optimizer:
   var paramNone     = { optimizer: { rules: [ "-all" ] } };
   var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
@@ -64,7 +64,7 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleDisabled : function () {
-      var queries = [ 
+      var queries = [
         "FOR i IN 1..10 COLLECT a = i INTO group RETURN a",
         "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN a",
         "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b }"
@@ -81,16 +81,10 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleNoEffect : function () {
-      var queries = [ 
+      var queries = [
         "FOR i IN 1..10 COLLECT a = i RETURN a",
         "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j RETURN a",
         "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b, group: group }",
-        `LET items = [{foo : 'bar'}]
-         FOR i1 IN items
-           FOR i2 IN items
-             COLLECT foo1 = i1.foo INTO g1
-             COLLECT foo2 = g1[0].item2.foo INTO g2
-             RETURN g2[0].g`
       ];
 
       queries.forEach(function(query) {
@@ -104,7 +98,7 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleHasEffect : function () {
-      var queries = [ 
+      var queries = [
         "FOR i IN 1..10 COLLECT a = i INTO group RETURN a",
         "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN a",
         "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b }",
@@ -122,7 +116,7 @@ function optimizerRuleTestSuite () {
 
 
     testPlans : function () {
-      var plans = [ 
+      var plans = [
         [ "FOR i IN 1..10 COLLECT a = i INTO group RETURN a", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "SortNode", "CollectNode", "ReturnNode" ] ],
         [ "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN a", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "EnumerateListNode", "SortNode", "CollectNode", "ReturnNode" ] ],
         [ "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b }", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "EnumerateListNode", "SortNode", "CollectNode", "CalculationNode", "ReturnNode" ] ]
@@ -140,18 +134,9 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testResults : function () {
-      var queries = [ 
+      var queries = [
         [ "FOR i IN 1..10 COLLECT a = i INTO group RETURN a", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
         [ "FOR i IN 1..2 FOR j IN 1..2 COLLECT a = i, b = j INTO group RETURN [ a, b ]", [ [ 1, 1 ], [ 1, 2 ], [ 2, 1 ], [ 2, 2 ] ] ],
-        [ `LET items = [{foo : 'bar'}]
-           FOR i1 IN items
-             FOR i2 IN items
-               COLLECT foo1 = i1.foo INTO g1
-               COLLECT foo2 = g1[0].item2.foo INTO g2
-               RETURN g2[0].i2`,
-          [ {"foo" : "bar"}  ]
-        ], 
-
       ];
 
       queries.forEach(function(query) {
@@ -171,7 +156,7 @@ function optimizerRuleTestSuite () {
       });
     },
 
-    testNesting1 : function() {
+    testNestingRuleNotUsed1 : function() {
       const query = `
          LET items = [{_id: 'ID'}]
          FOR item1 IN items
@@ -181,11 +166,11 @@ function optimizerRuleTestSuite () {
                 COLLECT id2 = first[0].item2._id INTO other
                 RETURN other[0]
          `;
-      const expected = [ 
+      const expected = [
           { "first" : [ { "item1" : { "_id" : "ID" },
                            "item2" : { "_id" : "ID" },
                            "item3" : { "_id" : "ID" },
-                         } 
+                         }
                       ],
             "item1" : { "_id" : "ID" },
             "item2" : { "_id" : "ID" },
@@ -195,9 +180,12 @@ function optimizerRuleTestSuite () {
         ];
       let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
       assertEqual(expected, resultEnabled);
+
+      let explain =  AQL_EXPLAIN(query, { }, paramEnabled);
+      assertEqual(-1, explain.plan.rules.indexOf(ruleName));
     },
 
-    testNesting2 : function() {
+    testNestingRuleNotUsed2 : function() {
       const query = `
          LET items = [{_id: 'ID'}]
          FOR item1 IN items
@@ -208,11 +196,11 @@ function optimizerRuleTestSuite () {
                 let b = other[0]
                 RETURN b
          `;
-      const expected = [ 
+      const expected = [
           { "first" : [ { "item1" : { "_id" : "ID" },
                            "item2" : { "_id" : "ID" },
                            "item3" : { "_id" : "ID" },
-                         } 
+                         }
                       ],
             "item1" : { "_id" : "ID" },
             "item2" : { "_id" : "ID" },
@@ -222,9 +210,12 @@ function optimizerRuleTestSuite () {
         ];
       let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
       assertEqual(expected, resultEnabled);
+
+      let explain =  AQL_EXPLAIN(query, { }, paramEnabled);
+      assertEqual(-1, explain.plan.rules.indexOf(ruleName));
     },
 
-    testNesting3 : function() {
+    testNestingRuleNotUsed3 : function() {
       const query = `
          LET items = [{_id: 'ID'}]
          FOR item1 IN items
@@ -238,7 +229,7 @@ function optimizerRuleTestSuite () {
           { "first" : [ { "item1" : { "_id" : "ID" },
                            "item2" : { "_id" : "ID" },
                            "item3" : { "_id" : "ID" },
-                         } 
+                         }
                       ],
             "item1" : { "_id" : "ID" },
             "item2" : { "_id" : "ID" },
@@ -248,6 +239,88 @@ function optimizerRuleTestSuite () {
        ] ];
       let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
       assertEqual(expected, resultEnabled);
+
+      let explain =  AQL_EXPLAIN(query, { }, paramEnabled);
+      assertEqual(-1, explain.plan.rules.indexOf(ruleName));
+    },
+    
+    testNestingRuleUsed1 : function() {
+      const query = `
+         LET items = [{_id: 'ID'}]
+         FOR item1 IN items
+            FOR item2 IN items
+              FOR item3 IN items
+                COLLECT id = item1._id INTO first
+                COLLECT id2 = first[0].item2._id INTO other
+                RETURN other[0].id
+         `;
+      const expected = [ "ID" ];
+      let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
+      assertEqual(expected, resultEnabled);
+
+      let explain =  AQL_EXPLAIN(query, { }, paramEnabled);
+      assertNotEqual(-1, explain.plan.rules.indexOf(ruleName));
+    },
+
+    testNestingRuleUsed2 : function() {
+      const query = `
+         LET items = [ { "_id" : 42 }]
+         FOR item1 IN items
+            FOR item2 IN items
+              FOR item3 IN items
+                COLLECT id = item1._id INTO first
+                COLLECT id2 = first[0].item2._id INTO other
+                let b = 1 + other[0].first[0].item1._id
+                RETURN b
+         `;
+      const expected = [ 43 ]
+      print(query)
+      let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
+      assertEqual(expected, resultEnabled);
+
+      let explain =  AQL_EXPLAIN(query, { }, paramEnabled);
+      assertNotEqual(-1, explain.plan.rules.indexOf(ruleName));
+    },
+
+    testNestingRuleUsed3 : function() {
+      const query = `
+         LET items = [ { "_id" : 42 }]
+         FOR item1 IN items
+            FOR item2 IN items
+              FOR item3 IN items
+                COLLECT id = item1._id INTO first
+                COLLECT id2 = first[0].item2._id INTO other
+                let b = [  other[0].first[0], "blub" ]
+                RETURN b
+         `;
+      const expected = [
+          [ { "item3" : { "_id" : 42 },
+              "item1" : { "_id" : 42 },
+              "item2" : { "_id" : 42 } } , "blub" ] ]
+
+      let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
+      assertEqual(expected, resultEnabled);
+
+      let explain =  AQL_EXPLAIN(query, { }, paramEnabled);
+      assertNotEqual(-1, explain.plan.rules.indexOf(ruleName));
+    },
+
+    testNestingRuleUsed4 : function() {
+      const query = `
+         LET items = [{_id: 'ID'}]
+         FOR item1 IN items
+            FOR item2 IN items
+              FOR item3 IN items
+                COLLECT id = item1._id INTO first
+                COLLECT id2 = first[0].id INTO other
+                RETURN other[0].id
+         `;
+      const expected = [ "ID" ];
+      let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
+      assertEqual(expected, resultEnabled);
+
+      let explain =  AQL_EXPLAIN(query, { }, paramEnabled);
+      assertNotEqual(-1, explain.plan.rules.indexOf(ruleName));
     },
 
   };
