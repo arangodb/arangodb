@@ -59,6 +59,8 @@ class CallbackGuard {
   void callAndClear();
 
  private:
+  void call();
+
   std::function<void(void)> _callback;
 };
 

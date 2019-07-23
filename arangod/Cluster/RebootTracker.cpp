@@ -230,15 +230,21 @@ CallbackGuard::CallbackGuard(CallbackGuard&& other)
 }
 
 CallbackGuard& CallbackGuard::operator=(CallbackGuard&& other) {
-  _callback();
+  call();
   _callback = std::move(other._callback);
   other._callback = nullptr;
   return *this;
 }
 
-CallbackGuard::~CallbackGuard() { _callback(); }
+CallbackGuard::~CallbackGuard() { call(); }
 
 void CallbackGuard::callAndClear() {
-  _callback();
+  call();
   _callback = nullptr;
+}
+
+void CallbackGuard::call() {
+  if (_callback) {
+    _callback();
+  }
 }
