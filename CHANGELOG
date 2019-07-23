@@ -1,6 +1,18 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Added startup error for bad temporary directory setting.
+
+  If the temporary directory (--temp.path) setting is identical to the database 
+  directory (`--database.directory`) this can eventually lead to data loss, as 
+  temporary files may be created inside the temporary directory, causing overwrites of 
+  existing database files/directories with the same names.
+  Additionally the temporary directory may be cleaned at some point, and this would lead 
+  to an unintended cleanup of the database files/directories as well.
+  Now, if the database directory and temporary directory are set to the same path, there 
+  will be a startup warning about potential data loss (though in ArangoDB 3.4 allowing to 
+  continue the startup - in 3.5 and higher we will abort the startup).
+
 * Fixed a query abort error in smart joins when both collections were
   restricted to a single shard.
 
