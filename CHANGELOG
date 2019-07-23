@@ -1,4 +1,19 @@
-v3.5.0-rc.5 (2019-XX-XX)
+v3.5.0-rc.6 (2019-XX-XX)
+------------------------
+
+* Make TTL indexes behave like other indexes on creation
+    
+  If a TTL index is already present on a collection, the previous behavior
+  was to make subsequent calls to `ensureIndex` fail unconditionally with
+  the error "there can only be one ttl index per collection".
+    
+  Now we are comparing the attributes of the to-be-created index with the
+  attributes of the existing TTL index and make it only fail when the
+  attributes differ. If the attributes are identical, the `ensureIndex`
+  call succeeds and returns the existing index.
+
+
+v3.5.0-rc.5 (2019-07-22)
 ------------------------
 
 * MinReplicationFactor:

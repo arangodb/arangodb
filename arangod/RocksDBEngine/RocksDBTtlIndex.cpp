@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBTtlIndex.h"
+#include "Basics/FloatingPoint.h"
 #include "Basics/StaticStrings.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/LogicalCollection.h"
@@ -45,6 +46,18 @@ RocksDBTtlIndex::RocksDBTtlIndex(
   TRI_ASSERT(!info.get(StaticStrings::IndexUnique).getBool()); 
   TRI_ASSERT(info.get(StaticStrings::IndexSparse).getBool()); 
 #endif
+}
+
+/// @brief Test if this index matches the definition
+bool RocksDBTtlIndex::matchesDefinition(VPackSlice const& info) const {
+  // call compare method of parent first
+  if (!RocksDBSkiplistIndex::matchesDefinition(info)) {
+    return false;
+  }
+  // compare our own attribute, "expireAfter"
+  TRI_ASSERT(info.isObject());
+  double const expireAfter = info.get(StaticStrings::IndexExpireAfter).getNumber<double>();
+  return FloatingPoint<double>{expireAfter}.AlmostEquals(FloatingPoint<double>{_expireAfter});
 }
 
 void RocksDBTtlIndex::toVelocyPack(arangodb::velocypack::Builder& builder,
