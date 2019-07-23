@@ -26,6 +26,8 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
+#include "VocBase/vocbase.h"
+
 namespace arangodb {
 
 namespace aql {
