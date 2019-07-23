@@ -255,6 +255,8 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   VPackBuilder helper;
   builder.openArray();
 
+  bool isDBServer = ServerState::instance()->isDBServer();
+
   for (auto const& info : infos) {
     TRI_ASSERT(builder.isOpenArray());
 
@@ -279,7 +281,12 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       auto factor = vocbase.replicationFactor();
       if(factor > 0 && vocbase.IsSystemName(info.name)) {
         auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>("Cluster");
-        if (cl) {
+        if (isDBServer) {
+          // DBServers have their own loacl copies of system collections
+          factor = 1;
+          // we need to ignore the minReplicationFactor for shards as well
+          helper.add(StaticStrings::MinReplicationFactor, VPackValue(1));
+        } else if (cl) {
           factor = std::max(vocbase.replicationFactor(), cl->systemReplicationFactor());
         }
       }
