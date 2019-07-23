@@ -171,8 +171,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
     TRI_ASSERT(sourceImpl);
 
     if (node->isRestricted()) {
-      TRI_ASSERT(sourceImpl->restrictedShard.empty());
-      sourceImpl->restrictedShard = node->restrictedShard();
+      sourceImpl->restrictedShards.emplace(node->restrictedShard());
     }
   };
 
@@ -315,10 +314,10 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     bool isResponsibleForInitializeCursor) const {
   auto* collection = boost::get<CollectionSource>(&_source);
   TRI_ASSERT(collection);
-  auto& restrictedShard = collection->restrictedShard;
+  auto const& restrictedShards = collection->restrictedShards;
 
-  if (!restrictedShard.empty()) {
-    if (id != restrictedShard) {
+  if (!restrictedShards.empty()) {
+    if (restrictedShards.find(id) == restrictedShards.end()) {
       return;
     }
     // We only have one shard it has to be responsible!
