@@ -423,10 +423,10 @@ class ClusterInfo final {
       bool waitForReplication, arangodb::velocypack::Slice const& json,
       double timeout  // request timeout
   );
-  
-  /// @brief this method does an atomic check of the preconditions for the collections
-  /// to be created, using the currently loaded plan. it populates the plan version
-  /// used for the checks
+
+  /// @brief this method does an atomic check of the preconditions for the
+  /// collections to be created, using the currently loaded plan. it populates
+  /// the plan version used for the checks
   Result checkCollectionPreconditions(std::string const& databaseName,
                                       std::vector<ClusterCollectionCreationInfo> const& infos,
                                       uint64_t& planVersion);
@@ -437,7 +437,8 @@ class ClusterInfo final {
   /// Note that in contrast to most other methods here, this method does not
   /// get a timeout parameter, but an endTime parameter!!!
   Result createCollectionsCoordinator(std::string const& databaseName,
-                                      std::vector<ClusterCollectionCreationInfo>&, double endTime);
+                                      std::vector<ClusterCollectionCreationInfo>&,
+                                      double endTime);
 
   /// @brief drop collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
@@ -663,7 +664,7 @@ class ClusterInfo final {
    * @return         List of DB servers serving the shard
    */
   arangodb::Result getShardServers(ShardID const& shardId, std::vector<ServerID>&);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get an operation timeout
   //////////////////////////////////////////////////////////////////////////////

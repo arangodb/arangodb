@@ -231,7 +231,8 @@ void ClusterInfo::logAgencyDump() const {
   AgencyCommResult ag = ac.getValues("/");
 
   if (ag.successful()) {
-    LOG_TOPIC("fe8ce", INFO, Logger::CLUSTER) << "Agency dump:\n" << ag.slice().toJson();
+    LOG_TOPIC("fe8ce", INFO, Logger::CLUSTER) << "Agency dump:\n"
+                                              << ag.slice().toJson();
   } else {
     LOG_TOPIC("e7e30", WARN, Logger::CLUSTER) << "Could not get agency dump!";
   }
@@ -1614,14 +1615,14 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
   return createCollectionsCoordinator(databaseName, infos, endTime);
 }
 
-/// @brief this method does an atomic check of the preconditions for the collections
-/// to be created, using the currently loaded plan. it populates the plan version
-/// used for the checks
+/// @brief this method does an atomic check of the preconditions for the
+/// collections to be created, using the currently loaded plan. it populates the
+/// plan version used for the checks
 Result ClusterInfo::checkCollectionPreconditions(std::string const& databaseName,
                                                  std::vector<ClusterCollectionCreationInfo> const& infos,
                                                  uint64_t& planVersion) {
   READ_LOCKER(readLocker, _planProt.lock);
-  
+
   planVersion = _planVersion;
 
   for (auto const& info : infos) {
@@ -1629,7 +1630,7 @@ Result ClusterInfo::checkCollectionPreconditions(std::string const& databaseName
     if (info.name.empty() || !info.json.isObject() || !info.json.get("shards").isObject()) {
       return TRI_ERROR_BAD_PARAMETER;  // must not be empty
     }
-  
+
     // Validate that the collection does not exist in the current plan
     {
       AllCollections::const_iterator it = _plannedCollections.find(databaseName);
@@ -1652,7 +1653,7 @@ Result ClusterInfo::checkCollectionPreconditions(std::string const& databaseName
         }
       }
     }
-  
+
     // Validate that there is no view with this name either
     {
       // check against planned views as well
@@ -1667,7 +1668,6 @@ Result ClusterInfo::checkCollectionPreconditions(std::string const& databaseName
         }
       }
     }
-
   }
 
   return {};
@@ -1693,7 +1693,7 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
 
   AgencyComm ac;
   std::vector<std::shared_ptr<AgencyCallback>> agencyCallbacks;
-  
+
   auto cbGuard = scopeGuard([&] {
     // We have a subtle race here, that we try to cover against:
     // We register a callback in the agency.
@@ -1873,34 +1873,34 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
                                               AgencyPrecondition::Type::EMPTY, true));
       }
     }
-    
+
     // additionally ensure that no such collectionID exists yet in Plan/Collections
     precs.emplace_back(AgencyPrecondition("Plan/Collections/" + databaseName + "/" + info.collectionID,
                                           AgencyPrecondition::Type::EMPTY, true));
   }
-  
+
   // We need to make sure our plan is up to date.
   LOG_TOPIC("f4b14", DEBUG, Logger::CLUSTER)
       << "createCollectionCoordinator, loading Plan from agency...";
 
   // load the plan, so we are up-to-date
   loadPlan();
-  uint64_t planVersion = 0; // will be populated by following function call
+  uint64_t planVersion = 0;  // will be populated by following function call
   Result res = checkCollectionPreconditions(databaseName, infos, planVersion);
   if (res.fail()) {
     return res;
   }
-  
-  
-  // now try to update the plan in the agency, using the current plan version as our 
-  // precondition
+
+  // now try to update the plan in the agency, using the current plan version as
+  // our precondition
   {
     // create a builder with just the version number for comparison
     VPackBuilder versionBuilder;
     versionBuilder.add(VPackValue(planVersion));
-  
+
     // add a precondition that checks the plan version has not yet changed
-    precs.emplace_back(AgencyPrecondition("Plan/Version", AgencyPrecondition::Type::VALUE, versionBuilder.slice()));
+    precs.emplace_back(AgencyPrecondition("Plan/Version", AgencyPrecondition::Type::VALUE,
+                                          versionBuilder.slice()));
 
     AgencyWriteTransaction transaction(opers, precs);
 
@@ -1915,15 +1915,17 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
         if (res.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
           // use this special error code to signal that we got a precondition failure
           // in this case the caller can try again with an updated version of the plan change
-          return {TRI_ERROR_REQUEST_CANCELED, "operation aborted due to precondition failure"};
-        } 
-        
+          return {TRI_ERROR_REQUEST_CANCELED,
+                  "operation aborted due to precondition failure"};
+        }
+
         std::string errorMsg = "HTTP code: " + std::to_string(res.httpCode());
         errorMsg += " error message: " + res.errorMessage();
         errorMsg += " error details: " + res.errorDetails();
         errorMsg += " body: " + res.body();
         for (auto const& info : infos) {
-          events::CreateCollection(databaseName, info.name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
+          events::CreateCollection(databaseName, info.name,
+                                   TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
         }
         return {TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN, std::move(errorMsg)};
       }
@@ -2135,14 +2137,14 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
   if (res.successful()) {
     velocypack::Slice databaseSlice = res.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Plan", "Collections", dbName }));
+        {AgencyCommManager::path(), "Plan", "Collections", dbName}));
 
     if (!databaseSlice.isObject()) {
       // database dropped in the meantime
       events::DropCollection(dbName, collectionID, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
       return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
     }
-    
+
     velocypack::Slice collectionSlice = databaseSlice.get(collectionID);
     if (!collectionSlice.isObject()) {
       // collection dropped in the meantime
@@ -2375,7 +2377,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
   if (!res.successful()) {
     if (res.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
       // Dump agency plan:
-      
+
       logAgencyDump();
 
       events::CreateView(databaseName, name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN);
