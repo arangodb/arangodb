@@ -11,7 +11,7 @@ First Steps with ArangoDB:
   http:/www.arangodb.com/quickstart
 
 Upgrading ArangoDB:
-  https://docs.arangodb.com/Manual/Administration/Upgrading/
+  https://www.arangodb.com/docs/stable/upgrading.html
 
 Upgrading ArangoDB database files:
   > /etc/init.d/arangodb3 upgrade

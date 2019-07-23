@@ -228,7 +228,7 @@ class TtlThread final : public Thread {
  private:
   /// @brief whether or not the background thread shall continue working
   bool isActive() const {
-    return _ttlFeature->isActive() && !isStopping();
+    return _ttlFeature->isActive() && !isStopping() && !ServerState::readOnly();
   }
 
   void work(TtlStatistics& stats, TtlProperties const& properties) {

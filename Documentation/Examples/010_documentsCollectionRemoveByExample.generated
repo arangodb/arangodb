@@ -1,2 +1,0 @@
-arangosh&gt; db.example.removeByExample( {<span class="hljs-attr">Hello</span> : <span class="hljs-string">"world"</span>} );
-<span class="hljs-number">1</span>

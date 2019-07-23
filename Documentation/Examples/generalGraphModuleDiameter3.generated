@@ -1,4 +1,0 @@
-arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/graph-examples/example-graph.js"</span>);
-arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
-arangosh&gt; graph._diameter({<span class="hljs-attr">direction</span> : <span class="hljs-string">'outbound'</span>, <span class="hljs-attr">weight</span> : <span class="hljs-string">'distance'</span>});
-<span class="hljs-number">1</span>
