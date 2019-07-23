@@ -75,7 +75,7 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangobench jemalloc)
+  add_dependencies(arangobench jemalloc_build)
 endif ()
 
 if(MSVC)
@@ -193,7 +193,7 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangodump jemalloc)
+  add_dependencies(arangodump jemalloc_build)
 endif ()
 
 if(MSVC)
@@ -249,7 +249,7 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangoexport jemalloc)
+  add_dependencies(arangoexport jemalloc_build)
 endif ()
 
 if(MSVC)
@@ -312,7 +312,7 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangoimport jemalloc)
+  add_dependencies(arangoimport jemalloc_build)
 endif ()
 
 install_command_alias(arangoimport
@@ -374,7 +374,7 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangorestore jemalloc)
+  add_dependencies(arangorestore jemalloc_build)
 endif ()
 
 if(MSVC)
@@ -439,7 +439,7 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangosh jemalloc)
+  add_dependencies(arangosh jemalloc_build)
 endif ()
 
 if(MSVC)
@@ -495,7 +495,7 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangovpack jemalloc)
+  add_dependencies(arangovpack jemalloc_build)
 endif ()
 
 if(MSVC)
