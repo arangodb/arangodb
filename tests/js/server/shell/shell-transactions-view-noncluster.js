@@ -121,6 +121,7 @@ function TransactionsIResearchSuite() {
             throw "myerror";
           }
         });
+        fail();
       } catch (err) {
         assertEqual(err.errorMessage, "myerror");
       }
