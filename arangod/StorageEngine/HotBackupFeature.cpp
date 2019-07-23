@@ -46,14 +46,14 @@ namespace {
 void recreateArangoSearchViewsAfterRestore() {
   auto* arangoSearchFeature =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchFeature>("ArangoSearch");
-  LOG_TOPIC("fdeda", INFO, Logger::BACKUP)
+  LOG_TOPIC(INFO, Logger::BACKUP)
     << "Recreating ArangoSearch indexes...";
   DatabaseFeature::DATABASE->enumerateDatabases(
     [arangoSearchFeature](TRI_vocbase_t& vocbase) {
-      LOG_TOPIC("efdab", INFO, Logger::BACKUP)
+      LOG_TOPIC(INFO, Logger::BACKUP)
         << "Recreating ArangoSearch index for database " << vocbase.name();
       bool res = arangoSearchFeature->recreateLocalArangoSearchData(vocbase);
-      LOG_TOPIC("efdaa", INFO, Logger::BACKUP)
+      LOG_TOPIC(INFO, Logger::BACKUP)
         << "Done recreating ArangoSearch index for database " << vocbase.name()
         << ", result was: " << (res ? "GOOD" : "BAD");
     });
@@ -64,7 +64,7 @@ void recreateArangoSearchViewsAfterRestore() {
 }
 
 void scheduleRecreateArangoSearchViewsAfterRestore() {
-  LOG_TOPIC("65272", INFO, Logger::BACKUP)
+  LOG_TOPIC(INFO, Logger::BACKUP)
     << "This is a restore start of a single server, we need to recreate "
        "all ArangoSearch indexes in the background, scheduling...";
   SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
@@ -387,7 +387,7 @@ void HotBackupFeature::removeRestoreStartMarker() {
       engine->dataPath(), "RESTORE");
   bool res = arangodb::basics::FileUtils::remove(path);
   if (res == false) {
-    LOG_TOPIC("54feb", INFO, arangodb::Logger::STARTUP)
+    LOG_TOPIC(INFO, arangodb::Logger::STARTUP)
       << "Could not remove RESTORE start marker.";
   }
 }

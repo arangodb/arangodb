@@ -107,14 +107,14 @@ static void scheduleLockCleaning(uint64_t serialNumber, uint32_t timeout) {
           // only unlock if creation of this object instance was due to
           //  the taking of current transaction lock
           if (lockingSerialNumber == serialNumber) {
-            LOG_TOPIC("a20be", INFO, arangodb::Logger::BACKUP)
+            LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
               << "RocksDBHotBackup removing lost transaction lock.";
             // would prefer virtual releaseRocksDBTransactions() ... but would
             //   require copy of RocksDBHotBackupLock object used from RestHandler or unit test.
             transaction::ManagerFeature::manager()->releaseTransactions();
             lockingSerialNumber = 0;
           } else {
-            LOG_TOPIC("efaed", DEBUG, arangodb::Logger::BACKUP)
+            LOG_TOPIC(DEBUG, arangodb::Logger::BACKUP)
               << "RocksDBHotBackup not removing transaction lock since there is already a new one or it is already removed.";
           }
         });

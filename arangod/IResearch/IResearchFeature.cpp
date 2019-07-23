@@ -365,7 +365,7 @@ void removeAllArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
   auto* dbPathFeature = ApplicationServer::lookupFeature<arangodb::DatabasePathFeature>("DatabasePath");
 
   if (!dbPathFeature) {
-    LOG_TOPIC("abefd", ERR, arangodb::iresearch::TOPIC)
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "failure to find feature 'DatabasePath' while upgrading "
            "IResearchView from version 0 to version 1";
 
@@ -396,7 +396,7 @@ void removeAllArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
     res = view->drop();  // drop view (including all links)
 
     if (!res.ok()) {
-      LOG_TOPIC("aabbc", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "failure to drop view while dropping all ArangoSearch data "
              "for restore operation, message: " << res.errorMessage();
       continue;  // at least try the next view
@@ -408,7 +408,7 @@ void removeAllArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
       res = arangodb::LogicalViewHelperStorageEngine::drop(*view);
 
       if (!res.ok()) {
-        LOG_TOPIC("efefe", WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
             << "failure to drop view from vocbase while removing "
                "all ArangoSearch data for restore operation, msg: "
             << res.errorMessage();
@@ -420,7 +420,7 @@ void removeAllArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
 
     // remove any stale data-store
     if (!dataPath.exists(exists) || (exists && !dataPath.remove())) {
-      LOG_TOPIC("99776", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "failure to remove old data-store path while removing "
              "all ArangoSearch data, view id: " << view->id();
       continue;
@@ -438,7 +438,7 @@ bool recreateArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
   auto* dbPathFeature = ApplicationServer::lookupFeature<arangodb::DatabasePathFeature>("DatabasePath");
 
   if (!dbPathFeature) {
-    LOG_TOPIC("12543", ERR, arangodb::iresearch::TOPIC)
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "failure to find feature 'DatabasePath' while recreating "
            "ArangoSearch index after a restore";
 
@@ -448,7 +448,7 @@ bool recreateArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
   bool success = true;
 
   for (auto& view : vocbase.views()) {
-    LOG_TOPIC("54312", INFO, arangodb::iresearch::TOPIC)
+    LOG_TOPIC(INFO, arangodb::iresearch::TOPIC)
       << "Recreating ArangoSearch index: doing view " << view->name();
     if (!arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(view.get())) {
       continue;  // not an IResearchView
@@ -463,7 +463,7 @@ bool recreateArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
     builder.close();
 
     if (!res.ok()) {
-      LOG_TOPIC("12123", ERR, arangodb::iresearch::TOPIC)
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
           << "failure to generate persisted definition while recreating "
              "ArangoSearch index after a restore";
 
@@ -488,7 +488,7 @@ bool recreateArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
     res = view->drop();  // drop view (including all links)
 
     if (!res.ok()) {
-      LOG_TOPIC("54362", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "failure to drop view while recreating ArangoSearch index "
              "after a restore";
 
@@ -500,7 +500,7 @@ bool recreateArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
 
     // remove any stale data-store
     if (!dataPath.exists(exists) || (exists && !dataPath.remove())) {
-      LOG_TOPIC("88876", ERR, arangodb::iresearch::TOPIC)
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
           << "failure to remove old data-store path while recreating "
              "ArangoSearch index after a restore, view definition: "
           << builder.slice().toString();
@@ -514,7 +514,7 @@ bool recreateArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
                                                                builder.slice());
 
     if (!res.ok()) {
-      LOG_TOPIC("f8d19", ERR, arangodb::iresearch::TOPIC)
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
           << "failure to recreate view while recreating ArangoSearch "
              "index after a restore, error: "
           << res.errorNumber() << " " << res.errorMessage()
