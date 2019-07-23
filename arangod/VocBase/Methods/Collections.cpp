@@ -279,7 +279,9 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       auto factor = vocbase.replicationFactor();
       if(factor > 0 && vocbase.IsSystemName(info.name)) {
         auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>("Cluster");
-        factor = std::max(vocbase.replicationFactor(), cl->systemReplicationFactor());
+        if (cl) {
+          factor = std::max(vocbase.replicationFactor(), cl->systemReplicationFactor());
+        }
       }
       helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
     }
@@ -289,7 +291,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       auto distribute = info.properties.get(StaticStrings::DistributeShardsLike);
       if(distribute.isNone()) {
         helper.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::GraphCollection));
-      } else if (distribute.isString() && distribute.compareString("")) {
+      } else if (distribute.isString() && distribute.compareString("") == 0) {
         helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); //delete empty string from info slice
       }
     }
@@ -420,14 +422,12 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   auto res = methods::Collections::lookup(vocbase, name, noop);
 
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-    uint32_t defaultReplFactor = 1;
-    uint32_t defaultMinReplFactor = 1;
+    uint32_t defaultReplFactor = vocbase.replicationFactor();
+    uint32_t defaultMinReplFactor = vocbase.minReplicationFactor();
 
-    auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>(
-        "Cluster");
-
+    auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>("Cluster");
     if (cl != nullptr) {
-      defaultReplFactor = cl->systemReplicationFactor();
+      defaultReplFactor = std::max(defaultReplFactor,cl->systemReplicationFactor());
     }
 
     VPackBuilder bb;
@@ -437,11 +437,11 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       bb.add("isSystem", VPackSlice::trueSlice());
       bb.add("waitForSync", VPackSlice::falseSlice());
       bb.add("journalSize", VPackValue(1024 * 1024));
-      bb.add("replicationFactor", VPackValue(defaultReplFactor));
-      bb.add("minReplicationFactor", VPackValue(defaultMinReplFactor));
-      if (name != "_graphs") {
+      bb.add(StaticStrings::ReplicationFactor, VPackValue(defaultReplFactor));
+      bb.add(StaticStrings::MinReplicationFactor, VPackValue(defaultMinReplFactor));
+      if (name != StaticStrings::GraphCollection) {
         // that forces all collections to be on the same physical DBserver
-        bb.add("distributeShardsLike", VPackValue("_graphs"));
+        bb.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::GraphCollection));
       }
     }
 
