@@ -1,7 +1,0 @@
-@Q:
-RETURN POSITION( [<span class="hljs-number">2</span>,<span class="hljs-number">4</span>,<span class="hljs-number">6</span>,<span class="hljs-number">8</span>], <span class="hljs-number">4</span>, <span class="hljs-literal">true</span> )
-
-@R
-[
-  <span class="hljs-number">1</span>
-]

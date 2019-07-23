@@ -5,8 +5,6 @@ scripts/unittest eol=lf
 *.groovy eol=lf
 *.csv binary
 *.json eol=lf
-Documentation/Books/SummaryBlacklist.txt eol=lf
-Documentation/Examples/*.generated merge=ours
 VERSION merge=ours
 STARTER_REV merge=ours
 lib/V8/v8-json.cpp merge=ours
