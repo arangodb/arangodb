@@ -240,16 +240,15 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   // read and convert
   int64_t totalLength;
   std::unique_ptr<arangodb::ManagedDirectory::File> fd;
-  bool isGzip = (3 < fileName.size() && 0==fileName.substr(fileName.size() -3).compare(".gz"));
 
   if (fileName == "-") {
     // we don't have a filesize
     totalLength = 0;
-    fd.reset(new arangodb::ManagedDirectory::File(directory, STDIN_FILENO, false));
+    fd = directory.readableFile(STDIN_FILENO);
   } else {
     // read filesize
     totalLength = TRI_SizeFile(pathName.c_str());
-    fd.reset(new arangodb::ManagedDirectory::File(directory, fileName.c_str(), 0, isGzip));
+    fd = directory.readableFile(TRI_Basename(pathName.c_str()), 0);
 
     if (!fd) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
@@ -347,16 +346,15 @@ bool ImportHelper::importJson(std::string const& collectionName,
   // read and convert
   int64_t totalLength;
   std::unique_ptr<arangodb::ManagedDirectory::File> fd;
-  bool isGzip = (3 < fileName.size() && 0==fileName.substr(fileName.size() -3).compare(".gz"));
 
   if (fileName == "-") {
     // we don't have a filesize
     totalLength = 0;
-    fd.reset(new arangodb::ManagedDirectory::File(directory, STDIN_FILENO, false));
+    fd = directory.readableFile(STDIN_FILENO);
   } else {
     // read filesize
     totalLength = TRI_SizeFile(pathName.c_str());
-    fd.reset(new arangodb::ManagedDirectory::File(directory, fileName.c_str(), 0, isGzip));
+    fd = directory.readableFile(TRI_Basename(fileName.c_str()), 0);
 
     if (!fd) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
