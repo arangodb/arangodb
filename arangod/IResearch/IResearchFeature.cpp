@@ -404,20 +404,6 @@ void removeAllArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
       continue;  // at least try the next view
     }
 
-    // non-version 0 IResearchView implementations no longer drop from vocbase
-    // on db-server, do it explicitly
-    if (arangodb::ServerState::instance()->isDBServer()) {
-      res = arangodb::LogicalViewHelperStorageEngine::drop(*view);
-
-      if (!res.ok()) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-            << "failure to drop view from vocbase while removing "
-               "all ArangoSearch data for restore operation, msg: "
-            << res.errorMessage();
-        continue;
-      }
-    }
-
     bool exists;
 
     // remove any stale data-store
