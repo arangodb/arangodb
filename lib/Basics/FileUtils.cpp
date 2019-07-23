@@ -23,6 +23,8 @@
 
 #include "FileUtils.h"
 
+#include "Basics/operating-system.h"
+
 #ifdef TRI_HAVE_DIRENT_H
 #include <dirent.h>
 #endif

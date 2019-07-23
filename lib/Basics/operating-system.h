@@ -24,10 +24,6 @@
 #ifndef ARANGODB_BASICS_OPERATING__SYSTEM_H
 #define ARANGODB_BASICS_OPERATING__SYSTEM_H 1
 
-#ifndef TRI_WITHIN_COMMON
-#error use <Basics/Common.h>
-#endif
-
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
 #endif

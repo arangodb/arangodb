@@ -21,6 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ArangoGlobalContext.h"
+
+#include "Basics/operating-system.h"
+
 #include <sys/types.h>
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -43,6 +46,13 @@
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Rest/InitializeRest.h"
+
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#else
+inline void ADB_WindowsEntryFunction() {}
+inline void ADB_WindowsExitFunction(int, void*) {}
+#endif
 
 #include <regex>
 

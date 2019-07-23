@@ -46,4 +46,34 @@ extern TRI_ExitFunction_t TRI_EXIT_FUNCTION;
 
 void TRI_Application_Exit_SetExit(TRI_ExitFunction_t);
 
+/// @brief aborts program execution, returning an error code
+/// if backtraces are enabled, a backtrace will be printed before
+#define FATAL_ERROR_EXIT_CODE(code)                           \
+  do {                                                        \
+    TRI_LogBacktrace();                                       \
+    ::arangodb::basics::CleanupFunctions::run(code, nullptr); \
+    ::arangodb::Logger::flush();                              \
+    ::arangodb::Logger::shutdown();                           \
+    TRI_EXIT_FUNCTION(code, nullptr);                         \
+    exit(code);                                               \
+  } while (0)
+
+/// @brief aborts program execution, returning an error code
+/// if backtraces are enabled, a backtrace will be printed before
+#define FATAL_ERROR_EXIT(...)            \
+  do {                                   \
+    FATAL_ERROR_EXIT_CODE(EXIT_FAILURE); \
+  } while (0)
+
+/// @brief aborts program execution, calling std::abort
+/// if backtraces are enabled, a backtrace will be printed before
+#define FATAL_ERROR_ABORT(...)                             \
+  do {                                                     \
+    TRI_LogBacktrace();                                    \
+    arangodb::basics::CleanupFunctions::run(500, nullptr); \
+    arangodb::Logger::flush();                             \
+    arangodb::Logger::shutdown();                          \
+    std::abort();                                          \
+  } while (0)
+
 #endif

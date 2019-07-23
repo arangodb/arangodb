@@ -27,7 +27,8 @@
 
 #include "tri-zip.h"
 
-#include "Basics/Common.h"
+#include "Basics/operating-system.h"
+
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/error.h"

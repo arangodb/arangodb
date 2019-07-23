@@ -25,6 +25,8 @@
 
 #include <cstring>
 
+#include "Basics/operating-system.h"
+
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Utilities/Completer.h"
