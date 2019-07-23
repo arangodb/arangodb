@@ -568,11 +568,11 @@ if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
 endif ()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+  # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
   if (MSVC_VERSION VERSION_LESS 1915)
     message(FATAL_ERROR "ArangoDB Requires at least MSVC 2017 update 15.8!")
   endif()
 
-# MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
   # MSVC2018.8 requires the following define
   add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
 endif()
