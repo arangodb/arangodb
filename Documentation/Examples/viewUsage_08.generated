@@ -1,1 +1,0 @@
-arangosh&gt; db._dropView(<span class="hljs-string">"myView"</span>);

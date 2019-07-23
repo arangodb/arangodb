@@ -54,7 +54,7 @@ In a cluster setup, the result will also contain the following attributes:
 * *replicationFactor*: determines how many copies of each shard are kept 
   on different DBServers. Has to be in the range of 1-10 *(Cluster only)*
 
-  * *minReplicationFactor* : determines the number of minimal shard copies kept on 
+* *minReplicationFactor* : determines the number of minimal shard copies kept on
   different DBServers, a shard will refuse to write, if less then this amount
   of copies are in sync. Has to be in the range of 1-replicationFactor *(Cluster only)*
 
