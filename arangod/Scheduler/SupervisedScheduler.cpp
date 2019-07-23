@@ -309,7 +309,7 @@ void SupervisedScheduler::runWorker() {
 
   {
     std::lock_guard<std::mutex> guard(_mutexSupervisor);
-    id = _numWorkers++;  // increase the number of workers here, to obtains the id
+    id = _numWorkers++;  // increase the number of workers here, to obtain the id
     // copy shared_ptr with worker state
     state = _workerStates.back();
     // inform the supervisor that this thread is alive
@@ -317,7 +317,18 @@ void SupervisedScheduler::runWorker() {
   }
 
   state->_sleepTimeout_ms = 20 * (id + 1);
-  state->_queueRetryCount = (512 >> id) + 3;
+  // cap the timeout to some boundary value
+  if (state->_sleepTimeout_ms >= 1000) {
+    state->_sleepTimeout_ms = 1000;
+  }
+
+  if (id < 32) {
+    // 512 >> 32 => undefined behavior
+    state->_queueRetryCount = (512 >> id) + 3;
+  } else {
+    // we want at least 3 retries
+    state->_queueRetryCount = 3;
+  }
 
   while (true) {
     std::unique_ptr<WorkItem> work = getWork(state);
