@@ -1,6 +1,8 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* add gzip and encryption options to arangoimport and arangoexport
+
 * Fixed a query abort error in smart joins when both collections were
   restricted to a single shard.
 
