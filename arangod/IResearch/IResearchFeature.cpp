@@ -343,7 +343,7 @@ bool upgradeSingleServerArangoSearchView0_1(
                                                                builder.slice());
 
     if (!res.ok()) {
-      LOG_TOPIC("f8d19", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("f8d20", WARN, arangodb::iresearch::TOPIC)
           << "failure to recreate view while upgrading IResearchView from "
              "version 0 to version 1, error: "
           << res.errorNumber() << " " << res.errorMessage()
@@ -613,9 +613,7 @@ void removeAllArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
   }
 }
 
-bool recreateArangoSearchDataForDatabase(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& /*upgradeParams*/) {
+bool recreateArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
   using arangodb::application_features::ApplicationServer;
 
   if (!arangodb::ServerState::instance()->isSingleServer()) {
@@ -1144,12 +1142,11 @@ void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::Progra
 }
 
 void IResearchFeature::removeLocalArangoSearchData() {
-  DatabaseFeature::DATABASE->enumerateDatabases(removeAllArangoSearchDataForDatabase);
+  DatabaseFeature::DATABASE->enumerateDatabases(::removeAllArangoSearchDataForDatabase);
 }
 
-bool IResearchFeature::recreateLocalArangoSearchData(TRI_vocbase_t& vocbase,
-                                                velocypack::Slice const& slice) {
-  return ::recreateArangoSearchDataForDatabase(vocbase, slice);
+bool IResearchFeature::recreateLocalArangoSearchData(TRI_vocbase_t& vocbase) {
+  return ::recreateArangoSearchDataForDatabase(vocbase);
 }
 
 }  // namespace iresearch

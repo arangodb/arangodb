@@ -23,15 +23,18 @@
 
 #include "HotBackupFeature.h"
 
+#include "Basics/FileUtils.h"
 #include "Basics/Result.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "IResearch/IResearchFeature.h"
-#include "RestServer/DatabasePathFeature.h"
-#include "RestServer/UpgradeFeature.h"
+#include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -40,18 +43,32 @@ using namespace arangodb;
 
 namespace {
 
-bool recreateArangoSearchViewsAfterRestore(TRI_vocbase_t& vocbase,
-                                           velocypack::Slice const& slice) {
-  auto* databasePathFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabasePathFeature>("DatabasePathFeature");
-  if (databasePathFeature && databasePathFeature->isRestoreStart()) {
-    auto* arangoSearchFeature =
+void recreateArangoSearchViewsAfterRestore() {
+  auto* arangoSearchFeature =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchFeature>("ArangoSearch");
-    LOG_DEVEL << "Recreating ArangoSearch index for database " << vocbase.name();
-    return arangoSearchFeature->recreateLocalArangoSearchData(vocbase, slice);
-  } else {
-    return true;
-  }
+  LOG_TOPIC("fdeda", INFO, Logger::BACKUP)
+    << "Recreating ArangoSearch indexes...";
+  DatabaseFeature::DATABASE->enumerateDatabases(
+    [arangoSearchFeature](TRI_vocbase_t& vocbase) {
+      LOG_TOPIC("efdab", INFO, Logger::BACKUP)
+        << "Recreating ArangoSearch index for database " << vocbase.name();
+      bool res = arangoSearchFeature->recreateLocalArangoSearchData(vocbase);
+      LOG_TOPIC("efdaa", INFO, Logger::BACKUP)
+        << "Done recreating ArangoSearch index for database " << vocbase.name()
+        << ", result was: " << (res ? "GOOD" : "BAD");
+    });
+  // And remove the RESTORE marker:
+  auto* hotBackupFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::HotBackupFeature>("HotBackup");
+  hotBackupFeature->removeRestoreStartMarker();
+}
+
+void scheduleRecreateArangoSearchViewsAfterRestore() {
+  LOG_TOPIC("65272", INFO, Logger::BACKUP)
+    << "This is a restore start of a single server, we need to recreate "
+       "all ArangoSearch indexes in the background, scheduling...";
+  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                     recreateArangoSearchViewsAfterRestore);
 }
 
 }
@@ -62,6 +79,7 @@ HotBackupFeature::HotBackupFeature(application_features::ApplicationServer& serv
     : ApplicationFeature(server, "HotBackup"), _backupEnabled(true) {
   setOptional(true);
   startsAfter("Upgrade");
+  startsAfter("IResearchFeature");
   startsAfter("DatabasePhase");
   startsBefore("GeneralServer");
 }
@@ -87,10 +105,17 @@ void HotBackupFeature::prepare() {
       rocksdb->setCreateShaFiles(true);
     }
   }
-  registerUpgradeTasks();  // register tasks after UpgradeFeature::prepare() has finished
 }
 
-void HotBackupFeature::start() {}
+void HotBackupFeature::start() {
+  // Potentially recreate all ArangoSearch indexes if this is a single
+  // server and we are performing a RESTORE restart:
+  if (ServerState::instance()->isSingleServer()) {
+    if (isRestoreStart()) {
+      ::scheduleRecreateArangoSearchViewsAfterRestore();
+    }
+  }
+}
 
 void HotBackupFeature::beginShutdown() {
   // Call off uploads / downloads?
@@ -353,26 +378,22 @@ bool HotBackupFeature::cancelled(std::string const& transferId) const {
   return false;
 }
 
-void HotBackupFeature::registerUpgradeTasks() {
-  auto* upgrade =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::UpgradeFeature>(
-          "Upgrade");
+bool HotBackupFeature::isRestoreStart() {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  std::string path = arangodb::basics::FileUtils::buildFilename(
+      engine->dataPath(), "RESTORE");
+  return arangodb::basics::FileUtils::exists(path);
+}
 
-  TRI_ASSERT(upgrade);
-
-  // move IResearch data-store from IResearchView to IResearchLink
-  {
-    arangodb::methods::Upgrade::Task task;
-
-    task.name = "recreateArangoSearchViewsAfterRestore";
-    task.description = "recreate ArangoSearch indexes on a single server after a hotbackup restore operation";
-    task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
-    task.clusterFlags = arangodb::methods::Upgrade::Flags::CLUSTER_NONE;
-    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_EXISTING;
-    task.action = &recreateArangoSearchViewsAfterRestore;
-    upgrade->addTask(std::move(task));
+void HotBackupFeature::removeRestoreStartMarker() {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  std::string path = arangodb::basics::FileUtils::buildFilename(
+      engine->dataPath(), "RESTORE");
+  bool res = arangodb::basics::FileUtils::remove(path);
+  if (res == false) {
+    LOG_TOPIC("54feb", INFO, arangodb::Logger::STARTUP)
+      << "Could not remove RESTORE start marker.";
   }
-
 }
 
 }  // namespaces
