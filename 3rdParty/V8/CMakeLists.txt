@@ -449,10 +449,6 @@ else ()
     CACHE INTERNAL
     "${PROJECT_NAME}: include path"
     )
-  if(APPLE)
-    # cmake does not build ICU without this (cmake does not inherit dependencies)
-    add_dependencies(v8_build icu-build icudata-static icui18n-static icuuc-static)
-  endif()
 endif()
 
 set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
