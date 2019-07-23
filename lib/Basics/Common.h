@@ -36,12 +36,6 @@
 
 #endif
 
-#define TRI_WITHIN_COMMON 1
-// clang-format off
-#include "Basics/Result.h"
-// clang-format on
-#undef TRI_WITHIN_COMMON
-
 #include <algorithm>
 #include <atomic>
 #include <cmath>
