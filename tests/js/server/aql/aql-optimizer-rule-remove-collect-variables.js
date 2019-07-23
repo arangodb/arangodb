@@ -243,7 +243,7 @@ function optimizerRuleTestSuite () {
       let explain =  AQL_EXPLAIN(query, { }, paramEnabled);
       assertEqual(-1, explain.plan.rules.indexOf(ruleName));
     },
-    
+
     testNestingRuleUsed1 : function() {
       const query = `
          LET items = [{_id: 'ID'}]
@@ -316,6 +316,46 @@ function optimizerRuleTestSuite () {
                 RETURN other[0].id
          `;
       const expected = [ "ID" ];
+      let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
+      assertEqual(expected, resultEnabled);
+
+      let explain =  AQL_EXPLAIN(query, { }, paramEnabled);
+      assertNotEqual(-1, explain.plan.rules.indexOf(ruleName));
+    },
+
+    testNestingRuleUsed5 : function() {
+      const query = `
+         LET items = [{_id: 'ID'}]
+         FOR item1 IN items
+            FOR item2 IN items
+              FOR item3 IN items
+                COLLECT id = item1._id INTO first
+                COLLECT id2 = first[0].id INTO other
+                RETURN other[0].first
+         `;
+      const expected = [ [ { "item3" : { "_id" : "ID" },
+                             "item1" : { "_id" : "ID" },
+                             "item2" : { "_id" : "ID" } } ] ]
+      let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
+      assertEqual(expected, resultEnabled);
+
+      let explain =  AQL_EXPLAIN(query, { }, paramEnabled);
+      assertNotEqual(-1, explain.plan.rules.indexOf(ruleName));
+    },
+
+    testNestingRuleUsed6 : function() {
+      const query = `
+         LET items = [{_id: 'ID'}]
+         FOR item1 IN items
+            FOR item2 IN items
+              FOR item3 IN items
+                COLLECT id = item1._id INTO first
+                COLLECT id2 = first[0].id INTO other
+                RETURN other[0].first[0]
+         `;
+      const expected = [ { "item3" : { "_id" : "ID" },
+                           "item1" : { "_id" : "ID" },
+                           "item2" : { "_id" : "ID" } } ]
       let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
       assertEqual(expected, resultEnabled);
 
