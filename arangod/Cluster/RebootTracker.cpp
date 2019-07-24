@@ -24,6 +24,7 @@
 
 #include "Scheduler/SchedulerFeature.h"
 #include "lib/Basics/Exceptions.h"
+#include "lib/Basics/ScopeGuard.h"
 #include "lib/Logger/Logger.h"
 
 using namespace arangodb;
@@ -89,70 +90,50 @@ void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> con
 
 CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState const& peerState,
                                             RebootTracker::Callback callback,
-                                            std::string const& callbackDescription) {
+                                            std::string callbackDescription) {
   MUTEX_LOCKER(guard, _mutex);
-  return {};
-  //
-  // // Check whether the last known reboot id is older than the passed one;
-  // // if so, schedule callbacks and update the reboot id.
-  // if (!notifyChange(peerState)) {
-  //   std::stringstream error;
-  //   error << "Failed to schedule cleanup handlers due to changed rebootId on "
-  //            "server "
-  //         << peerState.serverId()
-  //         << " while trying to register this handler: " << callbackDescription;
-  //   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL, error.str());
-  // }
-  //
-  // auto const it = _rebootIds.find(peerState.serverId());
-  // // Now we must have an entry for the given server, and its last known reboot
-  // // id must be at least as recent as the passed one.
-  // TRI_ASSERT(it != _rebootIds.end());
-  // TRI_ASSERT(it->second >= peerState.rebootId());
-  //
-  // // Check whether the last known reboot id is newer than the passed one
-  // if (it->second > peerState.rebootId()) {
-  //   // The server already rebooted, call the failure handler immediately.
-  //   // This can throw.
-  //   bool const success = queueCallbacks(std::make_shared<std::vector<Callback>>(
-  //       std::vector<Callback>{std::move(callback)}));
-  //   if (!success) {
-  //     std::stringstream error;
-  //     error << "Failed to immediately execute cleanup handler for server "
-  //           << peerState.serverId()
-  //           << " while trying to register this handler: " << callbackDescription;
-  //     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL, error.str());
-  //   }
-  // } else {
-  //   TRI_ASSERT(it->second == peerState.rebootId());
-  //
-  //   // We've handled the "unusual" cases already; now, just try to insert the callback
-  //   auto const rv = _callbacks.emplace(peerState.serverId(), nullptr);
-  //   auto const iterator = rv.first;
-  //   bool const inserted = rv.second;
-  //   TRI_ASSERT(iterator != _callbacks.end());
-  //   auto& callbacksPtr = iterator->second;
-  //   // We did an insert if and only if the value is null
-  //   TRI_ASSERT(inserted == (callbacksPtr == nullptr));
-  //   if (callbacksPtr != nullptr) {
-  //     // Try to add callback to the existing array
-  //     callbacksPtr->emplace_back(std::move(callback));
-  //   } else {
-  //     // We didn't have a callbacks array for this server, try to create a new
-  //     // one.
-  //     try {
-  //       callbacksPtr = std::make_shared<std::vector<Callback>>(
-  //           std::vector<Callback>{std::move(callback)});
-  //     } catch (...) {
-  //       // Remove the new entry if we failed to allocate a vector,
-  //       // we may never leave null pointers in here!
-  //       _callbacks.erase(iterator);
-  //       throw;
-  //     }
-  //   }
-  // }
-  //
-  // return CallbackGuard{*this, callbackId};
+
+  // For the given server, get the existing rebootId => [callbacks] map,
+  // or create a new one
+  auto& rebootIdMap = _callbacks[peerState.serverId()];
+  // For the given rebootId, get the existing callbacks map,
+  // or create a new one
+  auto& callbackMapPtr = rebootIdMap[peerState.rebootId()];
+
+  if (callbackMapPtr == nullptr) {
+    // We must never leave a nullptr in here!
+    // Try to create a new map, or remove the entry.
+    try {
+      callbackMapPtr =
+          std::make_shared<std::remove_reference<decltype(callbackMapPtr)>::type::element_type>();
+    } catch (...) {
+      rebootIdMap.erase(peerState.rebootId());
+      throw;
+    }
+  }
+
+  TRI_ASSERT(callbackMapPtr != nullptr);
+
+  auto& callbackMap = *callbackMapPtr;
+
+  auto const callbackId = getNextCallbackId();
+
+  // The guard constructor might, theoretically, throw. So we need to construct
+  // it before emplacing the callback.
+  auto callbackGuard =
+      CallbackGuard([this, callbackId]() { unregisterCallback(callbackId); });
+
+  auto emplaceRv =
+      callbackMap.emplace(callbackId, DescriptedCallback{std::move(callback),
+                                                         std::move(callbackDescription)});
+  auto const iterator = emplaceRv.first;
+  bool const inserted = emplaceRv.second;
+  TRI_ASSERT(inserted);
+  TRI_ASSERT(callbackId == iterator->first);
+
+  // TODO I'm wondering why this compiles (with clang, at least), as the copy
+  //      constructor is deleted. I don't think it should...
+  return callbackGuard;
 }
 
 // Returns false iff callbacks have to be scheduled, but putting them on the
@@ -217,6 +198,11 @@ bool RebootTracker::queueCallbacks(std::shared_ptr<std::vector<RebootTracker::Ca
 
 void RebootTracker::unregisterCallback(RebootTracker::CallbackId callbackId) {
   // TODO unregister callback
+}
+RebootTracker::CallbackId RebootTracker::getNextCallbackId() noexcept {
+  CallbackId nextId = _nextCallbackId;
+  ++_nextCallbackId;
+  return nextId;
 }
 
 CallbackGuard::CallbackGuard() : _callback(nullptr) {}

@@ -45,9 +45,12 @@ class CallbackGuard {
   // Calls the callback given callback upon destruction.
   // Allows only move semantics and no copy semantics.
 
+  // Note that the move constructor of std::function is not noexcept until C++20.
+  // Thus we cannot mark the constructors here noexcept.
+
   CallbackGuard();
   // The passed callback should not throw exceptions, they will not be caught!
-  CallbackGuard(std::function<void(void)> callback);
+  explicit CallbackGuard(std::function<void(void)> callback);
   ~CallbackGuard();
   CallbackGuard(CallbackGuard&& other);
   CallbackGuard& operator=(CallbackGuard&&);
@@ -96,13 +99,15 @@ class RebootTracker {
   RebootTracker(SchedulerPointer scheduler);
 
   CallbackGuard callMeOnChange(PeerState const& peerState, Callback callback,
-                               std::string const& callbackDescription);
+                               std::string callbackDescription);
 
   // void notifyChanges(std::vector<PeerState> const& peerStates);
   void updateServerState(std::unordered_map<ServerID, RebootId> const& state);
 
  private:
   using CallbackId = uint64_t;
+
+  CallbackId getNextCallbackId() noexcept;
 
   void unregisterCallback(CallbackId);
 
@@ -119,6 +124,11 @@ class RebootTracker {
 
   CallbackId _nextCallbackId{1};
 
+  struct DescriptedCallback {
+    Callback callback;
+    std::string description;
+  };
+
   /// @brief Last known rebootId of every server
   std::unordered_map<ServerID, RebootId> _rebootIds;
 
@@ -127,7 +137,7 @@ class RebootTracker {
   /// Needs to fulfill the following:
   ///  - A callback with a given ID may never be moved to another (serverId, rebootId) entry,
   ///    to allow CallbackGuard to find a callback.
-  std::unordered_map<ServerID, std::map<RebootId, std::shared_ptr<std::unordered_map<CallbackId, Callback>>>> _callbacks;
+  std::unordered_map<ServerID, std::map<RebootId, std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>>> _callbacks;
 
   /// @brief Save a pointer to the scheduler for easier testing
   SchedulerPointer _scheduler;
