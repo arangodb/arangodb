@@ -430,7 +430,7 @@ function dumpTestSuite () {
           break;
         }
         console.log("Waiting for arangosearch index to be built...");
-        internal.wait(1000);
+        internal.wait(1);
       }
       assertEqual(5000, res.length);
 
