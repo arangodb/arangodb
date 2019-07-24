@@ -108,14 +108,20 @@ void DatabasePathFeature::prepare() {
     std::string directoryCopy = _directory;
     basics::FileUtils::makePathAbsolute(directoryCopy);
 
-    std::string tempPathCopy = application_features::ApplicationServer::getFeature<TempFeature>("Temp")->path();
-    basics::FileUtils::makePathAbsolute(tempPathCopy);
-    tempPathCopy = basics::StringUtils::rTrim(tempPathCopy, TRI_DIR_SEPARATOR_STR);
+    auto* tf = application_features::ApplicationServer::lookupFeature<TempFeature>("Temp");
+    if (tf) {
+      // the feature is not present in unit tests, so make the execution depend
+      // on whether the feature is available
+      std::string tempPathCopy = tf->path();
+      basics::FileUtils::makePathAbsolute(tempPathCopy);
+      tempPathCopy = basics::StringUtils::rTrim(tempPathCopy, TRI_DIR_SEPARATOR_STR);
 
-    if (directoryCopy == tempPathCopy) {
-      LOG_TOPIC("fd70b", FATAL, arangodb::Logger::FIXME) 
-        << "database directory '" << directoryCopy << "' is identical to the temporary directory. This can cause follow-up problems, including data loss. Please review your setup!";
-      FATAL_ERROR_EXIT();
+      if (directoryCopy == tempPathCopy) {
+        LOG_TOPIC("fd70b", FATAL, arangodb::Logger::FIXME) 
+          << "database directory '" << directoryCopy << "' is identical to the temporary directory. "
+          << "This can cause follow-up problems, including data loss. Please review your setup!";
+        FATAL_ERROR_EXIT();
+      }
     }
   }
 
