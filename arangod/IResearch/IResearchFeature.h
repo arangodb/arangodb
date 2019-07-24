@@ -43,7 +43,7 @@ class ResourceMutex;  // forward declaration
 bool isFilter(arangodb::aql::Function const& func) noexcept;
 bool isScorer(arangodb::aql::Function const& func) noexcept;
 
-class IResearchFeature final : public application_features::ApplicationFeature {
+class IResearchFeature : public application_features::ApplicationFeature {
  public:
   explicit IResearchFeature(arangodb::application_features::ApplicationServer& server);
 
@@ -81,7 +81,7 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   /// @brief remove local data, this is for a restore operation for hotbackup
   //////////////////////////////////////////////////////////////////////////////
 
-  void removeLocalArangoSearchData();
+  virtual void removeLocalArangoSearchData();
   bool recreateLocalArangoSearchData(TRI_vocbase_t& vocbase);
 
  private:
