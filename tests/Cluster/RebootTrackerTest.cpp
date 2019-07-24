@@ -26,11 +26,15 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/SupervisedScheduler.h"
 
+#include "Mocks/Servers.h"
+
 #include <memory>
 #include <type_traits>
 
 using namespace arangodb;
 using namespace arangodb::cluster;
+using namespace arangodb::tests;
+using namespace arangodb::tests::mocks;
 
 class CallbackGuardTest : public ::testing::Test {
  protected:
@@ -132,6 +136,9 @@ class RebootTrackerTest : public ::testing::Test {
   SupervisedScheduler scheduler;
   static_assert(std::is_same<decltype(SchedulerFeature::SCHEDULER), decltype(&scheduler)>::value,
                 "Use the correct scheduler in the tests");
+  // ApplicationServer needs to be prepared in order for the scheduler to start
+  // threads.
+  MockEmptyServer mockApplicationServer{};
 
   void SetUp() { scheduler.start(); }
   void TearDown() { scheduler.shutdown(); }
