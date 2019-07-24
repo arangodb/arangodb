@@ -69,11 +69,11 @@ class ConfigBuilder {
     this.type = type;
     switch (type) {
       case 'restore':
-        this.config.configuration = fs.join(CONFIG_DIR, 'arangorestore.conf'); 
+        this.config.configuration = fs.join(CONFIG_DIR, 'arangorestore.conf');
         this.executable = ARANGORESTORE_BIN;
         break;
       case 'dump':
-        this.config.configuration = fs.join(CONFIG_DIR, 'arangodump.conf'); 
+        this.config.configuration = fs.join(CONFIG_DIR, 'arangodump.conf');
         this.executable = ARANGODUMP_BIN;
         break;
       default:
@@ -121,7 +121,7 @@ class ConfigBuilder {
     }
     this.config['maskings'] = fs.join(TOP_DIR, "tests/js/common/test-data/maskings", dir);
   }
-  activateEncryption() { this.config['encription.keyfile'] = fs.join(this.rootDir, 'secret-key'); }
+  activateEncryption() { this.config['encryption.keyfile'] = fs.join(this.rootDir, 'secret-key'); }
   setRootDir(dir) { this.rootDir = dir; }
   restrictToCollection(collection) {
     if (this.type !== 'restore' && this.type !== 'dump') {
@@ -596,7 +596,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
       cmd = TOP_DIR + '/scripts/disable-cores.sh';
     }
   }
-  
+
   if (options.extremeVerbosity) {
     print(Date() + ' executeAndWait: cmd =', cmd, 'args =', args);
   }
