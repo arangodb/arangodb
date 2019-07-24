@@ -13,6 +13,8 @@ v3.4.8 (XXXX-XX-XX)
   will be a startup warning about potential data loss (though in ArangoDB 3.4 allowing to 
   continue the startup - in 3.5 and higher we will abort the startup).
 
+* Add gzip and encryption options to arangoimport and arangoexport.
+
 * Fixed a query abort error in smart joins when both collections were
   restricted to a single shard.
 

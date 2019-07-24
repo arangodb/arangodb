@@ -62,6 +62,12 @@ const impTodos = [{
   type: 'json',
   create: undefined
 }, {
+  id: 'json1gz',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json.gz')),
+  coll: 'UnitTestsImportJson1Gz',
+  type: 'json',
+  create: undefined
+}, {
   id: 'json2',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-2.json')),
   coll: 'UnitTestsImportJson2',
@@ -80,6 +86,12 @@ const impTodos = [{
   type: 'json',
   create: undefined
 }, {
+  id: 'json4gz',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-4.json.gz')),
+  coll: 'UnitTestsImportJson4Gz',
+  type: 'json',
+  create: undefined
+}, {
   id: 'json5',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-5.json')),
   coll: 'UnitTestsImportJson5',
@@ -95,6 +107,12 @@ const impTodos = [{
   id: 'csv1',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.csv')),
   coll: 'UnitTestsImportCsv1',
+  type: 'csv',
+  create: 'true'
+}, {
+  id: 'csv1gz',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.csv.gz')),
+  coll: 'UnitTestsImportCsv1Gz',
   type: 'csv',
   create: 'true'
 }, {
@@ -157,6 +175,12 @@ const impTodos = [{
   type: 'tsv',
   create: 'true'
 }, {
+  id: 'tsv1gz',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.tsv.gz')),
+  coll: 'UnitTestsImportTsv1Gz',
+  type: 'tsv',
+  create: 'true'
+}, {
   id: 'tsv2',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-2.tsv')),
   coll: 'UnitTestsImportTsv2',
@@ -166,6 +190,12 @@ const impTodos = [{
   id: 'edge',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-edges.json')),
   coll: 'UnitTestsImportEdge',
+  type: 'json',
+  create: 'false'
+}, {
+  id: 'edgegz',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-edges.json.gz')),
+  coll: 'UnitTestsImportEdgeGz',
   type: 'json',
   create: 'false'
 }, {

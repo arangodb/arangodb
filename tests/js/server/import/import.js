@@ -30,7 +30,7 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
-var ArangoError = require("@arangodb").ArangoError; 
+var ArangoError = require("@arangodb").ArangoError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -84,7 +84,7 @@ function importTestSuite () {
           keys.push(k);
         }
       }
-       
+
       keys.sort();
       var resultRow = { };
       for (k in keys) {
@@ -118,11 +118,11 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testCsvImportSkip : function () {
-      var expected = [ 
-        { "a": "1", "b": 1, "c": "1.3", "e": -5, "id": 1 }, 
-        { "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 }, 
+      var expected = [
+        { "a": "1", "b": 1, "c": "1.3", "e": -5, "id": 1 },
+        { "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 },
         { "a": "9999999999999999999999999999999999", "b": "test", "c" : -99999999, "d": true, "e": -888.4434, "id": 5 },
         { "a": 10e4, "b": 20.5, "c": -42, "d": " null ", "e": false, "id": 6 },
         { "a": -1.05e2, "b": 1.05e-2, "c": true, "d": false, "id": 7 }
@@ -135,7 +135,7 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test json import
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testJsonImport1 : function () {
       var expected = [ { "id": 1,
                          "one": 1,
@@ -161,10 +161,35 @@ function importTestSuite () {
       assertEqual(expected, actual);
     },
 
+    testJsonImport1Gz : function () {
+      var expected = [ { "id": 1,
+                         "one": 1,
+                         "three": 3,
+                         "two": 2 },
+                       { "a": 1234,
+                         "b": "the quick fox",
+                         "id": 2,
+                         "jumped":
+                         "over the fox",
+                         "null": null },
+                       { "id": 3,
+                         "not": "important",
+                         "spacing": "is" },
+                       { "  c  ": "h\"'ihi",
+                         "a": true,
+                         "b": false,
+                         "d": "",
+                         "id": 4 },
+                       { "id": 5 } ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportJson1Gz SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test json import
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testJsonImport2 : function () {
       var expected = [ { "id": 1, "value": -445.4 }, { "id": 2, "value": 34000 }, { "id": 3, "value": null } ];
       var actual = getQueryResults("FOR i IN UnitTestsImportJson2 SORT i.id RETURN i");
@@ -174,14 +199,14 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test json import
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testJsonImport3 : function () {
-      var expected = [ 
-        { "id": 1, "one": 1, "three": 3, "two": 2 }, 
-        { "a": 1234, "b": "the quick fox", "id": 2, "jumped": "over the fox", "null": null }, 
-        { "id": 3, "not": "important", "spacing": "is" }, 
-        { "  c  ": "h\"'ihi", "a": true, "b": false, "d": "", "id": 4 }, 
-        { "id": 5 } 
+      var expected = [
+        { "id": 1, "one": 1, "three": 3, "two": 2 },
+        { "a": 1234, "b": "the quick fox", "id": 2, "jumped": "over the fox", "null": null },
+        { "id": 3, "not": "important", "spacing": "is" },
+        { "  c  ": "h\"'ihi", "a": true, "b": false, "d": "", "id": 4 },
+        { "id": 5 }
       ];
       var actual = getQueryResults("FOR i IN UnitTestsImportJson3 SORT i.id RETURN i");
       assertEqual(expected, actual);
@@ -190,7 +215,7 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test json import
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testJsonImport4 : function () {
       var expected = [ ];
       for (var i = 0; i < 1000; ++i) {
@@ -200,12 +225,21 @@ function importTestSuite () {
       assertEqual(expected, actual);
     },
 
+    testJsonImport4Gz : function () {
+      var expected = [ ];
+      for (var i = 0; i < 1000; ++i) {
+        expected.push({ "active": true, "id": i, "value": "somerandomstuff" + i });
+      }
+      var actual = getQueryResults("FOR i IN UnitTestsImportJson4Gz SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test json import
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testJsonImport5 : function () {
-      var expected = [ 
+      var expected = [
         { "active": true, "id": 0, "value": "something" },
         { "id": 1, "value": "foobar" },
         { "id": 2, "data": 99.5, "true": "a\t\r\nb  c " }
@@ -214,7 +248,7 @@ function importTestSuite () {
       var actual = getQueryResults("FOR i IN UnitTestsImportJson5 SORT i.id RETURN i");
       assertEqual(expected, actual);
     },
-      
+
     testCsvImportNonoCreate : function () {
       assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code,
                   getErrorCode(function() { executeQuery("FOR i IN UnitTestsImportCsvNonoCreate RETURN i"); } ));
@@ -223,11 +257,11 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testCsvImport1 : function () {
-      var expected = [ 
-        { "a": "1", "b": 1, "c": "1.3", "e": -5, "id": 1 }, 
-        { "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 }, 
+      var expected = [
+        { "a": "1", "b": 1, "c": "1.3", "e": -5, "id": 1 },
+        { "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 },
         { "a": "9999999999999999999999999999999999", "b": "test", "c" : -99999999, "d": true, "e": -888.4434, "id": 5 },
         { "a": 10e4, "b": 20.5, "c": -42, "d": " null ", "e": false, "id": 6 },
         { "a": -1.05e2, "b": 1.05e-2, "c": true, "d": false, "id": 7 }
@@ -237,10 +271,23 @@ function importTestSuite () {
       assertEqual(expected, actual);
     },
 
+    testCsvImport1Gz : function () {
+      var expected = [
+        { "a": "1", "b": 1, "c": "1.3", "e": -5, "id": 1 },
+        { "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 },
+        { "a": "9999999999999999999999999999999999", "b": "test", "c" : -99999999, "d": true, "e": -888.4434, "id": 5 },
+        { "a": 10e4, "b": 20.5, "c": -42, "d": " null ", "e": false, "id": 6 },
+        { "a": -1.05e2, "b": 1.05e-2, "c": true, "d": false, "id": 7 }
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportCsv1Gz SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testCsvImport2 : function () {
       var actual = getQueryResults("FOR i IN UnitTestsImportCsv2 RETURN i");
       assertEqual([], actual);
@@ -249,14 +296,14 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testCsvImport3 : function () {
-      var expected = [ 
+      var expected = [
         { name: "Bar", password: "wow!\nthis is a\nmultiline password!" },
         { name: "Bartholomew \"Bart\" Simpson", password: "Milhouse" },
         { name: "Foo", password: "r4\\nd\\\\om\"123!" }
       ];
-      
+
       var actual = getQueryResults("FOR i IN UnitTestsImportCsv3 SORT i.name RETURN i");
       assertEqual(expected, actual);
     },
@@ -264,14 +311,14 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testCsvImport4 : function () {
-      var expected = [ 
+      var expected = [
         { name: "Bar", password: "wow!\nthis is a\nmultiline password!" },
         { name: "Bartholomew \"Bart\" Simpson", password: "Milhouse" },
         { name: "Foo", password: "r4\\nd\\\\om\"123!" }
       ];
-      
+
       var actual = getQueryResults("FOR i IN UnitTestsImportCsv4 SORT i.name RETURN i");
       assertEqual(expected, actual);
     },
@@ -279,9 +326,9 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testCsvImport5 : function () {
-      var expected = [ 
+      var expected = [
         { name: "bar", password: "foo" },
         { name: "foo\t", password: "wow \t   \r\nthis is \t\ra multiline password!" }
       ];
@@ -293,9 +340,9 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testCsvImport6 : function () {
-      var expected = [ 
+      var expected = [
         { a: 1, b: 2, c: 3, d: 4, e: 5 },
         { a: 1, b: 2, c: 3, d: 4 },
         { a: 1, b: 2, c: 3 },
@@ -310,9 +357,9 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import without converting
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testCsvImportNoConvert : function () {
-      var expected = [ 
+      var expected = [
         { value1: "1" },
         { value1: "2", value2: false },
         { value1: "3", value2: true },
@@ -338,9 +385,9 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import without trailing eol
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testCsvImportNoEol : function () {
-      var expected = [ 
+      var expected = [
         { value1: "a", value2: "b" },
         { value1: "c", value2: "d" },
         { value1: "e", value2: "f" }
@@ -353,7 +400,7 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test tsv import
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testTsvImport1 : function () {
       var expected = [ { "ab": "g", "cd": "h", "ef": "i" }, { "ab" : "j", "cd" : "k", "ef" : "l" } ];
       var actual = getQueryResults("FOR i IN UnitTestsImportTsv1 SORT i.ab RETURN i");
@@ -361,10 +408,17 @@ function importTestSuite () {
       assertEqual(expected, actual);
     },
 
+    testTsvImport1Gz : function () {
+      var expected = [ { "ab": "g", "cd": "h", "ef": "i" }, { "ab" : "j", "cd" : "k", "ef" : "l" } ];
+      var actual = getQueryResults("FOR i IN UnitTestsImportTsv1Gz SORT i.ab RETURN i");
+
+      assertEqual(expected, actual);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test tsv import
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testTsvImport2 : function () {
       var expected = [ { "  fox" : "dog",
                          "brown  " : " the lazy",
@@ -381,9 +435,9 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test json edge import
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testJsonEdgesImport : function () {
-      var expected = [ 
+      var expected = [
         { _from : "UnitTestsImportVertex/v1", _to: "UnitTestsImportVertex/v2", id: 1, what: "v1->v2" },
         { _from : "UnitTestsImportVertex/v2", _to: "UnitTestsImportVertex/v3", id: 2, what: "v2->v3" },
         { _from : "UnitTestsImportVertex/v9", _to: "UnitTestsImportVertex/v4", extra: "foo", id: 3, what: "v9->v4" },
@@ -394,17 +448,29 @@ function importTestSuite () {
       assertEqual(expected, actual);
     },
 
+    testJsonEdgesImportGz : function () {
+      var expected = [
+        { _from : "UnitTestsImportVertex/v1", _to: "UnitTestsImportVertex/v2", id: 1, what: "v1->v2" },
+        { _from : "UnitTestsImportVertex/v2", _to: "UnitTestsImportVertex/v3", id: 2, what: "v2->v3" },
+        { _from : "UnitTestsImportVertex/v9", _to: "UnitTestsImportVertex/v4", extra: "foo", id: 3, what: "v9->v4" },
+        { _from : "UnitTestsImportVertex/v12", _to: "UnitTestsImportVertex/what", id: 4 }
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportEdgeGz SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test unique constraint violations
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testJsonIgnore : function () {
       var expected = [
-        { "_key" : "test1", "value" : "abc" }, 
-        { "_key" : "test3", "value" : "def" }, 
-        { "_key" : "test4", "value" : "xyz" }, 
+        { "_key" : "test1", "value" : "abc" },
+        { "_key" : "test3", "value" : "def" },
+        { "_key" : "test4", "value" : "xyz" },
         { "_key" : "test6", "value" : "123" },
-        { "_key" : "test7", "value" : "999" } 
+        { "_key" : "test7", "value" : "999" }
       ];
 
       var actual = getQueryResults("FOR i IN UnitTestsImportIgnore SORT i._key RETURN i", true);
@@ -414,15 +480,15 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test unique constraint violations
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testJsonUniqueConstraints : function () {
-      var expected = [ 
-        { "_key" : "test1", "value" : "foo" }, 
-        { "_key" : "test3", "value" : "def" }, 
-        { "_key" : "test4", "value" : "xyz" }, 
-        { "_key" : "test6", "value" : "234" }, 
-        { "_key" : "test7", "value" : "999" }, 
-        { "_key" : "test8", "value" : "aaa" } 
+      var expected = [
+        { "_key" : "test1", "value" : "foo" },
+        { "_key" : "test3", "value" : "def" },
+        { "_key" : "test4", "value" : "xyz" },
+        { "_key" : "test6", "value" : "234" },
+        { "_key" : "test7", "value" : "999" },
+        { "_key" : "test8", "value" : "aaa" }
       ];
 
       var actual = getQueryResults("FOR i IN UnitTestsImportUniqueConstraints SORT i._key RETURN i", true);
@@ -432,11 +498,11 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import removing attribute
 ////////////////////////////////////////////////////////////////////////////////
-        
+
     testCsvImportRemoveAttribute : function () {
-      var expected = [ 
-        { "b": 1, "c": "1.3", "e": -5, "id": 1 }, 
-        { "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 }, 
+      var expected = [
+        { "b": 1, "c": "1.3", "e": -5, "id": 1 },
+        { "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 },
         { "b": "test", "c" : -99999999, "d": true, "e": -888.4434, "id": 5 },
         { "b": 20.5, "c": -42, "d": " null ", "e": false, "id": 6 },
         { "b": 1.05e-2, "c": true, "d": false, "id": 7 }
@@ -491,4 +557,3 @@ function importTestSuite () {
 jsunity.run(importTestSuite);
 
 return jsunity.done();
-
