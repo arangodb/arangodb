@@ -269,6 +269,8 @@ class ServerState {
   /// @brief check equality of engines with other registered servers
   bool checkEngineEquality(AgencyComm&);
 
+  bool checkIfAgencyInitialized(AgencyComm&, RoleEnum const&);
+
   /// @brief register at agency, might already be done
   bool registerAtAgencyPhase1(AgencyComm&, const RoleEnum&);
 

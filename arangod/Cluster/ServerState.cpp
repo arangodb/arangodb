@@ -482,16 +482,9 @@ bool ServerState::checkEngineEquality(AgencyComm& comm) {
   return true;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief create an id for a specified role
-//////////////////////////////////////////////////////////////////////////////
-
-bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::RoleEnum& role) {
+bool ServerState::checkIfAgencyInitialized(AgencyComm& comm,
+                                           ServerState::RoleEnum const& role) {
   std::string const agencyListKey = roleToAgencyListKey(role);
-  std::string const latestIdKey = "Latest" + roleToAgencyKey(role) + "Id";
-
-  VPackBuilder builder;
-  builder.add(VPackValue("none"));
 
   AgencyCommResult result = comm.getValues(concatPath({PLAN, agencyListKey}));
   if (!result.successful()) {
@@ -509,6 +502,20 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
         << "Agency not initialized?";
     return false;
   }
+
+  return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief create an id for a specified role
+//////////////////////////////////////////////////////////////////////////////
+
+bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::RoleEnum& role) {
+  std::string const agencyListKey = roleToAgencyListKey(role);
+  std::string const latestIdKey = "Latest" + roleToAgencyKey(role) + "Id";
+
+  VPackBuilder builder;
+  builder.add(VPackValue("none"));
 
   std::string planUrl = concatPath({PLAN, agencyListKey,  _id});
   std::string currentUrl = concatPath({CURRENT, agencyListKey, _id});
