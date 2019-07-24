@@ -45,6 +45,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/conversions.h"
+#include "Basics/debugging.h"
 #include "Basics/directories.h"
 #include "Basics/error.h"
 #include "Basics/hashes.h"

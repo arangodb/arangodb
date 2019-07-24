@@ -47,6 +47,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"

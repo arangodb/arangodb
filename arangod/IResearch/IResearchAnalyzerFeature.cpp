@@ -47,6 +47,7 @@
 #include "Aql/QueryString.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/system-compiler.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -68,8 +69,8 @@
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/Methods/Collections.h"
+#include "VocBase/vocbase.h"
 
 namespace iresearch {
 namespace text_format {

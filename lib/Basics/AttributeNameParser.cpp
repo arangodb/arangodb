@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AttributeNameParser.h"
+
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 #include "Logger/Logger.h"
 
 #include <velocypack/StringRef.h>

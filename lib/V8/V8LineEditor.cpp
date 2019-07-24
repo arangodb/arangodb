@@ -26,6 +26,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/debugging.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "Utilities/Completer.h"

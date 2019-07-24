@@ -25,6 +25,8 @@
 #ifndef ARANGODB_LOGGER_LOG_LEVEL_H
 #define ARANGODB_LOGGER_LOG_LEVEL_H 1
 
+#include <ostream>
+
 #include "Basics/Common.h"
 
 #ifdef TRI_UNDEF_ERR

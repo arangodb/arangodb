@@ -35,6 +35,7 @@
 #include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
+#include "Basics/system-compiler.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 

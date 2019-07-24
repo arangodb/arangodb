@@ -25,11 +25,9 @@
 #ifndef ARANGODB_BASICS_DEBUGGING_H
 #define ARANGODB_BASICS_DEBUGGING_H 1
 
-#ifndef TRI_WITHIN_COMMON
-#error use <Basics/Common.h>
-#endif
-
 #include <ostream>
+
+#include "Basics/system-compiler.h"
 
 /// @brief macro TRI_IF_FAILURE
 /// this macro can be used in maintainer mode to make the server fail at

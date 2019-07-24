@@ -28,6 +28,8 @@
 #include "Basics/win-utils.h"
 #endif
 
+#include <cstdint>
+#include <string>
 #include <vector>
 
 #include "Basics/Common.h"

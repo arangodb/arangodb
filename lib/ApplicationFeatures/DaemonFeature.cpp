@@ -31,6 +31,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogAppender.h"

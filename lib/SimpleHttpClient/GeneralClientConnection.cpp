@@ -24,6 +24,7 @@
 #include "GeneralClientConnection.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationPhase.h"
+#include "Basics/debugging.h"
 #include "Basics/socket-utils.h"
 #include "Basics/system-functions.h"
 #include "Logger/Logger.h"

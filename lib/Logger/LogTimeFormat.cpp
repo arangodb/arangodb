@@ -30,6 +30,7 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/datetime.h"
+#include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 
 namespace {

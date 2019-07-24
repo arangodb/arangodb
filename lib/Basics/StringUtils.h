@@ -27,6 +27,7 @@
 
 #include "Basics/Common.h"
 
+#include <string>
 #include <utility>
 #include <vector>
 

@@ -28,6 +28,7 @@
 #include <unordered_map>
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 namespace graph {

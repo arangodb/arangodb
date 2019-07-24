@@ -23,6 +23,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 #include "v8-utils.h"
 
 #ifdef _WIN32

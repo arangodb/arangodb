@@ -32,6 +32,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "Basics/debugging.h"
 #include "Basics/files.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"

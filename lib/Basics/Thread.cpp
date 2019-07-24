@@ -38,6 +38,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Logger/Logger.h"
 

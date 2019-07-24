@@ -26,6 +26,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <string>
 
 #include "Basics/Common.h"
 

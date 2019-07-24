@@ -29,6 +29,7 @@
 
 #include "Aql/Variable.h"
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 namespace aql {

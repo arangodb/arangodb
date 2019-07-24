@@ -30,6 +30,8 @@
 
 #include <sys/types.h>
 
+#include "Basics/debugging.h"
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;

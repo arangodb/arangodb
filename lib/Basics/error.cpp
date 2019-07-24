@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Basics/exitcodes.h"
 #include "Basics/voc-errors.h"
 

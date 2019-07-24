@@ -29,6 +29,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;

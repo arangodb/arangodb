@@ -29,6 +29,7 @@
 
 #include "Exceptions.h"
 
+#include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Logger/Logger.h"
 

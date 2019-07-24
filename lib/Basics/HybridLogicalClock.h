@@ -26,6 +26,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <string>
 
 #include "Basics/Common.h"
 

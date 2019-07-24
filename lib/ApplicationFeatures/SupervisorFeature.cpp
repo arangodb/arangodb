@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Basics/process-utils.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"

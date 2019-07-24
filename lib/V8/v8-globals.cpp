@@ -23,6 +23,8 @@
 
 #include "v8-globals.h"
 
+#include "Basics/debugging.h"
+
 TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
     : AgencyTempl(),
       AgentTempl(),

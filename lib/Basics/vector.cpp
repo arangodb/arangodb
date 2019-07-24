@@ -25,6 +25,7 @@
 
 #include <string.h>
 
+#include "Basics/debugging.h"
 #include "Basics/memory.h"
 #include "Basics/voc-errors.h"
 

@@ -28,6 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/csv.h"
+#include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Basics/tri-strings.h"
 #include "V8/v8-conv.h"

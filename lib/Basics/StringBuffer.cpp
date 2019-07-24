@@ -28,6 +28,7 @@
 
 #include "Basics/ScopeGuard.h"
 #include "Basics/conversions.h"
+#include "Basics/debugging.h"
 #include "Basics/fpconv.h"
 #include "Zip/zip.h"
 

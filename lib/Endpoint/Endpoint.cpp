@@ -26,6 +26,7 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
+#include "Basics/debugging.h"
 #include "Basics/socket-utils.h"
 #include "Endpoint/EndpointIpV4.h"
 #include "Endpoint/EndpointIpV6.h"

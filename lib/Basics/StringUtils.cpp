@@ -34,6 +34,7 @@
 #include <time.h>
 
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 #include "Basics/fpconv.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"

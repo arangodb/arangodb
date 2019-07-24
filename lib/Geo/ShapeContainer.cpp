@@ -35,6 +35,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 #include "Geo/GeoParams.h"
 #include "Geo/S2/S2MultiPointRegion.h"

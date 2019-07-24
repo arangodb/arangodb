@@ -25,10 +25,11 @@
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
 
+#include <cstring>
 #include "Basics/FileUtils.h"
+#include "Basics/debugging.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
-#include <cstring>
 
 using namespace arangodb;
 using namespace arangodb::basics;

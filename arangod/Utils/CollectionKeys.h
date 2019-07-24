@@ -29,6 +29,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 #include "VocBase/voc-types.h"
 

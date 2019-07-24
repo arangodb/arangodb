@@ -29,6 +29,7 @@
 #include "Basics/SharedAtomic.h"
 #include "Basics/SharedCounter.h"
 #include "Basics/cpu-relax.h"
+#include "Basics/debugging.h"
 
 #include <atomic>
 

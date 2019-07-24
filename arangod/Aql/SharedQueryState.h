@@ -27,6 +27,7 @@
 #include <functional>
 
 #include "Basics/Common.h"
+#include "Basics/system-compiler.h"
 
 namespace arangodb {
 namespace aql {

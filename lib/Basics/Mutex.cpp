@@ -28,6 +28,7 @@
 #include "Mutex.h"
 
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;

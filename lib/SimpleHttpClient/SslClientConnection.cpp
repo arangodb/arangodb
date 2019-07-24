@@ -40,6 +40,7 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 #include "Basics/socket-utils.h"
 #include "Logger/Logger.h"
 #include "Ssl/ssl-helper.h"

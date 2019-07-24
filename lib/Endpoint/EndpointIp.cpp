@@ -25,6 +25,7 @@
 #include "EndpointIp.h"
 
 #include "Basics/StringUtils.h"
+#include "Basics/debugging.h"
 #include "Logger/Logger.h"
 
 #include "Endpoint/Endpoint.h"

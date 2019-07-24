@@ -33,6 +33,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
+#include "Basics/debugging.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>

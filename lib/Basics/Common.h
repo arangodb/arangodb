@@ -36,13 +36,6 @@
 
 #endif
 
-#define TRI_WITHIN_COMMON 1
-// clang-format off
-#include "Basics/debugging.h"
-#include "Basics/system-compiler.h"
-// clang-format on
-#undef TRI_WITHIN_COMMON
-
 #ifdef _WIN32
 // some Windows headers define macros named free and small,
 // leading to follow-up compile errors

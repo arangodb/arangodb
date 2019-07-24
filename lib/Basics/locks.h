@@ -25,6 +25,7 @@
 #define ARANGODB_BASICS_LOCKS_H 1
 
 #include "Basics/operating-system.h"
+#include "Basics/system-compiler.h"
 
 #ifdef TRI_HAVE_POSIX_THREADS
 #include "Basics/locks-posix.h"

@@ -29,6 +29,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Basics/process-utils.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ArgumentParser.h"

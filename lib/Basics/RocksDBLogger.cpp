@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBLogger.h"
+
+#include "Basics/debugging.h"
 #include "Logger/Logger.h"
 
 #include <velocypack/StringRef.h>

@@ -25,6 +25,7 @@
 #include <iostream>
 
 #include "Basics/FileUtils.h"
+#include "Basics/debugging.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 

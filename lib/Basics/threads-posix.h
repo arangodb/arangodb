@@ -25,6 +25,8 @@
 #define ARANGODB_BASICS_THREADS__POSIX_H 1
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
+#include "Basics/system-compiler.h"
 
 // Compatible wth the Windows definition.
 #define INFINITE 0xFFFFFFFF // Infinite timeout

@@ -31,6 +31,7 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/memory.h"

@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/debugging.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 

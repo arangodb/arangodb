@@ -25,6 +25,7 @@
 
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
+#include "Basics/system-compiler.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Manager.h"
 #include "Cache/Transaction.h"

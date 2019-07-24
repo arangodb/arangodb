@@ -31,6 +31,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 
 namespace arangodb {

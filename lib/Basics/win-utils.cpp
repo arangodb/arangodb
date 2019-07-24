@@ -46,12 +46,13 @@
 #include <windows.h>
 
 #include "Basics/Common.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/debugging.h"
 #include "Basics/directories.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
-#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
