@@ -329,6 +329,7 @@
       var buttons = [];
       var tableContent = [];
 
+      // Database Name
       tableContent.push(
         window.modalView.createTextEntry(
           'newDatabaseName',
@@ -354,6 +355,68 @@
         )
       );
 
+      if (window.App.isCluster) {
+        // MinReplicationFactor
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'new-replication-factor',
+            'Replication factor',
+            '',
+            'Numeric value. Must be at least 1. Total number of copies of the data in the cluster',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^([1-9]|10)$/),
+                msg: 'Must be a number between 1 and 10.'
+              }
+            ]
+          )
+        );
+
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'new-min-replication-factor',
+            'Mininum replication factor',
+            '',
+            'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
+              }
+              // TODO: Due our validation mechanism, no reference to replicationFactor is possible here.
+              // So we cannot easily verify if minReplication > replicationFactor...
+            ]
+          )
+        );
+      }
+
+      // OneShard
+      //if enterprise
+      if (window.App.isCluster && frontendConfig.isEnterprise) {
+        var sharding = [ { value : "",
+                           label : "flexible"
+                         },
+                         { value : "single",
+                           label : "single"
+                         }
+                       ];
+
+        tableContent.push(
+          window.modalView.createSelectEntry(
+            'newSharding',
+            'Sharding',
+            'flexible',
+            'some nice description TODO',
+            sharding
+          )
+        );
+      }
+
+      // User Set-UP
       var users = [];
       window.App.userCollection.each(function (user) {
         users.push({
@@ -376,6 +439,7 @@
           users
         )
       );
+
       buttons.push(
         window.modalView.createSuccessButton(
           'Create',
