@@ -328,6 +328,7 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
 
 void segment_writer::reset() NOEXCEPT {
   initialized_ = false;
+  tick_ = 0;
   dir_.clear_tracked();
   docs_context_.clear();
   docs_mask_.clear();

@@ -286,12 +286,13 @@ IResearchLink::IResearchLink(
   // initialize transaction callback
   _trxCallback = [key](transaction::Methods& trx, transaction::Status status)->void {
     auto* state = trx.state();
-
+    TRI_ASSERT(state != nullptr);
+    
     // check state of the top-most transaction only
     if (!state || !state->isTopLevelTransaction()) {
       return;  // NOOP
     }
-
+    
     auto prev = state->cookie(key, nullptr);  // get existing cookie
 
     if (prev) {
@@ -1074,6 +1075,13 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
           "failed to get last committed tick while initializing link '" + std::to_string(id()) + "'"
         };
       }
+
+      LOG_TOPIC("7e028", TRACE, iresearch::TOPIC)
+        << "successfully opened existing data store data store reader for link '" + std::to_string(id())
+        << "', docs count '" << _dataStore._reader->docs_count()
+        << "', live docs count '" << _dataStore._reader->live_docs_count()
+        << "', recovery tick '" << _dataStore._recoveryTick << "'";
+
     } catch (irs::index_not_found const&) {
       // NOOP
     }

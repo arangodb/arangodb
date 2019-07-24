@@ -1,2 +1,0 @@
-arangosh&gt; db.example.document(<span class="hljs-string">"example/4472917"</span>);
-[ArangoError <span class="hljs-number">1202</span>: <span class="hljs-built_in">document</span> not found]

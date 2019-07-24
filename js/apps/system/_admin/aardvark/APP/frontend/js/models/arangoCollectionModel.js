@@ -247,7 +247,7 @@
       });
     },
 
-    changeCollection: function (wfs, journalSize, indexBuckets, replicationFactor, callback) {
+    changeCollection: function (wfs, journalSize, indexBuckets, replicationFactor, minReplicationFactor, callback) {
       var result = false;
       if (wfs === 'true') {
         wfs = true;
@@ -262,6 +262,9 @@
 
       if (replicationFactor) {
         data.replicationFactor = parseInt(replicationFactor, 10);
+      }
+      if (minReplicationFactor) {
+        data.minReplicationFactor = parseInt(minReplicationFactor, 10);
       }
 
       $.ajax({
