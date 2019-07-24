@@ -531,7 +531,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
        AgencyOperation(CURRENT_VERSION, AgencySimpleOperationType::INCREMENT_OP)},
       AgencyPrecondition(currentUrl, AgencyPrecondition::Type::EMPTY, true));
   // ok to fail..if it failed we are already registered
-  AgencyCommResult res = comm.sendTransactionWithFailover(creg, 0.0);
+  comm.sendTransactionWithFailover(creg, 0.0);
 
   // coordinator is already/still registered from an previous unclean shutdown;
   // must establish a new short ID
