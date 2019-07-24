@@ -43,7 +43,7 @@ using namespace arangodb;
 
 namespace {
 
-void recreateArangoSearchViewsAfterRestore() {
+void recreateArangoSearchViewsAfterRestore(bool) {
   auto* arangoSearchFeature =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchFeature>("ArangoSearch");
   LOG_TOPIC(INFO, Logger::BACKUP)
@@ -67,8 +67,9 @@ void scheduleRecreateArangoSearchViewsAfterRestore() {
   LOG_TOPIC(INFO, Logger::BACKUP)
     << "This is a restore start of a single server, we need to recreate "
        "all ArangoSearch indexes in the background, scheduling...";
-  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                     recreateArangoSearchViewsAfterRestore);
+  SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW,
+                                     recreateArangoSearchViewsAfterRestore,
+                                     false);
 }
 
 }

@@ -93,36 +93,6 @@ static uint64_t getSerialNumber() {
   return temp;
 } // getSerialNumber
 
-// @brief This function schedules a lock cleanup job in the future using
-// the scheduler. The only subtlety here is that we must be able to
-// cancel that action on server shutdown. We are using the stop method
-// of the HotBackupFeature here:
-static void scheduleLockCleaning(uint64_t serialNumber, uint32_t timeout) {
-  Scheduler::WorkHandle handle
-    = SchedulerFeature::SCHEDULER->queueDelay(
-        RequestLane::INTERNAL_LOW,
-        std::chrono::seconds(timeout),
-        [serialNumber](bool cancelled) {
-          MUTEX_LOCKER (mLock, serialNumberMutex);
-          // only unlock if creation of this object instance was due to
-          //  the taking of current transaction lock
-          if (lockingSerialNumber == serialNumber) {
-            LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
-              << "RocksDBHotBackup removing lost transaction lock.";
-            // would prefer virtual releaseRocksDBTransactions() ... but would
-            //   require copy of RocksDBHotBackupLock object used from RestHandler or unit test.
-            transaction::ManagerFeature::manager()->releaseTransactions();
-            lockingSerialNumber = 0;
-          } else {
-            LOG_TOPIC(DEBUG, arangodb::Logger::BACKUP)
-              << "RocksDBHotBackup not removing transaction lock since there is already a new one or it is already removed.";
-          }
-        });
-  // Finally, inform the HotbackupFeature about this delayed task
-  // such that it can be cancelled on shutdown:
-  application_features::ApplicationServer::getFeature<HotBackupFeature>("HotBackup")->registerLockCleaner(handle);
-}
-
 //
 // @brief static function to pick proper operation object and then have it
 //        parse parameters
