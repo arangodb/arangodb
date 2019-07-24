@@ -78,9 +78,6 @@ private:
   bool checkHttpUpgrade();
 
   void processRequest();
-
-  /// deny credentialed requests or not (only CORS)
-  bool allowCredentials(std::string const& origin);
   
   /// handle an OPTIONS request
   void processCorsOptions();
