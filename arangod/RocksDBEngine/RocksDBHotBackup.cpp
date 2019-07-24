@@ -30,7 +30,6 @@
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Cluster/ServerState.h"
-#include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -1003,9 +1002,7 @@ void RocksDBHotBackupRestore::execute() {
       // valid after the restore. Note that on a single server there is no
       // automatism to recreate the data and on a dbserver, the Maintenance
       // is stopped before we get here.
-      iresearch::IResearchFeature* arangoSearchFeature =
-        application_features::ApplicationServer::getFeature<iresearch::IResearchFeature>("ArangoSearch");
-      arangoSearchFeature->removeLocalArangoSearchData();
+      HotBackupFeature::removeAllArangoSearchData();
       // On a single server, the view and link meta data is held in RocksDB
       // and some special startup method will initiate the creation of new
       // index data in ArangoSearch according to the meta data restored with

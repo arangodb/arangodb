@@ -34,8 +34,6 @@
 #include "RocksDBEngine/RocksDBHotBackup.h"
 #include "Rest/Version.h"
 
-#include "IResearchFeatureMock.h"
-
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -361,14 +359,6 @@ TEST(RocksDBHotBackupRestoreDirectories, test_createRestoringDirectory) {
 TEST(RocksDBHotBackupRestoreTest, test_execute_normal_directory_path) {
   VPackBuilder report;
   RocksDBHotBackupRestoreTest testee(VPackSlice(), report);
-
-  // Mock an IResearchFeature because the restore code calls a method:
-  std::shared_ptr<arangodb::options::ProgramOptions> po =
-  std::make_shared<arangodb::options::ProgramOptions>(
-    "test", std::string(), std::string(), "path");
-  arangodb::application_features::ApplicationServer as(po, nullptr);
-  TestIResearchFeature* feature = new TestIResearchFeature(as);
-  as.addFeature(feature);   // Will be freed when as is destroyed
 
   testee.createDBDirectory();
   testee.createHotDirectory();
