@@ -61,7 +61,7 @@ struct ClusterCollectionCreationInfo;
 
 class RebootId {
  public:
-  explicit RebootId(uint64_t rebootId) : _value(rebootId) {}
+  explicit constexpr RebootId(uint64_t rebootId) noexcept : _value(rebootId) {}
   uint64_t value() const noexcept { return _value; }
 
   bool initialized() const noexcept { return value() != 0; }
@@ -83,6 +83,10 @@ class RebootId {
   }
   bool operator>=(RebootId other) const noexcept {
     return value() >= other.value();
+  }
+
+  static constexpr RebootId max() noexcept {
+    return RebootId{std::numeric_limits<decltype(_value)>::max()};
   }
  private:
   uint64_t _value;

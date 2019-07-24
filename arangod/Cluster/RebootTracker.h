@@ -45,8 +45,8 @@ class CallbackGuard {
   // Calls the callback given callback upon destruction.
   // Allows only move semantics and no copy semantics.
 
-  // Note that the move constructor of std::function is not noexcept until C++20.
-  // Thus we cannot mark the constructors here noexcept.
+  // Note that the move constructor of std::function is not noexcept until
+  // C++20. Thus we cannot mark the constructors here noexcept.
 
   CallbackGuard();
   // The passed callback should not throw exceptions, they will not be caught!
@@ -96,7 +96,7 @@ class RebootTracker {
     RebootId _rebootId;
   };
 
-  RebootTracker(SchedulerPointer scheduler);
+  explicit RebootTracker(SchedulerPointer scheduler);
 
   CallbackGuard callMeOnChange(PeerState const& peerState, Callback callback,
                                std::string callbackDescription);
@@ -107,27 +107,29 @@ class RebootTracker {
  private:
   using CallbackId = uint64_t;
 
+  struct DescriptedCallback {
+    Callback callback;
+    std::string description;
+  };
+
   CallbackId getNextCallbackId() noexcept;
 
   void unregisterCallback(CallbackId);
 
   // bool notifyChange(PeerState const& peerState);
 
-  bool tryScheduleCallbacksFor(ServerID const& serverId);
+  void scheduleAllCallbacksFor(ServerID const& serverId);
+  void scheduleCallbacksFor(ServerID const& serverId, RebootId rebootId);
 
-  static Callback createSchedulerCallback(std::shared_ptr<std::vector<Callback>> callbacks);
+  static Callback createSchedulerCallback(
+      std::vector<std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>> callbacks);
 
-  static bool queueCallbacks(std::shared_ptr<std::vector<RebootTracker::Callback>> callbacks);
+  void queueCallbacks(std::vector<std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>> callbacks);
 
  private:
   Mutex _mutex;
 
   CallbackId _nextCallbackId{1};
-
-  struct DescriptedCallback {
-    Callback callback;
-    std::string description;
-  };
 
   /// @brief Last known rebootId of every server
   std::unordered_map<ServerID, RebootId> _rebootIds;
@@ -137,6 +139,7 @@ class RebootTracker {
   /// Needs to fulfill the following:
   ///  - A callback with a given ID may never be moved to another (serverId, rebootId) entry,
   ///    to allow CallbackGuard to find a callback.
+  ///  - All ServerIDs in this map must always exist in _rebootIds.
   std::unordered_map<ServerID, std::map<RebootId, std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>>> _callbacks;
 
   /// @brief Save a pointer to the scheduler for easier testing
