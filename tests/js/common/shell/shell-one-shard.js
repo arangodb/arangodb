@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual, assertMatch, assertNull */
+/*global assertTrue, assertEqual, assertNotEqual, assertMatch, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -66,18 +66,15 @@ function OneShardPropertiesSuite () {
       assertEqual(props.replicationFactor, 1);
     },
 
-    testSingleSatellite : function () {
-      assertTrue(db._createDatabase(dn, { sharding : "single", replicationFactor : "satellite"}));
+    testOneShardDBandOverrides : function () {
+      assertTrue(db._createDatabase(dn, { sharding : "single", replicationFactor : 2}));
+
       db._useDatabase(dn);
       let props = db._properties();
       assertEqual(props.sharding, "single");
-      if (isEnterprise) {
-        assertEqual(props.replicationFactor, "satellite");
-      } else {
-        assertEqual(props.replicationFactor, 1);
-      }
+      assertEqual(props.replicationFactor, 2);
 
-      {
+      { 
         let col = db._create("oneshardcol");
         let colProperties = col.properties();
         let graphsProperties = db._collection("_graphs").properties();
@@ -90,7 +87,8 @@ function OneShardPropertiesSuite () {
 
 
       {
-        let col = db._create("normalcol", { distributeShardsLike: ""});
+        // we want to create a normal collection
+        let col = db._create("overrideOneShardCollection", { distributeShardsLike: ""});
         let colProperties = col.properties();
         let graphsProperties = db._collection("_graphs").properties();
 
@@ -102,17 +100,34 @@ function OneShardPropertiesSuite () {
 
 
       {
-        let col = db._create("normalcolrepl5", { distributeShardsLike: "", replicationFactor:2});
+        // we want to create a normal collection and have a different replication factor
+        let nonDefaultReplicationFactor = 1;
+        assertNotEqual(db._properties.ReplicationFactor, nonDefaultReplicationFactor);
+        let col = db._create("overrideOneShardAndReplicationFactor", { distributeShardsLike: "", replicationFactor: nonDefaultReplicationFactor});
         let colProperties = col.properties();
         let graphsProperties = db._collection("_graphs").properties();
 
         if(isCluster) {
           assertEqual(colProperties.distributeShardsLike, undefined);
-          assertEqual(colProperties.replicationFactor, 2);
+          assertEqual(colProperties.replicationFactor, nonDefaultReplicationFactor);
         }
       }
 
     },
+
+    testSatelliteDB : function () {
+      assertTrue(db._createDatabase(dn, { replicationFactor : "satellite"}));
+      db._useDatabase(dn);
+      let props = db._properties();
+      assertEqual(props.sharding, "");
+      if (isEnterprise) {
+        assertEqual(props.replicationFactor, "satellite");
+      } else {
+        //without enterprise we can not have a replication factor of 1
+        assertEqual(props.replicationFactor, 1);
+      }
+    },
+
   };
 }
 
