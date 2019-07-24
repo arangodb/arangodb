@@ -27,7 +27,7 @@
 
 #include <ostream>
 
-#include "Basics/Common.h"
+#include "Basics/operating-system.h"
 
 #ifdef TRI_UNDEF_ERR
 #undef ERR

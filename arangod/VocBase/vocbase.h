@@ -24,30 +24,40 @@
 #ifndef ARANGOD_VOC_BASE_VOCBASE_H
 #define ARANGOD_VOC_BASE_VOCBASE_H 1
 
+#include <bits/stdint-uintn.h>
+#include <stddef.h>
+#include <atomic>
+#include <functional>
+#include <memory>
+#include <string>
+#include <thread>
+#include <unordered_map>
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Basics/DeadlockDetector.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
-#include "Replication/ReplicationClients.h"
 #include "VocBase/voc-types.h"
 
-#include "velocypack/Builder.h"
-#include "velocypack/Slice.h"
-
-#include <functional>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace aql {
 class QueryList;
 }
-class CollectionNameResolver;
+namespace velocypack {
+class Builder;
+class StringRef;
+}  // namespace velocypack
 class CollectionKeysRepository;
 class CursorRepository;
 class DatabaseReplicationApplier;
 class LogicalCollection;
 class LogicalDataSource;
 class LogicalView;
+class ReplicationClientsProgressTracker;
 class StorageEngine;
 }  // namespace arangodb
 
@@ -168,7 +178,7 @@ struct TRI_vocbase_t {
   std::unique_ptr<arangodb::CollectionKeysRepository> _collectionKeys;
 
   std::unique_ptr<arangodb::DatabaseReplicationApplier> _replicationApplier;
-  arangodb::ReplicationClientsProgressTracker _replicationClients;
+  std::unique_ptr<arangodb::ReplicationClientsProgressTracker> _replicationClients;
 
  public:
   arangodb::basics::DeadlockDetector<TRI_voc_tid_t, arangodb::LogicalCollection> _deadlockDetector;
@@ -197,7 +207,7 @@ struct TRI_vocbase_t {
   void setState(State state) { _state = state; }
 
   arangodb::ReplicationClientsProgressTracker& replicationClients() {
-    return _replicationClients;
+    return *_replicationClients;
   }
 
   arangodb::DatabaseReplicationApplier* replicationApplier() const {

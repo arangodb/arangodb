@@ -59,7 +59,8 @@
 #ifndef ARANGODB_LOGGER_LOGGER_H
 #define ARANGODB_LOGGER_LOGGER_H 1
 
-#include "Basics/CleanupFunctions.h"
+#include <memory>
+
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/threads.h"

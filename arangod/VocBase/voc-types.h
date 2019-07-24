@@ -24,10 +24,11 @@
 #ifndef ARANGOD_VOC_BASE_VOC_TYPES_H
 #define ARANGOD_VOC_BASE_VOC_TYPES_H 1
 
+#include <cstdint>
+#include <cstdlib>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
-
-#include "Basics/Common.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>

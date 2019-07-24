@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Logger/Logger.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/Syncer.h"
 #include "Replication/utilities.h"
 #include "Rest/HttpResponse.h"

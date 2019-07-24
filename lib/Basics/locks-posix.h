@@ -24,7 +24,6 @@
 #ifndef ARANGODB_BASICS_LOCKS__POSIX_H
 #define ARANGODB_BASICS_LOCKS__POSIX_H 1
 
-#include "Basics/Common.h"
 #include "Basics/debugging.h"
 #include "Basics/operating-system.h"
 #include "Basics/system-compiler.h"
