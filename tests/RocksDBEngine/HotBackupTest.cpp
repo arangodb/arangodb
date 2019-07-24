@@ -197,6 +197,9 @@ public:
   bool holdRocksDBTransactions() override {return _holdTransactionsReturn;};
   void releaseRocksDBTransactions() override {};
 
+  virtual bool performViewRemoval() const override {
+    return false;
+  }
 
   ~RocksDBHotBackupRestoreTest () {
     // let's be sure we delete the right stuff

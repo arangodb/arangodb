@@ -229,6 +229,10 @@ public:
   std::string const& getDirectoryRestore() const {return _idRestore;}
   bool createRestoringDirectory(std::string& nameOutput);
   bool validateVersionString(std::string const& fullDirectoryRestore);
+  // The following will be overridden in unit tests:
+  virtual bool performViewRemoval() const {
+    return true;
+  }
 
  protected:
 
