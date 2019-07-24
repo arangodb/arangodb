@@ -367,6 +367,44 @@ TEST_F(RebootTrackerTest, one_server_call_sequential) {
 TEST_F(RebootTrackerTest, one_server_guard_removes_callback) {
   auto state = std::unordered_map<ServerID, RebootId>{{serverA, RebootId{1}}};
 
+  uint64_t numCalled = 0;
+  auto callback = [&numCalled]() { ++numCalled; };
+
+  {
+    RebootTracker rebootTracker{&scheduler};
+
+    // Set state to { serverA => 1 }
+    rebootTracker.updateServerState(state);
+
+    {
+      // Register callback
+      auto guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{1}},
+        callback, "");
+      waitForSchedulerEmpty();
+      ASSERT_EQ(0, numCalled) << "Callback must not be called before a change";
+    }
+    waitForSchedulerEmpty();
+    ASSERT_EQ(0, numCalled)
+              << "Callback must not be called when the guard is destroyed";
+
+    // Set state to { serverA => 2 }
+    state.at(serverA) = RebootId{2};
+    rebootTracker.updateServerState(state);
+    waitForSchedulerEmpty();
+    ASSERT_EQ(0, numCalled) << "Callback must not be called after a change "
+                               "when the guard was destroyed before";
+  }
+  // RebootTracker was destroyed now
+
+  waitForSchedulerEmpty();
+  ASSERT_EQ(0, numCalled) << "Callback must not be called during destruction";
+}
+
+// Test that callback removed by a guard doesn't interfere with other registered
+// callbacks for the same server and reboot id
+TEST_F(RebootTrackerTest, one_server_guard_doesnt_interfere) {
+  auto state = std::unordered_map<ServerID, RebootId>{{serverA, RebootId{1}}};
+
   uint64_t counterA = 0;
   uint64_t counterB = 0;
   uint64_t counterC = 0;
@@ -438,44 +476,6 @@ TEST_F(RebootTrackerTest, one_server_guard_removes_callback) {
   ASSERT_EQ(0, counterA) << "Callback must not be called during destruction";
   ASSERT_EQ(0, counterB) << "Callback must not be called during destruction";
   ASSERT_EQ(0, counterC) << "Callback must not be called during destruction";
-}
-
-// Test that callback removed by a guard doesn't interfere with other registered
-// callbacks for the same server and reboot id
-TEST_F(RebootTrackerTest, one_server_guard_doesnt_interfere) {
-  auto state = std::unordered_map<ServerID, RebootId>{{serverA, RebootId{1}}};
-
-  uint64_t numCalled = 0;
-  auto callback = [&numCalled]() { ++numCalled; };
-
-  {
-    RebootTracker rebootTracker{&scheduler};
-
-    // Set state to { serverA => 1 }
-    rebootTracker.updateServerState(state);
-
-    {
-      // Register callback
-      auto guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{1}},
-                                                callback, "");
-      waitForSchedulerEmpty();
-      ASSERT_EQ(0, numCalled) << "Callback must not be called before a change";
-    }
-    waitForSchedulerEmpty();
-    ASSERT_EQ(0, numCalled)
-        << "Callback must not be called when the guard is destroyed";
-
-    // Set state to { serverA => 2 }
-    state.at(serverA) = RebootId{2};
-    rebootTracker.updateServerState(state);
-    waitForSchedulerEmpty();
-    ASSERT_EQ(0, numCalled) << "Callback must not be called after a change "
-                               "when the guard was destroyed before";
-  }
-  // RebootTracker was destroyed now
-
-  waitForSchedulerEmpty();
-  ASSERT_EQ(0, numCalled) << "Callback must not be called during destruction";
 }
 
 TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_same_id) {
