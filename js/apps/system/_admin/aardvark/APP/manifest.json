@@ -49,7 +49,7 @@
       "gzip": true
     },
     "/app.js": {
-      "path": "frontend/build/app.js",
+      "path": "frontend/build/app.min.js",
       "gzip": true
     },
     "/templates.js": {

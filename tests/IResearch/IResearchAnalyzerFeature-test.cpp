@@ -2810,16 +2810,12 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
 
   // test values
   // 123.4
-  std::string expected123P4[] = { "oMBe2ZmZmZma",
-                                  "sMBe2ZmZmQ==",
-                                  "wMBe2Zk=",
-                                  "0MBe"};
+  std::string expected123P4[] = {"oMBe2ZmZmZma",
+                                 "sMBe2ZmZmQ==", "wMBe2Zk=", "0MBe"};
 
   // 123
-  std::string expected123[] = { "oMBewAAAAAAA",
-                                "sMBewAAAAA==",
-                                "wMBewAA=",
-                                "0MBe"};
+  std::string expected123[] = {"oMBewAAAAAAA",
+                               "sMBewAAAAA==", "wMBewAA=", "0MBe"};
 
   // boolean true
   std::string expectedTrue("/w==");
@@ -3136,8 +3132,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
         for (size_t i = 0; i < numberTokens.length(); ++i) {
           auto entry = numberTokens.at(i);
           EXPECT_TRUE(entry.isString());
-          EXPECT_EQ(expected123P4[i],
-                    arangodb::iresearch::getStringRef(entry));
+          EXPECT_EQ(expected123P4[i], arangodb::iresearch::getStringRef(entry));
         }
       }
       {
@@ -4293,7 +4288,8 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     auto vpack = VPackParser::fromJson(
-        "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"invalid_parameter\":true,\"accent\":true}");
+        "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"invalid_parameter\":"
+        "true,\"accent\":true}");
     EXPECT_TRUE(feature
                     .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_norm_analyzer1",
                              "norm", vpack->slice())
