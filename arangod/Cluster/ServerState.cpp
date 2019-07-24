@@ -493,8 +493,6 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
   VPackBuilder builder;
   builder.add(VPackValue("none"));
 
-  AgencyCommResult createResult;
-
   AgencyCommResult result = comm.getValues(concatPath({PLAN, agencyListKey}));
   if (!result.successful()) {
     LOG_TOPIC("0f327", FATAL, Logger::STARTUP)
