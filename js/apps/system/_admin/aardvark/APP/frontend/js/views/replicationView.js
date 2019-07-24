@@ -568,6 +568,7 @@
           $('#repl-logger-clients tbody').append(
             '<tr><td>' + client.syncerId + '</td>' +
             '<td>' + client.serverId + '</td>' +
+            '<td>' + client.clientInfo + '</td>' +
             '<td>' + client.time + '</td>' +
             '<td>' + client.lastServedTick + '</td></tr>'
           );

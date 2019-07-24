@@ -108,7 +108,7 @@ std::string mapToKeys(std::unordered_map<K, V, A> map) {
 
 std::string encodeBase64(std::string const&);
 std::string encodeBase64U(std::string const&);
-  
+
 /// checks if connection was closed and returns
 /// Error::ConnectionClosed instead of the the specified error
 fuerte::Error checkEOFError(asio_ns::error_code e, fuerte::Error c);

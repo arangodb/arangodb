@@ -34,8 +34,6 @@ namespace rest {
 
 /// Abstract class handling the socket acceptor
 class Acceptor {
- public:
-  typedef std::function<void(asio_ns::error_code const&)> AcceptHandler;
 
  public:
   Acceptor(rest::GeneralServer& server, rest::IoContext& context, Endpoint* endpoint);

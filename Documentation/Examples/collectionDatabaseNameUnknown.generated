@@ -1,2 +1,0 @@
-arangosh&gt; db._collection(<span class="hljs-string">"unknown"</span>);
-<span class="hljs-literal">null</span>

@@ -3,6 +3,24 @@ devel
 
 * added resign leadership job to supervision.
 
+* removed content from Documentation/Books, but keeping the subfolders.
+  The documentation is in a separate repository (except DocuBlocks and Scripts):
+  https://github.com/arangodb/docs.git
+
+* TOKENS function updated to deal with primitive types and arrays
+
+* MinReplicationFactor:
+    Collections can now be created with a minimal replication factor (minReplicationFactor), which defaults to 1.
+  If minReplicationFactor > 1 a collection will go into "read-only" mode as soon as it has less then minReplicationFactor
+  many insync followers. With this mechanism users can avoid to have collections diverge too much in case of failure scenarios.
+  minReplicationFactor can have the values: 1 <= minReplicationFactor <= replicationFactor.
+  Having minReplicationFactor == 1 ArangoDB behaves the same way as in any previous version.
+
+* Fixed a performance regression of COLLECT WITH COUNT INTO.
+
+* arangoimport would not stop, much less report, communications errors.  Add CSV reporting
+  of line numbers that are impacted during such errors
+
 * coordinator code was reporting rocksdb error codes, but not the associated detail message.
   Corrected.
 

@@ -69,6 +69,7 @@ constexpr char const* THE_LEADER = "theLeader";
 constexpr char const* UNDERSCORE = "_";
 constexpr char const* UPDATE_COLLECTION = "UpdateCollection";
 constexpr char const* WAIT_FOR_SYNC = "waitForSync";
+constexpr char const* OLD_CURRENT_COUNTER = "oldCurrentCounter";
 
 }  // namespace maintenance
 }  // namespace arangodb

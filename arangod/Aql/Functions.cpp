@@ -4046,7 +4046,7 @@ AqlValue Functions::Sleep(ExpressionContext* expressionContext,
   double const until = TRI_microtime() + value.toDouble();
 
   while (TRI_microtime() < until) {
-    std::this_thread::sleep_for(std::chrono::microseconds(30000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
     if (expressionContext->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);

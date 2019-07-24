@@ -1,21 +1,5 @@
 /* jshint -W051:true */
 /* eslint-disable */
-
-let appendHeaders = function(appender, headers) {
-  var key;
-  // generate header
-  appender('HTTP/1.1 ' + headers['http/1.1'] + '\n');
-
-  for (key in headers) {
-    if (headers.hasOwnProperty(key)) {
-      if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
-          && key !== 'content-length') {
-        appender(key + ': ' + headers[key] + '\n');
-      }
-    }
-  }
-};
-  
 ;(function () {
   'use strict'
   /* eslint-enable */
@@ -68,62 +52,78 @@ let appendHeaders = function(appender, headers) {
 
   exports.wal = {
     flush: function (waitForSync, waitForCollector) {
-      if (exports.arango) {
-        var wfs = waitForSync ? 'true' : 'false';
-        var wfc = waitForCollector ? 'true' : 'false';
-        exports.arango.PUT('/_admin/wal/flush?waitForSync=' + wfs + '&waitForCollector=' + wfc, null);
-        return;
-      }
-
-      throw 'not connected';
+      var wfs = waitForSync ? 'true' : 'false';
+      var wfc = waitForCollector ? 'true' : 'false';
+      exports.arango.PUT('/_admin/wal/flush?waitForSync=' + wfs + '&waitForCollector=' + wfc, null);
     },
 
     properties: function (value) {
-      if (exports.arango) {
-        if (value !== undefined) {
-          return exports.arango.PUT('/_admin/wal/properties', value);
-        }
-
-        return exports.arango.GET('/_admin/wal/properties', '');
+      if (value !== undefined) {
+        return exports.arango.PUT('/_admin/wal/properties', value);
       }
 
-      throw 'not connected';
+      return exports.arango.GET('/_admin/wal/properties', '');
     },
 
     transactions: function () {
-      if (exports.arango) {
-        return exports.arango.GET('/_admin/wal/transactions', null);
-      }
-
-      throw 'not connected';
+      return exports.arango.GET('/_admin/wal/transactions', null);
     }
   };
-  
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief are we talking to a single server or cluster?
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.isCluster = function () {
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult = exports.arango.GET("/_admin/server/role");
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.role === "COORDINATOR";
+  };
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief processStatistics
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_PROCESS_STATISTICS) {
+    exports.thisProcessStatistics = global.SYS_PROCESS_STATISTICS;
+    delete global.SYS_PROCESS_STATISTICS;
+  }
+
+  exports.processStatistics = function () {
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult = exports.arango.GET('/_admin/statistics');
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.system;
+  };
+
+  // / @brief serverStatistics
+  exports.serverStatistics = function () {
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult = exports.arango.GET('/_admin/statistics');
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.server;
+  };
+
   // / @brief ttlStatistics
   exports.ttlStatistics = function () {
-    if (exports.arango) {
-      const arangosh = require('@arangodb/arangosh');
-      let requestResult = exports.arango.GET('/_api/ttl/statistics');
-      arangosh.checkRequestResult(requestResult);
-      return requestResult.result;
-    }
-    throw 'not connected';
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult = exports.arango.GET('/_api/ttl/statistics');
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.result;
   };
-  
+
   // / @brief ttlProperties
   exports.ttlProperties = function (properties) {
-    if (exports.arango) {
-      const arangosh = require('@arangodb/arangosh');
-      let requestResult;
-      if (properties === undefined) {
-        requestResult = exports.arango.GET('/_api/ttl/properties');
-      } else {
-        requestResult = exports.arango.PUT('/_api/ttl/properties', properties);
-      }
-      arangosh.checkRequestResult(requestResult);
-      return requestResult.result;
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult;
+    if (properties === undefined) {
+      requestResult = exports.arango.GET('/_api/ttl/properties');
+    } else {
+      requestResult = exports.arango.PUT('/_api/ttl/properties', properties);
     }
-    throw 'not connected';
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.result;
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -131,12 +131,7 @@ let appendHeaders = function(appender, headers) {
   // //////////////////////////////////////////////////////////////////////////////
 
   exports.reloadAqlFunctions = function () {
-    if (exports.arango) {
-      exports.arango.POST('/_admin/aql/reload', null);
-      return;
-    }
-
-    throw 'not connected';
+    exports.arango.POST('/_admin/aql/reload', null);
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -144,14 +139,9 @@ let appendHeaders = function(appender, headers) {
   // //////////////////////////////////////////////////////////////////////////////
 
   exports.reloadRouting = function () {
-    if (exports.arango) {
-      exports.arango.POST('/_admin/routing/reload', null);
-      return;
-    }
-
-    throw 'not connected';
+    exports.arango.POST('/_admin/routing/reload', null);
   };
-  
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief logs a request in curl format
   // //////////////////////////////////////////////////////////////////////////////
@@ -226,6 +216,21 @@ let appendHeaders = function(appender, headers) {
     };
   };
 
+  let appendHeaders = function(appender, headers) {
+    var key;
+    // generate header
+    appender('HTTP/1.1 ' + headers['http/1.1'] + '\n');
+
+    for (key in headers) {
+      if (headers.hasOwnProperty(key)) {
+        if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
+            && key !== 'content-length') {
+          appender(key + ': ' + headers[key] + '\n');
+        }
+      }
+    }
+  };
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief logs a raw response
   // //////////////////////////////////////////////////////////////////////////////
@@ -239,6 +244,31 @@ let appendHeaders = function(appender, headers) {
       if (response.body !== undefined) {
         syntaxAppender(exports.inspect(response.body));
         appender('\n');
+      }
+    };
+  };
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief logs a raw response - don't string escape etc.
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.appendPlainResponse = function (appender, syntaxAppender) {
+    return function (response) {
+      appendHeaders(appender, response.headers);
+      appender('\n');
+
+      // append body
+      if (response.body !== undefined) {
+        let splitted = response.body.split(/\r\n|\r|\n/);
+        if (splitted.length > 0) {
+          splitted.forEach(function (line) {
+            syntaxAppender(line);
+            appender('\n');
+          });
+        } else {
+            syntaxAppender(response.body);
+          appender('\n');
+        }
       }
     };
   };

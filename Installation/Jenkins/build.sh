@@ -920,6 +920,7 @@ if test -n "${TARGET_DIR}";  then
          tar -u -f "${TARFILE_TMP}" \
              tests/js \
              tests/rb \
+             tests/Greylist.txt \
              tests/arangodbRspecLib \
              VERSION \
              utils \

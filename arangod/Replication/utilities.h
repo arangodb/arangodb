@@ -66,6 +66,9 @@ struct Connection {
   /// @brief identifier for local server
   std::string const& localServerId() const;
 
+  /// @brief short informative string about the client
+  std::string const& clientInfo() const;
+
   /// @brief Thread-safe aborted status
   void setAborted(bool value);
 
@@ -88,6 +91,7 @@ struct Connection {
  private:
   std::string const _endpointString;
   std::string const _localServerId;
+  std::string const _clientInfo;
 
   /// lock to protect client connection
   mutable std::mutex _mutex;

@@ -38,7 +38,8 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   RequestLane lane() const override final {
     bool isSyncReplication = false;
     // We do not care for the real value, enough if it is there.
-    _request->value(StaticStrings::IsSynchronousReplicationString, isSyncReplication);
+    std::ignore = _request->value(StaticStrings::IsSynchronousReplicationString,
+                                  isSyncReplication);
     if (isSyncReplication) {
       return RequestLane::CLIENT_FAST;
     }

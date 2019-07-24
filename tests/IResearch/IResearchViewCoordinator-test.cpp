@@ -26,8 +26,8 @@
 #include "common.h"
 #include "gtest/gtest.h"
 
-#include "utils/log.hpp"
 #include "utils/locale_utils.hpp"
+#include "utils/log.hpp"
 #include "utils/utf8_path.hpp"
 
 #include "Agency/Store.h"
@@ -49,8 +49,8 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/SortCondition.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/files.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/files.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/Methods/Indexes.h"
 
@@ -90,7 +90,6 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -337,17 +336,17 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" "
       "}");
   ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1,
-                                               false, collectionJson0->slice(), 0.0)
+                                               1, false, collectionJson0->slice(), 0.0)
                    .ok()));
   auto logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
   ASSERT_TRUE((false == !logicalCollection0));
   ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1,
-                                               false, collectionJson1->slice(), 0.0)
+                                               1, false, collectionJson1->slice(), 0.0)
                    .ok()));
   auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
   ASSERT_TRUE((false == !logicalCollection1));
   ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId2, 0, 1,
-                                               false, collectionJson2->slice(), 0.0)
+                                               1, false, collectionJson2->slice(), 0.0)
                    .ok()));
   auto logicalCollection2 = ci->getCollection(vocbase->name(), collectionId2);
   ASSERT_TRUE((false == !logicalCollection2));
@@ -367,9 +366,12 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   std::shared_ptr<arangodb::Index> link;
-  EXPECT_NE(nullptr, arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(*logicalCollection0, linkJson->slice(), 1, false));
-  EXPECT_NE(nullptr, arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(*logicalCollection1, linkJson->slice(), 2, false));
-  EXPECT_NE(nullptr, arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(*logicalCollection2, linkJson->slice(), 3, false));
+  EXPECT_NE(nullptr, arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(
+                         *logicalCollection0, linkJson->slice(), 1, false));
+  EXPECT_NE(nullptr, arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(
+                         *logicalCollection1, linkJson->slice(), 2, false));
+  EXPECT_NE(nullptr, arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(
+                         *logicalCollection2, linkJson->slice(), 3, false));
 
   // visit view
   TRI_voc_cid_t expectedCollections[] = {1, 2, 3};
@@ -411,7 +413,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
                           "testVocbase");
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE(
-      (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), 0).ok()));
+        (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), 0).ok()));
     EXPECT_TRUE((nullptr != view));
     EXPECT_TRUE((nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
                                 view)));
@@ -558,7 +560,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     auto viewId = "testView";
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -590,7 +592,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     auto viewId = "testView";
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -638,7 +640,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     auto viewId = "testView";
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -832,8 +834,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_EQ(TRI_ERROR_NO_ERROR,
-      database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_EQ(TRI_ERROR_NO_ERROR, database->createDatabase(1, "testDatabase", vocbase));
 
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ("testDatabase", vocbase->name());
@@ -841,27 +842,28 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     ASSERT_EQ(1, vocbase->id());
 
     ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
-      .ok()));
+                     .ok()));
   }
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", "
-    "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", "
+      "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
   auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
-    "}");
+      "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
+      "}");
   auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\": { \"testCollection\": { \"includeAllFields\":true, \"inBackground\":true } } }");
+      "{ \"links\": { \"testCollection\": { \"includeAllFields\":true, "
+      "\"inBackground\":true } } }");
   auto collectionId = std::to_string(1);
   auto viewId = std::to_string(42);
 
   ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-    false, collectionJson->slice(), 0.0)
-    .ok()));
+                                               1, false, collectionJson->slice(), 0.0)
+                   .ok()));
   auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
   ASSERT_NE(nullptr, logicalCollection);
   ASSERT_TRUE((ci->createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice())
-    .ok()));
+                   .ok()));
   auto logicalView = ci->getView(vocbase->name(), viewId);
   ASSERT_NE(nullptr, logicalView);
 
@@ -873,10 +875,10 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     // simulate heartbeat thread (create index in current)
     {
       auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-        std::to_string(logicalCollection->id());
+                        std::to_string(logicalCollection->id());
       auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" "
-        "} ] } }");
+          "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" "
+          "} ] } }");
       EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
     }
     ASSERT_TRUE((logicalView->properties(viewUpdateJson->slice(), true).ok()));
@@ -885,18 +887,20 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
   {
     VPackBuilder agencyRecord;
     agencyRecord.openArray();
-    _agencyStore.read(
-      arangodb::velocypack::Parser::fromJson(
-        "[\"arango/Plan/Collections/testDatabase/" + collectionId + "\"]")->slice(),
-      agencyRecord);
+    _agencyStore.read(arangodb::velocypack::Parser::fromJson(
+                          "[\"arango/Plan/Collections/testDatabase/" + collectionId + "\"]")
+                          ->slice(),
+                      agencyRecord);
     agencyRecord.close();
 
     ASSERT_TRUE(agencyRecord.slice().isArray());
     auto collectionInfoSlice = agencyRecord.slice().at(0);
-    auto indexesSlice = collectionInfoSlice.get("arango").
-      get("Plan").get("Collections").
-      get("testDatabase").get(collectionId).
-      get("indexes");
+    auto indexesSlice = collectionInfoSlice.get("arango")
+                            .get("Plan")
+                            .get("Collections")
+                            .get("testDatabase")
+                            .get(collectionId)
+                            .get("indexes");
     ASSERT_TRUE(indexesSlice.isArray());
     auto linkSlice = indexesSlice.at(0);
     ASSERT_TRUE(linkSlice.hasKey("inBackground"));
@@ -908,16 +912,15 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_NE(nullptr, logicalCollection);
     auto indexes = logicalCollection->getIndexes();
-    ASSERT_EQ(1, indexes.size()); // arangosearch should be there
+    ASSERT_EQ(1, indexes.size());  // arangosearch should be there
     auto index = indexes[0];
-    ASSERT_EQ(arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK,  index->type());
+    ASSERT_EQ(arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK, index->type());
     VPackBuilder builder;
-    index->toVelocyPack(builder,
-                        arangodb::Index::makeFlags(arangodb::Index::Serialize::Internals));
+    index->toVelocyPack(builder, arangodb::Index::makeFlags(arangodb::Index::Serialize::Internals));
     // temporary property should not be returned
-    ASSERT_FALSE(builder.slice().hasKey("inBackground")); 
+    ASSERT_FALSE(builder.slice().hasKey("inBackground"));
   }
-    
+
   // Check link definition in view
   {
     logicalView = ci->getView(vocbase->name(), viewId);
@@ -925,7 +928,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     VPackBuilder builder;
     builder.openObject();
     logicalView->properties(builder, arangodb::LogicalDataSource::makeFlags(
-      arangodb::LogicalDataSource::Serialize::Detailed));
+                                         arangodb::LogicalDataSource::Serialize::Detailed));
     builder.close();
     ASSERT_TRUE(builder.slice().hasKey("links"));
     auto links = builder.slice().get("links");
@@ -933,9 +936,9 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     ASSERT_TRUE(links.hasKey("testCollection"));
     auto testCollectionSlice = links.get("testCollection");
     // temporary property should not be returned
-    ASSERT_FALSE(testCollectionSlice.hasKey("inBackground")); 
+    ASSERT_FALSE(testCollectionSlice.hasKey("inBackground"));
   }
-}  
+}
 
 TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
   auto* database = arangodb::DatabaseFeature::DATABASE;
@@ -971,7 +974,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
   auto viewId = std::to_string(42);
 
   EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                               false, collectionJson->slice(), 0.0)
+                                               1, false, collectionJson->slice(), 0.0)
                    .ok()));
   auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
   ASSERT_TRUE((false == !logicalCollection));
@@ -1255,12 +1258,14 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
     EXPECT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
     EXPECT_EQ(1, vocbase->id());
 
-    EXPECT_TRUE(ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0).ok());
+    EXPECT_TRUE(ci->createDatabaseCoordinator(vocbase->name(),
+                                              VPackSlice::emptyObjectSlice(), 0.0)
+                    .ok());
   }
 
   // create view
   auto json = arangodb::velocypack::Parser::fromJson(
-    "{ \"name\": \"testView\", "
+      "{ \"name\": \"testView\", "
       "\"type\": \"arangosearch\", "
       "\"writebufferActive\": 25, "
       "\"writebufferIdle\": 12, "
@@ -1268,10 +1273,10 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
       "\"locale\": \"C\", "
       "\"version\": 1, "
       "\"primarySort\": [ "
-        "{ \"field\": \"my.Nested.field\", \"direction\": \"asc\" }, "
-        "{ \"field\": \"another.field\", \"asc\": false } "
+      "{ \"field\": \"my.Nested.field\", \"direction\": \"asc\" }, "
+      "{ \"field\": \"another.field\", \"asc\": false } "
       "]"
-  "}");
+      "}");
 
   auto viewId = std::to_string(ci->uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
 
@@ -1282,7 +1287,8 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
 
   auto view = ci->getView(vocbase->name(), viewId);
   EXPECT_NE(nullptr, view);
-  EXPECT_NE(nullptr, std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
+  EXPECT_NE(nullptr,
+            std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_EQ(planVersion, view->planVersion());
   EXPECT_EQ("testView", view->name());
   EXPECT_FALSE(view->deleted());
@@ -1298,16 +1304,16 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
     VPackBuilder builder;
 
     builder.openObject();
-    EXPECT_TRUE(view->properties(
-      builder,
-      arangodb::LogicalDataSource::makeFlags(arangodb::LogicalDataSource::Serialize::Detailed)).ok());
+    EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                              arangodb::LogicalDataSource::Serialize::Detailed))
+                    .ok());
     builder.close();
     EXPECT_TRUE(true == meta.init(builder.slice(), tmpString));
     EXPECT_TRUE(std::string("C") == irs::locale_utils::name(meta._locale));
     EXPECT_TRUE(1 == meta._version);
     EXPECT_TRUE(25 == meta._writebufferActive);
     EXPECT_TRUE(12 == meta._writebufferIdle);
-    EXPECT_TRUE(42*(size_t(1)<<20) == meta._writebufferSizeMax);
+    EXPECT_TRUE(42 * (size_t(1) << 20) == meta._writebufferSizeMax);
     EXPECT_TRUE(2 == meta._primarySort.size());
     {
       auto& field = meta._primarySort.field(0);
@@ -1333,16 +1339,16 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
 
   {
     auto newProperties = arangodb::velocypack::Parser::fromJson(
-      "{"
+        "{"
         "\"writeBufferActive\": 125, "
         "\"writeBufferIdle\": 112, "
         "\"writeBufferSizeMax\": 142, "
         "\"locale\": \"en\", "
         "\"version\": 1, "
         "\"primarySort\": [ "
-          "{ \"field\": \"field\", \"asc\": true } "
+        "{ \"field\": \"field\", \"asc\": true } "
         "]"
-    "}");
+        "}");
 
     decltype(view) fullyUpdatedView;
 
@@ -1357,7 +1363,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
 
   {
     auto newProperties = arangodb::velocypack::Parser::fromJson(
-      "{"
+        "{"
         "\"consolidationIntervalMsec\": 42, "
         "\"writeBufferActive\": 125, "
         "\"writeBufferIdle\": 112, "
@@ -1365,9 +1371,9 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
         "\"locale\": \"en\", "
         "\"version\": 1, "
         "\"primarySort\": [ "
-          "{ \"field\": \"field\", \"asc\": true } "
+        "{ \"field\": \"field\", \"asc\": true } "
         "]"
-    "}");
+        "}");
 
     decltype(view) fullyUpdatedView;
 
@@ -1379,7 +1385,8 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
     fullyUpdatedView = ci->getView(vocbase->name(), viewId);
     EXPECT_NE(fullyUpdatedView, view);  // different objects
     EXPECT_NE(nullptr, fullyUpdatedView);
-    EXPECT_NE(nullptr, std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(fullyUpdatedView));
+    EXPECT_NE(nullptr, std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
+                           fullyUpdatedView));
     EXPECT_EQ(planVersion, fullyUpdatedView->planVersion());
     EXPECT_EQ("testView", fullyUpdatedView->name());
     EXPECT_FALSE(fullyUpdatedView->deleted());
@@ -1396,16 +1403,17 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
 
       builder.clear();
       builder.openObject();
-      EXPECT_TRUE(fullyUpdatedView->properties(
-        builder,
-        arangodb::LogicalDataSource::makeFlags(arangodb::LogicalDataSource::Serialize::Detailed)).ok());
+      EXPECT_TRUE(fullyUpdatedView
+                      ->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                                arangodb::LogicalDataSource::Serialize::Detailed))
+                      .ok());
       builder.close();
       EXPECT_TRUE(true == meta.init(builder.slice(), tmpString));
       EXPECT_TRUE(std::string("C") == irs::locale_utils::name(meta._locale));
       EXPECT_TRUE(1 == meta._version);
       EXPECT_TRUE(25 == meta._writebufferActive);
       EXPECT_TRUE(12 == meta._writebufferIdle);
-      EXPECT_TRUE(42*(size_t(1)<<20) == meta._writebufferSizeMax);
+      EXPECT_TRUE(42 * (size_t(1) << 20) == meta._writebufferSizeMax);
       EXPECT_TRUE(2 == meta._primarySort.size());
       {
         auto& field = meta._primarySort.field(0);
@@ -1464,7 +1472,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
 
     logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
@@ -1480,7 +1488,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
 
     logicalCollection2 = ci->getCollection(vocbase->name(), collectionId);
@@ -1496,7 +1504,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
 
     logicalCollection3 = ci->getCollection(vocbase->name(), collectionId);
@@ -2056,7 +2064,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
 
     logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
@@ -2072,7 +2080,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
 
     logicalCollection2 = ci->getCollection(vocbase->name(), collectionId);
@@ -2088,7 +2096,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
 
     logicalCollection3 = ci->getCollection(vocbase->name(), collectionId);
@@ -2699,7 +2707,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
 
     logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
@@ -2715,7 +2723,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
 
     logicalCollection2 = ci->getCollection(vocbase->name(), collectionId);
@@ -2731,7 +2739,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
 
     logicalCollection3 = ci->getCollection(vocbase->name(), collectionId);
@@ -3300,7 +3308,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
 
     logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
@@ -3316,7 +3324,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
 
     logicalCollection2 = ci->getCollection(vocbase->name(), collectionId);
@@ -3332,7 +3340,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
 
     logicalCollection3 = ci->getCollection(vocbase->name(), collectionId);
@@ -3765,7 +3773,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
 
     logicalCollection = ci->getCollection(vocbase->name(), collectionId);
@@ -4123,7 +4131,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     auto viewId = std::to_string(42);
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -4183,7 +4191,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     auto viewId = std::to_string(42);
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -4321,7 +4329,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     auto viewId = std::to_string(42);
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -4385,7 +4393,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     auto viewId = std::to_string(42);
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -4517,7 +4525,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     auto viewId = std::to_string(42);
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1,
-                                                 false, collection0Json->slice(), 0.0)
+                                                 1, false, collection0Json->slice(), 0.0)
                      .ok()));
     auto logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
@@ -4526,7 +4534,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
           ci->dropCollectionCoordinator(vocbase->name(), collectionId0, 0);
         });
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1,
-                                                 false, collection1Json->slice(), 0.0)
+                                                 1, false, collection1Json->slice(), 0.0)
                      .ok()));
     auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));
@@ -4666,7 +4674,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     auto viewId = std::to_string(42);
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1,
-                                                 false, collection0Json->slice(), 0.0)
+                                                 1, false, collection0Json->slice(), 0.0)
                      .ok()));
     auto logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
@@ -4675,7 +4683,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
           ci->dropCollectionCoordinator(vocbase->name(), collectionId0, 0);
         });
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1,
-                                                 false, collection1Json->slice(), 0.0)
+                                                 1, false, collection1Json->slice(), 0.0)
                      .ok()));
     auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));
@@ -4890,7 +4898,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     auto viewId = std::to_string(42);
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -4949,7 +4957,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     auto viewId = std::to_string(42);
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -5087,7 +5095,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     auto viewId = std::to_string(42);
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -5151,7 +5159,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     auto viewId = std::to_string(42);
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 false, collectionJson->slice(), 0.0)
+                                                 1, false, collectionJson->slice(), 0.0)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -5280,7 +5288,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     auto viewId = std::to_string(42);
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1,
-                                                 false, collection0Json->slice(), 0.0)
+                                                 1, false, collection0Json->slice(), 0.0)
                      .ok()));
     auto logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
@@ -5289,7 +5297,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
           ci->dropCollectionCoordinator(vocbase->name(), collectionId0, 0);
         });
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1,
-                                                 false, collection1Json->slice(), 0.0)
+                                                 1, false, collection1Json->slice(), 0.0)
                      .ok()));
     auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));
@@ -5436,7 +5444,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     auto viewId = std::to_string(42);
 
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1,
-                                                 false, collection0Json->slice(), 0.0)
+                                                 1, false, collection0Json->slice(), 0.0)
                      .ok()));
     auto logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
@@ -5445,7 +5453,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
           ci->dropCollectionCoordinator(vocbase->name(), collectionId0, 0);
         });
     EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1,
-                                                 false, collection1Json->slice(), 0.0)
+                                                 1, false, collection1Json->slice(), 0.0)
                      .ok()));
     auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));
