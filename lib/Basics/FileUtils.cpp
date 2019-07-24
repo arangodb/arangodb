@@ -773,6 +773,7 @@ int slurpProgramWithExitcode(std::string const& program, std::string& output) {
   }
 
   throwProgramError(program);
+  return 1;   // Just to please the compiler.
 };
 
 }  // namespace FileUtils
