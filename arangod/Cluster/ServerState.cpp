@@ -60,6 +60,7 @@ ServerState::ServerState()
       _lock(),
       _id(),
       _shortId(0),
+      _rebootId(0),
       _javaScriptStartupPath(),
       _myEndpoint(),
       _advertisedEndpoint(),
@@ -329,6 +330,33 @@ bool ServerState::unregister() {
   AgencyComm comm;
   AgencyCommResult r = comm.sendTransactionWithFailover(unregisterTransaction);
   return r.successful();
+}
+
+int ServerState::readRebootIdFromAgency(AgencyComm& comm, uint64_t& rebootId)
+{
+  TRI_ASSERT(!_id.empty());
+  std::string rebootIdPath = "Target/RebootId/" + _id + "/rebootId";
+  AgencyCommResult result = comm.getValues(rebootIdPath);
+
+  if (!result.successful()) {
+    LOG_TOPIC("762ed", WARN, Logger::CLUSTER)
+      << "Could not read back " << rebootIdPath;
+
+    return -1;
+  }
+
+  auto slicePath = AgencyCommManager::slicePath(rebootIdPath);
+  auto valueSlice = result.slice()[0].get(slicePath);
+
+  if (!valueSlice.isInteger()) {
+    LOG_TOPIC("38a4a", WARN, Logger::CLUSTER)
+      << "rebootId is not an integer";
+
+    TRI_ASSERT(false);  // when in maintainer mode, just crash.
+    return -2;
+  }
+  rebootId = valueSlice.getNumericValue<uint64_t>();
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -647,6 +675,9 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm) {
   TRI_ASSERT(!_id.empty() && !_myEndpoint.empty());
 
   while (!application_features::ApplicationServer::isStopping()) {
+    std::string serverRegistrationPath = currentServersRegisteredPref + _id;
+    std::string rebootIdPath = "/Target/RebootId/" + _id + "/rebootId";
+
     VPackBuilder builder;
     try {
       VPackObjectBuilder b(&builder);
@@ -661,10 +692,24 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm) {
       FATAL_ERROR_EXIT();
     }
 
-    auto result = comm.setValue(currentServersRegisteredPref + _id, builder.slice(), 0.0);
+    AgencyWriteTransaction trx(
+      {AgencyOperation(serverRegistrationPath, AgencyValueOperationType::SET,
+                       builder.slice()),
+       AgencyOperation(rebootIdPath, AgencySimpleOperationType::INCREMENT_OP),
+       AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP)});
+
+    auto result = comm.sendTransactionWithFailover(trx, 0.0);
 
     if (result.successful()) {
-      return true;
+      uint64_t rebootId;
+
+      // If reading back the rebootId is not successful, we might
+      // increment it again above, so maybe we need to make a separate
+      // retry loop here?
+      if (readRebootIdFromAgency(comm, rebootId) == 0) {
+        setRebootId(rebootId);
+        return true;
+      }
     } else {
       LOG_TOPIC("ba205", WARN, arangodb::Logger::CLUSTER)
           << "failed to register server in agency: http code: " << result.httpCode()
@@ -726,6 +771,16 @@ void ServerState::setShortId(uint32_t id) {
   }
 
   _shortId.store(id, std::memory_order_relaxed);
+}
+
+uint64_t ServerState::getRebootId() const {
+  TRI_ASSERT(_rebootId > 0);
+  return _rebootId;
+}
+
+void ServerState::setRebootId(uint64_t const rebootId) {
+  TRI_ASSERT(rebootId > 0);
+  _rebootId = rebootId;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
