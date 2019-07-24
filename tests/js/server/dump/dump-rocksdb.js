@@ -424,7 +424,7 @@ function dumpTestSuite () {
 
       var startTime = new Date();
       var res;
-      while (new Date() - startTime < 60) {
+      while (new Date() - startTime < 60000) {
         res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
         if (res.length === 5000) {
           break;
