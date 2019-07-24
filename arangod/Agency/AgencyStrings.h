@@ -50,7 +50,7 @@ constexpr char const* PLAN_COLLECTIONS = "Plan/Collections/";
 constexpr char const* PLAN_DATABASES = "Plan/Databases/";
 
 constexpr char const* TARGET = "Target";
-constexpr char const* MAP_UNIQUE_TO_SHORT_ID = "MapUniqueToShortId";
+constexpr char const* MAP_UNIQUE_TO_SHORT_ID = "MapUniqueToShortID";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to conveniently assemble paths from string constants
