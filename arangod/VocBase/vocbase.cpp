@@ -1797,52 +1797,21 @@ void TRI_vocbase_t::addReplicationApplier() {
 }
 
 arangodb::Result TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
+  VPackObjectBuilder b(&result);
+
+  result.add("name", VPackValue(_name));
+  result.add("id", VPackValue(std::to_string(_id)));
+  result.add("isSystem", VPackValue(isSystem()));
+
   if (ServerState::instance()->isCoordinator()) {
-    AgencyComm agency;
-    AgencyCommResult commRes = agency.getValues("Plan/Databases/" + _name);
-    if (!commRes.successful()) {
-      // Error in communication, note that value not found is not an error
-      LOG_TOPIC("87642", TRACE, Logger::COMMUNICATION)
-          << "rest database handler: no agency communication";
-      return Result(commRes.errorCode(), commRes.errorMessage());
-    }
-
-    VPackSlice value = commRes.slice()[0].get<std::string>(
-        {AgencyCommManager::path(), "Plan", "Databases", _name});
-    if (value.isObject() && value.hasKey("name")) {
-
-      VPackValueLength l = 0;
-      const char* name = value.get("name").getString(l);
-      TRI_ASSERT(l > 0);
-
-      VPackObjectBuilder b(&result);
-      result.add("name", value.get("name"));
-      if (value.get("id").isString()) {
-        result.add("id", value.get("id"));
-      } else if (value.get("id").isNumber()) {
-        result.add("id", VPackValue(std::to_string(value.get("id").getUInt())));
-      } else {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "unexpected type for 'id' attribute");
-      }
-      result.add("path", VPackValue("none"));
-      result.add("isSystem", VPackValue(name[0] == '_'));
-
-      //copy from plan slice
-      auto options = arangodb::getVocbaseOptions(value);
-      arangodb::addVocbaseOptionsToOpenObject(result, options);
-
-    }
-  } else {
-    VPackObjectBuilder b(&result);
-    result.add("name", VPackValue(_name));
-    result.add("id", VPackValue(std::to_string(_id)));
     result.add("path", VPackValue(path()));
-    result.add("isSystem", VPackValue(isSystem()));
     arangodb::addVocbaseOptionsToOpenObject(result, _sharding, _replicationFactor, _minReplicationFactor);
-
-    result.close();
+  } else {
+    result.add("path", VPackValue("none"));
   }
+
+  result.close();
+
   return Result();
 }
 
