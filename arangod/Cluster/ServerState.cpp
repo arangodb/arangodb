@@ -506,18 +506,14 @@ bool ServerState::checkIfAgencyInitialized(AgencyComm& comm,
   return true;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief create an id for a specified role
-//////////////////////////////////////////////////////////////////////////////
-
-bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::RoleEnum& role) {
+void ServerState::enterServerIntoPlanAndCurrent(AgencyComm& comm,
+                                                ServerState::RoleEnum const& role) {
   std::string const agencyListKey = roleToAgencyListKey(role);
-  std::string const latestIdKey = "Latest" + roleToAgencyKey(role) + "Id";
 
   VPackBuilder builder;
   builder.add(VPackValue("none"));
 
-  std::string planUrl = concatPath({PLAN, agencyListKey,  _id});
+  std::string planUrl = concatPath({PLAN, agencyListKey, _id});
   std::string currentUrl = concatPath({CURRENT, agencyListKey, _id});
 
   AgencyWriteTransaction preg(
@@ -532,16 +528,30 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
       AgencyPrecondition(currentUrl, AgencyPrecondition::Type::EMPTY, true));
   // ok to fail..if it failed we are already registered
   comm.sendTransactionWithFailover(creg, 0.0);
+}
 
-  // coordinator is already/still registered from an previous unclean shutdown;
-  // must establish a new short ID
-  bool forceChangeShortId = isCoordinator(role);
+//////////////////////////////////////////////////////////////////////////////
+/// @brief create an id for a specified role
+//////////////////////////////////////////////////////////////////////////////
 
-  std::string targetIdPath = concatPath({TARGET, latestIdKey});
-  std::string targetUrl = concatPath({TARGET, MAP_UNIQUE_TO_SHORT_ID, _id});
+bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::RoleEnum& role) {
+
+  if (!checkIfAgencyInitialized(comm, role)) {
+    return false;
+  }
+
+  // No error conditions to be handled in the following
+  enterServerIntoPlanAndCurrent(comm, role);
+
+  std::string const agencyListKey = roleToAgencyListKey(role);
+  std::string const latestIdKey = "Latest" + roleToAgencyKey(role) + "Id";
+  std::string const targetIdPath = concatPath({TARGET, latestIdKey});
+  std::string const targetUrl = concatPath({TARGET, MAP_UNIQUE_TO_SHORT_ID, _id});
 
   size_t attempts{0};
   while (attempts++ < 300) {
+
+    // Read latestId
     AgencyReadTransaction readValueTrx(
         std::vector<std::string>{AgencyCommManager::path(targetIdPath),
                                  AgencyCommManager::path(targetUrl)});
@@ -558,7 +568,8 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
         {AgencyCommManager::path(), TARGET, MAP_UNIQUE_TO_SHORT_ID, _id}));
 
     // already registered
-    if (!mapSlice.isNone() && !forceChangeShortId) {
+    // if our role is coordinator, then we must establish a new short ID
+    if (!mapSlice.isNone() && !isCoordinator(role)) {
       VPackSlice s = mapSlice.get("TransactionID");
       if (s.isNumber()) {
         uint32_t shortId = s.getNumericValue<uint32_t>();
@@ -571,6 +582,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
       return true;
     }
 
+    // Establish a new shortId
     VPackSlice latestIdSlice = result.slice()[0].get(
         std::vector<std::string>({AgencyCommManager::path(), TARGET, latestIdKey}));
 

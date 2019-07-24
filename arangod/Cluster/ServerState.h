@@ -271,6 +271,8 @@ class ServerState {
 
   bool checkIfAgencyInitialized(AgencyComm&, RoleEnum const&);
 
+  void enterServerIntoPlanAndCurrent(AgencyComm&, RoleEnum const&);
+
   /// @brief register at agency, might already be done
   bool registerAtAgencyPhase1(AgencyComm&, const RoleEnum&);
 
