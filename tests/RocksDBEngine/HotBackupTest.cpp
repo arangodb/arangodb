@@ -21,6 +21,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
 #include "Random/RandomGenerator.h"
@@ -32,6 +33,8 @@
 #include <velocypack/velocypack-aliases.h>
 #include "RocksDBEngine/RocksDBHotBackup.h"
 #include "Rest/Version.h"
+
+#include "IResearchFeatureMock.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -362,6 +365,14 @@ TEST_CASE("RocksDBHotBackupRestore directories", "[rocksdb][devel][hotbackup]") 
   SECTION("test execute() normal directory path") {
     VPackBuilder report;
     RocksDBHotBackupRestoreTest testee(VPackSlice(), report);
+
+    // Mock an IResearchFeature because the restore code calls a method:
+    std::shared_ptr<arangodb::options::ProgramOptions> po =
+    std::make_shared<arangodb::options::ProgramOptions>(
+      "test", std::string(), std::string(), "path");
+    arangodb::application_features::ApplicationServer as(po, nullptr);
+    TestIResearchFeature* feature = new TestIResearchFeature(as);
+    as.addFeature(feature);   // Will be freed when as is destroyed
 
     testee.createDBDirectory();
     testee.createHotDirectory();
