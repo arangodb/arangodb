@@ -286,12 +286,13 @@ IResearchLink::IResearchLink(
   // initialize transaction callback
   _trxCallback = [key](transaction::Methods& trx, transaction::Status status)->void {
     auto* state = trx.state();
-
+    TRI_ASSERT(state != nullptr);
+    
     // check state of the top-most transaction only
     if (!state || !state->isTopLevelTransaction()) {
       return;  // NOOP
     }
-
+    
     auto prev = state->cookie(key, nullptr);  // get existing cookie
 
     if (prev) {

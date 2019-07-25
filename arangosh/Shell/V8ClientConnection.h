@@ -117,7 +117,7 @@ class V8ClientConnection {
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context, ClientFeature*);
 
  private:
-  void createConnection();
+  std::shared_ptr<fuerte::Connection> createConnection();
 
   v8::Local<v8::Value> requestData(v8::Isolate* isolate, fuerte::RestVerb verb,
                                    arangodb::velocypack::StringRef const& location,
