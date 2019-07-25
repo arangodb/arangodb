@@ -125,6 +125,7 @@ class RebootTracker {
       std::vector<std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>> callbacks);
 
   void queueCallbacks(std::vector<std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>> callbacks);
+  void queueCallback(DescriptedCallback callback);
 
  private:
   Mutex _mutex;

@@ -103,8 +103,10 @@ CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState const& peer
                                             std::string callbackDescription) {
   MUTEX_LOCKER(guard, _mutex);
 
+  auto const rebootIdIt = _rebootIds.find(peerState.serverId());
+
   // We MUST NOT insert something in _callbacks[serverId] unless _rebootIds[serverId] exists!
-  if (_rebootIds.find(peerState.serverId()) == _rebootIds.end()) {
+  if (rebootIdIt == _rebootIds.end()) {
     std::string const error = [&]() {
       std::stringstream strstream;
       strstream << "When trying to register callback '" << callbackDescription << "': "
@@ -115,6 +117,14 @@ CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState const& peer
     }();
     LOG_TOPIC("76abc", INFO, Logger::CLUSTER) << error;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_SERVER_UNKNOWN, error);
+  }
+
+  auto const currentRebootId = rebootIdIt->second;
+
+  if (peerState.rebootId() < currentRebootId) {
+    // If this ID is already older, schedule the callback immediately.
+    queueCallback(DescriptedCallback{std::move(callback), std::move(callbackDescription)});
+    return CallbackGuard{nullptr};
   }
 
   // For the given server, get the existing rebootId => [callbacks] map,
@@ -287,6 +297,12 @@ RebootTracker::CallbackId RebootTracker::getNextCallbackId() noexcept {
   CallbackId nextId = _nextCallbackId;
   ++_nextCallbackId;
   return nextId;
+}
+
+void RebootTracker::queueCallback(DescriptedCallback callback) {
+  queueCallbacks({std::make_shared<std::unordered_map<CallbackId, DescriptedCallback>>(
+      std::unordered_map<CallbackId, DescriptedCallback>{
+          std::make_pair(getNextCallbackId(), std::move(callback))})});
 }
 
 CallbackGuard::CallbackGuard() : _callback(nullptr) {}
