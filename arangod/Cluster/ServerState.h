@@ -280,7 +280,7 @@ class ServerState {
   bool registerAtAgencyPhase1(AgencyComm&, const RoleEnum&);
 
   /// @brief write the Current/ServersRegistered entry
-  bool registerAtAgencyPhase2(AgencyComm&);
+  bool registerAtAgencyPhase2(AgencyComm&, bool const hadPersistedId);
 
   void setFoxxmasterSinceNow();
 
@@ -306,7 +306,7 @@ class ServerState {
   ///   * ~reboots~ if it is started on a pre-existing database directory with a UUID present
   ///
   /// when integrating into a cluster (via integrateIntoCluster), the server tries to increment
-  /// the agency key Current/ServersRegistered/_id/rebootId; if this key did not exist it is
+  /// the agency key Current/KnownServers/_id/rebootId; if this key did not exist it is
   /// created with the value 1, so a valid rebootId is always >= 1, and if the server booted
   /// must be 1.
   ///

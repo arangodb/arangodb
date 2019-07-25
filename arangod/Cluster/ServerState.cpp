@@ -335,7 +335,7 @@ bool ServerState::unregister() {
 int ServerState::readRebootIdFromAgency(AgencyComm& comm, uint64_t& rebootId)
 {
   TRI_ASSERT(!_id.empty());
-  std::string rebootIdPath = "Target/RebootId/" + _id + "/rebootId";
+  std::string rebootIdPath = "Current/ServersKnown/" + _id + "/rebootId";
   AgencyCommResult result = comm.getValues(rebootIdPath);
 
   if (!result.successful()) {
@@ -389,7 +389,8 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
   //    generate and persist new id
   //  }
   std::string id;
-  if (!hasPersistedId()) {
+  bool hadPersistedId = hasPersistedId();
+  if (!hadPersistedId) {
     id = generatePersistedId(role);
 
     LOG_TOPIC("0d924", INFO, Logger::CLUSTER) << "Fresh start. Persisting new UUID " << id;
@@ -413,7 +414,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
                                     << roleToString(role) << " and our id is " << id;
 
   // now overwrite the entry in /Current/ServersRegistered/<myId>
-  return registerAtAgencyPhase2(comm);
+  return registerAtAgencyPhase2(comm, hadPersistedId);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -671,12 +672,12 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
   return false;
 }
 
-bool ServerState::registerAtAgencyPhase2(AgencyComm& comm) {
+bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersistedId) {
   TRI_ASSERT(!_id.empty() && !_myEndpoint.empty());
 
   while (!application_features::ApplicationServer::isStopping()) {
     std::string serverRegistrationPath = currentServersRegisteredPref + _id;
-    std::string rebootIdPath = "/Target/RebootId/" + _id + "/rebootId";
+    std::string rebootIdPath = "/Current/ServersKnown/" + _id + "/rebootId";
 
     VPackBuilder builder;
     try {
@@ -692,11 +693,19 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm) {
       FATAL_ERROR_EXIT();
     }
 
+    // If we generated a new UUID, this *must not* exist in the Agency, so we
+    // should fail to register.
+    std::vector<AgencyPrecondition> pre;
+    if (!hadPersistedId) {
+      pre.emplace_back(AgencyPrecondition(rebootIdPath, AgencyPrecondition::Type::EMPTY, true));
+    }
+
     AgencyWriteTransaction trx(
-      {AgencyOperation(serverRegistrationPath, AgencyValueOperationType::SET,
-                       builder.slice()),
-       AgencyOperation(rebootIdPath, AgencySimpleOperationType::INCREMENT_OP),
-       AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP)});
+        {AgencyOperation(serverRegistrationPath, AgencyValueOperationType::SET,
+                         builder.slice()),
+         AgencyOperation(rebootIdPath, AgencySimpleOperationType::INCREMENT_OP),
+         AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP)},
+        pre);
 
     auto result = comm.sendTransactionWithFailover(trx, 0.0);
 
