@@ -27,7 +27,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Manager.h"
@@ -85,6 +84,23 @@ RestStatus RestTransactionHandler::execute() {
 }
 
 void RestTransactionHandler::executeGetState() {
+  if (_request->suffixes().empty()) {
+    // no transaction id given - so list all the transactions
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("transactions", VPackValue(VPackValueType::Array));
+    
+    bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
+    transaction::Manager* mgr = transaction::ManagerFeature::manager();
+    mgr->toVelocyPack(builder, _vocbase.name(), _request->user(), fanout);
+ 
+    builder.close(); // array
+    builder.close(); // object
+  
+    generateResult(rest::ResponseCode::OK, builder.slice());
+    return;
+  }
+  
   if (_request->suffixes().size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting GET /_api/transaction/<transaction-ID>");

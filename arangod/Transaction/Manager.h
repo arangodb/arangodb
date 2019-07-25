@@ -44,6 +44,11 @@ struct TransactionData {
   virtual ~TransactionData() = default;
 };
 
+namespace velocypack {
+class Builder;
+class Slice;
+}
+
 namespace transaction {
 class Context;
 struct Options;
@@ -62,6 +67,30 @@ class Manager final {
 
  public:
   typedef std::function<void(TRI_voc_tid_t, TransactionData const*)> TrxCallback;
+  
+  enum class MetaType : uint8_t {
+    Managed = 1,  /// global single shard db transaction
+    StandaloneAQL = 2,  /// used for a standalone transaction (AQL standalone)
+    Tombstone = 3  /// used to ensure we can acknowledge double commits / aborts
+  };
+  
+  struct ManagedTrx {
+    ManagedTrx(MetaType t, TransactionState* st, double ex)
+      : type(t), expires(ex), state(st), finalStatus(Status::UNDEFINED),
+        rwlock() {}
+    ~ManagedTrx();
+    
+    MetaType type;
+    double expires; /// expiration timestamp, if 0 it expires immediately
+    TransactionState* state; /// Transaction, may be nullptr
+    /// @brief  final TRX state that is valid if this is a tombstone
+    /// necessary to avoid getting error on a 'diamond' commit or accidantally
+    /// repeated commit / abort messages
+    transaction::Status finalStatus;
+    /// cheap usage lock for *state
+    mutable basics::ReadWriteSpinLock rwlock;
+  };
+  
 
  public:
   // register a list of failed transactions
@@ -83,8 +112,6 @@ class Manager final {
   void iterateActiveTransactions(TrxCallback const&);
 
   uint64_t getActiveTransactionCount();
-  
- public:
   
   void disallowInserts() {
     _disallowInserts.store(true, std::memory_order_release);
@@ -116,11 +143,20 @@ class Manager final {
   Result commitManagedTrx(TRI_voc_tid_t);
   Result abortManagedTrx(TRI_voc_tid_t);
   
+  /// @brief calls the callback function for each managed transaction
+  void iterateManagedTrx(std::function<void(TRI_voc_tid_t, ManagedTrx const&)> const&) const;
+  
   /// @brief collect forgotten transactions
   bool garbageCollect(bool abortAll);
   
   /// @brief abort all transactions matching
   bool abortManagedTrx(std::function<bool(TransactionState const&)>);
+
+  /// @brief convert the list of running transactions to a VelocyPack array
+  /// the array must be opened already.
+  /// will use database and username to fan-out the request to the other
+  /// coordinators in a cluster
+  void toVelocyPack(arangodb::velocypack::Builder& builder, std::string const& database, std::string const& username, bool fanout) const;
   
  private:
   // hashes the transaction id into a bucket
@@ -132,32 +168,7 @@ class Manager final {
                            bool clearServers);
   
  private:
-    
-  enum class MetaType : uint8_t {
-    Managed = 1,  /// global single shard db transaction
-    StandaloneAQL = 2,  /// used for a standalone transaction (AQL standalone)
-    Tombstone = 3  /// used to ensure we can acknowledge double commits / aborts
-  };
-  struct ManagedTrx {
-    ManagedTrx(MetaType t, TransactionState* st, double ex)
-      : type(t), expires(ex), state(st), finalStatus(Status::UNDEFINED),
-        rwlock() {}
-    ~ManagedTrx();
-    
-    MetaType type;
-    double expires; /// expiration timestamp, if 0 it expires immediately
-    TransactionState* state; /// Transaction, may be nullptr
-    /// @brief  final TRX state that is valid if this is a tombstone
-    /// necessary to avoid getting error on a 'diamond' commit or accidantally
-    /// repeated commit / abort messages
-    transaction::Status finalStatus;
-    /// cheap usage lock for *state
-    mutable basics::ReadWriteSpinLock rwlock;
-  };
-  
-private:
-  
-  const bool _keepTransactionData;
+  bool const _keepTransactionData;
 
   // a lock protecting ALL buckets in _transactions
   mutable basics::ReadWriteLock _allTransactionsLock;
