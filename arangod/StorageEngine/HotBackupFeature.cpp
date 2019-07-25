@@ -80,8 +80,8 @@ bool recreateArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
     arangodb::Result res;
 
     builder.openObject();
-    res = view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                        arangodb::LogicalDataSource::Serialize::Detailed));  // get JSON with end-user definition
+    res = view->properties(builder, true, false);
+        // get JSON with end-user definition
     builder.close();
 
     if (!res.ok()) {
@@ -140,12 +140,12 @@ void removeRestoreStartMarker() {
       engine->dataPath(), "RESTORE");
   bool res = arangodb::basics::FileUtils::remove(path);
   if (res == false) {
-    LOG_TOPIC("54feb", INFO, arangodb::Logger::BACKUP)
+    LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
       << "Could not remove RESTORE start marker.";
   }
 }
 
-void recreateArangoSearchViewsAfterRestore() {
+void recreateArangoSearchViewsAfterRestore(bool /* unused */) {
   LOG_TOPIC(INFO, Logger::BACKUP)
     << "Recreating ArangoSearch indexes...";
   DatabaseFeature::DATABASE->enumerateDatabases(

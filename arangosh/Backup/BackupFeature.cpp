@@ -49,8 +49,10 @@ constexpr auto OperationCreate = "create";
 constexpr auto OperationDelete = "delete";
 constexpr auto OperationList = "list";
 constexpr auto OperationRestore = "restore";
+#ifdef USE_ENTERPRISE
 constexpr auto OperationUpload = "upload";
 constexpr auto OperationDownload = "download";
+#endif
 std::unordered_set<std::string> const Operations = {OperationCreate, OperationDelete,
                                                     OperationList, OperationRestore,
 #ifdef USE_ENTERPRISE
