@@ -77,6 +77,10 @@ void Manager::unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> con
 void Manager::registerTransaction(TRI_voc_tid_t transactionId,
                                   std::unique_ptr<TransactionData> data,
                                   bool isReadOnlyTransaction) {
+  if (!isReadOnlyTransaction) {
+    _rwLock.readLock();
+  }
+
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
 
   if (_keepTransactionData) {
@@ -92,10 +96,6 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
       _nrRunning.fetch_sub(1, std::memory_order_relaxed);
       throw;
     }
-  }
-
-  if (!isReadOnlyTransaction) {
-    _rwLock.readLock();
   }
 }
 

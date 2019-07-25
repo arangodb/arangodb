@@ -856,7 +856,6 @@ void RocksDBHotBackupCreate::executeDelete() {
 RocksDBHotBackupRestore::RocksDBHotBackupRestore(VPackSlice body, VPackBuilder& report)
   : RocksDBHotBackup(body, report), _saveCurrent(false), _ignoreVersion(false) {}
 
-
 /// @brief convert the message payload into class variable options
 void RocksDBHotBackupRestore::parseParameters() {
 
@@ -997,6 +996,23 @@ void RocksDBHotBackupRestore::execute() {
 
       restartAction = new std::function<int()>();
       *restartAction = localRestoreAction;
+
+      // Now remove all local ArangoSearch view data, since it will not be
+      // valid after the restore. Note that on a single server there is no
+      // automatism to recreate the data and on a dbserver, the Maintenance
+      // is stopped before we get here. Note that in unittests we must not
+      // do this since the whole infrastructure is not up and running.
+      if (performViewRemoval()) {
+        HotBackupFeature::removeAllArangoSearchData();
+      }
+      // On a single server, the view and link meta data is held in RocksDB
+      // and some special startup method will initiate the creation of new
+      // index data in ArangoSearch according to the meta data restored with
+      // the hotbackup restore.
+      // On a dbserver, the view and link meta data is held in the agency
+      // and the maintenance after the cleanup will initiate the creation
+      // of new index data in ArangoSearch.
+
       startGlobalShutdown();
       _success = true;
 
@@ -1074,11 +1090,9 @@ bool RocksDBHotBackupRestore::createRestoringDirectory(std::string& restoreDirOu
     //  copy contents of selected hotbackup to new "restoring" directory
     //  (both directories must exists)
     if (retFlag) {
-      if (ServerState::instance()->isSingleServer()) {
-        // touch the RESTORE file
-        std::string restoreFile = restoreDirOutput + TRI_DIR_SEPARATOR_CHAR + "RESTORE";
-        basics::FileUtils::spit(restoreFile, std::string("RESTORE"), true);
-      }
+      // touch the RESTORE file
+      std::string restoreFile = restoreDirOutput + TRI_DIR_SEPARATOR_CHAR + "RESTORE";
+      basics::FileUtils::spit(restoreFile, std::string("RESTORE"), true);
       std::function<basics::FileUtils::TRI_copy_recursive_e(std::string const&)>  filter = copyVersusLink;
       retFlag = basics::FileUtils::copyRecursive(fullDirectoryRestore, restoreDirOutput,
                                                  filter, errors);

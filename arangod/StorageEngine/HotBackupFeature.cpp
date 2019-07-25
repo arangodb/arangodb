@@ -23,23 +23,167 @@
 
 #include "HotBackupFeature.h"
 
+#include "Basics/FileUtils.h"
 #include "Basics/Result.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Indexes/Index.h"
+#include "IResearch/IResearchView.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/ViewTypesFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb;
 
+namespace {
+
+void removeAllArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
+  LOG_TOPIC("aabbb", DEBUG, Logger::BACKUP)
+    << "Dropping all arangosearch links for database " << vocbase.name();
+  auto collections = vocbase.collections(false);
+  for (auto& coll : collections) {
+    auto indexes = coll->getIndexes();
+    for (auto& index : indexes) {
+      auto type = index->type();
+      if (type == Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+        auto id = index->id();
+        LOG_TOPIC("aabbd", DEBUG, Logger::BACKUP)
+            << "dropping ArangoSearch link id: " << id;
+        if (!coll->dropIndex(id)) {
+          LOG_TOPIC("aabbc", WARN, Logger::BACKUP)
+              << "failure to drop link while dropping all ArangoSearch data "
+                 "for restore operation, index id: " << id;
+        };
+      }
+    }
+  }
+}
+
+bool recreateArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
+  bool success = true;
+  if (arangodb::ServerState::instance()->isSingleServer()) {
+    for (auto& view : vocbase.views()) {
+      LOG_TOPIC("54312", INFO, Logger::BACKUP)
+        << "Recreating ArangoSearch index: doing view " << view->name();
+      if (!arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(view.get())) {
+        continue;  // not an IResearchView
+      }
+
+      arangodb::velocypack::Builder builder;
+      arangodb::Result res;
+
+      builder.openObject();
+      res = view->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                          arangodb::LogicalDataSource::Serialize::Detailed));  // get JSON with end-user definition
+      builder.close();
+
+      if (!res.ok()) {
+        LOG_TOPIC("12123", ERR, Logger::BACKUP)
+            << "failure to generate persisted definition while recreating "
+               "ArangoSearch index after a restore";
+
+        success = false;
+        continue;
+      }
+
+      res = view->drop();  // drop view (including all links)
+
+      if (!res.ok()) {
+        LOG_TOPIC("54362", WARN, Logger::BACKUP)
+            << "failure to drop view while recreating ArangoSearch index "
+               "after a restore";
+
+        success = false;
+        continue;
+      }
+
+      // recreate view
+      res = arangodb::iresearch::IResearchView::factory().create(view, vocbase,
+                                                                 builder.slice());
+
+      if (!res.ok()) {
+        LOG_TOPIC("f8d19", ERR, Logger::BACKUP)
+            << "failure to recreate view while recreating ArangoSearch "
+               "index after a restore, error: "
+            << res.errorNumber() << " " << res.errorMessage()
+            << ", view definition: " << builder.slice().toString();
+
+        success = false;
+      }
+    }
+  } else {   // dbserver case
+    removeAllArangoSearchDataForDatabase(vocbase);
+  }
+
+  return success;
+}
+
+/// @brief returns true if and only if the current restart of the server
+/// is one from a hotbackup restore. This essentially tests existence of
+/// a file called "RESTORE" in the database directory.
+bool isRestoreStart() {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  std::string path = arangodb::basics::FileUtils::buildFilename(
+      engine->dataPath(), "RESTORE");
+  return arangodb::basics::FileUtils::exists(path);
+}
+
+/// @brief removes the restore start marker "RESTORE", such that the next
+/// startup will be a non-restore startup.
+void removeRestoreStartMarker() {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  std::string path = arangodb::basics::FileUtils::buildFilename(
+      engine->dataPath(), "RESTORE");
+  bool res = arangodb::basics::FileUtils::remove(path);
+  if (res == false) {
+    LOG_TOPIC("54feb", INFO, arangodb::Logger::BACKUP)
+      << "Could not remove RESTORE start marker.";
+  }
+}
+
+void recreateArangoSearchViewsAfterRestore() {
+  LOG_TOPIC("fdeda", INFO, Logger::BACKUP)
+    << "Recreating ArangoSearch indexes...";
+  DatabaseFeature::DATABASE->enumerateDatabases(
+    [](TRI_vocbase_t& vocbase) {
+      LOG_TOPIC("efdab", INFO, Logger::BACKUP)
+        << "Recreating ArangoSearch index for database " << vocbase.name();
+      bool res = recreateArangoSearchDataForDatabase(vocbase);
+      LOG_TOPIC("efdaa", INFO, Logger::BACKUP)
+        << "Done recreating ArangoSearch index for database " << vocbase.name()
+        << ", result was: " << (res ? "GOOD" : "BAD");
+    });
+  // And remove the RESTORE marker:
+  removeRestoreStartMarker();
+}
+
+void scheduleRecreateArangoSearchViewsAfterRestore() {
+  LOG_TOPIC("65272", INFO, Logger::BACKUP)
+    << "This is a restore start of a single server, we need to recreate "
+       "all ArangoSearch indexes in the background, scheduling...";
+  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                     recreateArangoSearchViewsAfterRestore);
+}
+
+}
+
 namespace arangodb {
 
 HotBackupFeature::HotBackupFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "HotBackup"), _backupEnabled(true) {
   setOptional(true);
+  startsAfter("Upgrade");
+  startsAfter("IResearchFeature");
   startsAfter("DatabasePhase");
   startsBefore("GeneralServer");
 }
@@ -67,7 +211,15 @@ void HotBackupFeature::prepare() {
   }
 }
 
-void HotBackupFeature::start() {}
+void HotBackupFeature::start() {
+  // Potentially recreate all ArangoSearch indexes if this is a single
+  // server and we are performing a RESTORE restart, in case of a dbserver
+  // this will only drop them and the maintenance will automatically recreate
+  // them:
+  if (::isRestoreStart()) {
+    ::scheduleRecreateArangoSearchViewsAfterRestore();
+  }
+}
 
 void HotBackupFeature::beginShutdown() {
   // Call off uploads / downloads?
@@ -330,5 +482,14 @@ bool HotBackupFeature::cancelled(std::string const& transferId) const {
   return false;
 }
 
-}  // namespaces
+void HotBackupFeature::removeAllArangoSearchData() {
+  if (!arangodb::ServerState::instance()->isSingleServer() &&
+      !arangodb::ServerState::instance()->isDBServer()) {
+    return;   // not applicable for other ServerState roles
+  }
+
+  DatabaseFeature::DATABASE->enumerateDatabases(::removeAllArangoSearchDataForDatabase);
+}
+
+}  // namespace arangodb
 

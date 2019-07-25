@@ -178,6 +178,7 @@ public:
   void registerLockCleaner(Scheduler::WorkHandle& handle) {
     _lockCleaner = handle;   // cancel any previous one
   }
+  static void removeAllArangoSearchData();
 };
 
 } // namespaces

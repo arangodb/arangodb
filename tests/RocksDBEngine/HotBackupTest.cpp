@@ -21,6 +21,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
 #include "Random/RandomGenerator.h"
@@ -115,7 +116,7 @@ TEST(RocksDBHotBackupOperationParameters, test_defaults) {
 
   EXPECT_TRUE(testee.isCreate());
   EXPECT_EQ(testee.getTimestamp(), "");
-  EXPECT_EQ(testee.getTimeout(), 10);
+  EXPECT_EQ(testee.getTimeout(), 10.0);
   EXPECT_EQ(testee.getUserString(), "");
 }
 
@@ -133,7 +134,7 @@ TEST(RocksDBHotBackupOperationParameters, test_simple) {
 
   EXPECT_TRUE(testee.valid());
   EXPECT_FALSE(testee.isCreate());
-  EXPECT_EQ(testee.getTimeout(), 12345);
+  EXPECT_EQ(testee.getTimeout(), 12345.0);
   EXPECT_EQ(testee.getDirectory(), "2017-08-01T09:00:00Z");
   EXPECT_EQ(testee.getUserString(), "first day");
 }
@@ -196,6 +197,9 @@ public:
   bool holdRocksDBTransactions() override {return _holdTransactionsReturn;};
   void releaseRocksDBTransactions() override {};
 
+  virtual bool performViewRemoval() const override {
+    return false;
+  }
 
   ~RocksDBHotBackupRestoreTest () {
     // let's be sure we delete the right stuff

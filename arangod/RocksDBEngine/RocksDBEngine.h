@@ -179,6 +179,9 @@ class RocksDBEngine final : public StorageEngine {
   int getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
 
   std::string versionFilename(TRI_voc_tick_t id) const override;
+  std::string dataPath() const override {
+    return _basePath + TRI_DIR_SEPARATOR_STR + "engine-rocksdb";
+  }
   std::string databasePath(TRI_vocbase_t const* /*vocbase*/) const override {
     return _basePath;
   }
