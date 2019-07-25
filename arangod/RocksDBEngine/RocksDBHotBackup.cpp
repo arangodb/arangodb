@@ -42,6 +42,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/HotBackupCommon.h"
+#include "StorageEngine/HotBackupFeature.h"
 #include "StorageEngine/TransactionManager.h"
 #include "Rest/Version.h"
 
@@ -827,7 +828,6 @@ void RocksDBHotBackupCreate::executeDelete() {
 RocksDBHotBackupRestore::RocksDBHotBackupRestore(VPackSlice body, VPackBuilder& report)
   : RocksDBHotBackup(body, report), _saveCurrent(false), _ignoreVersion(false) {}
 
-
 /// @brief convert the message payload into class variable options
 void RocksDBHotBackupRestore::parseParameters() {
 
@@ -972,10 +972,11 @@ void RocksDBHotBackupRestore::execute() {
       // Now remove all local ArangoSearch view data, since it will not be
       // valid after the restore. Note that on a single server there is no
       // automatism to recreate the data and on a dbserver, the Maintenance
-      // is stopped before we get here.
-      iresearch::IResearchFeature* arangoSearchFeature =
-        application_features::ApplicationServer::getFeature<iresearch::IResearchFeature>("ArangoSearch");
-      arangoSearchFeature->removeLocalArangoSearchData();
+      // is stopped before we get here. Note that in unittests we must not
+      // do this since the whole infrastructure is not up and running.
+      if (performViewRemoval()) {
+        HotBackupFeature::removeAllArangoSearchData();
+      }
       // On a single server, the view and link meta data is held in RocksDB
       // and some special startup method will initiate the creation of new
       // index data in ArangoSearch according to the meta data restored with
