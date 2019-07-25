@@ -85,7 +85,7 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
   size_t usedHeapSize = h.used_heap_size();
   size_t stillFree = heapSizeLimit - usedHeapSize;
 
-  if (now - v8g->_lastMaxTime > 10*1000) {
+  if (now - v8g->_lastMaxTime > 10) {
     v8g->_heapMax = heapSizeAtStart;
     v8g->_heapLow = heapSizeAtStop;
     v8g->_countOfTimes = 0;
@@ -94,7 +94,6 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
     v8g->_countOfTimes++;
     if (heapSizeAtStart > v8g->_heapMax) {
       v8g->_heapMax = heapSizeAtStart;
-      v8g->_lastMaxTime = now;
     }
     if (v8g->_heapLow > heapSizeAtStop) {
       v8g->_heapLow = heapSizeAtStop;
