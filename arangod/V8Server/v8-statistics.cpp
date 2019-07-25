@@ -94,7 +94,6 @@ static void FillDistribution(v8::Isolate* isolate, v8::Handle<v8::Object> list,
 ///
 /// - `uptime`: time since server start in seconds.
 ////////////////////////////////////////////////////////////////////////////////
-#include "Logger/Logger.h"
 
 static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
