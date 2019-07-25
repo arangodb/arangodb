@@ -130,7 +130,13 @@ TEST_F(CallbackGuardTest, test_move_operator_eq_explicit) {
 
 class RebootTrackerTest : public ::testing::Test {
  protected:
-  RebootTrackerTest() : scheduler(2, 64, 128, 1024 * 1024, 4096) {}
+  RebootTrackerTest()
+      : scheduler(2, 64, 128, 1024 * 1024, 4096), mockApplicationServer() {
+    // Suppress this INFO message:
+    // When trying to register callback '': The server PRMR-srv-A is not known. If this server joined the cluster in the last seconds, this can happen.
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
+                                    arangodb::LogLevel::WARN);
+  }
   using PeerState = RebootTracker::PeerState;
 
   SupervisedScheduler scheduler;
@@ -138,7 +144,7 @@ class RebootTrackerTest : public ::testing::Test {
                 "Use the correct scheduler in the tests");
   // ApplicationServer needs to be prepared in order for the scheduler to start
   // threads.
-  MockEmptyServer mockApplicationServer{};
+  MockEmptyServer mockApplicationServer;
 
   void SetUp() { scheduler.start(); }
   void TearDown() { scheduler.shutdown(); }
