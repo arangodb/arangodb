@@ -32,24 +32,10 @@
 using namespace arangodb;
 using namespace arangodb::cluster;
 
-/*
- * TODO
- *  Think about how to handle failures gracefully. Mainly:
- *   - alloc failures
- *   - Scheduler->queue failures
- *  Maybe lazy deletion helps?
- */
-
 RebootTracker::RebootTracker(RebootTracker::SchedulerPointer scheduler)
     : _scheduler(scheduler) {
   TRI_ASSERT(_scheduler != nullptr);
 }
-
-// TODO We should possibly get the complete list of peers from clusterinfo
-//   (rather than only the list of changed peers) in order to be able to retry
-//   regularly.
-//   In this case, we must move the bidirectional comparison from
-//   ClusterInfo.cpp here!
 
 void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> const& state) {
   MUTEX_LOCKER(guard, _mutex);
@@ -67,7 +53,6 @@ void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> con
       auto it = _callbacks.find(serverId);
       if (it != _callbacks.end()) {
         TRI_ASSERT(it->second.empty());
-        // TODO maybe do this in scheduleAllCallbacksFor? Maybe we can do it when we already have an iterator?
         _callbacks.erase(it);
       }
       _rebootIds.erase(curIt);
@@ -152,10 +137,11 @@ CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState const& peer
 
   auto const callbackId = getNextCallbackId();
 
-  // The guard constructor might, theoretically, throw. So we need to construct
-  // it before emplacing the callback.
-  auto callbackGuard =
-      CallbackGuard([this, callbackId]() { unregisterCallback(callbackId); });
+  // The guard constructor might, theoretically, throw, and so can constructing
+  // the std::function. So we need to construct it before emplacing the callback.
+  auto callbackGuard = CallbackGuard([this, peerState, callbackId]() {
+    unregisterCallback(peerState, callbackId);
+  });
 
   auto emplaceRv =
       callbackMap.emplace(callbackId, DescriptedCallback{std::move(callback),
@@ -255,7 +241,6 @@ void RebootTracker::queueCallbacks(
 
   auto cb = createSchedulerCallback(std::move(callbacks));
 
-  // TODO which lane should we use?
   if (!_scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(cb))) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUEUE_FULL,
@@ -264,33 +249,18 @@ void RebootTracker::queueCallbacks(
   }
 }
 
-// TODO Maybe we want to do this more efficiently, either by also passing
-//      serverId and rebootId here in addition to callbackId, or an iterator.
-//      Note that this happens once for every callback ever registered!
-void RebootTracker::unregisterCallback(RebootTracker::CallbackId callbackId) {
-  // Call cb for each iterator.
-  auto for_each_iter = [](auto begin, auto end, auto cb) {
-    auto it = begin;
-    decltype(it) next;
-    while (it != end) {
-      // save next iterator now, in case cb invalidates it.
-      next = std::next(it);
-      cb(it);
-      it = next;
-    }
-  };
-
-  for_each_iter(_callbacks.begin(), _callbacks.end(), [&](auto const cbIt) {
+void RebootTracker::unregisterCallback(PeerState const& peerState, RebootTracker::CallbackId callbackId) {
+  auto const cbIt = _callbacks.find(peerState.serverId());
+  if (cbIt != _callbacks.end()) {
     auto& rebootMap = cbIt->second;
-    for_each_iter(rebootMap.cbegin(), rebootMap.cend(), [&](auto const rbIt) {
-      auto& callbackSetPtr = rbIt->second;
-      TRI_ASSERT(callbackSetPtr != nullptr);
-      callbackSetPtr->erase(callbackId);
-      if (callbackSetPtr->empty()) {
-        rebootMap.erase(rbIt);
-      }
-    });
-  });
+    auto const rbIt = rebootMap.find(peerState.rebootId());
+    auto& callbackSetPtr = rbIt->second;
+    TRI_ASSERT(callbackSetPtr != nullptr);
+    callbackSetPtr->erase(callbackId);
+    if (callbackSetPtr->empty()) {
+      rebootMap.erase(rbIt);
+    }
+  }
 }
 
 RebootTracker::CallbackId RebootTracker::getNextCallbackId() noexcept {

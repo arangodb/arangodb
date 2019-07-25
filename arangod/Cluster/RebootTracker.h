@@ -45,14 +45,18 @@ class CallbackGuard {
   // Calls the callback given callback upon destruction.
   // Allows only move semantics and no copy semantics.
 
-  // Note that the move constructor of std::function is not noexcept until
-  // C++20. Thus we cannot mark the constructors here noexcept.
 
   CallbackGuard();
   // The passed callback should not throw exceptions, they will not be caught!
   explicit CallbackGuard(std::function<void(void)> callback);
   ~CallbackGuard();
+
+  // Note that the move constructor of std::function is not noexcept until
+  // C++20. Thus we cannot mark the constructors here noexcept.
+  // NOLINTNEXTLINE(hicpp-noexcept-move,performance-noexcept-move-constructor)
   CallbackGuard(CallbackGuard&& other);
+  // operator= additionally calls the _callback, and this can also throw.
+  // NOLINTNEXTLINE(hicpp-noexcept-move,performance-noexcept-move-constructor)
   CallbackGuard& operator=(CallbackGuard&&);
 
   CallbackGuard(CallbackGuard const&) = delete;
@@ -114,7 +118,7 @@ class RebootTracker {
 
   CallbackId getNextCallbackId() noexcept;
 
-  void unregisterCallback(CallbackId);
+  void unregisterCallback(PeerState const&, CallbackId);
 
   // bool notifyChange(PeerState const& peerState);
 
