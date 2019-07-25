@@ -184,7 +184,7 @@ the timestamp where the 10 seconds interval started
 how many times was the garbage collection run in these 10 seconds
 
 @RESTSTRUCT{heapMax,v8_isolate_memory,integer,required,}
-High whatermark of all garbage collection runs in 10 seconds
+High watermark of all garbage collection runs in 10 seconds
 
 @RESTSTRUCT{heapMin,v8_isolate_memory,integer,required,}
 Low whatermark of all garbage collection runs in these 10 seconds
