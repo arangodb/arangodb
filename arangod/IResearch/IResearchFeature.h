@@ -43,7 +43,7 @@ class ResourceMutex;  // forward declaration
 bool isFilter(arangodb::aql::Function const& func) noexcept;
 bool isScorer(arangodb::aql::Function const& func) noexcept;
 
-class IResearchFeature : public application_features::ApplicationFeature {
+class IResearchFeature final : public application_features::ApplicationFeature {
  public:
   explicit IResearchFeature(arangodb::application_features::ApplicationServer& server);
 
