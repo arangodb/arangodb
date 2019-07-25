@@ -434,7 +434,7 @@
           try {
             if (Number.parseInt(minReplicationFactor) > Number.parseInt(replicationFactor)) {
               // validation here, as our Joi integration misses some core features
-              arangoHelper.arangoError("New Collection", "Minimal replication factor is not allowed to be greater then replication factor");
+              arangoHelper.arangoError("New Collection", "Minimal replication factor is not allowed to be greater than replication factor");
               abort = true;
             }
           } catch (ignore) {
@@ -602,7 +602,7 @@
                 'new-min-replication-factor',
                 'Mininum replication factor',
                 '',
-                'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster.',
+                'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
                 '',
                 false,
                 [

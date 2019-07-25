@@ -2215,6 +2215,13 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(
   if (idx != nullptr) {
     // We already have this index.
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
+      // special handling for TTL indexes
+      // if there is exactly the same index present, we return it
+      if (idx->matchesDefinition(info)) {
+        created = false;
+        return idx;
+      }
+      // if there is another TTL index already, we make things abort here
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           "there can only be one ttl index per collection");
