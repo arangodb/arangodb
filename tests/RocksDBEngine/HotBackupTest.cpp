@@ -115,7 +115,7 @@ TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel][hotbackup]"
 
     CHECK(true == testee.isCreate());
     CHECK(testee.getTimestamp() == "");
-    CHECK(10 == testee.getTimeout());
+    CHECK(10.0 == testee.getTimeout());
     CHECK(testee.getUserString() == "");
   }
 
@@ -133,7 +133,7 @@ TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel][hotbackup]"
 
     CHECK(testee.valid());
     CHECK(false == testee.isCreate());
-    CHECK(12345 == testee.getTimeout());
+    CHECK(12345.0 == testee.getTimeout());
     CHECK(testee.getDirectory() == "2017-08-01T09:00:00Z");
     CHECK(testee.getUserString() == "first day");
   }
