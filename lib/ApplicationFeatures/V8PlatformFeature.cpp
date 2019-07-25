@@ -104,8 +104,8 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
     const char* whereFreed = (v8g->_inForcedCollect)? "Forced collect": "V8 internal collection";
     LOG_TOPIC("95f66", WARN, arangodb::Logger::FIXME)
         << "reached heap-size limit of #" << v8g->_id
-        << " interrupting V8 execution "
-        << "heap size limit " << heapSizeLimit
+        << " interrupting V8 execution ("
+        << "heap size limit " << headSizeLimit
         << ", used " << usedHeapSize
         << ") during " << whereFreed;
 
