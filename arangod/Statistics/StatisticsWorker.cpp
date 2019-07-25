@@ -939,7 +939,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
     builder.add("memory", VPackValue(VPackValueType::Array));
     for (auto memStatistic : memoryStatistics) {
       builder.add(VPackValue(VPackValueType::Object));
-      builder.add("contextId", VPackValue(static_cast<int32_t>(memStatistic.id)));
+      builder.add("contextId", VPackValue(memStatistic.id));
       builder.add("tMax", VPackValue(memStatistic.tMax));
       builder.add("countOfTimes", VPackValue(memStatistic.countOfTimes));
       builder.add("heapMax", VPackValue(memStatistic.heapMax));
