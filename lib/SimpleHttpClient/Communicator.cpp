@@ -21,18 +21,38 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <string.h>
+#include <algorithm>
+#include <atomic>
+#include <cstdint>
+#include <functional>
+#include <iosfwd>
+#include <new>
+#include <stdexcept>
+#include <type_traits>
+
+#include "Basics/operating-system.h"
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#include <curl/curl.h>
+
+#include <velocypack/Buffer.h>
+
 #include "Communicator.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/debugging.h"
 #include "Basics/socket-utils.h"
 #include "Basics/system-functions.h"
+#include "Logger/LogLevel.h"
 #include "Logger/Logger.h"
+#include "Rest/CommonDefines.h"
+#include "Rest/GeneralResponse.h"
 #include "Rest/HttpRequest.h"
-
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
+#include "Rest/HttpResponse.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

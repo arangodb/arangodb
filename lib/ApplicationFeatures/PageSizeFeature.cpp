@@ -21,10 +21,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PageSizeFeature.h"
-#include "Logger/Logger.h"
+
+#include "Basics/operating-system.h"
+
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb::basics;
 

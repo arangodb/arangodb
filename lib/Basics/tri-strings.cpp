@@ -21,13 +21,16 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cstring>
+
+#include <openssl/sha.h>
+
 #include "tri-strings.h"
+
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
 #include "Basics/memory.h"
-
-#include <openssl/sha.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief escapes UTF-8 range U+0000 to U+007F

@@ -20,7 +20,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <sys/types.h>
+#include <errno.h>
+#include <string.h>
 
 #include "PrivilegeFeature.h"
 
@@ -39,10 +40,15 @@
 #include <pwd.h>
 #endif
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/conversions.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::options;

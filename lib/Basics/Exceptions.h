@@ -25,9 +25,11 @@
 #ifndef ARANGODB_BASICS_EXCEPTIONS_H
 #define ARANGODB_BASICS_EXCEPTIONS_H 1
 
-#include <errno.h>
+#include <exception>
+#include <new>
+#include <string>
+#include <utility>
 
-#include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"

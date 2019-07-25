@@ -25,11 +25,12 @@
 #ifndef ARANGODB_BASICS_STRING_UTILS_H
 #define ARANGODB_BASICS_STRING_UTILS_H 1
 
-#include "Basics/Common.h"
-
+#include <stddef.h>
+#include <cstdint>
 #include <string>
-#include <utility>
 #include <vector>
+
+#include "Basics/Common.h"
 
 #if __cpp_lib_to_chars >= 201611
 // use non-throwing, non-allocating std::from_chars etc. from standard library

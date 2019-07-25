@@ -28,6 +28,7 @@
 #include "Basics/win-utils.h"
 #endif
 
+#include <stddef.h>
 #include <string>
 #include <vector>
 

@@ -22,20 +22,27 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <unistd.h>
+#include <chrono>
+#include <cstring>
+#include <iosfwd>
+#include <thread>
+#include <type_traits>
+
 #include "Logger.h"
 
-#include <cstring>
-#include "Basics/ArangoGlobalContext.h"
 #include "Basics/Common.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
+#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/debugging.h"
-#include "Basics/files.h"
+#include "Basics/operating-system.h"
+#include "Basics/voc-errors.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
+#include "Logger/LogMacros.h"
 #include "Logger/LogThread.h"
 
 using namespace arangodb;

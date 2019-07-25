@@ -21,28 +21,39 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SslClientConnection.h"
+#include <errno.h>
+#include <string.h>
+#include <string>
 
-#include <openssl/ssl.h>
-#include <openssl/opensslv.h>
-
-#ifndef OPENSSL_VERSION_NUMBER
-#error expecting OPENSSL_VERSION_NUMBER to be defined
-#endif
+#include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_WINSOCK2_H
 #include <WS2tcpip.h>
 #include <WinSock2.h>
 #endif
 
-#include <sys/types.h>
+#include <openssl/opensslv.h>
+#include <openssl/ssl.h>
+#ifndef OPENSSL_VERSION_NUMBER
+#error expecting OPENSSL_VERSION_NUMBER to be defined
+#endif
 
 #include <openssl/err.h>
-#include <openssl/ssl.h>
+#include <openssl/opensslconf.h>
+#include <openssl/ssl3.h>
+#include <openssl/x509.h>
+
+#include "SslClientConnection.h"
+
 #include "Basics/Exceptions.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/debugging.h"
+#include "Basics/error.h"
 #include "Basics/socket-utils.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Ssl/ssl-helper.h"
 
 #undef TRACE_SSL_CONNECTIONS

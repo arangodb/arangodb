@@ -21,7 +21,15 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <errno.h>
+#include <fcntl.h>
+#include <string.h>
 #include <algorithm>
+#include <cstdint>
+#include <cstdio>
+#include <functional>
+#include <memory>
+#include <utility>
 
 #include "FileUtils.h"
 
@@ -39,19 +47,16 @@
 #endif
 #include <sys/stat.h>
 
-#include <fcntl.h>
-#include <unicode/unistr.h>
-
-#include <functional>
-
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
-#include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 namespace {
 std::function<bool(std::string const&)> const passAllFilter =

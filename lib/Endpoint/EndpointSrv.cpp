@@ -31,14 +31,14 @@
 #define BIND_4_COMPAT 1  // LINUX
 #define BIND_8_COMPAT 1  // MACOSX
 
-#include <arpa/inet.h>
 #include <arpa/nameser.h>
 #include <netinet/in.h>
 #include <resolv.h>
 
 #include "Basics/StringUtils.h"
-#include "Endpoint/EndpointIp.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

@@ -24,16 +24,21 @@
 #ifndef ARANGODB_V8_V8__GLOBALS_H
 #define ARANGODB_V8_V8__GLOBALS_H 1
 
-#include "Basics/Common.h"
+#include <string.h>
+#include <cstdint>
+#include <memory>
+#include <unordered_map>
+#include <utility>
+
+#include <v8.h>
+
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "Basics/Common.h"
+#include "Basics/operating-system.h"
 #include "V8/JavaScriptSecurityContext.h"
 
+struct TRI_v8_global_t;
 struct TRI_vocbase_t;
-
-namespace arangodb {
-
-class LogicalDataSource;  // forward declaration
-}
 
 /// @brief shortcut for fetching the isolate from the thread context
 #define ISOLATE v8::Isolate* isolate = v8::Isolate::GetCurrent()

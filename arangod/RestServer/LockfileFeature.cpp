@@ -26,7 +26,9 @@
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RestServer/DatabasePathFeature.h"
 
 using namespace arangodb::basics;

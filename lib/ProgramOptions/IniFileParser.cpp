@@ -20,16 +20,24 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stddef.h>
+#include <map>
+#include <sstream>
+#include <vector>
+
+#include <unicode/unistr.h>
+
+#include "IniFileParser.h"
+
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-
-#include <sstream>
-
-#include <unicode/unistr.h>
-#include "ProgramOptions/IniFileParser.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/ProgramOptions.h"
 
 namespace arangodb {
 namespace options {

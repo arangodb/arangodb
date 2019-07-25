@@ -21,7 +21,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stdio.h>
 #include <cstdarg>
+#include <type_traits>
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <cstring>
@@ -31,7 +33,6 @@
 
 #include "Basics/debugging.h"
 #include "Basics/error.h"
-#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

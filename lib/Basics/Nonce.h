@@ -25,6 +25,8 @@
 #ifndef ARANGODB_BASICS_NONCE_H
 #define ARANGODB_BASICS_NONCE_H 1
 
+#include <stddef.h>
+#include <cstdint>
 #include <string>
 #include <vector>
 

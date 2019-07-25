@@ -25,15 +25,17 @@
 #define ARANGODB_BASICS_ATTRIBUTE_NAME_PARSER_H 1
 
 #include <cstdint>
+#include <functional>
 #include <iosfwd>
+#include <string>
+#include <system_error>
+#include <utility>
 #include <vector>
 
-#include "Basics/Common.h"
-#include "Basics/fasthash.h"
-
-#include <velocypack/StringRef.h>
-
 namespace arangodb {
+namespace velocypack {
+class StringRef;
+}
 
 namespace basics {
 

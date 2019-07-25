@@ -21,6 +21,30 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <fcntl.h>
+#include <string.h>
+#include <sys/types.h>
+#include <algorithm>
+#include <cstdint>
+#include <memory>
+#include <set>
+
+#include <velocypack/AttributeTranslator.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Options.h>
+#include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
+#include <velocypack/velocypack-aliases.h>
+#include <velocypack/velocypack-common.h>
+
+#include "Basics/operating-system.h"
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include "VelocyPackHelper.h"
 
 #include "Basics/Exceptions.h"
@@ -31,29 +55,13 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VPackStringBufferAdapter.h"
-#include "Basics/conversions.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
-#include "Basics/hashes.h"
+#include "Basics/memory.h"
 #include "Basics/system-compiler.h"
-#include "Basics/tri-strings.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-
-#include <velocypack/AttributeTranslator.h>
-#include <velocypack/Collection.h>
-#include <velocypack/Dumper.h>
-#include <velocypack/Options.h>
-#include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
-#include <velocypack/velocypack-aliases.h>
-#include <velocypack/velocypack-common.h>
-
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
+#include "Logger/LoggerStream.h"
 
 extern "C" {
 unsigned long long XXH64(const void* input, size_t length, unsigned long long seed);

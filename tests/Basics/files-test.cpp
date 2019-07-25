@@ -29,6 +29,7 @@
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/operating-system.h"
 #include "Basics/system-functions.h"
 #include "Random/RandomGenerator.h"
 

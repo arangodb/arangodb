@@ -26,7 +26,9 @@
 
 #include "Basics/Common.h"
 #include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 namespace arangodb {
 

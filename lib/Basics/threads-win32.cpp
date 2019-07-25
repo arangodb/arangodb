@@ -24,7 +24,9 @@
 #include "threads.h"
 
 #include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief data block for thread starter

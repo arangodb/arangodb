@@ -21,15 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GeneralClientConnection.h"
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CommunicationPhase.h"
-#include "Basics/debugging.h"
-#include "Basics/socket-utils.h"
-#include "Basics/system-functions.h"
-#include "Logger/Logger.h"
-#include "SimpleHttpClient/ClientConnection.h"
-#include "SimpleHttpClient/SslClientConnection.h"
+#include <errno.h>
+#include <limits.h>
+#include <string.h>
+
+#include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_POLL_H
 #include <poll.h>
@@ -40,7 +36,21 @@
 #include <WinSock2.h>
 #endif
 
-#include <sys/types.h>
+#include "GeneralClientConnection.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationPhase.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Basics/socket-utils.h"
+#include "Basics/system-functions.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "SimpleHttpClient/ClientConnection.h"
+#include "SimpleHttpClient/SslClientConnection.h"
 
 #ifdef _WIN32
 #define STR_ERROR()                                                  \

@@ -24,19 +24,33 @@
 #ifndef ARANGODB_BASICS_VELOCY_PACK_HELPER_H
 #define ARANGODB_BASICS_VELOCY_PACK_HELPER_H 1
 
-#include "Basics/Common.h"
-#include "Basics/Exceptions.h"
-#include "Basics/debugging.h"
-#include "Logger/Logger.h"
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <string>
+#include <system_error>
+#include <type_traits>
 
+#include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
+#include <velocypack/ValueType.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/system-compiler.h"
+
+#include "Basics/Common.h"
+#include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
+#include "Basics/voc-errors.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+
 namespace arangodb {
+class LoggerStream;
 namespace velocypack {
 struct AttributeExcludeHandler;
 class AttributeTranslator;

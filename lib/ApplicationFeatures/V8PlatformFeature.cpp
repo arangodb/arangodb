@@ -20,14 +20,26 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/V8PlatformFeature.h"
+#include <stdlib.h>
+#include <string.h>
+#include <limits>
+#include <type_traits>
+#include <utility>
 
+#include <libplatform/libplatform.h>
+
+#include "V8PlatformFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

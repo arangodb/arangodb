@@ -23,7 +23,9 @@
 #include "RocksDBFormat.h"
 
 #include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 namespace {
 // little endian

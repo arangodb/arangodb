@@ -22,18 +22,23 @@
 
 #include "ApplicationFeatures/ConfigFeature.h"
 
-#include <iostream>
+#include <stdlib.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/directories.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/IniFileParser.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "ProgramOptions/Translator.h"
 
 using namespace arangodb::basics;

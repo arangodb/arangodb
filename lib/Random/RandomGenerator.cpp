@@ -21,30 +21,35 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RandomGenerator.h"
-
-#include <chrono>
-#include <random>
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <errno.h>
 #include <fcntl.h>
-
+#include <stdint.h>
+#include <sys/types.h>
+#include <chrono>
 #include <cstring>
+#include <random>
+#include <string>
+#include <thread>
 
 #ifdef _WIN32
 #include <Wincrypt.h>
 #endif
 
+#include "Basics/operating-system.h"
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#include "RandomGenerator.h"
+
 #include "Basics/Exceptions.h"
-#include "Basics/HybridLogicalClock.h"
-#include "Basics/Thread.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
-#include "Basics/hashes.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

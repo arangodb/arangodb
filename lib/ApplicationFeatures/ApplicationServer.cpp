@@ -20,21 +20,38 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stdlib.h>
+#include <chrono>
+#include <exception>
+#include <iostream>
+#include <new>
+#include <unordered_set>
+#include <utility>
+
+#include <velocypack/Options.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "ApplicationServer.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
-#include "Basics/process-utils.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ArgumentParser.h"
-
-#include <iostream>
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;

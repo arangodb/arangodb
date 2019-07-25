@@ -20,7 +20,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LoggerFeature.h"
+#include <unordered_set>
+
+#include "Basics/operating-system.h"
 
 #ifdef ARANGODB_HAVE_GETGRGID
 #include <grp.h>
@@ -30,20 +32,27 @@
 #include <unistd.h>
 #endif
 
+#if _WIN32
+#include <iostream>
+#endif
+
+#include "LoggerFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/conversions.h"
 #include "Basics/error.h"
+#include "Basics/voc-errors.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
+#include "Logger/LogMacros.h"
 #include "Logger/LogTimeFormat.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
-
-#if _WIN32
-#include <iostream>
-#endif
 
 using namespace arangodb::basics;
 using namespace arangodb::options;

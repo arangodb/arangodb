@@ -56,6 +56,9 @@
 
 #include "3rdParty/iresearch/tests/tests_config.hpp"
 
+#include <libplatform/libplatform.h>
+#include <v8.h>
+
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 

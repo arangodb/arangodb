@@ -24,9 +24,9 @@
 #ifndef ARANGOD_VOC_BASE_VOCBASE_H
 #define ARANGOD_VOC_BASE_VOCBASE_H 1
 
-#include <bits/stdint-uintn.h>
 #include <stddef.h>
 #include <atomic>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>

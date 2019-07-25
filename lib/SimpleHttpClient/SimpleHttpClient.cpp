@@ -23,24 +23,33 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SimpleHttpClient.h"
+#include <chrono>
+#include <exception>
+#include <thread>
+#include <utility>
 
-#include "ApplicationFeatures/CommunicationPhase.h"
-#include "Basics/ScopeGuard.h"
-#include "Basics/StringUtils.h"
-#include "Basics/system-functions.h"
-#include "Logger/Logger.h"
-#include "Rest/HttpResponse.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
+#include <boost/algorithm/string/predicate.hpp>
 
-#include <boost/algorithm/string.hpp>
-
+#include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <chrono>
-#include <thread>
+#include "SimpleHttpClient.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationPhase.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
+#include "Basics/system-functions.h"
+#include "Endpoint/Endpoint.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "Rest/GeneralResponse.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

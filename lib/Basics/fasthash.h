@@ -29,8 +29,6 @@
 #include <cstdint>
 #include <cstdlib>
 
-#include "Basics/Common.h"
-
 static constexpr uint64_t fasthash_m = 0x880355f21e6d1965ULL;
 
 // Compression function for Merkle-Damgard construction.

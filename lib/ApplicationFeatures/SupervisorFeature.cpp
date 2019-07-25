@@ -20,18 +20,29 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <cstdint>
+
 #include "SupervisorFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
+#include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Logger/LogAppender.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 #ifdef TRI_HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
@@ -45,7 +56,6 @@
 #include <signal.h>
 #endif
 
-#include <sys/types.h>
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif

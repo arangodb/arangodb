@@ -23,7 +23,9 @@
 #ifndef ARANGODB_BASICS_RESULT_H
 #define ARANGODB_BASICS_RESULT_H 1
 
+#include <iosfwd>
 #include <string>
+#include <utility>
 
 namespace arangodb {
 class Result final {

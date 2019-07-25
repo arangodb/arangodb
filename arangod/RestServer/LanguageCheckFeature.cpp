@@ -28,7 +28,9 @@
 #include "Basics/application-exit.h"
 #include "Basics/directories.h"
 #include "Basics/files.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RestServer/DatabasePathFeature.h"
 
 namespace {

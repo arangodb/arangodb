@@ -23,7 +23,9 @@
 #include "GeneralCommTask.h"
 
 #include "GeneralServer/GeneralServer.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;

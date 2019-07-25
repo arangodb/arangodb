@@ -23,7 +23,9 @@
 #include "StatisticsFeature.h"
 
 #include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/SystemDatabaseFeature.h"

@@ -23,7 +23,9 @@
 #include "RocksDBSyncThread.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/RocksDBUtils.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 
 #include <rocksdb/status.h>

@@ -25,7 +25,11 @@
 #ifndef ARANGODB_BASICS_DEBUGGING_H
 #define ARANGODB_BASICS_DEBUGGING_H 1
 
+#include <stdlib.h>
 #include <ostream>
+#include <string>
+#include <type_traits>
+#include <utility>
 
 #include "Basics/system-compiler.h"
 

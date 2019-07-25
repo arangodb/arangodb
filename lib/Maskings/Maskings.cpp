@@ -20,18 +20,29 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Maskings.h"
-
+#include <stdint.h>
 #include <iostream>
 
-#include "Basics/FileUtils.h"
-#include "Basics/debugging.h"
-#include "Logger/Logger.h"
-#include "Random/RandomGenerator.h"
-
+#include <velocypack/Builder.h>
+#include <velocypack/Exception.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
+#include <velocypack/velocypack-common.h>
+
+#include "Maskings.h"
+
+#include "Basics/FileUtils.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "Maskings/CollectionSelection.h"
+#include "Maskings/MaskingFunction.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::maskings;

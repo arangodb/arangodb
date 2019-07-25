@@ -25,8 +25,6 @@
 
 #include <string>
 
-#include "Basics/Common.h"
-
 namespace arangodb {
 class StaticStrings {
   StaticStrings() = delete;

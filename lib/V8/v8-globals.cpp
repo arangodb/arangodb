@@ -21,6 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <tuple>
+
 #include "v8-globals.h"
 
 #include "Basics/debugging.h"

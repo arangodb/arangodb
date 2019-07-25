@@ -25,7 +25,9 @@
 #ifndef ARANGODB_BASICS_MUTEX_H
 #define ARANGODB_BASICS_MUTEX_H 1
 
-#include "Basics/Common.h"
+#include <pthread.h>
+
+#include "Basics/operating-system.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #define ARANGO_ENABLE_DEADLOCK_DETECTION

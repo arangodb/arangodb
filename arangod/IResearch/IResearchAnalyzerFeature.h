@@ -24,21 +24,37 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_ANALYZER_FEATURE_H
 #define ARANGOD_IRESEARCH__IRESEARCH_ANALYZER_FEATURE_H 1
 
-#include "analysis/analyzer.hpp"
-#include "utils/async_utils.hpp"
-#include "utils/hash_utils.hpp"
-#include "utils/object_pool.hpp"
+#include <chrono>
+#include <functional>
+#include <memory>
+#include <ostream>
+#include <string>
+#include <unordered_map>
+#include <utility>
+
+#include <analysis/analyzer.hpp>
+#include <analysis/analyzers.hpp>
+#include <utils/async_utils.hpp>
+#include <utils/attributes.hpp>
+#include <utils/hash_utils.hpp>
+#include <utils/memory.hpp>
+#include <utils/noncopyable.hpp>
+#include <utils/object_pool.hpp>
+#include <utils/string.hpp>
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Auth/Common.h"
-#include "VocBase/voc-types.h"
+#include "Basics/Result.h"
 
 namespace iresearch {
 namespace text_format {
-
+class type_id;
 const type_id& vpack_t();
 static const auto& vpack = vpack_t();
-
 }
 }
 
@@ -48,11 +64,9 @@ static const auto& vpack = vpack_t();
 struct TRI_vocbase_t; // forward declaration
 
 namespace arangodb {
-namespace transaction {
-
-class Methods;  // forward declaration
-
-}  // namespace transaction
+namespace application_features {
+class ApplicationServer;
+}
 }  // namespace arangodb
 
 namespace arangodb {
@@ -78,7 +92,7 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
     VPackSlice properties() const noexcept { return _properties; }
     irs::string_ref const& type() const noexcept { return _type; }
 
-    void toVelocyPack(VPackBuilder& builder, bool forPersistence = false);
+    void toVelocyPack(arangodb::velocypack::Builder& builder, bool forPersistence = false);
 
    private:
     friend class IResearchAnalyzerFeature; // required for calling AnalyzerPool::init(...) and AnalyzerPool::setKey(...)

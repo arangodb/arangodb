@@ -25,12 +25,10 @@
 #ifndef ARANGODB_BASICS_READ_WRITE_LOCK_H
 #define ARANGODB_BASICS_READ_WRITE_LOCK_H 1
 
+#include <bits/stdint-uintn.h>
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
-#include <thread>
-
-#include "Basics/Common.h"
 
 namespace arangodb {
 namespace basics {

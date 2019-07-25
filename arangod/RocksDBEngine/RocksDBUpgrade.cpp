@@ -23,7 +23,9 @@
 #include "RocksDBUpgrade.h"
 
 #include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBFormat.h"

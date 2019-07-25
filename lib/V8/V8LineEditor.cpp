@@ -21,16 +21,26 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stddef.h>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+#include <vector>
+
 #include "V8LineEditor.h"
 
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
+#include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Utilities/Completer.h"
 #include "Utilities/ShellBase.h"
+#include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 
 #ifdef TRI_HAVE_SIGNAL_H

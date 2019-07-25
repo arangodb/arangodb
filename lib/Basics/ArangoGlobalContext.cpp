@@ -20,11 +20,15 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <features.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "ArangoGlobalContext.h"
 
+#include "Basics/debugging.h"
 #include "Basics/operating-system.h"
 
-#include <sys/types.h>
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -45,7 +49,9 @@
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Logger/LogAppender.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Rest/InitializeRest.h"
 
 #ifdef _WIN32

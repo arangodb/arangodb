@@ -24,8 +24,10 @@
 #ifndef ARANGODB_LOGGER_LOG_TOPIC_H
 #define ARANGODB_LOGGER_LOG_TOPIC_H 1
 
+#include <stddef.h>
 #include <atomic>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "Logger/LogLevel.h"

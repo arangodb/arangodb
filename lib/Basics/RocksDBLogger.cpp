@@ -21,10 +21,15 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stdio.h>
+#include <string.h>
+
 #include "RocksDBLogger.h"
 
 #include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #include <velocypack/StringRef.h>
 

@@ -21,37 +21,27 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "files.h"
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <algorithm>
+#include <chrono>
+#include <memory>
+#include <thread>
+#include <type_traits>
+#include <utility>
 
 #ifdef _WIN32
 #include <Shlwapi.h>
 #include <tchar.h>
-#include <chrono>
-#include <thread>
 #endif
 
-#include <algorithm>
-#include <limits.h>
-
-#include "Basics/Exceptions.h"
-#include "Basics/FileUtils.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/ReadWriteLock.h"
-#include "Basics/ScopeGuard.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
-#include "Basics/Utf8Helper.h"
-#include "Basics/WriteLocker.h"
-#include "Basics/application-exit.h"
-#include "Basics/conversions.h"
-#include "Basics/debugging.h"
-#include "Basics/directories.h"
-#include "Basics/error.h"
-#include "Basics/hashes.h"
-#include "Basics/tri-strings.h"
-#include "Logger/Logger.h"
-#include "Random/RandomGenerator.h"
+#include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_DIRENT_H
 #include <dirent.h>
@@ -65,12 +55,33 @@
 #include <sys/time.h>
 #endif
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+
+#include "files.h"
+
+#include "Basics/FileUtils.h"
+#include "Basics/ReadWriteLock.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
+#include "Basics/Thread.h"
+#include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
+#include "Basics/conversions.h"
+#include "Basics/debugging.h"
+#include "Basics/directories.h"
+#include "Basics/error.h"
+#include "Basics/hashes.h"
+#include "Basics/memory.h"
+#include "Basics/threads.h"
+#include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb::basics;
 using namespace arangodb;
