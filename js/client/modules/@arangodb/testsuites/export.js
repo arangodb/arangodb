@@ -173,6 +173,9 @@ function exportTest (options) {
   if (!skipEncrypt) {
     print(CYAN + Date() + ': Export data (json encrypt)' + RESET);
     args['encryption.keyfile'] = keyfile;
+    if (fs.exists(fs.join(tmpPath, 'ENCRYPTION'))) {
+      fs.remove(fs.join(tmpPath, 'ENCRYPTION'));
+    }
     results.exportJsonEncrypt = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
     results.exportJsonEncrypt.failed = results.exportJsonGz.status ? 0 : 1;
 
@@ -192,6 +195,9 @@ function exportTest (options) {
       };
     }
     delete args['encryption.keyfile'];
+    if (fs.exists(fs.join(tmpPath, 'ENCRYPTION'))) {
+      fs.remove(fs.join(tmpPath, 'ENCRYPTION'));
+    }
   }
 
   print(CYAN + Date() + ': Export data (jsonl)' + RESET);
