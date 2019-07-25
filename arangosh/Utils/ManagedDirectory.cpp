@@ -626,7 +626,7 @@ ssize_t ManagedDirectory::File::offset() const {
   if (isGzip()) {
     fileBytesRead = gzoffset(_gzFile);
   } else {
-    fileBytesRead = TRI_LSEEK(_fd, 0L, SEEK_CUR);
+    fileBytesRead = (ssize_t)TRI_LSEEK(_fd, 0L, SEEK_CUR);
   } // else
 
   return fileBytesRead;
