@@ -1267,7 +1267,7 @@ void V8DealerFeature::shutdownContexts() {
 
     // wait until garbage collector thread is done
     while (!_gcFinished) {
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     LOG_TOPIC("ea409", DEBUG, arangodb::Logger::V8)

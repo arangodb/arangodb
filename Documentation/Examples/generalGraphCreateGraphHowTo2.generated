@@ -1,6 +1,0 @@
-arangosh&gt; graph._addVertexCollection(<span class="hljs-string">"shop"</span>);
-arangosh&gt; graph._addVertexCollection(<span class="hljs-string">"customer"</span>);
-arangosh&gt; graph._addVertexCollection(<span class="hljs-string">"pet"</span>);
-arangosh&gt; graph;
-{[Graph] 
-}

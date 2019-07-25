@@ -190,7 +190,9 @@ class IRESEARCH_API index_writer:
     documents_context(documents_context&& other) NOEXCEPT
       : segment_(std::move(other.segment_)),
         segment_use_count_(std::move(other.segment_use_count_)),
+        tick_(other.tick_),
         writer_(other.writer_) {
+      other.tick_ = 0;
       other.segment_use_count_ = 0;
     }
 

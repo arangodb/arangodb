@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global arango, assertEqual, assertTrue, assertEqual, assertNotEqual, fail */
+/*global arango, assertEqual, assertTrue, assertFalse, assertEqual, assertNotEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test ttl configuration
@@ -215,7 +215,7 @@ function TtlSuite () {
       }
     },
     
-    testCreateIndexMultipleTimes : function () {
+    testCreateIndexMultipleTimesDifferentField : function () {
       let c = db._create(cn, { numberOfShards: 2 });
       c.ensureIndex({ type: "ttl", fields: ["test"], expireAfter: 10 });
       try {
@@ -224,6 +224,27 @@ function TtlSuite () {
       } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
+    },
+    
+    testCreateIndexMultipleTimesDifferentExpire : function () {
+      let c = db._create(cn, { numberOfShards: 2 });
+      c.ensureIndex({ type: "ttl", fields: ["test"], expireAfter: 10 });
+      try {
+        c.ensureIndex({ type: "ttl", fields: ["test"], expireAfter: 11 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+    
+    testCreateIndexMultipleTimesSameAttributes : function () {
+      let c = db._create(cn, { numberOfShards: 2 });
+      let idx1 = c.ensureIndex({ type: "ttl", fields: ["test"], expireAfter: 10 });
+      let idx2 = c.ensureIndex({ type: "ttl", fields: ["test"], expireAfter: 10 });
+
+      assertTrue(idx1.isNewlyCreated);
+      assertFalse(idx2.isNewlyCreated);
+      assertEqual(idx1.id, idx2.id);
     },
     
     testCreateIndexOnMultipleAttributes : function () {
