@@ -171,7 +171,7 @@ the total number of V8 contexts we may spawn as configured by --javascript.v8-co
 
 
 @RESTSTRUCT{memory,v8_context_struct,array,required,v8_isolate_memory}
-a list of V8 memory / garbage collection whatermarks; Refreshed on every garbage collection run;
+a list of V8 memory / garbage collection watermarks; Refreshed on every garbage collection run;
 Preserves min/max memory used at that time for 10 seconds
 
 @RESTSTRUCT{contextId,v8_isolate_memory,integer,required,}
