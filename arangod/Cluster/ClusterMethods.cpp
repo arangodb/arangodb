@@ -3205,7 +3205,7 @@ arangodb::Result hotBackupList(
     }
 
     if (resSlice.get("error").getBoolean()) {
-      return arangodb::Result(resSlice.get("errorNum").getNumber<uint64_t>(),
+      return arangodb::Result(static_cast<int>(resSlice.get("errorNum").getNumber<uint64_t>()),
                               resSlice.get("errorMessage").copyString());
     }
 
@@ -3783,7 +3783,7 @@ arangodb::Result lockDBServerTransactions(
         TRI_ERROR_LOCAL_LOCK_FAILED,
         std::string("invalid response from ") + req.destination
         + " when trying to get lockId for hot backup " + backupId + ": "
-        + slc.toJson());
+        + slc.toJson() + ", msg: " + e.what());
     }
 
     lockedServers.push_back(req.destination.substr(strlen("server:"), std::string::npos));
@@ -3975,7 +3975,7 @@ arangodb::Result removeLocalBackups(
         + ":" + resSlice.get("errorMessage").copyString() + " (" + std::to_string(errorNum) + ")";
 
       LOG_TOPIC("9b94f", ERR, Logger::BACKUP) << errorMsg;
-      return arangodb::Result(errorNum, errorMsg);
+      return arangodb::Result(static_cast<int>(errorNum), errorMsg);
     }
   }
 
