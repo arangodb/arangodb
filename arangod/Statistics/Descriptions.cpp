@@ -373,7 +373,7 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
         b.add(VPackValue(VPackValueType::Object));
         b.add("contextId", VPackValue(memStatistic.id));
         b.add("tMax", VPackValue(memStatistic.tMax));
-        b.add("countOfTimes", VPackValue(static_cast<int32_t>(memStatistic.countOfTimes)));
+        b.add("countOfTimes", VPackValue(memStatistic.countOfTimes));
         b.add("heapMax", VPackValue(memStatistic.heapMax));
         b.add("heapMin", VPackValue(memStatistic.heapMin));
         b.close();
