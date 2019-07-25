@@ -113,7 +113,7 @@ public:
   VPackBuilder const& result() const { return _result;}
 
   std::string getRocksDBPath();
-  unsigned getTimeout() const {return _timeoutSeconds;}
+  double getTimeout() const {return _timeoutSeconds;}
 
   /// @brief Build "/user/database/path/backups"
   std::string rebuildPathPrefix();
