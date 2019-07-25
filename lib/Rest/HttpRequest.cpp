@@ -550,7 +550,9 @@ void HttpRequest::setHeaderV2(std::string key, std::string value) {
   } else if (key == StaticStrings::AcceptEncoding) {
     // This can be much more elaborated as the can specify weights on encodings
     // However, for now just toggle on deflate if deflate is requested
-    if (value.find(StaticStrings::EncodingDeflate) != std::string::npos) {
+    if (StaticStrings::EncodingDeflate == value) {
+      // FXIME: cannot use substring search, Java driver chokes on deflated response
+      //if (value.find(StaticStrings::EncodingDeflate) != std::string::npos) {
       _acceptEncoding = EncodingType::DEFLATE;
     }
   }
@@ -906,7 +908,7 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
     validationOptions.disallowExternals = true;
     validationOptions.disallowCustom = true;
     VPackValidator validator(&validationOptions);
-    validator.validate(_body.data(), _body.length());
+    validator.validate(_body.data(), _body.length()); // throws on error
     return VPackSlice(reinterpret_cast<uint8_t const*>(_body.data()));
   }
   return VPackSlice::noneSlice();

@@ -98,6 +98,26 @@ arangodb::velocypack::Builder& addStringRef( // add a value
 );
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps bytes ref with VPackValuePair
+////////////////////////////////////////////////////////////////////////////////
+inline arangodb::velocypack::ValuePair toValuePair(irs::bytes_ref const& ref) {
+  TRI_ASSERT(!ref.null()); // consumers of ValuePair usually use memcpy(...) which cannot handle nullptr
+  return arangodb::velocypack::ValuePair( // value pair
+    ref.c_str(), ref.size(), arangodb::velocypack::ValueType::Binary // args
+  );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps string ref with VPackValuePair
+////////////////////////////////////////////////////////////////////////////////
+inline arangodb::velocypack::ValuePair toValuePair(irs::string_ref const& ref) {
+  TRI_ASSERT(!ref.null()); // consumers of ValuePair usually use memcpy(...) which cannot handle nullptr
+  return arangodb::velocypack::ValuePair( // value pair
+    ref.c_str(), ref.size(), arangodb::velocypack::ValueType::String // args
+  );
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add a string_ref value to the 'builder' (for JSON objects)
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::velocypack::Builder& addStringRef( // add a value

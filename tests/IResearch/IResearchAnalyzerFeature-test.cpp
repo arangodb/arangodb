@@ -2697,7 +2697,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     auto const databases = VPackParser::fromJson(
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbfeature->loadDatabases(databases->slice())));
+    EXPECT_EQ(TRI_ERROR_NO_ERROR, dbfeature->loadDatabases(databases->slice()));
     systemdb->start();  // get system database from DatabaseFeature
   }
 
@@ -2711,21 +2711,22 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     }
 
     collection = vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
-    EXPECT_TRUE((nullptr == collection));
+    EXPECT_EQ(nullptr, collection);
   }
 
   arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName);
 
   // test function registration
-  {
-    arangodb::iresearch::IResearchAnalyzerFeature feature(server);
 
-    // AqlFunctionFeature::byName(..) throws exception instead of returning a nullptr
-    EXPECT_ANY_THROW((functions->byName("TOKENS")));
-
-    feature.start();  // load AQL functions
-    EXPECT_TRUE((nullptr != functions->byName("TOKENS")));
-  }
+  // AqlFunctionFeature::byName(..) throws exception instead of returning a nullptr
+  EXPECT_ANY_THROW((functions->byName("TOKENS")));
+  analyzers->prepare();
+  analyzers->start();  // load AQL functions
+  // if failed to register - other tests makes no sense
+  auto* function = functions->byName("TOKENS");
+  ASSERT_NE(nullptr, function);
+  auto& impl = function->implementation;
+  ASSERT_NE(nullptr, impl);
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   analyzers->start();  // load AQL functions
@@ -2738,11 +2739,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
 
   // test tokenization
   {
-    auto* function = functions->byName("TOKENS");
-    EXPECT_TRUE((nullptr != functions->byName("TOKENS")));
-    auto& impl = function->implementation;
-    EXPECT_TRUE((false == !impl));
-
     std::string analyzer(arangodb::StaticStrings::SystemDatabase +
                          "::test_analyzer");
     irs::string_ref data("abcdefghijklmnopqrstuvwxyz");
@@ -2750,72 +2746,471 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     args->emplace_back(data.c_str(), data.size());
     args->emplace_back(analyzer.c_str(), analyzer.size());
     AqlValueWrapper result(impl(nullptr, nullptr, *args));
-    EXPECT_TRUE((result->isArray()));
-    EXPECT_TRUE((26 == result->length()));
+    EXPECT_TRUE(result->isArray());
+    EXPECT_EQ(26, result->length());
 
     for (int64_t i = 0; i < 26; ++i) {
       bool mustDestroy;
       auto entry = result->at(i, mustDestroy, false);
-      EXPECT_TRUE((entry.isString()));
+      EXPECT_TRUE(entry.isString());
       auto value = arangodb::iresearch::getStringRef(entry.slice());
-      EXPECT_TRUE((1 == value.size()));
-      EXPECT_TRUE(('a' + i == value.c_str()[0]));
+      EXPECT_EQ(1, value.size());
+      EXPECT_EQ('a' + i, value.c_str()[0]);
     }
+  }
+  // test default analyzer
+  {
+    irs::string_ref data("abcdefghijklmnopqrstuvwxyz");
+    VPackFunctionParametersWrapper args;
+    args->emplace_back(data.c_str(), data.size());
+    AqlValueWrapper result(impl(nullptr, nullptr, *args));
+    EXPECT_TRUE(result->isArray());
+    EXPECT_EQ(1, result->length());
+    bool mustDestroy;
+    auto entry = result->at(0, mustDestroy, false);
+    EXPECT_TRUE(entry.isString());
+    std::string value = arangodb::iresearch::getStringRef(entry.slice());
+    EXPECT_EQ(data, value);
   }
 
   // test invalid arg count
+  // Zero count (less than expected)
   {
-    auto* function = functions->byName("TOKENS");
-    EXPECT_TRUE((nullptr != functions->byName("TOKENS")));
-    auto& impl = function->implementation;
-    EXPECT_TRUE((false == !impl));
-
     arangodb::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
     arangodb::aql::VPackFunctionParameters args{arena};
     EXPECT_THROW(AqlValueWrapper(impl(nullptr, nullptr, args)), arangodb::basics::Exception);
   }
-
-  // test invalid data type
+  // test invalid arg count
+  // 3 parameters. More than expected
   {
-    auto* function = functions->byName("TOKENS");
-    EXPECT_TRUE((nullptr != functions->byName("TOKENS")));
-    auto& impl = function->implementation;
-    EXPECT_TRUE((false == !impl));
-
     irs::string_ref data("abcdefghijklmnopqrstuvwxyz");
+    irs::string_ref analyzer("identity");
+    irs::string_ref unexpectedParameter("something");
     VPackFunctionParametersWrapper args;
     args->emplace_back(data.c_str(), data.size());
-    args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
+    args->emplace_back(analyzer.c_str(), analyzer.size());
+    args->emplace_back(unexpectedParameter.c_str(), unexpectedParameter.size());
     EXPECT_THROW(AqlValueWrapper(impl(nullptr, nullptr, *args)), arangodb::basics::Exception);
   }
 
-  // test invalid analyzer type
-  {
-    auto* function = functions->byName("TOKENS");
-    EXPECT_TRUE((nullptr != functions->byName("TOKENS")));
-    auto& impl = function->implementation;
-    EXPECT_TRUE((false == !impl));
+  // test values
+  // 123.4
+  std::string expected123P4[] = {"oMBe2ZmZmZma",
+                                 "sMBe2ZmZmQ==", "wMBe2Zk=", "0MBe"};
 
-    irs::string_ref analyzer("test_analyzer");
+  // 123
+  std::string expected123[] = {"oMBewAAAAAAA",
+                               "sMBewAAAAA==", "wMBewAA=", "0MBe"};
+
+  // boolean true
+  std::string expectedTrue("/w==");
+  // boolean false
+  std::string expectedFalse("AA==");
+
+  // test double data type
+  {
+    VPackFunctionParametersWrapper args;
+    args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
+    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    EXPECT_TRUE(result->isArray());
+    EXPECT_EQ(IRESEARCH_COUNTOF(expected123P4), result->length());
+
+    for (size_t i = 0; i < result->length(); ++i) {
+      bool mustDestroy;
+      auto entry = result->at(i, mustDestroy, false).slice();
+      EXPECT_TRUE(entry.isString());
+      EXPECT_EQ(expected123P4[i], arangodb::iresearch::getStringRef(entry));
+    }
+  }
+  // test integer data type
+  {
+    auto expected = 123;
+    VPackFunctionParametersWrapper args;
+    args->emplace_back(arangodb::aql::AqlValueHintInt(expected));
+    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    EXPECT_TRUE(result->isArray());
+    EXPECT_EQ(IRESEARCH_COUNTOF(expected123), result->length());
+
+    for (size_t i = 0; i < result->length(); ++i) {
+      bool mustDestroy;
+      auto entry = result->at(i, mustDestroy, false).slice();
+      EXPECT_TRUE(entry.isString());
+      EXPECT_EQ(expected123[i], arangodb::iresearch::getStringRef(entry));
+    }
+  }
+  // test true bool
+  {
+    VPackFunctionParametersWrapper args;
+    args->emplace_back(arangodb::aql::AqlValueHintBool(true));
+    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    EXPECT_TRUE(result->isArray());
+    EXPECT_EQ(1, result->length());
+    bool mustDestroy;
+    auto entry = result->at(0, mustDestroy, false).slice();
+    EXPECT_TRUE(entry.isString());
+    EXPECT_EQ(expectedTrue, arangodb::iresearch::getStringRef(entry));
+  }
+  // test false bool
+  {
+    VPackFunctionParametersWrapper args;
+    args->emplace_back(arangodb::aql::AqlValueHintBool(false));
+    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    EXPECT_TRUE(result->isArray());
+    EXPECT_EQ(1, result->length());
+    bool mustDestroy;
+    auto entry = result->at(0, mustDestroy, false).slice();
+    EXPECT_TRUE(entry.isString());
+    EXPECT_EQ(expectedFalse, arangodb::iresearch::getStringRef(entry));
+  }
+  // test null data type
+  {
+    VPackFunctionParametersWrapper args;
+    args->emplace_back(arangodb::aql::AqlValueHintNull());
+    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    EXPECT_TRUE(result->isArray());
+    EXPECT_EQ(1, result->length());
+    bool mustDestroy;
+    auto entry = result->at(0, mustDestroy, false).slice();
+    EXPECT_TRUE(entry.isString());
+    EXPECT_EQ("", arangodb::iresearch::getStringRef(entry));
+  }
+
+  // test double type with not needed analyzer
+  {
+    std::string analyzer(arangodb::StaticStrings::SystemDatabase +
+                         "::test_analyzer");
+    VPackFunctionParametersWrapper args;
+    args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
+    args->emplace_back(analyzer.c_str(), analyzer.size());
+    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    EXPECT_TRUE(result->isArray());
+    EXPECT_EQ(IRESEARCH_COUNTOF(expected123P4), result->length());
+
+    for (size_t i = 0; i < result->length(); ++i) {
+      bool mustDestroy;
+      auto entry = result->at(i, mustDestroy, false).slice();
+      EXPECT_TRUE(entry.isString());
+      EXPECT_EQ(expected123P4[i], arangodb::iresearch::getStringRef(entry));
+    }
+  }
+  // test double type with not needed analyzer (invalid analyzer type)
+  {
+    irs::string_ref analyzer("invalid_analyzer");
     VPackFunctionParametersWrapper args;
     args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
     args->emplace_back(analyzer.c_str(), analyzer.size());
     EXPECT_THROW(AqlValueWrapper(impl(nullptr, nullptr, *args)), arangodb::basics::Exception);
   }
-
-  // test invalid analyzer
+  // test invalid analyzer (when analyzer needed for text)
   {
-    auto* function = functions->byName("TOKENS");
-    EXPECT_TRUE((nullptr != functions->byName("TOKENS")));
-    auto& impl = function->implementation;
-    EXPECT_TRUE((false == !impl));
-
     irs::string_ref analyzer("invalid");
     irs::string_ref data("abcdefghijklmnopqrstuvwxyz");
     VPackFunctionParametersWrapper args;
     args->emplace_back(data.c_str(), data.size());
     args->emplace_back(analyzer.c_str(), analyzer.size());
     EXPECT_THROW(AqlValueWrapper(impl(nullptr, nullptr, *args)), arangodb::basics::Exception);
+  }
+
+  // empty array
+  {
+    VPackFunctionParametersWrapper args;
+    args->emplace_back(arangodb::aql::AqlValueHintEmptyArray());
+    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    EXPECT_TRUE(result->isArray());
+    EXPECT_EQ(1, result->length());
+    bool mustDestroy;
+    auto entry = result->at(0, mustDestroy, false).slice();
+    EXPECT_TRUE(entry.isEmptyArray());
+  }
+  // empty nested array
+  {
+    VPackFunctionParametersWrapper args;
+    auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
+    VPackBuilder builder(*buffer);
+    builder.openArray();
+    builder.openArray();
+    builder.close();
+    builder.close();
+    auto bufOwner = true;
+    auto aqlValue = arangodb::aql::AqlValue(buffer.get(), bufOwner);
+    if (!bufOwner) {
+      buffer.release();
+    }
+    args->push_back(std::move(aqlValue));
+    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    EXPECT_TRUE(result->isArray());
+    EXPECT_EQ(1, result->length());
+    bool mustDestroy;
+    auto entry = result->at(0, mustDestroy, false).slice();
+    EXPECT_TRUE(entry.isArray());
+    EXPECT_EQ(1, entry.length());
+    auto entryNested = entry.at(0);
+    EXPECT_TRUE(entryNested.isEmptyArray());
+  }
+
+  // non-empty nested array
+  {
+    VPackFunctionParametersWrapper args;
+    auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
+    VPackBuilder builder(*buffer);
+    builder.openArray();
+    builder.openArray();
+    builder.openArray();
+    builder.add(arangodb::velocypack::Value(true));
+    builder.close();
+    builder.close();
+    builder.close();
+    auto bufOwner = true;
+    auto aqlValue = arangodb::aql::AqlValue(buffer.get(), bufOwner);
+    if (!bufOwner) {
+      buffer.release();
+    }
+    args->push_back(std::move(aqlValue));
+    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    EXPECT_TRUE(result->isArray());
+    EXPECT_EQ(1, result->length());
+    bool mustDestroy;
+    auto entry = result->at(0, mustDestroy, false).slice();
+    EXPECT_TRUE(entry.isArray());
+    EXPECT_EQ(1, entry.length());
+    auto nested = entry.at(0);
+    EXPECT_TRUE(nested.isArray());
+    EXPECT_EQ(1, nested.length());
+    auto nested2 = nested.at(0);
+    EXPECT_TRUE(nested2.isArray());
+    EXPECT_EQ(1, nested2.length());
+    auto booleanValue = nested2.at(0);
+    EXPECT_TRUE(booleanValue.isString());
+    EXPECT_EQ(expectedTrue, arangodb::iresearch::getStringRef(booleanValue));
+  }
+
+  // array of bools
+  {
+    auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
+    VPackBuilder builder(*buffer);
+    builder.openArray();
+    builder.add(arangodb::velocypack::Value(true));
+    builder.add(arangodb::velocypack::Value(false));
+    builder.add(arangodb::velocypack::Value(true));
+    builder.close();
+    auto bufOwner = true;
+    auto aqlValue = arangodb::aql::AqlValue(buffer.get(), bufOwner);
+    if (!bufOwner) {
+      buffer.release();
+    }
+    VPackFunctionParametersWrapper args;
+    args->push_back(std::move(aqlValue));
+    irs::string_ref analyzer("text_en");
+    args->emplace_back(analyzer.c_str(), analyzer.size());
+    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    EXPECT_TRUE(result->isArray());
+    EXPECT_EQ(3, result->length());
+    {
+      bool mustDestroy;
+      auto entry = result->at(0, mustDestroy, false).slice();
+      EXPECT_TRUE(entry.isArray());
+      EXPECT_EQ(1, entry.length());
+      auto booleanValue = entry.at(0);
+      EXPECT_TRUE(booleanValue.isString());
+      EXPECT_EQ(expectedTrue, arangodb::iresearch::getStringRef(booleanValue));
+    }
+    {
+      bool mustDestroy;
+      auto entry = result->at(1, mustDestroy, false).slice();
+      EXPECT_TRUE(entry.isArray());
+      EXPECT_EQ(1, entry.length());
+      auto booleanValue = entry.at(0);
+      EXPECT_TRUE(booleanValue.isString());
+      EXPECT_EQ(expectedFalse, arangodb::iresearch::getStringRef(booleanValue));
+    }
+    {
+      bool mustDestroy;
+      auto entry = result->at(2, mustDestroy, false).slice();
+      EXPECT_TRUE(entry.isArray());
+      EXPECT_EQ(1, entry.length());
+      auto booleanValue = entry.at(0);
+      EXPECT_TRUE(booleanValue.isString());
+      EXPECT_EQ(expectedTrue, arangodb::iresearch::getStringRef(booleanValue));
+    }
+  }
+
+  // mixed values array
+  // [ [[]], [['test', 123.4, true]], 123, 123.4, true, null, false, 'jumps', ['quick', 'dog'] ]
+  {
+    VPackFunctionParametersWrapper args;
+    auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
+    VPackBuilder builder(*buffer);
+    builder.openArray();
+    // [[]]
+    builder.openArray();
+    builder.openArray();
+    builder.close();
+    builder.close();
+
+    //[['test', 123.4, true]]
+    builder.openArray();
+    builder.openArray();
+    builder.add(arangodb::velocypack::Value("test"));
+    builder.add(arangodb::velocypack::Value(123.4));
+    builder.add(arangodb::velocypack::Value(true));
+    builder.close();
+    builder.close();
+
+    builder.add(arangodb::velocypack::Value(123));
+    builder.add(arangodb::velocypack::Value(123.4));
+    builder.add(arangodb::velocypack::Value(true));
+    builder.add(VPackSlice::nullSlice());
+    builder.add(arangodb::velocypack::Value(false));
+    builder.add(arangodb::velocypack::Value("jumps"));
+
+    //[ 'quick', 'dog' ]
+    builder.openArray();
+    builder.add(arangodb::velocypack::Value("quick"));
+    builder.add(arangodb::velocypack::Value("dog"));
+    builder.close();
+
+    builder.close();
+
+    auto bufOwner = true;
+    auto aqlValue = arangodb::aql::AqlValue(buffer.get(), bufOwner);
+    if (!bufOwner) {
+      buffer.release();
+    }
+    args->push_back(std::move(aqlValue));
+    irs::string_ref analyzer("text_en");
+    args->emplace_back(analyzer.c_str(), analyzer.size());
+    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    EXPECT_TRUE(result->isArray());
+    EXPECT_EQ(9, result->length());
+    {
+      bool mustDestroy;
+      auto entry = result->at(0, mustDestroy, false).slice();
+      EXPECT_TRUE(entry.isArray());
+      EXPECT_EQ(1, entry.length());
+      auto nested = entry.at(0);
+      EXPECT_TRUE(nested.isArray());
+      EXPECT_EQ(1, nested.length());
+      auto nested2 = nested.at(0);
+      EXPECT_TRUE(nested2.isEmptyArray());
+    }
+    {
+      bool mustDestroy;
+      auto entry = result->at(1, mustDestroy, false).slice();
+      EXPECT_TRUE(entry.isArray());
+      EXPECT_EQ(1, entry.length());
+      auto nested = entry.at(0);
+      EXPECT_TRUE(nested.isArray());
+      EXPECT_EQ(3, nested.length());
+
+      {
+        auto textTokens = nested.at(0);
+        EXPECT_TRUE(textTokens.isArray());
+        EXPECT_EQ(1, textTokens.length());
+        std::string value = arangodb::iresearch::getStringRef(textTokens.at(0));
+        EXPECT_STREQ("test", value.c_str());
+      }
+      {
+        auto numberTokens = nested.at(1);
+        EXPECT_TRUE(numberTokens.isArray());
+        EXPECT_EQ(IRESEARCH_COUNTOF(expected123P4), numberTokens.length());
+        for (size_t i = 0; i < numberTokens.length(); ++i) {
+          auto entry = numberTokens.at(i);
+          EXPECT_TRUE(entry.isString());
+          EXPECT_EQ(expected123P4[i], arangodb::iresearch::getStringRef(entry));
+        }
+      }
+      {
+        auto booleanTokens = nested.at(2);
+        EXPECT_TRUE(booleanTokens.isArray());
+        EXPECT_EQ(1, booleanTokens.length());
+        auto booleanValue = booleanTokens.at(0);
+        EXPECT_TRUE(booleanValue.isString());
+        EXPECT_EQ(expectedTrue, arangodb::iresearch::getStringRef(booleanValue));
+      }
+    }
+    {
+      bool mustDestroy;
+      auto entry = result->at(2, mustDestroy, false).slice();
+      EXPECT_TRUE(entry.isArray());
+      EXPECT_EQ(IRESEARCH_COUNTOF(expected123), entry.length());
+      for (size_t i = 0; i < entry.length(); ++i) {
+        auto numberSlice = entry.at(i);
+        EXPECT_TRUE(numberSlice.isString());
+        EXPECT_EQ(expected123[i], arangodb::iresearch::getStringRef(numberSlice));
+      }
+    }
+    {
+      bool mustDestroy;
+      auto entry = result->at(3, mustDestroy, false).slice();
+      EXPECT_TRUE(entry.isArray());
+      EXPECT_EQ(IRESEARCH_COUNTOF(expected123P4), entry.length());
+      for (size_t i = 0; i < entry.length(); ++i) {
+        auto numberSlice = entry.at(i);
+        EXPECT_TRUE(numberSlice.isString());
+        EXPECT_EQ(expected123P4[i], arangodb::iresearch::getStringRef(numberSlice));
+      }
+    }
+    {
+      bool mustDestroy;
+      auto entry = result->at(4, mustDestroy, false).slice();
+      EXPECT_TRUE(entry.isArray());
+      EXPECT_EQ(1, entry.length());
+      auto booleanValue = entry.at(0);
+      EXPECT_TRUE(booleanValue.isString());
+      EXPECT_EQ(expectedTrue, arangodb::iresearch::getStringRef(booleanValue));
+    }
+    {
+      bool mustDestroy;
+      auto entry = result->at(5, mustDestroy, false).slice();
+      EXPECT_TRUE(entry.isArray());
+      EXPECT_EQ(1, entry.length());
+      auto nullSlice = entry.at(0);
+      EXPECT_TRUE(nullSlice.isString());
+      EXPECT_EQ("", arangodb::iresearch::getStringRef(nullSlice));
+    }
+    {
+      bool mustDestroy;
+      auto entry = result->at(6, mustDestroy, false).slice();
+      EXPECT_TRUE(entry.isArray());
+      EXPECT_EQ(1, entry.length());
+      auto booleanValue = entry.at(0);
+      EXPECT_TRUE(booleanValue.isString());
+      EXPECT_EQ(expectedFalse, arangodb::iresearch::getStringRef(booleanValue));
+    }
+    {
+      bool mustDestroy;
+      auto entry = result->at(7, mustDestroy, false).slice();
+      EXPECT_TRUE(entry.isArray());
+      EXPECT_EQ(1, entry.length());
+      auto textSlice = entry.at(0);
+      EXPECT_TRUE(textSlice.isString());
+      std::string value = arangodb::iresearch::getStringRef(textSlice);
+      EXPECT_STREQ("jump", value.c_str());
+    }
+    {
+      bool mustDestroy;
+      auto entry = result->at(8, mustDestroy, false).slice();
+      EXPECT_TRUE(entry.isArray());
+      EXPECT_EQ(2, entry.length());
+      {
+        auto subArray = entry.at(0);
+        EXPECT_TRUE(subArray.isArray());
+        EXPECT_EQ(1, subArray.length());
+        auto textSlice = subArray.at(0);
+        EXPECT_TRUE(textSlice.isString());
+        std::string value = arangodb::iresearch::getStringRef(textSlice);
+        EXPECT_STREQ("quick", value.c_str());
+      }
+      {
+        auto subArray = entry.at(1);
+        EXPECT_TRUE(subArray.isArray());
+        EXPECT_EQ(1, subArray.length());
+        auto textSlice = subArray.at(0);
+        EXPECT_TRUE(textSlice.isString());
+        std::string value = arangodb::iresearch::getStringRef(textSlice);
+        EXPECT_STREQ("dog", value.c_str());
+      }
+    }
   }
 }
 

@@ -188,7 +188,10 @@ bool RestBatchHandler::executeNextHandler() {
     LOG_TOPIC("63afb", TRACE, arangodb::Logger::REPLICATION)
         << "part body is '" << std::string(bodyStart, bodyLength) << "'";
     request->body().clear();
+    request->body().reserve(bodyLength+1);
     request->body().append(bodyStart, bodyLength);
+    request->body().push_back('\0');
+    request->body().resetTo(bodyLength); // ensure null terminated
   }
 
   if (!authorization.empty()) {
