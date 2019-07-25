@@ -1,6 +1,10 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #9558: RTRIM not working as expected
+
+* Added gzip and encryption options to arangoimport and arangoexport
+
 * Added startup error for bad temporary directory setting.
 
   If the temporary directory (--temp.path) setting is identical to the database 
@@ -12,8 +16,6 @@ v3.4.8 (XXXX-XX-XX)
   Now, if the database directory and temporary directory are set to the same path, there 
   will be a startup warning about potential data loss (though in ArangoDB 3.4 allowing to 
   continue the startup - in 3.5 and higher we will abort the startup).
-
-* Add gzip and encryption options to arangoimport and arangoexport.
 
 * Fixed a query abort error in smart joins when both collections were
   restricted to a single shard.
