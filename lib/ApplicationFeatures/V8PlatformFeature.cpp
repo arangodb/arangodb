@@ -105,8 +105,8 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
     LOG_TOPIC("95f66", WARN, arangodb::Logger::FIXME)
         << "reached heap-size limit of #" << v8g->_id
         << " interrupting V8 execution ("
-        << "heap size limit " << headSizeLimit
-        << ", used " << usedHeapSize
+        << "heap size limit " << heapSizeLimit
+        << ", used " << usedHeadSize
         << ") during " << whereFreed;
 
     isolate->TerminateExecution();
