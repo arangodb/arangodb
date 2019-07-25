@@ -251,7 +251,7 @@ class StreamRepairOperationVisitor : public boost::static_visitor<std::ostream&>
   StreamRepairOperationVisitor() = delete;
 
   explicit StreamRepairOperationVisitor(std::ostream& stream_)
-      : _stream(stream_){};
+      : _stream(stream_) {}
 
   std::ostream& operator()(BeginRepairsOperation const& op) {
     return _stream << op;

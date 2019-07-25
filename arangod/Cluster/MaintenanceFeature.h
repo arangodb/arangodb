@@ -82,7 +82,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   virtual void stop() override;
 
   // shut down the feature
-  virtual void unprepare() override{};
+  virtual void unprepare() override {}
 
   //
   // api features
