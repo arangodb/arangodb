@@ -681,7 +681,7 @@ struct TRI_v8_global_t {
   bool _inForcedCollect;
 
   /// @brief the ID that identifies this v8 context
-  size_t _id;
+  size_t const _id;
 
   std::atomic<double> _lastMaxTime;
 
