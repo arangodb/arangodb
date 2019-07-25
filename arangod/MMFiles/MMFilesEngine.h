@@ -163,6 +163,11 @@ class MMFilesEngine final : public StorageEngine {
   // database, collection and index management
   // -----------------------------------------
 
+  // return the path for all databases
+  std::string dataPath() const override {
+    return _databasePath;
+  }
+
   // return the path for a database
   std::string databasePath(TRI_vocbase_t const* vocbase) const override {
     return databaseDirectory(vocbase->id());

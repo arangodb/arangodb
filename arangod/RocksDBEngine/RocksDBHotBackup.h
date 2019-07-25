@@ -113,7 +113,7 @@ public:
   VPackBuilder const& result() const { return _result;}
 
   std::string getRocksDBPath();
-  unsigned getTimeout() const {return _timeoutSeconds;}
+  double getTimeout() const {return _timeoutSeconds;}
 
   /// @brief Build "/user/database/path/backups"
   std::string rebuildPathPrefix();
@@ -229,6 +229,10 @@ public:
   std::string const& getDirectoryRestore() const {return _idRestore;}
   bool createRestoringDirectory(std::string& nameOutput);
   bool validateVersionString(std::string const& fullDirectoryRestore);
+  // The following will be overridden in unit tests:
+  virtual bool performViewRemoval() const {
+    return true;
+  }
 
  protected:
 

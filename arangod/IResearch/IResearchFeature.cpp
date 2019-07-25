@@ -48,8 +48,12 @@
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
 #include "IResearchViewDBServer.h"
+#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "Logger/LogTopic.h"
 #include "MMFiles/MMFilesEngine.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -352,7 +356,7 @@ void registerTransactionDataSourceRegistrationCallback() {
 std::string const FEATURE_NAME("ArangoSearch");
 IResearchLogTopic LIBIRESEARCH("libiresearch");
 
-NS_END
+NS_END  // namespace
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
@@ -776,9 +780,9 @@ void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::Progra
   ApplicationFeature::validateOptions(options);
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+NS_END   // iresearch
+NS_END   // arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

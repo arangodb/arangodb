@@ -27,6 +27,9 @@
 
 #include "Agency/TimeString.h"
 #include "Basics/Mutex.h"
+#include "Scheduler/Scheduler.h"
+
+#include <map>
 
 namespace arangodb {
 
@@ -167,6 +170,7 @@ private:
 
 public:
   bool isAPIEnabled() { return _backupEnabled; }
+  static void removeAllArangoSearchData();
 };
 
 } // namespaces
