@@ -288,28 +288,28 @@ TEST_F(RebootTrackerTest, one_server_call_interleaved) {
                                          callback, "");
     guards.emplace_back(std::move(guard));
     waitForSchedulerEmpty();
-    ASSERT_EQ(0, numCalled) << "Callback must not be called before a change";
+    ASSERT_EQ(1, numCalled) << "Callback must not be called before a change";
 
     // Set state to { serverA => 4 }
     state.at(serverA) = RebootId{4};
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
-    ASSERT_EQ(1, numCalled) << "Callback must be called after a change";
+    ASSERT_EQ(2, numCalled) << "Callback must be called after a change";
 
     // Set state to { serverA => 5 }
     state.at(serverA) = RebootId{5};
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
-    ASSERT_EQ(1, numCalled) << "Callback must not be called twice";
+    ASSERT_EQ(2, numCalled) << "Callback must not be called twice";
 
     guards.clear();
-    ASSERT_EQ(1, numCalled)
+    ASSERT_EQ(2, numCalled)
         << "Callback must not be called when guards are destroyed";
   }
   // RebootTracker was destroyed now
 
   waitForSchedulerEmpty();
-  ASSERT_EQ(1, numCalled) << "Callback must not be called during destruction";
+  ASSERT_EQ(2, numCalled) << "Callback must not be called during destruction";
 }
 
 // Tests that multiple callbacks and updates don't interfere
@@ -351,16 +351,16 @@ TEST_F(RebootTrackerTest, one_server_call_sequential) {
     state.at(serverA) = RebootId{3};
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
-    ASSERT_EQ(1, numCalled) << "No callback must not be called twice";
+    ASSERT_EQ(2, numCalled) << "No callback must not be called twice";
 
     guards.clear();
-    ASSERT_EQ(1, numCalled)
+    ASSERT_EQ(2, numCalled)
         << "Callback must not be called when guards are destroyed";
   }
   // RebootTracker was destroyed now
 
   waitForSchedulerEmpty();
-  ASSERT_EQ(1, numCalled) << "Callback must not be called during destruction";
+  ASSERT_EQ(2, numCalled) << "Callback must not be called during destruction";
 }
 
 // Test that a registered callback is removed when its guard is destroyed
@@ -473,9 +473,9 @@ TEST_F(RebootTrackerTest, one_server_guard_doesnt_interfere) {
   // RebootTracker was destroyed now
 
   waitForSchedulerEmpty();
-  ASSERT_EQ(0, counterA) << "Callback must not be called during destruction";
+  ASSERT_EQ(1, counterA) << "Callback must not be called during destruction";
   ASSERT_EQ(0, counterB) << "Callback must not be called during destruction";
-  ASSERT_EQ(0, counterC) << "Callback must not be called during destruction";
+  ASSERT_EQ(1, counterC) << "Callback must not be called during destruction";
 }
 
 TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_same_id) {
@@ -527,12 +527,15 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_older_id) {
 
   {
     RebootTracker rebootTracker{&scheduler};
+    CallbackGuard guard;
 
     // State is empty { }
 
     // Register callback
-    auto guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{2}},
-                                              callback, "");
+    ASSERT_THROW(guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{2}},
+                                                      callback, ""),
+                 arangodb::basics::Exception)
+        << "Trying to add a callback for an unknown server should be refused";
     waitForSchedulerEmpty();
     ASSERT_EQ(0, numCalled) << "Callback must not be called before a change";
 
@@ -554,12 +557,13 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_older_id) {
     state.at(serverA) = RebootId{3};
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
-    ASSERT_EQ(1, numCalled) << "Callback must be called after a change";
+    ASSERT_EQ(0, numCalled) << "Callback must not be called after a change, as "
+                               "it shouldn't have been registered";
   }
   // RebootTracker was destroyed now
 
   waitForSchedulerEmpty();
-  ASSERT_EQ(1, numCalled) << "Callback must not be called during destruction";
+  ASSERT_EQ(0, numCalled) << "Callback must not be called during destruction";
 }
 
 TEST_F(RebootTrackerTest, two_servers_call_interleaved) {
@@ -600,26 +604,26 @@ TEST_F(RebootTrackerTest, two_servers_call_interleaved) {
                                          callback, "");
     guards.emplace_back(std::move(guard));
     waitForSchedulerEmpty();
-    ASSERT_EQ(0, numCalled) << "Callback must not be called before a change";
+    ASSERT_EQ(1, numCalled) << "Callback must not be called before a change";
 
     // Set state to { serverA => 4 }
     state.at(serverA) = RebootId{4};
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
-    ASSERT_EQ(1, numCalled) << "Callback must be called after a change";
+    ASSERT_EQ(2, numCalled) << "Callback must be called after a change";
 
     // Set state to { serverA => 5 }
     state.at(serverA) = RebootId{5};
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
-    ASSERT_EQ(1, numCalled) << "Callback must not be called twice";
+    ASSERT_EQ(2, numCalled) << "Callback must not be called twice";
 
     guards.clear();
-    ASSERT_EQ(1, numCalled)
+    ASSERT_EQ(2, numCalled)
         << "Callback must not be called when guards are destroyed";
   }
   // RebootTracker was destroyed now
 
   waitForSchedulerEmpty();
-  ASSERT_EQ(1, numCalled) << "Callback must not be called during destruction";
+  ASSERT_EQ(2, numCalled) << "Callback must not be called during destruction";
 }
