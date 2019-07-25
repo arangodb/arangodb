@@ -189,6 +189,20 @@ char* TRI_SlurpFile(char const* filename, size_t* length);
 bool TRI_ProcessFile(char const* filename, std::function<bool(char const* block, size_t size)> const& reader);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief slurps in a file that is compressed and return uncompressed contents
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_SlurpGzipFile(char const* filename, size_t* length);
+
+#ifdef USE_ENTERPRISE
+////////////////////////////////////////////////////////////////////////////////
+/// @brief slurps in a file that is encrypted and return unencrypted contents
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_SlurpDecryptFile(char const* filename, char const * keyfile, size_t* length);
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a lock file based on the PID
 ///
 /// Creates a file containing a the current process identifier and locks

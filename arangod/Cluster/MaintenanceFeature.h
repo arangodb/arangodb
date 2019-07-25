@@ -162,10 +162,10 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   uint32_t getSecondsActionsBlock() const { return _secondsActionsBlock; };
 
   /**
-   * @brief Find and return found action or nullptr
+   * @brief Find and return first found not-done action or nullptr
    * @param desc Description of sought action
    */
-  std::shared_ptr<maintenance::Action> findAction(std::shared_ptr<maintenance::ActionDescription> const desc);
+  std::shared_ptr<maintenance::Action> findFirstNotDoneAction(std::shared_ptr<maintenance::ActionDescription> const& desc);
 
   /**
    * @brief add index error to bucket
@@ -181,20 +181,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   arangodb::Result storeIndexError(std::string const& database, std::string const& collection,
                                    std::string const& shard, std::string const& indexId,
                                    std::shared_ptr<VPackBuffer<uint8_t>> error);
-
-  /**
-   * @brief get all pending index errors for a specific shard
-   *
-   * @param  database     database
-   * @param  collection   collection
-   * @param  shard        shard
-   * @param  errors       errrors map returned to caller
-   *
-   * @return success
-   */
-  arangodb::Result indexErrors(
-      std::string const& database, std::string const& collection, std::string const& shard,
-      std::map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>>& errors) const;
 
   /**
    * @brief remove 1+ errors from index error bucket
@@ -321,17 +307,19 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
    */
   void delShardVersion(std::string const& shardId);
 
- protected:
+ private:
   /// @brief common code used by multiple constructors
   void init();
 
-  /// @brief Search for action by hash
-  /// @return shared pointer to action object if exists, _actionRegistry.end() if not
-  std::shared_ptr<maintenance::Action> findActionHash(size_t hash);
+  /// @brief Search for first action matching hash and predicate
+  /// @return shared pointer to action object if exists, empty shared_ptr if not
+  std::shared_ptr<maintenance::Action> findFirstActionHash(size_t hash,
+                                                           std::function<bool(std::shared_ptr<maintenance::Action> const&)> const& predicate);
 
-  /// @brief Search for action by hash (but lock already held by caller)
-  /// @return shared pointer to action object if exists, nullptr if not
-  std::shared_ptr<maintenance::Action> findActionHashNoLock(size_t hash);
+  /// @brief Search for first action matching hash and predicate (with lock already held by caller)
+  /// @return shared pointer to action object if exists, empty shared_ptr if not
+  std::shared_ptr<maintenance::Action> findFirstActionHashNoLock(size_t hash,
+                                                                 std::function<bool(std::shared_ptr<maintenance::Action> const&)> const& predicate);
 
   /// @brief Search for action by Id
   /// @return shared pointer to action object if exists, nullptr if not
@@ -340,6 +328,8 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief Search for action by Id (but lock already held by caller)
   /// @return shared pointer to action object if exists, nullptr if not
   std::shared_ptr<maintenance::Action> findActionIdNoLock(uint64_t hash);
+
+ protected:
 
   /// @brief option for forcing this feature to always be enable - used by the catch tests
   bool _forceActivation;

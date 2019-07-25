@@ -1,13 +1,48 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
-* coordinator code was reporting rocksdb error codes, but not the associated detail message.
+* Fixed issue #9558: RTRIM not working as expected
+
+* Added gzip and encryption options to arangoimport and arangoexport
+
+* Added startup error for bad temporary directory setting.
+
+  If the temporary directory (--temp.path) setting is identical to the database 
+  directory (`--database.directory`) this can eventually lead to data loss, as 
+  temporary files may be created inside the temporary directory, causing overwrites of 
+  existing database files/directories with the same names.
+  Additionally the temporary directory may be cleaned at some point, and this would lead 
+  to an unintended cleanup of the database files/directories as well.
+  Now, if the database directory and temporary directory are set to the same path, there 
+  will be a startup warning about potential data loss (though in ArangoDB 3.4 allowing to 
+  continue the startup - in 3.5 and higher we will abort the startup).
+
+* Fixed a query abort error in smart joins when both collections were
+  restricted to a single shard.
+
+* Fixed potential thread handle leak on thread shutdown on Windows.
+
+* Fixed recovery of arangosearch remove operations with the RocksDB storage engine.
+
+* Fixed some races in cluster collection creation, which allowed collections with the
+  same name to be created in parallel under some rare conditions.
+
+* arangoimport would not stop, much less report, communications errors.  Add CSV reporting
+  of line numbers that are impacted during such errors.
+
+* Fixed a bug which could lead to some unnecessary HTTP requests during an AQL query in a cluster.
+  Only occurs with views in the query.
+
+* Prevent rare cases of duplicate DDL actions being executed by Maintenance.
+
+* Coordinator code was reporting rocksdb error codes, but not the associated detail message.
   Corrected.
 
 * Fixed some error reporting and logging in Maintenance.
 
 * Fixed an error condition in which an ex-leader for a short still believed
   to be the leader and wrongly reported to Current.
+
 
 v3.4.7 (2019-07-02)
 -------------------
