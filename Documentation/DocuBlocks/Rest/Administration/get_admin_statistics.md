@@ -187,7 +187,7 @@ how many times was the garbage collection run in these 10 seconds
 High watermark of all garbage collection runs in 10 seconds
 
 @RESTSTRUCT{heapMin,v8_isolate_memory,integer,required,}
-Low whatermark of all garbage collection runs in these 10 seconds
+Low watermark of all garbage collection runs in these 10 seconds
 
 
 @RESTSTRUCT{threads,server_statistics_struct,object,required,server_threads_struct}
