@@ -1,6 +1,8 @@
 v3.5.0-rc.6 (2019-XX-XX)
 ------------------------
 
+* Fixed issue #9558: RTRIM not working as expected.
+
 * Added startup error for bad temporary directory setting.
 
   If the temporary directory (--temp.path) setting is identical to the database 
