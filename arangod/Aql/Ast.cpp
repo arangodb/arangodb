@@ -826,12 +826,12 @@ AstNode* Ast::createNodeBinaryOperator(AstNodeType type, AstNode const* lhs,
   // contain an attribute access, e.g.  doc.value1 == doc.value2
   bool swap = false;
   if (type == NODE_TYPE_OPERATOR_BINARY_EQ &&
-      rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+      rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && 
       lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
     // value == doc.value  =>  doc.value == value
     swap = true;
   } else if (type == NODE_TYPE_OPERATOR_BINARY_NE &&
-             rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+             rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && 
              lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
     // value != doc.value  =>  doc.value != value
     swap = true;
@@ -1926,9 +1926,9 @@ void Ast::validateAndOptimize() {
       }
     } else if (node->type == NODE_TYPE_AGGREGATIONS) {
       --ctx->stopOptimizationRequests;
-    } else if (node->type == NODE_TYPE_ARRAY &&
-               node->hasFlag(DETERMINED_CONSTANT) &&
-               !node->hasFlag(VALUE_CONSTANT) &&
+    } else if (node->type == NODE_TYPE_ARRAY && 
+               node->hasFlag(DETERMINED_CONSTANT) && 
+               !node->hasFlag(VALUE_CONSTANT) && 
                node->numMembers() < 10) {
       // optimization attempt: we are speculating that this array contains function
       // call parameters, which may have been optimized somehow.
@@ -2227,20 +2227,8 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node, bool& isSaf
 }
 
 /// @brief determines the to-be-kept attribute of an INTO expression
-//
-// - adds attribute accesses to `searchVariable` (e.g. searchVar.attribute) in expression given by `node` to return value `results`
-// - if a node references the search variable in the expression `isSafeForOptimization` is set to false
-//   and the traversal stops.
-// - adds expansion // TODO
-
 std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(
-    AstNode const* node, Variable const* searchVariable, bool& isSafeForOptimization, bool checkForAttributeName) {
-
-  // Inspects ast nodes if the node in question is not of type
-  // NODE_TYPE_INDEXED_ACCESS or NODE_TYPE_EXPANSION the lambda return
-  // immediately false. Otherwise members are checked they contain a variable
-  // or a reference to one. If true the found variable is checked against the
-  // search variable. The result of the comparison is returned.
+    AstNode const* node, Variable const* searchVariable, bool& isSafeForOptimization) {
   auto isTargetVariable = [&searchVariable](AstNode const* node) {
     if (node->type == NODE_TYPE_INDEXED_ACCESS) {
       auto sub = node->getMemberUnchecked(0);
@@ -2278,8 +2266,7 @@ std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(
 
   std::function<bool(AstNode const*)> visitor = [&isSafeForOptimization,
                                                  &result, &isTargetVariable,
-                                                 &searchVariable, checkForAttributeName](AstNode const* node) {
-    ///LOG_DEVEL << "@@@ visiting " << node;
+                                                 &searchVariable](AstNode const* node) {
     if (!isSafeForOptimization) {
       return false;
     }
@@ -2296,7 +2283,7 @@ std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(
     } else if (node->type == NODE_TYPE_REFERENCE) {
       Variable const* v = static_cast<Variable const*>(node->getData());
       if (v->id == searchVariable->id) {
-        isSafeForOptimization = false; // the expression references the searched variable
+        isSafeForOptimization = false;
         return false;
       }
     } else if (node->type == NODE_TYPE_EXPANSION) {
@@ -2319,8 +2306,6 @@ std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(
     return true;
   };
 
-  // traverse ast and call visitor before recursing on each node
-  // as long as visitor returns true the traversal continues
   traverseReadOnly(node, visitor, ::doNothingVisitor);
 
   return result;
@@ -3221,12 +3206,12 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
     }
 #if 0
   } else if (func->name == "LIKE") {
-    // optimize a LIKE(x, y) into a plain x == y or a range scan in case the
+    // optimize a LIKE(x, y) into a plain x == y or a range scan in case the 
     // search is case-sensitive and the pattern is either a full match or a
     // left-most prefix
 
     // this is desirable in 99.999% of all cases, but would cause the following incompatibilities:
-    // - the AQL LIKE function will implicitly cast its operands to strings, whereas
+    // - the AQL LIKE function will implicitly cast its operands to strings, whereas 
     //   operator == in AQL will not do this. So LIKE(1, '1') would behave differently
     //   when executed via the AQL LIKE function or via 1 == '1'
     // - for left-most prefix searches (e.g. LIKE(text, 'abc%')) we need to determine
@@ -3247,7 +3232,7 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
         caseInsensitive = caseArg->isTrue();
       }
     }
-
+      
     auto patternArg = args->getMember(1);
 
     if (!caseInsensitive && patternArg->isStringValue()) {
@@ -3280,7 +3265,7 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
 
         AstNode* op = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, lhs, rhs);
         if (wildcardIsLastChar) {
-          // replace LIKE with >= && <=
+          // replace LIKE with >= && <= 
           return op;
         }
         // add >= && <=, but keep LIKE in place
