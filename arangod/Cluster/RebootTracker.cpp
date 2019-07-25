@@ -67,7 +67,7 @@ void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> con
       auto it = _callbacks.find(serverId);
       if (it != _callbacks.end()) {
         TRI_ASSERT(it->second.empty());
-        // TODO maybe do this in tryScheduleAllCallbacks? Maybe we can do it when we already have an iterator?
+        // TODO maybe do this in scheduleAllCallbacksFor? Maybe we can do it when we already have an iterator?
         _callbacks.erase(it);
       }
       _rebootIds.erase(curIt);
@@ -103,7 +103,19 @@ CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState const& peer
                                             std::string callbackDescription) {
   MUTEX_LOCKER(guard, _mutex);
 
-  // TODO We MUST NOT insert something in _callbacks[serverId] unless _rebootIds[serverId] exists!
+  // We MUST NOT insert something in _callbacks[serverId] unless _rebootIds[serverId] exists!
+  if (_rebootIds.find(peerState.serverId()) == _rebootIds.end()) {
+    std::string const error = [&]() {
+      std::stringstream strstream;
+      strstream << "When trying to register callback '" << callbackDescription << "': "
+                << "The server " << peerState.serverId() << " is not known. "
+                << "If this server joined the cluster in the last seconds, "
+                   "this can happen.";
+      return strstream.str();
+    }();
+    LOG_TOPIC("76abc", INFO, Logger::CLUSTER) << error;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_SERVER_UNKNOWN, error);
+  }
 
   // For the given server, get the existing rebootId => [callbacks] map,
   // or create a new one

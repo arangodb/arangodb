@@ -379,13 +379,13 @@ TEST_F(RebootTrackerTest, one_server_guard_removes_callback) {
     {
       // Register callback
       auto guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{1}},
-        callback, "");
+                                                callback, "");
       waitForSchedulerEmpty();
       ASSERT_EQ(0, numCalled) << "Callback must not be called before a change";
     }
     waitForSchedulerEmpty();
     ASSERT_EQ(0, numCalled)
-              << "Callback must not be called when the guard is destroyed";
+        << "Callback must not be called when the guard is destroyed";
 
     // Set state to { serverA => 2 }
     state.at(serverA) = RebootId{2};
@@ -486,12 +486,15 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_same_id) {
 
   {
     RebootTracker rebootTracker{&scheduler};
+    CallbackGuard guard;
 
     // State is empty { }
 
     // Register callback
-    auto guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{1}},
-                                              callback, "");
+    ASSERT_THROW(guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{1}},
+                                                      callback, ""),
+                 arangodb::basics::Exception)
+        << "Trying to add a callback for an unknown server should be refused";
     waitForSchedulerEmpty();
     ASSERT_EQ(0, numCalled) << "Callback must not be called before a change";
 
@@ -499,19 +502,21 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_same_id) {
     state.emplace(serverA, RebootId{1});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
-    ASSERT_EQ(0, numCalled) << "Callback must not be called when the state is "
-                               "set to the same RebootId";
+    ASSERT_EQ(0, numCalled)
+        << "Callback must not be called when the state is "
+           "set to the same RebootId, as it shouldn't have been registered";
 
     // Set state to { serverA => 2 }
     state.at(serverA) = RebootId{2};
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
-    ASSERT_EQ(1, numCalled) << "Callback must be called after a change";
+    ASSERT_EQ(0, numCalled) << "Callback must not be called after a change, as "
+                               "it shouldn't have been registered";
   }
   // RebootTracker was destroyed now
 
   waitForSchedulerEmpty();
-  ASSERT_EQ(1, numCalled) << "Callback must not be called during destruction";
+  ASSERT_EQ(0, numCalled) << "Callback must not be called during destruction";
 }
 
 TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_older_id) {

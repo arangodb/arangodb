@@ -131,7 +131,10 @@ class RebootTracker {
 
   CallbackId _nextCallbackId{1};
 
-  /// @brief Last known rebootId of every server
+  /// @brief Last known rebootId of every server.
+  /// Will regularly get updates from the agency.
+  /// Updates may not be applied if scheduling the affected callbacks fails, so
+  /// the scheduling will be tried again on the next update.
   std::unordered_map<ServerID, RebootId> _rebootIds;
 
   /// @brief List of registered callbacks per server.
@@ -139,7 +142,11 @@ class RebootTracker {
   /// Needs to fulfill the following:
   ///  - A callback with a given ID may never be moved to another (serverId, rebootId) entry,
   ///    to allow CallbackGuard to find a callback.
-  ///  - All ServerIDs in this map must always exist in _rebootIds.
+  ///  - All ServerIDs in this map must always exist in _rebootIds (though not
+  ///    necessarily the other way round).
+  ///  - The shared_ptr in the RebootId-indexed map must never be nullptr
+  ///  - The unordered_map pointed to by the aforementioned shared_ptr must never be empty
+  ///  - The RebootIds used as index in the inner map are expected to not be smaller than the corresponding ones in _rebootIds
   std::unordered_map<ServerID, std::map<RebootId, std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>>> _callbacks;
 
   /// @brief Save a pointer to the scheduler for easier testing
