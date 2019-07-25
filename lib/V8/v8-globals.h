@@ -368,7 +368,7 @@ struct TRI_v8_global_t {
     v8::Persistent<v8::External> _persistent;
   };
 
-  explicit TRI_v8_global_t(v8::Isolate*);
+  explicit TRI_v8_global_t(v8::Isolate*, size_t id);
 
   ~TRI_v8_global_t();
 
@@ -676,10 +676,24 @@ struct TRI_v8_global_t {
 
   /// @brief whether or not useDatabase() is allowed
   bool _allowUseDatabase;
+
+  /// @brief true if the arango infrastructure is garbage collecting
+  bool _inForcedCollect;
+
+  /// @brief the ID that identifies this v8 context
+  size_t _id;
+
+  std::atomic<double> _lastMaxTime;
+
+  std::atomic<size_t> _countOfTimes;
+
+  std::atomic<size_t> _heapMax;
+
+  std::atomic<size_t> _heapLow;
 };
 
 /// @brief creates a global context
-TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate*);
+TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate*, size_t id);
 
 /// @brief gets the global context
 TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate*);
