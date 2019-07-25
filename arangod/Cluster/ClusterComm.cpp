@@ -605,8 +605,8 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     std::atomic<bool> wasSignaled;
 
     SharedVariables() = delete;
-    SharedVariables(ClusterCommResult * preparedResult)
-      : result(preparedResult), wasSignaled(false) {};
+    explicit SharedVariables(ClusterCommResult* preparedResult)
+      : result(preparedResult), wasSignaled(false) {}
   };
 
   // this shared_ptr is not atomic (until c++20), careful
