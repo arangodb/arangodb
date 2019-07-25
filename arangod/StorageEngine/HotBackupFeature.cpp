@@ -62,15 +62,6 @@ void removeAllArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
   }
 }
 
-void removeAllArangoSearchData() {
-  if (!arangodb::ServerState::instance()->isSingleServer() &&
-      !arangodb::ServerState::instance()->isDBServer()) {
-    return;   // not applicable for other ServerState roles
-  }
-
-  DatabaseFeature::DATABASE->enumerateDatabases(removeAllArangoSearchDataForDatabase);
-}
-
 bool recreateArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
   if (!arangodb::ServerState::instance()->isSingleServer()) {
     return true;  // not applicable for other ServerState roles
@@ -486,8 +477,13 @@ bool HotBackupFeature::cancelled(std::string const& transferId) const {
 }
 
 void HotBackupFeature::removeAllArangoSearchData() {
-  ::removeAllArangoSearchData();
+  if (!arangodb::ServerState::instance()->isSingleServer() &&
+      !arangodb::ServerState::instance()->isDBServer()) {
+    return;   // not applicable for other ServerState roles
+  }
+
+  DatabaseFeature::DATABASE->enumerateDatabases(::removeAllArangoSearchDataForDatabase);
 }
 
-}  // namespaces
+}  // namespace arangodb
 
