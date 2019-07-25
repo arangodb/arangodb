@@ -1067,10 +1067,12 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       break;
     }
     
-    case ExecutionNode::MATERIALIZATION:
-      // no registers for now... but looks like we will need some
+    case ExecutionNode::MATERIALIZATION: {
+      auto ep = ExecutionNode::castTo<iresearch::MaterializationNode const*>(en);
+      TRI_ASSERT(ep);
+      ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
       break;
-
+    }
     default: {
       // should not reach this point
       TRI_ASSERT(false);

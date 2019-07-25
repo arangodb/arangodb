@@ -36,6 +36,9 @@
 #include "Aql/SortNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/ExecutionBlock.h"
+#include "Aql/NoResultsExecutor.h"//!!!
+#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionEngine.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchView.h"
@@ -268,44 +271,6 @@ namespace arangodb {
 
 namespace iresearch {
 
-class MaterializationNode : public ExecutionNode {
- public:
-  MaterializationNode(ExecutionPlan* plan, size_t id) : ExecutionNode(plan, id) {}
-  ~MaterializationNode() {}
-
-   /// @brief return the type of the node
-  NodeType getType() const override final {
-    return arangodb::aql::ExecutionNode::MATERIALIZATION; 
-  }
-
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags) const override final {
-    std::cerr << __FUNCTION__ << std::endl;
-    ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
-    nodes.add("canThrow", VPackValue(false));
-    nodes.close();
-  }
-
-  /// @brief creates corresponding ExecutionBlock
-  std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map< ExecutionNode*, ExecutionBlock*> const&) const override {
-    std::cerr << __FUNCTION__ << std::endl;
-    return nullptr;
-  }
-
-  CostEstimate estimateCost() const override final {
-    std::cerr << __FUNCTION__ << std::endl;
-    return CostEstimate(1., 1);
-  }
-
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final {
-    std::cerr << __FUNCTION__ << std::endl;
-    return new MaterializationNode(plan, plan->nextId());
-  }
-};
-
 void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
                      std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
                      arangodb::aql::OptimizerRule const& rule) {
@@ -327,7 +292,7 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
    for (auto& node : nodes) {
      auto const* loop = node->getLoop();
      if (arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
-       auto const& viewNode = *EN::castTo<const IResearchViewNode*>(loop);
+       auto & viewNode = *EN::castTo<const IResearchViewNode*>(loop);
        std::cerr << " Found View:" << viewNode.view()->name() << std::endl;
        ExecutionNode* current = node->getFirstDependency();
        bool hasSortNode = false;
@@ -343,7 +308,7 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
        if(hasSortNode && !docBodyUsed) {
          // we could apply late materialization
          // 1. We need to notify view - it shoudl not materialize documents, but produce only localDocIds
-            // FIXME add implementation
+         //viewNode.getVariablesSetHere();
          // 2. We need to add late materialization node right before return to return actually sorted&limited documents
          auto* returnNode = node->getFirstParent();
          while(returnNode && arangodb::aql::ExecutionNode::RETURN != returnNode->getType()){
@@ -352,10 +317,16 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
          }
          if (returnNode) {
            std::cerr << " Found RETURN NODE" << std::endl;
-           auto materializeNode = new MaterializationNode(plan.get(), plan->nextId());
+
+           Ast* ast = plan->getAst();
+           auto& loopOut = viewNode.outVariable();
+           Variable* outVariable = ast->variables()->createTemporaryVariable();
+           auto materializeNode = new MaterializationNode(plan.get(), plan->nextId(), loopOut, *outVariable);
            plan->registerNode(materializeNode);
            auto f = returnNode->getFirstDependency();
            plan->insertAfter(f, materializeNode);
+           auto & ret = *EN::castTo<ReturnNode*>(returnNode);
+           ret.inVariable(outVariable);
            modified = true;
          }
        }

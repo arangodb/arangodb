@@ -28,6 +28,8 @@
 #include "Aql/ExecutionNode.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
+#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/NoResultsExecutor.h"
 
 namespace arangodb {
 
@@ -38,6 +40,78 @@ class ExecutionEngine;
 }  // namespace aql
 
 namespace iresearch {
+
+
+class MaterializationNode final : public aql::ExecutionNode {
+ public:
+  MaterializationNode(aql::ExecutionPlan* plan, size_t id,  
+                      aql::Variable const& inVariable,  
+                      aql::Variable const& outVariable) 
+    : ExecutionNode(plan, id), _inVariable(&inVariable), _outVariable(&outVariable)
+  {}
+  ~MaterializationNode() {}
+
+   /// @brief return the type of the node
+  NodeType getType() const override final {
+    return arangodb::aql::ExecutionNode::MATERIALIZATION; 
+  }
+
+  void planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHere,
+                         std::vector<aql::RegisterId>& nrRegs,
+                         std::unordered_map<aql::VariableId, VarInfo>& varInfo,
+                         unsigned int& totalNrRegs, unsigned int depth) const {
+    nrRegsHere.emplace_back(1);
+    // create a copy of the last value here
+    // this is requried because back returns a reference and emplace/push_back
+    // may invalidate all references
+    aql::RegisterId const registerId = 1 + nrRegs.back();
+    nrRegs.emplace_back(registerId);
+    varInfo.emplace(_outVariable->id, VarInfo(depth, totalNrRegs++));
+    // in variable is already planned by loop node (it should be loop node out variable)
+  }
+
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  void getVariablesUsedHere(arangodb::HashSet<aql::Variable const*>& vars) const override final {
+    vars.insert(_inVariable);
+  }
+
+  /// @brief getVariablesSetHere
+  std::vector<arangodb::aql::Variable const*> getVariablesSetHere() const override final {
+    std::vector<arangodb::aql::Variable const*> vars{ _outVariable };
+    return vars;
+  }
+
+  /// @brief export to VelocyPack
+  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags) const override final {
+    ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+    nodes.add("canThrow", VPackValue(true)); // can throw in case of reading from store error
+    nodes.close();
+  }
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<aql::ExecutionBlock> createBlock(
+    aql::ExecutionEngine& engine,
+    std::unordered_map< ExecutionNode*, aql::ExecutionBlock*> const&) const override;
+
+  aql::CostEstimate estimateCost() const override final { // DONE
+    if (_dependencies.empty()) {
+      return aql::CostEstimate::empty();
+    }
+    return _dependencies[0]->getCost();
+  }
+
+  aql::ExecutionNode* clone(aql::ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final {
+    return new MaterializationNode(plan, plan->nextId(), *_inVariable, *_outVariable);
+  }
+ private:
+  /// @brief output variable to read from
+  aql::Variable const* _inVariable;
+
+  /// @brief output variable to write to
+  aql::Variable const* _outVariable;
+};
+
 
 /// @brief class EnumerateViewNode
 class IResearchViewNode final : public arangodb::aql::ExecutionNode {
@@ -95,6 +169,11 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief return out variable
   arangodb::aql::Variable const& outVariable() const noexcept {
     return *_outVariable;
+  }
+
+  void replaceOutput(arangodb::aql::Variable& newOutput) {
+    _outVariable = &newOutput;
+    invalidateVarUsage();
   }
 
   /// @brief return the database

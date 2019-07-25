@@ -28,6 +28,7 @@
 #include "Aql/ExecutionStats.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Stats.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchView.h"
@@ -52,6 +53,43 @@ namespace aql {
 
 template <bool>
 class SingleRowFetcher;
+
+
+class MaterilizationNodeExecutor {
+ public:
+  struct Properties{
+    static const bool preservesOrder = true;
+    static const bool allowsBlockPassthrough = true;
+    static const bool inputSizeRestrictsOutputSize = false;
+  } properties;
+
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
+  using Infos = ExecutorInfos;
+  using Stats = NoStats;
+
+  //std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkip) {
+  //   Stats stats{};
+  //   return std::make_tuple(ExecutionState::HASMORE, stats, toSkip); // tupple, cannot use initializer list due to build failure
+  //}
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
+
+  MaterilizationNodeExecutor() = delete;
+  MaterilizationNodeExecutor(MaterilizationNodeExecutor&&) = default;
+  MaterilizationNodeExecutor(MaterilizationNodeExecutor const&) = delete;
+  MaterilizationNodeExecutor(Fetcher& fetcher, Infos& infos) :
+  _infos(infos), _fetcher(fetcher),  _upstreamState(ExecutionState::HASMORE),
+  _inputRow(CreateInvalidInputRowHint{}){ }
+
+  ~MaterilizationNodeExecutor() = default;
+
+ protected:
+  Infos const& _infos;
+  Fetcher& _fetcher;
+  InputAqlItemRow _inputRow;
+  ExecutionState _upstreamState;
+};
+
 
 class IResearchViewExecutorInfos : public ExecutorInfos {
  public:

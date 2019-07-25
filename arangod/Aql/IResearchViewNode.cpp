@@ -642,6 +642,24 @@ SnapshotPtr snapshotSingleServer(IResearchViewNode const& node, transaction::Met
 namespace arangodb {
 namespace iresearch {
 
+std::unique_ptr<aql::ExecutionBlock> MaterializationNode::createBlock(
+      aql::ExecutionEngine& engine,
+      std::unordered_map< ExecutionNode*, aql::ExecutionBlock*> const&) const {
+    aql::ExecutionNode const* previousNode = getFirstDependency();
+    auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    aql::RegisterId outputRegister = it->second.registerId;
+    aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
+                             arangodb::aql::make_shared_unordered_set({outputRegister}),
+                             getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                             getRegisterPlan()->nrRegs[getDepth()],
+                             getRegsToClear(), calcRegsToKeep());
+
+    return std::make_unique<aql::ExecutionBlockImpl<aql::MaterilizationNodeExecutor>>(&engine, this,
+                                                                             std::move(infos));
+}
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                  IResearchViewNode implementation
 // -----------------------------------------------------------------------------
