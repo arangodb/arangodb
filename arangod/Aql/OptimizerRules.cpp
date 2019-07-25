@@ -24,6 +24,7 @@
 
 #include "OptimizerRules.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AstHelper.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
 #include "Aql/CollectOptions.h"
@@ -1228,6 +1229,7 @@ void arangodb::aql::removeUnnecessaryFiltersRule(Optimizer* opt,
 void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
                                                std::unique_ptr<ExecutionPlan> plan,
                                                OptimizerRule const& rule) {
+
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::COLLECT, true);
@@ -1256,19 +1258,21 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
       // we will now check how many parts of "g" are used later
 
       std::unordered_set<std::string> keepAttributes;
-      bool nextCollectSeen = false;
-      CollectNode const* other = nullptr;
 
-      bool stop = false;
-      auto p = collectNode->getFirstParent();
-      while (p != nullptr && !stop) {
-        if (p->getType() == EN::CALCULATION) {
-          auto cc = ExecutionNode::castTo<CalculationNode const*>(p);
+      SmallVector<Variable const*>::allocator_type::arena_type a;
+      SmallVector<Variable const*> searchVariables{a};
+      searchVariables.push_back(outVariable);
+
+      bool doOptimize = true;
+      auto planNode = collectNode->getFirstParent();
+      while (planNode != nullptr && doOptimize) {
+        if (planNode->getType() == EN::CALCULATION) {
+          auto cc = ExecutionNode::castTo<CalculationNode const*>(planNode);
           Expression const* exp = cc->expression();
-          if (exp != nullptr && exp->node() != nullptr) {
+          if (exp != nullptr && exp->node() != nullptr && !searchVariables.empty()) {
             bool isSafeForOptimization;
             auto usedThere =
-                Ast::getReferencedAttributesForKeep(exp->node(), outVariable,
+                ast::getReferencedAttributesForKeep(exp->node(), searchVariables,
                                                     isSafeForOptimization);
 
 
@@ -1277,86 +1281,89 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
                 keepAttributes.emplace(it);
               }
             } else {
-              stop = true;
+              doOptimize = false;
               break;
             }
 
-            if(other != nullptr) {
+//          if(other != nullptr) {
+//
+//            auto otherOutvar = other->outVariable();
+//            nextCollectSeen = true;
+//
+//            // check if the name of the current variable turns up as attribute access in the next collect
+//            LOG_DEVEL << "@@@@ CHECKING NESTED COLLECT CALCULATION " << outVariable->name << " other name " << otherOutvar->name;
+//            exp->node()->dump(6);
+//            bool isSafeForOptimization;
+//            Ast::getReferencedAttributesForKeep(exp->node(), outVariable, isSafeForOptimization, true /*test indexed*/);
+//            if(!isSafeForOptimization) {
+//              LOG_DEVEL << std::boolalpha << "@@@@ is unsafe ";
+//              stop = true;
+//              break;
+//            }
+//            LOG_DEVEL << std::boolalpha << "@@@@ is safe ";
+//
+//
+//            // check if within the next collect the new group variable is used without any attribute
+//            // if so the current variabe has to be available.
+//            auto usedThere =
+//              Ast::getReferencedAttributesForKeep(exp->node(), otherOutvar,
+//                                                  isSafeForOptimization);
+//            if(usedThere.empty()) {
+//              stop = true;
+//              LOG_DEVEL << "@@@@ used there empty" << usedThere << stop;
+//              break;
+//            }
+//
+//            LOG_DEVEL << "@@@@ " << usedThere << stop;
+//
+//
+//          }  end - other != nullptr
 
-              auto otherOutvar = other->outVariable();
-              nextCollectSeen = true;
-
-              // check if the name of the current variable turns up as attribute access in the next collect
-              LOG_DEVEL << "@@@@ CHECKING NESTED COLLECT CALCULATION " << outVariable->name << " other name " << otherOutvar->name;
-              exp->node()->dump(6);
-              bool isSafeForOptimization;
-              Ast::getReferencedAttributesForKeep(exp->node(), outVariable, isSafeForOptimization, true /*test indexed*/);
-              if(!isSafeForOptimization) {
-                LOG_DEVEL << std::boolalpha << "@@@@ is unsafe ";
-                stop = true;
-                break;
-              }
-              LOG_DEVEL << std::boolalpha << "@@@@ is safe ";
-
-
-              // check if within the next collect the new group variable is used without any attribute
-              // if so the current variabe has to be available.
-              auto usedThere =
-                Ast::getReferencedAttributesForKeep(exp->node(), otherOutvar,
-                                                    isSafeForOptimization);
-              if(usedThere.empty()) {
-                stop = true;
-                LOG_DEVEL << "@@@@ used there empty" << usedThere << stop;
-                break;
-              }
-
-              LOG_DEVEL << "@@@@ " << usedThere << stop;
-
-
-            } // end - other != nullptr
           } // end - expression exists
-        } else if (p->getType() == EN::RETURN && other) {
-          auto here = p->getVariableIdsUsedHere();
-          if(here.find(other->outVariable()->id) != here.end()){
-            stop = true;
-            LOG_DEVEL << "@@@@ stop because of output var" << stop;
-            break;
-          }
 
-        } else if (p->getType() == EN::COLLECT) {
-          if(nextCollectSeen){
-            // there is the next collect which will set its
-            // scope variables in another loop
-            other = nullptr;
+//      } else if (p->getType() == EN::RETURN && other) {
+//        auto here = p->getVariableIdsUsedHere();
+//        if(here.find(other->outVariable()->id) != here.end()){
+//          stop = true;
+//          LOG_DEVEL << "@@@@ stop because of output var" << stop;
+//          break;
+//        }
+
+        } else if (planNode->getType() == EN::COLLECT) {
+          auto innerCollectNode = ExecutionNode::castTo<CollectNode const*>(planNode);
+          if (innerCollectNode->hasOutVariable()) {
+
+            // We have the following shituation:
+            //
+            // COLLECT foo = doc._id INTO a
+            // COLLECT bar = doc._id INTO b
+            //
+            // now in a following return there is a bad
+            // and a good case
+            //
+            // RETURN b[0]               <-bad
+            // RETURN b[0].not_a.foo.bar <-good
+            //
+            // In the good case we might manage to
+            // show that `b.a` is not required any
+            // following calculation / return or
+            // other node.
+
+            searchVariables.push_back(innerCollectNode->outVariable());
           } else {
-            auto collectNode = ExecutionNode::castTo<CollectNode const*>(p);
-            if (collectNode->hasOutVariable()) {
 
-              // We have the following shituation:
-              //
-              // COLLECT foo = doc._id INTO a
-              // COLLECT bar = doc._id INTO b
-              //
-              // now in a following return there is a bad
-              // and a good case
-              //
-              // RETURN b[0]               <-bad
-              // RETURN b[0].not_a.foo.bar <-good
-              //
-              // In the good case we might manage to
-              // show that `b.a` is not required any
-              // following calculation / return or
-              // other node.
+            // when we find another COLLECT, it will invalidate all
+            // previous variables in the scope
 
-              other = collectNode;
-            }
+            searchVariables.clear();
           }
         }
 
-        p = p->getFirstParent();
-      }
+        planNode = planNode->getFirstParent();
 
-      if (!stop) {
+      } // end - inspection of nodes below the found collect node - while(p != nullptr)
+
+      if (doOptimize) {
         std::vector<Variable const*> keepVariables;
         // we are allowed to do the optimization
         auto current = n->getFirstDependency();
@@ -1377,7 +1384,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
             break;
           }
           current = current->getFirstDependency();
-        }
+        } // while current != nullptr
 
         if (keepAttributes.empty() && !keepVariables.empty()) {
           LOG_DEVEL << "rule is modified -- variables: ";
@@ -1387,8 +1394,8 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
           collectNode->setKeepVariables(std::move(keepVariables));
           modified = true;
         }
-      }
-    }
+      } // end - if doOptimize
+    } // end - if node has outvariable
 
     collectNode->clearAggregates(
         [&varsUsedLater, &modified](
@@ -1400,7 +1407,8 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
           }
           return false;
         });
-  }
+
+  } // for node in nodes
   LOG_DEVEL << "@@@@ RULE END @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@";
   opt->addPlan(std::move(plan), rule, modified);
 }
