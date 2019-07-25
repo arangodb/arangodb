@@ -23,10 +23,11 @@
 #ifndef ARANGOD_CLUSTER_REBOOTTRACKER_H
 #define ARANGOD_CLUSTER_REBOOTTRACKER_H
 
-#include "ClusterInfo.h"
-
+#include "Cluster/ClusterTypes.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+
+#include "lib/Basics/Mutex.h"
 
 #include <map>
 #include <type_traits>
@@ -44,7 +45,6 @@ class CallbackGuard {
  public:
   // Calls the callback given callback upon destruction.
   // Allows only move semantics and no copy semantics.
-
 
   CallbackGuard();
   // The passed callback should not throw exceptions, they will not be caught!

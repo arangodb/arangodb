@@ -28,6 +28,8 @@
 
 #include "Mocks/Servers.h"
 
+#include "lib/Logger/Logger.h"
+
 #include <memory>
 #include <type_traits>
 

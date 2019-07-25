@@ -24,6 +24,7 @@
 
 #include "Scheduler/SchedulerFeature.h"
 #include "lib/Basics/Exceptions.h"
+#include "lib/Basics/MutexLocker.h"
 #include "lib/Basics/ScopeGuard.h"
 #include "lib/Logger/Logger.h"
 
@@ -249,7 +250,8 @@ void RebootTracker::queueCallbacks(
   }
 }
 
-void RebootTracker::unregisterCallback(PeerState const& peerState, RebootTracker::CallbackId callbackId) {
+void RebootTracker::unregisterCallback(PeerState const& peerState,
+                                       RebootTracker::CallbackId callbackId) {
   auto const cbIt = _callbacks.find(peerState.serverId());
   if (cbIt != _callbacks.end()) {
     auto& rebootMap = cbIt->second;
