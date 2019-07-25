@@ -342,7 +342,7 @@ function dumpTestSuite () {
         if (res.length === 5000) {
           break;
         }
-        print("Waiting for arangosearch index to be built...", res.length);
+        console.log("Waiting for arangosearch index to be built...", res.length);
         internal.wait(1);
       }
       assertEqual(5000, res.length);
