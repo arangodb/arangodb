@@ -2227,8 +2227,20 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node, bool& isSaf
 }
 
 /// @brief determines the to-be-kept attribute of an INTO expression
+//
+// - adds attribute accesses to `searchVariable` (e.g. searchVar.attribute) in expression given by `node` to return value `results`
+// - if a node references the search variable in the expression `isSafeForOptimization` is set to false
+//   and the traversal stops.
+// - adds expansion // TODO
+
 std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(
     AstNode const* node, Variable const* searchVariable, bool& isSafeForOptimization, bool checkForAttributeName) {
+
+  // Inspects ast nodes if the node in question is not of type
+  // NODE_TYPE_INDEXED_ACCESS or NODE_TYPE_EXPANSION the lambda return
+  // immediately false. Otherwise members are checked they contain a variable
+  // or a reference to one. If true the found variable is checked against the
+  // search variable. The result of the comparison is returned.
   auto isTargetVariable = [&searchVariable](AstNode const* node) {
     if (node->type == NODE_TYPE_INDEXED_ACCESS) {
       auto sub = node->getMemberUnchecked(0);
@@ -2267,6 +2279,7 @@ std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(
   std::function<bool(AstNode const*)> visitor = [&isSafeForOptimization,
                                                  &result, &isTargetVariable,
                                                  &searchVariable, checkForAttributeName](AstNode const* node) {
+    ///LOG_DEVEL << "@@@ visiting " << node;
     if (!isSafeForOptimization) {
       return false;
     }
@@ -2280,16 +2293,10 @@ std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(
         // do not descend further
         return false;
       }
-      if(checkForAttributeName){
-        if(node->getStringRef() == searchVariable->name) {
-          isSafeForOptimization = false;
-          return false;
-        }
-      }
     } else if (node->type == NODE_TYPE_REFERENCE) {
       Variable const* v = static_cast<Variable const*>(node->getData());
       if (v->id == searchVariable->id) {
-        isSafeForOptimization = false;
+        isSafeForOptimization = false; // the expression references the searched variable
         return false;
       }
     } else if (node->type == NODE_TYPE_EXPANSION) {
@@ -2312,6 +2319,8 @@ std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(
     return true;
   };
 
+  // traverse ast and call visitor before recursing on each node
+  // as long as visitor returns true the traversal continues
   traverseReadOnly(node, visitor, ::doNothingVisitor);
 
   return result;

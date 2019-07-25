@@ -1261,7 +1261,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
 
       bool stop = false;
       auto p = collectNode->getFirstParent();
-      while (p != nullptr) {
+      while (p != nullptr && !stop) {
         if (p->getType() == EN::CALCULATION) {
           auto cc = ExecutionNode::castTo<CalculationNode const*>(p);
           Expression const* exp = cc->expression();
@@ -1287,11 +1287,17 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
               nextCollectSeen = true;
 
               // check if the name of the current variable turns up as attribute access in the next collect
+              LOG_DEVEL << "@@@@ CHECKING NESTED COLLECT CALCULATION " << outVariable->name << " other name " << otherOutvar->name;
+              exp->node()->dump(6);
               bool isSafeForOptimization;
               Ast::getReferencedAttributesForKeep(exp->node(), outVariable, isSafeForOptimization, true /*test indexed*/);
               if(!isSafeForOptimization) {
+                LOG_DEVEL << std::boolalpha << "@@@@ is unsafe ";
                 stop = true;
+                break;
               }
+              LOG_DEVEL << std::boolalpha << "@@@@ is safe ";
+
 
               // check if within the next collect the new group variable is used without any attribute
               // if so the current variabe has to be available.
@@ -1300,14 +1306,21 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
                                                     isSafeForOptimization);
               if(usedThere.empty()) {
                 stop = true;
+                LOG_DEVEL << "@@@@ used there empty" << usedThere << stop;
+                break;
               }
 
+              LOG_DEVEL << "@@@@ " << usedThere << stop;
+
+
             } // end - other != nullptr
-          }
+          } // end - expression exists
         } else if (p->getType() == EN::RETURN && other) {
           auto here = p->getVariableIdsUsedHere();
           if(here.find(other->outVariable()->id) != here.end()){
             stop = true;
+            LOG_DEVEL << "@@@@ stop because of output var" << stop;
+            break;
           }
 
         } else if (p->getType() == EN::COLLECT) {
@@ -1367,6 +1380,10 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
         }
 
         if (keepAttributes.empty() && !keepVariables.empty()) {
+          LOG_DEVEL << "rule is modified -- variables: ";
+          for (auto const& v : keepVariables) {
+            LOG_DEVEL << v->name;
+          }
           collectNode->setKeepVariables(std::move(keepVariables));
           modified = true;
         }
@@ -1384,7 +1401,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
           return false;
         });
   }
-
+  LOG_DEVEL << "@@@@ RULE END @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@";
   opt->addPlan(std::move(plan), rule, modified);
 }
 
