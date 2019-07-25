@@ -153,27 +153,34 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @returns true if underlying view has no links
   bool empty() const noexcept;
 
+  void skipMaterializationTo(aql::Variable* colIdVariable,
+                             aql::Variable* docIdVariable) noexcept {
+    TRI_ASSERT((docIdVariable != nullptr) == (colIdVariable != nullptr));
+    _outNonMaterializedDocId = docIdVariable;
+    _outNonMaterializedColId = colIdVariable;
+  }
+
   /// @brief the cost of an enumerate view node
   aql::CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesSetHere
   std::vector<arangodb::aql::Variable const*> getVariablesSetHere() const override final {
-    std::vector<arangodb::aql::Variable const*> vars(1 + _scorers.size());
+    std::vector<arangodb::aql::Variable const*> vars(1 + _scorers.size() + 
+    (_outNonMaterializedColId != nullptr ? 2 : 0)
+    );
 
     *std::transform(_scorers.begin(), _scorers.end(), vars.begin(),
                     [](auto const& scorer) { return scorer.var; }) = _outVariable;
-
+    if(_outNonMaterializedColId != nullptr) {
+      vars[vars.size() - 2] = _outNonMaterializedColId;
+      vars[vars.size() - 1] = _outNonMaterializedDocId;
+    }
     return vars;
   }
 
   /// @brief return out variable
   arangodb::aql::Variable const& outVariable() const noexcept {
     return *_outVariable;
-  }
-
-  void replaceOutput(arangodb::aql::Variable& newOutput) {
-    _outVariable = &newOutput;
-    invalidateVarUsage();
   }
 
   /// @brief return the database
@@ -183,7 +190,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   std::shared_ptr<const arangodb::LogicalView> const& view() const noexcept {
     return _view;
   }
-
+  
   /// @brief return the filter condition to pass to the view
   arangodb::aql::AstNode const& filterCondition() const noexcept {
     TRI_ASSERT(_filterCondition);
@@ -257,6 +264,17 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief output variable to write to
   aql::Variable const* _outVariable;
+
+  // Following two variables should be set in pairs.
+  // Info is split between 2 registers to allow constructing
+  // AqlValue with type VPACK_INLINE, which is much faster.
+  // CollectionId  is needed for materialization node -
+  // as view could return documents from different collections.
+  /// @brief output variable to write only non-materialized document ids
+  aql::Variable const* _outNonMaterializedDocId;
+  /// @brief output variable to write only non-materialized collection ids
+  aql::Variable const* _outNonMaterializedColId;
+
 
   /// @brief filter node to pass to the view
   aql::AstNode const* _filterCondition;

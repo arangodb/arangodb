@@ -677,7 +677,9 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, size_t id,
       // in case if filter is not specified
       // set it to surrogate 'RETURN ALL' node
       _filterCondition(filterCondition ? filterCondition : &ALL),
-      _scorers(std::move(scorers)) {
+      _scorers(std::move(scorers)),
+      _outNonMaterializedDocId(nullptr),
+      _outNonMaterializedColId(nullptr) {
   TRI_ASSERT(_view);
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
   TRI_ASSERT(LogicalView::category() == _view->category());
@@ -857,6 +859,18 @@ void IResearchViewNode::planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHe
     ++nrRegsHere[depth];
     ++nrRegs[depth];
     varInfo.emplace(scorer.var->id, VarInfo(depth, totalNrRegs++));
+  }
+
+  // Plan register for document-id only block
+  if(_outNonMaterializedDocId != nullptr) {
+    // paired variable should be there as well
+    TRI_ASSERT(_outNonMaterializedColId != nullptr);
+    ++nrRegsHere[depth];
+    ++nrRegs[depth];
+    varInfo.emplace(_outNonMaterializedDocId->id, VarInfo(depth, totalNrRegs++));
+    ++nrRegsHere[depth];
+    ++nrRegs[depth];
+    varInfo.emplace(_outNonMaterializedColId->id, VarInfo(depth, totalNrRegs++));
   }
 }
 
@@ -1126,19 +1140,27 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   aql::RegisterId const firstOutputRegister = getNrInputRegisters();
   auto numScoreRegisters = static_cast<aql::RegisterId>(_scorers.size());
 
+  aql::RegisterId numDocumentRegs = 1;
+  // Also we could be asked to produce only document/collection ids for later materialization
+  if(_outNonMaterializedColId != nullptr) {
+    numDocumentRegs += 2;
+  }
+
   // We have one additional output register for each scorer, consecutively after
-  // the output register for documents. These must of course fit in the
+  // the output register for documents. And two additiona registers for late materialization
+  // These must of course fit in the
   // available registers. There may be unused registers reserved for later
   // blocks.
-  TRI_ASSERT(getNrInputRegisters() + 1 + numScoreRegisters <= getNrOutputRegisters());
+  TRI_ASSERT(getNrInputRegisters() + numDocumentRegs + numScoreRegisters <= getNrOutputRegisters());
   std::shared_ptr<std::unordered_set<aql::RegisterId>> writableOutputRegisters =
       aql::make_shared_unordered_set();
-  writableOutputRegisters->reserve(1 + numScoreRegisters);
+  writableOutputRegisters->reserve(numDocumentRegs + numScoreRegisters);
   for (aql::RegisterId reg = firstOutputRegister;
-       reg < firstOutputRegister + numScoreRegisters + 1; reg++) {
+       reg < firstOutputRegister + numScoreRegisters + numDocumentRegs; reg++) {
     writableOutputRegisters->emplace(reg);
   }
-  TRI_ASSERT(writableOutputRegisters->size() == 1 + numScoreRegisters);
+  
+  TRI_ASSERT(writableOutputRegisters->size() == numDocumentRegs + numScoreRegisters);
   TRI_ASSERT(writableOutputRegisters->begin() != writableOutputRegisters->end());
   TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->begin(),
                                                       writableOutputRegisters->end()));
@@ -1156,7 +1178,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                                 filterCondition(),
                                                 volatility(),
                                                 getRegisterPlan()->varInfo,
-                                                getDepth()};
+                                                getDepth(),
+                                                _outNonMaterializedColId != nullptr};
 
   if (_sort.first) {
     TRI_ASSERT(!_sort.first->empty()); // guaranteed by optimizer rule

@@ -1519,10 +1519,26 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
 
   LimitExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                            getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                           calcRegsToKeep(), _offset, _limit, _fullCount);
+                           calcRegsToKeep(), _offset, _limit, _fullCount,
+                           _doMaterialization);
 
   return std::make_unique<ExecutionBlockImpl<LimitExecutor>>(&engine, this,
                                                              std::move(infos));
+}
+
+void LimitNode::getVariablesUsedHere(arangodb::HashSet<aql::Variable const*>& vars) const {
+  if(_inNonMaterializedColId != nullptr) {
+    vars.insert(_inNonMaterializedColId);
+    vars.insert(_inNonMaterializedDocId);
+  }
+}
+
+std::vector<arangodb::aql::Variable const*> LimitNode::getVariablesSetHere() const {
+  if(_outDocumentId != nullptr){
+    return std::vector<arangodb::aql::Variable const*>{_outDocumentId};
+  } else {
+    return std::vector<arangodb::aql::Variable const*>{};
+  }
 }
 
 // @brief toVelocyPack, for LimitNode

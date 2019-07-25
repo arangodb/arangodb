@@ -43,14 +43,16 @@ LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId n
                                        std::unordered_set<RegisterId> registersToClear,
                                        // cppcheck-suppress passedByValue
                                        std::unordered_set<RegisterId> registersToKeep,
-                                       size_t offset, size_t limit, bool fullCount)
+                                       size_t offset, size_t limit, bool fullCount,
+                                       bool doMaterialization)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
                     std::make_shared<std::unordered_set<RegisterId>>(),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _offset(offset),
       _limit(limit),
-      _fullCount(fullCount) {}
+      _fullCount(fullCount),
+      _doMaterialization(doMaterialization){}
 
 LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
@@ -247,7 +249,12 @@ std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fet
     case LimitState::RETURNING_LAST_ROW:
     case LimitState::RETURNING:
       auto rv =_fetcher.fetchBlockForPassthrough(std::min(atMost, maxRowsLeftToFetch()));
-      return {rv.first, LimitStats{}, std::move(rv.second)};
+      if (infos().doMaterialization()) {
+        return { rv.first, LimitStats{}, std::move(rv.second) };
+      } else {
+        return { rv.first, LimitStats{}, std::move(rv.second) };
+      }
+
   }
   // The control flow cannot reach this. It is only here to make MSVC happy,
   // which is unable to figure out that the switch above is complete.

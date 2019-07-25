@@ -285,17 +285,16 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
     return;
   }
 
-  // test run. Set flag for each view in query
    SmallVector<ExecutionNode*>::allocator_type::arena_type a;
    SmallVector<ExecutionNode*> nodes{a};
    plan->findNodesOfType(nodes, EN::LIMIT, false);
-   for (auto& node : nodes) {
-     auto const* loop = node->getLoop();
+   for (auto node : nodes) {
+     auto loop = const_cast<ExecutionNode*>(node->getLoop());
      if (arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
-       auto & viewNode = *EN::castTo<const IResearchViewNode*>(loop);
+       auto & viewNode = *EN::castTo<IResearchViewNode*>(loop);
        std::cerr << " Found View:" << viewNode.view()->name() << std::endl;
        ExecutionNode* current = node->getFirstDependency();
-       bool hasSortNode = false;
+       bool hasSortNode = false; // we need sort node present  (maybe not, actually. Just limit will be enough)
        bool docBodyUsed = false; // let it be false for now. Figure out later how to check it properly
        while(current != loop) { // we should check  that this loop has sort node
          if (arangodb::aql::ExecutionNode::SORT == current->getType()) {
@@ -308,27 +307,14 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
        if(hasSortNode && !docBodyUsed) {
          // we could apply late materialization
          // 1. We need to notify view - it shoudl not materialize documents, but produce only localDocIds
-         //viewNode.getVariablesSetHere();
-         // 2. We need to add late materialization node right before return to return actually sorted&limited documents
-         auto* returnNode = node->getFirstParent();
-         while(returnNode && arangodb::aql::ExecutionNode::RETURN != returnNode->getType()){
-           returnNode = returnNode->getFirstParent();
-           break;
-         }
-         if (returnNode) {
-           std::cerr << " Found RETURN NODE" << std::endl;
-
-           Ast* ast = plan->getAst();
-           auto& loopOut = viewNode.outVariable();
-           Variable* outVariable = ast->variables()->createTemporaryVariable();
-           auto materializeNode = new MaterializationNode(plan.get(), plan->nextId(), loopOut, *outVariable);
-           plan->registerNode(materializeNode);
-           auto f = returnNode->getFirstDependency();
-           plan->insertAfter(f, materializeNode);
-           auto & ret = *EN::castTo<ReturnNode*>(returnNode);
-           ret.inVariable(outVariable);
-           modified = true;
-         }
+         // 2. We need to tell limit node to do materialization  right before returning actually sorted&limited documents
+         Ast* ast = plan->getAst();
+         auto* localDocIdTmp = ast->variables()->createTemporaryVariable();
+         auto* localColIdTmp = ast->variables()->createTemporaryVariable();
+         auto& limitNode = *EN::castTo<LimitNode*>(node);
+         viewNode.skipMaterializationTo(localColIdTmp, localDocIdTmp);
+         limitNode.doMaterializationOf(localColIdTmp, localDocIdTmp);
+         modified = true;
        }
        
      }

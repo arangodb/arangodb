@@ -780,9 +780,11 @@ class LimitNode : public ExecutionNode {
   friend class ExecutionBlock;
   friend class LimitBlock;
 
- public:
+ public: 
   LimitNode(ExecutionPlan* plan, size_t id, size_t offset, size_t limit)
-      : ExecutionNode(plan, id), _offset(offset), _limit(limit), _fullCount(false) {}
+      : ExecutionNode(plan, id), _offset(offset), _limit(limit), _fullCount(false),
+        _inNonMaterializedDocId(nullptr), _inNonMaterializedColId(nullptr),
+        _outDocumentId(nullptr){}
 
   LimitNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -821,6 +823,17 @@ class LimitNode : public ExecutionNode {
   /// @brief return the limit value
   size_t limit() const { return _limit; }
 
+  void doMaterializationOf(
+    aql::Variable* colIdVariable, 
+    aql::Variable* docIdVariable,
+    aql::Variable* outDocument) noexcept {
+    TRI_ASSERT((docIdVariable != nullptr) == (colIdVariable != nullptr));
+    TRI_ASSERT((docIdVariable != nullptr) == (outDocument != nullptr))
+    _inNonMaterializedDocId = docIdVariable;
+    _inNonMaterializedColId = colIdVariable;
+    _outDocumentId = outDocument;
+  }
+
  private:
   /// @brief the offset
   size_t _offset;
@@ -830,6 +843,19 @@ class LimitNode : public ExecutionNode {
 
   /// @brief whether or not the node should fully count what it limits
   bool _fullCount;
+
+ // Following three variables should be set coherently.
+  // Info is split between 2 registers to allow constructing
+  // AqlValue with type VPACK_INLINE, which is much faster.
+  // CollectionId  is needed for materialization node -
+  // as view could return documents from different collections.
+  /// @brief output variable to write only non-materialized document ids
+  aql::Variable const* _inNonMaterializedDocId;
+  /// @brief output variable to write only non-materialized collection ids
+  aql::Variable const* _inNonMaterializedColId;
+  /// @brief finally materialized document
+  aql::Variable const* _outDocumentId;
+
 };
 
 /// @brief class CalculationNode

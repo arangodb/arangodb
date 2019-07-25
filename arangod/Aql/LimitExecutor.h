@@ -50,7 +50,8 @@ class LimitExecutorInfos : public ExecutorInfos {
   LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                      std::unordered_set<RegisterId> registersToClear,
                      std::unordered_set<RegisterId> registersToKeep,
-                     size_t offset, size_t limit, bool fullCount);
+                     size_t offset, size_t limit, bool fullCount,
+                     bool doMaterialization);
 
   LimitExecutorInfos() = delete;
   LimitExecutorInfos(LimitExecutorInfos&&) = default;
@@ -60,6 +61,7 @@ class LimitExecutorInfos : public ExecutorInfos {
   size_t getOffset() const noexcept { return _offset; };
   size_t getLimit() const noexcept { return _limit; };
   size_t getLimitPlusOffset() const noexcept { return _offset + _limit; };
+  bool doMaterialization() const noexcept { return _doMaterialization;  }
   bool isFullCountEnabled() const noexcept { return _fullCount; };
 
  private:
@@ -71,6 +73,8 @@ class LimitExecutorInfos : public ExecutorInfos {
 
   /// @brief whether or not the node should fully count what it limits
   bool const _fullCount;
+
+  bool const _doMaterialization;
 };
 
 /**

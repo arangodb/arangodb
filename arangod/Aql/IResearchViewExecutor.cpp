@@ -146,7 +146,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     aql::AstNode const& filterCondition,
     std::pair<bool, bool> volatility,
     IResearchViewExecutorInfos::VarInfoMap const& varInfoMap,
-    int depth)
+    int depth,
+    bool doMaterialization)
   : ExecutorInfos(std::move(infos)),
     _outputRegister(firstOutputRegister),
     _numScoreRegisters(numScoreRegisters),
@@ -161,7 +162,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     // `_volatileSort` implies `_volatileFilter`
     _volatileFilter(_volatileSort || volatility.first),
     _varInfoMap(varInfoMap),
-    _depth(depth) {
+    _depth(depth),
+    _doMaterialization(doMaterialization) {
   TRI_ASSERT(_reader != nullptr);
   TRI_ASSERT(getOutputRegisters()->find(firstOutputRegister) !=
              getOutputRegisters()->end());
@@ -412,14 +414,52 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
 }
 
 template<typename Impl, typename Traits>
+bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
+  ReadContext& ctx, 
+  LocalDocumentId const& documentId,
+  LogicalCollection const& collection) {
+   // looks like here we will need collection Id also as View could produce documents from multiple collections
+  if (ADB_LIKELY(documentId.isSet())) {
+    {
+      VPackBuilder builder; // BAD. Make it faster!
+      builder.add(VPackValue(collection.id()));
+      AqlValue a{builder};
+      bool mustDestroy = true;
+      AqlValueGuard guard{ a, mustDestroy };
+      ctx.outputRow.moveValueInto(
+        ctx.docOutReg + infos().getNumScoreRegisters() + 1 , ctx.inputRow, guard);
+    }
+    {
+      VPackBuilder builder; // BAD. Make it faster!
+      builder.add(VPackValue(documentId.id()));
+      AqlValue a{builder};
+      bool mustDestroy = true;
+      AqlValueGuard guard{ a, mustDestroy };
+      ctx.outputRow.moveValueInto(
+        ctx.docOutReg + infos().getNumScoreRegisters() + 2 , ctx.inputRow, guard);
+    }
+   
+    return true;
+  } else {
+    return false;
+  }
+}
+
+template<typename Impl, typename Traits>
 bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
                                                        IndexReadBufferEntry bufferEntry,
                                                        LocalDocumentId const& documentId,
                                                        LogicalCollection const& collection) {
   TRI_ASSERT(documentId.isSet());
 
-  // read document from underlying storage engine, if we got an id
-  if (collection.readDocumentWithCallback(infos().getQuery().trx(), documentId, ctx.callback)) {
+  bool writeDocOk = infos().doMaterialization() ?
+    // read document from underlying storage engine, if we got an id
+    collection.readDocumentWithCallback(infos().getQuery().trx(), documentId, ctx.callback) :
+    // no need to look into collection. Somebody down the stream will do materialization. Just emit LocalDocumentIds
+    writeLocalDocumentId(ctx, documentId, collection);
+
+  
+  if (writeDocOk) {
     // in the ordered case we have to write scores as well as a document
     if /* constexpr */ (Traits::Ordered) {
       // scorer register are placed consecutively after the document output register
