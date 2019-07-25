@@ -25,6 +25,10 @@
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -621,6 +625,25 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
   return res;
 }
 
+/// @brief calls the callback function for each managed transaction
+void Manager::iterateManagedTrx(
+    std::function<void(TRI_voc_tid_t, ManagedTrx const&)> const& callback) const {
+  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+  
+  // iterate over all active transactions
+  for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
+    READ_LOCKER(locker, _transactions[bucket]._lock);
+
+    auto& buck = _transactions[bucket];
+    for (auto const& it : buck._managed) {
+      if (it.second.type == MetaType::Managed) {
+        // we only care about managed transactions here
+        callback(it.first, it.second);
+      }
+    }
+  }
+}
+
 /// @brief collect forgotten transactions
 bool Manager::garbageCollect(bool abortAll) {
   bool didWork = false;
@@ -721,6 +744,72 @@ bool Manager::abortManagedTrx(std::function<bool(TransactionState const&)> cb) {
     }
   }
   return !toAbort.empty();
+}
+
+void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database, std::string const& username, bool fanout) const {
+  TRI_ASSERT(!builder.isClosed());
+  
+  if (fanout) {
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
+    auto ci = ClusterInfo::instance();
+    if (ci == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+      
+    std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
+    if (cc == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    for (auto const& coordinator : ci->getCurrentCoordinators()) {
+      if (coordinator == ServerState::instance()->getId()) {
+        // ourselves!
+        continue;
+      }
+
+      auto auth = AuthenticationFeature::instance();
+      std::unordered_map<std::string, std::string> headers;
+      if (auth != nullptr && auth->isActive()) {
+        // when in superuser mode, username is empty
+        //  in this case ClusterComm will add the default superuser token
+        if (!username.empty()) {
+          VPackBuilder builder;
+          {
+            VPackObjectBuilder payload{&builder};
+            payload->add("preferred_username", VPackValue(username));
+          }
+          VPackSlice slice = builder.slice();
+          headers.emplace(StaticStrings::Authorization,
+                          "bearer " + auth->tokenCache().generateJwt(slice));
+        }
+      }
+  
+      double const timeout = 5.0;
+      
+      auto comres = 
+          cc->syncRequest(TRI_NewTickServer(), "server:" + coordinator, rest::RequestType::GET,
+                    "/_db/" + database + "/_api/transaction?local=true", std::string(),
+                    std::unordered_map<std::string, std::string>(), timeout);
+  
+      auto result = comres->result;
+
+      // TODO: error handling
+      if (result != nullptr && result->getHttpReturnCode() == 200) {
+        auto const body = result->getBodyVelocyPack();
+        VPackSlice slice = body->slice();
+        if (slice.isArray()) {
+          for (auto const& it : VPackArrayIterator(slice)) {
+            builder.add(it);
+          }
+        }
+      }
+    }
+  }
+
+  // merge with local transactions
+  iterateManagedTrx([&builder](TRI_voc_tid_t tid, arangodb::transaction::Manager::ManagedTrx const&) {
+    builder.add(VPackValue(std::to_string(tid)));
+  });
 }
 
 }  // namespace transaction

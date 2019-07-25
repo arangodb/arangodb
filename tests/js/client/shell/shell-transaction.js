@@ -291,6 +291,8 @@ function transactionRevisionsSuite () {
 
 function transactionInvocationSuite () {
   'use strict';
+  const cn = "UnitTestsCollection";
+
   return {
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -298,6 +300,11 @@ function transactionInvocationSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
+      db._drop(cn);
+    },
+
+    tearDown: function () {
+      db._drop(cn);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -403,6 +410,76 @@ function transactionInvocationSuite () {
           }
         }
       });
+    },
+    
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: _transactions() function
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testListTransactions: function () {
+      db._create(cn);
+      let trx1, trx2, trx3;
+      
+      let trx = db._transactions();
+      assertEqual(0, trx.length);
+
+      let obj = {
+        collections: {
+          write: [ cn ]
+        }
+      };
+     
+      try {
+        // create a single trx
+        trx1 = db._createTransaction(obj);
+      
+        trx = db._transactions();
+        assertEqual(1, trx.length);
+        assertEqual("string", typeof trx[0]); 
+        assertEqual(trx1._id, trx[0]);
+            
+        trx1.commit();
+        // trx is committed now - list should be empty
+
+        trx = db._transactions();
+        assertEqual(0, trx.length);
+
+        // create two more
+        trx2 = db._createTransaction(obj);
+      
+        trx = db._transactions();
+        assertEqual(1, trx.length);
+        assertEqual("string", typeof trx[0]); 
+        assertEqual(trx2._id, trx[0]);
+            
+        trx3 = db._createTransaction(obj);
+      
+        trx = db._transactions();
+        assertEqual(2, trx.length);
+        assertEqual("string", typeof trx[0]); 
+        assertEqual("string", typeof trx[1]); 
+        assertEqual(trx2._id, trx[0]);
+        assertEqual(trx3._id, trx[1]);
+
+        trx2.commit();
+        
+        trx = db._transactions();
+        assertEqual(1, trx.length);
+        assertEqual("string", typeof trx[0]); 
+        assertEqual(trx3._id, trx[0]);
+
+        trx3.commit();
+      } finally {
+        if (trx1 && trx1._id) {
+          trx1.abort();
+        }
+        if (trx2 && trx2._id) {
+          trx2.abort();
+        }
+        if (trx3 && trx3._id) {
+          trx3.abort();
+        }
+      }
     },
 
   };
