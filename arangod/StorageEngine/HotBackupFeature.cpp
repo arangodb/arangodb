@@ -63,60 +63,59 @@ void removeAllArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
 }
 
 bool recreateArangoSearchDataForDatabase(TRI_vocbase_t& vocbase) {
-  if (!arangodb::ServerState::instance()->isSingleServer()) {
-    return true;  // not applicable for other ServerState roles
-  }
-
   bool success = true;
+  if (arangodb::ServerState::instance()->isSingleServer()) {
+    for (auto& view : vocbase.views()) {
+      LOG_TOPIC(INFO, Logger::BACKUP)
+        << "Recreating ArangoSearch index: doing view " << view->name();
+      if (!arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(view.get())) {
+        continue;  // not an IResearchView
+      }
 
-  for (auto& view : vocbase.views()) {
-    LOG_TOPIC(INFO, Logger::BACKUP)
-      << "Recreating ArangoSearch index: doing view " << view->name();
-    if (!arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(view.get())) {
-      continue;  // not an IResearchView
+      arangodb::velocypack::Builder builder;
+      arangodb::Result res;
+
+      builder.openObject();
+      res = view->properties(builder, true, false);
+          // get JSON with end-user definition
+      builder.close();
+
+      if (!res.ok()) {
+        LOG_TOPIC(ERR, Logger::BACKUP)
+            << "failure to generate persisted definition while recreating "
+               "ArangoSearch index after a restore";
+
+        success = false;
+        continue;
+      }
+
+      res = view->drop();  // drop view (including all links)
+
+      if (!res.ok()) {
+        LOG_TOPIC(WARN, Logger::BACKUP)
+            << "failure to drop view while recreating ArangoSearch index "
+               "after a restore";
+
+        success = false;
+        continue;
+      }
+
+      // recreate view
+      res = arangodb::iresearch::IResearchView::factory().create(view, vocbase,
+                                                                 builder.slice());
+
+      if (!res.ok()) {
+        LOG_TOPIC(ERR, Logger::BACKUP)
+            << "failure to recreate view while recreating ArangoSearch "
+               "index after a restore, error: "
+            << res.errorNumber() << " " << res.errorMessage()
+            << ", view definition: " << builder.slice().toString();
+
+        success = false;
+      }
     }
-
-    arangodb::velocypack::Builder builder;
-    arangodb::Result res;
-
-    builder.openObject();
-    res = view->properties(builder, true, false);
-        // get JSON with end-user definition
-    builder.close();
-
-    if (!res.ok()) {
-      LOG_TOPIC(ERR, Logger::BACKUP)
-          << "failure to generate persisted definition while recreating "
-             "ArangoSearch index after a restore";
-
-      success = false;
-      continue;
-    }
-
-    res = view->drop();  // drop view (including all links)
-
-    if (!res.ok()) {
-      LOG_TOPIC(WARN, Logger::BACKUP)
-          << "failure to drop view while recreating ArangoSearch index "
-             "after a restore";
-
-      success = false;
-      continue;
-    }
-
-    // recreate view
-    res = arangodb::iresearch::IResearchView::factory().create(view, vocbase,
-                                                               builder.slice());
-
-    if (!res.ok()) {
-      LOG_TOPIC(ERR, Logger::BACKUP)
-          << "failure to recreate view while recreating ArangoSearch "
-             "index after a restore, error: "
-          << res.errorNumber() << " " << res.errorMessage()
-          << ", view definition: " << builder.slice().toString();
-
-      success = false;
-    }
+  } else {   // dbserver case
+    removeAllArangoSearchDataForDatabase(vocbase);
   }
 
   return success;
@@ -209,10 +208,8 @@ void HotBackupFeature::prepare() {
 void HotBackupFeature::start() {
   // Potentially recreate all ArangoSearch indexes if this is a single
   // server and we are performing a RESTORE restart:
-  if (ServerState::instance()->isSingleServer()) {
-    if (::isRestoreStart()) {
-      ::scheduleRecreateArangoSearchViewsAfterRestore();
-    }
+  if (::isRestoreStart()) {
+    ::scheduleRecreateArangoSearchViewsAfterRestore();
   }
 }
 
@@ -384,7 +381,7 @@ arangodb::Result HotBackupFeature::getTransferRecord(
   // Get transfer record.
   // Report last entry in _clipboard/progress or next to last in archive
   // If transfer is still in _clipboard, it is still ongoing. We can report last status or progress.
-  // Else we need to find the next to last message if failed 
+  // Else we need to find the next to last message if failed
 
   MUTEX_LOCKER(guard, _clipBoardMutex);
 
@@ -431,11 +428,11 @@ arangodb::Result HotBackupFeature::getTransferRecord(
   return arangodb::Result();
 }
 
-// cancel a transfer 
+// cancel a transfer
 arangodb::Result HotBackupFeature::cancel(std::string const& transferId) {
 
   // If not alredy otherwise done, cancel the job by adding last entry
-  
+
   MUTEX_LOCKER(guard, _clipBoardMutex);
   auto t = _clipBoard.find(transferId);
 
