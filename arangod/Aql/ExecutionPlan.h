@@ -89,14 +89,10 @@ class ExecutionPlan {
   }
 
   /// @brief note that an optimizer rule was applied
-  inline void addAppliedRule(int level) { 
-    if (_appliedRules.empty() || _appliedRules.back() != level) {
-      _appliedRules.emplace_back(level); 
-    }
-  }
-
-  /// @brief get a list of all applied rules
-  std::vector<std::string> getAppliedRules() const;
+  void addAppliedRule(int level); 
+  
+  /// @brief check if a specific optimizer rule was applied
+  bool hasAppliedRule(int level) const;
 
   /// @brief return the next value for a node id
   inline size_t nextId() { return ++_nextId; }

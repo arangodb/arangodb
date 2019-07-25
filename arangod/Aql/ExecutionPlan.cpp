@@ -409,9 +409,14 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) 
   builder.close();
 }
 
-/// @brief get a list of all applied rules
-std::vector<std::string> ExecutionPlan::getAppliedRules() const {
-  return OptimizerRulesFeature::translateRules(_appliedRules);
+void ExecutionPlan::addAppliedRule(int level) {
+  if (_appliedRules.empty() || _appliedRules.back() != level) {
+    _appliedRules.emplace_back(level); 
+  }
+}
+
+bool ExecutionPlan::hasAppliedRule(int level) const {
+  return std::any_of(_appliedRules.begin(), _appliedRules.end(), [level](int l) { return l == level; });
 }
 
 /// @brief get a node by its id

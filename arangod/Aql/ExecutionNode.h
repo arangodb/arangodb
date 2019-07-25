@@ -944,6 +944,9 @@ class SubqueryNode : public ExecutionNode {
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
+  ExecutionNode* shallowClone(ExecutionPlan* plan, bool withDependencies,
+                              bool withProperties, ExecutionNode* subquery) const;
+
   /// @brief whether or not the subquery is a data-modification operation
   bool isModificationSubquery() const;
 

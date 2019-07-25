@@ -277,11 +277,12 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
 #if 0
+  // rule is not yet finished, so it is disabled
 #ifdef USE_ENTERPRISE
   // must be the first cluster optimizer rule
   registerRule("cluster-one-shard", clusterOneShardRule,
                OptimizerRule::clusterOneShardRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled, OptimizerRule::Flags::ClusterOnly));
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled, OptimizerRule::Flags::DisabledByDefault, OptimizerRule::Flags::ClusterOnly));
 #endif
 #endif
 
@@ -349,15 +350,15 @@ void OptimizerRulesFeature::addStorageEngineRules() {
 }
 
 /// @brief translate a list of rule ids into rule names
-std::vector<std::string> OptimizerRulesFeature::translateRules(std::vector<int> const& rules) {
-  std::vector<std::string> names;
+std::vector<char const*> OptimizerRulesFeature::translateRules(std::vector<int> const& rules) {
+  std::vector<char const*> names;
   names.reserve(rules.size());
 
   for (auto const& rule : rules) {
     char const* name = translateRule(rule);
-
+    
     if (name != nullptr) {
-      names.emplace_back(std::string(name));
+      names.emplace_back(name);
     }
   }
   return names;
@@ -374,69 +375,15 @@ char const* OptimizerRulesFeature::translateRule(int rule) {
   return nullptr;
 }
 
-/// @brief look up the ids of all disabled rules
-std::unordered_set<int> OptimizerRulesFeature::getDisabledRuleIds(std::vector<std::string> const& names) {
-  std::unordered_set<int> disabled;
+/// @brief translate a single rule
+int OptimizerRulesFeature::translateRule(std::string const& name) {
+  auto it = _ruleLookup.find(name);
 
-  // lookup ids of all disabled rules
-  for (auto const& name : names) {
-    if (name.empty()) {
-      continue;
-    }
-    if (name[0] == '-') {
-      disableRule(name, disabled);
-    } else {
-      enableRule(name, disabled);
-    }
+  if (it != _ruleLookup.end()) {
+    return (*it).second.first;
   }
 
-  return disabled;
-}
-
-void OptimizerRulesFeature::disableRule(std::string const& name,
-                                        std::unordered_set<int>& disabled) {
-  TRI_ASSERT(name[0] == '-');
-  char const* p = name.data() + 1;
-  size_t size = name.size() - 1;
-
-  if (arangodb::velocypack::StringRef(p, size) == "all") {
-    // disable all rules
-    for (auto const& it : _rules) {
-      if (it.second.canBeDisabled()) {
-        disabled.emplace(it.first);
-      }
-    }
-  } else {
-    // disable a specific rule
-    auto it = _ruleLookup.find(p);
-
-    if (it != _ruleLookup.end() && (*it).second.second) {
-      // can be disabled
-      disabled.emplace((*it).second.first);
-    }
-  }
-}
-
-void OptimizerRulesFeature::enableRule(std::string const& name,
-                                       std::unordered_set<int>& disabled) {
-  char const* p = name.data();
-  size_t size = name.size();
-
-  if (name[0] == '+') {
-    ++p;
-    --size;
-  }
-
-  if (arangodb::velocypack::StringRef(p, size) == "all") {
-    // enable all rules
-    disabled.clear();
-  } else {
-    auto it = _ruleLookup.find(p);
-
-    if (it != _ruleLookup.end()) {
-      disabled.erase((*it).second.first);
-    }
-  }
+  return -1;
 }
 
 }  // namespace aql

@@ -24,6 +24,7 @@
 #include "Optimizer.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryOptions.h"
 #include "Cluster/ServerState.h"
@@ -35,14 +36,68 @@ using namespace arangodb::aql;
 Optimizer::Optimizer(size_t maxNumberOfPlans)
     : _maxNumberOfPlans(maxNumberOfPlans), _runOnlyRequiredRules(false) {
   for (auto& r : OptimizerRulesFeature::_rules) {
-    _rules.emplace(r.first, Rule{r.second, true});
+    _rules.emplace(r.first, Rule{r.second, !r.second.isDisabledByDefault()});
   }
 }
 
 void Optimizer::disableRule(int rule) {
   auto it = _rules.find(rule);
-  TRI_ASSERT(it != _rules.end());
-  it->second.enabled = false;
+  if (it != _rules.end() && it->second.rule.canBeDisabled()) {
+    it->second.enabled = false;
+  }
+}
+
+void Optimizer::disableRule(std::string const& name) {
+  char const* p = name.data();
+  size_t size = name.size();
+
+  if (name[0] == '-') {
+    ++p;
+    --size;
+  }
+
+  if (arangodb::velocypack::StringRef(p, size) == "all") {
+    // enable all rules
+    for (auto& it : _rules) {
+      disableRule(it.first);
+    }
+  } else {
+    disableRule(OptimizerRulesFeature::translateRule(std::string(p, size)));
+  }
+}
+
+void Optimizer::enableRule(int rule) {
+  auto it = _rules.find(rule);
+  if (it != _rules.end()) {
+    it->second.enabled = true;
+  }
+}
+
+void Optimizer::enableRule(std::string const& name) {
+  char const* p = name.data();
+  size_t size = name.size();
+
+  if (name[0] == '+') {
+    ++p;
+    --size;
+  }
+
+  if (arangodb::velocypack::StringRef(p, size) == "all") {
+    // enable all rules
+    for (auto& it : _rules) {
+      enableRule(it.first);
+    }
+  } else {
+    enableRule(OptimizerRulesFeature::translateRule(std::string(p, size)));
+  }
+}
+
+void Optimizer::disableRules(std::function<bool(OptimizerRule const&)> const& predicate) {
+  for (auto& it : _rules) {
+    if (predicate(it.second.rule)) {
+      it.second.enabled = false;
+    }
+  }
 }
 
 bool Optimizer::isDisabled(int rule) const {
@@ -95,8 +150,8 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan,
 }
 
 // @brief the actual optimization
-int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
-                           QueryOptions const& queryOptions, bool estimateAllPlans) {
+void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
+                            QueryOptions const& queryOptions, bool estimateAllPlans) {
   _runOnlyRequiredRules = false;
   ExecutionPlan* initialPlan = plan.get();
 
@@ -116,16 +171,22 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
       initialPlan->invalidateCost();
       initialPlan->getCost();
     }
-    return TRI_ERROR_NO_ERROR;
+    return;
   }
 
   TRI_ASSERT(!_rules.empty());
 
-  // which optimizer rules are disabled?
-  for (auto rule : OptimizerRulesFeature::getDisabledRuleIds(queryOptions.optimizerRules)) {
-    disableRule(rule);
+  // enable/disable rules as per user request
+  for (auto const& name : queryOptions.optimizerRules) {
+    if (name.empty()) {
+      continue;
+    }
+    if (name[0] == '-') {
+      disableRule(name);
+    } else {
+      enableRule(name);
+    }
   }
-
   _newPlans.clear();
 
   while (true) {
@@ -202,10 +263,11 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
     // reuse them in the next iteration
     _plans.swap(_newPlans);
 
-    auto fully_optimized = [this](auto const& v) {
+    auto fullyOptimized = [this](auto const& v) {
       return v.second == _rules.end();
     };
-    if (std::all_of(_plans.list.begin(), _plans.list.end(), fully_optimized)) {
+
+    if (std::all_of(_plans.list.begin(), _plans.list.end(), fullyOptimized)) {
       break;
     }
   }
@@ -241,6 +303,5 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
   }
 
   LOG_TOPIC("5b5f6", TRACE, Logger::FIXME) << "optimization ends with " << _plans.size() << " plans";
-
-  return TRI_ERROR_NO_ERROR;
 }
+

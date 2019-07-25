@@ -50,6 +50,7 @@ struct OptimizerRule {
     ClusterOnly = 2,
     CanBeDisabled = 4,
     CanCreateAdditionalPlans = 8,
+    DisabledByDefault = 16,
   };
 
   /// @brief helper for building flags
@@ -81,6 +82,10 @@ struct OptimizerRule {
   
   bool canCreateAdditionalPlans() const {
     return hasFlag(Flags::CanCreateAdditionalPlans);
+  }
+
+  bool isDisabledByDefault() const {
+    return hasFlag(Flags::DisabledByDefault);
   }
 
   /// @brief optimizer rules
@@ -237,7 +242,9 @@ struct OptimizerRule {
     // gets pushed to a single server
     // if applied, this rule will turn all other cluster rules off
     // for the current plan
+#ifdef USE_ENTERPRISE
     clusterOneShardRule,
+#endif
 
     // make operations on sharded collections use distribute
     distributeInClusterRule,

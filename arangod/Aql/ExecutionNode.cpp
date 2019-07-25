@@ -1821,6 +1821,19 @@ std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
   }
 }
 
+ExecutionNode* SubqueryNode::shallowClone(ExecutionPlan* plan, bool withDependencies,
+                                          bool withProperties, ExecutionNode* subquery) const {
+  auto outVariable = _outVariable;
+
+  if (withProperties) {
+    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+  }
+
+  auto c = std::make_unique<SubqueryNode>(plan, _id, subquery, outVariable);
+
+  return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
 ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
                                    bool withProperties) const {
   auto outVariable = _outVariable;

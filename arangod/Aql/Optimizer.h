@@ -128,15 +128,29 @@ class Optimizer {
   /// newly created plans it recalls and will automatically delete them.
   /// If you need to extract the plans from the optimizer use stealBest or
   /// stealPlans.
-  int createPlans(std::unique_ptr<ExecutionPlan> p,
-                  QueryOptions const& queryOptions, bool estimateAllPlans);
+  void createPlans(std::unique_ptr<ExecutionPlan> p,
+                   QueryOptions const& queryOptions, bool estimateAllPlans);
 
   /// @brief add a plan to the optimizer
   void addPlan(std::unique_ptr<ExecutionPlan>, OptimizerRule const&, bool wasModified, int newLevel = 0);
 
+  /// @brief disable a specific rule
   void disableRule(int rule);
+  
+  /// @brief disable a specific rule, by name
+  void disableRule(std::string const& name); 
+  
+  /// @brief enable a specific rule
+  void enableRule(int rule);
+  
+  /// @brief enable a specific rule, by name
+  void enableRule(std::string const& name);
 
+  /// @brief check if a specific rule is disabled
   bool isDisabled(int rule) const;
+
+  /// @brief disable all rules for which the predicate returns true
+  void disableRules(std::function<bool(OptimizerRule const&)> const&);
 
   /// @brief getPlans, ownership of the plans remains with the optimizer
   RollingVector<PlanList::Entry>& getPlans() { return _plans.list; }

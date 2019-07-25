@@ -34,6 +34,7 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/HashSet.h"
 #include "Basics/Result.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterMethods.h"
@@ -406,6 +407,12 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
       rem->isResponsibleForInitializeCursor(isResponsibleForInitializeCursor);
     }
 
+    if (clone->getType() == ExecutionNode::SINGLETON) {
+      // necessary for subqueries to work properly in case we can push
+      // everything down to a single server
+      previous = nullptr;
+    }
+
     if (previous != nullptr) {
       clone->addDependency(previous);
     }
@@ -652,12 +659,7 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
 
   auto isAnyResponsibleForInitializeCursor =
       [&isResponsibleForInitializeCursor](std::vector<ShardID> const& ids) {
-        for (auto const& id : ids) {
-          if (isResponsibleForInitializeCursor(id)) {
-            return true;
-          }
-        }
-        return false;
+        return std::any_of(ids.begin(), ids.end(), isResponsibleForInitializeCursor);
       };
 
   for (auto const& it : _engineInfos) {
@@ -783,6 +785,11 @@ void EngineInfoContainerDBServer::DBServerInfo::combineTraverserEngines(ServerID
 void EngineInfoContainerDBServer::DBServerInfo::addTraverserEngine(GraphNode* node,
                                                                    TraverserEngineShardLists&& shards) {
   _traverserEngineInfos.emplace_back(std::make_pair(node, std::move(shards)));
+}
+
+void EngineInfoContainerDBServer::addSubquery(ExecutionNode const* super, ExecutionNode const* sub) {
+  TRI_ASSERT(!_engineStack.empty());
+  _engineStack.top()->addSubquery(super, sub);
 }
 
 std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> EngineInfoContainerDBServer::createDBServerMapping() const {
@@ -1011,7 +1018,7 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
     // NOTE: This is only valid because it is single threaded and we do not
     // have concurrent access. We move out stuff from this Map => memory will
     // get corrupted if we would read it again.
-    for (auto it : mappingServerToCollections) {
+    for (auto& it : mappingServerToCollections) {
       // This condition is guaranteed because all shards have been prepared
       // for locking in the EngineInfos
       TRI_ASSERT(dbServerMapping.find(it.first) != dbServerMapping.end());

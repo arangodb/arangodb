@@ -40,7 +40,6 @@ namespace arangodb {
 
 class ClusterComm;
 class Result;
-class CollectionNameResolver;
 
 namespace aql {
 
@@ -121,6 +120,10 @@ class EngineInfoContainerDBServer {
       return _nodes;
     }
 
+    void addSubquery(ExecutionNode const* super, ExecutionNode const* sub) {
+      _subqueries.emplace(sub->id(), super->id());
+    }
+
    private:
     struct CollectionSource {
       explicit CollectionSource(aql::Collection* collection)
@@ -150,6 +153,9 @@ class EngineInfoContainerDBServer {
     size_t _idOfRemoteNode;  // id of the remote node
     QueryId _otherId;        // Id of query engine before this one
     mutable boost::variant<CollectionSource, ViewSource> _source;
+
+    // @brief temporary map of subqueries (subquery root node -> subquery node)
+    std::unordered_map<size_t, size_t> _subqueries;
   };
 
   struct DBServerInfo {
@@ -240,7 +246,9 @@ class EngineInfoContainerDBServer {
   // Insert a GraphNode that needs to generate TraverserEngines on
   // the DBServers. The GraphNode itself will retain on the coordinator.
   void addGraphNode(GraphNode* node);
-
+  
+  void addSubquery(ExecutionNode const* super, ExecutionNode const* sub);
+ 
  private:
   /**
    * @brief Take care of this collection, set the lock state accordingly
@@ -287,7 +295,7 @@ class EngineInfoContainerDBServer {
 
   // @brief Reference to the last inserted EngineInfo, used for back linking of
   // QueryIds
-  std::stack<std::shared_ptr<EngineInfo>> _engineStack;
+  std::stack<std::shared_ptr<EngineInfo>, std::vector<std::shared_ptr<EngineInfo>>> _engineStack;
 
   // @brief A map of Collection => Info required for distribution
   std::unordered_map<Collection const*, CollectionInfo> _collectionInfos;
