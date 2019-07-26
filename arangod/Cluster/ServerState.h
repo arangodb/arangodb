@@ -28,6 +28,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
+#include "Cluster/ResultT.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -274,7 +275,7 @@ class ServerState {
   bool checkEngineEquality(AgencyComm&);
 
   /// @brief try to read the rebootID from the Agency
-  int readRebootIdFromAgency(AgencyComm& comm, uint64_t& rebootID);
+  ResultT<uint64_t> readRebootIdFromAgency(AgencyComm& comm);
 
   /// @brief register at agency, might already be done
   bool registerAtAgencyPhase1(AgencyComm&, const RoleEnum&);

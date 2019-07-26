@@ -38,6 +38,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ResultT.h"
 #include "Logger/Logger.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
@@ -334,7 +335,7 @@ bool ServerState::unregister() {
   return r.successful();
 }
 
-int ServerState::readRebootIdFromAgency(AgencyComm& comm, uint64_t& rebootId)
+ResultT<uint64_t> ServerState::readRebootIdFromAgency(AgencyComm& comm)
 {
   TRI_ASSERT(!_id.empty());
   std::string rebootIdPath = "Current/ServersKnown/" + _id + "/rebootId";
@@ -344,7 +345,7 @@ int ServerState::readRebootIdFromAgency(AgencyComm& comm, uint64_t& rebootId)
     LOG_TOPIC("762ed", WARN, Logger::CLUSTER)
       << "Could not read back " << rebootIdPath;
 
-    return -1;
+    ResultT<uint64_t>::error(TRI_ERROR_INTERNAL, "could not read rebootId from agency");
   }
 
   auto slicePath = AgencyCommManager::slicePath(rebootIdPath);
@@ -354,11 +355,10 @@ int ServerState::readRebootIdFromAgency(AgencyComm& comm, uint64_t& rebootId)
     LOG_TOPIC("38a4a", WARN, Logger::CLUSTER)
       << "rebootId is not an integer";
 
-    TRI_ASSERT(false);  // when in maintainer mode, just crash.
-    return -2;
+    ResultT<uint64_t>::error(TRI_ERROR_INTERNAL, "rebootId is not an integer");
   }
-  rebootId = valueSlice.getNumericValue<uint64_t>();
-  return 0;
+
+  return ResultT<uint64_t>::success(valueSlice.getNumericValue<uint64_t>());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -712,21 +712,25 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
     auto result = comm.sendTransactionWithFailover(trx, 0.0);
 
     if (result.successful()) {
-      uint64_t rebootId;
-
-      // If reading back the rebootId is not successful, we might
-      // increment it again above, so maybe we need to make a separate
-      // retry loop here?
-      if (readRebootIdFromAgency(comm, rebootId) == 0) {
-        setRebootId(rebootId);
-        return true;
-      }
+      break; // Continue below to read back the rebootId
     } else {
       LOG_TOPIC("ba205", WARN, arangodb::Logger::CLUSTER)
           << "failed to register server in agency: http code: " << result.httpCode()
           << ", body: '" << result.body() << "', retrying ...";
     }
 
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
+
+  // if we left the above retry loop because the server is stopping
+  // we'll skip this and return false right away.
+  while (!application_features::ApplicationServer::isStopping()) {
+    auto result = readRebootIdFromAgency(comm);
+
+    if (result) {
+      setRebootId(result.get());
+      return true;
+    }
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
