@@ -875,9 +875,7 @@ void ClusterComm::drop(CoordTransactionID const coordTransactionID,
 /// then after another 2 seconds, 4 seconds and so on, until the overall
 /// timeout has been reached. A request that can connect and produces a
 /// result is simply reported back with no retry, even in an error case.
-/// The method returns the number of successful requests and puts the
-/// number of finished ones in nrDone. Thus, the timeout was triggered
-/// if and only if nrDone < requests.size().
+/// The method returns the number of successful requests.
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
@@ -885,7 +883,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
                                     arangodb::LogTopic const& logTopic,
                                     bool retryOnCollNotFound,
                                     bool retryOnBackendUnavailable) {
-  if (requests.size() == 0) {
+  if (requests.empty()) {
     return 0;
   }
 
