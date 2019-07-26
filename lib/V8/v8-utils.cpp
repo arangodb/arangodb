@@ -3037,6 +3037,107 @@ static void JS_ReadBuffer(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JS_ReadGzip
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ReadGzip(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("readGzip(<filename>)");
+  }
+
+  TRI_Utf8ValueNFC name(isolate, args[0]);
+
+  if (*name == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
+  }
+
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   std::string("not allowed to read files in this path: ") + *name);
+  }
+
+  size_t length;
+  char* content = TRI_SlurpGzipFile(*name, &length);
+
+  if (content == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), TRI_last_error());
+  }
+
+  auto result = TRI_V8_PAIR_STRING(isolate, content, length);
+
+  TRI_FreeString(content);
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+
+}
+
+#ifdef USE_ENTERPRISE
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JS_ReadGzip
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ReadDecrypt(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("readDecrypt(<filename>,<keyfilename>)");
+  }
+
+  TRI_Utf8ValueNFC name(isolate, args[0]);
+
+  if (*name == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
+  }
+
+  TRI_Utf8ValueNFC keyfile(isolate, args[1]);
+
+  if (*keyfile == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<keyfilename> must be a UTF-8 string");
+  }
+
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   std::string("not allowed to read files in this path: ") + *name);
+  }
+
+  if (!v8security->isAllowedToAccessPath(isolate, *keyfile, FSAccessType::READ)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   std::string("not allowed to read files in this path: ") + *keyfile);
+  }
+
+  size_t length;
+  char* content = TRI_SlurpDecryptFile(*name, *keyfile, &length);
+
+  if (content == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), TRI_last_error());
+  }
+
+  auto result = TRI_V8_PAIR_STRING(isolate, content, length);
+
+  TRI_FreeString(content);
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JS_Read64
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5509,6 +5610,14 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_READ_BUFFER"),
                                JS_ReadBuffer);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_READ_GZIP"),
+                               JS_ReadGzip);
+#ifdef USE_ENTERPRISE
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_READ_DECRYPT"),
+                               JS_ReadDecrypt);
+#endif
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_SHA1"), JS_Sha1);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_SHA224"), JS_Sha224);

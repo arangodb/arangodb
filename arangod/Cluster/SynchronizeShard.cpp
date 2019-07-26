@@ -123,7 +123,7 @@ SynchronizeShard::~SynchronizeShard() {}
 
 class SynchronizeShardCallback : public arangodb::ClusterCommCallback {
  public:
-  explicit SynchronizeShardCallback(SynchronizeShard* callie){};
+  explicit SynchronizeShardCallback(SynchronizeShard* callee) {}
   virtual bool operator()(arangodb::ClusterCommResult*) override final {
     return true;
   }

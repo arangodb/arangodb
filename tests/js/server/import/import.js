@@ -161,6 +161,31 @@ function importTestSuite () {
       assertEqual(expected, actual);
     },
 
+    testJsonImport1Gz : function () {
+      var expected = [ { "id": 1,
+                         "one": 1,
+                         "three": 3,
+                         "two": 2 },
+                       { "a": 1234,
+                         "b": "the quick fox",
+                         "id": 2,
+                         "jumped":
+                         "over the fox",
+                         "null": null },
+                       { "id": 3,
+                         "not": "important",
+                         "spacing": "is" },
+                       { "  c  ": "h\"'ihi",
+                         "a": true,
+                         "b": false,
+                         "d": "",
+                         "id": 4 },
+                       { "id": 5 } ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportJson1Gz SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test json import
 ////////////////////////////////////////////////////////////////////////////////
@@ -200,6 +225,15 @@ function importTestSuite () {
       assertEqual(expected, actual);
     },
 
+    testJsonImport4Gz : function () {
+      var expected = [ ];
+      for (var i = 0; i < 1000; ++i) {
+        expected.push({ "active": true, "id": i, "value": "somerandomstuff" + i });
+      }
+      var actual = getQueryResults("FOR i IN UnitTestsImportJson4Gz SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test json import
 ////////////////////////////////////////////////////////////////////////////////
@@ -234,6 +268,19 @@ function importTestSuite () {
       ];
 
       var actual = getQueryResults("FOR i IN UnitTestsImportCsv1 SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+
+    testCsvImport1Gz : function () {
+      var expected = [
+        { "a": "1", "b": 1, "c": "1.3", "e": -5, "id": 1 },
+        { "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 },
+        { "a": "9999999999999999999999999999999999", "b": "test", "c" : -99999999, "d": true, "e": -888.4434, "id": 5 },
+        { "a": 10e4, "b": 20.5, "c": -42, "d": " null ", "e": false, "id": 6 },
+        { "a": -1.05e2, "b": 1.05e-2, "c": true, "d": false, "id": 7 }
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportCsv1Gz SORT i.id RETURN i");
       assertEqual(expected, actual);
     },
 
@@ -361,6 +408,13 @@ function importTestSuite () {
       assertEqual(expected, actual);
     },
 
+    testTsvImport1Gz : function () {
+      var expected = [ { "ab": "g", "cd": "h", "ef": "i" }, { "ab" : "j", "cd" : "k", "ef" : "l" } ];
+      var actual = getQueryResults("FOR i IN UnitTestsImportTsv1Gz SORT i.ab RETURN i");
+
+      assertEqual(expected, actual);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test tsv import
 ////////////////////////////////////////////////////////////////////////////////
@@ -391,6 +445,18 @@ function importTestSuite () {
       ];
 
       var actual = getQueryResults("FOR i IN UnitTestsImportEdge SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+
+    testJsonEdgesImportGz : function () {
+      var expected = [
+        { _from : "UnitTestsImportVertex/v1", _to: "UnitTestsImportVertex/v2", id: 1, what: "v1->v2" },
+        { _from : "UnitTestsImportVertex/v2", _to: "UnitTestsImportVertex/v3", id: 2, what: "v2->v3" },
+        { _from : "UnitTestsImportVertex/v9", _to: "UnitTestsImportVertex/v4", extra: "foo", id: 3, what: "v9->v4" },
+        { _from : "UnitTestsImportVertex/v12", _to: "UnitTestsImportVertex/what", id: 4 }
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportEdgeGz SORT i.id RETURN i");
       assertEqual(expected, actual);
     },
 
