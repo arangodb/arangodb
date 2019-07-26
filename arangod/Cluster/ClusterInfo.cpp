@@ -188,10 +188,10 @@ ClusterInfo* ClusterInfo::instance() { return _instance.get(); }
 ClusterInfo::ClusterInfo(AgencyCallbackRegistry* agencyCallbackRegistry)
     : _agency(),
       _agencyCallbackRegistry(agencyCallbackRegistry),
+      _rebootTracker(SchedulerFeature::SCHEDULER),
       _planVersion(0),
       _currentVersion(0),
       _planLoader(std::thread::id()),
-      _rebootTracker(SchedulerFeature::SCHEDULER),
       _uniqid() {
   _uniqid._currentValue = 1ULL;
   _uniqid._upperValue = 0ULL;
