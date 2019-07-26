@@ -456,7 +456,7 @@ void RocksDBHotBackup::getParamValue(char const* key, unsigned& value, bool requ
   try {
     if (_body.isObject() && _body.hasKey(key)) {
       tempSlice = _body.get(key);
-      value = tempSlice.getUInt();
+      value = static_cast<unsigned int>(tempSlice.getUInt());
     } else if (required) {
       if (_valid) {
         _result.add(VPackValue(VPackValueType::Object));

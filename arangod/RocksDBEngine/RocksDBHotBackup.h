@@ -22,6 +22,7 @@
 #ifndef ARANGOD_ROCKSDB_HOTBACKUP_H
 #define ARANGOD_ROCKSDB_HOTBACKUP_H 1
 
+#include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Cluster/ResultT.h"
 #include "Rest/CommonDefines.h"
