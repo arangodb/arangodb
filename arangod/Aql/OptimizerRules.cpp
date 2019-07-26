@@ -1313,7 +1313,15 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
 
             searchVariables.clear();
           }
+        } else {
+          auto here = planNode->getVariableIdsUsedHere();
+          if(here.find(searchVariables.back()->id) != here.end()){
+            // the outVariable of the last collect should not be used by any following node directly
+            doOptimize = false;
+            break;
+          }
         }
+
 
         planNode = planNode->getFirstParent();
 
