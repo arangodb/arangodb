@@ -493,7 +493,8 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${BFD_SHARED_LIBS}
   ${Boost_SHARED_sharedRT_LIBRARIES}
   ${Lz4_SHARED_LIB}
-  ${ICU_LIBS}
+  $<TARGET_PROPERTY:icu-shared,IMPORTED_LOCATION> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
+  $<TARGET_PROPERTY:icu-shared,INTERFACE_LINK_LIBRARIES> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
   ${Unwind_SHARED_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
@@ -528,7 +529,8 @@ if(MSVC)
     ${BFD_SHARED_LIBS}
     ${Boost_SHARED_sharedRT_LIBRARIES}
     ${Lz4_SHARED_LIB}
-    ${ICU_LIBS}
+    $<TARGET_PROPERTY:icu-shared,IMPORTED_LOCATION> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
+    $<TARGET_PROPERTY:icu-shared,INTERFACE_LINK_LIBRARIES> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
     ${Unwind_SHARED_LIBS}
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
