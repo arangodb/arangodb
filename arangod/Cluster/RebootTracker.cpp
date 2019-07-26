@@ -62,6 +62,8 @@ void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> con
       auto const& newRebootId = newIt->second;
       TRI_ASSERT(oldRebootId <= newRebootId);
       if (oldRebootId < newRebootId) {
+        LOG_TOPIC("88857", INFO, Logger::CLUSTER)
+            << "Server " << serverId << " rebooted, aborting its old jobs now.";
         // Try to schedule all callbacks for serverId older than newRebootId.
         // If that didn't throw, erase the entry.
         scheduleCallbacksFor(serverId, newRebootId);
@@ -203,6 +205,8 @@ RebootTracker::Callback RebootTracker::createSchedulerCallback(
                           [](auto it) { return it->empty(); }));
 
   return [callbacks = std::move(callbacks)]() {
+    LOG_TOPIC("80dfe", DEBUG, Logger::CLUSTER)
+        << "Executing scheduled reboot callbacks";
     TRI_ASSERT(!callbacks.empty());
     for (auto const& callbacksPtr : callbacks) {
       TRI_ASSERT(callbacksPtr != nullptr);
@@ -210,6 +214,8 @@ RebootTracker::Callback RebootTracker::createSchedulerCallback(
       for (auto const& it : *callbacksPtr) {
         auto const& cb = it.second.callback;
         auto const& descr = it.second.description;
+        LOG_TOPIC("afdfd", DEBUG, Logger::CLUSTER)
+            << "Executing callback " << it.second.description;
         try {
           cb();
         } catch (arangodb::basics::Exception const& ex) {
