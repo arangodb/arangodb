@@ -94,41 +94,6 @@ inline irs::columnstore_reader::values_reader_f sortColumn(irs::sub_reader const
 
 }
 
-  std::tuple<ExecutionState, MaterilizationNodeExecutor::Stats, SharedAqlItemBlockPtr> MaterilizationNodeExecutor::fetchBlockForPassthrough(size_t atMost) {
-     Stats stats{}; 
-     auto rv =_fetcher.fetchBlockForPassthrough(atMost);
-     return {rv.first, stats, std::move(rv.second)};
-  }
-
-  std::pair<ExecutionState, MaterilizationNodeExecutor::Stats> MaterilizationNodeExecutor::produceRows(OutputAqlItemRow& output){
-    Stats stats{};
-    bool documentWritten = false;
-    while (!documentWritten) {
-      if (!_inputRow.isInitialized()) {
-        if (_upstreamState == ExecutionState::DONE) {
-          // There will be no more rows, stop fetching.
-          return {ExecutionState::DONE, stats};
-        }
-        std::tie(_upstreamState, _inputRow) = _fetcher.fetchRow();
-        if (_upstreamState == ExecutionState::WAITING) {
-          return {_upstreamState, stats};
-        }
-        if (!_inputRow.isInitialized()) {
-          return {ExecutionState::DONE, stats};
-        }
-      }
-      documentWritten = true;
-    //aql::ReadContext ctx(infos().getOutputRegister(), _inputRow, output);
-    //documentWritten = next(ctx);
-
-      if (!documentWritten) {
-        _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-        // no document written, repeat.
-      }
-    }
-    return {ExecutionState::HASMORE, stats};
-  }
-
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                       IResearchViewExecutorBase
 ///////////////////////////////////////////////////////////////////////////////
@@ -430,6 +395,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
     {
       // For sake of performance we store raw pointer to collection
       // It is safe as pipeline work inside one process
+      static_assert(sizeof(void*) <= sizeof(uint64_t), "Pointer not fits in LocalDocumentId");
       AqlValue a(AqlValueHintUInt(reinterpret_cast<uint64_t>(&collection)));
       bool mustDestroy = true;
       AqlValueGuard guard{ a, mustDestroy };

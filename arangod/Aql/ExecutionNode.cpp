@@ -99,9 +99,7 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::REMOTESINGLE),
      "SingleRemoteOperationNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW),
-     "EnumerateViewNode"},
-    {static_cast<int>(ExecutionNode::MATERIALIZATION ),
-     "Materialization"},
+     "EnumerateViewNode"}
 };
 
 // FIXME -- this temporary function should be
@@ -1067,12 +1065,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       break;
     }
     
-    case ExecutionNode::MATERIALIZATION: {
-      auto ep = ExecutionNode::castTo<iresearch::MaterializationNode const*>(en);
-      TRI_ASSERT(ep);
-      ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
-      break;
-    }
     default: {
       // should not reach this point
       TRI_ASSERT(false);

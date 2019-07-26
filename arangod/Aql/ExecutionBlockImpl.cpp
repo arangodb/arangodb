@@ -685,7 +685,6 @@ template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false>>
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true>>;
-template class ::arangodb::aql::ExecutionBlockImpl<MaterilizationNodeExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<SingleRowFetcher<true>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
