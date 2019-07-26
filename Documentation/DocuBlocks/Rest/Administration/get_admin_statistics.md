@@ -150,6 +150,7 @@ time the server is up and running
 available physical memory on the server
 
 
+
 @RESTSTRUCT{v8Context,server_statistics_struct,object,required,v8_context_struct}
 Statistics about the V8 javascript contexts
 
@@ -167,6 +168,26 @@ the number of V8 contexts that are free to use
 
 @RESTSTRUCT{max,v8_context_struct,integer,required,}
 the total number of V8 contexts we may spawn as configured by --javascript.v8-contexts
+
+
+@RESTSTRUCT{memory,v8_context_struct,array,required,v8_isolate_memory}
+a list of V8 memory / garbage collection watermarks; Refreshed on every garbage collection run;
+Preserves min/max memory used at that time for 10 seconds
+
+@RESTSTRUCT{contextId,v8_isolate_memory,integer,required,}
+ID of the context this set of memory statistics is from
+
+@RESTSTRUCT{tMax,v8_isolate_memory,number,required,}
+the timestamp where the 10 seconds interval started
+
+@RESTSTRUCT{countOfTimes,v8_isolate_memory,integer,required,}
+how many times was the garbage collection run in these 10 seconds
+
+@RESTSTRUCT{heapMax,v8_isolate_memory,integer,required,}
+High watermark of all garbage collection runs in 10 seconds
+
+@RESTSTRUCT{heapMin,v8_isolate_memory,integer,required,}
+Low watermark of all garbage collection runs in these 10 seconds
 
 
 @RESTSTRUCT{threads,server_statistics_struct,object,required,server_threads_struct}
