@@ -154,6 +154,12 @@ set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 ################################################################################
 ## IResearch
 ################################################################################
+# - fake this - we don't need it:
+ExternalProject_Add(icu-shared
+  SOURCE_DIR .
+  CONFIGURE_COMMAND cmake -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/icu-shared-fake
+  BUILD_COMMAND cmake -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/icu-shared-fake/build
+  INSTALL_COMMAND cmake -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/icu-shared-fake/install)
 
 add_library(boost-static IMPORTED STATIC)
 set_target_properties(boost-static PROPERTIES
