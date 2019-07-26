@@ -484,7 +484,7 @@ void RocksDBHotBackup::getParamValue(char const* key, unsigned& value, bool requ
   try {
     if (_body.isObject() && _body.hasKey(key)) {
       tempSlice = _body.get(key);
-      value = tempSlice.getUInt();
+      value = static_cast<unsigned int>(tempSlice.getUInt());
     } else if (required) {
       if (_valid) {
         _result.add(VPackValue(VPackValueType::Object));
@@ -1282,7 +1282,7 @@ void RocksDBHotBackupLock::execute() {
             // this lock. In case we shut down, we must be able to cancel
             // this, so we keep a Scheduler::WorkHandle in the HotbackupFeature
             lockingSerialNumber = getSerialNumber();
-            scheduleLockCleaning(lockingSerialNumber, _unlockTimeoutSeconds);
+            scheduleLockCleaning(lockingSerialNumber, static_cast<uint32_t>(_unlockTimeoutSeconds));
 
             _result.add("lockId", VPackValue(lockingSerialNumber));
           } else {
