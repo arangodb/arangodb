@@ -765,14 +765,16 @@ void Manager::toVelocyPack(VPackBuilder& builder,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
 
+    std::vector<ClusterCommRequest> requests;
+    auto auth = AuthenticationFeature::instance();
+    
     for (auto const& coordinator : ci->getCurrentCoordinators()) {
       if (coordinator == ServerState::instance()->getId()) {
         // ourselves!
         continue;
       }
-
-      auto auth = AuthenticationFeature::instance();
-      std::unordered_map<std::string, std::string> headers;
+      
+      std::unique_ptr<std::unordered_map<std::string, std::string>> headers;
       if (auth != nullptr && auth->isActive()) {
         // when in superuser mode, username is empty
         // in this case ClusterComm will add the default superuser token
@@ -783,29 +785,32 @@ void Manager::toVelocyPack(VPackBuilder& builder,
             payload->add("preferred_username", VPackValue(username));
           }
           VPackSlice slice = builder.slice();
-          headers.emplace(StaticStrings::Authorization,
+          headers->emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().generateJwt(slice));
         }
       }
-  
-      double const timeout = 5.0;
-      
-      auto comres = 
-          cc->syncRequest(TRI_NewTickServer(), "server:" + coordinator, rest::RequestType::GET,
-                    "/_db/" + database + "/_api/transaction?local=true", std::string(),
-                    std::unordered_map<std::string, std::string>(), timeout);
-  
-      auto result = comres->result;
 
-      // TODO: error handling
-      if (result != nullptr && result->getHttpReturnCode() == 200) {
-        auto const body = result->getBodyVelocyPack();
-        VPackSlice slice = body->slice();
-        if (slice.isObject()) {
-          slice = slice.get("transactions");
-          if (slice.isArray()) {
-            for (auto const& it : VPackArrayIterator(slice)) {
-              builder.add(it);
+      requests.emplace_back("server:" + coordinator, rest::RequestType::GET,
+                            "/_db/" + database + "/_api/transaction?local=true", 
+                            std::make_shared<std::string>(), std::move(headers));
+    }
+
+    if (!requests.empty()) {
+      size_t nrGood = cc->performRequests(requests, 30.0, Logger::COMMUNICATION, false);
+      
+      if (nrGood != requests.size()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+      }
+      for (auto const& it : requests) {
+        if (it.result.result && it.result.result->getHttpReturnCode() == 200) {
+          auto const body = it.result.result->getBodyVelocyPack();
+          VPackSlice slice = body->slice();
+          if (slice.isObject()) {
+            slice = slice.get("transactions");
+            if (slice.isArray()) {
+              for (auto const& it : VPackArrayIterator(slice)) {
+                builder.add(it);
+              }
             }
           }
         }
