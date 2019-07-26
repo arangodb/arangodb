@@ -322,6 +322,8 @@ bool ServerState::unregister() {
                                        AgencySimpleOperationType::DELETE_OP));
   operations.push_back(AgencyOperation("Current/" + agencyListKey + "/" + id,
                                        AgencySimpleOperationType::DELETE_OP));
+  operations.push_back(AgencyOperation("Current/ServersKnown/" + id,
+                                       AgencySimpleOperationType::DELETE_OP));
   operations.push_back(AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP));
   operations.push_back(AgencyOperation("Current/Version",
                                        AgencySimpleOperationType::INCREMENT_OP));
