@@ -50,7 +50,7 @@ class ArrayIterator {
       throw Exception(Exception::InvalidValueType, "Expecting Array slice");
     }
 
-    _size = slice.arrayLength(head);
+    _size = slice.arrayLength();
 
     if (_size > 0) {
       VELOCYPACK_ASSERT(head != 0x01); // no empty array allowed here
@@ -61,12 +61,6 @@ class ArrayIterator {
       }
     }
   }
-
-  ArrayIterator(ArrayIterator const& other) noexcept = default;
-  ArrayIterator(ArrayIterator&& other) noexcept = default;
-
-  ArrayIterator& operator=(ArrayIterator const& other) = delete;
-  ArrayIterator& operator=(ArrayIterator&& other) = default;
 
   // prefix ++
   ArrayIterator& operator++() {
@@ -191,7 +185,7 @@ class ObjectIterator {
       throw Exception(Exception::InvalidValueType, "Expecting Object slice");
     }
 
-    _size = slice.objectLength(head);
+    _size = slice.objectLength();
 
     if (_size > 0) {
       VELOCYPACK_ASSERT(head != 0x0a); // no empty object allowed here
@@ -202,12 +196,6 @@ class ObjectIterator {
       }
     }
   }
-
-  ObjectIterator(ObjectIterator const& other) noexcept = default;
-  ObjectIterator(ObjectIterator&& other) noexcept = default;
-
-  ObjectIterator& operator=(ObjectIterator const& other) = delete;
-  ObjectIterator& operator=(ObjectIterator&& other) = default;
 
   // prefix ++
   ObjectIterator& operator++() {

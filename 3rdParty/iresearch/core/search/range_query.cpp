@@ -54,8 +54,8 @@ limited_sample_scorer::limited_sample_scorer(size_t scored_terms_limit):
 void limited_sample_scorer::collect(
   size_t priority, // priority of this entry, lowest priority removed first
   size_t scored_state_id, // state identifier used for querying of attributes
-  iresearch::range_state& scored_state, // state containing this scored term
-  const iresearch::sub_reader& reader, // segment reader for the current term
+  range_state& scored_state, // state containing this scored term
+  const sub_reader& reader, // segment reader for the current term
   const seek_term_iterator& term_itr // term-iterator positioned at the current term
 ) {
   if (!scored_terms_limit_) {
@@ -99,9 +99,9 @@ void limited_sample_scorer::score(
 
   struct state_t {
     order::prepared::collectors collectors;
-    attribute_store filter_attrs; // filter attributes for a the current state/term
+    bstring stats; // filter stats for a the current state/term
     state_t(const order::prepared& order)
-      : collectors(order.prepare_collectors(1)) { // 1 term per attribute_store because a range is treated as a disjunction
+      : collectors(order.prepare_collectors(1)) { // 1 term per bstring because a range is treated as a disjunction
     }
   };
   std::unordered_map<hashed_bytes_ref, state_t> term_stats; // stats for a specific term
@@ -146,7 +146,11 @@ void limited_sample_scorer::score(
 
   // iterate over all stats and apply/store order stats
   for (auto& entry: term_stats) {
-    entry.second.collectors.finish(entry.second.filter_attrs, index);
+    entry.second.stats.resize(order.stats_size());
+    auto* stats_buf = const_cast<byte_type*>(entry.second.stats.data());
+
+    order.prepare_stats(stats_buf);
+    entry.second.collectors.finish(stats_buf, index);
   }
 
   // set filter attributes for each corresponding term
@@ -155,15 +159,12 @@ void limited_sample_scorer::score(
     auto itr = state_stats.find(&scored_state);
     assert(itr != state_stats.end() && itr->second); // values set just above
 
-    // filter attribute_store is copied since it's shared among multiple states
+    // filter stats is copied since it's shared among multiple states
     scored_state.state.scored_states.emplace(
-      scored_state.state_offset, itr->second->filter_attrs
+      scored_state.state_offset,
+      itr->second->stats
     );
   }
-}
-
-range_query::range_query(states_t&& states) 
-  : states_(std::move(states)) {
 }
 
 doc_iterator::ptr range_query::execute(
@@ -205,7 +206,7 @@ doc_iterator::ptr range_query::execute(
   // add an iterator for each of the scored states
   for (auto& entry: state->scored_states) {
     auto offset = entry.first;
-    auto& stats = entry.second;
+    auto* stats = entry.second.c_str();
     assert(offset >= last_offset);
 
     if (!skip(*terms, offset - last_offset)) {
@@ -219,7 +220,8 @@ doc_iterator::ptr range_query::execute(
       stats,
       terms->postings(features),
       ord,
-      state->estimation
+      state->estimation,
+      boost()
     ));
   }
 

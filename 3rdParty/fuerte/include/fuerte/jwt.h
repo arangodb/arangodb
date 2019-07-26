@@ -42,7 +42,7 @@ std::string generateUserToken(std::string const& secret,
 
 std::string generateRawJwt(std::string const& secret,
                            arangodb::velocypack::Slice const& body);
-  
+
 //////////////////////////////////////////////////////////////////////////
 /// @brief Internals
 //////////////////////////////////////////////////////////////////////////

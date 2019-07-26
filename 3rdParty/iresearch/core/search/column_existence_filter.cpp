@@ -35,12 +35,12 @@ class column_existence_iterator final : public irs::basic_doc_iterator_base {
  public:
   explicit column_existence_iterator(
       const irs::sub_reader& reader,
-      const irs::attribute_store& prepared_filter_attrs,
+      const irs::byte_type* stats,
       irs::doc_iterator::ptr&& it,
       const irs::order::prepared& ord,
-      uint64_t docs_count)
-    : basic_doc_iterator_base(ord),
-      it_(std::move(it)) {
+      uint64_t docs_count,
+      irs::boost_t boost)
+    : it_(std::move(it)) {
     assert(it_);
 
     // make doc_id accessible via attribute
@@ -56,11 +56,12 @@ class column_existence_iterator final : public irs::basic_doc_iterator_base {
     estimate(docs_count);
 
     // set scorers
-    prepare_score(ord_->prepare_scorers(
+    prepare_score(ord, ord.prepare_scorers(
       reader,
       irs::empty_term_reader(docs_count),
-      prepared_filter_attrs,
-      attributes() // doc_iterator attributes
+      stats,
+      attributes(), // doc_iterator attributes
+      boost
     ));
   }
 
@@ -86,9 +87,11 @@ class column_existence_iterator final : public irs::basic_doc_iterator_base {
 class column_existence_query final : public irs::filter::prepared {
  public:
   explicit column_existence_query(
-    const std::string& field,
-    irs::attribute_store&& attrs
-  ): irs::filter::prepared(std::move(attrs)), field_(field) {
+      const std::string& field,
+      irs::bstring&& stats,
+      irs::boost_t boost)
+    : irs::filter::prepared(std::move(stats), boost),
+      field_(field) {
   }
 
   virtual irs::doc_iterator::ptr execute(
@@ -104,10 +107,11 @@ class column_existence_query final : public irs::filter::prepared {
 
     return irs::doc_iterator::make<column_existence_iterator>(
       rdr,
-      attributes(), // prepared_filter attributes
+      stats(), // prepared_filter attributes
       column->iterator(),
       ord,
-      column->size()
+      column->size(),
+      boost()
     );
   }
 
@@ -118,9 +122,11 @@ class column_existence_query final : public irs::filter::prepared {
 class column_prefix_existence_query final : public irs::filter::prepared {
  public:
   explicit column_prefix_existence_query(
-    const std::string& prefix,
-    irs::attribute_store&& attrs
-  ): irs::filter::prepared(std::move(attrs)), prefix_(prefix) {
+      const std::string& prefix,
+      irs::bstring&& stats,
+      irs::boost_t boost)
+    : irs::filter::prepared(std::move(stats), boost),
+      prefix_(prefix) {
   }
 
   virtual irs::doc_iterator::ptr execute(
@@ -146,10 +152,11 @@ class column_prefix_existence_query final : public irs::filter::prepared {
 
       auto column_it = irs::memory::make_unique<column_existence_iterator>(
         rdr,
-        attributes(), // prepared_filter attributes
+        stats(), // prepared_filter attributes
         column->iterator(),
         ord,
-        column->size()
+        column->size(),
+        boost()
       );
 
       itrs.emplace_back(std::move(column_it));
@@ -205,19 +212,20 @@ filter::prepared::ptr by_column_existence::prepare(
     boost_t filter_boost,
     const attribute_view& /*ctx*/
 ) const {
-  attribute_store attrs;
-
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match
-  order.prepare_collectors(attrs, reader);
+  bstring stats(order.stats_size(), 0);
+  auto* stats_buf = const_cast<byte_type*>(stats.data());
 
-  irs::boost::apply(attrs, boost() * filter_boost); // apply boost
+  order.prepare_stats(stats_buf);
+  order.prepare_collectors(stats_buf, reader);
+
+  filter_boost *= boost();
 
   return prefix_match_
-    ? filter::prepared::make<column_prefix_existence_query>(field_, std::move(attrs))
-    : filter::prepared::make<column_existence_query>(field_, std::move(attrs))
-    ;
+    ? filter::prepared::make<column_prefix_existence_query>(field_, std::move(stats), filter_boost)
+    : filter::prepared::make<column_existence_query>(field_, std::move(stats), filter_boost);
 }
 
 NS_END // ROOT

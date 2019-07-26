@@ -61,7 +61,7 @@ class AqlItemRowsTest : public ::testing::Test {
           // If this should not be kept it has to be set to NONE!
           ASSERT_TRUE(v.slice().isNone());
         } else {
-          ASSERT_TRUE(basics::VelocyPackHelper::compare(row.at(regId), v.slice(), true) == 0);
+          ASSERT_TRUE(basics::VelocyPackHelper::equal(row.at(regId), v.slice(), true));
           // Work around test as we are unable to check the type via API.
           if (assertNotInline) {
             // If this object is not inlined it requires some memory

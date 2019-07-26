@@ -180,16 +180,23 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
 bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
   VPackSlice const left = l.slice().get("parameters");
   VPackSlice const right = r.slice().get("parameters");
-
+  
+  std::string leftName =
+      arangodb::basics::VelocyPackHelper::getStringValue(left, "name", "");
+  std::string rightName =
+      arangodb::basics::VelocyPackHelper::getStringValue(right, "name", "");
+  
   // First we sort by shard distribution.
   // We first have to create the collections which have no dependencies.
   // NB: Dependency graph has depth at most 1, no need to manage complex DAG
   VPackSlice leftDist = left.get("distributeShardsLike");
   VPackSlice rightDist = right.get("distributeShardsLike");
-  if (leftDist.isNone() && !rightDist.isNone()) {
+  if (leftDist.isNone() && rightDist.isString() &&
+      rightDist.copyString() == leftName) {
     return true;
   }
-  if (rightDist.isNone() && !leftDist.isNone()) {
+  if (rightDist.isNone() && leftDist.isString() &&
+      leftDist.copyString() == rightName) {
     return false;
   }
 
@@ -204,11 +211,15 @@ bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
   }
 
   // Finally, sort by name so we have stable, reproducible results
-  std::string leftName =
-      arangodb::basics::VelocyPackHelper::getStringValue(left, "name", "");
-  std::string rightName =
-      arangodb::basics::VelocyPackHelper::getStringValue(right, "name", "");
-
+  // Sort system collections first
+  if (!leftName.empty() && leftName[0] == '_' &&
+      !rightName.empty() && rightName[0] != '_') {
+    return true;
+  }
+  if (!leftName.empty() && leftName[0] != '_' &&
+      !rightName.empty() && rightName[0] == '_') {
+    return false;
+  }
   return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
 }
 
@@ -279,7 +290,7 @@ arangodb::Result tryCreateDatabase(std::string const& name) {
   } catch (...) {
     LOG_TOPIC("832ef", FATAL, arangodb::Logger::RESTORE)
         << "cannot create server connection, giving up!";
-    return {TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT};
+    return {TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT};
   }
 
   VPackBuilder builder;
@@ -1370,7 +1381,7 @@ void RestoreFeature::start() {
 
   result = _clientManager.getConnectedClient(httpClient, _options.force,
                                              true, !_options.createDatabase);
-  if (result.is(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
+  if (result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
     LOG_TOPIC("c23bf", FATAL, Logger::RESTORE)
         << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
@@ -1455,7 +1466,7 @@ void RestoreFeature::start() {
 
       result = _clientManager.getConnectedClient(httpClient, _options.force,
                                                  false, !_options.createDatabase);
-      if (result.is(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
+      if (result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
         LOG_TOPIC("3e715", FATAL, Logger::RESTORE)
             << "cannot create server connection, giving up!";
         FATAL_ERROR_EXIT();

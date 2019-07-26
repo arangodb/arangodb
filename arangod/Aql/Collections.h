@@ -27,6 +27,8 @@
 #include "Basics/Common.h"
 #include "VocBase/AccessMode.h"
 
+#include <map>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {

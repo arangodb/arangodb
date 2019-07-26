@@ -29,6 +29,9 @@
 #include "analysis/token_stream.hpp"
 #include "utils/locale_utils.hpp"
 #include "utils/runtime_utils.hpp"
+#include "utils/utf8_path.hpp"
+
+#include <rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
 
 NS_LOCAL
 
@@ -68,14 +71,14 @@ using namespace iresearch::analysis;
 TEST_F(TextAnalyzerParserTestSuite, test_nbsp_whitespace) {
   irs::analysis::text_token_stream::options_t options;
 
-  options.locale = "C.UTF-8"; // utf8 encoding used bellow
+  options.locale = irs::locale_utils::locale("C.UTF-8"); // utf8 encoding used bellow
 
   std::string sField = "test field";
   std::wstring sDataUCS2 = L"1,24\u00A0prosenttia"; // 00A0 == non-breaking whitespace
   auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
   std::string data;
   ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
-  irs::analysis::text_token_stream stream(options);
+  irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
 
   ASSERT_TRUE(stream.reset(data));
 
@@ -102,10 +105,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
   {
     irs::analysis::text_token_stream::options_t options;
 
-    options.locale = "en_US.UTF-8";
+    options.locale = irs::locale_utils::locale("en_US.UTF-8");
 
     std::string data = " A  hErd of   quIck brown  foXes ran    and Jumped over  a     runninG dog";
-    irs::analysis::text_token_stream stream(options);
+    irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
 
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
@@ -145,8 +148,8 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     {
       irs::analysis::text_token_stream::options_t options;
-      options.locale = "en_US.UTF-8";
-      irs::analysis::text_token_stream stream(options);
+      options.locale = irs::locale_utils::locale("en_US.UTF-8");
+      irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
     {
@@ -182,13 +185,13 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     {
       irs::analysis::text_token_stream::options_t options;
       options.case_convert = irs::analysis::text_token_stream::options_t::case_convert_t::LOWER;
-      options.locale = "en_US.UTF-8";
-      irs::analysis::text_token_stream stream(options);
+      options.locale = irs::locale_utils::locale("en_US.UTF-8");
+      irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"caseConvert\":\"lower\"}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"case\":\"lower\"}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -217,13 +220,13 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     {
       irs::analysis::text_token_stream::options_t options;
       options.case_convert = irs::analysis::text_token_stream::options_t::case_convert_t::UPPER;
-      options.locale = "en_US.UTF-8";
-      irs::analysis::text_token_stream stream(options);
+      options.locale = irs::locale_utils::locale("en_US.UTF-8");
+      irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"caseConvert\":\"upper\"}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"case\":\"upper\"}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -253,13 +256,13 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     {
       irs::analysis::text_token_stream::options_t options;
       options.case_convert = irs::analysis::text_token_stream::options_t::case_convert_t::NONE;
-      options.locale = "en_US.UTF-8";
-      irs::analysis::text_token_stream stream(options);
+      options.locale = irs::locale_utils::locale("en_US.UTF-8");
+      irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"caseConvert\":\"none\"}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"case\":\"none\"}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -291,9 +294,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     {
       irs::analysis::text_token_stream::options_t options;
-      options.ignored_words = std::unordered_set<std::string>({ "a", "of", "and" });
-      options.locale = "en_US.UTF-8";
-      irs::analysis::text_token_stream stream(options);
+      options.explicit_stopwords = std::unordered_set<std::string>({ "a", "of", "and" });
+      options.locale = irs::locale_utils::locale("en_US.UTF-8");
+      irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
     {
@@ -342,8 +345,8 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     {
       irs::analysis::text_token_stream::options_t options;
-      options.locale = "ru_RU.UTF-8";
-      irs::analysis::text_token_stream stream(options);
+      options.locale = irs::locale_utils::locale("ru_RU.UTF-8");
+      irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
     {
@@ -390,14 +393,14 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     {
       irs::analysis::text_token_stream::options_t options;
 
-      options.locale = "ru_RU.UTF-8";
-      options.no_accent = false;
-      irs::analysis::text_token_stream stream(options);
+      options.locale = irs::locale_utils::locale("ru_RU.UTF-8");
+      options.accent = true;
+      irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"noAccent\":false}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"accent\":true}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -437,14 +440,14 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     {
       irs::analysis::text_token_stream::options_t options;
-      options.locale = "ru_RU.UTF-8";
-      options.no_stem = true;
-      irs::analysis::text_token_stream stream(options);
+      options.locale = irs::locale_utils::locale("ru_RU.UTF-8");
+      options.stemming = false;
+      irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"noStem\":true}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"stemming\":false}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -474,8 +477,8 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     {
       irs::analysis::text_token_stream::options_t options;
-      options.locale = "tr-TR.UTF-8";
-      irs::analysis::text_token_stream stream(options);
+      options.locale = irs::locale_utils::locale("tr-TR.UTF-8");
+      irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
     {
@@ -519,8 +522,8 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     {
       irs::analysis::text_token_stream::options_t options;
-      options.locale = "zh_CN.UTF-8";
-      irs::analysis::text_token_stream stream(options);
+      options.locale = irs::locale_utils::locale("zh_CN.UTF-8");
+      irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
     {
@@ -535,20 +538,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
   // invalid
   // ...........................................................................
   {
-    std::string data = "abc";
-    {
-      // ICU locale will fail initialization for an invalid std:locale
-      irs::analysis::text_token_stream::options_t options;
-      options.locale = "invalid12345.UTF-8";
-      irs::analysis::text_token_stream stream(options);
-      ASSERT_FALSE(stream.reset(data));
-    }
-    {
-      // stopwords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"invalid12345.UTF-8\", \"stopwords\":[]}");
-      ASSERT_NE(nullptr, stream);
-      ASSERT_FALSE(stream->reset(data));
-    }
+    // stopwords  should be set to empty - or default values will interfere with test data
+    auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"invalid12345.UTF-8\", \"stopwords\":[]}");
+    ASSERT_EQ(nullptr, stream);
   }
 }
 
@@ -648,6 +640,162 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override) {
   ASSERT_NE(nullptr, stream);
   testFunc(sDataASCII, stream);
 }
+
+TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override_emptypath) {
+  // no stopwords, but empty stopwords path (we need to shift CWD to our test resources, to be able to load stopwords)
+  auto oldCWD = irs::utf8_path(true);
+  auto newCWD = irs::utf8_path(IResearch_test_resource_dir);
+  newCWD.chdir();
+  auto reset_stopword_path = irs::make_finally([oldCWD]()->void {
+    oldCWD.chdir();
+  });
+
+  std::string config = "{\"locale\":\"en_US.UTF-8\",\"case\":\"lower\",\"accent\":false,\"stemming\":true,\"stopwordsPath\":\"\"}";
+  auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config);
+  ASSERT_NE(nullptr, stream);
+
+  // Checking that default stowords are loaded
+  std::string sDataASCII = "A E I O U";
+  ASSERT_TRUE(stream->reset(sDataASCII));
+  auto& pOffset = stream->attributes().get<iresearch::offset>();
+  auto& pPayload = stream->attributes().get<iresearch::payload>();
+  auto& pValue = stream->attributes().get<iresearch::term_attribute>();
+
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("e", std::string((char*)(pValue->value().c_str()), pValue->value().size()));
+  ASSERT_TRUE(stream->next());
+  ASSERT_EQ("u", std::string((char*)(pValue->value().c_str()), pValue->value().size()));
+  ASSERT_FALSE(stream->next());
+}
+
+TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
+  
+  //with unknown parameter
+  {
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"invalid_parameter\":true,\"stopwords\":[],\"accent\":true,\"stemming\":false}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
+    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true,\"stemming\":false}", actual);
+  }
+
+  // no case convert in creation. Default value shown
+  {
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"stopwords\":[],\"accent\":true,\"stemming\":false}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
+    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true,\"stemming\":false}" , actual);
+  }
+
+  // no accent in creation. Default value shown
+  {
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"stopwords\":[],\"stemming\":false}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
+    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":false,\"stemming\":false}", actual);
+  }
+
+  // no stem in creation. Default value shown
+  {
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
+    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true,\"stemming\":true}", actual);
+  }
+
+  // non default values for stem, accent and case
+  {
+    std::string config = "{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\",\"stopwords\":[],\"accent\":true,\"stemming\":false}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
+    ASSERT_EQ(config, actual);
+  }
+
+  // no stopwords no stopwords path
+  {
+    const char* czOldStopwordPath = iresearch::getenv(text_token_stream::STOPWORD_PATH_ENV_VARIABLE);
+    std::string sOldStopwordPath = czOldStopwordPath == nullptr ? "" : czOldStopwordPath;
+    auto reset_stopword_path = irs::make_finally([czOldStopwordPath, sOldStopwordPath]()->void {
+      if (czOldStopwordPath) {
+        irs::setenv(text_token_stream::STOPWORD_PATH_ENV_VARIABLE, sOldStopwordPath.c_str(), true);
+      }
+    });
+
+    iresearch::setenv(text_token_stream::STOPWORD_PATH_ENV_VARIABLE, IResearch_test_resource_dir, true);
+
+    std::string config = "{\"locale\":\"en_US.utf-8\",\"case\":\"lower\",\"accent\":false,\"stemming\":true}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
+    ASSERT_EQ(config, actual);
+  }
+  
+  // empty stopwords, but stopwords path
+  {
+    std::string config = "{\"locale\":\"en_US.utf-8\",\"case\":\"upper\",\"stopwords\":[],\"accent\":false,\"stemming\":true,\"stopwordsPath\":\"" IResearch_test_resource_dir "\"}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
+    ASSERT_EQ(config, actual);
+  }
+
+  // no stopwords, but stopwords path
+  {
+    std::string config = "{\"locale\":\"en_US.utf-8\",\"case\":\"upper\",\"accent\":false,\"stemming\":true,\"stopwordsPath\":\"" IResearch_test_resource_dir "\"}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
+    ASSERT_EQ(config, actual);
+  }
+
+  // no stopwords, but empty stopwords path (we need to shift CWD to our test resources, to be able to load stopwords)
+  {
+    auto oldCWD = irs::utf8_path(true);
+    auto newCWD = irs::utf8_path(IResearch_test_resource_dir);
+    newCWD.chdir();
+    auto reset_stopword_path = irs::make_finally([oldCWD]()->void {
+      oldCWD.chdir();
+    });
+
+    std::string config = "{\"locale\":\"en_US.utf-8\",\"case\":\"lower\",\"accent\":false,\"stemming\":true,\"stopwordsPath\":\"\"}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
+    ASSERT_EQ(config, actual);
+  }
+
+  // non-empty stopwords with duplicates
+  {
+    std::string config = "{\"locale\":\"en_US.utf-8\",\"case\":\"upper\",\"stopwords\":[\"z\",\"a\",\"b\",\"a\"],\"accent\":false,\"stemming\":true,\"stopwordsPath\":\"" IResearch_test_resource_dir "\"}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
+
+    // stopwords order is not guaranteed. Need to deep check json
+    rapidjson::Document json;
+    ASSERT_FALSE(json.Parse(actual.c_str(), actual.size()).HasParseError());
+    ASSERT_TRUE(json.HasMember("stopwords"));
+    auto& stopwords = json["stopwords"]; 
+    ASSERT_TRUE(stopwords.IsArray());
+
+    std::unordered_set<std::string> expected_stopwords = { "z","a","b" };
+    for (auto itr = stopwords.Begin(), end = stopwords.End();
+      itr != end;
+      ++itr) {
+      ASSERT_TRUE(itr->IsString());
+      expected_stopwords.erase(itr->GetString());
+    }
+    ASSERT_TRUE(expected_stopwords.empty());
+  }
+}
+
+TEST_F(TextAnalyzerParserTestSuite, test_make_config_text) {
+  std::string config = "RU";
+  std::string actual;
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::text, config));
+  ASSERT_EQ("ru", actual);
+}
+
+TEST_F(TextAnalyzerParserTestSuite, test_make_config_invalid_format) {
+  std::string config = "{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true}";
+  std::string actual;
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::csv, config));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
+#include "Basics/process-utils.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Logger/LogAppender.h"
@@ -389,7 +390,7 @@ int DaemonFeature::waitForChildProcess(int pid) {
     }
 
     // sleep a while and retry
-    std::this_thread::sleep_for(std::chrono::microseconds(500 * 1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
   // enough time has elapsed... we now abort our loop

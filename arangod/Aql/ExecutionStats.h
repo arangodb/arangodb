@@ -28,6 +28,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <map>
 
 namespace arangodb {
 namespace velocypack {
@@ -63,7 +64,7 @@ struct ExecutionStats {
 
   /// @brief sets query execution time from the outside
   void setExecutionTime(double value) { executionTime = value; }
-  
+
   /// @brief sets the peak memory usage from the outside
   void setPeakMemoryUsage(size_t value) { peakMemoryUsage = value; }
 

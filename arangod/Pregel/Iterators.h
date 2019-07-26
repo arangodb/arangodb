@@ -90,23 +90,23 @@ class RangeIterator {
   T* _beginPtr;
   T* _currentBufferEnd;
   size_t _size;
-  
+
  public:
   typedef RangeIterator<T> iterator;
   typedef const RangeIterator<T> const_iterator;
-  
+
   RangeIterator(std::vector<std::unique_ptr<TypedBuffer<T>>>& bufs,
                 size_t beginBuffer, T* beginPtr,
                 size_t size)
     : _buffers(bufs),
       _beginBuffer(beginBuffer),
       _beginPtr(beginPtr),
-      _currentBufferEnd(bufs[_beginBuffer]->end()),
+      _currentBufferEnd(bufs.empty() ? beginPtr : bufs[_beginBuffer]->end()),
       _size(size) {}
-  
+
   RangeIterator(RangeIterator const&) = delete;
   RangeIterator& operator=(RangeIterator const&) = delete;
-  
+
   RangeIterator(RangeIterator&& other)
   : _buffers(other._buffers),
   _beginBuffer(other._beginBuffer),
@@ -118,7 +118,7 @@ class RangeIterator {
     other._currentBufferEnd = nullptr;
     other._size = 0;
   }
-  
+
   RangeIterator& operator=(RangeIterator&& other) {
     TRI_ASSERT(&this->_buffers == &other._buffers);
     this->_beginBuffer = other._beginBuffer;
@@ -136,7 +136,7 @@ class RangeIterator {
   bool hasMore() const {
     return _size > 0;
   }
-  
+
   // prefix ++
   RangeIterator& operator++() {
     TRI_ASSERT(_beginPtr != _currentBufferEnd);
@@ -153,7 +153,7 @@ class RangeIterator {
     }
     return *this;
   }
-  
+
   T* operator*() const { return _beginPtr; }
 
   T* operator->() const { return _beginPtr; }

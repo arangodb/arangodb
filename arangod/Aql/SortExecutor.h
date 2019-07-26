@@ -26,9 +26,10 @@
 #ifndef ARANGOD_AQL_SORT_EXECUTOR_H
 #define ARANGOD_AQL_SORT_EXECUTOR_H
 
+#include "Aql/AqlItemBlockManager.h"
+#include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "AqlItemBlockManager.h"
 
 #include <memory>
 
@@ -40,7 +41,6 @@ class Methods;
 namespace aql {
 
 class AllRowsFetcher;
-class AqlItemMatrix;
 class ExecutorInfos;
 class NoStats;
 class OutputAqlItemRow;
@@ -112,7 +112,7 @@ class SortExecutor {
 
   AqlItemMatrix const* _input;
 
-  std::vector<size_t> _sortedIndexes;
+  std::vector<AqlItemMatrix::RowIndex> _sortedIndexes;
 
   size_t _returnNext;
 };

@@ -49,7 +49,7 @@ std::shared_ptr<AqlTransaction> AqlTransaction::create(
 #endif
   return std::make_shared<AqlTransaction>(transactionContext, collections, options, isMainTransaction);
 }
-  
+
 /// @brief add a list of collections to the transaction
 Result AqlTransaction::addCollections(std::map<std::string, aql::Collection*> const& collections) {
   Result res;

@@ -118,8 +118,7 @@ struct EdgeDocumentToken {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_type == TokenType::COORDINATOR);
 #endif
-    // FIXME:
-    return velocypack::Slice(_data.vpack) == velocypack::Slice(other._data.vpack);
+    return velocypack::Slice(_data.vpack).binaryEquals(velocypack::Slice(other._data.vpack));
   }
 
   bool equalsLocal(EdgeDocumentToken const& other) const {

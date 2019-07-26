@@ -22,7 +22,8 @@
 
 #include "gtest/gtest.h"
 
-#include "Basics/Common.h"
+#include <map>
+
 #include "Basics/StringUtils.h"
 #include "Geo/GeoJson.h"
 #include "Geo/GeoUtils.h"

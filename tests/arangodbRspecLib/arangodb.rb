@@ -380,7 +380,7 @@ end
   end
 end
 
-# super carrot fix for strange SSL behaviour on windows
+# super carrot fix for strange SSL behavior on windows
 # on some windowses the first SSL request somehow throws strange SSL errors
 # after that everything is fine...so make a dummy request first
 if $ssl == '1'

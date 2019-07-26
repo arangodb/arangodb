@@ -25,6 +25,7 @@
 
 #include "Basics/Common.h"
 #include <velocypack/StringRef.h>
+#include <unordered_set>
 
 namespace arangodb {
 class ManagedDocumentResult;

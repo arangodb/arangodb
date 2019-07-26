@@ -13,12 +13,12 @@ describe ArangoDB do
   context "binary data" do
     before do
       # make sure system collections exist
-      ArangoDB.post("/_admin/execute", :body => "var db = require('internal').db; try { db._create('_modules', { isSystem: true, distributeShardsLike: '_graphs' }); } catch (err) {} try { db._create('_routing', { isSystem: true, distributeShardsLike: '_graphs' }); } catch (err) {}")   
-       
+      ArangoDB.post("/_admin/execute", :body => "var db = require('internal').db; try { db._create('_modules', { isSystem: true, distributeShardsLike: '_graphs' }); } catch (err) {} try { db._create('_routing', { isSystem: true, distributeShardsLike: '_graphs' }); } catch (err) {}")
+
       # clean up first
       ArangoDB.delete("/_api/document/_modules/UnitTestRoutingTest")
       ArangoDB.delete("/_api/document/_routing/UnitTestRoutingTest")
-      
+
       # register module in _modules
       body = "{ \"_key\" : \"UnitTestRoutingTest\", \"path\" : \"/db:/FoxxTest\", \"content\" : \"exports.do = function(req, res, options, next) { res.body = require('internal').rawRequestBody(req); res.responseCode = 201; res.contentType = 'application/x-foobar'; };\" }"
       doc = ArangoDB.log_post("#{prefix}-post-binary-data", "/_api/document?collection=_modules", :body => body)
@@ -28,16 +28,16 @@ describe ArangoDB do
       body = "{ \"_key\" : \"UnitTestRoutingTest\", \"url\" : { \"match\" : \"/foxxtest\", \"methods\" : [ \"post\", \"put\" ] }, \"action\": { \"controller\" : \"db://FoxxTest\" } }"
       doc = ArangoDB.log_post("#{prefix}-post-binary-data", "/_api/document?collection=_routing", :body => body)
       doc.code.should eq(202)
-      
+
       ArangoDB.log_post("#{prefix}-post-binary-data", "/_admin/routing/reload", :body => "")
     end
 
     after do
       ArangoDB.delete("/_api/document/_modules/UnitTestRoutingTest")
       ArangoDB.delete("/_api/document/_routing/UnitTestRoutingTest")
-      
+
       # drop collections
-      ArangoDB.post("/_admin/execute", :body => "var db = require('internal').db; try { db._drop('_modules', true); } catch (err) {} try { db._drop('_routing', true); } catch (err) {}")   
+      ArangoDB.post("/_admin/execute", :body => "var db = require('internal').db; try { db._drop('_modules', true); } catch (err) {} try { db._drop('_routing', true); } catch (err) {}")
     end
 
     it "checks handling of a request with binary data" do
@@ -69,7 +69,7 @@ describe ArangoDB do
     it "calls an action and times out" do
       cmd = "/_admin/execute"
       body = "require('internal').wait(4);"
-      begin 
+      begin
         ArangoDB.log_post("#{prefix}-http-timeout", cmd, :body => body)
       rescue Timeout::Error
         # if we get any different error, the rescue block won't catch it and
@@ -91,9 +91,9 @@ describe ArangoDB do
     it "calls an action and times out" do
       cmd = "/_admin/execute"
       body = "require('internal').wait(4);"
-      begin 
+      begin
         ArangoDB.log_post("#{prefix}-http-timeout", cmd, :body => body)
-      rescue Timeout::Error 
+      rescue Timeout::Error
         # if we get any different error, the rescue block won't catch it and
         # the test will fail
       end
@@ -114,7 +114,7 @@ describe ArangoDB do
         doc.code.should eq(200)
         doc.response.body.should be_nil
       end
-      
+
       it "checks whether HEAD returns a body on 3xx" do
         cmd = "/_api/collection"
         doc = ArangoDB.log_head("#{prefix}-head-unsupported-method1", cmd)
@@ -130,7 +130,7 @@ describe ArangoDB do
         doc.code.should eq(405)
         doc.response.body.should be_nil
       end
-      
+
       it "checks whether HEAD returns a body on 4xx" do
         cmd = "/_api/non-existing-method"
         doc = ArangoDB.log_head("#{prefix}-head-non-existing-method", cmd)
@@ -145,7 +145,7 @@ describe ArangoDB do
 
         # create collection with one document
         @cid = ArangoDB.create_collection(cn)
-  
+
         cmd = "/_api/document?collection=#{cn}"
         body = "{ \"Hello\" : \"World\" }"
         doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
@@ -210,7 +210,7 @@ describe ArangoDB do
     end
 
 ################################################################################
-## checking HTTP OPTIONS 
+## checking HTTP OPTIONS
 ################################################################################
 
     context "options requests" do
@@ -272,6 +272,29 @@ describe ArangoDB do
     end
 
 ################################################################################
+## checking GZIP requests
+################################################################################
+
+    context "deflate requests" do
+      it "checks handling of a request, with deflate support" do
+        require 'uri'
+        require 'net/http'
+        require 'zlib'
+
+        cmd = "/_api/version"
+        deflatedVersion = ArangoDB.log_get("version-deflate-get", cmd, :headers => { "Accept-Encoding" => "deflate" }, :format => :plain)
+        version = ArangoDB.log_get("version-get", cmd, :headers => { "Accept-Encoding" => "" }, :format => :plain)
+
+        # check content encoding
+        deflatedVersion.headers['Content-Encoding'].should eq('deflate')
+
+        # compare both responses
+        inflatedVersionStr = Zlib::inflate deflatedVersion.body
+        version.body.should eq(inflatedVersionStr)
+      end
+    end
+
+################################################################################
 ## checking CORS requests
 ################################################################################
 
@@ -301,7 +324,7 @@ describe ArangoDB do
         doc.headers['access-control-allow-credentials'].should eq("false")
         doc.headers['access-control-max-age'].should be_nil
       end
-      
+
       it "checks handling of a CORS GET request" do
         cmd = "/_api/version"
         doc = ArangoDB.log_get("#{prefix}-cors", cmd, { :headers => { "Origin" => "http://127.0.0.1" } } )
@@ -313,7 +336,7 @@ describe ArangoDB do
         doc.headers['access-control-allow-credentials'].should eq("false")
         doc.headers['access-control-max-age'].should be_nil
       end
-      
+
       it "checks handling of a CORS GET request from origin that is trusted" do
         cmd = "/_api/version"
         doc = ArangoDB.log_get("#{prefix}-cors", cmd, { :headers => { "Origin" => "http://was-erlauben-strunz.it" } } )

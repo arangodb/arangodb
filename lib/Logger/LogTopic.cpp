@@ -25,6 +25,7 @@
 
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
+#include <map>
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Audit/AuditFeature.h"

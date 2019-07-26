@@ -32,6 +32,8 @@
 #include "Utils/Cursor.h"
 #include "VocBase/vocbase.h"
 
+#include <deque>
+
 namespace arangodb {
 namespace aql {
 

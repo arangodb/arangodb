@@ -28,6 +28,7 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/velocypack-aliases.h>
+#include <set>
 
 struct TRI_vocbase_t;
 
@@ -63,24 +64,30 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
 
   virtual void prepare() override;
 
-  virtual void PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
-                     const rocksdb::Slice& value) override;
+  virtual void PutCF(uint32_t column_family_id,
+                     const rocksdb::Slice& key,
+                     const rocksdb::Slice& value,
+                     rocksdb::SequenceNumber tick) override;
 
-  virtual void DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
-    handleDeleteCF(column_family_id, key);
+  virtual void DeleteCF(uint32_t column_family_id,
+                        const rocksdb::Slice& key,
+                        rocksdb::SequenceNumber tick) override {
+    handleDeleteCF(column_family_id, key, tick);
   }
 
-  virtual void SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
-    handleDeleteCF(column_family_id, key);
+  virtual void SingleDeleteCF(uint32_t column_family_id,
+                              const rocksdb::Slice& key,
+                              rocksdb::SequenceNumber tick) override {
+    handleDeleteCF(column_family_id, key, tick);
   }
 
-  virtual void DeleteRangeCF(uint32_t column_family_id, const rocksdb::Slice& begin_key,
-                             const rocksdb::Slice& end_key) override;
-
-  virtual void LogData(const rocksdb::Slice& blob) override;
+  virtual void LogData(const rocksdb::Slice& blob,
+                       rocksdb::SequenceNumber tick) override;
 
  private:
-  void handleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key);
+  void handleDeleteCF(uint32_t column_family_id,
+                      const rocksdb::Slice& key,
+                      rocksdb::SequenceNumber tick);
 
   std::set<IndexId> _recoveredIndexes;  // set of already recovered indexes
   DatabaseFeature* _dbFeature{};

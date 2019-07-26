@@ -34,7 +34,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/CommonDefines.h"
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
 #include "Shell/V8ClientConnection.h"
@@ -156,7 +156,7 @@ void V8ShellFeature::start() {
 
   auto* isolate = _isolate;
   TRI_GET_GLOBALS();
-  v8g = TRI_CreateV8Globals(isolate);
+  v8g = TRI_CreateV8Globals(isolate, 0);
   v8g->_securityContext = arangodb::JavaScriptSecurityContext::createAdminScriptContext();
 
   // create the global template

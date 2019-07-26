@@ -83,7 +83,8 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
 
     viewBuilder.openObject();
 
-    auto res = view->properties(viewBuilder, true, false);
+    auto res = view->properties(viewBuilder, LogicalDataSource::makeFlags(
+                                                 LogicalDataSource::Serialize::Detailed));
 
     if (!res.ok()) {
       generateError(res);
@@ -100,7 +101,10 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
 
   builder.openObject();
 
-  auto res = view->properties(builder, detailed, false);
+  auto res =
+      view->properties(builder, LogicalDataSource::makeFlags(
+                                    detailed ? LogicalDataSource::Serialize::Detailed
+                                             : LogicalDataSource::Serialize::Basics));
 
   builder.close();
 
@@ -216,7 +220,8 @@ void RestViewHandler::createView() {
     velocypack::Builder builder;
 
     builder.openObject();
-    res = view->properties(builder, true, false);
+    res = view->properties(builder, LogicalDataSource::makeFlags(
+                                        LogicalDataSource::Serialize::Detailed));
 
     if (!res.ok()) {
       generateError(res);
@@ -296,7 +301,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
         viewBuilder.openObject();
 
-        auto res = view->properties(viewBuilder, true, false);
+        auto res = view->properties(viewBuilder, LogicalDataSource::makeFlags(
+                                                     LogicalDataSource::Serialize::Detailed));
 
         if (!res.ok()) {
           generateError(res);
@@ -337,7 +343,9 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
       builderCurrent.openObject();
 
-      auto resCurrent = view->properties(builderCurrent, true, false);
+      auto resCurrent =
+          view->properties(builderCurrent, LogicalDataSource::makeFlags(
+                                               LogicalDataSource::Serialize::Detailed));
 
       if (!resCurrent.ok()) {
         generateError(resCurrent);
@@ -366,7 +374,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
     updated.openObject();
 
-    auto res = view->properties(updated, true, false);
+    auto res = view->properties(updated, LogicalDataSource::makeFlags(
+                                             LogicalDataSource::Serialize::Detailed));
 
     updated.close();
 
@@ -509,7 +518,9 @@ void RestViewHandler::getViews() {
 
         viewBuilder.openObject();
 
-        if (!view->properties(viewBuilder, true, false).ok()) {
+        if (!view->properties(viewBuilder, LogicalDataSource::makeFlags(
+                                               LogicalDataSource::Serialize::Detailed))
+                 .ok()) {
           continue;  // skip view
         }
       } catch (...) {
@@ -521,7 +532,7 @@ void RestViewHandler::getViews() {
       viewBuilder.openObject();
 
       try {
-        auto res = view->properties(viewBuilder, false, false);
+        auto res = view->properties(viewBuilder, LogicalDataSource::makeFlags());
 
         if (!res.ok()) {
           generateError(res);

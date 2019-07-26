@@ -25,7 +25,6 @@
 
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -86,7 +85,7 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
     httpClient = client->createHttpClient();
   } catch (...) {
     LOG_TOPIC("2b5fd", FATAL, _topic) << "cannot create server connection, giving up!";
-    return {TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT};
+    return {TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT};
   }
 
   // set client parameters

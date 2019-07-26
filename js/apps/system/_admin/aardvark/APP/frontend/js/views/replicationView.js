@@ -566,7 +566,9 @@
         $('#repl-logger-clients tbody').html('');
         _.each(clients, function (client) {
           $('#repl-logger-clients tbody').append(
-            '<tr><td>' + client.serverId + '</td>' +
+            '<tr><td>' + client.syncerId + '</td>' +
+            '<td>' + client.serverId + '</td>' +
+            '<td>' + client.clientInfo + '</td>' +
             '<td>' + client.time + '</td>' +
             '<td>' + client.lastServedTick + '</td></tr>'
           );

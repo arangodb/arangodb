@@ -27,6 +27,7 @@
 
 #include <atomic>
 #include <string>
+#include <map>
 
 #include "Basics/Common.h"
 #include "Basics/StringHeap.h"

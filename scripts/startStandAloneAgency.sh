@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 function help() {
   echo "USAGE: scripts/startStandAloneAgency.sh [options]"

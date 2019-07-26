@@ -355,6 +355,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'keyOptions': false,
     'indexBuckets': true,
     'replicationFactor': true,
+    'minReplicationFactor': true,
     'distributeShardsLike': false,
     'shardingStrategy': false,
     'cacheEnabled': true

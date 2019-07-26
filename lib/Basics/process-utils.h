@@ -73,6 +73,7 @@ typedef enum {
   TRI_EXT_TERMINATED = 5,   // process has terminated normally
   TRI_EXT_ABORTED = 6,      // process has terminated abnormally
   TRI_EXT_STOPPED = 7,      // process has been stopped
+  TRI_EXT_TIMEOUT = 9      // waiting for the process timed out
 } TRI_external_status_e;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -175,7 +176,7 @@ void TRI_CreateExternalProcess(char const* executable,
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait);
+ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32_t timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether a signal is expected to be terminal

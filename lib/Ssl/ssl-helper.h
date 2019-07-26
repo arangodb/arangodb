@@ -30,6 +30,7 @@
 #include <openssl/ssl.h>
 
 #include "Basics/asio_ns.h"
+#include <unordered_set>
 
 namespace arangodb {
 // SSL protocol methods

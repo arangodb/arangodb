@@ -54,8 +54,10 @@ namespace aql {
 
 class TokenTranslator : public TraverserCache {
  public:
-  TokenTranslator(Query* query) : TraverserCache(query) {}
-  ~TokenTranslator(){};
+  TokenTranslator(Query* query) 
+      : TraverserCache(query),
+         _edges(11, arangodb::basics::VelocyPackHelper::VPackHash(), arangodb::basics::VelocyPackHelper::VPackEqual()) {}
+  ~TokenTranslator() {}
 
   arangodb::velocypack::StringRef makeVertex(std::string const& id) {
     VPackBuilder vertex;
@@ -105,7 +107,7 @@ class TokenTranslator : public TraverserCache {
  private:
   std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> _dataLake;
   std::unordered_map<arangodb::velocypack::StringRef, VPackSlice> _vertices;
-  std::unordered_set<VPackSlice> _edges;
+  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual> _edges;
 };
 
 class FakePathFinder : public ShortestPathFinder {
@@ -252,7 +254,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
     ExecutionState state = ExecutionState::HASMORE;
     auto& finder = dynamic_cast<FakePathFinder&>(infos.finder());
 
-    SingleRowFetcherHelper<false> fetcher(input->steal(), true);
+    SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
     OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                             infos.registersToKeep(), infos.registersToClear());
     ShortestPathExecutor testee(fetcher, infos);
@@ -300,7 +302,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
     ExecutionState state = ExecutionState::HASMORE;
     auto& finder = dynamic_cast<FakePathFinder&>(infos.finder());
 
-    SingleRowFetcherHelper<false> fetcher(input->steal(), false);
+    SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
     OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                             infos.registersToKeep(), infos.registersToClear());
     ShortestPathExecutor testee(fetcher, infos);

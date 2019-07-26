@@ -52,6 +52,7 @@
 #endif
 
 #include <algorithm>
+#include <memory>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -145,7 +146,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
     }
     // we can only load one vertex collection at a time
     while (_runningThreads > 0) {
-      std::this_thread::sleep_for(std::chrono::microseconds(5000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
   }
 
@@ -552,7 +553,8 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
   
   size_t numSegments = _vertices.size();
   if (_localVertexCount > 100000) {
-    _runningThreads = std::min<size_t>(_config->parallelism(), numSegments);
+    // We expect at least parallelism to fit in a uint32_t.
+    _runningThreads = static_cast<uint32_t>(std::min<size_t>(_config->parallelism(), numSegments));
   } else {
     _runningThreads = 1;
   }

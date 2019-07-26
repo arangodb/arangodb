@@ -28,6 +28,7 @@
 #include "Aql/QueryString.h"
 #include "Auth/Handler.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"
@@ -35,12 +36,10 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
-#include "Random/UniformCharacter.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "Ssl/SslInterface.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
@@ -322,12 +321,11 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
         }
       }
 #endif
-    } else if (res.is(TRI_ERROR_ARANGO_CONFLICT)) {  // user was outdated
-      // we didn't succeed in updating the user, so we must not remove the
-      // user from the cache here. however, we should trigger a reload here
+    } else if (res.is(TRI_ERROR_ARANGO_CONFLICT)) {
+      // user was outdated, we should trigger a reload
       triggerLocalReload();
-      LOG_TOPIC("cf922", WARN, Logger::AUTHENTICATION)
-          << "Cannot update user due to conflict";
+      LOG_TOPIC("cf922", DEBUG, Logger::AUTHENTICATION)
+      << "Cannot update user : '" << res.errorMessage() << "'";
     }
   }
   return res;
@@ -471,7 +469,8 @@ Result auth::UserManager::storeUser(bool replace, std::string const& username,
   return r;
 }
 
-Result auth::UserManager::enumerateUsers(std::function<bool(auth::User&)>&& func) {
+Result auth::UserManager::enumerateUsers(std::function<bool(auth::User&)>&& func,
+                                         bool retryOnConflict) {
   loadFromDB();
 
   std::vector<auth::User> toUpdate;
@@ -488,19 +487,38 @@ Result auth::UserManager::enumerateUsers(std::function<bool(auth::User&)>&& func
       }
     }
   }
+  
+  bool triggerUpdate = !toUpdate.empty();
+  
   Result res;
-  {
-    WRITE_LOCKER(writeGuard, _userCacheLock);
-    for (auth::User const& u : toUpdate) {
-      res = storeUserInternal(u, true);
-      if (res.fail()) {
+  do {
+    auto it = toUpdate.begin();
+    while(it != toUpdate.end()) {
+      WRITE_LOCKER(writeGuard, _userCacheLock);
+      res = storeUserInternal(*it, /*replace*/true);
+      
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && retryOnConflict) {
+        res.reset();
+        writeGuard.unlock();
+        loadFromDB(); // should be noop iff nothing changed
+        writeGuard.lock();
+        UserMap::iterator it2 = _userCache.find(it->username());
+        if (it2 != _userCache.end()) {
+          auth::User user = it2->second;  // copy user object
+          func(user);
+          *it = std::move(user);
+          continue;
+        }
+      } else if (res.fail()) {
         break;  // do not return, still need to invalidate token cache
       }
+      it = toUpdate.erase(it);
     }
-  }
+  } while(!toUpdate.empty() && res.ok() &&
+          !application_features::ApplicationServer::isStopping());
 
   // cannot hold _userCacheLock while  invalidating token cache
-  if (!toUpdate.empty()) {
+  if (triggerUpdate) {
     triggerGlobalReload();  // trigger auth reload in cluster
   }
   return res;

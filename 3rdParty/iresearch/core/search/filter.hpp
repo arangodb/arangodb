@@ -79,27 +79,24 @@ struct index_reader;
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API filter {
  public:
-  typedef iresearch::boost::boost_t boost_t;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @class query
   /// @brief base class for all prepared(compiled) queries
   //////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API prepared: public util::attribute_store_provider {
+  class IRESEARCH_API prepared {
    public:
     DECLARE_SHARED_PTR(const prepared);
     DEFINE_FACTORY_INLINE(prepared)
 
     static prepared::ptr empty();
 
-    prepared() = default;
-    explicit prepared(attribute_store&& attrs) NOEXCEPT;
-    virtual ~prepared() = default;
-
-    using util::attribute_store_provider::attributes;
-    virtual attribute_store& attributes() NOEXCEPT override final {
-      return attrs_;
+    explicit prepared(boost_t boost = no_boost()) NOEXCEPT
+      : boost_(boost) {
     }
+    prepared(bstring&& stats, boost_t boost = no_boost()) NOEXCEPT
+      : stats_(std::move(stats)), boost_(boost) {
+    }
+    virtual ~prepared() = default;
 
     doc_iterator::ptr execute(
         const sub_reader& rdr) const {
@@ -118,11 +115,15 @@ class IRESEARCH_API filter {
       const attribute_view& ctx
     ) const = 0;
 
+    boost_t boost() const NOEXCEPT { return boost_; }
+
    protected:
-    friend class filter;
+    const byte_type* stats() const NOEXCEPT { return stats_.c_str(); }
+    void boost(boost_t boost) NOEXCEPT { boost_ *= boost; }
 
    private:
-    attribute_store attrs_;
+    bstring stats_;
+    boost_t boost_;
   }; // prepared
 
   DECLARE_UNIQUE_PTR(filter);
@@ -160,7 +161,7 @@ class IRESEARCH_API filter {
       const index_reader& rdr,
       const order::prepared& ord,
       const attribute_view& ctx) const {
-    return prepare(rdr, ord, irs::boost::no_boost(), ctx);
+    return prepare(rdr, ord, irs::no_boost(), ctx);
   }
 
   filter::prepared::ptr prepare(
@@ -173,7 +174,7 @@ class IRESEARCH_API filter {
   filter::prepared::ptr prepare(
       const index_reader& rdr,
       const order::prepared& ord) const {
-    return prepare(rdr, ord, boost::no_boost());
+    return prepare(rdr, ord, irs::no_boost());
   }
 
   filter::prepared::ptr prepare(const index_reader& rdr) const {

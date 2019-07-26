@@ -65,7 +65,7 @@ const testPaths = {
 
 function serverHttp (options) {
   // first starts to replace rspec:
-  let testCases = tu.scanTestPaths(testPaths.server_http);
+  let testCases = tu.scanTestPaths(testPaths.server_http, options);
 
   return tu.performTests(options, testCases, 'server_http', tu.runThere);
 }
@@ -80,7 +80,7 @@ function httpReplication (options) {
   };
   _.defaults(opts, options);
   
-  let testCases = tu.scanTestPaths(testPaths.http_replication);
+  let testCases = tu.scanTestPaths(testPaths.http_replication, options);
 
   testCases = tu.splitBuckets(options, testCases);
 
@@ -97,7 +97,7 @@ function httpServer (options) {
   };
   _.defaults(opts, options);
 
-  let testCases = tu.scanTestPaths(testPaths.http_server);
+  let testCases = tu.scanTestPaths(testPaths.http_server, options);
 
   testCases = tu.splitBuckets(options, testCases);
 
@@ -123,7 +123,7 @@ function sslServer (options) {
   };
   _.defaults(opts, options);
 
-  let testCases = tu.scanTestPaths(testPaths.ssl_server);
+  let testCases = tu.scanTestPaths(testPaths.ssl_server, options);
 
   testCases = tu.splitBuckets(options, testCases);
 
@@ -142,14 +142,6 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   defaultFns.push('ssl_server');
 
   opts['skipSsl'] = false;
-  if (platform.substr(0, 3) !== 'win') {
-    opts['rspec'] = 'rspec';
-  } else {
-    // Windows process utilties would apply `.exe` to rspec.
-    // However the file is called .bat and .exe cannot be found.
-    opts['rspec'] = 'rspec.bat';
-  }
-  opts['ruby'] = '';
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }

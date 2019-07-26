@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 params=("$@")
 
 rm -rf cluster
@@ -156,7 +156,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
           --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
           --server.statistics false \
           --log.file cluster/$PORT.log \
-        --log.force-direct true \
+          --log.force-direct true \
           --log.level $LOG_LEVEL_AGENCY \
           --javascript.allow-admin-execute true \
           $STORAGE_ENGINE \

@@ -25,8 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Basics/process-utils.h"
-
 namespace arangodb {
 
 class DaemonFeature final : public application_features::ApplicationFeature {

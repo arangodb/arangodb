@@ -92,12 +92,7 @@ filter::prepared::ptr by_prefix::prepare(
 
   scorer.score(rdr, ord);
 
-  auto q = memory::make_shared<range_query>(std::move(states));
-
-  // apply boost
-  irs::boost::apply(q->attributes(), this->boost() * boost);
-
-  return q;
+  return memory::make_shared<range_query>(std::move(states), this->boost() * boost);
 }
 
 DEFINE_FILTER_TYPE(by_prefix)

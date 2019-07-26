@@ -469,6 +469,29 @@ TEST_F(delimited_token_stream_tests, test_load) {
   }
 }
 
+TEST_F(delimited_token_stream_tests, test_make_config_json) {
+  //with unknown parameter
+  {
+    std::string config = "{\"delimiter\":\",\",\"invalid_parameter\":true}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::text_format::json, config));
+    ASSERT_EQ("{\"delimiter\":\",\"}", actual);
+  }
+}
+
+TEST_F(delimited_token_stream_tests, test_make_config_text) {
+  std::string config = ",";
+  std::string actual;
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::text_format::text, config));
+  ASSERT_EQ(config, actual);
+}
+
+TEST_F(delimited_token_stream_tests, test_make_config_invalid_format) {
+  std::string config = ",";
+  std::string actual;
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::text_format::csv, config));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

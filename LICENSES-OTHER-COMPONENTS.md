@@ -11,21 +11,12 @@
 
 ## C/C++ Libraries
 
-### Boost 1.62
+### Boost 1.69
 
 * Name: Boost
-* Version: 1.62
+* Version: 1.69
 * Project Home: http://www.boost.org/
 * License: http://www.boost.org/LICENSE_1_0.txt
-* License Name: Boost Software License 1.0
-* License Id: BSL-1.0
-
-### Catch 1.8.1
-
-* Name: Catch
-* Version: 1.8.1
-* Project Home: https://github.com/philsquared/Catch
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.4/3rdParty/catch/catch.hpp
 * License Name: Boost Software License 1.0
 * License Id: BSL-1.0
 
@@ -38,12 +29,12 @@
 * License Name: MIT License
 * License Id: MIT
 
-### Curl 7.50.3
+### Curl 7.63.0
 
 * Name: Curl
-* Version: 7.50.3
+* Version: 7.63.0
 * Project Home: https://curl.haxx.se/
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.4/3rdParty/curl/curl-7.57.0/COPYING
+* License: https://raw.githubusercontent.com/arangodb/arangodb/3.5/3rdParty/curl/curl-7.63.0/COPYING
 * License Comment: free as-is license
 
 ### date 2.4
@@ -142,7 +133,7 @@
 ### Googletest
 
 * Name: google test
-* Version: 1.8.0
+* Version: 1.8.1
 * Project Home: https://github.com/google/googletest
 * License: https://raw.githubusercontent.com/abseil/googletest/master/googletest/LICENSE
 * License Name: BSD 3-clause "New" or "Revised" License
@@ -151,15 +142,15 @@
 ### ICU
 
 * Name: ICU
-* Version: V8 5.7.492.77 bundled
+* Version: V8 7.1.302.28 bundled
 * Project Home: http://site.icu-project.org/
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.4/3rdParty/V8/v5.7.492.77/third_party/icu/LICENSE
+* License: https://raw.githubusercontent.com/arangodb/arangodb/3.5/3rdParty/V8/v7.1.302.28/third_party/icu/LICENSE
 * License Comment: ICU License
 
 ### jemalloc
 
 * Name: jemalloc
-* Version: 5.0.1
+* Version: 5.2.0
 * Project Home: https://github.com/jemalloc/jemalloc
 * License: https://raw.githubusercontent.com/jemalloc/jemalloc/dev/COPYING
 * License Comment: free as-is license
@@ -186,9 +177,9 @@ exception from the GPL license:
 ### RocksDB
 
 * Name: RocksDB
-* Version: 5.16
+* Version: 6.2
 * GitHub: https://github.com/facebook/rocksdb
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.4/3rdParty/rocksdb/v5.16.X/README.md
+* License: https://raw.githubusercontent.com/arangodb/arangodb/3.5/3rdParty/rocksdb/6.2/README.md
 * License Name: Apache License 2.0
 * License Id: Apache-2.0
 

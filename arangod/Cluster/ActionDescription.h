@@ -56,7 +56,7 @@ enum ActionState {
  * @brief Action description for mainenance actions
  *
  * This structure holds once initialized constant parameters of a maintenance
- * action. Members are declared const, thus thread safety guards are ommited.
+ * action. Members are declared const, thus thread safety guards are omitted.
  */
 struct ActionDescription {
  public:

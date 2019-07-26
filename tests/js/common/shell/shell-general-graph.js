@@ -2541,14 +2541,14 @@ function MeasurementsMovedFromAQLSuite() {
       validateNumericValues(actual, expected);
     },
 
-    testAbsoluteBetweness: function () {
+    testAbsoluteBetweeness: function () {
       var actual = g._absoluteBetweenness(vertexIds.Anton);
       var expected = { };
       expected[vertexIds.Anton] = 0;
       validateNumericValues(actual, expected);
     },
     
-    testAbsoluteBetwenessAll: function () {
+    testAbsoluteBetweenessAll: function () {
       var actual = g._absoluteBetweenness({});
       var expected = { };
       expected[vertexIds.Anton] = 0;
@@ -2561,7 +2561,7 @@ function MeasurementsMovedFromAQLSuite() {
       validateNumericValues(actual, expected);
     },
     
-    testAbsoluteBetwenessExample: function () {
+    testAbsoluteBetweenessExample: function () {
       var actual = g._absoluteBetweenness({gender: "female"});
       var expected = { };
       expected[vertexIds.Berta] = 8;
@@ -2569,7 +2569,7 @@ function MeasurementsMovedFromAQLSuite() {
       validateNumericValues(actual, expected);
     },
  
-    testAbsoluteBetwenessAllOutbound: function () {
+    testAbsoluteBetweenessAllOutbound: function () {
       var actual = g._absoluteBetweenness({}, {direction: "outbound"});
       var expected = { };
       expected[vertexIds.Anton] = 0;
@@ -2582,7 +2582,7 @@ function MeasurementsMovedFromAQLSuite() {
       validateNumericValues(actual, expected);
     },
 
-    testAbsoluteBetwenessAllInbound: function () {
+    testAbsoluteBetweenessAllInbound: function () {
       var actual = g._absoluteBetweenness({}, {direction: "inbound"});
       var expected = { };
       expected[vertexIds.Anton] = 0;
@@ -2595,7 +2595,7 @@ function MeasurementsMovedFromAQLSuite() {
       validateNumericValues(actual, expected);
     },
 
-    testBetwenessAny: function () {
+    testBetweenessAny: function () {
       var actual = g._betweenness();
       var expected = { };
       expected[vertexIds.Anton] = 0;
@@ -2608,7 +2608,7 @@ function MeasurementsMovedFromAQLSuite() {
       validateNumericValues(actual, expected);
     },
     
-    testBetwenessOutbound: function () {
+    testBetweenessOutbound: function () {
       var actual = g._betweenness({direction: "outbound"});
       var expected = { };
       expected[vertexIds.Anton] = 0;
@@ -2621,7 +2621,7 @@ function MeasurementsMovedFromAQLSuite() {
       validateNumericValues(actual, expected);
     },
 
-    testBetwenessInbound: function () {
+    testBetweenessInbound: function () {
       var actual = g._betweenness({direction: "inbound"});
       var expected = { };
       expected[vertexIds.Anton] = 0;
@@ -2633,8 +2633,6 @@ function MeasurementsMovedFromAQLSuite() {
       expected[vertexIds.Gerda] = 6 / 6;
       validateNumericValues(actual, expected);
     }
-
-
 
   };
 }

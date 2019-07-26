@@ -35,6 +35,8 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 
+#include <map>
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #define LOG_TRX(logid, llevel, trx, tlevel)                \
@@ -186,7 +188,7 @@ class TransactionState {
 
   /// @brief make a exclusive transaction, only valid before begin
   void setExclusiveAccessType();
-  
+
   /// @brief whether or not a transaction is read-only
   bool isReadOnlyTransaction() const {
     return (_type == AccessMode::Type::READ);
@@ -194,7 +196,7 @@ class TransactionState {
 
   /// @brief whether or not a transaction only has exculsive or read accesses
   bool isOnlyExclusiveTransaction() const;
-  
+
   /// @brief servers already contacted
   arangodb::HashSet<std::string> const& knownServers() const {
     return _knownServers;
@@ -203,19 +205,26 @@ class TransactionState {
   bool knowsServer(std::string const& uuid) const {
     return _knownServers.find(uuid) != _knownServers.end();
   }
-  
+
   /// @brief add a server to the known set
   void addKnownServer(std::string const& uuid) {
     _knownServers.emplace(uuid);
   }
-  
+
   /// @brief remove a server from the known set
   void removeKnownServer(std::string const& uuid) {
     _knownServers.erase(uuid);
   }
-  
+
   void clearKnownServers() {
     _knownServers.clear();
+  }
+
+  /// @returns tick of last operation in a transaction
+  /// @note the value is guaranteed to be valid only after
+  ///       transaction is committed
+  TRI_voc_tick_t lastOperationTick() const noexcept {
+    return _lastWrittenOperationTick;
   }
 
  protected:
@@ -233,10 +242,13 @@ class TransactionState {
   /// @brief check if current user can access this collection
   Result checkCollectionPermission(std::string const& cname, AccessMode::Type) const;
 
-  
+
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
   TRI_voc_tid_t const _id;  /// @brief local trx id
+
+  /// @brief tick of last added & written operation
+  TRI_voc_tick_t _lastWrittenOperationTick;
 
   /// @brief access type (read|write)
   AccessMode::Type _type;
@@ -255,13 +267,13 @@ class TransactionState {
  private:
   /// a collection of stored cookies
   std::map<void const*, Cookie::ptr> _cookies;
-  
+
   /// @brief servers we already talked to for this transactions
   arangodb::HashSet<std::string> _knownServers;
-  
+
   /// @brief reference counter of # of 'Methods' instances using this object
   std::atomic<int> _nestingLevel;
-  
+
   bool _registeredTransaction;
 };
 

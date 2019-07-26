@@ -384,7 +384,7 @@ Result MMFilesEdgeIndex::sizeHint(transaction::Methods& trx, size_t size) {
 }
 
 /// @brief checks whether the index supports the condition
-Index::UsageCosts MMFilesEdgeIndex::supportsFilterCondition(
+Index::FilterCosts MMFilesEdgeIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const&,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {

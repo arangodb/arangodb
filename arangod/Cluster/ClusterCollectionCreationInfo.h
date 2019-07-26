@@ -21,38 +21,38 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_CLUSTER_CLUSTER_COLLECTION_CREATION_INFO_H
-#define ARANGOD_CLUSTER_CLUSTER_COLLECTION_CREATION__INFO_H 1
+#define ARANGOD_CLUSTER_CLUSTER_COLLECTION_CREATION_INFO_H 1
 
 #include "Basics/Common.h"
 
-#include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
-
+#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 namespace arangodb {
 
 struct ClusterCollectionCreationInfo {
   enum State { INIT, FAILED, DONE };
-  ClusterCollectionCreationInfo(std::string const cID, uint64_t shards, uint64_t repFac,
+  ClusterCollectionCreationInfo(std::string const cID, uint64_t shards,
+                                uint64_t repFac, uint64_t minRepFac,
                                 bool waitForRep, velocypack::Slice const& slice);
 
   std::string const collectionID;
   uint64_t numberOfShards;
   uint64_t replicationFactor;
+  uint64_t minReplicationFactor;
   bool waitForReplication;
   velocypack::Slice const json;
   std::string name;
   State state;
 
-public:
-  velocypack::Slice const isBuildingSlice() const;
+ public:
+  velocypack::Slice isBuildingSlice() const;
 
  private:
-
-  velocypack::Builder _isBuildingJson;
-private:
   bool needsBuildingFlag() const;
+
+ private:
+  velocypack::Builder _isBuildingJson;
 };
 }  // namespace arangodb
 

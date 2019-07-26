@@ -32,6 +32,8 @@
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/vocbase.h"
 
+#include <map>
+
 namespace arangodb {
 namespace aql {
 
@@ -70,7 +72,7 @@ class AqlTransaction : public transaction::Methods {
   AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
                  std::map<std::string, aql::Collection*> const* collections,
                  transaction::Options const& options, bool isMainTransaction);
-  
+
   /// @brief add a collection to the transaction
   Result processCollection(aql::Collection*);
 

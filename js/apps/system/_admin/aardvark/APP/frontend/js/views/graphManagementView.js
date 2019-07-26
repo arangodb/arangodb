@@ -56,18 +56,22 @@
     hideSmartGraphOptions: function () {
       $('#row_general-numberOfShards').show();
       $('#row_general-replicationFactor').show();
+      $('#row_general-minReplicationFactor').show();
       $('#smartGraphInfo').hide();
       $('#row_new-numberOfShards').hide();
       $('#row_new-replicationFactor').hide();
+      $('#row_new-minReplicationFactor').hide();
       $('#row_new-smartGraphAttribute').hide();
     },
 
     showSmartGraphOptions: function () {
       $('#row_general-numberOfShards').hide();
       $('#row_general-replicationFactor').hide();
+      $('#row_general-minReplicationFactor').hide();
       $('#smartGraphInfo').show();
       $('#row_new-numberOfShards').show();
       $('#row_new-replicationFactor').show();
+      $('#row_new-minReplicationFactor').show();
       $('#row_new-smartGraphAttribute').show();
     },
 
@@ -671,7 +675,8 @@
           newCollectionObject.options = {
             numberOfShards: parseInt($('#new-numberOfShards').val()),
             smartGraphAttribute: $('#new-smartGraphAttribute').val(),
-            replicationFactor: parseInt($('#new-replicationFactor').val())
+            replicationFactor: parseInt($('#new-replicationFactor').val()),
+            minReplicationFactor: parseInt($('#new-minReplicationFactor').val()),
           };
         }
       } else {
@@ -687,6 +692,15 @@
             } else {
               newCollectionObject.options = {
                 replicationFactor: parseInt($('#general-replicationFactor').val())
+              };
+            }
+          }
+          if ($('#general-minReplicationFactor').val().length > 0) {
+            if (newCollectionObject.options) {
+              newCollectionObject.options.minReplicationFactor = parseInt($('#general-minReplicationFactor').val());
+            } else {
+              newCollectionObject.options = {
+                minReplicationFactor: parseInt($('#general-minReplicationFactor').val())
               };
             }
           }
@@ -799,7 +813,18 @@
               'replicationFactor',
               'Replication factor',
               graph.get('replicationFactor'),
-              'Total number of copies of the data in the cluster.'
+              'Total number of desired copies of the data in the cluster.'
+            )
+          );
+        }
+
+        if (graph.get('minReplicationFactor')) {
+          tableContent.push(
+            window.modalView.createReadOnlyEntry(
+              'minReplicationFactor',
+              'Minimal Replication factor',
+              graph.get('minReplicationFactor'),
+              'Total number of copies of the data in the cluster. If we get below this value the collection will be read-only until enough copies are created.'
             )
           );
         }
@@ -860,8 +885,25 @@
             false,
             [
               {
-                rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
                 msg: 'Must be a number.'
+              }
+            ]
+          )
+        );
+
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'new-minReplicationFactor',
+            'Minimal Replication factor',
+            '',
+                'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                msg: 'Numeric value. Must be at least 1. Must be smaller or equal compared to the replicationFactor. Total number of copies of the data in the cluster. If we get below this value the collection will be read-only until enough copies are created.'
               }
             ]
           )
@@ -909,13 +951,29 @@
             'general-replicationFactor',
             'Replication factor',
             '',
-            'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.',
+            'Numeric value. Must be at least 1. Total number of desired copies of the data in the cluster.',
             '',
             false,
             [
               {
-                rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
                 msg: 'Must be a number.'
+              }
+            ]
+          )
+        );
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'general-minReplicationFactor',
+            'Minimal replication factor',
+            '',
+            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replicationFactor. Total number of copies of the data in the cluster to be in sync. If we get below this value the collection will be read-only until enough copies are created.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
               }
             ]
           )

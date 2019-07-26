@@ -135,6 +135,14 @@ using VPackParser = arangodb::velocypack::Parser;
 #endif
 #endif
 
+#ifdef VELOCYPACK_SERIALIZABLE_H
+#ifndef VELOCYPACK_ALIAS_SERIALIZABLE
+#define VELOCYPACK_ALIAS_SERIALIZABLE
+using VPackSerializable = arangodb::velocypack::Serializable;
+using VPackSerialize = arangodb::velocypack::Serialize;
+#endif
+#endif
+
 #ifdef VELOCYPACK_SLICE_H
 #ifndef VELOCYPACK_ALIAS_SLICE
 #define VELOCYPACK_ALIAS_SLICE

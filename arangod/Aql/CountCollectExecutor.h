@@ -96,40 +96,36 @@ class CountCollectExecutor {
     TRI_IF_FAILURE("CountCollectExecutor::produceRows") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    NoStats stats{};
-    InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
     if (_state == ExecutionState::DONE) {
-      return {_state, stats};
+      return {_state, NoStats{}};
     }
 
-    while (true) {
-      std::tie(_state, input) = _fetcher.fetchRow();
+    while (_state != ExecutionState::DONE) {
+      size_t skipped;
+      std::tie(_state, skipped) = _fetcher.skipRows(ExecutionBlock::SkipAllSize());
 
       if (_state == ExecutionState::WAITING) {
-        return {_state, stats};
+        TRI_ASSERT(skipped == 0);
+        return {_state, NoStats{}};
       }
 
-      if (!input) {
-        TRI_ASSERT(_state == ExecutionState::DONE);
-        output.cloneValueInto(_infos.getOutputRegisterId(), input,
-                              AqlValue(AqlValueHintUInt(getCount())));
-        return {_state, stats};
-      }
-
-      TRI_ASSERT(input.isInitialized());
-      incrCount();
-
-      // Abort if upstream is done
-      if (_state == ExecutionState::DONE) {
-        output.cloneValueInto(_infos.getOutputRegisterId(), input,
-                              AqlValue(AqlValueHintUInt(getCount())));
-        return {_state, stats};
-      }
+      TRI_ASSERT(skipped != 0 || _state == ExecutionState::DONE);
+      incrCountBy(skipped);
     }
+
+    // In general, we do not have an input row. In fact, we never fetch one.
+    output.setAllowSourceRowUninitialized();
+
+    // We must produce exactly one output row.
+    output.cloneValueInto(_infos.getOutputRegisterId(),
+                          InputAqlItemRow{CreateInvalidInputRowHint{}},
+                          AqlValue(AqlValueHintUInt(getCount())));
+
+    return {_state, NoStats{}};
   }
 
-  void incrCount() noexcept { _count++; };
+  void incrCountBy(size_t incr) noexcept { _count += incr; };
   uint64_t getCount() noexcept { return _count; };
 
   inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {

@@ -35,13 +35,20 @@
 #include <limits>
 #include <numeric>
 #include <type_traits>
+#include <unordered_set>
 
 namespace arangodb {
 namespace options {
 
+// helper functions to strip-non-numeric data from a string
+std::string removeCommentsFromNumber(std::string const& value);
+
 // convert a string into a number, base version for signed or unsigned integer types
 template <typename T>
 inline T toNumber(std::string value, T base) {
+  // replace leading spaces, replace trailing spaces & comments
+  value = removeCommentsFromNumber(value);
+
   auto n = value.size();
   int64_t m = 1;
   int64_t d = 1;
@@ -51,15 +58,15 @@ inline T toNumber(std::string value, T base) {
 
     if (suffix == "kib" || suffix == "KiB") {
       m = 1024;
-      value = value.substr(0, n - 2);
+      value = value.substr(0, n - 3);
       seen = true;
     } else if (suffix == "mib" || suffix == "MiB") {
       m = 1024 * 1024;
-      value = value.substr(0, n - 2);
+      value = value.substr(0, n - 3);
       seen = true;
     } else if (suffix == "gib" || suffix == "GiB") {
       m = 1024 * 1024 * 1024;
-      value = value.substr(0, n - 2);
+      value = value.substr(0, n - 3);
       seen = true;
     }
   }
@@ -98,7 +105,7 @@ inline T toNumber(std::string value, T base) {
       value = value.substr(0, n - 1);
     }
   }
-  
+
   char const* p = value.data();
   char const* e = p + value.size();
   // skip leading whitespace
@@ -117,7 +124,8 @@ inline T toNumber(std::string value, T base) {
 // convert a string into a number, version for double values
 template <>
 inline double toNumber<double>(std::string value, double /*base*/) {
-  return std::stod(value);
+  // replace leading spaces, replace trailing spaces & comments
+  return std::stod(removeCommentsFromNumber(value));
 }
 
 // convert a string into another type, specialized version for numbers

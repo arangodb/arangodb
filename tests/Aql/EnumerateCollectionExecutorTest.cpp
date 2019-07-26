@@ -139,7 +139,7 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
 };
 
 TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_does_not_wait) {
-  SingleRowFetcherHelper<false> fetcher(input.steal(), false);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
   EnumerateCollectionExecutor testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -154,7 +154,7 @@ TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_does_not_wait
 }
 
 TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_waits) {
-  SingleRowFetcherHelper<false> fetcher(input.steal(), true);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
   EnumerateCollectionExecutor testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of

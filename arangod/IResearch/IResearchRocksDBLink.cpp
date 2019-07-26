@@ -140,50 +140,24 @@ namespace iresearch {
 /// @brief IResearchRocksDBLink-specific implementation of an IndexTypeFactory
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchRocksDBLink::IndexFactory : public arangodb::IndexTypeFactory {
-  virtual bool equal(arangodb::velocypack::Slice const& lhs,
-                     arangodb::velocypack::Slice const& rhs) const override {
+  bool equal(arangodb::velocypack::Slice const& lhs,
+             arangodb::velocypack::Slice const& rhs) const override {
     return arangodb::iresearch::IResearchLinkHelper::equal(lhs, rhs);
   }
 
-  virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
-                                       arangodb::LogicalCollection& collection,
+  std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                        arangodb::velocypack::Slice const& definition,
                                        TRI_idx_iid_t id,
                                        bool /*isClusterConstructor*/) const override {
-    try {
-      auto link =
-          std::shared_ptr<IResearchRocksDBLink>(new IResearchRocksDBLink(id, collection));
-      auto res = link->init(definition, RocksDBLinkInitCallback);
+    auto link =
+        std::shared_ptr<IResearchRocksDBLink>(new IResearchRocksDBLink(id, collection));
+    auto res = link->init(definition, RocksDBLinkInitCallback);
 
-      if (!res.ok()) {
-        return res;
-      }
-
-      index = link;
-    } catch (arangodb::basics::Exception const& e) {
-      IR_LOG_EXCEPTION();
-
-      return arangodb::Result(e.code(),
-                              std::string("caught exception while creating "
-                                          "arangosearch view RocksDB link '") +
-                                  std::to_string(id) + "': " + e.what());
-    } catch (std::exception const& e) {
-      IR_LOG_EXCEPTION();
-
-      return arangodb::Result(TRI_ERROR_INTERNAL,
-                              std::string("caught exception while creating "
-                                          "arangosearch view RocksDB link '") +
-                                  std::to_string(id) + "': " + e.what());
-    } catch (...) {
-      IR_LOG_EXCEPTION();
-
-      return arangodb::Result(TRI_ERROR_INTERNAL,
-                              std::string("caught exception while creating "
-                                          "arangosearch view RocksDB link '") +
-                                  std::to_string(id) + "'");
+    if (!res.ok()) {
+      THROW_ARANGO_EXCEPTION(res);
     }
 
-    return arangodb::Result();
+    return link;
   }
 
   virtual arangodb::Result normalize( // normalize definition

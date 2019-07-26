@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Graph/EdgeDocumentToken.h"
 #include <velocypack/StringRef.h>
+#include <deque>
 
 namespace arangodb {
 

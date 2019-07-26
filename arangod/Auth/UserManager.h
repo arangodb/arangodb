@@ -100,7 +100,8 @@ class UserManager {
                    bool active, velocypack::Slice extras);
 
   /// Enumerate list of all users
-  Result enumerateUsers(std::function<bool(auth::User&)>&&);
+  Result enumerateUsers(std::function<bool(auth::User&)>&&,
+                        bool retryOnConflict);
   /// Update specific user
   Result updateUser(std::string const& user, UserCallback&&);
   /// Access user without modifying it

@@ -136,7 +136,7 @@ bool checkBlackAndWhitelist(std::string const& value, bool hasWhitelist,
     // we have neither a whitelist nor a blacklist hit => deny
     return false;
   }
-  
+
   // longer match or blacklist wins
   return white_result[0].length() > black_result[0].length();
 }
@@ -172,8 +172,7 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
   options
       ->addOption("--javascript.harden",
                   "disables access to JavaScript functions in the internal "
-                  "module: getPid(), "
-                  "processStatistics() andl logLevel()",
+                  "module: getPid() and logLevel()",
                   new BooleanParameter(&_hardenInternalModule))
       .setIntroducedIn(30500);
 
@@ -284,15 +283,15 @@ void V8SecurityFeature::start() {
 }
 
 void V8SecurityFeature::dumpAccessLists() const {
-  LOG_TOPIC("2cafe", DEBUG, arangodb::Logger::SECURITY) 
+  LOG_TOPIC("2cafe", DEBUG, arangodb::Logger::SECURITY)
     << "files whitelisted by user:" << _filesWhitelist
     << ", internal read whitelist:" << _readWhitelist
     << ", internal write whitelist:" << _writeWhitelist
-    << ", internal startup options whitelist:" << _startupOptionsWhitelist 
+    << ", internal startup options whitelist:" << _startupOptionsWhitelist
     << ", internal startup options blacklist: " << _startupOptionsBlacklist
-    << ", internal environment variable whitelist:" << _environmentVariablesWhitelist 
+    << ", internal environment variable whitelist:" << _environmentVariablesWhitelist
     << ", internal environment variables blacklist: " << _environmentVariablesBlacklist
-    << ", internal endpoints whitelist:" << _endpointsWhitelist 
+    << ", internal endpoints whitelist:" << _endpointsWhitelist
     << ", internal endpoints blacklist: " << _endpointsBlacklist;
 }
 

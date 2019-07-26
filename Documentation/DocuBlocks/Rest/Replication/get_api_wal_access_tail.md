@@ -28,10 +28,21 @@ only valid on the *_system* database. The default is *false*.
 @RESTQUERYPARAM{chunkSize,number,optional}
 Approximate maximum size of the returned result.
 
-@RESTQUERYPARAM{serverId,number,optional}
+@RESTQUERYPARAM{syncerId,number,optional}
 Id of the client used to tail results. The server will use this to 
-keep operations until the client has fetched them. **Note** this is required
-to have a chance at fetching reading all operations with the rocksdb storage engine
+keep operations until the client has fetched them. Must be a positive integer.
+**Note** this or serverId is required to have a chance at fetching reading all
+operations with the rocksdb storage engine.
+
+@RESTQUERYPARAM{serverId,number,optional}
+Id of the client machine. If *syncerId* is unset, the server will use
+this to keep operations until the client has fetched them. Must be a positive
+integer.
+**Note** this or syncerId is required to have a chance at fetching reading all
+operations with the rocksdb storage engine.
+
+@RESTQUERYPARAM{clientInfo,string,optional}
+Short description of the client, used for informative purposes only.
 
 @RESTQUERYPARAM{barrierId,number,optional}
 Id of barrier used to keep WAL entries around. **Note** this is only required for the 

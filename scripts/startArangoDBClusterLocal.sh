@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 if [ -z "$XTERM" ] ; then
     XTERM=x-terminal-emulator
 fi

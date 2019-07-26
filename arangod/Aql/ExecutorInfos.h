@@ -29,6 +29,8 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 
+#include <unordered_set>
+
 namespace arangodb {
 namespace aql {
 

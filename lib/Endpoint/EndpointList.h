@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 
 #include "Endpoint/Endpoint.h"
+#include <map>
 
 namespace arangodb {
 class EndpointList {

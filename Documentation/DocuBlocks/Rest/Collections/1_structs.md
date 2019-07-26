@@ -43,6 +43,10 @@ determine the target shard for documents; *Cluster specific attribute.*
 @RESTSTRUCT{replicationFactor,collection_info,integer,optional,}
 contains how many copies of each shard are kept on different DBServers.; *Cluster specific attribute.*
 
+@RESTSTRUCT{minReplicationFactor,collection_info,integer,optional,}
+contains how many minimal copies of each shard need to be in sync on different DBServers.
+The shards will refuse to write, if we have less then these many copies in sync. *Cluster specific attribute.*
+
 @RESTSTRUCT{shardingStrategy,collection_info,string,optional,}
 the sharding strategy selected for the collection; *Cluster specific attribute.*
 One of 'hash' or 'enterprise-hash-smart-edge'

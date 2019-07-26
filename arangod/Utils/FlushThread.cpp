@@ -52,11 +52,12 @@ void FlushThread::wakeup() {
 
 /// @brief main loop
 void FlushThread::run() {
-  FlushFeature* flushFeature =
-      application_features::ApplicationServer::getFeature<FlushFeature>(
-          "Flush");
+  auto* flushFeature =
+      application_features::ApplicationServer::getFeature<FlushFeature>("Flush");
+
   TRI_ASSERT(flushFeature != nullptr);
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  size_t count = 0;
+  TRI_voc_tick_t tick = 0;
 
   while (!isStopping()) {
     try {
@@ -67,21 +68,13 @@ void FlushThread::run() {
         continue;
       }
 
-      TRI_voc_tick_t toRelease = engine->currentTick();
+      flushFeature->releaseUnusedTicks(count, tick);
 
-      LOG_TOPIC("fc0f4", TRACE, Logger::FLUSH)
-          << "flush thread initiating sync for tick '" << toRelease << "'";
-      engine->waitForSyncTick(toRelease);
+      LOG_TOPIC_IF("2b2e1", DEBUG, arangodb::Logger::FLUSH, count)
+          << "Flush subscription(s) released: '" << count;
 
-      TRI_IF_FAILURE("FlushThreadCrashAfterWalSync") {
-        TRI_SegfaultDebugging("crashing before flush thread callbacks");
-      }
-
-      TRI_IF_FAILURE("FlushThreadCrashAfterCallbacks") {
-        TRI_SegfaultDebugging("crashing before releasing tick");
-      }
-
-      flushFeature->releaseUnusedTicks();
+      LOG_TOPIC("2b2e2", DEBUG, arangodb::Logger::FLUSH)
+          << "Tick released: '" << tick << "'";
 
       // sleep if nothing to do
       CONDITION_LOCKER(guard, _condition);

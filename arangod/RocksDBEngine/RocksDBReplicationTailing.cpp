@@ -644,24 +644,26 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase, uint64_t ti
   // LOG_TOPIC("89157", WARN, Logger::FIXME) << "1. Starting tailing: tickStart " <<
   // tickStart << " tickEnd " << tickEnd << " chunkSize " << chunkSize;//*/
 
-  std::unique_ptr<WALParser> handler(
-      new WALParser(vocbase, includeSystem, collectionId, builder));
-  std::unique_ptr<rocksdb::TransactionLogIterator> iterator;
+  auto handler = std::make_unique<WALParser>(vocbase, includeSystem, collectionId, builder);
 
-  rocksdb::Status s;
   // no need verifying the WAL contents
   rocksdb::TransactionLogIterator::ReadOptions ro(false);
   uint64_t since = 0;
   if (tickStart > 0) {
     since = tickStart - 1;
   }
-  s = rocksutils::globalRocksDB()->GetUpdatesSince(since, &iterator, ro);
+
+  std::unique_ptr<rocksdb::TransactionLogIterator> iterator;
+  rocksdb::Status s = rocksutils::globalRocksDB()->GetUpdatesSince(since, &iterator, ro);
 
   if (!s.ok()) {
     auto converted = convertStatus(s, rocksutils::StatusHint::wal);
-
-    TRI_ASSERT(converted.fail());
-    TRI_ASSERT(converted.errorNumber() != TRI_ERROR_NO_ERROR);
+    TRI_ASSERT(s.IsNotFound() || converted.fail());
+    TRI_ASSERT(s.IsNotFound() || converted.errorNumber() != TRI_ERROR_NO_ERROR);
+    if (s.IsNotFound()) {
+      // specified from-tick not yet available in DB
+      return {TRI_ERROR_NO_ERROR, 0};
+    }
     return {converted.errorNumber(), lastTick};
   }
 

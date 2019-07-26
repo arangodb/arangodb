@@ -151,9 +151,9 @@ class MappedFileBuffer : public TypedBuffer<T> {
   
  public:
   explicit MappedFileBuffer(size_t capacity) : TypedBuffer<T>() {
-    TRI_ASSERT(capacity > 0);
+    TRI_ASSERT(capacity > 0u);
     double tt = TRI_microtime();
-    long tt2 = arangodb::RandomGenerator::interval((int64_t)0LL, (int64_t)0x7fffffffffffffffLL);
+    int64_t tt2 = arangodb::RandomGenerator::interval((int64_t)0LL, (int64_t)0x7fffffffffffffffLL);
     
     std::string file = "pregel-" + 
                        std::to_string(uint64_t(Thread::currentProcessId())) + "-" + 

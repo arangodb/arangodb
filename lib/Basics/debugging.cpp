@@ -29,6 +29,7 @@
 #include "Logger/Logger.h"
 
 #include <velocypack/StringRef.h>
+#include <set>
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE

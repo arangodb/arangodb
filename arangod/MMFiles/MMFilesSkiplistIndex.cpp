@@ -21,6 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <set>
+
 #include "MMFilesSkiplistIndex.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
@@ -1137,7 +1139,7 @@ bool MMFilesSkiplistIndex::findMatchingConditions(
 }
 
 std::unique_ptr<IndexIterator> MMFilesSkiplistIndex::iteratorForCondition(
-    transaction::Methods* trx, 
+    transaction::Methods* trx,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
@@ -1177,7 +1179,7 @@ std::unique_ptr<IndexIterator> MMFilesSkiplistIndex::iteratorForCondition(
                                      !opts.ascending, builder.release());
 }
 
-Index::UsageCosts MMFilesSkiplistIndex::supportsFilterCondition(
+Index::FilterCosts MMFilesSkiplistIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
@@ -1186,9 +1188,9 @@ Index::UsageCosts MMFilesSkiplistIndex::supportsFilterCondition(
                                                                 itemsInIndex);
 }
 
-Index::UsageCosts MMFilesSkiplistIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                                              arangodb::aql::Variable const* reference,
-                                                              size_t itemsInIndex) const {
+Index::SortCosts MMFilesSkiplistIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                                             arangodb::aql::Variable const* reference,
+                                                             size_t itemsInIndex) const {
   return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex);
 }
 

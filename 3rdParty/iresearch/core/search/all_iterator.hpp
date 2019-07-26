@@ -32,9 +32,10 @@ class all_iterator final : public irs::basic_doc_iterator_base {
  public:
   all_iterator(
     const irs::sub_reader& reader,
-    const irs::attribute_store& prepared_filter_attrs,
+    const byte_type* query_stats,
     const irs::order::prepared& order,
-    uint64_t docs_count
+    uint64_t docs_count,
+    boost_t boost
   );
 
   virtual bool next() override {

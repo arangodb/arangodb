@@ -108,6 +108,7 @@ class ClientFeature final : public application_features::ApplicationFeature,
  private:
   void readPassword();
   void readJwtSecret();
+  void loadJwtSecretFile();
 
   std::string _databaseName;
   bool _authentication;
@@ -116,6 +117,7 @@ class ClientFeature final : public application_features::ApplicationFeature,
   std::string _username;
   std::string _password;
   std::string _jwtSecret;
+  std::string _jwtSecretFile;
   double _connectionTimeout;
   double _requestTimeout;
   uint64_t _maxPacketSize;

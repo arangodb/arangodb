@@ -29,6 +29,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 
+#include <unordered_set>
+
 /// @brief tick type (56bit)
 typedef uint64_t TRI_voc_tick_t;
 

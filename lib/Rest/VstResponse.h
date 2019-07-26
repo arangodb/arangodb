@@ -26,26 +26,15 @@
 
 #include "Basics/StringBuffer.h"
 #include "Rest/GeneralResponse.h"
-#include "Rest/VstMessage.h"
+
+#include <boost/asio/buffer.hpp>
 
 namespace arangodb {
-class RestBatchHandler;
-
-namespace rest {
-class VstCommTask;
-class GeneralCommTask;
-}  // namespace rest
-
-using rest::VPackMessageNoOwnBuffer;
 
 class VstResponse : public GeneralResponse {
-  friend class rest::GeneralCommTask;
-  friend class rest::VstCommTask;
 
  public:
-  static bool HIDE_PRODUCT_HEADER;
-
-  VstResponse(ResponseCode code, uint64_t id);
+  VstResponse(ResponseCode code, uint64_t mid);
 
   // required by base
   uint64_t messageId() const override { return _messageId; }
@@ -53,22 +42,24 @@ class VstResponse : public GeneralResponse {
     return arangodb::Endpoint::TransportType::VST;
   };
 
-  VPackMessageNoOwnBuffer prepareForNetwork();
-
   void reset(ResponseCode code) override final;
-  void addPayload(VPackSlice const&, arangodb::velocypack::Options const* = nullptr,
+  void addPayload(velocypack::Slice const&, arangodb::velocypack::Options const* = nullptr,
                   bool resolveExternals = true) override;
-  void addPayload(VPackBuffer<uint8_t>&&, arangodb::velocypack::Options const* = nullptr,
+  void addPayload(velocypack::Buffer<uint8_t>&&, arangodb::velocypack::Options const* = nullptr,
                   bool resolveExternals = true) override;
+  void addRawPayload(velocypack::StringRef payload) override;
+ 
+  velocypack::Buffer<uint8_t>& payload() { return _payload; }
 
+  bool isCompressionAllowed() override { return false; }
+  int deflate(size_t size = 16384) override { return 0; };
+
+  /// write VST response message header
+  void writeMessageHeader(velocypack::Buffer<uint8_t>&) const;
+  
  private:
-  //_responseCode   - from Base
-  //_headers        - from Base
-  uint64_t _messageId;
-  /// generated form _headers when prepared for network
-  std::shared_ptr<VPackBuffer<uint8_t>> _header;
-  /// actual payloads
-  std::vector<VPackBuffer<uint8_t>> _vpackPayloads;
+  uint64_t _messageId; /// message ID
+  velocypack::Buffer<uint8_t> _payload; /// actual payload
 };
 }  // namespace arangodb
 

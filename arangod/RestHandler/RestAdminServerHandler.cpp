@@ -67,7 +67,7 @@ void RestAdminServerHandler::handleId() {
 
   auto instance = ServerState::instance();
   if (!instance->isRunningInCluster()) {
-    // old behaviour...klingt komisch, is aber so
+    // old behavior...klingt komisch, is aber so
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
     return;
   }

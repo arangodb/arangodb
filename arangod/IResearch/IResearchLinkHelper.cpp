@@ -577,7 +577,7 @@ namespace iresearch {
   auto lhsViewSlice = lhs.get(StaticStrings::ViewIdField);
   auto rhsViewSlice = rhs.get(StaticStrings::ViewIdField);
 
-  if (!lhsViewSlice.equals(rhsViewSlice)) {
+  if (!lhsViewSlice.binaryEquals(rhsViewSlice)) {
     if (!lhsViewSlice.isString() || !rhsViewSlice.isString()) {
       return false;
     }

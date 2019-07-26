@@ -65,7 +65,7 @@ size_t defaultNumberOfThreads() {
 
 namespace arangodb {
 
-Scheduler* SchedulerFeature::SCHEDULER = nullptr;
+SupervisedScheduler* SchedulerFeature::SCHEDULER = nullptr;
 
 SchedulerFeature::SchedulerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Scheduler"), 
@@ -162,10 +162,21 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions>)
 void SchedulerFeature::prepare() {
   TRI_ASSERT(2 <= _nrMinimalThreads);
   TRI_ASSERT(_nrMinimalThreads <= _nrMaximalThreads);
-  _scheduler =
+// wait for windows fix or implement operator new
+#if (_MSC_VER >= 1)
+#pragma warning(push)
+#pragma warning(disable : 4316)  // Object allocated on the heap may not be aligned for this type
+#endif
+  auto sched =
       std::make_unique<SupervisedScheduler>(_nrMinimalThreads, _nrMaximalThreads,
                                             _queueSize, _fifo1Size, _fifo2Size);
-  SCHEDULER = _scheduler.get();
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
+
+  SCHEDULER = sched.get();
+
+  _scheduler = std::move(sched);
 }
 
 void SchedulerFeature::start() {

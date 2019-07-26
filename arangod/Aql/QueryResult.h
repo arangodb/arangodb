@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_QUERY_RESULT_H
 #define ARANGOD_AQL_QUERY_RESULT_H 1
 
+#include <unordered_set>
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 
@@ -41,21 +42,21 @@ namespace aql {
 struct QueryResult {
   QueryResult& operator=(QueryResult const& other) = delete;
   QueryResult(QueryResult&& other) = default;
-  
-  QueryResult() 
+
+  QueryResult()
       : result(),
         cached(false) {}
 
   explicit QueryResult(Result const& res)
       : result(res),
         cached(false) {}
-  
+
   explicit QueryResult(Result&& res)
       : result(std::move(res)),
         cached(false) {}
 
   virtual ~QueryResult() {}
-  
+
   void reset(Result const& res) {
     result.reset(res);
     cached = false;
@@ -63,7 +64,7 @@ struct QueryResult {
     extra.reset();
     context.reset();
   }
-  
+
   void reset(Result&& res) {
     result.reset(std::move(res));
     cached = false;
@@ -71,7 +72,7 @@ struct QueryResult {
     extra.reset();
     context.reset();
   }
-  
+
   // Result-like interface
   bool ok() const { return result.ok(); }
   bool fail() const { return result.fail(); }
@@ -79,7 +80,7 @@ struct QueryResult {
   bool is(int errorNumber) const { return result.errorNumber() == errorNumber; }
   bool isNot(int errorNumber) const { return !is(errorNumber); }
   std::string errorMessage() const { return result.errorMessage(); }
- 
+
  public:
   Result result;
   bool cached;

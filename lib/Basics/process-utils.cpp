@@ -960,7 +960,7 @@ void TRI_CreateExternalProcess(char const* executable,
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait) {
+ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32_t timeout) {
   ExternalProcessStatus status;
   status._status = TRI_EXT_NOT_FOUND;
   status._exitStatus = 0;
@@ -1062,7 +1062,11 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait) {
       bool wantGetExitCode = wait;
       if (wait) {
         DWORD result;
-        result = WaitForSingleObject(external->_process, INFINITE);
+        DWORD waitFor = INFINITE;
+        if (timeout != 0) {
+          waitFor = timeout;
+        }
+        result = WaitForSingleObject(external->_process, waitFor);
         if (result == WAIT_FAILED) {
           FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,
                         windowsErrorBuf, sizeof(windowsErrorBuf), NULL);
@@ -1074,6 +1078,10 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait) {
               arangodb::basics::StringUtils::itoa(static_cast<int64_t>(external->_pid)) +
               windowsErrorBuf;
           status._exitStatus = GetLastError();
+        } else if ((result == WAIT_TIMEOUT)  && (timeout != 0)) {
+          wantGetExitCode = false;
+          external->_status = TRI_EXT_TIMEOUT;
+          external->_exitStatus = -1;
         }
       } else {
         DWORD result;
@@ -1134,7 +1142,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait) {
             external->_exitStatus = exitCode;
           }
         }
-      } else {
+      } else if (timeout == 0) {
         external->_status = TRI_EXT_RUNNING;
       }
     }
@@ -1153,7 +1161,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait) {
   status._exitStatus = external->_exitStatus;
 
   // Do we have to free our data?
-  if (external->_status != TRI_EXT_RUNNING && external->_status != TRI_EXT_STOPPED) {
+  if (external->_status != TRI_EXT_RUNNING && external->_status != TRI_EXT_STOPPED && external->_status != TRI_EXT_TIMEOUT) {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
 
     for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end(); ++it) {
@@ -1417,7 +1425,7 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool i
     // if the process wasn't spawned by us, no waiting required.
     int count = 0;
     while (true) {
-      ExternalProcessStatus status = TRI_CheckExternalProcess(pid, false);
+      ExternalProcessStatus status = TRI_CheckExternalProcess(pid, false, 0);
       if (!isTerminal) {
         // we just sent a signal, don't care whether
         // the process is gone by now.
@@ -1451,7 +1459,7 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool i
       count++;
     }
   }
-  return TRI_CheckExternalProcess(pid, false);
+  return TRI_CheckExternalProcess(pid, false, 0);
 }
 
 #ifdef _WIN32

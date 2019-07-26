@@ -29,6 +29,8 @@
 #include "Basics/Mutex.h"
 #include "Logger/LogLevel.h"
 
+#include <map>
+
 namespace arangodb {
 class LogTopic;
 struct LogMessage;

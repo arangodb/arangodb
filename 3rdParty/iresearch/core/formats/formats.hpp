@@ -447,7 +447,8 @@ struct IRESEARCH_API index_meta_reader {
     index_meta& meta,
     uint64_t generation,
     uint64_t counter,
-    index_meta::index_segments_t&& segments
+    index_meta::index_segments_t&& segments,
+    bstring* payload_buf
   );
 }; // index_meta_reader
 
