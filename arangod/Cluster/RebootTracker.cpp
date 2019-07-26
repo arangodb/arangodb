@@ -288,11 +288,13 @@ CallbackGuard::CallbackGuard() : _callback(nullptr) {}
 CallbackGuard::CallbackGuard(std::function<void(void)> callback)
     : _callback(std::move(callback)) {}
 
+// NOLINTNEXTLINE(hicpp-noexcept-move,performance-noexcept-move-constructor)
 CallbackGuard::CallbackGuard(CallbackGuard&& other)
     : _callback(std::move(other._callback)) {
   other._callback = nullptr;
 }
 
+// NOLINTNEXTLINE(hicpp-noexcept-move,performance-noexcept-move-constructor)
 CallbackGuard& CallbackGuard::operator=(CallbackGuard&& other) {
   call();
   _callback = std::move(other._callback);
