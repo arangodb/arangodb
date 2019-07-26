@@ -359,7 +359,7 @@ TEST_F(RebootTrackerTest, one_server_call_sequential) {
     state.at(serverA) = RebootId{3};
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
-    EXPECT_EQ(2, numCalled) << "No callback must not be called twice";
+    EXPECT_EQ(2, numCalled) << "No callback must be called twice";
 
     guards.clear();
     EXPECT_EQ(2, numCalled)
@@ -473,10 +473,10 @@ TEST_F(RebootTrackerTest, one_server_guard_doesnt_interfere) {
     state.at(serverA) = RebootId{3};
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
-    EXPECT_EQ(1, counterA) << "No callback must not be called twice";
+    EXPECT_EQ(1, counterA) << "No callback must be called twice";
     EXPECT_EQ(0, counterB)
         << "Removed callback must not be called after a change";
-    EXPECT_EQ(1, counterC) << "No callback must not be called twice";
+    EXPECT_EQ(1, counterC) << "No callback must be called twice";
   }
   // RebootTracker was destroyed now
 
