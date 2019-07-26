@@ -1,6 +1,8 @@
 v3.5.0-rc.6 (2019-XX-XX)
 ------------------------
 
+* Added gzip and encryption options to arangoimport and arangoexport.
+
 * Added missing REST API route GET /_api/transaction for retrieving the list of
   currently ongoing transactions.
 
