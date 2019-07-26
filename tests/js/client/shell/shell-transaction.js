@@ -429,7 +429,7 @@ function transactionInvocationSuite () {
       
       let obj = {
         collections: {
-          write: [ cn ]
+          read: [ cn ]
         }
       };
      
@@ -515,7 +515,7 @@ function transactionInvocationSuite () {
       
       let obj = {
         collections: {
-          write: [ cn ]
+          read: [ cn ]
         }
       };
      
@@ -562,7 +562,7 @@ function transactionInvocationSuite () {
       
       let obj = {
         collections: {
-          write: [ cn ]
+          read: [ cn ]
         }
       };
      
@@ -608,7 +608,7 @@ function transactionInvocationSuite () {
       
       let obj = {
         collections: {
-          write: [ cn ]
+          read: [ cn ]
         }
       };
      
