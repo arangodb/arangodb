@@ -292,6 +292,16 @@ function transactionRevisionsSuite () {
 function transactionInvocationSuite () {
   'use strict';
   const cn = "UnitTestsCollection";
+  
+  let assertInList = function(list, trx) {
+    assertTrue(list.filter(function(data) { return data.id === trx._id; }).length > 0,
+               "transaction " + trx._id + " is not contained in list of transactions " + JSON.stringify(list)); 
+  };
+
+  let assertNotInList = function(list, trx) {
+    assertFalse(list.filter(function(data) { return data.id === trx._id; }).length > 0,
+               "transaction " + trx._id + " is contained in list of transactions " + JSON.stringify(list)); 
+  };
 
   return {
 
@@ -317,9 +327,6 @@ function transactionInvocationSuite () {
         null,
         true,
         false,
-        0,
-        1,
-        'foo',
         { }, { },
         { }, { }, { },
         false, true,
@@ -374,7 +381,7 @@ function transactionInvocationSuite () {
           assertEqual(expected, err.errorNum);
         } finally {
           if (trx) {
-            trx.abort();
+            try { trx.abort(); } catch (err) {}
           }
         }
       });
@@ -420,9 +427,6 @@ function transactionInvocationSuite () {
       db._create(cn);
       let trx1, trx2, trx3;
       
-      let trx = db._transactions();
-      assertEqual(0, trx.length);
-
       let obj = {
         collections: {
           write: [ cn ]
@@ -433,54 +437,217 @@ function transactionInvocationSuite () {
         // create a single trx
         trx1 = db._createTransaction(obj);
       
-        trx = db._transactions();
-        assertEqual(1, trx.length);
-        assertEqual("string", typeof trx[0]); 
-        assertEqual(trx1._id, trx[0]);
+        let trx = db._transactions();
+        assertInList(trx, trx1);
             
         trx1.commit();
         // trx is committed now - list should be empty
 
         trx = db._transactions();
-        assertEqual(0, trx.length);
+        assertNotInList(trx, trx1);
 
         // create two more
         trx2 = db._createTransaction(obj);
       
         trx = db._transactions();
-        assertEqual(1, trx.length);
-        assertEqual("string", typeof trx[0]); 
-        assertEqual(trx2._id, trx[0]);
+        assertInList(trx, trx2);
+        assertNotInList(trx, trx1);
             
         trx3 = db._createTransaction(obj);
       
         trx = db._transactions();
-        assertEqual(2, trx.length);
-        assertEqual("string", typeof trx[0]); 
-        assertEqual("string", typeof trx[1]); 
-        assertEqual(trx2._id, trx[0]);
-        assertEqual(trx3._id, trx[1]);
+        assertInList(trx, trx2);
+        assertInList(trx, trx3);
+        assertNotInList(trx, trx1);
 
         trx2.commit();
         
         trx = db._transactions();
-        assertEqual(1, trx.length);
-        assertEqual("string", typeof trx[0]); 
-        assertEqual(trx3._id, trx[0]);
+        assertInList(trx, trx3);
+        assertNotInList(trx, trx2);
+        assertNotInList(trx, trx1);
 
         trx3.commit();
+        
+        trx = db._transactions();
+        assertNotInList(trx, trx3);
+        assertNotInList(trx, trx2);
+        assertNotInList(trx, trx1);
       } finally {
         if (trx1 && trx1._id) {
-          trx1.abort();
+          try { trx1.abort(); } catch (err) {}
         }
         if (trx2 && trx2._id) {
-          trx2.abort();
+          try { trx2.abort(); } catch (err) {}
         }
         if (trx3 && trx3._id) {
-          trx3.abort();
+          try { trx3.abort(); } catch (err) {}
         }
       }
     },
+    
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: _createTransaction() function
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testcreateTransaction: function () {
+      let values = [ "aaaaaaaaaaaaaaaaaaaaaaaa", "der-fuchs-der-fuchs", 99999999999999999999999, 1 ];
+
+      values.forEach(function(data) {
+        try {
+          let trx = db._createTransaction(data);
+          trx.status();
+          fail();
+        } catch (err) {
+          assertTrue(err.errorNum === internal.errors.ERROR_BAD_PARAMETER.code ||
+                     err.errorNum === internal.errors.ERROR_TRANSACTION_NOT_FOUND.code);
+        }
+      });
+    },
+    
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: abort
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testAbortTransaction: function () {
+      db._create(cn);
+      let cleanup = [];
+      
+      let obj = {
+        collections: {
+          write: [ cn ]
+        }
+      };
+     
+      try {
+        let trx1 = db._createTransaction(obj);
+        cleanup.push(trx1);
+
+        assertInList(db._transactions(), trx1);
+
+        // abort using trx object
+        let result = db._createTransaction(trx1).abort();
+        assertEqual(trx1._id, result.id);
+        assertEqual("aborted", result.status);
+        
+        assertNotInList(db._transactions(), trx1);
+        
+        let trx2 = db._createTransaction(obj);
+        cleanup.push(trx2);
+
+        assertInList(db._transactions(), trx2);
+
+        // abort by id
+        result = db._createTransaction(trx2._id).abort();
+        assertEqual(trx2._id, result.id);
+        assertEqual("aborted", result.status);
+        
+        assertNotInList(db._transactions(), trx1);
+        assertNotInList(db._transactions(), trx2);
+
+      } finally {
+        cleanup.forEach(function(trx) {
+          try { trx.abort(); } catch (err) {}
+        });
+      }
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: commit
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testCommitTransaction: function () {
+      db._create(cn);
+      let cleanup = [];
+      
+      let obj = {
+        collections: {
+          write: [ cn ]
+        }
+      };
+     
+      try {
+        let trx1 = db._createTransaction(obj);
+        cleanup.push(trx1);
+
+        assertInList(db._transactions(), trx1);
+
+        // commit using trx object
+        let result = db._createTransaction(trx1).commit();
+        assertEqual(trx1._id, result.id);
+        assertEqual("committed", result.status);
+        
+        assertNotInList(db._transactions(), trx1);
+        
+        let trx2 = db._createTransaction(obj);
+        cleanup.push(trx2);
+
+        assertInList(db._transactions(), trx2);
+
+        // commit by id
+        result = db._createTransaction(trx2._id).commit();
+        assertEqual(trx2._id, result.id);
+        assertEqual("committed", result.status);
+        
+        assertNotInList(db._transactions(), trx1);
+        assertNotInList(db._transactions(), trx2);
+      } finally {
+        cleanup.forEach(function(trx) {
+          try { trx.abort(); } catch (err) {}
+        });
+      }
+    },
+    
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: status
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testStatusTransaction: function () {
+      db._create(cn);
+      let cleanup = [];
+      
+      let obj = {
+        collections: {
+          write: [ cn ]
+        }
+      };
+     
+      try {
+        let trx1 = db._createTransaction(obj);
+        cleanup.push(trx1);
+
+        let result = trx1.status();
+        assertEqual(trx1._id, result.id);
+        assertEqual("running", result.status);
+
+        result = db._createTransaction(trx1._id).commit();
+        assertEqual(trx1._id, result.id);
+        assertEqual("committed", result.status);
+        
+        result = trx1.status();
+        assertEqual(trx1._id, result.id);
+        assertEqual("committed", result.status);
+        
+        let trx2 = db._createTransaction(obj);
+        cleanup.push(trx2);
+
+        result = trx2.status();
+        assertEqual(trx2._id, result.id);
+        assertEqual("running", result.status);
+
+        result = db._createTransaction(trx2._id).abort();
+        assertEqual(trx2._id, result.id);
+        assertEqual("aborted", result.status);
+        
+        result = trx2.status();
+        assertEqual(trx2._id, result.id);
+        assertEqual("aborted", result.status);
+      } finally {
+        cleanup.forEach(function(trx) {
+          try { trx.abort(); } catch (err) {}
+        });
+      }
+    }
 
   };
 }

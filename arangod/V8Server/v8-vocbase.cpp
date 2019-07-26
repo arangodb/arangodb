@@ -177,7 +177,12 @@ static void JS_Transactions(v8::FunctionCallbackInfo<v8::Value> const& args) {
     
   bool const fanout = ServerState::instance()->isCoordinator();
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
-  mgr->toVelocyPack(builder, vocbase.name(), "root", fanout);
+  auto context = arangodb::ExecContext::CURRENT;
+  std::string user;
+  if (context != nullptr || arangodb::ExecContext::isAuthEnabled()) {
+    user = context->user();
+  }
+  mgr->toVelocyPack(builder, vocbase.name(), user, fanout);
  
   builder.close();
   

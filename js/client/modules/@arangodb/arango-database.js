@@ -1187,7 +1187,7 @@ ArangoDatabase.prototype._createTransaction = function (data) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief returns the ids of currently ongoing managed transactions
+// / @brief returns the currently ongoing managed transactions
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._transactions = function () {
