@@ -58,15 +58,6 @@ class Manager final {
   static constexpr size_t numBuckets = 16;
   static constexpr double defaultTTL = 10.0 * 60.0;   // 10 minutes
   static constexpr double tombstoneTTL = 5.0 * 60.0;  // 5 minutes
-
- public:
-  explicit Manager(bool keepData)
-    : _keepTransactionData(keepData),
-      _nrRunning(0),
-      _disallowInserts(false) {}
-
- public:
-  typedef std::function<void(TRI_voc_tid_t, TransactionData const*)> TrxCallback;
   
   enum class MetaType : uint8_t {
     Managed = 1,  /// global single shard db transaction
@@ -91,8 +82,17 @@ class Manager final {
     mutable basics::ReadWriteSpinLock rwlock;
   };
   
-
  public:
+  typedef std::function<void(TRI_voc_tid_t, TransactionData const*)> TrxCallback;
+
+  Manager(Manager const&) = delete;
+  Manager& operator=(Manager const&) = delete;
+
+  explicit Manager(bool keepData)
+    : _keepTransactionData(keepData),
+      _nrRunning(0),
+      _disallowInserts(false) {}
+
   // register a list of failed transactions
   void registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions);
 
@@ -143,9 +143,6 @@ class Manager final {
   Result commitManagedTrx(TRI_voc_tid_t);
   Result abortManagedTrx(TRI_voc_tid_t);
   
-  /// @brief calls the callback function for each managed transaction
-  void iterateManagedTrx(std::function<void(TRI_voc_tid_t, ManagedTrx const&)> const&) const;
-  
   /// @brief collect forgotten transactions
   bool garbageCollect(bool abortAll);
   
@@ -156,7 +153,9 @@ class Manager final {
   /// the array must be opened already.
   /// will use database and username to fan-out the request to the other
   /// coordinators in a cluster
-  void toVelocyPack(arangodb::velocypack::Builder& builder, std::string const& database, std::string const& username, bool fanout) const;
+  void toVelocyPack(arangodb::velocypack::Builder& builder, 
+                    std::string const& database, 
+                    std::string const& username, bool fanout) const;
   
  private:
   // hashes the transaction id into a bucket
@@ -166,6 +165,9 @@ class Manager final {
   
   Result updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
                            bool clearServers);
+
+  /// @brief calls the callback function for each managed transaction
+  void iterateManagedTrx(std::function<void(TRI_voc_tid_t, ManagedTrx const&)> const&) const;
   
  private:
   bool const _keepTransactionData;

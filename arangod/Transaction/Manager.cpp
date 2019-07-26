@@ -36,6 +36,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/SmartContext.h"
+#include "Transaction/Status.h"
 #include "Utils/CollectionNameResolver.h"
 
 #include <velocypack/Iterator.h>
@@ -746,9 +747,12 @@ bool Manager::abortManagedTrx(std::function<bool(TransactionState const&)> cb) {
   return !toAbort.empty();
 }
 
-void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database, std::string const& username, bool fanout) const {
+void Manager::toVelocyPack(VPackBuilder& builder, 
+                           std::string const& database, 
+                           std::string const& username, 
+                           bool fanout) const {
   TRI_ASSERT(!builder.isClosed());
-  
+
   if (fanout) {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
     auto ci = ClusterInfo::instance();
@@ -771,7 +775,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database, s
       std::unordered_map<std::string, std::string> headers;
       if (auth != nullptr && auth->isActive()) {
         // when in superuser mode, username is empty
-        //  in this case ClusterComm will add the default superuser token
+        // in this case ClusterComm will add the default superuser token
         if (!username.empty()) {
           VPackBuilder builder;
           {
@@ -797,9 +801,12 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database, s
       if (result != nullptr && result->getHttpReturnCode() == 200) {
         auto const body = result->getBodyVelocyPack();
         VPackSlice slice = body->slice();
-        if (slice.isArray()) {
-          for (auto const& it : VPackArrayIterator(slice)) {
-            builder.add(it);
+        if (slice.isObject()) {
+          slice = slice.get("transactions");
+          if (slice.isArray()) {
+            for (auto const& it : VPackArrayIterator(slice)) {
+              builder.add(it);
+            }
           }
         }
       }
@@ -807,8 +814,11 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database, s
   }
 
   // merge with local transactions
-  iterateManagedTrx([&builder](TRI_voc_tid_t tid, arangodb::transaction::Manager::ManagedTrx const&) {
-    builder.add(VPackValue(std::to_string(tid)));
+  iterateManagedTrx([&builder](TRI_voc_tid_t tid, ManagedTrx const& trx) {
+    builder.openObject(true);
+    builder.add("id", VPackValue(std::to_string(tid)));
+    builder.add("state", VPackValue(transaction::statusString(trx.state->status())));
+    builder.close();
   });
 }
 

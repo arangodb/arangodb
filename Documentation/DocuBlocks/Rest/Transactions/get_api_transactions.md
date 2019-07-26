@@ -6,8 +6,13 @@
 
 @RESTDESCRIPTION
 The result is an object describing with the attribute *transactions*, which contains
-the list of transaction ids.
-In a cluster the list will contain all transactions from all coordinators.
+an array of transactions.
+In a cluster the array will contain the transactions from all coordinators.
+
+Each array entry contains an object with the following attributes:
+
+- *id*: the transaction's id
+- *status*: the transaction's status
 
 @RESTRETURNCODES
 
