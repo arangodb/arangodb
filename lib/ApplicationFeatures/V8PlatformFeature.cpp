@@ -106,7 +106,7 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
         << "reached heap-size limit of #" << v8g->_id
         << " interrupting V8 execution ("
         << "heap size limit " << heapSizeLimit
-        << ", used " << usedHeadSize
+        << ", used " << usedHeapSize
         << ") during " << whereFreed;
 
     isolate->TerminateExecution();
