@@ -81,6 +81,29 @@ TEST_F(RocksDBHotBackupPathTests, test_override) {
   EXPECT_EQ(testee.getPersistedId().compare("SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe"), 0);
 }
 
+#ifdef _WIN32
+TEST_F(RocksDBHotBackupPathTests, test_date_clean_up) {
+  EXPECT_EQ(testee.buildDirectoryPath("2019-01-23T14:47:42Z",""),
+          "/var/db\\backups\\2019-01-23T14.47.42Z");
+}
+
+TEST_F(RocksDBHotBackupPathTests, test_user_string_clean_up) {
+  EXPECT_EQ(testee.buildDirectoryPath("2019-01-23T14:47:42Z","1\"2#3,14159"),
+            "/var/db\\backups\\2019-01-23T14.47.42Z_1.2.3.14159");
+  EXPECT_EQ(testee.buildDirectoryPath("2019-01-23T14:47:42Z","Today\'s Hot Backup"),
+            "/var/db\\backups\\2019-01-23T14.47.42Z_Today.s_Hot_Backup");
+  std::string raw_string("Toodaay\'s hot");
+  raw_string[1]=(char)1;
+  raw_string[5]=(char)5;
+  EXPECT_EQ(testee.buildDirectoryPath("2019-01-23T14:47:42Z",raw_string),
+            "/var/db\\backups\\2019-01-23T14.47.42Z_Today.s_hot");
+}
+
+TEST_F(RocksDBHotBackupPathTests, test_getRocksDBPath) {
+  EXPECT_EQ(testee.getDatabasePath(), "/var/db");
+  EXPECT_EQ(testee.getRocksDBPath(), "/var/db\\engine-rocksdb");
+}
+#else
 TEST_F(RocksDBHotBackupPathTests, test_date_clean_up) {
   EXPECT_EQ(testee.buildDirectoryPath("2019-01-23T14:47:42Z",""),
           "/var/db/backups/2019-01-23T14.47.42Z");
@@ -102,7 +125,7 @@ TEST_F(RocksDBHotBackupPathTests, test_getRocksDBPath) {
   EXPECT_EQ(testee.getDatabasePath(), "/var/db");
   EXPECT_EQ(testee.getRocksDBPath(), "/var/db/engine-rocksdb");
 }
-
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -311,6 +334,9 @@ public:
 };// class RocksDBHotBackupRestoreTest
 
 
+// Deactivated on Windows for now.
+
+#ifndef _WIN32
 
 /// @brief test
 TEST(RocksDBHotBackupRestoreDirectories, test_createRestoringDirectory) {
@@ -370,3 +396,5 @@ TEST(RocksDBHotBackupRestoreTest, test_execute_normal_directory_path) {
 
   EXPECT_TRUE( testee.success() );
 }
+
+#endif
