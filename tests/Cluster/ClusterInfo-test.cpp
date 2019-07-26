@@ -165,6 +165,8 @@ class ClusterInfoTest : public ::testing::Test {
                                     arangodb::LogLevel::FATAL);
 
     // setup required application features
+    features.emplace_back(new arangodb::SchedulerFeature(server), false);
+    features.back().first->validateOptions(nullptr);
     features.emplace_back(new arangodb::AuthenticationFeature(server), false);  // required for ClusterFeature::prepare()
     features.emplace_back(arangodb::DatabaseFeature::DATABASE =
                               new arangodb::DatabaseFeature(server),
