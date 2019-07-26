@@ -49,7 +49,7 @@ LoggerStream& operator<<(LoggerStream& os, SmallVector<Variable const*> const ve
   return os << "]";
 }
 
-bool checkVaildVaribaleAccess(AstNode const* current, Variable const* searchVariable) {
+bool accessesSearchVariableViaReference(AstNode const* current, Variable const* searchVariable) {
 	// now we need to check if the last variable is
 	// referenced in the expression
 
@@ -157,7 +157,7 @@ bool isTargetVariable(AstNode const* node, SmallVector<Variable const*>& searchV
     return false;
   }
 
-  return checkVaildVaribaleAccess(current, searchVariables.back());
+  return accessesSearchVariableViaReference(current, searchVariables.back());
 }
 
 } // end - namespace unnamed
