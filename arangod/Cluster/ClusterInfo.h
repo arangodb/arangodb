@@ -658,9 +658,6 @@ class ClusterInfo {
   arangodb::Result agencyHotBackupUnlock(
     std::string const& uuid, double const& timeout, const bool& supervisionOff);
 
-private:
-  void loadClusterId();
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get an operation timeout
   //////////////////////////////////////////////////////////////////////////////
@@ -671,6 +668,9 @@ private:
     }
     return timeout;
   }
+
+private:
+  void loadClusterId();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the poll interval
