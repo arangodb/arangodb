@@ -774,7 +774,7 @@ void Manager::toVelocyPack(VPackBuilder& builder,
         continue;
       }
       
-      std::unique_ptr<std::unordered_map<std::string, std::string>> headers;
+      auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
       if (auth != nullptr && auth->isActive()) {
         // when in superuser mode, username is empty
         // in this case ClusterComm will add the default superuser token
