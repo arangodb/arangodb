@@ -252,20 +252,26 @@ void RebootTracker::queueCallbacks(
 
 void RebootTracker::unregisterCallback(PeerState const& peerState,
                                        RebootTracker::CallbackId callbackId) {
+  MUTEX_LOCKER(guard, _mutex);
+
   auto const cbIt = _callbacks.find(peerState.serverId());
   if (cbIt != _callbacks.end()) {
     auto& rebootMap = cbIt->second;
     auto const rbIt = rebootMap.find(peerState.rebootId());
-    auto& callbackSetPtr = rbIt->second;
-    TRI_ASSERT(callbackSetPtr != nullptr);
-    callbackSetPtr->erase(callbackId);
-    if (callbackSetPtr->empty()) {
-      rebootMap.erase(rbIt);
+    if (rbIt != rebootMap.end()) {
+      auto& callbackSetPtr = rbIt->second;
+      TRI_ASSERT(callbackSetPtr != nullptr);
+      callbackSetPtr->erase(callbackId);
+      if (callbackSetPtr->empty()) {
+        rebootMap.erase(rbIt);
+      }
     }
   }
 }
 
 RebootTracker::CallbackId RebootTracker::getNextCallbackId() noexcept {
+  _mutex.assertLockedByCurrentThread();
+
   CallbackId nextId = _nextCallbackId;
   ++_nextCallbackId;
   return nextId;
