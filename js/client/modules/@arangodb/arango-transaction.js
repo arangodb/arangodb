@@ -186,12 +186,7 @@ ArangoTransaction.prototype.running = function() {
 
 ArangoTransaction.prototype.query = function(query, bindVars, cursorOptions, options) {
   if (!this.running()) {
-    throw new ArangoError({
-      error: true,
-      code: internal.errors.ERROR_TRANSACTION_INTERNAL.code,
-      errorNum: internal.errors.ERROR_TRANSACTION_INTERNAL.code,
-      errorMessage: 'transaction not running'
-    });
+    throwNotRunning();
   }
   if (typeof query !== 'string' || query === undefined || query === '') {
     throw 'need a valid query string';
