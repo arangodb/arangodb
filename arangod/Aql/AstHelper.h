@@ -58,7 +58,6 @@ bool checkVaildVaribaleAccess(AstNode const* current, Variable const* searchVari
     if (sub->type == NODE_TYPE_REFERENCE) {
       Variable const* v = static_cast<Variable const*>(sub->getData());
       if (v->id == searchVariable->id) {
-				LOG_DEVEL << "is target true";
         return true;
       }
     }
@@ -78,7 +77,6 @@ bool checkVaildVaribaleAccess(AstNode const* current, Variable const* searchVari
     }
     Variable const* v = static_cast<Variable const*>(sub2->getData());
     if (v->id == searchVariable->id) {
-			LOG_DEVEL << "is target true";
       return true;
     }
   }
@@ -113,8 +111,6 @@ bool isTargetVariable(AstNode const* node, SmallVector<Variable const*>& searchV
 
       //The expansion is at the very end
       if (it->type == NODE_TYPE_ITERATOR && it->numMembers() == 2) {
-        LOG_DEVEL << "got iterator";
-
         if (it->getMember(0)->type != NODE_TYPE_VARIABLE ) {
 				  return false;
 			  }
@@ -198,7 +194,6 @@ inline std::unordered_set<std::string> getReferencedAttributesForKeep(
       }
     } else if (node->type == NODE_TYPE_EXPANSION) {
       if (isTargetVariable(node, searchVariables, isSafeForOptimization)) {
-        LOG_DEVEL << "Is expand target";
         auto sub = node->getMemberUnchecked(1);
         if (sub->type == NODE_TYPE_EXPANSION) {
           sub = sub->getMemberUnchecked(0)->getMemberUnchecked(1);
@@ -208,12 +203,9 @@ inline std::unordered_set<std::string> getReferencedAttributesForKeep(
             sub = sub->getMemberUnchecked(0);
           }
           result.emplace(sub->getString());
-          LOG_DEVEL << "adding " << sub->getString();
           // do not descend further
           return false;
         }
-      } else {
-        LOG_DEVEL << "is not target variable in expansion";
       }
     }
 

@@ -1351,10 +1351,6 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
         } // while current
 
         if (keepAttributes.empty() && !keepVariables.empty()) {
-          LOG_DEVEL << "rule is modified -- variables: ";
-          for (auto const& v : keepVariables) {
-            LOG_DEVEL << v->name;
-          }
           collectNode->setKeepVariables(std::move(keepVariables));
           modified = true;
         }
