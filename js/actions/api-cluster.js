@@ -114,6 +114,7 @@ actions.defineHttp({
         operations['/arango/Current/DBServers/' + serverId] = {'op': 'delete'};
         operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
         operations['/arango/Target/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
+        operations['/arango/Current/ServersKnown/' + serverId] = {'op': 'delete'};
         operations['/arango/Target/RemovedServers/' + serverId] = {'op': 'set', 'new': (new Date()).toISOString()};
 
         try {
