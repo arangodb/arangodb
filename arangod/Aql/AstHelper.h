@@ -208,7 +208,6 @@ inline std::unordered_set<std::string> getReferencedAttributesForKeep(
         }
       }
     }
-
     else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
       auto sub = node->getMemberUnchecked(0);
       if (sub->type == NODE_TYPE_REFERENCE) {

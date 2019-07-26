@@ -1274,8 +1274,6 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
             auto usedThere =
                 ast::getReferencedAttributesForKeep(exp->node(), searchVariables,
                                                     isSafeForOptimization);
-
-
             if (isSafeForOptimization) {
               for (auto const& it : usedThere) {
                 keepAttributes.emplace(it);
@@ -1286,23 +1284,18 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
             }
 
           } // end - expression exists
-
         } else if (planNode->getType() == EN::COLLECT) {
           auto innerCollectNode = ExecutionNode::castTo<CollectNode const*>(planNode);
           if (innerCollectNode->hasOutVariable()) {
-
             // We have the following situation:
             //
             // COLLECT v1 = doc._id INTO g1
             // COLLECT v2 = doc._id INTO g2
             //
-
             searchVariables.push_back(innerCollectNode->outVariable());
           } else {
-
             // when we find another COLLECT, it will invalidate all
             // previous variables in the scope
-
             searchVariables.clear();
           }
         } else {
@@ -1313,7 +1306,6 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
             break;
           }
         }
-
 
         planNode = planNode->getFirstParent();
 
