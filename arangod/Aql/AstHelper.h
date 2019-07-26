@@ -50,9 +50,6 @@ LoggerStream& operator<<(LoggerStream& os, SmallVector<Variable const*> const ve
 }
 
 bool accessesSearchVariableViaReference(AstNode const* current, Variable const* searchVariable) {
-	// now we need to check if the last variable is
-	// referenced in the expression
-
   if (current->type == NODE_TYPE_INDEXED_ACCESS) {
     auto sub = current->getMemberUnchecked(0);
     if (sub->type == NODE_TYPE_REFERENCE) {
@@ -90,9 +87,9 @@ bool isTargetVariable(AstNode const* node, SmallVector<Variable const*>& searchV
 
   // given and expression like g3[0].`g2`[0].`g1`[0].`item1`.`_id`
   // this loop resolves subtrees of the form: .`g2`[0].`g1`[0]
-  // search variables should eqaul [g1, g2, g3]. Thjerefor we need not match
-  // the variable names from the vector with those in the expression while
-  // going forward in the vector the we go backward in the expression
+  // search variables should equal [g1, g2, g3]. Therefor we need not match the
+  // variable names from the vector with those in the expression while going
+  // forward in the vector the we go backward in the expression
 
 	auto current = node;
 	for(auto varIt = searchVariables.begin(); varIt != std::prev(searchVariables.end()); ++varIt) {
@@ -125,12 +122,11 @@ bool isTargetVariable(AstNode const* node, SmallVector<Variable const*>& searchV
         }
 
       } else {
-        // The expansion is not at the very end!
-        // we are unable to check if the variable will be accessed
-        // checking nested expansions is really crazy and would probably
-        // be best done in a recursive way. If the expansion is in the middle,
-        // then it would be still the very first node in the AST, having 2
-        // subtrees that contain the other search variables
+        // The expansion is not at the very end! we are unable to check if the
+        // variable will be accessed checking nested expansions is really crazy
+        // and would probably be best done in a recursive way. If the expansion
+        // is in the middle, then it would be still the very first node in the
+        // AST, having 2 subtrees that contain the other search variables
         isSafeForOptimization = false; // could be an access - we can not tell
         return false;
       }
@@ -159,9 +155,7 @@ bool isTargetVariable(AstNode const* node, SmallVector<Variable const*>& searchV
 
   return accessesSearchVariableViaReference(current, searchVariables.back());
 }
-
 } // end - namespace unnamed
-
 
 /// @brief determines the to-be-kept attribute of an INTO expression
 inline std::unordered_set<std::string> getReferencedAttributesForKeep(
@@ -218,12 +212,12 @@ inline std::unordered_set<std::string> getReferencedAttributesForKeep(
         }
       }
     }
-
     return true;
   };
 
-  // traverse ast and call visitor before recursing on each node
-  // as long as visitor returns true the traversal continues
+  // Traverse AST and call visitor before recursing on each node
+  // as long as visitor returns true the traversal continues. In
+  // that branch
   Ast::traverseReadOnly(node, visitor, ::doNothingVisitor);
 
   return result;
