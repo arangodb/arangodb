@@ -217,10 +217,10 @@ RebootTracker::Callback RebootTracker::createSchedulerCallback(
               << "Failed to execute reboot callback: " << descr << ": "
               << "[" << ex.code() << "] " << ex.what();
         } catch (std::exception const& ex) {
-          LOG_TOPIC("88a63", INFO, Logger::CLUSTER)
+          LOG_TOPIC("3d935", INFO, Logger::CLUSTER)
               << "Failed to execute reboot callback: " << descr << ": " << ex.what();
         } catch (...) {
-          LOG_TOPIC("88a63", INFO, Logger::CLUSTER)
+          LOG_TOPIC("f7427", INFO, Logger::CLUSTER)
               << "Failed to execute reboot callback: " << descr << ": "
               << "Unknown error.";
         }
