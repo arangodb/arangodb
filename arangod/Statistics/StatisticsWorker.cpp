@@ -926,15 +926,30 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   // export v8 statistics
   builder.add("v8Context", VPackValue(VPackValueType::Object));
   V8DealerFeature::Statistics v8Counters{};
+  std::vector<V8DealerFeature::MemoryStatistics> memoryStatistics;
   // V8 may be turned off on a server
   if (dealer && dealer->isEnabled()) {
     v8Counters = dealer->getCurrentContextNumbers();
+    memoryStatistics = dealer->getCurrentMemoryNumbers();
   }
   builder.add("available", VPackValue(v8Counters.available));
   builder.add("busy", VPackValue(v8Counters.busy));
   builder.add("dirty", VPackValue(v8Counters.dirty));
   builder.add("free", VPackValue(v8Counters.free));
   builder.add("max", VPackValue(v8Counters.max));
+  {
+    builder.add("memory", VPackValue(VPackValueType::Array));
+    for (auto memStatistic : memoryStatistics) {
+      builder.add(VPackValue(VPackValueType::Object));
+      builder.add("contextId", VPackValue(memStatistic.id));
+      builder.add("tMax", VPackValue(memStatistic.tMax));
+      builder.add("countOfTimes", VPackValue(memStatistic.countOfTimes));
+      builder.add("heapMax", VPackValue(memStatistic.heapMax));
+      builder.add("heapMin", VPackValue(memStatistic.heapMin));
+      builder.close();
+    }
+    builder.close();
+  }
   builder.close();
 
   // export threads statistics
