@@ -50,7 +50,7 @@ LoggerStream& operator<<(LoggerStream& os, SmallVector<Variable const*> const ve
   return os << "]";
 }
 
-bool isTargetVariable(AstNode const* node, SmallVector<Variable const*>& searchVariables) {
+bool isTargetVariable(AstNode const* node, SmallVector<Variable const*>& searchVariables, bool& isSafeForOptimization) {
 	TRI_ASSERT(!searchVariables.empty());
   LOG_DEVEL << "START is target Variable " << searchVariables << " ##########################################################";
 	node->dump(8);
@@ -97,17 +97,14 @@ bool isTargetVariable(AstNode const* node, SmallVector<Variable const*>& searchV
 
         LOG_DEVEL << "passed " << (*varIt)->name;
 
-
       } else if(it) {
-        LOG_DEVEL << "usupported " << it->getTypeString();
-        return false;
-      } else {
+        // the expansion is not at the very end
+        isSafeForOptimization = false;
         return false;
       }
 
-
 		} else {
-			//LOG_DEVEL << "not indexed access or expansion";
+			LOG_DEVEL << "not indexed access or expansion";
 			return false;
 		}
 
@@ -208,7 +205,6 @@ inline std::unordered_set<std::string> getReferencedAttributesForKeep(
   std::function<bool(AstNode const*)> visitor = [&isSafeForOptimization,
                                                  &result,
                                                  &searchVariables](AstNode const* node) {
-    ///LOG_DEVEL << "@@@ visiting " << node;
     if (!isSafeForOptimization) {
       return false;
     }
@@ -217,7 +213,7 @@ inline std::unordered_set<std::string> getReferencedAttributesForKeep(
       while (node->getMemberUnchecked(0)->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         node = node->getMemberUnchecked(0);
       }
-      if (isTargetVariable(node->getMemberUnchecked(0), searchVariables)) {
+      if (isTargetVariable(node->getMemberUnchecked(0), searchVariables, isSafeForOptimization)) {
         result.emplace(node->getString());
         // do not descend further
         return false;
@@ -229,7 +225,7 @@ inline std::unordered_set<std::string> getReferencedAttributesForKeep(
         return false;
       }
     } else if (node->type == NODE_TYPE_EXPANSION) {
-      if (isTargetVariable(node, searchVariables)) {
+      if (isTargetVariable(node, searchVariables, isSafeForOptimization)) {
         LOG_DEVEL << "Is expand target";
         auto sub = node->getMemberUnchecked(1);
         if (sub->type == NODE_TYPE_EXPANSION) {
@@ -245,7 +241,7 @@ inline std::unordered_set<std::string> getReferencedAttributesForKeep(
           return false;
         }
       } else {
-        LOG_DEVEL << "Is not target";
+        LOG_DEVEL << "is not target variable in expansion";
       }
     }
 
@@ -264,6 +260,6 @@ inline std::unordered_set<std::string> getReferencedAttributesForKeep(
 
 }
 }
-}
+} // namespace arangodb
 
 #endif
