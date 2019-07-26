@@ -50,103 +50,10 @@ LoggerStream& operator<<(LoggerStream& os, SmallVector<Variable const*> const ve
   return os << "]";
 }
 
-bool isTargetVariable(AstNode const* node, SmallVector<Variable const*>& searchVariables, bool& isSafeForOptimization) {
-	TRI_ASSERT(!searchVariables.empty());
-  LOG_DEVEL << "START is target Variable " << searchVariables << " ##########################################################";
-	node->dump(8);
-
-	std::size_t iteration = 0;
-	auto current = node;
-	for(auto varIt = searchVariables.begin(); varIt != std::prev(searchVariables.end()); ++varIt) {
-		LOG_DEVEL << "$$$ iteration: " << iteration++ << " varname "  << (*varIt)->name;
-		AstNode* next = nullptr;
-		if (current->type == NODE_TYPE_INDEXED_ACCESS) {
-			LOG_DEVEL << "indexed access";
-      next = current->getMemberUnchecked(0);
-		} else if (current->type == NODE_TYPE_EXPANSION) {
-			LOG_DEVEL << "inspecting expansion";
-      LOG_DEVEL << current->numMembers();
-		  current->dump(8);
-
-      if (current->numMembers() < 2) {
-        return false;
-      }
-
-      auto it = current->getMemberUnchecked(0);
-      TRI_ASSERT(it);
-
-      //the expansion is at the very end
-      if (it->type == NODE_TYPE_ITERATOR && it->numMembers() == 2) {
-        LOG_DEVEL << "got iterator";
-
-        if (it->getMember(0)->type != NODE_TYPE_VARIABLE ) {
-				  return false;
-			  }
-
-        auto attributeAccess = it->getMember(1);
-        TRI_ASSERT(attributeAccess);
-        LOG_DEVEL << "found access";
-
-        auto itNext = std::next(varIt);
-        LOG_DEVEL << "itNext " << (*itNext)->name;
-        if (itNext != searchVariables.end() && attributeAccess->type == NODE_TYPE_ATTRIBUTE_ACCESS){
-            next = attributeAccess;
-        } else {
-          return false;
-        }
-
-        LOG_DEVEL << "passed " << (*varIt)->name;
-
-      } else if(it) {
-        // the expansion is not at the very end
-        isSafeForOptimization = false;
-        return false;
-      }
-
-		} else {
-			LOG_DEVEL << "not indexed access or expansion";
-			return false;
-		}
-
-    if(varIt == searchVariables.end()) {
-      return false;
-    }
-
-		LOG_DEVEL << "inspecting next: " << (*varIt)->name;
-
-		if (next && next->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      LOG_DEVEL << "found another access";
-			if(next->getString() == (*varIt)->name ) {
-				current = next->getMemberUnchecked(0);
-			} else {
-				LOG_DEVEL << "return false var does not match";
-				return false;
-			}
-		} else if (next && next->type == NODE_TYPE_EXPANSION) {
-        LOG_DEVEL << "found another expansion";
-				LOG_DEVEL << "return false";
-        return false;
-		} else {
-      LOG_DEVEL << "no way to advance" << (next ? next->getTypeString() : "nullptr");
-      return false;
-    }
-
-		next->dump(8);
-		LOG_DEVEL << "next iteration";
-
-	} // for nodes but last
-
-  if(!current) {
-    LOG_DEVEL << "no current - return false;";
-    return false;
-  }
-
-  LOG_DEVEL << "MIDDLE ";
-  current->dump(8);
+bool checkVaildVaribaleAccess(AstNode const* current, Variable const* searchVariable) {
 
 	// now we need to check if the last variable is
 	// referende in the expression
-	auto searchVariable = searchVariables.back();
 
   if (current->type == NODE_TYPE_INDEXED_ACCESS) {
     auto sub = current->getMemberUnchecked(0);
@@ -181,21 +88,77 @@ bool isTargetVariable(AstNode const* node, SmallVector<Variable const*>& searchV
   return false;
 };
 
+bool isTargetVariable(AstNode const* node, SmallVector<Variable const*>& searchVariables, bool& isSafeForOptimization) {
+	TRI_ASSERT(!searchVariables.empty());
+
+	auto current = node;
+	for(auto varIt = searchVariables.begin(); varIt != std::prev(searchVariables.end()); ++varIt) {
+		AstNode* next = nullptr;
+		if (current->type == NODE_TYPE_INDEXED_ACCESS) {
+      next = current->getMemberUnchecked(0);
+		} else if (current->type == NODE_TYPE_EXPANSION) {
+		  current->dump(8);
+
+      if (current->numMembers() < 2) {
+        return false;
+      }
+
+      auto it = current->getMemberUnchecked(0);
+      TRI_ASSERT(it);
+
+      //The expansion is at the very end
+      if (it->type == NODE_TYPE_ITERATOR && it->numMembers() == 2) {
+        LOG_DEVEL << "got iterator";
+
+        if (it->getMember(0)->type != NODE_TYPE_VARIABLE ) {
+				  return false;
+			  }
+
+        auto attributeAccess = it->getMember(1);
+        TRI_ASSERT(attributeAccess);
+
+        if (std::next(varIt) != searchVariables.end() && attributeAccess->type == NODE_TYPE_ATTRIBUTE_ACCESS){
+            next = attributeAccess;
+        } else {
+          return false;
+        }
+
+      } else {
+        // the expansion is not at the very end
+        // we are unable to check if the variable will be accessed
+        isSafeForOptimization = false;
+        return false;
+      }
+		} else {
+			return false;
+		}
+
+    if(varIt == searchVariables.end()) {
+      return false;
+    }
+
+		if (next && next->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+			  next->getString() == (*varIt)->name ) {
+				current = next->getMemberUnchecked(0);
+		} else if (next && next->type == NODE_TYPE_EXPANSION) {
+        isSafeForOptimization = false;
+        return false;
+		} else {
+      return false;
+    }
+	} // for nodes but last
+
+  if(!current) {
+    return false;
+  }
+
+  return checkVaildVaribaleAccess(current, searchVariables.back());
 }
+
+} // end - namespace unnames
 
 
 /// @brief determines the to-be-kept attribute of an INTO expression
-//
-// - adds attribute accesses to `searchVariable` (e.g. searchVar.attribute) in expression given by `node` to return value `results`
-// - if a node references the search variable in the expression `isSafeForOptimization` is set to false
-//   and the traversal stops.
-// - adds expansion // TODO
-//
-
-
-//    query: g3[*].g2[0].g1[0].item
-//--> searchVariables[g1,g2,g3]
-
 inline std::unordered_set<std::string> getReferencedAttributesForKeep(
       AstNode const* node, SmallVector<Variable const*> searchVariables, bool& isSafeForOptimization){
 
@@ -252,14 +215,12 @@ inline std::unordered_set<std::string> getReferencedAttributesForKeep(
   // as long as visitor returns true the traversal continues
   Ast::traverseReadOnly(node, visitor, ::doNothingVisitor);
 
-  LOG_DEVEL << "END " << result << " ##########################################################";
-
   return result;
 }
 
 
-}
-}
-} // namespace arangodb
+} // end - namsepace ast
+} // end - namespace aql
+} // end - namespace arangodb
 
 #endif
