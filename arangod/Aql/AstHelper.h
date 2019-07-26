@@ -98,7 +98,6 @@ bool isTargetVariable(AstNode const* node, SmallVector<Variable const*>& searchV
 		if (current->type == NODE_TYPE_INDEXED_ACCESS) {
       next = current->getMemberUnchecked(0);
 		} else if (current->type == NODE_TYPE_EXPANSION) {
-		  current->dump(8);
 
       if (current->numMembers() < 2) {
         return false;
