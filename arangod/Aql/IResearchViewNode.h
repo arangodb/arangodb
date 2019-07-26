@@ -165,15 +165,17 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief getVariablesSetHere
   std::vector<arangodb::aql::Variable const*> getVariablesSetHere() const override final {
-    std::vector<arangodb::aql::Variable const*> vars(1 + _scorers.size() + 
-    (_outNonMaterializedColId != nullptr ? 2 : 0)
+    std::vector<arangodb::aql::Variable const*> vars(_scorers.size() + 
+    (_outNonMaterializedColId != nullptr ? 2 : 1) // document or  collection + docId for late materialization
     );
 
-    *std::transform(_scorers.begin(), _scorers.end(), vars.begin(),
-                    [](auto const& scorer) { return scorer.var; }) = _outVariable;
+    std::transform(_scorers.begin(), _scorers.end(), vars.begin(),
+      [](auto const& scorer) { return scorer.var; }); 
     if(_outNonMaterializedColId != nullptr) {
       vars[vars.size() - 2] = _outNonMaterializedColId;
       vars[vars.size() - 1] = _outNonMaterializedDocId;
+    } else {
+      vars[vars.size() - 1] = _outVariable;
     }
     return vars;
   }

@@ -784,7 +784,7 @@ class LimitNode : public ExecutionNode {
   LimitNode(ExecutionPlan* plan, size_t id, size_t offset, size_t limit)
       : ExecutionNode(plan, id), _offset(offset), _limit(limit), _fullCount(false),
         _inNonMaterializedDocId(nullptr), _inNonMaterializedColId(nullptr),
-        _outDocumentId(nullptr){}
+        _outMaterializedDocument(nullptr){}
 
   LimitNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -823,15 +823,19 @@ class LimitNode : public ExecutionNode {
   /// @brief return the limit value
   size_t limit() const { return _limit; }
 
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  void getVariablesUsedHere(arangodb::HashSet<aql::Variable const*>& vars) const override final;
+  std::vector<arangodb::aql::Variable const*> getVariablesSetHere() const override final;
+
   void doMaterializationOf(
-    aql::Variable* colIdVariable, 
-    aql::Variable* docIdVariable,
-    aql::Variable* outDocument) noexcept {
+    aql::Variable const* colIdVariable, 
+    aql::Variable const* docIdVariable,
+    aql::Variable const* outDocument) noexcept {
     TRI_ASSERT((docIdVariable != nullptr) == (colIdVariable != nullptr));
-    TRI_ASSERT((docIdVariable != nullptr) == (outDocument != nullptr))
+    TRI_ASSERT((docIdVariable != nullptr) == (outDocument != nullptr));
     _inNonMaterializedDocId = docIdVariable;
     _inNonMaterializedColId = colIdVariable;
-    _outDocumentId = outDocument;
+    _outMaterializedDocument = outDocument;
   }
 
  private:
@@ -854,7 +858,7 @@ class LimitNode : public ExecutionNode {
   /// @brief output variable to write only non-materialized collection ids
   aql::Variable const* _inNonMaterializedColId;
   /// @brief finally materialized document
-  aql::Variable const* _outDocumentId;
+  aql::Variable const* _outMaterializedDocument;
 
 };
 

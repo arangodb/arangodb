@@ -418,27 +418,32 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
   ReadContext& ctx, 
   LocalDocumentId const& documentId,
   LogicalCollection const& collection) {
-   // looks like here we will need collection Id also as View could produce documents from multiple collections
+   // we will need collection Id also as View could produce documents from multiple collections
   if (ADB_LIKELY(documentId.isSet())) {
+    { // need this to make row think it is fully written
+      AqlValue a(VPackSlice::noneSlice());
+      bool mustDestroy = true;
+      AqlValueGuard guard{ a, mustDestroy };
+      ctx.outputRow.moveValueInto(
+        ctx.docOutReg , ctx.inputRow, guard);
+    }
     {
-      VPackBuilder builder; // BAD. Make it faster!
-      builder.add(VPackValue(collection.id()));
-      AqlValue a{builder};
+      // For sake of performance we store raw pointer to collection
+      // It is safe as pipeline work inside one process
+      AqlValue a(AqlValueHintUInt(reinterpret_cast<uint64_t>(&collection)));
       bool mustDestroy = true;
       AqlValueGuard guard{ a, mustDestroy };
       ctx.outputRow.moveValueInto(
         ctx.docOutReg + infos().getNumScoreRegisters() + 1 , ctx.inputRow, guard);
     }
     {
-      VPackBuilder builder; // BAD. Make it faster!
-      builder.add(VPackValue(documentId.id()));
-      AqlValue a{builder};
+
+      AqlValue a(AqlValueHintUInt(documentId.id()));
       bool mustDestroy = true;
       AqlValueGuard guard{ a, mustDestroy };
       ctx.outputRow.moveValueInto(
         ctx.docOutReg + infos().getNumScoreRegisters() + 2 , ctx.inputRow, guard);
     }
-   
     return true;
   } else {
     return false;
@@ -464,7 +469,6 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
     if /* constexpr */ (Traits::Ordered) {
       // scorer register are placed consecutively after the document output register
       RegisterId scoreReg = ctx.docOutReg + 1;
-
       for (auto& it : _indexReadBuffer.getScores(bufferEntry)) {
         TRI_ASSERT(infos().isScoreReg(scoreReg));
         bool mustDestroy = false;

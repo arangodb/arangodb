@@ -1506,7 +1506,9 @@ LimitNode::LimitNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     : ExecutionNode(plan, base),
       _offset(base.get("offset").getNumericValue<decltype(_offset)>()),
       _limit(base.get("limit").getNumericValue<decltype(_limit)>()),
-      _fullCount(base.get("fullCount").getBoolean()) {}
+      _fullCount(base.get("fullCount").getBoolean()),
+      _inNonMaterializedColId(nullptr), _inNonMaterializedDocId(nullptr),
+      _outMaterializedDocument(nullptr){}
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
@@ -1516,26 +1518,53 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
 
   // Fullcount must only be enabled on the last limit node on the main level
   TRI_ASSERT(!_fullCount || !::isInSubQuery(this));
-
+  auto inputRegisters = std::make_shared < std::unordered_set<RegisterId>>();
+  auto outputRegisters = std::make_shared < std::unordered_set<RegisterId>>();
+  RegisterId inColRegId = 0;
+  RegisterId inDocRegId = 0;
+  RegisterId outDocRegId = 0;
+  if(_inNonMaterializedColId != nullptr) {
+    {
+      auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedColId->id);
+      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+      inColRegId = it->second.registerId;
+      inputRegisters->insert(inColRegId);
+    }
+    {
+      auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedDocId->id);
+      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+      inDocRegId = it->second.registerId;
+      inputRegisters->insert(inDocRegId);
+    }
+    {
+      auto it = getRegisterPlan()->varInfo.find(_outMaterializedDocument->id);
+      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+      outDocRegId = it->second.registerId;
+      outputRegisters->insert(outDocRegId);
+    }
+  }
   LimitExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                            getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                            calcRegsToKeep(), _offset, _limit, _fullCount,
-                           _doMaterialization);
+                           inColRegId, inDocRegId,
+                           outDocRegId, inputRegisters, outputRegisters, 
+                           engine.getQuery());
 
   return std::make_unique<ExecutionBlockImpl<LimitExecutor>>(&engine, this,
                                                              std::move(infos));
 }
 
-void LimitNode::getVariablesUsedHere(arangodb::HashSet<aql::Variable const*>& vars) const {
-  if(_inNonMaterializedColId != nullptr) {
+void LimitNode::getVariablesUsedHere(
+    arangodb::HashSet<arangodb::aql::Variable const*>& vars) const {
+  if(_inNonMaterializedColId != nullptr && _inNonMaterializedDocId != nullptr) {
     vars.insert(_inNonMaterializedColId);
     vars.insert(_inNonMaterializedDocId);
   }
 }
 
 std::vector<arangodb::aql::Variable const*> LimitNode::getVariablesSetHere() const {
-  if(_outDocumentId != nullptr){
-    return std::vector<arangodb::aql::Variable const*>{_outDocumentId};
+  if(_outMaterializedDocument != nullptr){
+    return std::vector<arangodb::aql::Variable const*>{_outMaterializedDocument};
   } else {
     return std::vector<arangodb::aql::Variable const*>{};
   }

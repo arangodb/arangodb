@@ -867,10 +867,10 @@ void IResearchViewNode::planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHe
     TRI_ASSERT(_outNonMaterializedColId != nullptr);
     ++nrRegsHere[depth];
     ++nrRegs[depth];
-    varInfo.emplace(_outNonMaterializedDocId->id, VarInfo(depth, totalNrRegs++));
+    varInfo.emplace(_outNonMaterializedColId->id, VarInfo(depth, totalNrRegs++));
     ++nrRegsHere[depth];
     ++nrRegs[depth];
-    varInfo.emplace(_outNonMaterializedColId->id, VarInfo(depth, totalNrRegs++));
+    varInfo.emplace(_outNonMaterializedDocId->id, VarInfo(depth, totalNrRegs++));
   }
 }
 
@@ -1179,7 +1179,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                                 volatility(),
                                                 getRegisterPlan()->varInfo,
                                                 getDepth(),
-                                                _outNonMaterializedColId != nullptr};
+                                                _outNonMaterializedColId == nullptr};
 
   if (_sort.first) {
     TRI_ASSERT(!_sort.first->empty()); // guaranteed by optimizer rule

@@ -51,7 +51,12 @@ class LimitExecutorInfos : public ExecutorInfos {
                      std::unordered_set<RegisterId> registersToClear,
                      std::unordered_set<RegisterId> registersToKeep,
                      size_t offset, size_t limit, bool fullCount,
-                     bool doMaterialization);
+                     RegisterId inNonMaterializedColRegId,
+                     RegisterId inNonMaterializedDocRegId,
+                     RegisterId outMaterializedDocumentRegId,
+                     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
+                     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+                     Query* query);
 
   LimitExecutorInfos() = delete;
   LimitExecutorInfos(LimitExecutorInfos&&) = default;
@@ -61,8 +66,26 @@ class LimitExecutorInfos : public ExecutorInfos {
   size_t getOffset() const noexcept { return _offset; };
   size_t getLimit() const noexcept { return _limit; };
   size_t getLimitPlusOffset() const noexcept { return _offset + _limit; };
-  bool doMaterialization() const noexcept { return _doMaterialization;  }
   bool isFullCountEnabled() const noexcept { return _fullCount; };
+  bool doMaterialization() const noexcept {
+    // If we need to do materialization, this two would be set 
+    // different registers. If not - both will be zero
+    return _inNonMaterializedColRegId != _inNonMaterializedDocRegId;
+  }
+    
+  inline RegisterId inputNonMaterializedDocRegId() const noexcept { 
+    return _inNonMaterializedDocRegId; 
+  }
+
+  inline RegisterId inputNonMaterializedColRegId() const noexcept { 
+    return _inNonMaterializedColRegId; 
+  }
+
+  inline RegisterId outputMaterializedDocumentRegId() const noexcept { 
+    return _outMaterializedDocumentRegId;
+  }
+
+   Query* getQuery() const noexcept { return _query; }
 
  private:
   /// @brief the remaining offset
@@ -74,7 +97,12 @@ class LimitExecutorInfos : public ExecutorInfos {
   /// @brief whether or not the node should fully count what it limits
   bool const _fullCount;
 
-  bool const _doMaterialization;
+  /// @brief variables to perform late document materialization
+  RegisterId const _inNonMaterializedColRegId;
+  RegisterId const _inNonMaterializedDocRegId;
+  RegisterId const _outMaterializedDocumentRegId;
+
+  Query* _query;
 };
 
 /**
@@ -116,6 +144,7 @@ class LimitExecutor {
   std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkipRequested);
 
   std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
+
 
  private:
   Infos const& infos() const noexcept { return _infos; };

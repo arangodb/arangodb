@@ -313,7 +313,7 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
          auto* localColIdTmp = ast->variables()->createTemporaryVariable();
          auto& limitNode = *EN::castTo<LimitNode*>(node);
          viewNode.skipMaterializationTo(localColIdTmp, localDocIdTmp);
-         limitNode.doMaterializationOf(localColIdTmp, localDocIdTmp);
+         limitNode.doMaterializationOf(localColIdTmp, localDocIdTmp, &viewNode.outVariable());
          modified = true;
        }
        

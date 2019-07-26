@@ -29,6 +29,7 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
+#include "VocBase/LogicalCollection.h"
 #include "Basics/Common.h"
 
 #include <lib/Logger/LogMacros.h>
@@ -44,15 +45,26 @@ LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId n
                                        // cppcheck-suppress passedByValue
                                        std::unordered_set<RegisterId> registersToKeep,
                                        size_t offset, size_t limit, bool fullCount,
-                                       bool doMaterialization)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
-                    std::make_shared<std::unordered_set<RegisterId>>(),
+                                       RegisterId inNonMaterializedColRegId,
+                                       RegisterId inNonMaterializedDocRegId,
+                                       RegisterId outMaterializedDocumentRegId,
+                                       // cppcheck-suppress passedByValue
+                                       std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
+                                       // cppcheck-suppress passedByValue
+                                       std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+                                       Query* query
+                                       )
+    : ExecutorInfos(readableInputRegisters,
+                    writeableOutputRegisters,
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _offset(offset),
       _limit(limit),
       _fullCount(fullCount),
-      _doMaterialization(doMaterialization){}
+      _inNonMaterializedColRegId(inNonMaterializedColRegId),
+      _inNonMaterializedDocRegId(inNonMaterializedDocRegId),
+      _outMaterializedDocumentRegId(outMaterializedDocumentRegId),
+      _query(query){}
 
 LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
@@ -101,6 +113,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::skipRestForFullCount() {
   return {state, stats};
 }
 
+
 std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("LimitExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -138,8 +151,25 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
       stats.incrFullCount();
     }
 
+    auto cb = [&output, &input, this](LocalDocumentId /*id*/, VPackSlice doc) {
+       AqlValue a{AqlValueHintCopy(doc.begin())}; // BAD! Need to switch to generic implementation
+       bool mustDestroy = true;
+       AqlValueGuard guard{a, mustDestroy};
+       output.moveValueInto(infos().outputMaterializedDocumentRegId(),
+         input, guard);
+    };
+
     // Return one row
-    output.copyRow(input);
+    if(infos().doMaterialization()) {
+      auto collection = reinterpret_cast<LogicalCollection const*>(
+        input.getValue(infos().inputNonMaterializedColRegId()).toInt64());
+      TRI_ASSERT(collection != nullptr);
+      collection->readDocumentWithCallback(infos().getQuery()->trx(),
+        LocalDocumentId(input.getValue(infos().inputNonMaterializedDocRegId()).toInt64()),
+        cb);
+    } else {
+       output.copyRow(input);
+    }
     return {state, stats};
   }
 
@@ -194,7 +224,25 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
       stats.incrFullCount();
     }
 
-    output.copyRow(input);
+
+    auto cb = [&output, &input, this](LocalDocumentId /*id*/, VPackSlice doc) {
+       AqlValue a{AqlValueHintCopy(doc.begin())}; // BAD! Need to switch to generic implementation
+       bool mustDestroy = true;
+       AqlValueGuard guard{a, mustDestroy};
+       output.moveValueInto(infos().outputMaterializedDocumentRegId(),
+         input, guard);
+    };
+
+    if(infos().doMaterialization()) {
+      auto collection = reinterpret_cast<LogicalCollection const*>(
+      input.getValue(infos().inputNonMaterializedColRegId()).toInt64());
+      TRI_ASSERT(collection != nullptr);
+      collection->readDocumentWithCallback(infos().getQuery()->trx(),
+        LocalDocumentId(input.getValue(infos().inputNonMaterializedDocRegId()).toInt64()),
+        cb);
+    } else {
+       output.copyRow(input);
+    }
     return {ExecutionState::DONE, stats};
   }
 
@@ -249,12 +297,7 @@ std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fet
     case LimitState::RETURNING_LAST_ROW:
     case LimitState::RETURNING:
       auto rv =_fetcher.fetchBlockForPassthrough(std::min(atMost, maxRowsLeftToFetch()));
-      if (infos().doMaterialization()) {
-        return { rv.first, LimitStats{}, std::move(rv.second) };
-      } else {
-        return { rv.first, LimitStats{}, std::move(rv.second) };
-      }
-
+      return { rv.first, LimitStats{}, std::move(rv.second) };
   }
   // The control flow cannot reach this. It is only here to make MSVC happy,
   // which is unable to figure out that the switch above is complete.
