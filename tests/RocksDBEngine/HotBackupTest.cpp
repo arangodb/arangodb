@@ -77,6 +77,33 @@ TEST_CASE("RocksDBHotBackup path tests", "[rocksdb][devel][hotbackup]") {
     CHECK(0 == testee.getPersistedId().compare("SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe"));
   }
 
+#ifdef _WIN32
+  SECTION("test_date clean up") {
+    CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z","") ==
+            "/var/db\\backups\\2019-01-23T14.47.42Z");
+  }
+
+  SECTION("test_user string clean up") {
+    CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z","1\"2#3,14159") ==
+            "/var/db\\backups\\2019-01-23T14.47.42Z_1.2.3.14159");
+    CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z","Today\'s Hot Backup") ==
+            "/var/db\\backups\\2019-01-23T14.47.42Z_Today.s_Hot_Backup");
+    std::string raw_string("Toodaay\'s hot");
+    raw_string[1]=(char)1;
+    raw_string[5]=(char)5;
+    CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z",raw_string) ==
+            "/var/db\\backups\\2019-01-23T14.47.42Z_Today.s_hot");
+  }
+
+  SECTION("test getRocksDBPath") {
+    CHECK(testee.getDatabasePath() == "/var/db");
+    CHECK(testee.getRocksDBPath() == "/var/db\\engine-rocksdb");
+  }
+#else
+  SECTION("test_override") {
+    CHECK(0 == testee.getPersistedId().compare("SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe"));
+  }
+
   SECTION("test_date clean up") {
     CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z","") ==
             "/var/db/backups/2019-01-23T14.47.42Z");
@@ -98,6 +125,7 @@ TEST_CASE("RocksDBHotBackup path tests", "[rocksdb][devel][hotbackup]") {
     CHECK(testee.getDatabasePath() == "/var/db");
     CHECK(testee.getRocksDBPath() == "/var/db/engine-rocksdb");
   }
+#endif
 }
 
 
@@ -313,6 +341,7 @@ public:
 
 
 
+#ifndef _WIN32
 /// @brief test
 TEST_CASE("RocksDBHotBackupRestore directories", "[rocksdb][devel][hotbackup]") {
 
@@ -410,3 +439,4 @@ TEST_CASE("RocksDBHotBackupRestore directories", "[rocksdb][devel][hotbackup]") 
 #endif
   }
 }
+#endif
