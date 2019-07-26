@@ -41,7 +41,8 @@ namespace ast {
 
 namespace {
 
-LoggerStream& operator<<(LoggerStream& os, SmallVector<Variable const*> const vec) {
+template < typename T>
+T& operator<<(T& os, SmallVector<Variable const*> const& vec) {
   os << "[ ";
   for(auto const& var: vec) {
     os << var->name << " ";
