@@ -1287,14 +1287,6 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
 
           } // end - expression exists
 
-        //} else if (planNode->getType()) {
-        //  auto here = planNode->getVariableIdsUsedHere();
-        //  if(here.find(searchVariables.back()->id) != here.end()){
-        //    // the outVariable of the last collect should not be used by any following node directly
-        //    doOptimize = false;
-        //    break;
-        //  }
-
         } else if (planNode->getType() == EN::COLLECT) {
           auto innerCollectNode = ExecutionNode::castTo<CollectNode const*>(planNode);
           if (innerCollectNode->hasOutVariable()) {
