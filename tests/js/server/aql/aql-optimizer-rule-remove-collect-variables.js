@@ -178,7 +178,6 @@ function optimizerRuleTestSuite () {
             "id1" : "ID"
           }
         ];
-      require('internal').db._explain(query, { }, paramEnabled);
       let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
       assertEqual(expected, resultEnabled);
 
