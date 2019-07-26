@@ -23,7 +23,7 @@
 
 #include "RocksDBHotBackup.h"
 
-#include <fcntl>
+#include <fcntl.h>
 #include <thread>
 
 #include "Agency/TimeString.h"
