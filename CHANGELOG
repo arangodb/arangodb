@@ -1,6 +1,9 @@
 v3.5.0-rc.6 (2019-XX-XX)
 ------------------------
 
+* Added missing REST API route GET /_api/transaction for retrieving the list of
+  currently ongoing transactions.
+
 * Fixed issue #9558: RTRIM not working as expected.
 
 * Added startup error for bad temporary directory setting.
@@ -15,7 +18,7 @@ v3.5.0-rc.6 (2019-XX-XX)
   will be a startup warning about potential data loss (though in ArangoDB 3.4 allowing to 
   continue the startup - in 3.5 and higher we will abort the startup).
 
-* Make TTL indexes behave like other indexes on creation
+* Make TTL indexes behave like other indexes on creation.
     
   If a TTL index is already present on a collection, the previous behavior
   was to make subsequent calls to `ensureIndex` fail unconditionally with
