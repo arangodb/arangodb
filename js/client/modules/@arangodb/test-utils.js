@@ -687,7 +687,7 @@ function runThere (options, instanceInfo, file) {
 }
 runThere.info = 'runThere';
 
-function readTestResult(path, rc) {
+function readTestResult(path, rc, testCase) {
   const jsonFN = fs.join(path, 'testresult.json');
   let buf;
   try {
@@ -732,7 +732,11 @@ function readTestResult(path, rc) {
       return rc;
     }
   } else if (_.isObject(result)) {
-    return result;
+    if ((testCase !== undefined) && result.hasOwnProperty(testCase)) {
+      return result[testCase];
+    } else {
+      return result;
+    }
   } else {
     rc.failed = rc.status ? 0 : 1;
     rc.message = "don't know howto handle '" + buf + "'";
@@ -766,7 +770,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   }
   require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
   let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir, false, options.coreCheck);
-  return readTestResult(instanceInfo.rootDir, rc);
+  return readTestResult(instanceInfo.rootDir, rc, args['javascript.unit-tests']);
 }
 runInArangosh.info = 'arangosh';
 
