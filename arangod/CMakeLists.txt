@@ -682,7 +682,7 @@ target_compile_features(${BIN_ARANGOD} PRIVATE cxx_constexpr)
 # ../bin/libarangoserver.a: error adding symbols: File format not recognized
 # . Thus we cannot use IPO for arangod, and not use it for arangodbtests.
 set_property(TARGET arangoserver PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
-set_property(TARGET arangod PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
+set_property(TARGET ${BIN_ARANGOD} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
 
 install(
   TARGETS ${BIN_ARANGOD}

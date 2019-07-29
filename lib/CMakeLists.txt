@@ -346,3 +346,5 @@ if (DARWIN)
   target_compile_options(${LIB_ARANGO_GEO} PRIVATE -Werror)
   target_compile_options(${LIB_ARANGO} PRIVATE -Werror)
 endif()
+
+set_property(TARGET ${LIB_ARANGO} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
