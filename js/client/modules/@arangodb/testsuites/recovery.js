@@ -197,7 +197,8 @@ function recovery (options) {
         params.args['temp.path'],
         {
           status: false
-        }
+        },
+        test
       );
       if (!results[test].status) {
         print("Not cleaning up " + params.testDir);
