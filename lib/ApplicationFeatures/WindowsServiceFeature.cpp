@@ -24,6 +24,7 @@
 
 #include <Winsvc.h>
 #include <signal.h>
+#include <windows.h>
 #include <iostream>
 
 #include "Basics/Common.h"

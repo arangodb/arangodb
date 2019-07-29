@@ -664,6 +664,7 @@
 
 // user and group types
 
+#include <sys/types.h>
 #define TRI_uid_t uid_t
 #define TRI_gid_t gid_t
 
@@ -704,6 +705,7 @@
 #include <WinSock2.h>
 #include <io.h>
 #include <stdio.h>
+#include <windows.h>
 // available include files
 
 #define TRI_HAVE_DIRECT_H 1

@@ -20,7 +20,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <features.h>
 #include <stdlib.h>
 #include <cmath>
 #include <cstdint>
@@ -33,6 +32,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/Result.h"
 #include "Basics/StringUtils.h"
+#include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"

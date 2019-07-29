@@ -24,10 +24,11 @@
 #include "v8-utils.h"
 
 #ifdef _WIN32
-#include <windef.h>
-#include <io.h>
-#include <conio.h>
 #include <WinSock2.h>
+#include <conio.h>
+#include <io.h>
+#include <windef.h>
+#include <windows.h>
 #include "Basics/win-utils.h"
 #endif
 

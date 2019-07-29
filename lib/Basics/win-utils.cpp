@@ -23,6 +23,7 @@
 
 #include <WinSock2.h>
 #include <errno.h>
+#include <windows.h>
 
 #include <io.h>
 #include <sys/stat.h>
