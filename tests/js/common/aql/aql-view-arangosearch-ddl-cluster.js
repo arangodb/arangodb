@@ -922,7 +922,32 @@ function IResearchFeatureDDLTestSuite () {
       } // forget variable `view`, it's invalid now
       assertEqual(db[viewName], undefined);
     },
+    testLinkWithAnalyzerFromOtherDb: function() {
+      let databaseNameAnalyzer = "testDatabaseAnalyzer";
+      let databaseNameView = "testDatabaseView";
 
+      db._useDatabase("_system");
+      try { db._dropDatabase(databaseNameAnalyzer);} catch(e) {}
+      try { db._dropDatabase(databaseNameView);} catch(e) {}
+      db._createDatabase(databaseNameAnalyzer);
+      db._createDatabase(databaseNameView);
+      db._useDatabase(databaseNameAnalyzer);
+      let tmpIdentity = analyzers.save("TmpIdentity", "identity");
+      assertTrue(tmpIdentity != null);
+      tmpIdentity = undefined;
+      db._useDatabase(databaseNameView);
+      db._create("FOO");
+      try {
+        db._createView("FOO_view", "arangosearch", {links:{"FOO":{analyzers:[databaseNameAnalyzer + "::TmpIdentity"]}}});
+        fail();
+      } catch(e) {
+        assertEqual(require("internal").errors.ERROR_BAD_PARAMETER .code,
+                    err.errorNum);
+      }
+      db._useDatabase("_system");
+      db._dropDatabase(databaseNameAnalyzer);
+      db._dropDatabase(databaseNameView);
+    },
     ////////////////////////////////////////////////////////////////////////////
     /// @brief test ensure that view is deleted within deleted database
     /// Regression test for arangodb/release-3.4#153.
@@ -930,7 +955,7 @@ function IResearchFeatureDDLTestSuite () {
     testLeftViewInDroppedDatabase: function () {
       const dbName = 'TestDB';
       const viewName = 'TestView';
-
+      db._useDatabase("_system");
       try { db._dropDatabase(dbName); } catch (e) {}
 
       db._createDatabase(dbName);
