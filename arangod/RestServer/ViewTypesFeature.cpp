@@ -54,7 +54,7 @@ struct InvalidViewFactory : public arangodb::ViewFactory {
     return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string(
-            "failure to instantiate view without a factory for definition: ") +
+            "invalid type provided to instantiate view with definition: ") +
             definition.toString());
   }
 };
