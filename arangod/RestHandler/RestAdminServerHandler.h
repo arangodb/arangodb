@@ -48,6 +48,7 @@ class RestAdminServerHandler : public RestBaseHandler {
   void handleId();
   void handleRole();
   void handleAvailability();
+  void handleDatabaseDefaults();
   void writeModeResult(bool);
 };
 }  // namespace arangodb
