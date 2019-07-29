@@ -24,6 +24,8 @@
 #ifndef ARANGODB_BASICS_SYSTEM__COMPILER_H
 #define ARANGODB_BASICS_SYSTEM__COMPILER_H 1
 
+#include "Basics/operating-system.h"
+
 // warn if return value is unused
 #if defined(__GNUC__) || defined(__GNUG__)
 #define ADB_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
