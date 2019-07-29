@@ -25,7 +25,6 @@
 #define ARANGOD_AQL_AST_NODE_H 1
 
 #include <string.h>
-#include <strings.h>
 #include <algorithm>
 #include <cstdint>
 #include <functional>

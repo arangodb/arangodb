@@ -38,7 +38,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/select.h>
 #include <unicode/umachine.h>
 #include <unicode/unistr.h>
 #include <unicode/unorm2.h>
