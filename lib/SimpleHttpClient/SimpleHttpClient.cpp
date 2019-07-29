@@ -604,7 +604,7 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
 
   if (method != rest::RequestType::GET) {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Content-Length: "));
-    _writeBuffer.appendInteger(static_cast<sizetint_t>(bodyLength));
+    _writeBuffer.appendInteger(static_cast<uint64_t>(bodyLength));
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
   } else {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
