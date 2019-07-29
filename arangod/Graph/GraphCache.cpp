@@ -55,7 +55,7 @@ struct Success {
   std::shared_ptr<Graph const> graph;
 
   explicit Success(std::shared_ptr<Graph const> graph_)
-      : graph(std::move(graph_)){};
+      : graph(std::move(graph_)) {}
   Success& operator=(Success const& other) = default;
   Success() = delete;
 };
