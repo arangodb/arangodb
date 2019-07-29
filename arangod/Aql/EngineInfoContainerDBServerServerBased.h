@@ -26,12 +26,22 @@
 
 #include "Basics/Common.h"
 
+#include "Aql/types.h"
+
 #include <stack>
 
 namespace arangodb {
 class ClusterComm;
 
+namespace velocypack {
+class Builder;
+}
+
 namespace aql {
+
+class ExecutionNode;
+class GraphNode;
+class Query;
 class QuerySnippet;
 
 class EngineInfoContainerDBServerServerBased {
@@ -89,22 +99,24 @@ class EngineInfoContainerDBServerServerBased {
   void handleCollectionLocking(ExecutionNode* node);
 
   // Insert the Locking information into the message to be send to DBServers
-  void addLockingPart(arangodb::velocypack::Builder& builder);
+  void addLockingPart(arangodb::velocypack::Builder& builder) const;
 
   // Insert the Options information into the message to be send to DBServers
-  void addOptionsPart(arangodb::velocypack::Builder& builder);
+  void addOptionsPart(arangodb::velocypack::Builder& builder) const;
 
   // Insert the Variables information into the message to be send to DBServers
-  void addVariablesPart(arangodb::velocypack::Builder& builder);
+  void addVariablesPart(arangodb::velocypack::Builder& builder) const;
 
   // Insert the Snippets information into the message to be send to DBServers
-  void addSnippetPart(arangodb::velocypack::Builder& builder);
+  void addSnippetPart(arangodb::velocypack::Builder& builder) const;
 
   // Insert the TraversalEngine information into the message to be send to DBServers
-  void addTraversalEnginesPart(arangodb::velocypack::Builder& builder);
+  void addTraversalEnginesPart(arangodb::velocypack::Builder& builder) const;
 
  private:
   std::stack<std::shared_ptr<QuerySnippet>, std::vector<std::shared_ptr<QuerySnippet>>> _snippetStack;
+
+  Query* _query;
 };
 
 }  // namespace aql

@@ -399,7 +399,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
     return false;
   }
 
-  bool enterSubquery(ExecutionNode* super, ExecutionNode* sub) { 
+  bool enterSubquery(ExecutionNode* super, ExecutionNode* sub) override { 
     if (_pushToSingleServer) {
       _dbserverParts.addSubquery(sub, super);
     }

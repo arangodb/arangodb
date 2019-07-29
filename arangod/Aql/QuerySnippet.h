@@ -24,7 +24,7 @@
 #ifndef ARANGOD_AQL_QUERY_SNIPPET_H
 #define ARANGOD_AQL_QUERY_SNIPPET_H 1
 
-#include "ClusterInfo.h"
+#include "Cluster/ClusterInfo.h"
 
 #include <map>
 #include <vector>
@@ -42,7 +42,7 @@ class QuerySnippet {
   };
 
  public:
-  QuerySnippet() {}
+  QuerySnippet() : _needToInjectGather(false) {}
 
   void addNode(ExecutionNode* node);
 
