@@ -27,7 +27,9 @@
 #include "Basics/Common.h"
 
 #include "Aql/types.h"
+#include "Cluster/ClusterInfo.h"
 
+#include <set>
 #include <stack>
 
 namespace arangodb {
@@ -45,6 +47,33 @@ class Query;
 class QuerySnippet;
 
 class EngineInfoContainerDBServerServerBased {
+ private:
+  // @brief Local struct to create the
+  // information required to build traverser engines
+  // on DB servers.
+  struct TraverserEngineShardLists {
+    explicit TraverserEngineShardLists(size_t length) {
+      // Make sure they all have a fixed size.
+      edgeCollections.resize(length);
+    }
+
+    ~TraverserEngineShardLists() {}
+
+    // Mapping for edge collections to shardIds.
+    // We have to retain the ordering of edge collections, all
+    // vectors of these in one run need to have identical size.
+    // This is because the conditions to query those edges have the
+    // same ordering.
+    std::vector<std::vector<ShardID>> edgeCollections;
+
+    // Mapping for vertexCollections to shardIds.
+    std::unordered_map<std::string, std::vector<ShardID>> vertexCollections;
+
+#ifdef USE_ENTERPRISE
+    std::set<ShardID> inaccessibleShards;
+#endif
+  };
+
  public:
   explicit EngineInfoContainerDBServerServerBased(Query* query) noexcept;
 
@@ -108,15 +137,23 @@ class EngineInfoContainerDBServerServerBased {
   void addVariablesPart(arangodb::velocypack::Builder& builder) const;
 
   // Insert the Snippets information into the message to be send to DBServers
-  void addSnippetPart(arangodb::velocypack::Builder& builder) const;
+  void addSnippetPart(arangodb::velocypack::Builder& builder, ServerID const& server) const;
 
   // Insert the TraversalEngine information into the message to be send to DBServers
-  void addTraversalEnginesPart(arangodb::velocypack::Builder& builder) const;
+  void addTraversalEnginesPart(arangodb::velocypack::Builder& builder,
+                               ServerID const& server) const;
 
  private:
   std::stack<std::shared_ptr<QuerySnippet>, std::vector<std::shared_ptr<QuerySnippet>>> _snippetStack;
 
   Query* _query;
+
+  // @brief List of all information required for traverser engines
+  std::vector<std::pair<GraphNode*, TraverserEngineShardLists>> _traverserEngineInfos;
+
+  // @brief List of all graphNodes that need to create TraverserEngines on
+  // DBServers
+  std::vector<GraphNode*> _graphNodes;
 };
 
 }  // namespace aql

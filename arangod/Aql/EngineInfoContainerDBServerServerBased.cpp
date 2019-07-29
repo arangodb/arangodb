@@ -28,6 +28,8 @@
 #include "Aql/Query.h"
 #include "Aql/QuerySnippet.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterInfo.h"
+#include "Graph/BaseOptions.h"
 
 #include <set>
 
@@ -113,10 +115,10 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(MapRemoteToSnippet& 
     addVariablesPart(infoBuilder);
     TRI_ASSERT(infoBuilder.isOpenObject());
 
-    addSnippetPart(infoBuilder);
+    addSnippetPart(infoBuilder, server);
     TRI_ASSERT(infoBuilder.isOpenObject());
 
-    addTraversalEnginesPart(infoBuilder);
+    addTraversalEnginesPart(infoBuilder, server);
     TRI_ASSERT(infoBuilder.isOpenObject());
 
     infoBuilder.close();  // Base object
@@ -154,7 +156,10 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
 
 // Insert a GraphNode that needs to generate TraverserEngines on
 // the DBServers. The GraphNode itself will retain on the coordinator.
-void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node) {}
+void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node) {
+  handleCollectionLocking(node);
+  _graphNodes.emplace_back(node);
+}
 
 void EngineInfoContainerDBServerServerBased::handleCollectionLocking(ExecutionNode* node) {
   TRI_ASSERT(node != nullptr);
@@ -164,4 +169,119 @@ void EngineInfoContainerDBServerServerBased::handleCollectionLocking(ExecutionNo
       // Nothing todo
       break;
   }
+}
+
+// Insert the Locking information into the message to be send to DBServers
+void EngineInfoContainerDBServerServerBased::addLockingPart(arangodb::velocypack::Builder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add(VPackValue("lockInfo"));
+  builder.openObject();
+  // TODO insert
+  builder.close();  // lockInfo
+}
+
+// Insert the Options information into the message to be send to DBServers
+void EngineInfoContainerDBServerServerBased::addOptionsPart(arangodb::velocypack::Builder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add(VPackValue("options"));
+  builder.openObject();
+  // TODO insert
+  builder.close();  // options
+}
+
+// Insert the Variables information into the message to be send to DBServers
+void EngineInfoContainerDBServerServerBased::addVariablesPart(arangodb::velocypack::Builder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add(VPackValue("variables"));
+  builder.openObject();
+  // TODO insert
+  builder.close();  // variables
+}
+
+// Insert the Snippets information into the message to be send to DBServers
+void EngineInfoContainerDBServerServerBased::addSnippetPart(arangodb::velocypack::Builder& builder,
+                                                            ServerID const& server) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add(VPackValue("snippets"));
+  builder.openObject();
+  // TODO insert
+  builder.close();  // snippets
+}
+
+// Insert the TraversalEngine information into the message to be send to DBServers
+void EngineInfoContainerDBServerServerBased::addTraversalEnginesPart(
+    arangodb::velocypack::Builder& infoBuilder, ServerID const& server) const {
+  if (_traverserEngineInfos.empty()) {
+    return;
+  }
+  TRI_ASSERT(infoBuilder.isOpenObject());
+  infoBuilder.add(VPackValue("traverserEngines"));
+  infoBuilder.openArray();
+  for (auto const& it : _traverserEngineInfos) {
+    GraphNode* en = it.first;
+    TraverserEngineShardLists const& list = it.second;
+    infoBuilder.openObject();
+    {
+      // Options
+      infoBuilder.add(VPackValue("options"));
+      graph::BaseOptions* opts = en->options();
+      opts->buildEngineInfo(infoBuilder);
+    }
+    {
+      // Variables
+      std::vector<aql::Variable const*> vars;
+      en->getConditionVariables(vars);
+      if (!vars.empty()) {
+        infoBuilder.add(VPackValue("variables"));
+        infoBuilder.openArray();
+        for (auto v : vars) {
+          v->toVelocyPack(infoBuilder);
+        }
+        infoBuilder.close();
+      }
+    }
+
+    infoBuilder.add(VPackValue("shards"));
+    infoBuilder.openObject();
+    infoBuilder.add(VPackValue("vertices"));
+    infoBuilder.openObject();
+    for (auto const& col : list.vertexCollections) {
+      infoBuilder.add(VPackValue(col.first));
+      infoBuilder.openArray();
+      for (auto const& v : col.second) {
+        infoBuilder.add(VPackValue(v));
+      }
+      infoBuilder.close();  // this collection
+    }
+    infoBuilder.close();  // vertices
+
+    infoBuilder.add(VPackValue("edges"));
+    infoBuilder.openArray();
+    for (auto const& edgeShards : list.edgeCollections) {
+      infoBuilder.openArray();
+      for (auto const& e : edgeShards) {
+        infoBuilder.add(VPackValue(e));
+      }
+      infoBuilder.close();
+    }
+    infoBuilder.close();  // edges
+
+#ifdef USE_ENTERPRISE
+    if (!list.inaccessibleShards.empty()) {
+      infoBuilder.add(VPackValue("inaccessible"));
+      infoBuilder.openArray();
+      for (ShardID const& shard : list.inaccessibleShards) {
+        infoBuilder.add(VPackValue(shard));
+      }
+      infoBuilder.close();  // inaccessible
+    }
+#endif
+    infoBuilder.close();  // shards
+
+    en->enhanceEngineInfo(infoBuilder);
+
+    infoBuilder.close();  // base
+  }
+
+  infoBuilder.close();  // traverserEngines
 }
