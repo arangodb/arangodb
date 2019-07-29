@@ -5,7 +5,8 @@
 
 @RESTDESCRIPTION
 Restores a consistent backup from a
-snapshot in time, with a given id.
+snapshot in time, with a given id. The backup snapshot must reside on
+
 
 The request may contain an object with the following attributes:
 
