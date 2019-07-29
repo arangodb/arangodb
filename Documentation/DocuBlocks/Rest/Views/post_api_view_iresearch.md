@@ -130,16 +130,14 @@ additional value retrieval optimizations, one of:
 Creates a new view with a given name and properties if it does not
 already exist.
 
-**Note**: view can't be created with the links. Please use PUT/PATCH for links
-management.
-
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the *view-name* is missing, then a *HTTP 400* is returned.
+If the *name* or *type* attribute are missing or invalid, then an *HTTP 400*
+error is returned.
 
-@RESTRETURNCODE{404}
-If the *view-name* is unknown, then a *HTTP 404* is returned.
+@RESTRETURNCODE{409}
+If a view called *name* already exists, then an *HTTP 409* error is returned.
 
 @EXAMPLES
 
