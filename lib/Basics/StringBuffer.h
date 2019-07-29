@@ -34,6 +34,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
 #include "Basics/memory.h"
+#include "Basics/system-compiler.h"
 
 /// @brief string buffer with formatting routines
 struct TRI_string_buffer_t {
