@@ -28,13 +28,16 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Collections.h"
 #include "Rest/Version.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/UpgradeTasks.h"
 #include "VocBase/Methods/Version.h"
 #include "VocBase/vocbase.h"
 
+#include <arangod/Cluster/ClusterFeature.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -154,15 +157,20 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
             << "It seems like you have upgraded the ArangoDB binary.";
         LOG_TOPIC("8bcec", ERR, Logger::STARTUP)
             << "If this is what you wanted to do, please restart with the";
-        LOG_TOPIC("b0360", ERR, Logger::STARTUP) << "  --database.auto-upgrade true";
+        LOG_TOPIC("b0360", ERR, Logger::STARTUP)
+            << "  --database.auto-upgrade true";
         LOG_TOPIC("13414", ERR, Logger::STARTUP)
             << "option to upgrade the data in the database directory.";
 
-        LOG_TOPIC("7421a", ERR, Logger::STARTUP) << "Normally you can use the control "
-                                           "script to upgrade your database'";
-        LOG_TOPIC("fb665", ERR, Logger::STARTUP) << "  /etc/init.d/arangodb stop";
-        LOG_TOPIC("6753e", ERR, Logger::STARTUP) << "  /etc/init.d/arangodb upgrade";
-        LOG_TOPIC("f7b06", ERR, Logger::STARTUP) << "  /etc/init.d/arangodb start";
+        LOG_TOPIC("7421a", ERR, Logger::STARTUP)
+            << "Normally you can use the control "
+               "script to upgrade your database'";
+        LOG_TOPIC("fb665", ERR, Logger::STARTUP)
+            << "  /etc/init.d/arangodb stop";
+        LOG_TOPIC("6753e", ERR, Logger::STARTUP)
+            << "  /etc/init.d/arangodb upgrade";
+        LOG_TOPIC("f7b06", ERR, Logger::STARTUP)
+            << "  /etc/init.d/arangodb start";
         LOG_TOPIC("24bd1", ERR, Logger::STARTUP)
             << "---------------------------------------------------------------"
                "-------'";
@@ -186,7 +194,8 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
     case VersionResult::CANNOT_PARSE_VERSION_FILE:
     case VersionResult::CANNOT_READ_VERSION_FILE:
     case VersionResult::NO_SERVER_VERSION: {
-      LOG_TOPIC("bb6ba", DEBUG, Logger::STARTUP) << "Error reading version file";
+      LOG_TOPIC("bb6ba", DEBUG, Logger::STARTUP)
+          << "Error reading version file";
       std::string msg = std::string("error during ") + (isUpgrade ? "upgrade" : "startup");
       return UpgradeResult(TRI_ERROR_INTERNAL, msg, vinfo.status);
     }
@@ -204,6 +213,39 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
   return runTasks(vocbase, vinfo, params, clusterFlag, dbflag);
 }
 
+void methods::Upgrade::createSystemCollections(TRI_vocbase_t& vocbase, bool upgrade) {
+  std::vector<CollectionCreationInfo> systemCollectionsToCreate;
+  std::vector<std::string> systemCollections = {"_users",        "_graphs",
+                                                "_aqlfunctions", "_queues",
+                                                "_jobs",         "_apps",
+                                                "_appbundles"};
+
+  typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> FuncCallback;
+  FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
+
+  for (auto const& collection : systemCollections) {
+    auto res = methods::Collections::lookup(vocbase, collection, noop);
+    if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+
+      VPackBuilder options;
+      methods::Collections::createSystemCollectionProperties(collection, options);
+
+      systemCollectionsToCreate.emplace_back(
+          CollectionCreationInfo{collection, TRI_COL_TYPE_DOCUMENT, options.slice()});
+    }
+  }
+
+  auto const res = methods::Collections::create(
+      vocbase, systemCollectionsToCreate, true, true,
+      [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
+
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+}
+
+void methods::Upgrade::createSystemCollectionsIndices(TRI_vocbase_t& vocbase, bool upgrade) {}
+
 /// @brief register tasks, only run once on startup
 void methods::Upgrade::registerTasks() {
   auto* upgradeFeature =
@@ -218,16 +260,6 @@ void methods::Upgrade::registerTasks() {
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
           /*database*/ DATABASE_UPGRADE, &UpgradeTasks::upgradeGeoIndexes);
-  addTask("setupGraphs", "setup _graphs collection",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::setupGraphs);
-  addTask("setupUsers", "setup _users collection",
-          /*system*/ Flags::DATABASE_SYSTEM,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::setupUsers);
   addTask("createUsersIndex", "create index on 'user' attribute in _users",
           /*system*/ Flags::DATABASE_SYSTEM,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
@@ -236,41 +268,16 @@ void methods::Upgrade::registerTasks() {
           /*system*/ Flags::DATABASE_EXCEPT_SYSTEM,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT, &UpgradeTasks::addDefaultUserOther);
-  addTask("setupAqlFunctions", "setup _aqlfunctions collection",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::setupAqlFunctions);
-  addTask("setupQueues", "setup _queues collection",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::setupQueues);
-  addTask("setupJobs", "setup _jobs collection",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::setupJobs);
   addTask("createJobsIndex", "create index on attributes in _jobs collection",
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::createJobsIndex);
-  addTask("setupApps", "setup _apps collection",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::setupApps);
   addTask("createAppsIndex", "create index on attributes in _apps collection",
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::createAppsIndex);
-  addTask("setupAppBundles", "setup _appbundles collection",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::setupAppBundles);
   addTask("persistLocalDocumentIds", "convert collection data from old format",
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
@@ -298,18 +305,21 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& 
   // needs to run in superuser scope, otherwise we get errors
   ExecContextScope scope(ExecContext::superuser());
   // only local should actually write a VERSION file
-  bool isLocal = clusterFlag == CLUSTER_NONE || clusterFlag == CLUSTER_LOCAL || clusterFlag == CLUSTER_DB_SERVER_LOCAL;
+  bool isLocal = clusterFlag == CLUSTER_NONE || clusterFlag == CLUSTER_LOCAL ||
+                 clusterFlag == CLUSTER_DB_SERVER_LOCAL;
 
   bool ranOnce = false;
   // execute all tasks
   for (Task const& t : _tasks) {
     // check for system database
     if (t.systemFlag == DATABASE_SYSTEM && !vocbase.isSystem()) {
-      LOG_TOPIC("bb1ef", DEBUG, Logger::STARTUP) << "Upgrade: DB not system, skipping " << t.name;
+      LOG_TOPIC("bb1ef", DEBUG, Logger::STARTUP)
+          << "Upgrade: DB not system, skipping " << t.name;
       continue;
     }
     if (t.systemFlag == DATABASE_EXCEPT_SYSTEM && vocbase.isSystem()) {
-      LOG_TOPIC("fd4e0", DEBUG, Logger::STARTUP) << "Upgrade: DB system, Skipping " << t.name;
+      LOG_TOPIC("fd4e0", DEBUG, Logger::STARTUP)
+          << "Upgrade: DB system, Skipping " << t.name;
       continue;
     }
 
@@ -353,13 +363,13 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& 
       }
     } catch (arangodb::basics::Exception const& e) {
       LOG_TOPIC("65ac5", ERR, Logger::STARTUP)
-          << "Executing " << t.name << " (" << t.description << ") failed with error: "
-          << e.what() << ". Aborting procedure.";
+          << "Executing " << t.name << " (" << t.description
+          << ") failed with error: " << e.what() << ". Aborting procedure.";
       return UpgradeResult(e.code(), e.what(), vinfo.status);
     } catch (std::exception const& e) {
       LOG_TOPIC("022fe", ERR, Logger::STARTUP)
-          << "Executing " << t.name << " (" << t.description << ") failed with error: "
-          << e.what() << ". Aborting procedure.";
+          << "Executing " << t.name << " (" << t.description
+          << ") failed with error: " << e.what() << ". Aborting procedure.";
       return UpgradeResult(TRI_ERROR_FAILED, e.what(), vinfo.status);
     }
 
@@ -379,7 +389,8 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& 
 
   if (isLocal) {  // no need to write this for cluster bootstrap
     // save even if no tasks were executed
-    LOG_TOPIC("e5a77", DEBUG, Logger::STARTUP) << "Upgrade: Writing VERSION file";
+    LOG_TOPIC("e5a77", DEBUG, Logger::STARTUP)
+        << "Upgrade: Writing VERSION file";
     auto res = methods::Version::write(&vocbase, vinfo.tasks, /*sync*/ ranOnce);
 
     if (res.fail()) {
