@@ -1,4 +1,4 @@
-v3.5.0-rc.6 (2019-XX-XX)
+v3.5.0-rc.6 (2019-07-29)
 ------------------------
 
 * Fixed issue #9459: Optimization rule remove-collect-variables does not KEEP all necessary data.
