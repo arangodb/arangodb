@@ -30,6 +30,7 @@
 #include "Basics/csv.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
+#include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -42,6 +43,10 @@
 #include <fcntl.h>
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
+#endif
+
+#ifdef _WIN32
+#include "Basics/win-utils.h"
 #endif
 
 using namespace arangodb;

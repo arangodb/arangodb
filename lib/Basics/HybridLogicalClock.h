@@ -24,6 +24,7 @@
 #ifndef ARANGODB_BASICS_HYBRID_LOGICAL_CLOCK_H
 #define ARANGODB_BASICS_HYBRID_LOGICAL_CLOCK_H 1
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <string>
