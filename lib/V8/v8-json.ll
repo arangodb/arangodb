@@ -29,7 +29,7 @@
 #include <cmath>
 
 #include "Basics/Common.h"
-#include "Basics/win-utils.h"
+#include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
 #include "V8/v8-json.h"
 #include "V8/v8-globals.h"
