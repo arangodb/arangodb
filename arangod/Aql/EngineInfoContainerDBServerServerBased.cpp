@@ -33,6 +33,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/BaseOptions.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 
 #include <set>
@@ -303,18 +304,35 @@ void EngineInfoContainerDBServerServerBased::addLockingPart(arangodb::velocypack
 void EngineInfoContainerDBServerServerBased::addOptionsPart(arangodb::velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("options"));
-  builder.openObject();
-  // TODO insert
-  builder.close();  // options
+  // toVelocyPack will open & close the "options" object
+#ifdef USE_ENTERPRISE
+  if (_query->trx()->state()->options().skipInaccessibleCollections) {
+    aql::QueryOptions opts = _query->queryOptions();
+    TRI_ASSERT(opts.transactionOptions.skipInaccessibleCollections);
+    for (auto const& it : _collectionLocking) {
+      TRI_ASSERT(it.first);
+      if (_query->trx()->isInaccessibleCollectionId(it.first->getPlanId())) {
+        for (ShardID const& sid : it.second.usedShards) {
+          opts.inaccessibleCollections.insert(sid);
+        }
+        opts.inaccessibleCollections.insert(std::to_string(it.first->getPlanId()));
+      }
+    }
+    opts.toVelocyPack(builder, true);
+  } else {
+    _query->queryOptions().toVelocyPack(builder, true);
+  }
+#else
+  _query->queryOptions().toVelocyPack(builder, true);
+#endif
 }
 
 // Insert the Variables information into the message to be send to DBServers
 void EngineInfoContainerDBServerServerBased::addVariablesPart(arangodb::velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("variables"));
-  builder.openObject();
-  // TODO insert
-  builder.close();  // variables
+  // This will open and close an Object.
+  _query->ast()->variables()->toVelocyPack(builder);
 }
 
 // Insert the Snippets information into the message to be send to DBServers
