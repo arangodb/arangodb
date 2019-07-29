@@ -150,8 +150,6 @@ class Manager final {
   /// @brief abort all transactions matching
   bool abortManagedTrx(std::function<bool(TransactionState const&)>);
 
-<<<<<<< HEAD
-
   // ---------------------------------------------------------------------------
   // Hotbackup Stuff
   // ---------------------------------------------------------------------------
@@ -179,8 +177,6 @@ class Manager final {
     }
   }
 
-
-=======
   /// @brief convert the list of running transactions to a VelocyPack array
   /// the array must be opened already.
   /// will use database and username to fan-out the request to the other
@@ -189,7 +185,6 @@ class Manager final {
                     std::string const& database, 
                     std::string const& username, bool fanout) const;
   
->>>>>>> origin/devel
  private:
   // hashes the transaction id into a bucket
   inline size_t getBucket(TRI_voc_tid_t tid) const {
@@ -199,41 +194,10 @@ class Manager final {
   Result updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
                            bool clearServers);
 
-<<<<<<< HEAD
- private:
-
-  enum class MetaType : uint8_t {
-    Managed = 1,  /// global single shard db transaction
-    StandaloneAQL = 2,  /// used for a standalone transaction (AQL standalone)
-    Tombstone = 3  /// used to ensure we can acknowledge double commits / aborts
-  };
-  struct ManagedTrx {
-    ManagedTrx(MetaType t, TransactionState* st, double ex)
-      : type(t), expires(ex), state(st), finalStatus(Status::UNDEFINED),
-        rwlock() {}
-    ~ManagedTrx();
-
-    MetaType type;
-    double expires; /// expiration timestamp, if 0 it expires immediately
-    TransactionState* state; /// Transaction, may be nullptr
-    /// @brief  final TRX state that is valid if this is a tombstone
-    /// necessary to avoid getting error on a 'diamond' commit or accidantally
-    /// repeated commit / abort messages
-    transaction::Status finalStatus;
-    /// cheap usage lock for *state
-    mutable basics::ReadWriteSpinLock rwlock;
-  };
-
-private:
-
-  const bool _keepTransactionData;
-=======
   /// @brief calls the callback function for each managed transaction
   void iterateManagedTrx(std::function<void(TRI_voc_tid_t, ManagedTrx const&)> const&) const;
   
- private:
   bool const _keepTransactionData;
->>>>>>> origin/devel
 
   // a lock protecting ALL buckets in _transactions
   mutable basics::ReadWriteLock _allTransactionsLock;
