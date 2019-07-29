@@ -132,27 +132,36 @@ TEST_F(CallbackGuardTest, test_move_operator_eq_explicit) {
 
 class RebootTrackerTest : public ::testing::Test {
  protected:
+// MSVC new/malloc only guarantees 8 byte alignment, but SupervisedScheduler needs 64.
+// Disable warning:
+#if (_MSC_VER >= 1)
+#pragma warning(push)
+#pragma warning(disable : 4316)  // Object allocated on the heap may not be aligned for this type
+#endif
   RebootTrackerTest()
-      : scheduler(2, 64, 128, 1024 * 1024, 4096), mockApplicationServer() {
+      : scheduler(std::make_unique<SupervisedScheduler>(2, 64, 128, 1024 * 1024, 4096)), mockApplicationServer() {
     // Suppress this INFO message:
     // When trying to register callback '': The server PRMR-srv-A is not known. If this server joined the cluster in the last seconds, this can happen.
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
                                     arangodb::LogLevel::WARN);
   }
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
   using PeerState = RebootTracker::PeerState;
 
-  SupervisedScheduler scheduler;
-  static_assert(std::is_same<decltype(SchedulerFeature::SCHEDULER), decltype(&scheduler)>::value,
+  std::unique_ptr<SupervisedScheduler> scheduler;
+  static_assert(std::is_same<decltype(*SchedulerFeature::SCHEDULER), decltype(*scheduler)>::value,
                 "Use the correct scheduler in the tests");
   // ApplicationServer needs to be prepared in order for the scheduler to start
   // threads.
   MockEmptyServer mockApplicationServer;
 
-  void SetUp() { scheduler.start(); }
-  void TearDown() { scheduler.shutdown(); }
+  void SetUp() { scheduler->start(); }
+  void TearDown() { scheduler->shutdown(); }
 
   bool schedulerEmpty() const {
-    auto stats = scheduler.queueStatistics();
+    auto stats = scheduler->queueStatistics();
 
     return stats._blocked == 0 && stats._queued == 0 && stats._working == 0;
   }
@@ -181,7 +190,7 @@ TEST_F(RebootTrackerTest, one_server_call_once_after_change) {
   auto callback = [&numCalled]() { ++numCalled; };
 
   {
-    RebootTracker rebootTracker{&scheduler};
+    RebootTracker rebootTracker{scheduler.get()};
     std::vector<CallbackGuard> guards{};
     CallbackGuard guard;
 
@@ -226,7 +235,7 @@ TEST_F(RebootTrackerTest, one_server_call_once_with_old_rebootid) {
   auto callback = [&numCalled]() { ++numCalled; };
 
   {
-    RebootTracker rebootTracker{&scheduler};
+    RebootTracker rebootTracker{scheduler.get()};
     std::vector<CallbackGuard> guards{};
     CallbackGuard guard;
 
@@ -265,7 +274,7 @@ TEST_F(RebootTrackerTest, one_server_call_interleaved) {
   auto callback = [&numCalled]() { ++numCalled; };
 
   {
-    RebootTracker rebootTracker{&scheduler};
+    RebootTracker rebootTracker{scheduler.get()};
     std::vector<CallbackGuard> guards{};
     CallbackGuard guard;
 
@@ -328,7 +337,7 @@ TEST_F(RebootTrackerTest, one_server_call_sequential) {
   auto callback = [&numCalled]() { ++numCalled; };
 
   {
-    RebootTracker rebootTracker{&scheduler};
+    RebootTracker rebootTracker{scheduler.get()};
     std::vector<CallbackGuard> guards{};
     CallbackGuard guard;
 
@@ -379,7 +388,7 @@ TEST_F(RebootTrackerTest, one_server_guard_removes_callback) {
   auto callback = [&numCalled]() { ++numCalled; };
 
   {
-    RebootTracker rebootTracker{&scheduler};
+    RebootTracker rebootTracker{scheduler.get()};
 
     // Set state to { serverA => 1 }
     rebootTracker.updateServerState(state);
@@ -421,7 +430,7 @@ TEST_F(RebootTrackerTest, one_server_guard_doesnt_interfere) {
   auto incrCounterC = [&counterC]() { ++counterC; };
 
   {
-    RebootTracker rebootTracker{&scheduler};
+    RebootTracker rebootTracker{scheduler.get()};
     std::vector<CallbackGuard> guards{};
     CallbackGuard guard;
 
@@ -493,7 +502,7 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_same_id) {
   auto callback = [&numCalled]() { ++numCalled; };
 
   {
-    RebootTracker rebootTracker{&scheduler};
+    RebootTracker rebootTracker{scheduler.get()};
     CallbackGuard guard;
 
     // State is empty { }
@@ -534,7 +543,7 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_older_id) {
   auto callback = [&numCalled]() { ++numCalled; };
 
   {
-    RebootTracker rebootTracker{&scheduler};
+    RebootTracker rebootTracker{scheduler.get()};
     CallbackGuard guard;
 
     // State is empty { }
@@ -581,7 +590,7 @@ TEST_F(RebootTrackerTest, two_servers_call_interleaved) {
   auto callback = [&numCalled]() { ++numCalled; };
 
   {
-    RebootTracker rebootTracker{&scheduler};
+    RebootTracker rebootTracker{scheduler.get()};
     std::vector<CallbackGuard> guards{};
     CallbackGuard guard;
 
