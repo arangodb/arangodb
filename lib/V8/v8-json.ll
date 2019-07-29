@@ -29,9 +29,15 @@
 #include <cmath>
 
 #include "Basics/Common.h"
+#include "Basics/win-utils.h"
 #include "Basics/tri-strings.h"
 #include "V8/v8-json.h"
 #include "V8/v8-globals.h"
+
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#endif
+
 
 #define YY_NO_INPUT
 }

@@ -31,6 +31,10 @@
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 /// @brief basic memory management for allocate
 void* TRI_Allocate(size_t n) {
   void* m = ::malloc(n);
