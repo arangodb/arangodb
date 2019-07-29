@@ -26,10 +26,13 @@
 
 #include "Basics/Common.h"
 
+#include <stack>
+
 namespace arangodb {
 class ClusterComm;
 
 namespace aql {
+class QuerySnippet;
 
 class EngineInfoContainerDBServerServerBased {
  public:
@@ -81,7 +84,27 @@ class EngineInfoContainerDBServerServerBased {
   // the DBServers. The GraphNode itself will retain on the coordinator.
   void addGraphNode(GraphNode* node);
 
-  void addSubquery(ExecutionNode const* super, ExecutionNode const* sub);
+ private:
+  // Adjust locking level if a node uses a collections
+  void handleCollectionLocking(ExecutionNode* node);
+
+  // Insert the Locking information into the message to be send to DBServers
+  void addLockingPart(arangodb::velocypack::Builder& builder);
+
+  // Insert the Options information into the message to be send to DBServers
+  void addOptionsPart(arangodb::velocypack::Builder& builder);
+
+  // Insert the Variables information into the message to be send to DBServers
+  void addVariablesPart(arangodb::velocypack::Builder& builder);
+
+  // Insert the Snippets information into the message to be send to DBServers
+  void addSnippetPart(arangodb::velocypack::Builder& builder);
+
+  // Insert the TraversalEngine information into the message to be send to DBServers
+  void addTraversalEnginesPart(arangodb::velocypack::Builder& builder);
+
+ private:
+  std::stack<std::shared_ptr<QuerySnippet>, std::vector<std::shared_ptr<QuerySnippet>>> _snippetStack;
 };
 
 }  // namespace aql
