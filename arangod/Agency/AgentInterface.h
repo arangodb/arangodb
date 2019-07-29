@@ -37,7 +37,7 @@ class AgentInterface {
     bool _discardStartup;
     bool _privileged;
     WriteMode(bool d = false, bool p = false)
-        : _discardStartup(d), _privileged(p){};
+        : _discardStartup(d), _privileged(p) {}
     bool privileged() const { return _privileged; }
     bool discardStartup() const { return _discardStartup; }
   };

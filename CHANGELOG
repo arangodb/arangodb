@@ -14,6 +14,8 @@ devel
 * Add new server option `--cluster.default-replication-factor` that allows to set the
   default replication factor for non-system collections (default: 1).
 
+* add gzip and encryption options to arangoimport and arangoexport
+
 * removed content from Documentation/Books, but keeping the subfolders.
   The documentation is in a separate repository (except DocuBlocks and Scripts):
   https://github.com/arangodb/docs.git
