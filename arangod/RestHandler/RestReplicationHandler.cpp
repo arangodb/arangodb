@@ -211,7 +211,7 @@ std::string const RestReplicationHandler::LoggerTickRanges =
 std::string const RestReplicationHandler::LoggerFirstTick = "logger-first-tick";
 std::string const RestReplicationHandler::LoggerFollow = "logger-follow";
 std::string const RestReplicationHandler::OpenTransactions =
-    "determiconst ne-open-transactions";
+    "determine-open-transactions";
 std::string const RestReplicationHandler::Batch = "batch";
 std::string const RestReplicationHandler::Barrier = "barrier";
 std::string const RestReplicationHandler::Inventory = "inventory";
