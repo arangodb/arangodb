@@ -3837,7 +3837,8 @@ std::vector<std::string> idPath {"result","id"};
 
 arangodb::Result hotBackupDBServers(
   std::string const& backupId, std::string const& timeStamp,
-  std::vector<ServerID> dbServers, VPackSlice agencyDump) {
+  std::vector<ServerID> dbServers, VPackSlice agencyDump,
+  bool force) {
 
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
@@ -3851,6 +3852,7 @@ arangodb::Result hotBackupDBServers(
     builder.add("label", VPackValue(backupId));
     builder.add("agency-dump", agencyDump);
     builder.add("timestamp", VPackValue(timeStamp));
+    builder.add("force", VPackValue(force))
   }
   auto body = std::make_shared<std::string>(builder.toJson());
 
@@ -4020,9 +4022,12 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     if (!payload.isNone() &&
         (!payload.isObject() ||
          (payload.hasKey("label") && !payload.get("label").isString()) ||
-         (payload.hasKey("timeout") && !payload.get("timeout").isNumber()))) {
+         (payload.hasKey("timeout") && !payload.get("timeout").isNumber())) ||
+         (payload.hasKey("force") && !payload.get("force").isBoolean())) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, BAD_PARAMS_CREATE);
     }
+
+    bool force = payload.get("force").isTrue();
 
     std::string const backupId =
       (payload.isObject() && payload.hasKey("label")) ?
@@ -4102,7 +4107,9 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       }
     }
 
-    if (!result.ok()) {
+    // In the case we left the above loop with a negative result,
+    // and we are in the case of a force backup we want to continue here
+    if (!result.ok() && !force) {
       unlockDBServerTransactions(backupId, dbServers);
       ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       result.reset(
@@ -4112,7 +4119,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       return result;
     }
 
-    result = hotBackupDBServers(backupId, timeStamp, dbServers, agency->slice());
+    result = hotBackupDBServers(backupId, timeStamp, dbServers, agency->slice(), force);
     if (!result.ok()) {
       unlockDBServerTransactions(backupId, dbServers);
       ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
