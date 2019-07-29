@@ -935,6 +935,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.add("dirty", VPackValue(v8Counters.dirty));
   builder.add("free", VPackValue(v8Counters.free));
   builder.add("max", VPackValue(v8Counters.max));
+  /* at the time being we don't want to write this into the database so the data volume doesn't increase.
   {
     builder.add("memory", VPackValue(VPackValueType::Array));
     for (auto memStatistic : memoryStatistics) {
@@ -948,6 +949,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
     }
     builder.close();
   }
+  */
   builder.close();
 
   builder.add("threads", VPackValue(VPackValueType::Object));
