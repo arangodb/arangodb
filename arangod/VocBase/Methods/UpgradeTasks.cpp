@@ -164,18 +164,6 @@ bool UpgradeTasks::upgradeGeoIndexes(TRI_vocbase_t& vocbase,
   return true;
 }
 
-bool UpgradeTasks::setupGraphs(TRI_vocbase_t& vocbase,
-                               arangodb::velocypack::Slice const& slice) {
-  ::createSystemCollection(vocbase, "_graphs"); // throws on error
-  return true;
-}
-
-bool UpgradeTasks::setupUsers(TRI_vocbase_t& vocbase,
-                              arangodb::velocypack::Slice const& slice) {
-  ::createSystemCollection(vocbase, "_users"); // throws on error
-  return true;
-}
-
 bool UpgradeTasks::createUsersIndex(TRI_vocbase_t& vocbase,
                                     arangodb::velocypack::Slice const& slice) {
   TRI_ASSERT(vocbase.isSystem());
@@ -241,23 +229,6 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
   return true;
 }
 
-bool UpgradeTasks::setupAqlFunctions(TRI_vocbase_t& vocbase,
-                                     arangodb::velocypack::Slice const& slice) {
-  ::createSystemCollection(vocbase, "_aqlfunctions"); // throws on error
-  return true;
-}
-
-bool UpgradeTasks::setupQueues(TRI_vocbase_t& vocbase,
-                               arangodb::velocypack::Slice const& slice) {
-  ::createSystemCollection(vocbase, "_queues"); // throws on error
-  return true;
-}
-
-bool UpgradeTasks::setupJobs(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
-  ::createSystemCollection(vocbase, "_jobs"); // throws on error
-  return true;
-}
-
 bool UpgradeTasks::createJobsIndex(TRI_vocbase_t& vocbase,
                                    arangodb::velocypack::Slice const& slice) {
   ::createSystemCollection(vocbase, "_jobs");
@@ -279,11 +250,6 @@ bool UpgradeTasks::createJobsIndex(TRI_vocbase_t& vocbase,
   return true;
 }
 
-bool UpgradeTasks::setupApps(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
-  ::createSystemCollection(vocbase, "_apps"); // throws on error
-  return true;
-}
-
 bool UpgradeTasks::createAppsIndex(TRI_vocbase_t& vocbase,
                                    arangodb::velocypack::Slice const& slice) {
   return ::createIndex(
@@ -293,12 +259,6 @@ bool UpgradeTasks::createAppsIndex(TRI_vocbase_t& vocbase,
     {"mount"}, // index fields
                        /*unique*/ true,
                        /*sparse*/ true);
-}
-
-bool UpgradeTasks::setupAppBundles(TRI_vocbase_t& vocbase,
-                                   arangodb::velocypack::Slice const& slice) {
-  ::createSystemCollection(vocbase, "_appbundles"); // throws on error
-  return true;
 }
 
 bool UpgradeTasks::persistLocalDocumentIds(TRI_vocbase_t& vocbase,
