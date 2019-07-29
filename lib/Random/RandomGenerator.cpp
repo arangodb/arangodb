@@ -32,9 +32,9 @@
 #include <thread>
 
 #ifdef _WIN32
-#include <windows.h>
 #include <Wincrypt.h>
 #include <window.h>
+#include <windows.h>
 #endif
 
 #include "Basics/operating-system.h"
