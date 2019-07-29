@@ -32,6 +32,7 @@
 #include <thread>
 
 #ifdef _WIN32
+#include <windows.h>
 #include <Wincrypt.h>
 #include <window.h>
 #endif
