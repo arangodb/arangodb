@@ -129,6 +129,8 @@ function TransactionsSuite () {
       userModule.grantDatabase(users[1].username, '_system', 'rw');
       userModule.grantCollection(users[0].username, '_system', cn, 'rw');
       userModule.grantCollection(users[1].username, '_system', cn, 'rw');
+      
+      require("internal").wait(2);
     },
 
     tearDown: function() {
