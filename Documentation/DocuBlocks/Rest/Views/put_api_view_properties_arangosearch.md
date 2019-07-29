@@ -1,15 +1,15 @@
-@startDocuBlock put_api_view_properties_iresearch
-@brief changes properties of an ArangoSearch view
+@startDocuBlock put_api_view_properties_arangosearch
+@brief changes all properties of an ArangoSearch View
 
-@RESTHEADER{PUT /_api/view/{view-name}/properties#ArangoSearch, Change properties of an ArangoSearch view, modifyView}
+@RESTHEADER{PUT /_api/view/{view-name}/properties#ArangoSearch, Change properties of an ArangoSearch View, modifyView}
 
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{view-name,string,required}
-The name of the view.
+The name of the View.
 
 @RESTBODYPARAM{properties,object,optional,post_api_view_props}
-The view properties. If specified, then *properties* should be a JSON object
+The View properties. If specified, then *properties* should be a JSON object
 containing the following attributes:
 
 @RESTSTRUCT{cleanupIntervalStep,post_api_view_props,integer,optional,uint64}
@@ -22,7 +22,7 @@ For the case where the consolidation policies rarely merge segments (i.e. few
 inserts/deletes), a higher value will impact performance without any added
 benefits.<br/>
 _Background:_
-  With every "commit" or "consolidate" operation a new state of the view
+  With every "commit" or "consolidate" operation a new state of the View
   internal data-structures is created on disk.
   Old states/snapshots are released once there are no longer any users
   remaining.
@@ -30,7 +30,7 @@ _Background:_
   only removed by "cleanup" operation.
 
 @RESTSTRUCT{commitIntervalMsec,post_api_view_props,integer,optional,uint64}
-Wait at least this many milliseconds between committing view data store
+Wait at least this many milliseconds between committing View data store
 changes and making documents visible to queries (default: 1000, to disable
 use: 0).
 For the case where there are a lot of inserts/updates, a lower value, until
@@ -40,10 +40,10 @@ For the case where there are a few inserts/updates, a higher value will impact
 performance and waste disk space for each commit call without any added
 benefits.<br/>
 _Background:_
-  For data retrieval ArangoSearch views follow the concept of
+  For data retrieval ArangoSearch Views follow the concept of
   "eventually-consistent", i.e. eventually all the data in ArangoDB will be
   matched by corresponding query expressions.
-  The concept of ArangoSearch view "commit" operation is introduced to
+  The concept of ArangoSearch View "commit" operation is introduced to
   control the upper-bound on the time until document addition/removals are
   actually reflected by corresponding query expressions.
   Once a "commit" operation is complete all documents added/removed prior to
@@ -54,7 +54,7 @@ _Background:_
 
 @RESTSTRUCT{consolidationIntervalMsec,post_api_view_props,integer,optional,uint64}
 Wait at least this many milliseconds between applying 'consolidationPolicy' to
-consolidate view data store and possibly release space on the filesystem
+consolidate View data store and possibly release space on the filesystem
 (default: 60000, to disable use: 0).
 For the case where there are a lot of data modification operations, a higher
 value could potentially have the data store consume more space and file handles.
@@ -62,7 +62,7 @@ For the case where there are a few data modification operations, a lower value
 will impact performance due to no segment candidates available for
 consolidation.<br/>
 _Background:_
-  For data modification ArangoSearch views follow the concept of a
+  For data modification ArangoSearch Views follow the concept of a
   "versioned data store". Thus old versions of data may be removed once there
   are no longer any users of the old data. The frequency of the cleanup and
   compaction operations are governed by 'consolidationIntervalMsec' and the
@@ -130,21 +130,21 @@ The flag determines whether or not values in a lists should be treated separate
 (default: false).
 
 @RESTSTRUCT{storeValues,post_api_view_link_props,string,optional,string}
-How should the view track the attribute values, this setting allows for
+How should the View track the attribute values, this setting allows for
 additional value retrieval optimizations, one of:
-- *none*: Do not store values by the view
+- *none*: Do not store values by the View
 - *id*: Store only information about value presence, to allow use of the EXISTS() function
 (default "none").
 
 
 @RESTDESCRIPTION
-Changes the properties of a view.
+Changes the properties of a View by replacing them.
 
 On success an object with the following attributes is returned:
-- *id*: The identifier of the view
-- *name*: The name of the view
-- *type*: The view type
-- all additional arangosearch view implementation specific properties
+- *id*: The identifier of the View
+- *name*: The name of the View
+- *type*: The View type
+- all additional ArangoSearch View implementation specific properties
 
 @RESTRETURNCODES
 
@@ -156,7 +156,7 @@ If the *view-name* is unknown, then a *HTTP 404* is returned.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestIResearchViewPutProperties}
+@EXAMPLE_ARANGOSH_RUN{RestViewPutPropertiesArangoSearch}
     var viewName = "products";
     var viewType = "arangosearch";
 
