@@ -28,6 +28,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/velocypack-aliases.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <functional>
@@ -96,6 +97,8 @@ struct Collections {
                        bool createWaitsForSyncReplication,
                        bool enforceReplicationFactor, MultiFuncCallback const&);
   static Result createSystem(TRI_vocbase_t& vocbase, std::string const& name);
+  static void createSystemCollectionProperties(std::string collectionName,
+                                               VPackBuilder& builder);
 
   static Result load(TRI_vocbase_t& vocbase, LogicalCollection* coll);
   static Result unload(TRI_vocbase_t* vocbase, LogicalCollection* coll);

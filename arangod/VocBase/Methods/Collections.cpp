@@ -388,36 +388,40 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
+void Collections::createSystemCollectionProperties(std::string collectionName,
+                                                   VPackBuilder& bb) {
+  uint32_t defaultReplFactor = 1;
+  uint32_t defaultMinReplFactor = 1;
+
+  auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>(
+      "Cluster");
+
+  if (cl != nullptr) {
+    defaultReplFactor = cl->systemReplicationFactor();
+  }
+
+  {
+    VPackObjectBuilder scope(&bb);
+    bb.add("isSystem", VPackSlice::trueSlice());
+    bb.add("waitForSync", VPackSlice::falseSlice());
+    bb.add("journalSize", VPackValue(1024 * 1024));
+    bb.add("replicationFactor", VPackValue(defaultReplFactor));
+    bb.add("minReplicationFactor", VPackValue(defaultMinReplFactor));
+    if (collectionName != "_users") {
+      // that forces all collections to be on the same physical DBserver
+      bb.add("distributeShardsLike", VPackValue("_users"));
+    }
+  }
+}
+
 /*static*/ Result Collections::createSystem(TRI_vocbase_t& vocbase, std::string const& name) {
   FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
 
   auto res = methods::Collections::lookup(vocbase, name, noop);
 
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-    uint32_t defaultReplFactor = 1;
-    uint32_t defaultMinReplFactor = 1;
-
-    auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>(
-        "Cluster");
-
-    if (cl != nullptr) {
-      defaultReplFactor = cl->systemReplicationFactor();
-    }
-
     VPackBuilder bb;
-
-    {
-      VPackObjectBuilder scope(&bb);
-      bb.add("isSystem", VPackSlice::trueSlice());
-      bb.add("waitForSync", VPackSlice::falseSlice());
-      bb.add("journalSize", VPackValue(1024 * 1024));
-      bb.add("replicationFactor", VPackValue(defaultReplFactor));
-      bb.add("minReplicationFactor", VPackValue(defaultMinReplFactor));
-      if (name != "_graphs") {
-        // that forces all collections to be on the same physical DBserver
-        bb.add("distributeShardsLike", VPackValue("_graphs"));
-      }
-    }
+    createSystemCollectionProperties(name, bb);
 
     res = Collections::create(vocbase,  // vocbase to create in
                               name,     // collection name top create
