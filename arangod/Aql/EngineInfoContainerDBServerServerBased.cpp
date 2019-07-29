@@ -23,18 +23,29 @@
 
 #include "EngineInfoContainerDBServerServerBased.h"
 
+#include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/GraphNode.h"
+#include "Aql/IResearchViewNode.h"
+#include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
 #include "Aql/QuerySnippet.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/BaseOptions.h"
+#include "Utils/CollectionNameResolver.h"
 
 #include <set>
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+void EngineInfoContainerDBServerServerBased::CollectionLockingInformation::mergeShards(
+    std::shared_ptr<std::vector<ShardID>> const& shards) {
+  for (auto const& s : *shards) {
+    usedShards.emplace(s);
+  }
+}
 
 EngineInfoContainerDBServerServerBased::EngineInfoContainerDBServerServerBased(Query* query) noexcept
     : _query(query) {}
@@ -161,14 +172,122 @@ void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node) {
   _graphNodes.emplace_back(node);
 }
 
-void EngineInfoContainerDBServerServerBased::handleCollectionLocking(ExecutionNode* node) {
-  TRI_ASSERT(node != nullptr);
-  switch (node->getType()) {
-      // TODO handle all nodes which directly access collections
+void EngineInfoContainerDBServerServerBased::handleCollectionLocking(ExecutionNode const* baseNode) {
+  TRI_ASSERT(baseNode != nullptr);
+  switch (baseNode->getType()) {
+    case ExecutionNode::SHORTEST_PATH:
+    case ExecutionNode::TRAVERSAL: {
+      // Add GraphNode
+      auto node = ExecutionNode::castTo<GraphNode const*>(baseNode);
+      if (node == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "unable to cast node to GraphNode");
+      }
+      // Add all Edge Collections to the Transactions, Traversals do never write
+      for (auto const& col : node->edgeColls()) {
+        updateLocking(col.get(), AccessMode::Type::READ, {});
+      }
+
+      // Add all Vertex Collections to the Transactions, Traversals do never write
+      auto& vCols = node->vertexColls();
+      if (vCols.empty()) {
+        TRI_ASSERT(_query);
+        auto& resolver = _query->resolver();
+
+        // This case indicates we do not have a named graph. We simply use
+        // ALL collections known to this query.
+        std::map<std::string, Collection*> const* cs =
+            _query->collections()->collections();
+        for (auto const& col : *cs) {
+          if (!resolver.getCollection(col.first)) {
+            // not a collection, filter out
+            continue;
+          }
+          updateLocking(col.second, AccessMode::Type::READ, {});
+        }
+      } else {
+        for (auto const& col : node->vertexColls()) {
+          updateLocking(col.get(), AccessMode::Type::READ, {});
+        }
+      }
+      break;
+    }
+    case ExecutionNode::ENUMERATE_COLLECTION:
+    case ExecutionNode::INDEX: {
+      auto const* colNode = ExecutionNode::castTo<CollectionAccessingNode const*>(baseNode);
+      if (colNode == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            "unable to cast node to CollectionAccessingNode");
+      }
+      std::unordered_set<std::string> restrictedShard;
+      if (colNode->isRestricted()) {
+        restrictedShard.emplace(colNode->restrictedShard());
+      }
+
+      auto const* col = colNode->collection();
+      updateLocking(col, AccessMode::Type::READ, restrictedShard);
+      break;
+    }
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
+      auto viewNode = ExecutionNode::castTo<iresearch::IResearchViewNode const*>(baseNode);
+      if (viewNode == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "unable to cast node to ViewNode");
+      }
+      for (aql::Collection const& col : viewNode->collections()) {
+        updateLocking(&col, AccessMode::Type::READ, {});
+      }
+
+      break;
+    }
+    case ExecutionNode::INSERT:
+    case ExecutionNode::UPDATE:
+    case ExecutionNode::REMOVE:
+    case ExecutionNode::REPLACE:
+    case ExecutionNode::UPSERT: {
+      auto const* modNode = ExecutionNode::castTo<ModificationNode const*>(baseNode);
+      if (modNode == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL, "unable to cast node to ModificationNode");
+      }
+      auto const* col = modNode->collection();
+
+      std::unordered_set<std::string> restrictedShard;
+      if (modNode->isRestricted()) {
+        restrictedShard.emplace(modNode->restrictedShard());
+      }
+
+      updateLocking(col,
+                    modNode->getOptions().exclusive ? AccessMode::Type::EXCLUSIVE
+                                                    : AccessMode::Type::WRITE,
+                    restrictedShard);
+      break;
+    }
     default:
       // Nothing todo
       break;
   }
+}
+
+void EngineInfoContainerDBServerServerBased::updateLocking(
+    Collection const* col, AccessMode::Type const& accessType,
+    std::unordered_set<std::string> const& restrictedShards) {
+  auto const shards = col->shardIds(
+      restrictedShards.empty() ? _query->queryOptions().shardIds : restrictedShards);
+
+  // What if we have an empty shard list here?
+  if (shards->empty()) {
+    // TODO FIXME
+    LOG_TOPIC("0997e", WARN, arangodb::Logger::AQL)
+        << "TEMPORARY: A collection access of a query has no result in any "
+           "shard";
+  }
+
+  auto& info = _collectionLocking[col];
+  // We need to upgrade the lock
+  info.lockType = std::max(info.lockType, accessType);
+  info.mergeShards(shards);
 }
 
 // Insert the Locking information into the message to be send to DBServers
