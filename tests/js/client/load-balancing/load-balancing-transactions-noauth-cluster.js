@@ -150,13 +150,11 @@ function TransactionsSuite () {
       
       try {
         let result = sendRequest('POST', url + "/begin", obj, true);
-        print(result);
         assertEqual(result.status, 201);
         assertFalse(result.body.result.id === undefined);
         trx1 = result.body.result;
         
         result = sendRequest('POST', url + "/begin", obj, false);
-        print(result);
         assertEqual(result.status, 201);
         assertFalse(result.body.result.id === undefined);
         trx2 = result.body.result;
