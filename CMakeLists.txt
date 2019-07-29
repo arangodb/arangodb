@@ -4,7 +4,7 @@
 # General
 # ------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.9)
 
 if (POLICY CMP0048)
   cmake_policy(SET CMP0048 NEW)
@@ -17,6 +17,13 @@ endif ()
 if (POLICY CMP0017)
   cmake_policy(SET CMP0017 NEW)
 endif ()
+
+# TODO This might be an alternative to increasing the required cmake version.
+# TODO Otherwise, remove it.
+#if (POLICY CMP0069)
+#  # LTO / INTERPROCEDURAL_OPTIMIZATION
+#  cmake_policy(SET CMP0069 NEW)
+#endif ()
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release
@@ -796,6 +803,28 @@ option(USE_FAILURE_TESTS
 if (USE_FAILURE_TESTS)
   add_definitions("-DARANGODB_ENABLE_FAILURE_TESTS=1")
 endif ()
+
+################################################################################
+## INTERPROCEDURAL OPTIMIZATION (LINK TIME OPTIMIZATION)
+################################################################################
+
+
+set(USE_IPO AUTO CACHE STRING "Use interprocedural optimization: ON, OFF or AUTO")
+
+set_property(CACHE USE_IPO PROPERTY STRINGS AUTO ON OFF)
+
+if(USE_IPO STREQUAL "AUTO")
+  # When USE_IPO=AUTO, enable IPO for optimized / release builds
+  if (CMAKE_BUILD_TYPE STREQUAL "Release"
+    OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
+    OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
+    # TODO Maybe set a different variable to use later, rather than overwriting this?
+    set(USE_IPO ON)
+  else()
+    set(USE_IPO OFF)
+  endif ()
+endif()
+# Now USE_IPO is true or false.
 
 ################################################################################
 ## LIBRARY RESOLV
