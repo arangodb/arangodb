@@ -4107,9 +4107,11 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       }
     }
 
+    bool gotLocks = result.ok();
+
     // In the case we left the above loop with a negative result,
     // and we are in the case of a force backup we want to continue here
-    if (!result.ok() && !force) {
+    if (!gotLocks && !force) {
       unlockDBServerTransactions(backupId, dbServers);
       ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       result.reset(
@@ -4119,7 +4121,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       return result;
     }
 
-    result = hotBackupDBServers(backupId, timeStamp, dbServers, agency->slice(), force);
+    result = hotBackupDBServers(backupId, timeStamp, dbServers, agency->slice(), /* force */ !gotLocks);
     if (!result.ok()) {
       unlockDBServerTransactions(backupId, dbServers);
       ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
@@ -4166,6 +4168,9 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     {
       VPackObjectBuilder o(&report);
       report.add("id", VPackValue(timeStamp + "_" + backupId));
+      if (!gotLocks) {
+        report.add("forced", VPackValue(true));
+      }
     }
 
     return arangodb::Result();
