@@ -43,7 +43,7 @@ class GeneralCommTask : public CommTask {
 
   virtual ~GeneralCommTask();
 
-  void start() override final;
+  void start() override;
   void close() override final;
   
  protected:

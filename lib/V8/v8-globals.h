@@ -442,7 +442,7 @@ struct TRI_v8_global_t {
     std::shared_ptr<void> _value;
   };
 
-  explicit TRI_v8_global_t(v8::Isolate*);
+  explicit TRI_v8_global_t(v8::Isolate*, size_t id);
 
   ~TRI_v8_global_t();
 
@@ -745,6 +745,20 @@ struct TRI_v8_global_t {
   /// @brief the current security context
   arangodb::JavaScriptSecurityContext _securityContext;
 
+  /// @brief true if the arango infrastructure is garbage collecting
+  bool _inForcedCollect;
+
+  /// @brief the ID that identifies this v8 context
+  size_t const _id;
+
+  std::atomic<double> _lastMaxTime;
+
+  std::atomic<size_t> _countOfTimes;
+
+  std::atomic<size_t> _heapMax;
+
+  std::atomic<size_t> _heapLow;
+  
  private:
   /// @brief shared pointer mapping for weak pointers, holds shared pointers so
   ///        they don't get deallocated while in use by V8
@@ -753,7 +767,7 @@ struct TRI_v8_global_t {
 };
 
 /// @brief creates a global context
-TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate*);
+TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate*, size_t id);
 
 /// @brief gets the global context
 TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate*);

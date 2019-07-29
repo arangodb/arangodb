@@ -161,7 +161,7 @@ void V8ShellFeature::start() {
 
   auto* isolate = _isolate;
   TRI_GET_GLOBALS();
-  v8g = TRI_CreateV8Globals(isolate);
+  v8g = TRI_CreateV8Globals(isolate, 0);
   v8g->_securityContext = arangodb::JavaScriptSecurityContext::createAdminScriptContext();
 
   // create the global template

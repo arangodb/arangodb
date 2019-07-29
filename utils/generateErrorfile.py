@@ -164,6 +164,6 @@ else:
   sys.exit()
 
 outFile = open(outfile, "wb")
-outFile.write(out);
+outFile.write(out)
 outFile.close()
 

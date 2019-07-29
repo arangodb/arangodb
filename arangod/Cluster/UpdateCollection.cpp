@@ -146,7 +146,7 @@ void handleLeadership(LogicalCollection& collection, std::string const& localLea
   }
 }
 
-UpdateCollection::~UpdateCollection(){};
+UpdateCollection::~UpdateCollection() {}
 
 bool UpdateCollection::first() {
   auto const& database = _description.get(DATABASE);

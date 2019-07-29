@@ -42,6 +42,10 @@
 #endif
 
 namespace arangodb {
+#ifndef USE_ENTERPRISE
+class EncryptionFeature;  // to reduce number of #ifdef
+#endif
+
 /**
  * Manages a single directory in the file system, transparently handling
  * encryption and decryption. Opens/creates and manages file using RAII-style
@@ -70,6 +74,9 @@ class ManagedDirectory {
      * @param isGzip    True if reads/writes should go through gzip functions
      */
     File(ManagedDirectory const& directory, std::string const& filename, int flags, bool isGzip);
+
+    File(ManagedDirectory const& directory, int fd, bool isGzip);
+
     /**
      * @brief Closes the file if it is still open
      */
@@ -126,6 +133,12 @@ class ManagedDirectory {
      * @return Reference to file status
      */
     bool isGzip() const {return -1 != _gzfd;}
+
+    /**
+     * @brief Count of bytes read from regular or gzip file, not amount returned by read
+     */
+
+    ssize_t offset() const;
 
    private:
     ManagedDirectory const& _directory;
@@ -200,13 +213,11 @@ class ManagedDirectory {
    */
   std::string const& encryptionType() const;
 
-#ifdef USE_ENTERPRISE
   /**
    * @brief Returns a pointer to the `EncryptionFeature` instance
    * @return A pointer to the feature
    */
   EncryptionFeature const* encryptionFeature() const;
-#endif
 
   /**
    * @brief Opens a readable file
@@ -215,6 +226,7 @@ class ManagedDirectory {
    * @return          Unique pointer to file, if opened
    */
   std::unique_ptr<File> readableFile(std::string const& filename, int flags = 0);
+  std::unique_ptr<File> readableFile(int fileDescriptor);
 
   /**
    * @brief Opens a writable file
@@ -249,9 +261,7 @@ class ManagedDirectory {
   VPackBuilder vpackFromJsonFile(std::string const& filename);
 
  private:
-#ifdef USE_ENTERPRISE
   EncryptionFeature* const _encryptionFeature;
-#endif
   std::string const _path;
   std::string _encryptionType;
   bool _writeGzip;

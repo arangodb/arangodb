@@ -65,6 +65,8 @@
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/V8Context.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
@@ -157,6 +159,38 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (rv.fail()) {
     THROW_ARANGO_EXCEPTION(rv);
   }
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+/// @brief returns the list of currently running managed transactions
+static void JS_Transactions(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  auto& vocbase = GetContextVocBase(isolate);
+
+  // check if we have some transaction object
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("TRANSACTIONS()");
+  }
+    
+  VPackBuilder builder;
+  builder.openArray();
+    
+  bool const fanout = ServerState::instance()->isCoordinator();
+  transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  auto context = arangodb::ExecContext::CURRENT;
+  std::string user;
+  if (context != nullptr || arangodb::ExecContext::isAuthEnabled()) {
+    user = context->user();
+  }
+  mgr->toVelocyPack(builder, vocbase.name(), user, fanout);
+ 
+  builder.close();
+  
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -1967,6 +2001,9 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "TRANSACTION"),
                                JS_Transaction, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "TRANSACTIONS"),
+                               JS_Transactions, true);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,

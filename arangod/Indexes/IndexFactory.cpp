@@ -23,6 +23,7 @@
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
+#include "Basics/FloatingPoint.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -111,6 +112,17 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
     if (value.isNumber() &&
         !arangodb::basics::VelocyPackHelper::equal(value, rhs.get("minLength"), false)) {
       return false;
+    }
+  } else if (arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX == type) {
+    value = lhs.get(StaticStrings::IndexExpireAfter);
+
+    if (value.isNumber() && rhs.get(StaticStrings::IndexExpireAfter).isNumber()) {
+      double const expireAfter = value.getNumber<double>();
+      value = rhs.get(StaticStrings::IndexExpireAfter);
+
+      if (!FloatingPoint<double>{expireAfter}.AlmostEquals(FloatingPoint<double>{value.getNumber<double>()})) {
+        return false;
+      }
     }
   }
 

@@ -404,7 +404,7 @@ struct AgencyWriteTransaction : public AgencyTransaction {
               std::back_inserter(preconditions));
   }
 
-  AgencyWriteTransaction() : clientId(randomClientId()) {};
+  AgencyWriteTransaction() : clientId(randomClientId()) {}
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
 

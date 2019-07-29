@@ -35,6 +35,9 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
+namespace arangodb {
+namespace rest {
+
 template <SocketType T>
 void AcceptorTcp<T>::open() {
   asio_ns::ip::tcp::resolver resolver(_ctx.io_context);
@@ -157,6 +160,9 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
     std::unique_ptr<AsioSocket<SocketType::Tcp>> as = std::move(_asioSocket);
     info.clientAddress = as->peer.address().to_string();
     info.clientPort = as->peer.port();
+    
+    LOG_TOPIC("853AA", DEBUG, arangodb::Logger::COMMUNICATION)
+    << "accepted connection from " << info.clientAddress << ":" << info.clientPort;
 
     auto commTask =
         std::make_shared<HttpCommTask<SocketType::Tcp>>(_server,
@@ -237,6 +243,9 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
   _acceptor.async_accept(_asioSocket->socket.lowest_layer(), _asioSocket->peer,
                          std::move(handler));
 }
+}  // namespace rest
+}  // namespace arangodb
+
 
 template class arangodb::rest::AcceptorTcp<SocketType::Tcp>;
 template class arangodb::rest::AcceptorTcp<SocketType::Ssl>;

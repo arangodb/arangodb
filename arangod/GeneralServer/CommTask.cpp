@@ -470,38 +470,34 @@ void CommTask::addErrorResponse(rest::ResponseCode code, rest::ContentType respT
 bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   RequestStatistics::SET_QUEUE_START(handler->statistics(), SchedulerFeature::SCHEDULER->queueStatistics()._queued);
+  
+  RequestLane lane = handler->getRequestLane();
+  ContentType respType = handler->request()->contentTypeResponse();
+  uint64_t mid = handler->messageId();
 
   // queue the operation in the scheduler, and make it eligible for direct execution
   // only if the current CommTask type allows it (HttpCommTask: yes, CommTask: no)
   // and there is currently only a single client handled by the IoContext
-  auto cb = [self = shared_from_this(), handler]() {
+  auto cb = [self = shared_from_this(), handler = std::move(handler)]() {
     RequestStatistics::SET_QUEUE_END(handler->statistics());
-    self->handleRequestDirectly(handler);
+    handler->runHandler([self = std::move(self)](rest::RestHandler* handler) {
+      // Pass the response the io context
+      self->sendResponse(handler->stealResponse(), handler->stealStatistics());
+    });
   };
-  bool ok = SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), std::move(cb),
-                                               allowDirectHandling());
+  bool ok = SchedulerFeature::SCHEDULER->queue(lane, std::move(cb), allowDirectHandling());
 
   if (!ok) {
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                     handler->request()->contentTypeResponse(), handler->messageId(),
-                     TRI_ERROR_QUEUE_FULL);
+                     respType, mid, TRI_ERROR_QUEUE_FULL);
   }
 
   return ok;
 }
 
-// Just run the handler, could have been called in a different thread
-void CommTask::handleRequestDirectly(std::shared_ptr<RestHandler> const& handler) {
-  handler->runHandler([this](rest::RestHandler* handler) {
-    RequestStatistics* stat = handler->stealStatistics();
-    // Pass the response the io context
-    sendResponse(handler->stealResponse(), stat);
-  });
-}
-
 // handle a request which came in with the x-arango-async header
 bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
-                                         uint64_t* jobId) {
+                                  uint64_t* jobId) {
   if (application_features::ApplicationServer::isStopping()) {
     return false;
   }

@@ -49,14 +49,13 @@ using namespace arangodb::maintenance;
 const uint32_t MaintenanceFeature::minThreadLimit = 2;
 const uint32_t MaintenanceFeature::maxThreadLimit = 64;
 
-
 namespace {
 
 bool findNotDoneActions(std::shared_ptr<maintenance::Action> const& action) {
   return !action->done();
 }
 
-} // namespace
+}  // namespace
 
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Maintenance"),
@@ -167,6 +166,16 @@ void MaintenanceFeature::beginShutdown() {
 }  // MaintenanceFeature
 
 void MaintenanceFeature::stop() {
+  // There should be no new workers.
+  // Current workers could be stuck on the condition variable.
+  // Let's wake them up now.
+  {
+    // Only if we have flagged shutdown this operation is save, all other threads potentially
+    // trying to get this mutex get into the shutdown case now, instead of getting into wait state.
+    TRI_ASSERT(_isShuttingDown);
+    std::unique_lock<std::mutex> guard(_currentCounterLock);
+    _currentCounterCondition.notify_all();
+  }
   for (auto const& itWorker : _activeWorkers) {
     CONDITION_LOCKER(cLock, _workerCompletion);
 
@@ -214,7 +223,8 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::Action> newAct
     size_t action_hash = newAction->hash();
     WRITE_LOCKER(wLock, _actionRegistryLock);
 
-    std::shared_ptr<Action> curAction = findFirstActionHashNoLock(action_hash, ::findNotDoneActions);
+    std::shared_ptr<Action> curAction =
+        findFirstActionHashNoLock(action_hash, ::findNotDoneActions);
 
     // similar action not in the queue (or at least no longer viable)
     if (!curAction) {
@@ -262,7 +272,8 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescript
     size_t action_hash = description->hash();
     WRITE_LOCKER(wLock, _actionRegistryLock);
 
-    std::shared_ptr<Action> curAction = findFirstActionHashNoLock(action_hash, ::findNotDoneActions);
+    std::shared_ptr<Action> curAction =
+        findFirstActionHashNoLock(action_hash, ::findNotDoneActions);
 
     // similar action not in the queue (or at least no longer viable)
     if (!curAction) {
@@ -370,19 +381,20 @@ std::shared_ptr<Action> MaintenanceFeature::createAndRegisterAction(
   return newAction;
 }
 
-std::shared_ptr<Action> MaintenanceFeature::findFirstNotDoneAction(std::shared_ptr<ActionDescription> const& description) {
+std::shared_ptr<Action> MaintenanceFeature::findFirstNotDoneAction(
+    std::shared_ptr<ActionDescription> const& description) {
   return findFirstActionHash(description->hash(), ::findNotDoneActions);
 }
 
-std::shared_ptr<Action> MaintenanceFeature::findFirstActionHash(size_t hash,
-    std::function<bool(std::shared_ptr<maintenance::Action> const&)> const& predicate) {
+std::shared_ptr<Action> MaintenanceFeature::findFirstActionHash(
+    size_t hash, std::function<bool(std::shared_ptr<maintenance::Action> const&)> const& predicate) {
   READ_LOCKER(rLock, _actionRegistryLock);
 
   return findFirstActionHashNoLock(hash, predicate);
-}  
+}
 
-std::shared_ptr<Action> MaintenanceFeature::findFirstActionHashNoLock(size_t hash,
-    std::function<bool(std::shared_ptr<maintenance::Action> const&)> const& predicate) {
+std::shared_ptr<Action> MaintenanceFeature::findFirstActionHashNoLock(
+    size_t hash, std::function<bool(std::shared_ptr<maintenance::Action> const&)> const& predicate) {
   // assert to test lock held?
 
   for (auto const& action : _actionRegistry) {
@@ -397,7 +409,7 @@ std::shared_ptr<Action> MaintenanceFeature::findActionId(uint64_t id) {
   READ_LOCKER(rLock, _actionRegistryLock);
 
   return findActionIdNoLock(id);
-} 
+}
 
 std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
   // assert to test lock held?
@@ -460,8 +472,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
   }  // while
 
   return ret_ptr;
-
-} 
+}
 
 VPackBuilder MaintenanceFeature::toVelocyPack() const {
   VPackBuilder vb;
@@ -771,10 +782,14 @@ void MaintenanceFeature::increaseCurrentCounter() {
 
 void MaintenanceFeature::waitForLargerCurrentCounter(uint64_t old) {
   std::unique_lock<std::mutex> guard(_currentCounterLock);
-  if (_currentCounter > old) {
-    return;
+  // Just to be sure we get not woken up for other reasons.
+  while (_currentCounter <= old) {
+    // We might miss a shutdown check here.
+    // This is ok, as we will not be able to do much anyways.
+    if (_isShuttingDown) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+    _currentCounterCondition.wait(guard);
   }
-  _currentCounterCondition.wait(guard);
   TRI_ASSERT(_currentCounter > old);
-  return;
 }
