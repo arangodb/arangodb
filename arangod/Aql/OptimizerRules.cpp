@@ -838,6 +838,12 @@ Collection* addCollectionToQuery(Query* query, std::string const& cname, bool as
 }  // namespace aql
 }  // namespace arangodb
 
+/// @brief an optimizer rule that does nothing - use for testing/debugging/development!
+void arangodb::aql::doNothingRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, 
+                                  OptimizerRule const& rule) {
+  opt->addPlan(std::move(plan), rule, true);
+}
+
 /// @brief adds a SORT operation for IN right-hand side operands
 void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                      OptimizerRule const& rule) {

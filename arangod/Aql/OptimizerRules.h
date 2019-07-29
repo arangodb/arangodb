@@ -39,6 +39,9 @@ struct Collection;
 /// Helper
 Collection* addCollectionToQuery(Query* query, std::string const& cname, bool assert = true);
 
+/// @brief an optimizer rule that does nothing - use for testing/debugging/development!
+void doNothingRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+
 /// @brief adds a SORT operation for IN right-hand side operands
 void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 

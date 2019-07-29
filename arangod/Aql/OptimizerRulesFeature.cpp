@@ -338,6 +338,10 @@ void OptimizerRulesFeature::addRules() {
   registerRule("restrict-to-single-shard", restrictToSingleShardRule,
                OptimizerRule::restrictToSingleShardRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled, OptimizerRule::Flags::ClusterOnly));
+  
+  registerRule("refactor-distribution", doNothingRule,
+               OptimizerRule::refactorDistributionRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled, OptimizerRule::Flags::DisabledByDefault, OptimizerRule::Flags::ClusterOnly));
 
   // finally add the storage-engine specific rules
   addStorageEngineRules();

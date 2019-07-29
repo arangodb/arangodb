@@ -292,6 +292,10 @@ struct OptimizerRule {
     // simplify an EnumerationCollectionNode that fetches an
     // entire document to a projection of this document
     reduceExtractionToProjectionRule,
+
+    // this is a temporary rule, and we need to remove it
+#warning REMOVE ME
+    refactorDistributeRule,
   };
 
   std::string name;
