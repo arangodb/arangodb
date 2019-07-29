@@ -140,7 +140,6 @@ protected:
   
  private:
   bool handleRequestSync(std::shared_ptr<RestHandler>);
-  void handleRequestDirectly(std::shared_ptr<RestHandler> const&);
   bool handleRequestAsync(std::shared_ptr<RestHandler>, uint64_t* jobId = nullptr);
   
  protected:
