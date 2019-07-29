@@ -23,9 +23,9 @@
 
 #include "vocbase.h"
 
-#include <bits/exception.h>
 #include <algorithm>
 #include <chrono>
+#include <exception>
 #include <type_traits>
 #include <utility>
 
