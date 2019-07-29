@@ -350,8 +350,8 @@
         } else {
           var collName = $('#new-collection-name').val();
           var collSize = $('#new-collection-size').val();
-          var replicationFactor = $('#new-replication-factor').val();
-          var minReplicationFactor = $('#new-min-replication-factor').val();
+          var replicationFactor = Number($('#new-replication-factor').val());
+          var minReplicationFactor = Number($('#new-min-replication-factor').val());
           var collType = $('#new-collection-type').val();
           var collSync = $('#new-collection-sync').val();
           var shards = 1;
@@ -471,6 +471,25 @@
     },
 
     createNewCollectionModal: function () {
+        var self = this;
+        $.ajax({
+          type: 'GET',
+          cache: false,
+          url: arangoHelper.databaseUrl('/_api/database/properties'), //get default properties of current db
+          contentType: 'application/json',
+          processData: false,
+          success: function (data) {
+            console.log("options when creating collection: " + JSON.stringify(data));
+            self.createNewCollectionModalReal(data.result);
+          },
+          error: function () {
+            arangoHelper.arangoError('Engine', 'Could not fetch default collection properties.');
+          }
+        });
+
+    },
+
+    createNewCollectionModalReal: function (properties) {
       var self = this;
       var callbackCoord2 = function (error, isCoordinator) {
         if (error) {
@@ -505,6 +524,7 @@
               ]
             )
           );
+
           tableContent.push(
             window.modalView.createSelectEntry(
               'new-collection-type',
@@ -551,7 +571,7 @@
                 window.modalView.createTextEntry(
                   'distribute-shards-like',
                   'Distribute shards like',
-                  '',
+                  properties.sharding === "single" ? "_graphs" : "",
                   'Name of another collection that should be used as a prototype for sharding this collection.',
                   '',
                   false,
@@ -581,11 +601,12 @@
                 )
               );
             }
+
             advancedTableContent.push(
               window.modalView.createTextEntry(
                 'new-replication-factor',
                 'Replication factor',
-                '',
+                properties.replicationFactor,
                 'Numeric value. Must be at least 1. Total number of copies of the data in the cluster',
                 '',
                 false,
@@ -597,11 +618,12 @@
                 ]
               )
             );
+
             advancedTableContent.push(
               window.modalView.createTextEntry(
                 'new-min-replication-factor',
                 'Mininum replication factor',
-                '',
+                properties.minReplicationFactor,
                 'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
                 '',
                 false,

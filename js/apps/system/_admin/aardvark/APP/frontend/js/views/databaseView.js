@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global window, Backbone, $, arangoHelper, templateEngine, Joi */
+/* global window, Backbone, $, arangoHelper, templateEngine, Joi, frontendConfig */
 (function () {
   'use strict';
 
@@ -182,16 +182,28 @@
     },
 
     submitCreateDatabase: function () {
+      console.log("submit create database");
       var self = this; // userPassword,
       var dbname = $('#newDatabaseName').val();
       var userName = $('#newUser').val();
 
+      var sharding = $('#newSharding').val();
+      var replicationFactor = $('#new-replication-factor').val();
+      var minReplicationFactor = $('#new-min-replication-factor').val();
+
       var options = {
         name: dbname,
+        "options" : {
+          "sharding" : sharding,
+          "replicationFactor" : Number(replicationFactor),
+          "minReplicationFactor" : Number(minReplicationFactor),
+        },
         users: [{
           username: userName
         }]
       };
+
+      console.log("options when creating " + dbname + " "  + JSON.stringify(options));
 
       this.collection.create(options, {
         error: function (data, err) {
@@ -326,6 +338,24 @@
     },
 
     createAddDatabaseModal: function () {
+      var self = this;
+      $.ajax({
+        type: 'GET',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_admin/server/databaseDefaults'), //get default properties
+        contentType: 'application/json',
+        processData: false,
+        success: function (data) {
+          self.createAddDatabaseModalReal(data);
+        },
+        error: function () {
+          arangoHelper.arangoError('Engine', 'Could not fetch ArangoDB Database defaults.');
+        }
+      });
+    },
+
+    createAddDatabaseModalReal: function (data) {
+      var dbDefaultProperties = data;
       var buttons = [];
       var tableContent = [];
 
@@ -356,14 +386,15 @@
       );
 
       if (window.App.isCluster) {
-        // MinReplicationFactor
+        // (id, label, value, info, placeholder, mandatory, regexp) 
+        // ReplicationFactor
         tableContent.push(
           window.modalView.createTextEntry(
             'new-replication-factor',
             'Replication factor',
-            '',
+            dbDefaultProperties.replicationFactor,
             'Numeric value. Must be at least 1. Total number of copies of the data in the cluster',
-            '',
+            'Default replication factor',
             false,
             [
               {
@@ -378,9 +409,9 @@
           window.modalView.createTextEntry(
             'new-min-replication-factor',
             'Mininum replication factor',
-            '',
+            dbDefaultProperties.minReplicationFactor,
             'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
-            '',
+            'Default minimum replication factor',
             false,
             [
               {
