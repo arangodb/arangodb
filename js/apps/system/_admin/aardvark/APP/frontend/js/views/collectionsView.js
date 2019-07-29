@@ -444,21 +444,27 @@
             collName: collName,
             wfs: wfs,
             isSystem: isSystem,
-            replicationFactor: replicationFactor,
-            minReplicationFactor: minReplicationFactor,
             collType: collType,
             shards: shards,
             shardKeys: shardKeys
           };
+
           if (self.engine.name !== 'rocksdb') {
             tmpObj.journalSize = collSize;
           }
           if (smartJoinAttribute !== '') {
             tmpObj.smartJoinAttribute = smartJoinAttribute;
           }
+
           if (distributeShardsLike !== '') {
             tmpObj.distributeShardsLike = distributeShardsLike;
+          } else if (window.App.isCluster) {
+            // if we are in the cluster and are not using distribute shards like
+            // then we want to make use of the replication factor
+            tmpObj.replicationFactor = replicationFactor === "satellite" ? replicationFactor : Number(replicationFactor);
+            tmpObj.minReplicationFactor = Number(minReplicationFactor);
           }
+
           if (!abort) {
             this.collection.newCollection(tmpObj, callback);
             window.modalView.hide();
@@ -606,7 +612,7 @@
               window.modalView.createTextEntry(
                 'new-replication-factor',
                 'Replication factor',
-                properties.replicationFactor,
+                properties.sharding === '' ? properties.replicationFactor : '',
                 'Numeric value. Must be at least 1. Total number of copies of the data in the cluster',
                 '',
                 false,
@@ -623,7 +629,7 @@
               window.modalView.createTextEntry(
                 'new-min-replication-factor',
                 'Mininum replication factor',
-                properties.minReplicationFactor,
+                properties.sharding === '' ? properties.minReplicationFactor : '',
                 'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
                 '',
                 false,
