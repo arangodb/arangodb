@@ -34,6 +34,9 @@ using namespace arangodb::basics;
 std::string const GlobalContextMethods::CodeReloadRouting =
     "require(\"@arangodb/actions\").reloadRouting();";
 
+std::string const GlobalContextMethods::initializeServiceMap =
+    "require(\"@arangodb/foxx/manager\").initLocalServiceMap();";
+
 std::string const GlobalContextMethods::CodeReloadAql =
     "try { require(\"@arangodb/aql\").reload(); } catch (err) { }";
 

@@ -38,6 +38,7 @@ class GlobalContextMethods {
     UNKNOWN = 0,
     RELOAD_ROUTING,
     RELOAD_AQL,
+    INITIALIZE_SERVICE_MAP
   };
 
  public:
@@ -48,7 +49,9 @@ class GlobalContextMethods {
     if (type == "reloadAql") {
       return MethodType::RELOAD_AQL;
     }
-
+    if (type == "initializeFoxx") {
+      return MethodType::INITIALIZE_SERVICE_MAP;
+    }
     return MethodType::UNKNOWN;
   }
 
@@ -58,6 +61,8 @@ class GlobalContextMethods {
         return "reloadRouting";
       case MethodType::RELOAD_AQL:
         return "reloadAql";
+      case MethodType::INITIALIZE_SERVICE_MAP:
+        return "initializeFoxx";
       case MethodType::UNKNOWN:
       default:
         return "unknown";
@@ -70,6 +75,8 @@ class GlobalContextMethods {
         return CodeReloadRouting;
       case MethodType::RELOAD_AQL:
         return CodeReloadAql;
+      case MethodType::INITIALIZE_SERVICE_MAP:
+        return initializeServiceMap;
       case MethodType::UNKNOWN:
       default:
         return StaticStrings::Empty;
@@ -79,6 +86,7 @@ class GlobalContextMethods {
  public:
   static std::string const CodeReloadRouting;
   static std::string const CodeReloadAql;
+  static std::string const initializeServiceMap;
 };
 
 class V8Context {

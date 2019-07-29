@@ -409,6 +409,9 @@ function propagateSelfHeal () {
 }
 
 // GLOBAL_SERVICE_MAP manipulation
+function initializeFoxx() {
+  global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION('initializeFoxx');
+}
 
 function initLocalServiceMap () {
   const localServiceMap = new Map();
@@ -1084,7 +1087,8 @@ exports.isFoxxmaster = isFoxxmaster;
 exports._reloadRouting = reloadRouting;
 exports.reloadInstalledService = reloadInstalledService;
 exports.ensureRouted = ensureServiceLoaded;
-exports.initializeFoxx = initLocalServiceMap;
+exports.initializeFoxx = initializeFoxx;
+exports.initLocalServiceMap = initLocalServiceMap;
 exports.ensureFoxxInitialized = ensureFoxxInitialized;
 exports._startup = startup;
 exports.heal = triggerSelfHeal;
