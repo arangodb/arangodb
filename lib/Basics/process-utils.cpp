@@ -73,11 +73,13 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Basics/memory.h"
+#include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"
