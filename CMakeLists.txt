@@ -808,23 +808,26 @@ endif ()
 ## INTERPROCEDURAL OPTIMIZATION (LINK TIME OPTIMIZATION)
 ################################################################################
 
-
 set(USE_IPO AUTO CACHE STRING "Use interprocedural optimization: ON, OFF or AUTO")
-
 set_property(CACHE USE_IPO PROPERTY STRINGS AUTO ON OFF)
 
+set(IPO_ENABLED False)
+
+# Determine value if IPO_ENABLED from USE_IPO and CMAKE_BUILD_TYPE
 if(USE_IPO STREQUAL "AUTO")
   # When USE_IPO=AUTO, enable IPO for optimized / release builds
   if (CMAKE_BUILD_TYPE STREQUAL "Release"
     OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
     OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
-    # TODO Maybe set a different variable to use later, rather than overwriting this?
-    set(USE_IPO ON)
+    set(IPO_ENABLED True)
   else()
-    set(USE_IPO OFF)
+    set(IPO_ENABLED False)
   endif ()
+elseif(USE_IPO)
+  set(IPO_ENABLED True)
+else()
+  set(IPO_ENABLED False)
 endif()
-# Now USE_IPO is true or false.
 
 ################################################################################
 ## LIBRARY RESOLV

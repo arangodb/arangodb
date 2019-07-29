@@ -681,8 +681,8 @@ target_compile_features(${BIN_ARANGOD} PRIVATE cxx_constexpr)
 # linking an executable without -flto fails with
 # ../bin/libarangoserver.a: error adding symbols: File format not recognized
 # . Thus we cannot use IPO for arangod, and not use it for arangodbtests.
-set_property(TARGET arangoserver PROPERTY INTERPROCEDURAL_OPTIMIZATION ${USE_IPO})
-set_property(TARGET arangod PROPERTY INTERPROCEDURAL_OPteTIMIZATION ${USE_IPO})
+set_property(TARGET arangoserver PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
+set_property(TARGET arangod PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
 
 install(
   TARGETS ${BIN_ARANGOD}

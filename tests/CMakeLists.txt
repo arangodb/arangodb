@@ -254,7 +254,7 @@ target_include_directories(arangodbtests SYSTEM PRIVATE
 # linking an executable without -flto fails with
 # ../bin/libarangoserver.a: error adding symbols: File format not recognized
 # . Thus we cannot use IPO for arangod, and not use it for arangodbtests.
-set_property(TARGET arangodbtests PROPERTY INTERPROCEDURAL_OPTIMIZATION ${USE_IPO})
+set_property(TARGET arangodbtests PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
 
 find_package(OpenSSL REQUIRED)
 list(APPEND IRESEARCH_LIB_RESOURCES
