@@ -28,6 +28,7 @@
 #include "conversions.h"
 
 #include "Basics/error.h"
+#include "Basics/operating-system.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Basics/voc-errors.h"

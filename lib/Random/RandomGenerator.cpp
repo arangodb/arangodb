@@ -33,6 +33,7 @@
 
 #ifdef _WIN32
 #include <Wincrypt.h>
+#include <window.h>
 #endif
 
 #include "Basics/operating-system.h"
