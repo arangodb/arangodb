@@ -294,8 +294,7 @@ struct OptimizerRule {
     reduceExtractionToProjectionRule,
 
     // this is a temporary rule, and we need to remove it
-#warning REMOVE ME
-    refactorDistributeRule,
+    doNothingRule,
   };
 
   std::string name;
