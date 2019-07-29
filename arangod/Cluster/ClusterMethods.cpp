@@ -3852,7 +3852,7 @@ arangodb::Result hotBackupDBServers(
     builder.add("label", VPackValue(backupId));
     builder.add("agency-dump", agencyDump);
     builder.add("timestamp", VPackValue(timeStamp));
-    builder.add("force", VPackValue(force))
+    builder.add("force", VPackValue(force));
   }
   auto body = std::make_shared<std::string>(builder.toJson());
 
@@ -4022,8 +4022,8 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     if (!payload.isNone() &&
         (!payload.isObject() ||
          (payload.hasKey("label") && !payload.get("label").isString()) ||
-         (payload.hasKey("timeout") && !payload.get("timeout").isNumber())) ||
-         (payload.hasKey("force") && !payload.get("force").isBoolean())) {
+         (payload.hasKey("timeout") && !payload.get("timeout").isNumber()) ||
+         (payload.hasKey("force") && !payload.get("force").isBoolean()))) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, BAD_PARAMS_CREATE);
     }
 
