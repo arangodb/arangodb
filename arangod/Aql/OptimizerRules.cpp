@@ -1298,7 +1298,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
             // previous variables in the scope
             searchVariables.clear();
           }
-        } else if (planNode->getType() != EN::CALCULATION) {
+        } else {
           auto here = planNode->getVariableIdsUsedHere();
           if(here.find(searchVariables.back()->id) != here.end()){
             // the outVariable of the last collect should not be used by any following node directly
