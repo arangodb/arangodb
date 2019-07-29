@@ -141,7 +141,7 @@ function TransactionsSuite () {
     },
 
     testListTransactions: function() {
-      const obj = { collections: { write: cn } };
+      const obj = { collections: { read: cn } };
 
       let url = "/_api/transaction";
       let result = sendRequest(users[0], 'POST', url + "/begin", obj, true);
@@ -167,7 +167,7 @@ function TransactionsSuite () {
     },
     
     testListTransactions2: function() {
-      const obj = { collections: { write: cn } };
+      const obj = { collections: { read: cn } };
 
       let url = "/_api/transaction";
       let trx1, trx2;
@@ -223,7 +223,7 @@ function TransactionsSuite () {
     },
     
     testCreateAndCommitElsewhere: function() {
-      const obj = { collections: { write: cn } };
+      const obj = { collections: { read: cn } };
 
       let url = "/_api/transaction";
       let result = sendRequest(users[0], 'POST', url + "/begin", obj, true);
@@ -249,7 +249,7 @@ function TransactionsSuite () {
     },
     
     testCreateAndAbortElsewhere: function() {
-      const obj = { collections: { write: cn } };
+      const obj = { collections: { read: cn } };
 
       let url = "/_api/transaction";
       let result = sendRequest(users[0], 'POST', url + "/begin", obj, true);
