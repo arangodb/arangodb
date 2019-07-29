@@ -9,11 +9,7 @@ The name of the view.
 @RESTBODYPARAM{type,string,required,string}
 The type of the view. must be equal to *"arangosearch"*
 
-@RESTBODYPARAM{properties,object,optional,post_api_view_props}
-The view properties. If specified, then *properties* should be a JSON object
-containing the following attributes:
-
-@RESTSTRUCT{cleanupIntervalStep,post_api_view_props,integer,optional,uint64}
+@RESTBODYPARAM{cleanupIntervalStep,integer,optional,uint64}
 Wait at least this many commits between removing unused files in the
 ArangoSearch data directory (default: 10, to disable use: 0).
 For the case where the consolidation policies merge segments often (i.e. a lot
@@ -30,7 +26,7 @@ _Background:_
   However, the files for the released states/snapshots are left on disk, and
   only removed by "cleanup" operation.
 
-@RESTSTRUCT{commitIntervalMsec,post_api_view_props,integer,optional,uint64}
+@RESTBODYPARAM{commitIntervalMsec,integer,optional,uint64}
 Wait at least this many milliseconds between committing view data store
 changes and making documents visible to queries (default: 1000, to disable
 use: 0).
@@ -52,8 +48,7 @@ _Background:_
   subsequent ArangoDB transactions, in-progress ArangoDB transactions will
   still continue to return a repeatable-read state.
 
-
-@RESTSTRUCT{consolidationIntervalMsec,post_api_view_props,integer,optional,uint64}
+@RESTBODYPARAM{consolidationIntervalMsec,integer,optional,uint64}
 Wait at least this many milliseconds between applying 'consolidationPolicy' to
 consolidate view data store and possibly release space on the filesystem
 (default: 60000, to disable use: 0).
@@ -69,8 +64,7 @@ _Background:_
   compaction operations are governed by 'consolidationIntervalMsec' and the
   candidates for compaction are selected via 'consolidationPolicy'.
 
-
-@RESTSTRUCT{consolidationPolicy,post_api_view_props,object,optional,post_api_view_props_consolidation}
+@RESTBODYPARAM{consolidationPolicy,object,optional,post_api_view_props_consolidation}
 The consolidation policy to apply for selecting which segments should be merged
 (default: {})<br/>
 _Background:_
@@ -85,7 +79,6 @@ _Background:_
   search algorithm to perform more optimally and for extra file handles to be
   released once old segments are no longer used.
 
-
 @RESTSTRUCT{type,post_api_view_props_consolidation,string,optional,string}
 The segment candidates for the "consolidation" operation are selected based
 upon several possible configurable formulas as defined by their types.
@@ -97,29 +90,26 @@ The currently supported types are (default: "bytes_accum"):
 - *tier*: consolidate based on segment byte size and live document count
   as dictated by the customization attributes.
 
-
-@RESTSTRUCT{links,post_api_view_props,object,optional,post_api_view_links}
-The set of collection names associated with the properties.
+@RESTBODYPARAM{links,object,optional,post_api_view_links}
+Expects an object with the attribute keys being names of to be linked collections,
+and the link properties as attribute values.
 
 @RESTSTRUCT{[collection-name],post_api_view_links,object,optional,post_api_view_link_props}
-The link properties. If specified, then *properties* should be a JSON object
-containing the following attributes:
+Name of a collection as attribute key.
 
 @RESTSTRUCT{analyzers,post_api_view_link_props,array,optional,string}
 The list of analyzers to be used for indexing of string values
 (default: ["identity"]).
 
-
 @RESTSTRUCT{fields,post_api_view_link_props,object,optional,post_api_view_fields}
-The field properties. If specified, then *properties* should be a JSON object
+The field properties. If specified, then *fields* should be a JSON object
 containing the following attributes:
 
-@RESTSTRUCT{field-name,post_api_view_fields,array,optional,object}
+@RESTSTRUCT{[field-name],post_api_view_fields,array,optional,object}
 This is a recursive structure for the specific attribute path, potentially
 containing any of the following attributes:
-*analyzers*, *includeAllFields*, *trackListPositions*, *storeValues*
+*analyzers*, *fields*, *includeAllFields*, *trackListPositions*, *storeValues*
 Any attributes not specified are inherited from the parent.
-
 
 @RESTSTRUCT{includeAllFields,post_api_view_link_props,boolean,optional,bool}
 The flag determines whether or not to index all fields on a particular level of
@@ -135,7 +125,6 @@ additional value retrieval optimizations, one of:
 - *none*: Do not store values by the view
 - *id*: Store only information about value presence, to allow use of the EXISTS() function
 (default "none").
-
 
 @RESTDESCRIPTION
 Creates a new view with a given name and properties if it does not
