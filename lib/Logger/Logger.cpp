@@ -22,7 +22,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <unistd.h>
 #include <chrono>
 #include <cstring>
 #include <iosfwd>
@@ -44,6 +43,10 @@
 #include "Logger/LogAppenderFile.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogThread.h"
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;

@@ -24,14 +24,16 @@
 #ifndef ARANGODB_BASICS_STRING_BUFFER_H
 #define ARANGODB_BASICS_STRING_BUFFER_H 1
 
+#include <stddef.h>
+#include <cstdint>
+#include <cstring>
+#include <iosfwd>
+#include <sstream>
+
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
 #include "Basics/memory.h"
-
-#include <iosfwd>
-#include <sstream>
-#include <cstring>
 
 /// @brief string buffer with formatting routines
 struct TRI_string_buffer_t {

@@ -42,7 +42,6 @@
 #include <unicode/unistr.h>
 #include <unicode/unorm2.h>
 #include <unicode/utypes.h>
-#include <unistd.h>
 #include <chrono>
 #include <fstream>
 #include <functional>
@@ -104,6 +103,10 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #include <velocypack/StringRef.h>
 #include <velocypack/Validator.h>

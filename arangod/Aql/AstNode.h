@@ -39,6 +39,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/debugging.h"
+#include "Basics/operating-system.h"
 #include "Basics/voc-errors.h"
 
 #include <velocypack/Slice.h>
