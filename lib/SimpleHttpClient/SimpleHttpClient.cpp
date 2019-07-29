@@ -23,7 +23,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stddef.h>
 #include <chrono>
+#include <cstdint>
 #include <exception>
 #include <thread>
 #include <utility>
