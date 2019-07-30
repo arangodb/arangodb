@@ -20,7 +20,8 @@ attribute.
 @RESTBODYPARAM{config,object,required,object}
 Configuration of remote repository. This is required when a download
 operation is scheduled. In this case leave out the `downloadId`
-attribute.
+attribute. See the description of the _arangobackup_ program in the manual
+for a description of the `config` object.
 
 @RESTBODYPARAM{downloadId,string,optional,string}
 Download ID to specify for which download operation progress is queried.

@@ -5,7 +5,8 @@
 
 @RESTDESCRIPTION
 Restores a consistent backup from a
-snapshot in time, with a given id.
+snapshot in time, with a given id. The backup snapshot must reside on
+the ArangoDB service locally.
 
 The request may contain an object with the following attributes:
 
@@ -15,11 +16,17 @@ The id of the backup to restore from.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-Is returned if the backup could be restored.
+Is returned if the backup could be restored. Note that there is an
+inevitable discrepancy between the single server and the cluster. In a
+single server, the request returns successfully, but the restore is
+only executed afterwards. In the cluster, the request only returns when
+the restore operation has been completed successfully. The cluster
+behaviour is obviously the desired one, but in a single instance, one
+cannot keep a connection open across a restart.
 
 @RESTRETURNCODE{400}
 If the restore command is invoked with bad parameters or any HTTP
-method other than `POST`, then a *HTTP 400* is returned. The specifics
+method other than `POST`, then an *HTTP 400* is returned. The specifics
 are detailed in the returned error document.
 
 @EXAMPLES
