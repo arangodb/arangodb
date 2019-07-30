@@ -44,6 +44,7 @@
       });
 
       this.isCluster = options.isCluster;
+      this.foxxApiEnabled = options.foxxApiEnabled;
 
       this.handleKeyboardHotkeys();
 
@@ -64,6 +65,9 @@
     templateSub: templateEngine.createTemplate('subNavigationView.ejs'),
 
     render: function () {
+      $(this.subEl).html(this.templateSub.render({
+        currentDB: this.currentDB.toJSON()
+      }));
       arangoHelper.checkDatabasePermissions(this.continueRender.bind(this), this.continueRender.bind(this));
     },
 
@@ -73,16 +77,13 @@
       $(this.el).html(this.template.render({
         currentDB: this.currentDB,
         isCluster: this.isCluster,
+        foxxApiEnabled: this.foxxApiEnabled,
         readOnly: readOnly
       }));
 
       if (this.currentDB.get('name') !== '_system') {
         $('#dashboard').parent().remove();
       }
-
-      $(this.subEl).html(this.templateSub.render({
-        currentDB: this.currentDB.toJSON()
-      }));
 
       this.dbSelectionView.render($('#dbSelect'));
       // this.notificationView.render($("#notificationBar"))
