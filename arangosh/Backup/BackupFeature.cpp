@@ -38,7 +38,7 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Shell/ClientFeature.h"
-#include "RocksDBEngine/RocksDBHotBackup.h"
+#include "StorageEngine/HotBackup.h"
 
 namespace {
 

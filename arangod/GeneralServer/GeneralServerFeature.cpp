@@ -103,7 +103,7 @@
 #include "Ssl/SslServerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#ifdef USE_ENTEPRISE
+#ifdef USE_ENTERPRISE
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
 #include "V8Server/V8DealerFeature.h"

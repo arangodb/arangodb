@@ -24,6 +24,7 @@
 #define ARANGOD_HOTBACKUP_H 1
 
 #include "Basics/Result.h"
+#include "Cluster/ResultT.h"
 #include "Rest/CommonDefines.h"
 
 #include <velocypack/Builder.h>
@@ -31,6 +32,49 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Struct containing meta data for backups
+////////////////////////////////////////////////////////////////////////////////
+
+struct BackupMeta {
+  std::string _id;
+  std::string _version;
+  std::string _datetime;
+
+  static constexpr const char *ID = "id";
+  static constexpr const char *VERSION = "version";
+  static constexpr const char *DATETIME = "datetime";
+
+  void toVelocyPack(VPackBuilder &builder) const {
+    {
+      VPackObjectBuilder ob(&builder);
+      builder.add(ID, VPackValue(_id));
+      builder.add(VERSION, VPackValue(_version));
+      builder.add(DATETIME, VPackValue(_datetime));
+    }
+  }
+
+  static ResultT<BackupMeta> fromSlice(VPackSlice const& slice) {
+    try {
+      BackupMeta meta;
+      meta._id = slice.get(ID).copyString();
+      meta._version  = slice.get(VERSION).copyString();
+      meta._datetime = slice.get(DATETIME).copyString();
+      return meta;
+    } catch (std::exception const& e) {
+      return ResultT<BackupMeta>::error(TRI_ERROR_BAD_PARAMETER, e.what());
+    }
+  }
+
+  BackupMeta(std::string const& id, std::string const& version, std::string const& datetime) :
+    _id(id), _version(version), _datetime(datetime) {}
+
+private:
+  BackupMeta() {}
+};
+
+//std::ostream& operator<<(std::ostream& os, const BackupMeta& bm);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief HotBackup engine selector operations

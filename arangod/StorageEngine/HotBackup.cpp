@@ -25,7 +25,7 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterMethods.h"
 #ifdef USE_ENTERPRISE
-#include "RocksDBEngine/RocksDBHotBackup.h"
+#include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
 #endif
 #include "StorageEngine/EngineSelectorFeature.h"
 
