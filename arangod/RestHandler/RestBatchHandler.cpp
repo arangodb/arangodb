@@ -119,7 +119,8 @@ void RestBatchHandler::processSubHandlerResult(RestHandler const& handler) {
     httpResponse->body().appendText(_boundary + "--");
 
     if (_errors > 0) {
-      httpResponse->setHeaderNC(StaticStrings::Errors, StringUtils::itoa(_errors));
+      httpResponse->setHeaderNC(StaticStrings::Errors,
+                                StringUtils::itoa(static_cast<uint64_t>(_errors)));
     }
     continueHandlerExecution();
   } else {
