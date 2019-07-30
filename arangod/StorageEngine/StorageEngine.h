@@ -40,6 +40,17 @@
 
 namespace arangodb {
 
+enum class RecoveryState : uint32_t {
+  /// @brief recovery is not yet started
+  BEFORE = 0,
+
+  /// @brief recovery is in progress
+  IN_PROGRESS,
+
+  /// @brief recovery is done
+  DONE
+};
+
 class DatabaseInitialSyncer;
 class LogicalCollection;
 class LogicalView;
@@ -214,7 +225,13 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) = 0;
 
   /// @brief is database in recovery
-  virtual bool inRecovery() { return false; }
+  bool inRecovery() { return recoveryState() < RecoveryState::DONE; }
+
+  /// @brief current recovery state
+  virtual RecoveryState recoveryState() = 0;
+
+  /// @brief current recovery tick
+  virtual TRI_voc_tick_t recoveryTick() = 0;
 
   /// @brief function to be run when recovery is done
   virtual void recoveryDone(TRI_vocbase_t& /*vocbase*/) {}

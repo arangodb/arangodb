@@ -180,6 +180,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/csv.cpp
   Basics/datetime.cpp
   Basics/debugging.cpp
+  Basics/EncodingUtils.cpp
   Basics/error.cpp
   Basics/fasthash.cpp
   Basics/files.cpp
@@ -258,6 +259,7 @@ add_library(${LIB_ARANGO} STATIC
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp
+  ${ADDITIONAL_LIB_ARANGO_SOURCES}
 )
 
 target_link_libraries(${LIB_ARANGO}

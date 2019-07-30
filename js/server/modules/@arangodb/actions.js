@@ -1794,7 +1794,6 @@ function arangoErrorToHttpCode (num) {
     case arangodb.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
     case arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND:
     case arangodb.ERROR_ARANGO_DATABASE_NOT_FOUND:
-    case arangodb.ERROR_ARANGO_ENDPOINT_NOT_FOUND:
     case arangodb.ERROR_ARANGO_NO_INDEX:
     case arangodb.ERROR_ARANGO_INDEX_NOT_FOUND:
     case arangodb.ERROR_CURSOR_NOT_FOUND:

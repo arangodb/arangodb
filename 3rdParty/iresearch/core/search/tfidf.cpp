@@ -226,6 +226,15 @@ struct term_collector final: public irs::sort::term_collector {
   }
 };
 
+FORCE_INLINE float_t tfidf(float_t freq, float_t idf) NOEXCEPT {
+  static_assert(
+    std::is_same<decltype(std::sqrt(freq)), float_t>::value,
+    "float_t expected"
+  );
+
+  return idf * std::sqrt(freq);
+}
+
 NS_END // LOCAL
 
 NS_ROOT
@@ -240,27 +249,16 @@ struct idf final : attribute {
 
 typedef tfidf_sort::score_t score_t;
 
-class const_scorer final : public irs::sort::scorer_base<tfidf::score_t> {
- public:
-  DEFINE_FACTORY_INLINE(const_scorer)
-
-  explicit const_scorer(irs::boost_t boost) NOEXCEPT
+struct const_score_ctx final : public irs::sort::score_ctx {
+  explicit const_score_ctx(irs::boost_t boost) NOEXCEPT
     : boost_(boost) {
   }
 
-  virtual void score(byte_type* score_buf) NOEXCEPT override {
-    score_cast(score_buf) = boost_;
-  }
-
- private:
   const irs::boost_t boost_;
-}; // const_scorer
+}; // const_score_ctx
 
-class scorer : public irs::sort::scorer_base<tfidf::score_t> {
- public:
-  DEFINE_FACTORY_INLINE(scorer)
-
-  scorer(
+struct score_ctx : public irs::sort::score_ctx {
+  score_ctx(
       irs::boost_t boost,
       const tfidf::idf& idf,
       const frequency* freq) NOEXCEPT
@@ -269,40 +267,22 @@ class scorer : public irs::sort::scorer_base<tfidf::score_t> {
     assert(freq_);
   }
 
-  virtual void score(byte_type* score_buf) NOEXCEPT override {
-    score_cast(score_buf) = tfidf();
-  }
-
- protected:
-  FORCE_INLINE float_t tfidf() const NOEXCEPT {
-   return idf_ * float_t(std::sqrt(freq_->value));
-  }
-
- private:
   float_t idf_; // precomputed : boost * idf
   const frequency* freq_;
-}; // scorer
+}; // score_ctx
 
-class norm_scorer final : public scorer {
- public:
-  DEFINE_FACTORY_INLINE(norm_scorer)
-
-  norm_scorer(
+struct norm_score_ctx final : public score_ctx {
+  norm_score_ctx(
       irs::norm&& norm,
       irs::boost_t boost,
       const tfidf::idf& idf,
       const frequency* freq) NOEXCEPT
-    : scorer(boost, idf, freq),
+    : score_ctx(boost, idf, freq),
       norm_(std::move(norm)) {
   }
 
-  virtual void score(byte_type* score_buf) NOEXCEPT override {
-    score_cast(score_buf) = tfidf() * norm_.read();
-  }
-
- private:
   irs::norm norm_;
-}; // norm_scorer
+}; // norm_score_ctx
 
 class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
  public:
@@ -352,7 +332,7 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
     return irs::memory::make_unique<field_collector>();
   }
 
-  virtual scorer::ptr prepare_scorer(
+  virtual std::pair<score_ctx::ptr, score_f> prepare_scorer(
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* stats_buf,
@@ -362,7 +342,7 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
     auto& freq = doc_attrs.get<frequency>();
 
     if (!freq) {
-      return nullptr;
+      return { nullptr, nullptr };
     }
 
     auto& stats = stats_cast(stats_buf);
@@ -375,18 +355,28 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
 
       if (!doc) {
         // we need 'document' attribute to be exposed
-        return nullptr;
+        return { nullptr, nullptr };
       }
 
       if (norm.reset(segment, field.meta().norm, *doc)) {
-        return tfidf::scorer::make<tfidf::norm_scorer>(
-          std::move(norm), boost, stats, freq.get()
-        );
+        return {
+          memory::make_unique<tfidf::norm_score_ctx>(std::move(norm), boost, stats, freq.get()),
+          [](const void* ctx, byte_type* score_buf) NOEXCEPT {
+            auto& state = *static_cast<const tfidf::norm_score_ctx*>(ctx);
+            irs::sort::score_cast<tfidf::score_t>(score_buf) = ::tfidf(state.freq_->value, state.idf_)*state.norm_.read();
+          }
+        };
       }
     }
 
 
-    return tfidf::scorer::make<tfidf::scorer>(boost, stats, freq.get());
+    return {
+      memory::make_unique<tfidf::score_ctx>(boost, stats, freq.get()),
+      [](const void* ctx, byte_type* score_buf) NOEXCEPT {
+        auto& state = *static_cast<const tfidf::score_ctx*>(ctx);
+        irs::sort::score_cast<score_t>(score_buf) = ::tfidf(state.freq_->value, state.idf_);
+      }
+    };
   }
 
   virtual irs::sort::term_collector::ptr prepare_term_collector() const override {

@@ -155,29 +155,32 @@ class basic_disjunction final : public doc_iterator_base {
     if (lhs_.score != &irs::score::no_score()
         && rhs_.score != &irs::score::no_score()) {
       // both sub-iterators has score
-      prepare_score(ord, [this](byte_type* score) {
-        ord_->prepare_score(score);
-        score_iterator_impl(lhs_, score);
-        score_iterator_impl(rhs_, score);
+      prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+        auto& self = *static_cast<const basic_disjunction*>(ctx);
+        self.ord_->prepare_score(score);
+        self.score_iterator_impl(self.lhs_, score);
+        self.score_iterator_impl(self.rhs_, score);
       });
     } else if (lhs_.score != &irs::score::no_score()) {
       // only left sub-iterator has score
       assert(rhs_.score == &irs::score::no_score());
-      prepare_score(ord, [this](byte_type* score) {
-        ord_->prepare_score(score);
-        score_iterator_impl(lhs_, score);
+      prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+        auto& self = *static_cast<const basic_disjunction*>(ctx);
+        self.ord_->prepare_score(score);
+        self.score_iterator_impl(self.lhs_, score);
       });
     } else if (rhs_.score != &irs::score::no_score()) {
       // only right sub-iterator has score
       assert(lhs_.score == &irs::score::no_score());
-      prepare_score(ord, [this](byte_type* score) {
-        ord_->prepare_score(score);
-        score_iterator_impl(rhs_, score);
+      prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+        auto& self = *static_cast<const basic_disjunction*>(ctx);
+        self.ord_->prepare_score(score);
+        self.score_iterator_impl(self.rhs_, score);
       });
     } else {
       assert(lhs_.score == &irs::score::no_score());
       assert(rhs_.score == &irs::score::no_score());
-      prepare_score(ord, [](byte_type*) {/*NOOP*/});
+      prepare_score(ord, nullptr, [](const void*, byte_type*) {/*NOOP*/});
     }
   }
 
@@ -196,7 +199,7 @@ class basic_disjunction final : public doc_iterator_base {
     }
   }
 
-  void score_iterator_impl(doc_iterator_t& it, byte_type* lhs) {
+  void score_iterator_impl(doc_iterator_t& it, byte_type* lhs) const {
     auto doc = it.value();
 
     if (doc < doc_.value) {
@@ -210,8 +213,8 @@ class basic_disjunction final : public doc_iterator_base {
     }
   }
 
-  doc_iterator_t lhs_;
-  doc_iterator_t rhs_;
+  mutable doc_iterator_t lhs_;
+  mutable doc_iterator_t rhs_;
   document doc_;
   const order::prepared* ord_;
 }; // basic_disjunction
@@ -353,21 +356,22 @@ class small_disjunction : public doc_iterator_base {
 
     // prepare score
     if (scored_itrs_.empty()) {
-      prepare_score(ord, [](byte_type*){ /*NOOP*/ });
+      prepare_score(ord, nullptr, [](const void*, byte_type*){ /*NOOP*/ });
     } else {
-      prepare_score(ord, [this](byte_type* score) {
-        ord_->prepare_score(score);
+      prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+        auto& self = *static_cast<const small_disjunction*>(ctx);
+        self.ord_->prepare_score(score);
 
-        for (auto& it : scored_itrs_) {
+        for (auto& it : self.scored_itrs_) {
           auto doc = it.value();
 
-          if (doc < doc_.value) {
-            doc = it->seek(doc_.value);
+          if (doc < self.doc_.value) {
+            doc = it->seek(self.doc_.value);
           }
 
-          if (doc == doc_.value) {
+          if (doc == self.doc_.value) {
             it.score->evaluate();
-            ord_->add(score, it.score->c_str());
+            self.ord_->add(score, it.score->c_str());
           }
         }
       });
@@ -497,9 +501,10 @@ class disjunction : public doc_iterator_base {
     std::iota(heap_.begin(), heap_.end(), size_t(0));
 
     // prepare score
-    prepare_score(ord, [this](byte_type* score) {
-      ord_->prepare_score(score);
-      score_impl(score);
+    prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+      auto& self = const_cast<disjunction&>(*static_cast<const disjunction*>(ctx));
+      self.ord_->prepare_score(score);
+      self.score_impl(score);
     });
   }
 

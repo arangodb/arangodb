@@ -58,7 +58,7 @@ class GraphOperations {
       : _graph(graph_), _vocbase(vocbase) {}
 
   // TODO I added the complex result type for the get* methods to exactly
-  // reproduce (in the RestGraphHandler) the behaviour of the similar methods
+  // reproduce (in the RestGraphHandler) the behavior of the similar methods
   // in the RestDocumentHandler. A simpler type, e.g. ResultT<OperationResult>,
   // would be preferable.
 

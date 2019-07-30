@@ -34,7 +34,7 @@ namespace application_features {
 ApplicationFeature::ApplicationFeature(ApplicationServer& server, std::string const& name)
     : _server(server),
       _name(name),
-      _state(ApplicationServer::FeatureState::UNINITIALIZED),
+      _state(State::UNINITIALIZED),
       _enabled(true),
       _optional(false),
       _requiresElevatedPrivileges(false),

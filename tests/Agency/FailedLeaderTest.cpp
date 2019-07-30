@@ -405,7 +405,6 @@ TEST_F(FailedLeaderTest, job_must_not_be_started_if_distributeshardslike_shard_i
       } else if (path == "/arango/Target/ToDo") {
         builder->add("1", createBuilder(todo).slice());
       }
-      builder->close();
     } else {
       builder->add(s);
     }
@@ -932,7 +931,6 @@ TEST_F(FailedLeaderTest, when_everything_is_finished_there_should_be_cleanup) {
         }
         builder->add("1", jobBuilder.slice());
       }
-      builder->close();
     } else {
       if (path == "/arango/Current/Collections/" + DATABASE + "/" + COLLECTION +
                       "/" + SHARD + "/servers") {

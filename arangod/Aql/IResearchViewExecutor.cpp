@@ -341,9 +341,10 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
     irs::Or root;
 
     auto rv = FilterFactory::filter(&root, queryCtx, infos().filterCondition());
+
     if (rv.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
+          rv.errorNumber(),
           "failed to build filter while querying arangosearch view, query '" +
               infos().filterCondition().toVelocyPack(true)->toJson() + "': " + rv.errorMessage());
     }

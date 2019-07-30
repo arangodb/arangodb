@@ -1729,7 +1729,6 @@ TEST_F(MoveShardTest, a_pending_moveshard_job_should_also_put_the_original_serve
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    LOG_DEVEL << q->slice().toJson() << " " << __LINE__;
     auto writes = q->slice()[0][0];
     EXPECT_TRUE(writes.get("/arango/Target/Pending/1").get("op").copyString() ==
                 "delete");
@@ -2017,8 +2016,6 @@ TEST_F(MoveShardTest, aborting_the_job_while_a_leader_transition_is_in_progress_
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    LOG_DEVEL << q->slice().toJson() << " " << __LINE__;
-
     auto writes = q->slice()[0][0];
     EXPECT_TRUE(writes.get("/arango/Target/Pending/1").get("op").copyString() ==
                 "delete");

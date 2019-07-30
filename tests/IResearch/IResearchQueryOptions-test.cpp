@@ -48,6 +48,7 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -103,6 +104,7 @@ class IResearchQueryOptionsTest : public ::testing::Test {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
+    features.emplace_back(new arangodb::FlushFeature(server), false);
     features.emplace_back(new arangodb::ViewTypesFeature(server), true);
     features.emplace_back(new arangodb::AuthenticationFeature(server), true);
     features.emplace_back(new arangodb::DatabasePathFeature(server), false);
@@ -452,9 +454,7 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
   {
     std::string const query =
         "FOR d IN testView SEARCH d.name == 'A'"
-        " OPTIONS { collections : [ " +
-        std::to_string(logicalCollection2->id()) +
-        " ] }"
+        " OPTIONS { collections : [ " + std::to_string(logicalCollection2->id()) + " ] }"
         " RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
@@ -530,9 +530,7 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
   {
     std::string const query =
         "FOR d IN testView SEARCH d.name == 'A'"
-        " OPTIONS { collections : [ '" +
-        std::to_string(logicalCollection2->id()) +
-        "', 'collection_1' ] }"
+        " OPTIONS { collections : [ '" + std::to_string(logicalCollection2->id()) + "', 'collection_1' ] }"
         " SORT d._id"
         " RETURN d";
 

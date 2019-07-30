@@ -44,14 +44,14 @@ struct AqlValue;
  */
 class OutputAqlItemRow {
  public:
-  // TODO Implement this behaviour via a template parameter instead?
-  enum class CopyRowBehaviour { CopyInputRows, DoNotCopyInputRows };
+  // TODO Implement this behavior via a template parameter instead?
+  enum class CopyRowBehavior { CopyInputRows, DoNotCopyInputRows };
 
   explicit OutputAqlItemRow(SharedAqlItemBlockPtr block,
                             std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
                             std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
                             std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
-                            CopyRowBehaviour = CopyRowBehaviour::CopyInputRows);
+                            CopyRowBehavior = CopyRowBehavior::CopyInputRows);
 
   OutputAqlItemRow(OutputAqlItemRow const&) = delete;
   OutputAqlItemRow& operator=(OutputAqlItemRow const&) = delete;
@@ -229,7 +229,8 @@ class OutputAqlItemRow {
 #endif
     _baseIndex = index;
   }
-  // Use this function with caution! We need it only for the SortedCollectExecutor
+  // Use this function with caution! We need it for the SortedCollectExecutor
+  // and CountCollectExecutor.
   void setAllowSourceRowUninitialized() {
     _allowSourceRowUninitialized = true;
   }
@@ -305,7 +306,8 @@ class OutputAqlItemRow {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _setBaseIndexNotUsed;
 #endif
-  // need this special bool for allowing an empty AqlValue inside the SortedCollectExecutor
+  // Need this special bool for allowing an empty AqlValue inside the
+  // SortedCollectExecutor and CountCollectExecutor.
   bool _allowSourceRowUninitialized;
 
  private:

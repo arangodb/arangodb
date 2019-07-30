@@ -24,24 +24,49 @@
 
 #include "Basics/operating-system.h"
 #include "GeneralServer/AcceptorTcp.h"
+#include "Logger/Logger.h"
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
 #include "GeneralServer/AcceptorUnixDomain.h"
 #endif
 
 using namespace arangodb;
+using namespace arangodb::rest;
 
-Acceptor::Acceptor(rest::GeneralServer& server,
-                   rest::GeneralServer::IoContext& context, Endpoint* endpoint)
-    : _server(server), _context(context), _endpoint(endpoint) {}
+Acceptor::Acceptor(rest::GeneralServer& server, rest::IoContext& context, Endpoint* endpoint)
+    : _server(server), _ctx(context), _endpoint(endpoint), _open(false), _acceptFailures(0) {}
 
 std::unique_ptr<Acceptor> Acceptor::factory(rest::GeneralServer& server,
-                                            rest::GeneralServer::IoContext& context,
-                                            Endpoint* endpoint) {
+                                            rest::IoContext& context, Endpoint* endpoint) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   if (endpoint->domainType() == Endpoint::DomainType::UNIX) {
     return std::make_unique<AcceptorUnixDomain>(server, context, endpoint);
   }
 #endif
-  return std::make_unique<AcceptorTcp>(server, context, endpoint);
+  if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
+    return std::make_unique<AcceptorTcp<rest::SocketType::Ssl>>(server, context, endpoint);
+  } else {
+    TRI_ASSERT(endpoint->encryption() == Endpoint::EncryptionType::NONE);
+    return std::make_unique<AcceptorTcp<rest::SocketType::Tcp>>(server, context, endpoint);
+  }
+}
+
+void Acceptor::handleError(asio_ns::error_code const& ec) {
+  if (ec == asio_ns::error::operation_aborted) {
+    // this "error" is accpepted, so it doesn't justify a warning
+    LOG_TOPIC("74339", DEBUG, arangodb::Logger::COMMUNICATION)
+        << "accept failed: " << ec.message();
+    return;
+  }
+
+  if (++_acceptFailures <= maxAcceptErrors) {
+    LOG_TOPIC("644df", WARN, arangodb::Logger::COMMUNICATION)
+        << "accept failed: " << ec.message();
+    if (_acceptFailures == maxAcceptErrors) {
+      LOG_TOPIC("40ca3", WARN, arangodb::Logger::COMMUNICATION)
+          << "too many accept failures, stopping to report";
+    }
+  }
+  asyncAccept();  // retry
+  return;
 }

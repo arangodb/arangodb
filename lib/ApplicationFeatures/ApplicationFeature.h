@@ -44,6 +44,16 @@ class ApplicationFeature {
   ApplicationFeature(ApplicationServer& server, std::string const& name);
 
   virtual ~ApplicationFeature();
+  
+  enum class State {
+    UNINITIALIZED,
+    INITIALIZED,
+    VALIDATED,
+    PREPARED,
+    STARTED,
+    STOPPED,
+    UNPREPARED
+  };
 
   // return the feature's name
   std::string const& name() const { return _name; }
@@ -51,7 +61,7 @@ class ApplicationFeature {
   bool isOptional() const { return _optional; }
   bool isRequired() const { return !_optional; }
 
-  ApplicationServer::FeatureState state() const { return _state; }
+  State state() const { return _state; }
 
   // whether or not the feature is enabled
   bool isEnabled() const { return _enabled; }
@@ -177,7 +187,7 @@ class ApplicationFeature {
  private:
   // set a feature's state. this method should be called by the
   // application server only
-  void state(ApplicationServer::FeatureState state) { _state = state; }
+  void state(State state) { _state = state; }
 
   // determine all direct and indirect ancestors of a feature
   void determineAncestors();
@@ -205,7 +215,7 @@ class ApplicationFeature {
   std::unordered_set<std::string> _onlyEnabledWith;
 
   // state of feature
-  ApplicationServer::FeatureState _state;
+  State _state;
 
   // whether or not the feature is enabled
   bool _enabled;

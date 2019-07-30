@@ -552,7 +552,7 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
 //! @brief replace legacy JS Functions with pure AQL
 void arangodb::aql::replaceNearWithinFulltext(Optimizer* opt,
                                               std::unique_ptr<ExecutionPlan> plan,
-                                              OptimizerRule const* rule) {
+                                              OptimizerRule const& rule) {
   bool modified = false;
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;

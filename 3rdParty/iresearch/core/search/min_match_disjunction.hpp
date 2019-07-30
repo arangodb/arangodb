@@ -105,9 +105,12 @@ class min_match_disjunction : public doc_iterator_base {
     std::iota(heap_.begin(), heap_.end(), size_t(0));
 
     // prepare score
-    prepare_score(ord, [this](byte_type* score) {
-      ord_->prepare_score(score);
-      score_impl(score);
+    prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+      auto& self = const_cast<min_match_disjunction&>(
+        *static_cast<const min_match_disjunction*>(ctx)
+      );
+      self.ord_->prepare_score(score);
+      self.score_impl(score);
     });
   }
 

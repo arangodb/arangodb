@@ -1438,6 +1438,7 @@ arangodb::Result fromFuncMinMatch(irs::boolean_filter* filter, QueryContext cons
   if (argc < 2) {
     auto message = "'MIN_MATCH' AQL function: Invalid number of arguments passed (must be >= 2)";
     LOG_TOPIC("6c8d4", WARN, arangodb::iresearch::TOPIC) << message;
+    return {TRI_ERROR_BAD_PARAMETER, message};
   }
 
   // ...........................................................................
@@ -2082,9 +2083,7 @@ namespace iresearch {
   // The analyzer is referenced in the FilterContext and used during the
   // following ::filter() call, so may not be a temporary.
   IResearchLinkMeta::Analyzer analyzer = IResearchLinkMeta::Analyzer();
-  FilterContext const filterCtx( // context
-      analyzer, irs::no_boost() // args
-  );
+  FilterContext const filterCtx(analyzer, irs::no_boost());
 
   return ::filter(filter, ctx, filterCtx, node);
 }

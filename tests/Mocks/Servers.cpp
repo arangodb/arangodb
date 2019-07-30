@@ -25,12 +25,13 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
+#include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Logger/Logger.h"
-#include "Logger/LogTopic.h"
-#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "Logger/LogTopic.h"
+#include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -38,15 +39,15 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Sharding/ShardingFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
 
 #if USE_ENTERPRISE
-  #include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
 using namespace arangodb;
@@ -59,7 +60,7 @@ MockServer::MockServer() : _server(nullptr, nullptr), _engine(_server) {
 }
 
 MockServer::~MockServer() {
-  _system.reset(); // destroy before reseting the 'ENGINE'
+  _system.reset();  // destroy before reseting the 'ENGINE'
   arangodb::application_features::ApplicationServer::server = nullptr;
   arangodb::EngineSelectorFeature::ENGINE = nullptr;
   stopFeatures();
@@ -105,10 +106,12 @@ TRI_vocbase_t& MockServer::getSystemDatabase() const {
 
 MockAqlServer::MockAqlServer() : MockServer() {
   // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+                                  arangodb::LogLevel::WARN);
   // suppress log messages since tests check error conditions
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress WARNING DefaultCustomTypeHandler called
-  arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
+  arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+                                  arangodb::LogLevel::FATAL);
   irs::logger::output_le(::iresearch::logger::IRL_FATAL, stderr);
 
   // setup required application features
@@ -117,37 +120,42 @@ MockAqlServer::MockAqlServer() : MockServer() {
   _features.emplace_back(new arangodb::DatabasePathFeature(_server), false);
   _features.emplace_back(new arangodb::DatabaseFeature(_server), false);
   _features.emplace_back(new arangodb::ShardingFeature(_server), true);
-  _features.emplace_back(new arangodb::QueryRegistryFeature(_server), false); // must be first
-  arangodb::application_features::ApplicationServer::server->addFeature(_features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
-  _system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-  _features.emplace_back(new arangodb::SystemDatabaseFeature(_server, _system.get()), false); // required for IResearchAnalyzerFeature
-  _features.emplace_back(new arangodb::TraverserEngineRegistryFeature(_server), false); // must be before AqlFeature
+  _features.emplace_back(new arangodb::QueryRegistryFeature(_server), false);  // must be first
+  arangodb::application_features::ApplicationServer::server->addFeature(
+      _features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
+  _system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                                            0, TRI_VOC_SYSTEM_DATABASE);
+  _features.emplace_back(new arangodb::SystemDatabaseFeature(_server, _system.get()),
+                         false);  // required for IResearchAnalyzerFeature
+  _features.emplace_back(new arangodb::TraverserEngineRegistryFeature(_server), false);  // must be before AqlFeature
   _features.emplace_back(new arangodb::AqlFeature(_server), true);
   _features.emplace_back(new arangodb::aql::OptimizerRulesFeature(_server), true);
-  _features.emplace_back(new arangodb::aql::AqlFunctionFeature(_server), true); // required for IResearchAnalyzerFeature
+  _features.emplace_back(new arangodb::aql::AqlFunctionFeature(_server), true);  // required for IResearchAnalyzerFeature
   _features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(_server), true);
   _features.emplace_back(new arangodb::iresearch::IResearchFeature(_server), true);
 
-  #if USE_ENTERPRISE
-    _features.emplace_back(new arangodb::LdapFeature(_server), false); // required for AuthenticationFeature with USE_ENTERPRISE
-  #endif
+#if USE_ENTERPRISE
+  _features.emplace_back(new arangodb::LdapFeature(_server),
+                         false);  // required for AuthenticationFeature with USE_ENTERPRISE
+#endif
 
   startFeatures();
 }
 
 MockAqlServer::~MockAqlServer() {
-  arangodb::AqlFeature(_server).stop(); // unset singleton instance
-  arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
+  arangodb::AqlFeature(_server).stop();  // unset singleton instance
+  arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+                                  arangodb::LogLevel::DEFAULT);
   arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+                                  arangodb::LogLevel::DEFAULT);
 }
 
 std::shared_ptr<arangodb::transaction::Methods> MockAqlServer::createFakeTransaction() const {
   std::vector<std::string> noCollections{};
   transaction::Options opts;
   auto ctx = transaction::StandaloneContext::Create(getSystemDatabase());
-  return std::make_shared<arangodb::transaction::Methods>(ctx,
-                                                          noCollections, noCollections,
+  return std::make_shared<arangodb::transaction::Methods>(ctx, noCollections, noCollections,
                                                           noCollections, opts);
 }
 
@@ -159,9 +167,45 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery() const {
   queryOptions->openObject();
   queryOptions->close();
   aql::QueryString fakeQueryString("");
-  auto query = std::make_unique<arangodb::aql::Query>(
-      false, getSystemDatabase(), fakeQueryString, bindParams, queryOptions,
-      arangodb::aql::QueryPart::PART_DEPENDENT);
+  auto query =
+      std::make_unique<arangodb::aql::Query>(false, getSystemDatabase(),
+                                             fakeQueryString, bindParams, queryOptions,
+                                             arangodb::aql::QueryPart::PART_DEPENDENT);
   query->injectTransaction(createFakeTransaction());
   return query;
+}
+
+MockRestServer::MockRestServer() : MockServer() {
+  // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+                                  arangodb::LogLevel::WARN);
+  // suppress log messages since tests check error conditions
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
+  arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+                                  arangodb::LogLevel::FATAL);
+  irs::logger::output_le(::iresearch::logger::IRL_FATAL, stderr);
+
+  _features.emplace_back(new arangodb::AuthenticationFeature(_server), false);
+  _features.emplace_back(new arangodb::DatabaseFeature(_server), false);
+  _features.emplace_back(new arangodb::QueryRegistryFeature(_server), false);
+  arangodb::application_features::ApplicationServer::server->addFeature(
+      _features.back().first);
+  _system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                                            0, TRI_VOC_SYSTEM_DATABASE);
+  _features.emplace_back(new arangodb::SystemDatabaseFeature(_server, _system.get()), false);
+
+#if USE_ENTERPRISE
+  _features.emplace_back(new arangodb::LdapFeature(_server),
+                         false);  // required for AuthenticationFeature with USE_ENTERPRISE
+#endif
+
+  startFeatures();
+}
+
+MockRestServer::~MockRestServer() {
+  arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+                                  arangodb::LogLevel::DEFAULT);
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+                                  arangodb::LogLevel::DEFAULT);
 }

@@ -44,22 +44,15 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
   static std::vector<std::string> translateRules(std::vector<int> const&);
 
   /// @brief translate a single rule
-  static char const* translateRule(int);
+  static char const* translateRule(int rule);
 
   /// @brief look up the ids of all disabled rules
-  static std::unordered_set<int> getDisabledRuleIds(std::vector<std::string> const&);
+  static std::unordered_set<int> getDisabledRuleIds(std::vector<std::string> const& names);
 
   /// @brief register a rule
   static void registerRule(std::string const& name, RuleFunction func,
-                           OptimizerRule::RuleLevel level, bool canCreateAdditionalPlans,
-                           bool canBeDisabled, bool isHidden = false);
-
-  /// @brief register a hidden rule
-  static void registerHiddenRule(std::string const& name, RuleFunction const& func,
-                                 OptimizerRule::RuleLevel level,
-                                 bool canCreateAdditionalPlans, bool canBeDisabled) {
-    registerRule(name, func, level, canCreateAdditionalPlans, canBeDisabled, true);
-  }
+                           OptimizerRule::RuleLevel level,
+                           std::underlying_type<OptimizerRule::Flags>::type flags);
 
  private:
   void addRules();

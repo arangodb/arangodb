@@ -82,12 +82,18 @@ DEFINE_ATTRIBUTE_TYPE(iresearch::term_meta)
     index_meta& meta,
     uint64_t generation,
     uint64_t counter,
-    index_meta::index_segments_t&& segments
+    index_meta::index_segments_t&& segments,
+    bstring* payload
 ) {
   meta.gen_ = generation;
   meta.last_gen_ = generation;
   meta.seg_counter_ = counter;
   meta.segments_ = std::move(segments);
+  if (payload) {
+    meta.payload(std::move(*payload));
+  } else {
+    meta.payload(bytes_ref::NIL);
+  }
 }
 
 /*static*/ bool formats::exists(

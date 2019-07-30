@@ -1,6 +1,42 @@
 devel
 -----
 
+* add gzip and encryption options to arangoimport and arangoexport
+
+* removed content from Documentation/Books, but keeping the subfolders.
+  The documentation is in a separate repository (except DocuBlocks and Scripts):
+  https://github.com/arangodb/docs.git
+
+* TOKENS function updated to deal with primitive types and arrays
+
+* MinReplicationFactor:
+    Collections can now be created with a minimal replication factor (minReplicationFactor), which defaults to 1.
+  If minReplicationFactor > 1 a collection will go into "read-only" mode as soon as it has less then minReplicationFactor
+  many insync followers. With this mechanism users can avoid to have collections diverge too much in case of failure scenarios.
+  minReplicationFactor can have the values: 1 <= minReplicationFactor <= replicationFactor.
+  Having minReplicationFactor == 1 ArangoDB behaves the same way as in any previous version.
+  
+* Fixed a performance regression of COLLECT WITH COUNT INTO.
+
+* arangoimport would not stop, much less report, communications errors.  Add CSV reporting
+  of line numbers that are impacted during such errors
+
+* coordinator code was reporting rocksdb error codes, but not the associated detail message.
+  Corrected.
+
+* Replication requests on Document API are now on higher priority then client-triggered requests.
+  This should help to keep in sync replication up and running even if the server is overloaded.
+
+* Bugfix: Save distinct WAL ticks for multiple replication clients from the same
+  server. Also, when a follower is added for synchronous replication, the WAL
+  tick held by the client is freed immediately, rather than waiting for a
+  timeout.
+  The corresponding APIs get a new parameter `syncerId`, which, if given,
+  supersedes `serverId`. This affects the routes /_api/wal/tail,
+  /_api/replication/batch, /_api/replication/logger-follow and the internal
+  route /_api/replication/addFollower. The new field `syncerId` is also added to
+  the response of /_api/replication/logger-state.
+
 * Disallow indexing the `_id` attribute even as a sub-attribute.
   Previous versions of ArangoDB did not allow creating indexes on the `_id` attribute, but didn't
   check if an index was created on the `_id` attribute of a sub-attribute, e.g. `referredTo._id`
@@ -15,6 +51,11 @@ devel
   server load.
 
 * Fixed agency bug with election lock step.
+
+* Fixed some error reporting and logging in Maintenance.
+
+* Fixed an error condition in which an ex-leader for a short still believed
+  to be the leader and wrongly reported to Current.
 
 
 v3.5.0-rc.4 (2019-06-15)
@@ -400,6 +441,39 @@ v3.5.0-rc.1 (2019-05-14)
 
 * Fixed JS AQL query objects with empty query strings not being recognized
   as AQL queries.
+
+* Updated JavaScript dependencies, including semver major updates to joi, mocha
+  and eslint. The eslint config modules were incompatible with the existing
+  coding style, so the old rules were inlined and the config dependencies removed.
+
+  Note that joi removed Joi.date().format() in v10.0.0. You can bundle your own
+  version of joi if you need to rely on version-dependent features.
+
+  - accepts: 1.3.4 -> 1.3.5
+  - ansi_up: 2.0.2 -> 4.0.3
+  - content-disposition: 0.5.2 -> 0.5.3
+  - dedent: 0.6.0 -> 0.7.0
+  - error-stack-parser: 1.3.6 -> 2.0.2
+  - eslint: 2.13.1 -> 5.16.0
+  - eslint-config-semistandard: 6.0.2 -> removed
+  - eslint-config-standard: 5.3.1 -> removed
+  - eslint-plugin-promise: 1.3.2 -> removed
+  - eslint-plugin-standard: 1.3.2 -> removed
+  - highlight.js: 9.12.0 -> 9.15.6
+  - http-errors: 1.6.2 -> 1.7.2
+  - iconv-lite: 0.4.19 -> 0.4.24
+  - joi: 9.2.0 -> 14.3.1
+  - joi-to-json-schema: 2.3.0 -> 4.0.1
+  - js-yaml: 3.10.0 -> 3.13.1
+  - marked: 0.3.9 -> 0.6.2
+  - mime-types: 2.1.12 -> 2.1.22
+  - mocha: 2.5.3 -> 6.1.3
+  - qs: 6.5.1 -> 6.7.0
+  - semver: 5.4.1 -> 6.0.0
+  - statuses: 1.4.0 -> 1.5.0
+  - timezone: 1.0.13 -> 1.0.22
+  - type-is: 1.6.15 -> 1.6.16
+  - underscore: 1.8.3 -> 1.9.1
 
 * Updated V8 to 7.1.302.28.
 

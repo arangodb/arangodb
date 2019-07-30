@@ -28,7 +28,6 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Replication/ReplicationFeature.h"
-#include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 
 #include <velocypack/Builder.h>

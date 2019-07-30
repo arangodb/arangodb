@@ -254,9 +254,9 @@ function IResearchFeatureDDLTestSuite () {
 
       properties = view.properties();
       assertTrue(Object === properties.constructor);
-      assertEqual(10, properties.cleanupIntervalStep);
+      assertEqual(2, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(60000, properties.consolidationIntervalMsec);
+      assertEqual(10000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(6, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
@@ -268,15 +268,15 @@ function IResearchFeatureDDLTestSuite () {
 
       meta = {
         commitIntervalMsec: 12345,
-        consolidationIntervalMsec: 10000,
+        consolidationIntervalMsec: 20000,
         consolidationPolicy: { threshold: 0.5, type: "bytes_accum" },
       };
       view.properties(meta, true); // partial update
       properties = view.properties();
       assertTrue(Object === properties.constructor);
-      assertEqual(10, properties.cleanupIntervalStep);
+      assertEqual(2, properties.cleanupIntervalStep);
       assertEqual(12345, properties.commitIntervalMsec);
-      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(20000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("bytes_accum", properties.consolidationPolicy.type);
@@ -291,7 +291,7 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Object === properties.constructor);
       assertEqual(20, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(60000, properties.consolidationIntervalMsec);
+      assertEqual(10000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("bytes_accum", properties.consolidationPolicy.type);
@@ -728,9 +728,9 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(0, result.length);
       properties = view.properties();
       assertTrue(Object === properties.constructor);
-      assertEqual(10, properties.cleanupIntervalStep);
+      assertEqual(2, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(60000, properties.consolidationIntervalMsec);
+      assertEqual(10000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(6, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
@@ -776,7 +776,7 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(false, primarySort[1].asc);
       assertEqual(42, properties.cleanupIntervalStep);
       assertEqual(12345, properties.commitIntervalMsec);
-      assertEqual(60000, properties.consolidationIntervalMsec);
+      assertEqual(10000, properties.consolidationIntervalMsec);
       assertEqual(6, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
       assertEqual(1, properties.consolidationPolicy.segmentsMin);
@@ -812,7 +812,7 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(false, primarySort[1].asc);
       assertEqual(442, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(60000, properties.consolidationIntervalMsec);
+      assertEqual(10000, properties.consolidationIntervalMsec);
       assertEqual(6, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
       assertEqual(1, properties.consolidationPolicy.segmentsMin);

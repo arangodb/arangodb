@@ -25,7 +25,6 @@
 
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"

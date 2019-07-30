@@ -76,9 +76,6 @@ StatisticsDistribution TRI_TotalTimeDistributionStatistics(TRI_RequestTimeDistri
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  StatisticsThread
 // -----------------------------------------------------------------------------
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-std::atomic<double> arangodb::lastStatisticsThreadActivity;
-#endif
 
 class arangodb::StatisticsThread final : public Thread {
  public:
@@ -87,40 +84,34 @@ class arangodb::StatisticsThread final : public Thread {
 
  public:
   void run() override {
-    uint64_t const MAX_SLEEP_TIME = 250 * 1000;
+    uint64_t const MAX_SLEEP_TIME = 250;
 
-    uint64_t sleepTime = 100 * 1000;
+    uint64_t sleepTime = 100;
     int nothingHappened = 0;
 
     while (!isStopping() && StatisticsFeature::enabled()) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    arangodb::lastStatisticsThreadActivity = -1;
-#endif
       size_t count = RequestStatistics::processAll();
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        arangodb::lastStatisticsThreadActivity = TRI_microtime();
-#endif
 
       if (count == 0) {
         if (++nothingHappened == 10 * 30) {
           // increase sleep time every 30 seconds
           nothingHappened = 0;
-          sleepTime += 50 * 1000;
+          sleepTime += 50;
 
           if (sleepTime > MAX_SLEEP_TIME) {
             sleepTime = MAX_SLEEP_TIME;
           }
         }
 
-        std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
 
       } else {
         nothingHappened = 0;
 
         if (count < 10) {
-          std::this_thread::sleep_for(std::chrono::microseconds(10 * 1000));
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
         } else if (count < 100) {
-          std::this_thread::sleep_for(std::chrono::microseconds(1 * 1000));
+          std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
       }
     }

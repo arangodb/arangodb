@@ -148,12 +148,12 @@ function basicTestSuite() {
     },
 
     testPageRank: function () {
-      // should test correct convergence behaviour, might fail if EPS is too low
+      // should test correct convergence behavior, might fail if EPS is too low
       testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true });
     },
 
     testPageRankMMap: function () {
-      // should test correct convergence behaviour, might fail if EPS is too low
+      // should test correct convergence behavior, might fail if EPS is too low
       testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true, useMemoryMaps: true });
     },
 

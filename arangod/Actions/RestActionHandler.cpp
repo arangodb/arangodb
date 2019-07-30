@@ -25,7 +25,6 @@
 
 #include "Actions/actions.h"
 #include "Basics/StringUtils.h"
-#include "Rest/HttpRequest.h"
 #include "Statistics/RequestStatistics.h"
 #include "VocBase/vocbase.h"
 

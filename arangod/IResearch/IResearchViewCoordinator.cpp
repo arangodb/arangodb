@@ -137,9 +137,9 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
                        std::to_string(impl->id()));  // refresh view from Agency
 
     if (view) {
-      view->open();  // open view to match the behaviour in
+      view->open();  // open view to match the behavior in
                      // StorageEngine::openExistingDatabase(...) and original
-                     // behaviour of TRI_vocbase_t::createView(...)
+                     // behavior of TRI_vocbase_t::createView(...)
     }
 
     return arangodb::Result();

@@ -36,6 +36,7 @@
 #include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
+#include "MMFiles/MMFilesTransactionState.h"
 #include "MMFiles/MMFilesWalSlots.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
@@ -80,10 +81,12 @@ static inline T numericValue(VPackSlice const& slice, char const* attribute) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                  "invalid attribute value");
 }
+
 }  // namespace
 
 /// @brief creates the recover state
-MMFilesWalRecoverState::MMFilesWalRecoverState(bool ignoreRecoveryErrors)
+MMFilesWalRecoverState::MMFilesWalRecoverState(bool ignoreRecoveryErrors,
+                                               TRI_voc_tick_t& recoveryTick)
     : databaseFeature(nullptr),
       failedTransactions(),
       lastTick(0),
@@ -94,6 +97,7 @@ MMFilesWalRecoverState::MMFilesWalRecoverState(bool ignoreRecoveryErrors)
       ignoreRecoveryErrors(ignoreRecoveryErrors),
       errorCount(0),
       maxRevisionId(0),
+      recoveryTick(recoveryTick),
       lastDatabaseId(0),
       lastCollectionId(0) {
   databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>(
@@ -283,8 +287,9 @@ int MMFilesWalRecoverState::executeSingleOperation(
 
   auto mmfiles = static_cast<MMFilesCollection*>(collection->getPhysical());
   TRI_ASSERT(mmfiles);
-  TRI_voc_tick_t maxTick = mmfiles->maxTick();
-  if (marker->getTick() <= maxTick) {
+  TRI_voc_tick_t const maxTick = mmfiles->maxTick();
+  TRI_voc_tick_t const markerTick = marker->getTick();
+  if (markerTick <= maxTick) {
     // already transferred this marker
     return TRI_ERROR_NO_ERROR;
   }
@@ -292,8 +297,13 @@ int MMFilesWalRecoverState::executeSingleOperation(
   res = TRI_ERROR_INTERNAL;
 
   try {
-    auto ctx = transaction::StandaloneContext::Create(*vocbase);
-    SingleCollectionTransaction trx(ctx, *collection, AccessMode::Type::WRITE);
+    transaction::StandaloneContext ctx(*vocbase);
+
+    SingleCollectionTransaction trx(
+      std::shared_ptr<transaction::Context>(
+        std::shared_ptr<transaction::Context>(),
+        &ctx), // aliasing ctor
+      *collection, AccessMode::Type::WRITE);
 
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
     trx.addHint(transaction::Hints::Hint::NO_BEGIN_MARKER);
@@ -442,8 +452,11 @@ bool MMFilesWalRecoverState::InitialScanMarker(MMFilesMarker const* marker, void
 /// @brief callback to replay one marker during recovery
 /// this function modifies indexes etc.
 bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
-                                          void* data, MMFilesDatafile* datafile) {
+                                          void* data,
+                                          MMFilesDatafile* datafile) {
   MMFilesWalRecoverState* state = reinterpret_cast<MMFilesWalRecoverState*>(data);
+  state->recoveryTick = marker->getTick(); // update recovery tick
+
   auto visitRecoveryHelpers = arangodb::scopeGuard([marker, state]()->void { // ensure recovery helpers are called
     if (!state || (!state->canContinue() && state->errorCount) || !marker) {
         return; // ignore invalid state or unset marker

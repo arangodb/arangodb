@@ -74,6 +74,8 @@ TEST_F(CountCollectExecutorTest, there_are_no_rows_upstream_the_producer_doesnt_
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
   ASSERT_TRUE(x.toInt64() == 0);
+
+  ASSERT_EQ(0, fetcher.totalSkipped());
 }
 
 TEST_F(CountCollectExecutorTest, there_are_now_rows_upstream_the_producer_waits) {
@@ -97,6 +99,8 @@ TEST_F(CountCollectExecutorTest, there_are_now_rows_upstream_the_producer_waits)
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
   ASSERT_TRUE(x.toInt64() == 0);
+
+  ASSERT_EQ(0, fetcher.totalSkipped());
 }
 
 TEST_F(CountCollectExecutorTest, there_are_rows_in_the_upstream_the_producer_doesnt_wait) {
@@ -116,6 +120,8 @@ TEST_F(CountCollectExecutorTest, there_are_rows_in_the_upstream_the_producer_doe
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
   ASSERT_TRUE(x.toInt64() == 3);
+
+  ASSERT_EQ(3, fetcher.totalSkipped());
 }
 
 TEST_F(CountCollectExecutorTest, there_are_rows_in_the_upstream_the_producer_waits) {
@@ -147,6 +153,8 @@ TEST_F(CountCollectExecutorTest, there_are_rows_in_the_upstream_the_producer_wai
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
   ASSERT_TRUE(x.toInt64() == 3);
+
+  ASSERT_EQ(3, fetcher.totalSkipped());
 }
 
 }  // namespace aql

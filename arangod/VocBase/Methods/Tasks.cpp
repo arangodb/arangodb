@@ -245,13 +245,13 @@ Task::Task(std::string const& id, std::string const& name, TRI_vocbase_t& vocbas
 Task::~Task() {}
 
 void Task::setOffset(double offset) {
-  _offset = std::chrono::microseconds(static_cast<long long>(offset * 1000000));
+  _offset = std::chrono::milliseconds(static_cast<long long>(offset * 1000));
   _periodic.store(false);
 }
 
 void Task::setPeriod(double offset, double period) {
-  _offset = std::chrono::microseconds(static_cast<long long>(offset * 1000000));
-  _interval = std::chrono::microseconds(static_cast<long long>(period * 1000000));
+  _offset = std::chrono::milliseconds(static_cast<long long>(offset * 1000));
+  _interval = std::chrono::milliseconds(static_cast<long long>(period * 1000));
   _periodic.store(true);
 }
 

@@ -37,10 +37,6 @@ sort::sort(const type_id& type) NOEXCEPT
   : type_(&type) {
 }
 
-sort::prepared::prepared(attribute_view&& attrs) NOEXCEPT
-  : attrs_(std::move(attrs)) {
-}
-
 // ----------------------------------------------------------------------------
 // --SECTION--                                                            order 
 // ----------------------------------------------------------------------------
@@ -298,9 +294,9 @@ order::prepared::scorers::scorers(
       segment, field, stats_buf + entry.stats_offset, doc, boost
     );
 
-    if (scorer) {
+    if (scorer.second) {
       // skip empty scorers
-      scorers_.emplace_back(std::move(scorer), entry.score_offset);
+      scorers_.emplace_back(std::move(scorer.first), scorer.second, entry.score_offset);
     }
   }
 }
@@ -321,8 +317,8 @@ order::prepared::scorers& order::prepared::scorers::operator=(
 
 void order::prepared::scorers::score(byte_type* scr) const {
   for (auto& scorer : scorers_) {
-    assert(scorer.first);
-    scorer.first->score(scr + scorer.second);
+    assert(scorer.func);
+    (*scorer.func)(scorer.ctx.get(), scr + scorer.offset);
   }
 }
 

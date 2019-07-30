@@ -926,15 +926,32 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   // export v8 statistics
   builder.add("v8Context", VPackValue(VPackValueType::Object));
   V8DealerFeature::Statistics v8Counters{};
+  std::vector<V8DealerFeature::MemoryStatistics> memoryStatistics;
   // V8 may be turned off on a server
   if (dealer && dealer->isEnabled()) {
     v8Counters = dealer->getCurrentContextNumbers();
+    memoryStatistics = dealer->getCurrentMemoryNumbers();
   }
   builder.add("available", VPackValue(v8Counters.available));
   builder.add("busy", VPackValue(v8Counters.busy));
   builder.add("dirty", VPackValue(v8Counters.dirty));
   builder.add("free", VPackValue(v8Counters.free));
   builder.add("max", VPackValue(v8Counters.max));
+  /* at the time being we don't want to write this into the database so the data volume doesn't increase.
+  {
+    builder.add("memory", VPackValue(VPackValueType::Array));
+    for (auto memStatistic : memoryStatistics) {
+      builder.add(VPackValue(VPackValueType::Object));
+      builder.add("contextId", VPackValue(memStatistic.id));
+      builder.add("tMax", VPackValue(memStatistic.tMax));
+      builder.add("countOfTimes", VPackValue(memStatistic.countOfTimes));
+      builder.add("heapMax", VPackValue(memStatistic.heapMax));
+      builder.add("heapMin", VPackValue(memStatistic.heapMin));
+      builder.close();
+    }
+    builder.close();
+  }
+  */
   builder.close();
 
   // export threads statistics
@@ -1096,7 +1113,7 @@ void StatisticsWorker::run() {
       // startup aborted
       return;
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(100000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 
   try {
@@ -1112,17 +1129,6 @@ void StatisticsWorker::run() {
 
   uint64_t seconds = 0;
   while (!isStopping() && StatisticsFeature::enabled()) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    double lastActivity = arangodb::lastStatisticsThreadActivity;
-    auto now = TRI_microtime();
-    auto delta = now - lastActivity;
-    if ((lastActivity >= 0) && (delta > 1)) {
-      LOG_TOPIC("92a39", ERR, Logger::STATISTICS)
-        << "Statistics Thread is asleep! " <<
-        delta;
-    }
-#endif
-
     try {
       if (seconds % STATISTICS_INTERVAL == 0) {
         // new stats are produced every 10 seconds

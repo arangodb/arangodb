@@ -59,14 +59,14 @@ struct aligned_scorer : public irs::sort {
     ) const override {
       // NOOP
     }
-    virtual scorer::ptr prepare_scorer(
+    virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
         const irs::sub_reader& segment,
         const irs::term_reader& field,
         const irs::byte_type* stats,
         const irs::attribute_view& doc_attrs,
         irs::boost_t boost
     ) const {
-      return nullptr;
+      return { nullptr, nullptr };
     }
     const irs::flags& features() const {
       return features_;

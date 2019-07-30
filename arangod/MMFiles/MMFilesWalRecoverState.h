@@ -42,7 +42,7 @@ struct MMFilesWalRecoverState {
   MMFilesWalRecoverState& operator=(MMFilesWalRecoverState const&) = delete;
 
   /// @brief creates the recover state
-  explicit MMFilesWalRecoverState(bool ignoreRecoveryErrors);
+  explicit MMFilesWalRecoverState(bool ignoreRecoveryErrors, TRI_voc_tick_t& recoveryTick);
 
   /// @brief destroys the recover state
   ~MMFilesWalRecoverState();
@@ -95,6 +95,9 @@ struct MMFilesWalRecoverState {
 
     return false;
   }
+
+  /// @brief current recovery tick
+  inline TRI_voc_tick_t currentTick() const noexcept { return recoveryTick; }
 
   /// @brief whether or not to abort recovery on first error
   inline bool canContinue() const { return ignoreRecoveryErrors; }
@@ -187,6 +190,7 @@ struct MMFilesWalRecoverState {
   LocalDocumentId maxLocalDocumentId;
 
  private:
+  TRI_voc_tick_t& recoveryTick;
   TRI_voc_tick_t lastDatabaseId;
   TRI_voc_cid_t lastCollectionId;
 };
