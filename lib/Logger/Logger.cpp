@@ -30,6 +30,7 @@
 
 #include "Logger.h"
 
+#include "Basics/ArangoGlobalContext.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
@@ -43,6 +44,10 @@
 #include "Logger/LogAppenderFile.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogThread.h"
+
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#endif
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
