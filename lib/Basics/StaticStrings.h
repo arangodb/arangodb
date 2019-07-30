@@ -79,6 +79,14 @@ class StaticStrings {
   // database and collection names
   static std::string const SystemDatabase;
 
+  // database definition fields
+  static std::string const DatabaseId;
+  static std::string const DatabaseName;
+  static std::string const DatabaseOptions;
+  static std::string const DatabaseCoordinator;
+  static std::string const DatabaseCoordinatorRebootId;
+  static std::string const DatabaseIsBuilding;
+
   // LogicalDataSource definition fields
   static std::string const DataSourceDeleted;  // data-source deletion marker
   static std::string const DataSourceGuid;     // data-source globaly-unique id

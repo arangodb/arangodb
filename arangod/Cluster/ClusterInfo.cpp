@@ -166,6 +166,28 @@ CollectionInfoCurrent::CollectionInfoCurrent(uint64_t currentVersion)
 
 CollectionInfoCurrent::~CollectionInfoCurrent() {}
 
+
+Result ClusterInfo::CreateDatabaseInfo::buildSlice(VPackBuilder& builder, bool const building) const {
+  try {
+    VPackObjectBuilder b(&builder);
+    std::string const idString(basics::StringUtils::itoa(_id));
+    builder.add(StaticStrings::DatabaseId, VPackValue(idString));
+    builder.add(StaticStrings::DatabaseName, VPackValue(_name));
+    builder.add(StaticStrings::DatabaseOptions, _options);
+
+    // isBuilding == false should actually not happen
+    // these keys should just not exist.
+    if(building) {
+      builder.add(StaticStrings::DatabaseCoordinator, VPackValue(_coordinatorId));
+      builder.add(StaticStrings::DatabaseCoordinatorRebootId, VPackValue(_coordinatorRebootId));
+      builder.add(StaticStrings::DatabaseIsBuilding, VPackValue(building));
+    }
+  } catch (VPackException const& e) {
+    return Result(e.errorCode());
+  }
+  return Result();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the clusterinfo instance
 ////////////////////////////////////////////////////////////////////////////////
@@ -1377,17 +1399,13 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
 /// error code and the errorMsg is set accordingly. One possible error
 /// is a timeout, a timeout of 0.0 means no timeout.
 ////////////////////////////////////////////////////////////////////////////////
-Result ClusterInfo::createDatabaseCoordinator(  // create database
-    std::string const& name,                    // database name
-    velocypack::Slice const& slice,             // database definition
-    double timeout                              // request timeout
-) {
+Result ClusterInfo::createIsBuildingDatabaseCoordinator(ClusterInfo::CreateDatabaseInfo const& database) {
+
+  /* formerly an option */
+  std::string const& name = database.getName();
+
   AgencyComm ac;
   AgencyCommResult res;
-
-  double const realTimeout = getTimeout(timeout);
-  double const endTime = TRI_microtime() + realTimeout;
-  double const interval = getPollInterval();
 
   auto DBServers = std::make_shared<std::vector<ServerID>>(getCurrentDBServers());
   auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
@@ -1445,13 +1463,16 @@ Result ClusterInfo::createDatabaseCoordinator(  // create database
   auto cbGuard = scopeGuard(
       [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
 
-  AgencyOperation newVal("Plan/Databases/" + name, AgencyValueOperationType::SET, slice);
+  VPackBuilder builder;
+  database.buildIsBuildingSlice(builder);
+
+  AgencyOperation newVal("Plan/Databases/" + name, AgencyValueOperationType::SET, builder.slice());
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
   AgencyPrecondition precondition("Plan/Databases/" + name,
                                   AgencyPrecondition::Type::EMPTY, true);
   AgencyWriteTransaction trx({newVal, incrementVersion}, precondition);
 
-  res = ac.sendTransactionWithFailover(trx, realTimeout);
+  res = ac.sendTransactionWithFailover(trx, 0.0); // realTimeout);
 
   if (!res.successful()) {
     if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
@@ -1464,7 +1485,12 @@ Result ClusterInfo::createDatabaseCoordinator(  // create database
   // Now update our own cache of planned databases:
   loadPlan();
 
+  // Waits for the database to turn up in Current/Databases
   {
+    //double const realTimeout = getTimeout(timeout);
+    //double const endTime = TRI_microtime() + realTimeout;
+    double const interval = getPollInterval();
+
     CONDITION_LOCKER(locker, agencyCallback->_cv);
 
     int count = 0;  // this counts, when we have to reload the DBServers
@@ -1488,9 +1514,11 @@ Result ClusterInfo::createDatabaseCoordinator(  // create database
         return Result(tmpRes, *errMsg);
       }
 
+      /*
       if (TRI_microtime() > endTime) {
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
+      */
 
       agencyCallback->executeByCallbackOrTimeout(getReloadServerListTimeout() / interval);
 
@@ -1499,6 +1527,39 @@ Result ClusterInfo::createDatabaseCoordinator(  // create database
       }
     }
   }
+}
+
+// Finalize creation of database in cluster by removing isBuilding, coordinator, and coordinatorRebootId;
+// as precondition that the entry we put in createIsBuildingDatabaseCoordinator is still in Plan/ unchanged.
+Result ClusterInfo::createFinalizeDatabaseCoordinator(ClusterInfo::CreateDatabaseInfo const& database) {
+  AgencyComm ac;
+
+  VPackBuilder pcBuilder;
+  database.buildIsBuildingSlice(pcBuilder);
+
+  VPackBuilder entryBuilder;
+  database.buildCompletedSlice(entryBuilder);
+
+  AgencyOperation newVal("Plan/Databases/" + database.getName(),
+                         AgencyValueOperationType::SET, entryBuilder.slice());
+  AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
+  AgencyPrecondition precondition("Plan/Databases/" + database.getName(),
+                                  AgencyPrecondition::Type::VALUE, pcBuilder.slice());
+  AgencyWriteTransaction trx({newVal, incrementVersion}, precondition);
+
+  auto res = ac.sendTransactionWithFailover(trx, 0.0);
+
+  if (!res.successful()) {
+    if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+      return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE, "...");
+    }
+    // Something else went wrong.
+    return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE);
+  }
+
+  // The transaction was successful and the database should
+  // now be visible and usable.
+  return Result();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

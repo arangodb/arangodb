@@ -271,6 +271,38 @@ class ClusterInfo final {
   ClusterInfo& operator=(ClusterInfo const&) = delete;  // not implemented
 
  public:
+  class CreateDatabaseInfo {
+  public:
+   CreateDatabaseInfo() = default;
+   CreateDatabaseInfo(uint64_t const id, std::string const& name, VPackSlice const& options,
+                      std::string const& coordinatorId, uint64_t coordinatorRebootId)
+       : _id(id),
+         _name(name),
+         _options(options),
+         _coordinatorId(coordinatorId),
+         _coordinatorRebootId(coordinatorRebootId){};
+
+   Result buildIsBuildingSlice(VPackBuilder& builder) const {
+     return buildSlice(builder, true);
+   };
+   Result buildCompletedSlice(VPackBuilder& builder) const {
+     return buildSlice(builder, false);
+   };
+
+   std::string getName() const {return _name; };
+
+  private:
+   Result buildSlice(VPackBuilder& builder, bool const isBuilding) const;
+
+  private:
+    uint64_t _id;
+    std::string _name;
+    VPackSlice _options;
+    std::string _coordinatorId;
+    uint64_t _coordinatorRebootId;
+  };
+
+ public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
@@ -398,12 +430,18 @@ class ClusterInfo final {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create database in coordinator
+  ///
+  /// A database is first created in the isBuilding state, and therefore not
+  ///  visible or usable to the outside world.
+  ///
+  /// After the database has been fully setup, it is then confirmed created
+  /// and becomes visible and usable.
+  ///
+  /// If any error happens on the way, a pending database will be cleaned up
+  ///
   //////////////////////////////////////////////////////////////////////////////
-  Result createDatabaseCoordinator(    // create database
-      std::string const& name,         // database name
-      velocypack::Slice const& slice,  // database definition
-      double timeout                   // request timeout
-  );
+  Result createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const& database);
+  Result createFinalizeDatabaseCoordinator(CreateDatabaseInfo const& database);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop database in coordinator
