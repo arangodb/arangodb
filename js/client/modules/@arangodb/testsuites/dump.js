@@ -538,6 +538,13 @@ function hotBackup (options) {
       }
     };
   }
+  if (!require("internal").isEnterprise()) {
+    return {
+      'hotbackup is only enterprise': {
+        status: true,
+      }
+    };
+  }
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
     dumpCheck: 'dump-' + options.storageEngine + c.cluster + '.js',
