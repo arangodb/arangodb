@@ -480,7 +480,7 @@ bool allowCredentials(std::string const& origin) {
   }
   return allowCredentials;
 }
-}
+} // namespace
 
 
 /// handle an OPTIONS request
