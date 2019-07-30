@@ -276,45 +276,51 @@ Result Collections::create(TRI_vocbase_t& vocbase,
                arangodb::velocypack::Value(info.name));
 
 
-    auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
-    if(replicationFactorSlice.isNone()) {
-      auto factor = vocbase.replicationFactor();
-      if(factor > 0 && vocbase.IsSystemName(info.name)) {
-        auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>("Cluster");
-        if (isDBServer) {
-          // DBServers have their own loacl copies of system collections
-          factor = 1;
-          // we need to ignore the minReplicationFactor for shards as well
-          helper.add(StaticStrings::MinReplicationFactor, VPackValue(1));
-        } else if (cl) {
-          factor = std::max(vocbase.replicationFactor(), cl->systemReplicationFactor());
+    if (ServerState::instance()->isCoordinator()) {
+      auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
+      if(replicationFactorSlice.isNone()) {
+        auto factor = vocbase.replicationFactor();
+        if(factor > 0 && vocbase.IsSystemName(info.name)) {
+          auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>("Cluster");
+          if (isDBServer) {
+            // DBServers have their own loacl copies of system collections
+            factor = 1;
+            // we need to ignore the minReplicationFactor for shards as well
+            helper.add(StaticStrings::MinReplicationFactor, VPackValue(1));
+          } else if (cl) {
+            factor = std::max(vocbase.replicationFactor(), cl->systemReplicationFactor());
+          }
+        }
+        helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
+      }
+
+      bool hasDistribute = false;
+      auto distribute = info.properties.get(StaticStrings::DistributeShardsLike);
+      if(!distribute.isNone()) {
+        hasDistribute = true;
+      }
+
+      // system collections will be sharded normally - we avoid a self reference when creating _graphs
+      if(vocbase.sharding() == "single" && !vocbase.IsSystemName(info.name)) {
+        if(!hasDistribute) {
+          helper.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::GraphCollection));
+          hasDistribute = true;
+        } else if (distribute.isString() && distribute.compareString("") == 0) {
+          helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); //delete empty string from info slice
         }
       }
-      helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
-    }
 
-    bool hasDistribute = false;
-    auto distribute = info.properties.get(StaticStrings::DistributeShardsLike);
-    if(!distribute.isNone()) {
-      hasDistribute = true;
-    }
-
-    // system collections will be sharded normally - we avoid a self reference when creating _graphs
-    if(vocbase.sharding() == "single" && !vocbase.IsSystemName(info.name)) {
-      if(!hasDistribute) {
-        helper.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::GraphCollection));
-        hasDistribute = true;
-      } else if (distribute.isString() && distribute.compareString("") == 0) {
-        helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); //delete empty string from info slice
+      if(!hasDistribute){
+        auto minReplicationFactorSlice = info.properties.get(StaticStrings::MinReplicationFactor);
+        if(minReplicationFactorSlice.isNone()) {
+          auto factor = vocbase.minReplicationFactor();
+          helper.add(StaticStrings::MinReplicationFactor, VPackValue(factor));
+        }
       }
-    }
-
-    if(!hasDistribute){
-      auto minReplicationFactorSlice = info.properties.get(StaticStrings::MinReplicationFactor);
-      if(minReplicationFactorSlice.isNone()) {
-        auto factor = vocbase.minReplicationFactor();
-        helper.add(StaticStrings::MinReplicationFactor, VPackValue(factor));
-      }
+    } else  { // single server
+      helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); //delete empty string from info slice
+      helper.add(StaticStrings::ReplicationFactor, VPackSlice::nullSlice());
+      helper.add(StaticStrings::MinReplicationFactor, VPackSlice::nullSlice());
     }
 
     helper.close();
