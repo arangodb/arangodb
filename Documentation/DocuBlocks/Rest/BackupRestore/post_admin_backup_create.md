@@ -20,7 +20,7 @@ timestamp string create a unique backup identifier, `<timestamp>_<label>`.
 If no label is specified, the empty string is assumed and a default
 UUID is created for this part of the ID.
 
-@RESTBODYPARAM{timeout,integer,optional,integer}
+@RESTBODYPARAM{timeout,number,optional,double}
 The time in seconds that the operation tries to get a consistent
 snapshot. The default is 120 seconds. 
 
