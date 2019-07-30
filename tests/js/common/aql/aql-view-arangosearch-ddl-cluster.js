@@ -927,6 +927,7 @@ function IResearchFeatureDDLTestSuite () {
       let databaseNameView = "testDatabaseView";
 
       db._useDatabase("_system");
+      analyzers.save("SystemIdentity", "identity");
       try { db._dropDatabase(databaseNameAnalyzer);} catch(e) {}
       try { db._dropDatabase(databaseNameView);} catch(e) {}
       db._createDatabase(databaseNameAnalyzer);
@@ -944,9 +945,14 @@ function IResearchFeatureDDLTestSuite () {
         assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
                     e.errorNum);
       }
+        // but cross-db usage of system analyzers is ok
+      db._createView("FOO_view", "arangosearch", {links:{"FOO":{analyzers:["::SystemIdentity"]}}});
+      db._createView("FOO_view2", "arangosearch", {links:{"FOO":{analyzers:["_system::SystemIdentity"]}}});
+
       db._useDatabase("_system");
       db._dropDatabase(databaseNameAnalyzer);
       db._dropDatabase(databaseNameView);
+      analyzers.remove("SystemIdentity", true);
     },
     // Commented as this situation is not documented (user should not do this), will be adressed later
     //testLinkWithAnalyzerFromOtherDbByAnalyzerDefinitions: function() {
