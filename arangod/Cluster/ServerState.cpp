@@ -355,7 +355,7 @@ ResultT<uint64_t> ServerState::readRebootIdFromAgency(AgencyComm& comm)
     LOG_TOPIC("38a4a", WARN, Logger::CLUSTER)
       << "rebootId is not an integer";
 
-    ResultT<uint64_t>::error(TRI_ERROR_INTERNAL, "rebootId is not an integer");
+    return ResultT<uint64_t>::error(TRI_ERROR_INTERNAL, "rebootId is not an integer");
   }
 
   return ResultT<uint64_t>::success(valueSlice.getNumericValue<uint64_t>());
@@ -728,7 +728,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
     auto result = readRebootIdFromAgency(comm);
 
     if (result) {
-      setRebootId(result.get());
+      setRebootId(result);
       return true;
     }
     std::this_thread::sleep_for(std::chrono::seconds(1));
