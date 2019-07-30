@@ -23,7 +23,7 @@
 
 #include "Basics/Common.h"
 
-#include <WinSock2.h>
+#include <WinSock2.h>  // must be before windows.h
 #include <shellapi.h>
 #include <windows.h>
 

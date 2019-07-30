@@ -702,7 +702,7 @@
 
 //#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES     1
 
-#include <WinSock2.h>
+#include <WinSock2.h>  // must be before windows.h
 #include <io.h>
 #include <stdio.h>
 #include <windows.h>

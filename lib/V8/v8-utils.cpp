@@ -26,7 +26,7 @@
 #include "Basics/Common.h"
 
 #ifdef _WIN32
-#include <WinSock2.h>
+#include <WinSock2.h>  // must be before windows.h
 #include <conio.h>
 #include <fcntl.h>
 #include <io.h>
