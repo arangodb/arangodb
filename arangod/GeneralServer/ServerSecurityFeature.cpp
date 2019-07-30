@@ -42,7 +42,7 @@ void ServerSecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
   options->addSection("foxx", "Configure Foxx");
   options->addOption("--foxx.api", "enables Foxx management REST APIs",
                      new BooleanParameter(&_enableFoxxApi))
-                     .setIntroducedIn(30408);
+                     .setIntroducedIn(30408).setIntroducedIn(30500);
   options->addOption("--foxx.store", "enables Foxx store in web interface",
                      new BooleanParameter(&_enableFoxxStore))
                      .setIntroducedIn(30408);
