@@ -3690,29 +3690,27 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(ShardID
 
   while (true) {
     {
-      {
-        READ_LOCKER(readLocker, _currentProt.lock);
-        // _shardIds is a map-type <ShardId,
-        // std::shared_ptr<std::vector<ServerId>>>
-        auto it = _shardIds.find(shardID);
+      READ_LOCKER(readLocker, _currentProt.lock);
+      // _shardIds is a map-type <ShardId,
+      // std::shared_ptr<std::vector<ServerId>>>
+      auto it = _shardIds.find(shardID);
 
-        if (it != _shardIds.end()) {
-          auto serverList = (*it).second;
-          if (serverList != nullptr && serverList->size() > 0 &&
-              (*serverList)[0].size() > 0 && (*serverList)[0][0] == '_') {
-            // This is a temporary situation in which the leader has already
-            // resigned, let's wait half a second and try again.
-            --tries;
-            LOG_TOPIC("b1dc5", INFO, Logger::CLUSTER)
-                << "getResponsibleServer: found resigned leader,"
-                << "waiting for half a second...";
-          } else {
-            return (*it).second;
-          }
+      if (it != _shardIds.end()) {
+        auto serverList = (*it).second;
+        if (serverList != nullptr && serverList->size() > 0 &&
+            (*serverList)[0].size() > 0 && (*serverList)[0][0] == '_') {
+          // This is a temporary situation in which the leader has already
+          // resigned, let's wait half a second and try again.
+          --tries;
+          LOG_TOPIC("b1dc5", INFO, Logger::CLUSTER)
+              << "getResponsibleServer: found resigned leader,"
+              << "waiting for half a second...";
+        } else {
+          return (*it).second;
         }
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     if (++tries >= 2) {
       break;
@@ -3723,6 +3721,78 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(ShardID
   }
 
   return std::make_shared<std::vector<ServerID>>();
+}
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief atomically find all servers who are responsible for the given 
+/// shards (only the leaders).
+/// will throw an exception if no leader can be found for any
+/// of the shards. will return an empty result if the shards couldn't be
+/// determined after a while - it is the responsibility of the caller to
+/// check for an empty result!
+//////////////////////////////////////////////////////////////////////////////
+
+std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(std::unordered_set<ShardID> const& shardIds) {
+  TRI_ASSERT(!shardIds.empty());
+
+  std::unordered_map<ShardID, ServerID>  result;
+  int tries = 0;
+
+  if (!_currentProt.isValid) {
+    loadCurrent();
+    tries++;
+  }
+
+  while (true) {
+    TRI_ASSERT(result.empty());
+    {
+      READ_LOCKER(readLocker, _currentProt.lock);
+      for (auto const& shardId : shardIds) {
+        auto it = _shardIds.find(shardId);
+
+        if (it == _shardIds.end()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "no servers found for shard " + shardId);
+        }
+
+        auto serverList = (*it).second;
+        if (serverList == nullptr || serverList->empty()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no servers found for shard " + shardId);
+        }
+
+        if ((*serverList)[0].size() > 0 && (*serverList)[0][0] == '_') {
+          // This is a temporary situation in which the leader has already
+          // resigned, let's wait half a second and try again.
+          --tries;
+          break;
+        }
+
+        // put leader into result
+        result.emplace(shardId, (*it).second->front());
+      }
+    }
+
+    if (result.size() == shardIds.size()) {
+      // result is complete
+      break;
+    }
+    
+    // reset everything we found so far for the next round
+    result.clear();
+    
+    if (++tries >= int(2 * shardIds.size()) || application_features::ApplicationServer::isStopping()) {
+      break;
+    }
+
+    LOG_TOPIC("b1dc5", INFO, Logger::CLUSTER)
+              << "getResponsibleServers: found resigned leader,"
+              << "waiting for half a second...";
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    // must load collections outside the lock
+    loadCurrent();
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
