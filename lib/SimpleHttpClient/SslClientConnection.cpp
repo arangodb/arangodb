@@ -25,6 +25,7 @@
 #include <string.h>
 #include <string>
 
+#include "Basics/Common.h"
 #include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_WINSOCK2_H

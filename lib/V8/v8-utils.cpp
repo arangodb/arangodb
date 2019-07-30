@@ -23,6 +23,8 @@
 
 #include "v8-utils.h"
 
+#include "Basics/Common.h"
+
 #ifdef _WIN32
 #include <WinSock2.h>
 #include <conio.h>

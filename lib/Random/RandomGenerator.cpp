@@ -31,13 +31,15 @@
 #include <string>
 #include <thread>
 
+#include "Basics/Common.h"
+#include "Basics/operating-system.h"
+
 #ifdef _WIN32
 #include <windows.h>
+
 #include <Wincrypt.h>
 #include <window.h>
 #endif
-
-#include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>

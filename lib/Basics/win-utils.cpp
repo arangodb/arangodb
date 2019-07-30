@@ -21,6 +21,8 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+
 #include <WinSock2.h>
 #include <errno.h>
 #include <windows.h>

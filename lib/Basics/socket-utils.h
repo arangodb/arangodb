@@ -26,6 +26,7 @@
 
 #include <stddef.h>
 
+#include "Basics/Common.h"
 #include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_SYS_TYPES_H

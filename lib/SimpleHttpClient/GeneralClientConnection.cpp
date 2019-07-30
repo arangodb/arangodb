@@ -25,6 +25,7 @@
 #include <limits.h>
 #include <string.h>
 
+#include "Basics/Common.h"
 #include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_POLL_H
