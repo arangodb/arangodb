@@ -69,7 +69,9 @@
 #include "RestHandler/RestExplainHandler.h"
 #include "RestHandler/RestGraphHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
-#include "RestHandler/RestHotBackupHandler.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/RestHandler/RestHotBackupHandler.h"
+#endif
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
@@ -309,10 +311,12 @@ void GeneralServerFeature::defineHandlers() {
           "Authentication");
   TRI_ASSERT(authentication != nullptr);
 
+#ifdef USE_ENTERPRISE
   HotBackupFeature* backup =
     application_features::ApplicationServer::getFeature<HotBackupFeature>(
           "HotBackup");
   TRI_ASSERT(backup != nullptr);
+#endif
 
 
   auto queryRegistry = QueryRegistryFeature::registry();
