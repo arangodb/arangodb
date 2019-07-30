@@ -26,6 +26,7 @@
 #define ARANGOD_SCHEDULER_TASK_H 1
 
 #include <memory>
+#include <string>
 
 #include "Basics/Common.h"
 
