@@ -4027,7 +4027,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, BAD_PARAMS_CREATE);
     }
 
-    bool force = payload.get("forceBackup").isTrue();
+    bool force = !payload.isNone() && payload.get("forceBackup").isTrue();
 
     std::string const backupId =
       (payload.isObject() && payload.hasKey("label")) ?
