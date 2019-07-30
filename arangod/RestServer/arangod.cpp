@@ -112,7 +112,7 @@
 #endif
 
 #ifdef USE_ENTERPRISE
-#include "EnterpriseStorageEngine/HotBackupFeature.h"
+#include "Enterprise/StorageEngine/HotBackupFeature.h"
 #include "Enterprise/RestServer/arangodEE.h"
 #endif
 
