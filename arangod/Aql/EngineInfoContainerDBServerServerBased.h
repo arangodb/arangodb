@@ -26,10 +26,12 @@
 
 #include "Basics/Common.h"
 
+#include "Aql/ShardLocking.h"
 #include "Aql/types.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/AccessMode.h"
 
+#include <map>
 #include <set>
 #include <stack>
 
@@ -42,7 +44,6 @@ class Builder;
 
 namespace aql {
 
-struct Collection;
 class ExecutionNode;
 class GraphNode;
 class Query;
@@ -74,13 +75,6 @@ class EngineInfoContainerDBServerServerBased {
 #ifdef USE_ENTERPRISE
     std::set<ShardID> inaccessibleShards;
 #endif
-  };
-
-  struct CollectionLockingInformation {
-    void mergeShards(std::shared_ptr<std::vector<ShardID>> const& shards);
-
-    AccessMode::Type lockType{AccessMode::Type::NONE};
-    std::unordered_set<ShardID> usedShards;
   };
 
  public:
@@ -134,18 +128,11 @@ class EngineInfoContainerDBServerServerBased {
   void addGraphNode(GraphNode* node);
 
  private:
-  // Adjust locking level if a node uses a collections
-  void handleCollectionLocking(ExecutionNode const* node);
-
-  // Adjust locking level of a single collection
-  void updateLocking(Collection const* col, AccessMode::Type const& accessType,
-                     std::unordered_set<std::string> const& restrictedShards);
-
   // Insert the Locking information into the message to be send to DBServers
-  void addLockingPart(arangodb::velocypack::Builder& builder) const;
+  void addLockingPart(arangodb::velocypack::Builder& builder, ServerID const& server) const;
 
   // Insert the Options information into the message to be send to DBServers
-  void addOptionsPart(arangodb::velocypack::Builder& builder) const;
+  void addOptionsPart(arangodb::velocypack::Builder& builder, ServerID const& server) const;
 
   // Insert the Variables information into the message to be send to DBServers
   void addVariablesPart(arangodb::velocypack::Builder& builder) const;
@@ -175,7 +162,7 @@ class EngineInfoContainerDBServerServerBased {
   // DBServers
   std::vector<GraphNode*> _graphNodes;
 
-  std::unordered_map<Collection const*, CollectionLockingInformation> _collectionLocking;
+  ShardLocking _shardLocking;
 };
 
 }  // namespace aql
