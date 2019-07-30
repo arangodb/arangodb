@@ -20,7 +20,7 @@ Should be set to the value of the *x-arango-replication-lastscanned* header
 or alternatively 0 on first try. This allows the rocksdb engine to break up
 large transactions over multiple responses. 
 
-@RESTQUERYPARAM{global,bool,optional}
+@RESTQUERYPARAM{global,boolean,optional}
 Whether operations for all databases should be included. When set to *false*
 only the operations for the current database are included. The value *true* is
 only valid on the *_system* database. The default is *false*.
