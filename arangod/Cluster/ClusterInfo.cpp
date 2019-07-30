@@ -3779,7 +3779,7 @@ std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(std::un
     // reset everything we found so far for the next round
     result.clear();
     
-    if (++tries >= int(2 * shardIds.size()) || application_features::ApplicationServer::isStopping()) {
+    if (++tries >= 2 || application_features::ApplicationServer::isStopping()) {
       break;
     }
 
