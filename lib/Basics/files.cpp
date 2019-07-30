@@ -39,6 +39,7 @@
 #ifdef _WIN32
 #include <Shlwapi.h>
 #include <tchar.h>
+#include <windows.h>
 #endif
 
 #include "Basics/operating-system.h"
@@ -69,6 +70,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/conversions.h"
