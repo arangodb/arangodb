@@ -24,6 +24,7 @@
 #include "threads.h"
 
 #include "Basics/debugging.h"
+#include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
