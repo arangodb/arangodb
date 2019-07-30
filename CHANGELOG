@@ -1,6 +1,8 @@
 v3.3.24 (XXXX-XX-XX)
 --------------------
 
+* upgrade arangosync version to 0.6.5
+
 * arangoimport would not stop, much less report, communications errors.  Add CSV reporting
   of line numbers that are impacted during such errors
 
