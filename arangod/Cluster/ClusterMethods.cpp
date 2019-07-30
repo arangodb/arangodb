@@ -2575,21 +2575,21 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     std::vector<std::shared_ptr<LogicalCollection>>& collections,
     bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
     bool enforceReplicationFactor) {
-  
+
   TRI_ASSERT(!collections.empty());
   if (collections.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
         "Trying to create an empty list of collections on coordinator.");
   }
-  
+
   double const realTimeout = ClusterInfo::getTimeout(240.0);
   double const endTime = TRI_microtime() + realTimeout;
 
   // We have at least one, take this collections DB name
   auto const dbName = collections[0]->vocbase().name();
   ClusterInfo* ci = ClusterInfo::instance();
-    
+
   std::vector<ClusterCollectionCreationInfo> infos;
 
   while (true) {
@@ -2598,7 +2598,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     ci->loadCurrentDBServers();
     std::vector<std::string> dbServers = ci->getCurrentDBServers();
     infos.reserve(collections.size());
-    
+
     std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> vpackData;
     vpackData.reserve(collections.size());
     for (auto& col : collections) {
@@ -2696,21 +2696,21 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     if (res.is(TRI_ERROR_REQUEST_CANCELED)) {
       // special error code indicating that storing the updated plan in the agency
       // didn't succeed, and that we should try again
-      
+
       // sleep for a while
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      
+
       if (TRI_microtime() > endTime) {
         // timeout expired
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_TIMEOUT);
       }
-  
+
       if (arangodb::application_features::ApplicationServer::isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
-      
+
       // try in next iteration with an adjusted plan change attempt
-      continue; 
+      continue;
 
     } else {
       // any other error
@@ -3521,7 +3521,8 @@ std::vector<std::string> idPath {"result","id"};
 
 arangodb::Result hotBackupDBServers(
   std::string const& backupId, std::string const& timeStamp,
-  std::vector<ServerID> dbServers, VPackSlice agencyDump) {
+  std::vector<ServerID> dbServers, VPackSlice agencyDump,
+  bool force) {
 
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
@@ -3535,6 +3536,7 @@ arangodb::Result hotBackupDBServers(
     builder.add("label", VPackValue(backupId));
     builder.add("agency-dump", agencyDump);
     builder.add("timestamp", VPackValue(timeStamp));
+    builder.add("forceBackup", VPackValue(force));
   }
   auto body = std::make_shared<std::string>(builder.toJson());
 
@@ -3706,9 +3708,12 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     if (!payload.isNone() &&
         (!payload.isObject() ||
          (payload.hasKey("label") && !payload.get("label").isString()) ||
-         (payload.hasKey("timeout") && !payload.get("timeout").isNumber()))) {
+         (payload.hasKey("timeout") && !payload.get("timeout").isNumber()) ||
+         (payload.hasKey("forceBackup") && !payload.get("forceBackup").isBoolean()))) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, BAD_PARAMS_CREATE);
     }
+
+    bool force = payload.isObject() && payload.get("forceBackup").isTrue();
 
     std::string const backupId =
       (payload.isObject() && payload.hasKey("label")) ?
@@ -3788,7 +3793,9 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       }
     }
 
-    if (!result.ok()) {
+    bool gotLock = result.ok();
+
+    if (!gotLock && !force) {
       unlockDBServerTransactions(backupId, dbServers);
       ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       result.reset(
@@ -3798,7 +3805,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       return result;
     }
 
-    result = hotBackupDBServers(backupId, timeStamp, dbServers, agency->slice());
+    result = hotBackupDBServers(backupId, timeStamp, dbServers, agency->slice(), !gotLock);
     if (!result.ok()) {
       unlockDBServerTransactions(backupId, dbServers);
       ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
@@ -3845,6 +3852,9 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     {
       VPackObjectBuilder o(&report);
       report.add("id", VPackValue(timeStamp + "_" + backupId));
+      if (!gotLock) {
+        report.add("forced", VPackValue(true));
+      }
     }
 
     return arangodb::Result();
