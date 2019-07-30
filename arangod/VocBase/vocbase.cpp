@@ -2073,7 +2073,6 @@ VocbaseOptions arangodb::getVocbaseOptions(VPackSlice const& options) {
   // This Function will be called twice - the second time we do not run in
   // the risk of consulting the ClusterFeature, because defaults are provided
   // during the first call.
-
   VocbaseOptions vocbaseOptions;
   vocbaseOptions.replicationFactor = 1;
   vocbaseOptions.minReplicationFactor = 1;

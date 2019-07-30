@@ -115,6 +115,61 @@ function OneShardPropertiesSuite () {
 
     },
 
+    testReplicationFactorandOverrides : function () {
+      assertTrue(db._createDatabase(dn, { replicationFactor : 2, minReplicationFactor : 2}));
+
+      db._useDatabase(dn);
+      let props = db._properties();
+      assertEqual(props.sharding, "");
+      assertEqual(props.replicationFactor, 2);
+      assertEqual(props.minReplicationFactor, 2);
+
+      { 
+        let col = db._create("somecollection");
+        let colProperties = col.properties();
+
+        if(isCluster && isEnterprise) {
+          assertEqual(colProperties.replicationFactor, 2);
+          assertEqual(colProperties.minReplicationFactor, 2);
+        }
+      }
+
+
+      {
+        let col = db._create("overrideCollection1", { minReplicationFactor : 1});
+        let colProperties = col.properties();
+
+        if(isCluster) {
+          assertEqual(colProperties.minReplicationFactor, 1);
+          assertEqual(colProperties.minReplicationFactor, 1);
+        }
+      }
+
+      {
+        let col = db._create("overrideCollection2", { minReplicationFactor : 1, replicationFactor : 1, numberOfShards : 3});
+        let colProperties = col.properties();
+
+        if(isCluster) {
+          assertEqual(colProperties.minReplicationFactor, 1);
+          assertEqual(colProperties.minReplicationFactor, 1);
+        }
+      }
+
+      {
+        if(isCluster) {
+          // we want to create a normal collection and have a different replication factor
+          let col2 = db._collection("overrideCollection2");
+          let col3 = db._create("overrideCollection3", { distributeShardsLike: "overrideCollection2"});
+          let col2Properties = col2.properties();
+          let col3Properties = col3.properties();
+
+          assertEqual(col3Properties.distributeShardsLike, col2.name());
+          assertEqual(col3Properties.replicationFactor, col2Properties.replicationFactor);
+        }
+      }
+
+    },
+
     testSatelliteDB : function () {
       assertTrue(db._createDatabase(dn, { replicationFactor : "satellite"}));
       db._useDatabase(dn);

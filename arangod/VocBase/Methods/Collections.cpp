@@ -293,13 +293,27 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
     }
 
+    bool hasDistribute = false;
+    auto distribute = info.properties.get(StaticStrings::DistributeShardsLike);
+    if(!distribute.isNone()) {
+      hasDistribute = true;
+    }
+
     // system collections will be sharded normally - we avoid a self reference when creating _graphs
     if(vocbase.sharding() == "single" && !vocbase.IsSystemName(info.name)) {
-      auto distribute = info.properties.get(StaticStrings::DistributeShardsLike);
-      if(distribute.isNone()) {
+      if(!hasDistribute) {
         helper.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::GraphCollection));
+        hasDistribute = true;
       } else if (distribute.isString() && distribute.compareString("") == 0) {
         helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); //delete empty string from info slice
+      }
+    }
+
+    if(!hasDistribute){
+      auto minReplicationFactorSlice = info.properties.get(StaticStrings::MinReplicationFactor);
+      if(minReplicationFactorSlice.isNone()) {
+        auto factor = vocbase.minReplicationFactor();
+        helper.add(StaticStrings::MinReplicationFactor, VPackValue(factor));
       }
     }
 
