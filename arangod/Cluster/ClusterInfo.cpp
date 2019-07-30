@@ -965,6 +965,13 @@ void ClusterInfo::loadPlan() {
 static std::string const prefixCurrent = "Current";
 
 void ClusterInfo::loadCurrent() {
+
+  // We need to update ServersKnown to notice rebootId changes for all servers.
+  // To keep things simple and separate, we call loadServers here instead of
+  // trying to integrate the servers upgrade code into loadCurrent, even if that
+  // means small bits of the plan are read twice.
+  loadServers();
+
   ++_currentProt.wantedVersion;  // Indicate that after *NOW* somebody has to
                                  // reread from the agency!
 
@@ -3977,7 +3984,9 @@ ClusterInfo::ServersKnown::ServersKnown(VPackSlice const serversKnownSlice,
     auto const rv = _serversKnown.emplace(serverId, RebootId{0});
     LOG_TOPIC_IF("0acbd", INFO, Logger::CLUSTER, rv.second)
         << "Server "
-        << serverId << " is in Current/ServersRegistered, but not in Current/ServersKnown. This is expected to happen during a rolling upgrade.";
+        << serverId << " is in Current/ServersRegistered, but not in "
+                       "Current/ServersKnown. This is expected to happen "
+                       "during a rolling upgrade.";
   }
 }
 
