@@ -129,6 +129,8 @@ function TransactionsSuite () {
       userModule.grantDatabase(users[1].username, '_system', 'rw');
       userModule.grantCollection(users[0].username, '_system', cn, 'rw');
       userModule.grantCollection(users[1].username, '_system', cn, 'rw');
+      
+      require("internal").wait(2);
     },
 
     tearDown: function() {
@@ -139,7 +141,7 @@ function TransactionsSuite () {
     },
 
     testListTransactions: function() {
-      const obj = { collections: { write: cn } };
+      const obj = { collections: { read: cn } };
 
       let url = "/_api/transaction";
       let result = sendRequest(users[0], 'POST', url + "/begin", obj, true);
@@ -165,7 +167,7 @@ function TransactionsSuite () {
     },
     
     testListTransactions2: function() {
-      const obj = { collections: { write: cn } };
+      const obj = { collections: { read: cn } };
 
       let url = "/_api/transaction";
       let trx1, trx2;
@@ -221,7 +223,7 @@ function TransactionsSuite () {
     },
     
     testCreateAndCommitElsewhere: function() {
-      const obj = { collections: { write: cn } };
+      const obj = { collections: { read: cn } };
 
       let url = "/_api/transaction";
       let result = sendRequest(users[0], 'POST', url + "/begin", obj, true);
@@ -247,7 +249,7 @@ function TransactionsSuite () {
     },
     
     testCreateAndAbortElsewhere: function() {
-      const obj = { collections: { write: cn } };
+      const obj = { collections: { read: cn } };
 
       let url = "/_api/transaction";
       let result = sendRequest(users[0], 'POST', url + "/begin", obj, true);
