@@ -103,7 +103,9 @@
 #include "Ssl/SslServerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/HotBackupFeature.h"
+#ifdef USE_ENTEPRISE
+#include "Enterprise/StorageEngine/HotBackupFeature.h"
+#endif
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::rest;

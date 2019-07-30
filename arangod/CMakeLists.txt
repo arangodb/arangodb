@@ -545,7 +545,6 @@ SET(ARANGOD_SOURCES
   Statistics/StatisticsWorker.cpp
   StorageEngine/EngineSelectorFeature.cpp
   StorageEngine/HotBackup.cpp
-  StorageEngine/HotBackupFeature.cpp
   StorageEngine/PhysicalCollection.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp
