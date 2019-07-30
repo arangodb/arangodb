@@ -25,6 +25,10 @@
 
 #include "Cluster/ResultT.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 namespace arangodb {
 
 constexpr char const* BAD_PARAMS_CREATE = "backup payload must be an object "
