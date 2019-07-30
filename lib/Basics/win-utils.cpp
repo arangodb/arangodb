@@ -28,6 +28,7 @@
 #include <windows.h>
 
 #include <errno.h>
+#include <fcntl.h>
 #include <io.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -38,7 +39,6 @@
 #include <codecvt>
 #include <iomanip>
 #include <locale>
-#include <fcntl.h>
 
 #include "win-utils.h"
 

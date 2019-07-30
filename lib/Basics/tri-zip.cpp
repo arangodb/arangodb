@@ -23,6 +23,7 @@
 
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <algorithm>
 #include <cstring>
 
 #include "tri-zip.h"
