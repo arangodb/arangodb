@@ -800,7 +800,6 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
      user.grantDatabase(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO);  
      userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
      ASSERT_TRUE((analyzers
                    ->emplace(result, "FooDb::testAnalyzer1",
                              "identity", 
@@ -834,6 +833,22 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
          responcePtr.release());
        request.setRequestType(arangodb::rest::RequestType::GET);
        request.addSuffix(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1");
+       auto status = handler.execute();
+       EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+       //system should be visible
+       EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
+     }
+     {
+       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+         "FooDb2");
+       auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
+       auto& request = *requestPtr;
+       auto responcePtr = std::make_unique<GeneralResponseMock>();
+       auto& responce = *responcePtr;
+       arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+         responcePtr.release());
+       request.setRequestType(arangodb::rest::RequestType::GET);
+       request.addSuffix("::testAnalyzer1");
        auto status = handler.execute();
        EXPECT_TRUE((arangodb::RestStatus::DONE == status));
        //system should be visible

@@ -101,10 +101,9 @@ function iResearchFeatureAqlTestSuite () {
       try {
         analyzers.remove(dbName + "::MyTrigram");
         fail(); // removal with db name in wrong current used db should also fail
-      }
-      catch(e) {
+      } catch(e) {
         assertEqual(require("internal").errors.ERROR_BAD_PARAMETER .code,
-                       err.errorNum);
+                       e.errorNum);
       }
       db._dropDatabase(dbName);
     },
@@ -118,10 +117,9 @@ function iResearchFeatureAqlTestSuite () {
       try {
         analyzers.remove(dbName + "::MyTrigram");
         fail(); // removal with db name should  fail
-      }
-      catch(e) {
+      } catch(e) {
         assertEqual(require("internal").errors.ERROR_BAD_PARAMETER .code,
-                       err.errorNum);
+                       e.errorNum);
       }
       db._useDatabase("_system");
       db._dropDatabase(dbName);
@@ -139,8 +137,13 @@ function iResearchFeatureAqlTestSuite () {
       assertTrue(null != analyzer);
       analyzer = undefined;
       db._useDatabase(anotherDbName)
-      analyzer = analyzers.analyzer(dbName + "::MyTrigram");
-      assertTrue(null === analyzer);
+      try {
+        analyzer = analyzers.analyzer(dbName + "::MyTrigram");
+        fail();
+      } catch(e) {
+        assertEqual(require("internal").errors.ERROR_FORBIDDEN .code,
+                       e.errorNum);
+      }
       db._useDatabase("_system");
       db._dropDatabase(dbName);
       db._dropDatabase(anotherDbName);
@@ -240,31 +243,6 @@ function iResearchFeatureAqlTestSuite () {
       analyzers.save("testAnalyzer", "identity", {}, [ "frequency" ]);
       db._useDatabase(dbName);
       analyzers.save("testAnalyzer", "identity", {}, [ "norm" ]);
-
-      // retrieval (system)
-      db._useDatabase("_system");
-
-      {
-        let analyzer = analyzers.analyzer("testAnalyzer");
-        assertTrue(null !== analyzer);
-        assertEqual(db._name() + "::testAnalyzer", analyzer.name());
-        assertEqual("identity", analyzer.type());
-        assertEqual(0, Object.keys(analyzer.properties()).length);
-        assertTrue(Array === analyzer.features().constructor);
-        assertEqual(1, analyzer.features().length);
-        assertEqual([ "frequency" ], analyzer.features());
-      }
-
-      {
-        let analyzer = analyzers.analyzer(dbName + "::testAnalyzer");
-        assertTrue(null !== analyzer);
-        assertEqual(dbName + "::testAnalyzer", analyzer.name());
-        assertEqual("identity", analyzer.type());
-        assertEqual(0, Object.keys(analyzer.properties()).length);
-        assertTrue(Array === analyzer.features().constructor);
-        assertEqual(1, analyzer.features().length);
-        assertEqual([ "norm" ], analyzer.features());
-      }
 
       // retrieval (dbName)
       db._useDatabase(dbName);

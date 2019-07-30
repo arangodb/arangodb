@@ -2050,6 +2050,13 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
   return FEATURE_NAME;
 }
 
+/*static*/ std::string IResearchAnalyzerFeature::extractVocbaseName(
+  irs::string_ref const& name) {// analyzer name (normalized)
+  auto split = splitAnalyzerName(name);
+  return split.first.empty()? "" : split.first;
+}
+
+
 /*static*/ std::string IResearchAnalyzerFeature::normalize( // normalize name
   irs::string_ref const& name, // analyzer name
   TRI_vocbase_t const& activeVocbase, // fallback vocbase if not part of name
