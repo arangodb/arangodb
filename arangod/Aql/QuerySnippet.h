@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_QUERY_SNIPPET_H
 #define ARANGOD_AQL_QUERY_SNIPPET_H 1
 
+#include "Aql/Query.h"
 #include "Cluster/ClusterInfo.h"
 
 #include <map>
@@ -42,18 +43,25 @@ class QuerySnippet {
   };
 
  public:
-  QuerySnippet() : _needToInjectGather(false) {}
+  QuerySnippet(size_t idOfSinkNode)
+      : _idOfSinkNode(idOfSinkNode), _needToInjectGather(false), _queryId(0) {}
 
   void addNode(ExecutionNode* node);
 
   void serializeIntoBuilder(ServerID const& server, velocypack::Builder& infoBuilder) const;
 
+  void useQueryIdAsInput(QueryId inputSnippet) { _inputSnippet = inputSnippet; }
+
  private:
+  size_t const _idOfSinkNode;
+
   bool _needToInjectGather;
 
   std::vector<ExecutionNode*> _nodes;
 
   std::map<ServerID, std::vector<ExpansionInformation>> _expansions;
+
+  QueryId _inputSnippet;
 };
 }  // namespace aql
 }  // namespace arangodb

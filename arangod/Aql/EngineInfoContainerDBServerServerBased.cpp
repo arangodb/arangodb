@@ -63,15 +63,20 @@ void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node) {
   handleCollectionLocking(node);
 }
 
-// Open a new snippet, which is connected to the given remoteNode id
-void EngineInfoContainerDBServerServerBased::openSnippet(size_t idOfRemoteNode) {
-  // TODO add a new snippet on the stack
+// Open a new snippet, which provides data for the given sink node (for now only RemoteNode allowed)
+void EngineInfoContainerDBServerServerBased::openSnippet(size_t idOfSinkNode) {
+  _snippetStack.emplace(std::make_shared<QuerySnippet>(idOfSinkNode));
 }
 
 // Closes the given snippet and connects it
 // to the given queryid of the coordinator.
 void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId id) {
-  // TODO pop snippet from stack, close it and memorize
+  TRI_ASSERT(!_snippetStack.empty());
+  auto e = _snippetStack.top();
+  TRI_ASSERT(e);
+  _snippetStack.pop();
+  e->connectToQueryId(id);
+  _closedSnippets.emplace_back(std::move(e));
 }
 
 // Build the Engines for the DBServer
@@ -340,8 +345,10 @@ void EngineInfoContainerDBServerServerBased::addSnippetPart(arangodb::velocypack
                                                             ServerID const& server) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("snippets"));
-  builder.openObject();
-  // TODO insert
+  builder.openArray();
+  for (auto const& snippet : _closedSnippets) {
+    snippet.serializeIntoBuilder(server, builder);
+  }
   builder.close();  // snippets
 }
 

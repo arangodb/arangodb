@@ -159,6 +159,8 @@ class EngineInfoContainerDBServerServerBased {
  private:
   std::stack<std::shared_ptr<QuerySnippet>, std::vector<std::shared_ptr<QuerySnippet>>> _snippetStack;
 
+  std::vector<std::shared_ptr<QuerySnippet>> _closedSnippets;
+
   Query* _query;
 
   // @brief List of all information required for traverser engines
