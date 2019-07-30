@@ -23,19 +23,50 @@ jobs:
       solution: build/libmimalloc.sln
   - upload: $(Build.SourcesDirectory)/build
     artifact: windows
+
 - job:
   displayName: Linux
   pool:
     vmImage:
      ubuntu-16.04
+  strategy:
+    matrix:
+      Debug:
+        CC: gcc
+        CXX: g++
+        BuildType: debug
+        cmakeExtraArgs: -DCMAKE_BUILD_TYPE=Debug -DMI_CHECK_FULL=ON
+      Release:
+        CC: gcc
+        CXX: g++
+        BuildType: release
+        cmakeExtraArgs: -DCMAKE_BUILD_TYPE=Release
+      Debug Clang:
+        CC: clang
+        CXX: clang++
+        BuildType: debug-clang
+        cmakeExtraArgs: -DCMAKE_BUILD_TYPE=Debug -DMI_CHECK_FULL=ON
+      Release Clang:
+        CC: clang
+        CXX: clang++
+        BuildType: release-clang
+        cmakeExtraArgs: -DCMAKE_BUILD_TYPE=Release
+
   steps:
   - task: CMake@1
     inputs:
-      workingDirectory: 'build'
-      cmakeArgs: ..
-  - script: make -j$(nproc) -C build
-  - upload: $(Build.SourcesDirectory)/build
-    artifact: ubuntu
+      workingDirectory: $(BuildType)
+      cmakeArgs: .. $(cmakeExtraArgs)
+
+  - script: make -j$(nproc) -C $(BuildType)
+    displayName: Make
+
+  - script: make test -C $(BuildType)
+    displayName: Ctest
+
+  - upload: $(Build.SourcesDirectory)/$(BuildType)
+    artifact: ubuntu-$(BuildType)
+
 - job:
   displayName: macOS
   pool:

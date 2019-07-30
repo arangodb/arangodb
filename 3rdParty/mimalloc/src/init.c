@@ -14,7 +14,7 @@ const mi_page_t _mi_page_empty = {
   0, false, false, {0},
   0, 0,
   NULL, 0, 0,   // free, used, cookie
-  NULL, 0, {0},
+  NULL, 0, 0,
   0, NULL, NULL, NULL
   #if (MI_INTPTR_SIZE==4)
   , { NULL }
@@ -58,6 +58,7 @@ const mi_page_t _mi_page_empty = {
   MI_STAT_COUNT_NULL(), MI_STAT_COUNT_NULL(), \
   MI_STAT_COUNT_NULL(), MI_STAT_COUNT_NULL(), \
   MI_STAT_COUNT_NULL(), MI_STAT_COUNT_NULL(), \
+  MI_STAT_COUNT_NULL(), MI_STAT_COUNT_NULL(), \
   { 0, 0 } \
   MI_STAT_COUNT_END_NULL()
 
@@ -90,7 +91,7 @@ mi_decl_thread mi_heap_t* _mi_heap_default = (mi_heap_t*)&_mi_heap_empty;
 static mi_tld_t tld_main = {
   0,
   &_mi_heap_main,
-  { { NULL, NULL }, 0, 0, 0, 0, {NULL,NULL}, tld_main_stats }, // segments
+  { { NULL, NULL }, {NULL ,NULL}, 0, 0, 0, 0, {NULL,NULL}, tld_main_stats }, // segments
   { 0, NULL, NULL, 0, tld_main_stats },              // os
   { MI_STATS_NULL }                                  // stats
 };
@@ -102,7 +103,11 @@ mi_heap_t _mi_heap_main = {
   NULL,
   0,
   0,
-  0,
+#if MI_INTPTR_SIZE==8   // the cookie of the main heap can be fixed (unlike page cookies that need to be secure!)
+  0xCDCDCDCDCDCDCDCDUL,
+#else
+  0xCDCDCDCDUL,
+#endif
   0,
   false   // can reclaim
 };
@@ -225,13 +230,16 @@ static bool _mi_heap_done(void) {
   heap = heap->tld->heap_backing;
   if (!mi_heap_is_initialized(heap)) return false;
 
+  // collect if not the main thread 
+  if (heap != &_mi_heap_main) {
+    _mi_heap_collect_abandon(heap);
+  }
+
+  // merge stats
   _mi_stats_done(&heap->tld->stats);
 
-  // free if not the main thread (or in debug mode)
+  // free if not the main thread
   if (heap != &_mi_heap_main) {
-    if (heap->page_count > 0) {
-      _mi_heap_collect_abandon(heap);
-    }
     _mi_os_free(heap, sizeof(mi_thread_data_t), &_mi_stats_main);
   }
 #if (MI_DEBUG > 0)
@@ -317,7 +325,7 @@ void mi_thread_init(void) mi_attr_noexcept
   // don't further initialize for the main thread
   if (_mi_is_main_thread()) return;
 
-  mi_stat_increase(mi_get_default_heap()->tld->stats.threads, 1);
+  _mi_stat_increase(&mi_get_default_heap()->tld->stats.threads, 1);
 
   // set hooks so our mi_thread_done() will be called
   #if defined(_WIN32) && defined(MI_SHARED_LIB)
@@ -328,22 +336,26 @@ void mi_thread_init(void) mi_attr_noexcept
     pthread_setspecific(mi_pthread_key, (void*)(_mi_thread_id()|1)); // set to a dummy value so that `mi_pthread_done` is called
   #endif
 
+  #if (MI_DEBUG>0) // not in release mode as that leads to crashes on Windows dynamic override
   _mi_verbose_message("thread init: 0x%zx\n", _mi_thread_id());
+  #endif
 }
 
 void mi_thread_done(void) mi_attr_noexcept {
   // stats
   mi_heap_t* heap = mi_get_default_heap();
   if (!_mi_is_main_thread() && mi_heap_is_initialized(heap))  {
-    mi_stat_decrease(heap->tld->stats.threads, 1);
+    _mi_stat_decrease(&heap->tld->stats.threads, 1);
   }
 
   // abandon the thread local heap
   if (_mi_heap_done()) return; // returns true if already ran
 
+  #if (MI_DEBUG>0)
   if (!_mi_is_main_thread()) {
     _mi_verbose_message("thread done: 0x%zx\n", _mi_thread_id());
   }
+  #endif
 }
 
 
@@ -355,12 +367,18 @@ static void mi_process_done(void);
 void mi_process_init(void) mi_attr_noexcept {
   // ensure we are called once
   if (_mi_process_is_initialized) return;
+  // access _mi_heap_default before setting _mi_process_is_initialized to ensure
+  // that the TLS slot is allocated without getting into recursion on macOS
+  // when using dynamic linking with interpose.
+  mi_heap_t* h = _mi_heap_default;
   _mi_process_is_initialized = true;
 
   _mi_heap_main.thread_id = _mi_thread_id();
   _mi_verbose_message("process init: 0x%zx\n", _mi_heap_main.thread_id);
-  uintptr_t random = _mi_random_init(_mi_heap_main.thread_id);
+  uintptr_t random = _mi_random_init(_mi_heap_main.thread_id)  ^ (uintptr_t)h;
+  #ifndef __APPLE__
   _mi_heap_main.cookie = (uintptr_t)&_mi_heap_main ^ random;
+  #endif
   _mi_heap_main.random = _mi_random_shuffle(random);
   #if (MI_DEBUG)
   _mi_verbose_message("debug level : %d\n", MI_DEBUG);
@@ -368,6 +386,7 @@ void mi_process_init(void) mi_attr_noexcept {
   atexit(&mi_process_done);
   mi_process_setup_auto_thread_done();
   mi_stats_reset();
+  _mi_os_init();
 }
 
 static void mi_process_done(void) {
@@ -410,7 +429,7 @@ static void mi_process_done(void) {
   // C++: use static initialization to detect process start
   static bool _mi_process_init(void) {
     mi_process_init();
-    return (mi_main_thread_id != 0);
+    return (_mi_heap_main.thread_id != 0);
   }
   static bool mi_initialized = _mi_process_init();
 

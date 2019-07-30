@@ -5,12 +5,22 @@
 
 #include <mimalloc.h>
 
+#include <new>
+
 static void* p = malloc(8);
 
 void free_p() {
   free(p);
   return;
 }
+
+class Test {
+private:
+  int i;
+public:
+  Test(int x) { i = x; }
+  ~Test() { }
+};
 
 int main() {
   mi_stats_reset();
@@ -26,8 +36,15 @@ int main() {
   free(p1);
   free(p2);
   free(s);
+  Test* t = new Test(42);
+  delete t;
+  t = new (std::nothrow) Test(42);
+  delete t;
+  int err = mi_posix_memalign(&p1,32,60);
+  if (!err) free(p1);
+  free(p);
   mi_collect(true);
-  mi_stats_print(NULL);
+  mi_stats_print(NULL);  // MIMALLOC_VERBOSE env is set to 2
   return 0;
 }
 

@@ -58,5 +58,8 @@
     <ClCompile Include="..\..\src\init.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\alloc-posix.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

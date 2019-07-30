@@ -12,6 +12,10 @@ terms of the MIT license. A copy of the license can be found in the file
 #include <ctype.h>  // toupper
 #include <stdarg.h>
 
+int mi_version(void) mi_attr_noexcept {
+  return MI_MALLOC_VERSION;
+}
+
 // --------------------------------------------------------
 // Options
 // --------------------------------------------------------
@@ -31,6 +35,7 @@ static mi_option_desc_t options[_mi_option_last] = {
   { 0, UNINIT, "page_reset" },
   { 0, UNINIT, "cache_reset" },
   { 0, UNINIT, "pool_commit" },
+  { 0, UNINIT, "large_os_pages" },   // use large OS pages
   #if MI_SECURE
   { MI_SECURE, INITIALIZED, "secure" }, // in secure build the environment setting is ignored
   #else
@@ -38,7 +43,7 @@ static mi_option_desc_t options[_mi_option_last] = {
   #endif
   { 0, UNINIT, "show_stats" },
   { MI_DEBUG, UNINIT, "show_errors" },
-  { MI_DEBUG, UNINIT, "verbose" }
+  { 0, UNINIT, "verbose" }
 };
 
 static void mi_option_init(mi_option_desc_t* desc);
@@ -46,7 +51,7 @@ static void mi_option_init(mi_option_desc_t* desc);
 long mi_option_get(mi_option_t option) {
   mi_assert(option >= 0 && option < _mi_option_last);
   mi_option_desc_t* desc = &options[option];
-  if (desc->init == UNINIT) {
+  if (mi_unlikely(desc->init == UNINIT)) {
     mi_option_init(desc);
     if (option != mi_option_verbose) {
       _mi_verbose_message("option '%s': %ld\n", desc->name, desc->value);
@@ -101,6 +106,14 @@ void _mi_fprintf( FILE* out, const char* fmt, ... ) {
   va_list args;
   va_start(args,fmt);
   mi_vfprintf(out,NULL,fmt,args);
+  va_end(args);
+}
+
+void _mi_trace_message(const char* fmt, ...) {
+  if (mi_option_get(mi_option_verbose) <= 1) return;  // only with verbose level 2 or higher
+  va_list args;
+  va_start(args, fmt);
+  mi_vfprintf(stderr, "mimalloc: ", fmt, args);
   va_end(args);
 }
 
@@ -163,7 +176,8 @@ static void mi_option_init(mi_option_desc_t* desc) {
   #pragma warning(suppress:4996)
   char* s = getenv(buf);
   if (s == NULL) {
-    for (size_t i = 0; i < strlen(buf); i++) {
+    size_t buf_size = strlen(buf);
+    for (size_t i = 0; i < buf_size; i++) {
       buf[i] = toupper(buf[i]);
     }
     #pragma warning(suppress:4996)
@@ -171,7 +185,8 @@ static void mi_option_init(mi_option_desc_t* desc) {
   }
   if (s != NULL) {
     mi_strlcpy(buf, s, sizeof(buf));
-    for (size_t i = 0; i < strlen(buf); i++) {
+    size_t buf_size = strlen(buf); // TODO: use strnlen?
+    for (size_t i = 0; i < buf_size; i++) {
       buf[i] = toupper(buf[i]);
     }
     if (buf[0]==0 || strstr("1;TRUE;YES;ON", buf) != NULL) {

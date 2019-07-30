@@ -11,6 +11,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mimalloc-override", "mimall
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mimalloc-override-test", "mimalloc-override-test.vcxproj", "{FEF7868F-750E-4C21-A04D-22707CC66879}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mimalloc-test-stress", "mimalloc-test-stress.vcxproj", "{FEF7958F-750E-4C21-A04D-22707CC66878}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -51,6 +53,14 @@ Global
 		{FEF7868F-750E-4C21-A04D-22707CC66879}.Release|x64.Build.0 = Release|x64
 		{FEF7868F-750E-4C21-A04D-22707CC66879}.Release|x86.ActiveCfg = Release|Win32
 		{FEF7868F-750E-4C21-A04D-22707CC66879}.Release|x86.Build.0 = Release|Win32
+		{FEF7958F-750E-4C21-A04D-22707CC66878}.Debug|x64.ActiveCfg = Debug|x64
+		{FEF7958F-750E-4C21-A04D-22707CC66878}.Debug|x64.Build.0 = Debug|x64
+		{FEF7958F-750E-4C21-A04D-22707CC66878}.Debug|x86.ActiveCfg = Debug|Win32
+		{FEF7958F-750E-4C21-A04D-22707CC66878}.Debug|x86.Build.0 = Debug|Win32
+		{FEF7958F-750E-4C21-A04D-22707CC66878}.Release|x64.ActiveCfg = Release|x64
+		{FEF7958F-750E-4C21-A04D-22707CC66878}.Release|x64.Build.0 = Release|x64
+		{FEF7958F-750E-4C21-A04D-22707CC66878}.Release|x86.ActiveCfg = Release|Win32
+		{FEF7958F-750E-4C21-A04D-22707CC66878}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

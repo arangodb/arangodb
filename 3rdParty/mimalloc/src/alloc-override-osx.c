@@ -8,7 +8,7 @@ terms of the MIT license. A copy of the license can be found in the file
 #include "mimalloc.h"
 #include "mimalloc-internal.h"
 
-#if defined(MI_MALLOC_OVERRIDE) 
+#if defined(MI_MALLOC_OVERRIDE)
 
 #if !defined(__APPLE__)
 #error "this file should only be included on macOS"
@@ -21,6 +21,7 @@ terms of the MIT license. A copy of the license can be found in the file
 
 #include <AvailabilityMacros.h>
 #include <malloc/malloc.h>
+#include <string.h>  // memset
 
 #if defined(MAC_OS_X_VERSION_10_6) && \
     MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_6
@@ -65,7 +66,7 @@ static void zone_destroy(malloc_zone_t* zone) {
   // todo: ignore for now?
 }
 
-static size_t zone_batch_malloc(malloc_zone_t* zone, size_t size, void** ps, size_t count) {
+static unsigned zone_batch_malloc(malloc_zone_t* zone, size_t size, void** ps, unsigned count) {
   size_t i;
   for (i = 0; i < count; i++) {
     ps[i] = zone_malloc(zone, size);
@@ -74,7 +75,7 @@ static size_t zone_batch_malloc(malloc_zone_t* zone, size_t size, void** ps, siz
   return i;
 }
 
-static void zone_batch_free(malloc_zone_t* zone, void** ps, size_t count) {
+static void zone_batch_free(malloc_zone_t* zone, void** ps, unsigned count) {
   for(size_t i = 0; i < count; i++) {
     zone_free(zone, ps[i]);
     ps[i] = NULL;
@@ -149,7 +150,7 @@ static malloc_zone_t* mi_get_default_zone()
 {
   // The first returned zone is the real default
   malloc_zone_t** zones = NULL;
-  size_t count = 0;
+  unsigned count = 0;
   kern_return_t ret = malloc_get_all_zones(0, NULL, (vm_address_t**)&zones, &count);
   if (ret == KERN_SUCCESS && count > 0) {
     return zones[0];

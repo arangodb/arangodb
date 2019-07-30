@@ -76,7 +76,8 @@ terms of the MIT license. A copy of the license can be found in the file
 // Main tuning parameters for segment and page sizes
 // Sizes for 64-bit, divide by two for 32-bit
 #define MI_SMALL_PAGE_SHIFT               (13 + MI_INTPTR_SHIFT)      // 64kb
-#define MI_LARGE_PAGE_SHIFT               ( 6 + MI_SMALL_PAGE_SHIFT)  // 4mb
+#define MI_MEDIUM_PAGE_SHIFT              ( 3 + MI_SMALL_PAGE_SHIFT)  // 512kb
+#define MI_LARGE_PAGE_SHIFT               ( 3 + MI_MEDIUM_PAGE_SHIFT) // 4mb
 #define MI_SEGMENT_SHIFT                  ( MI_LARGE_PAGE_SHIFT)      // 4mb
 
 // Derived constants
@@ -84,12 +85,16 @@ terms of the MIT license. A copy of the license can be found in the file
 #define MI_SEGMENT_MASK                   ((uintptr_t)MI_SEGMENT_SIZE - 1)
 
 #define MI_SMALL_PAGE_SIZE                (1<<MI_SMALL_PAGE_SHIFT)
+#define MI_MEDIUM_PAGE_SIZE               (1<<MI_MEDIUM_PAGE_SHIFT)
 #define MI_LARGE_PAGE_SIZE                (1<<MI_LARGE_PAGE_SHIFT)
 
 #define MI_SMALL_PAGES_PER_SEGMENT        (MI_SEGMENT_SIZE/MI_SMALL_PAGE_SIZE)
+#define MI_MEDIUM_PAGES_PER_SEGMENT       (MI_SEGMENT_SIZE/MI_MEDIUM_PAGE_SIZE)
 #define MI_LARGE_PAGES_PER_SEGMENT        (MI_SEGMENT_SIZE/MI_LARGE_PAGE_SIZE)
 
-#define MI_LARGE_SIZE_MAX                 (MI_LARGE_PAGE_SIZE/8)   // 512kb on 64-bit
+#define MI_MEDIUM_SIZE_MAX                (MI_MEDIUM_PAGE_SIZE/8)   // 64kb on 64-bit
+
+#define MI_LARGE_SIZE_MAX                 (MI_LARGE_PAGE_SIZE/8)    // 512kb on 64-bit
 #define MI_LARGE_WSIZE_MAX                (MI_LARGE_SIZE_MAX>>MI_INTPTR_SHIFT)
 
 
@@ -114,8 +119,9 @@ typedef struct mi_block_s {
 
 typedef enum mi_delayed_e {
   MI_NO_DELAYED_FREE = 0,
-  MI_USE_DELAYED_FREE,
-  MI_DELAYED_FREEING
+  MI_USE_DELAYED_FREE = 1,
+  MI_DELAYED_FREEING = 2,
+  MI_NEVER_DELAYED_FREE = 3
 } mi_delayed_t;
 
 
@@ -128,20 +134,9 @@ typedef union mi_page_flags_u {
 } mi_page_flags_t;
 
 // Thread free list.
-// We use 2 bits of the pointer for the `use_delayed_free` and `delayed_freeing` flags.
-typedef union mi_thread_free_u {
-  uintptr_t value;
-  struct {
-    mi_delayed_t delayed:2;
-#if MI_INTPTR_SIZE==8
-    uintptr_t head:62;    // head free block in the list (right-shifted by 2)
-#elif MI_INTPTR_SIZE==4
-    uintptr_t head:30;
-#endif
-  };
-} mi_thread_free_t;
+// We use bottom 2 bits of the pointer for mi_delayed_t flags
+typedef uintptr_t mi_thread_free_t;
 
-#define MI_TF_PTR_SHIFT (2)
 
 // A page contains blocks of one specific size (`block_size`).
 // Each page has three list of free blocks:
@@ -198,6 +193,7 @@ typedef struct mi_page_s {
 
 typedef enum mi_page_kind_e {
   MI_PAGE_SMALL,    // small blocks go into 64kb pages inside a segment
+  MI_PAGE_MEDIUM,   // medium blocks go into 512kb pages inside a segment
   MI_PAGE_LARGE,    // larger blocks go into a single page spanning a whole segment
   MI_PAGE_HUGE      // huge blocks (>512kb) are put into a single page in a segment of the exact size (but still 2mb aligned)
 } mi_page_kind_t;
@@ -322,12 +318,14 @@ typedef struct mi_stats_s {
   mi_stat_count_t reserved;
   mi_stat_count_t committed;
   mi_stat_count_t reset;
+  mi_stat_count_t page_committed;
   mi_stat_count_t segments_abandoned;
   mi_stat_count_t pages_abandoned;
   mi_stat_count_t pages_extended;
   mi_stat_count_t mmap_calls;
   mi_stat_count_t mmap_right_align;
   mi_stat_count_t mmap_ensure_aligned;
+  mi_stat_count_t commit_calls;
   mi_stat_count_t threads;
   mi_stat_count_t huge;
   mi_stat_count_t malloc;
@@ -370,6 +368,7 @@ typedef struct mi_segment_queue_s {
 // Segments thread local data
 typedef struct mi_segments_tld_s {
   mi_segment_queue_t  small_free;   // queue of segments with free small pages
+  mi_segment_queue_t  medium_free;  // queue of segments with free medium pages
   size_t              current_size; // current size of all segments
   size_t              peak_size;    // peak size of all segments
   size_t              cache_count;  // number of segments in the cache

@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.0)
-project(libmimalloc C)
+project(libmimalloc C CXX)
 include("cmake/mimalloc-config-version.cmake")
 set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 option(MI_OVERRIDE   "Override the standard malloc interface" ON)
 option(MI_INTERPOSE  "Use interpose to override standard malloc on macOS" ON)
@@ -19,6 +20,7 @@ set(mi_sources
     src/page.c
     src/alloc.c
     src/alloc-aligned.c
+    src/alloc-posix.c
     src/heap.c
     src/options.c
     src/init.c)
@@ -75,6 +77,7 @@ endif()
 if(MI_USE_CXX MATCHES "ON")
   message(STATUS "Use the C++ compiler to compile (MI_USE_CXX=ON)")
   set_source_files_properties(${mi_sources} PROPERTIES LANGUAGE CXX )
+  set_source_files_properties(src/static.c test/test-api.c PROPERTIES LANGUAGE CXX )
 endif()
 
 # Compiler flags
@@ -106,14 +109,15 @@ else()
   list(APPEND mi_libraries pthread)
 endif()
 
+# -----------------------------------------------------------------------------
+# Main targets
+# -----------------------------------------------------------------------------
+
 
 # shared library
 add_library(mimalloc SHARED ${mi_sources})
 set_target_properties(mimalloc PROPERTIES VERSION ${mi_version} NO_SONAME "YES" OUTPUT_NAME ${mi_basename} )
 target_compile_definitions(mimalloc PRIVATE ${mi_defines} MI_SHARED_LIB MI_SHARED_LIB_EXPORT)
-if(MI_OVERRIDE MATCHES "ON")
-  target_compile_definitions(mimalloc PRIVATE MI_MALLOC_OVERRIDE)
-endif()
 target_compile_options(mimalloc PRIVATE ${mi_cflags})
 target_include_directories(mimalloc PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -132,10 +136,6 @@ else()
   set_target_properties(mimalloc-static PROPERTIES OUTPUT_NAME ${mi_basename})
 endif()
 target_compile_definitions(mimalloc-static PRIVATE ${mi_defines} MI_STATIC_LIB)
-if(NOT WIN32 AND MI_OVERRIDE MATCHES "ON")
-  # It is only possible to override malloc on Windows when building as a DLL. (src/alloc-override.c)
-  target_compile_definitions(mimalloc-static PRIVATE MI_MALLOC_OVERRIDE)
-endif()
 target_compile_options(mimalloc-static PRIVATE ${mi_cflags})
 
 target_include_directories(mimalloc-static PUBLIC
@@ -156,18 +156,48 @@ install(FILES "$<TARGET_FILE:mimalloc>" DESTINATION lib)  # duplicate the .so in
 # single object file for more predictable static overriding
 add_library(mimalloc-obj OBJECT src/static.c)
 target_compile_definitions(mimalloc-obj PRIVATE ${mi_defines})
-if(NOT WIN32 AND MI_OVERRIDE MATCHES "ON")
-  # It is only possible to override malloc on Windows when building as a DLL. (src/alloc-override.c)
-  target_compile_definitions(mimalloc-obj PRIVATE MI_MALLOC_OVERRIDE)
-endif()
 target_compile_options(mimalloc-obj PRIVATE ${mi_cflags})
 target_include_directories(mimalloc-obj PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${mi_install_dir}/include>
 )
 
+# the following seems to lead to cmake warnings/errors on some systems, disable for now :-(
+# install(TARGETS mimalloc-obj EXPORT mimalloc DESTINATION ${mi_install_dir})
+
+# the FILES expression can also be: $<TARGET_OBJECTS:mimalloc-obj>
+# but that fails cmake versions less than 3.10 so we leave it as is for now
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/mimalloc-obj.dir/src/static.c${CMAKE_C_OUTPUT_EXTENSION}
         DESTINATION ${mi_install_dir}
         RENAME ${mi_basename}${CMAKE_C_OUTPUT_EXTENSION} )
 
-add_subdirectory(test EXCLUDE_FROM_ALL)
+# -----------------------------------------------------------------------------
+# API surface testing
+# -----------------------------------------------------------------------------
+add_executable(mimalloc-test-api test/test-api.c)
+target_compile_definitions(mimalloc-test-api PRIVATE ${mi_defines})
+target_compile_options(mimalloc-test-api PRIVATE ${mi_cflags})
+target_include_directories(mimalloc-test-api PRIVATE include)
+target_link_libraries(mimalloc-test-api PRIVATE mimalloc-static)
+
+add_executable(mimalloc-test-stress test/test-stress.c)
+target_compile_definitions(mimalloc-test-stress PRIVATE ${mi_defines})
+target_compile_options(mimalloc-test-stress PRIVATE ${mi_cflags})
+target_include_directories(mimalloc-test-stress PRIVATE include)
+target_link_libraries(mimalloc-test-stress PRIVATE mimalloc-static)
+
+enable_testing()
+add_test(test_api, mimalloc-test-api)
+add_test(test_stress, mimalloc-test-stress)
+
+# -----------------------------------------------------------------------------
+# Set override properties
+# -----------------------------------------------------------------------------
+if (MI_OVERRIDE MATCHES "ON")
+  target_compile_definitions(mimalloc PRIVATE MI_MALLOC_OVERRIDE)
+  if(NOT WIN32)
+    # It is only possible to override malloc on Windows when building as a DLL. (src/alloc-override.c)
+    target_compile_definitions(mimalloc-static PRIVATE MI_MALLOC_OVERRIDE)
+    target_compile_definitions(mimalloc-obj PRIVATE MI_MALLOC_OVERRIDE)
+  endif()
+endif()

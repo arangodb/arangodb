@@ -94,12 +94,14 @@ static void mi_stats_add(mi_stats_t* stats, const mi_stats_t* src) {
   mi_stat_add(&stats->reserved, &src->reserved, 1);
   mi_stat_add(&stats->committed, &src->committed, 1);
   mi_stat_add(&stats->reset, &src->reset, 1);
+  mi_stat_add(&stats->page_committed, &src->page_committed, 1);
 
   mi_stat_add(&stats->pages_abandoned, &src->pages_abandoned, 1);
   mi_stat_add(&stats->segments_abandoned, &src->segments_abandoned, 1);
   mi_stat_add(&stats->mmap_calls, &src->mmap_calls, 1);
   mi_stat_add(&stats->mmap_ensure_aligned, &src->mmap_ensure_aligned, 1);
   mi_stat_add(&stats->mmap_right_align, &src->mmap_right_align, 1);
+  mi_stat_add(&stats->commit_calls, &src->commit_calls, 1);
   mi_stat_add(&stats->threads, &src->threads, 1);
   mi_stat_add(&stats->pages_extended, &src->pages_extended, 1);
 
@@ -202,7 +204,7 @@ static void mi_stats_print_bins(mi_stat_count_t* all, const mi_stat_count_t* bin
 #endif
 
 
-static void mi_process_info(double* utime, double* stime, size_t* peak_rss, size_t* page_faults, size_t* page_reclaim);
+static void mi_process_info(double* utime, double* stime, size_t* peak_rss, size_t* page_faults, size_t* page_reclaim, size_t* peak_commit);
 
 static void _mi_stats_print(mi_stats_t* stats, double secs, FILE* out) mi_attr_noexcept {
   if (out == NULL) out = stderr;
@@ -226,9 +228,10 @@ static void _mi_stats_print(mi_stats_t* stats, double secs, FILE* out) mi_attr_n
   _mi_fprintf(out, "malloc requested:     ");
   mi_print_amount(stats->malloc.allocated, 1, out);
   _mi_fprintf(out, "\n\n");
-  mi_stat_print(&stats->committed, "committed", 1, out);
   mi_stat_print(&stats->reserved, "reserved", 1, out);
+  mi_stat_print(&stats->committed, "committed", 1, out);
   mi_stat_print(&stats->reset, "reset", -1, out);
+  mi_stat_print(&stats->page_committed, "touched", 1, out);
   mi_stat_print(&stats->segments, "segments", -1, out);
   mi_stat_print(&stats->segments_abandoned, "-abandoned", -1, out);
   mi_stat_print(&stats->pages, "pages", -1, out);
@@ -237,6 +240,7 @@ static void _mi_stats_print(mi_stats_t* stats, double secs, FILE* out) mi_attr_n
   mi_stat_print(&stats->mmap_calls, "mmaps", 0, out);
   mi_stat_print(&stats->mmap_right_align, "mmap fast", 0, out);
   mi_stat_print(&stats->mmap_ensure_aligned, "mmap slow", 0, out);
+  mi_stat_print(&stats->commit_calls, "commits", 0, out);
   mi_stat_print(&stats->threads, "threads", 0, out);
   mi_stat_counter_print(&stats->searches, "searches", out);
 #endif
@@ -248,9 +252,14 @@ static void _mi_stats_print(mi_stats_t* stats, double secs, FILE* out) mi_attr_n
   size_t peak_rss;
   size_t page_faults;
   size_t page_reclaim;
-  mi_process_info(&user_time, &sys_time, &peak_rss, &page_faults, &page_reclaim);
+  size_t peak_commit;
+  mi_process_info(&user_time, &sys_time, &peak_rss, &page_faults, &page_reclaim, &peak_commit);
   _mi_fprintf(out,"%10s: user: %.3f s, system: %.3f s, faults: %lu, reclaims: %lu, rss: ", "process", user_time, sys_time, (unsigned long)page_faults, (unsigned long)page_reclaim );
   mi_printf_amount((int64_t)peak_rss, 1, out, "%s");
+  if (peak_commit > 0) {
+    _mi_fprintf(out,", commit charge: ");
+    mi_printf_amount((int64_t)peak_commit, 1, out, "%s");
+  }
   _mi_fprintf(out,"\n");
 }
 
@@ -358,7 +367,7 @@ static double filetime_secs(const FILETIME* ftime) {
   double secs = (double)(i.QuadPart) * 1.0e-7; // FILETIME is in 100 nano seconds
   return secs;
 }
-static void mi_process_info(double* utime, double* stime, size_t* peak_rss, size_t* page_faults, size_t* page_reclaim) {
+static void mi_process_info(double* utime, double* stime, size_t* peak_rss, size_t* page_faults, size_t* page_reclaim, size_t* peak_commit) {
   FILETIME ct;
   FILETIME ut;
   FILETIME st;
@@ -371,6 +380,7 @@ static void mi_process_info(double* utime, double* stime, size_t* peak_rss, size
   GetProcessMemoryInfo(GetCurrentProcess(), &info, sizeof(info));
   *peak_rss = (size_t)info.PeakWorkingSetSize;
   *page_faults = (size_t)info.PageFaultCount;
+  *peak_commit = (size_t)info.PeakPagefileUsage;
   *page_reclaim = 0;
 }
 
@@ -387,7 +397,7 @@ static double timeval_secs(const struct timeval* tv) {
   return (double)tv->tv_sec + ((double)tv->tv_usec * 1.0e-6);
 }
 
-static void mi_process_info(double* utime, double* stime, size_t* peak_rss, size_t* page_faults, size_t* page_reclaim) {
+static void mi_process_info(double* utime, double* stime, size_t* peak_rss, size_t* page_faults, size_t* page_reclaim, size_t* peak_commit) {
   struct rusage rusage;
   getrusage(RUSAGE_SELF, &rusage);
 #if defined(__APPLE__) && defined(__MACH__)
@@ -397,16 +407,18 @@ static void mi_process_info(double* utime, double* stime, size_t* peak_rss, size
 #endif
   *page_faults = rusage.ru_majflt;
   *page_reclaim = rusage.ru_minflt;
+  *peak_commit = 0;
   *utime = timeval_secs(&rusage.ru_utime);
   *stime = timeval_secs(&rusage.ru_stime);
 }
 
 #else
 #pragma message("define a way to get process info")
-static void mi_process_info(double* utime, double* stime, size_t* peak_rss, size_t* page_faults, size_t* page_reclaim) {
+static void mi_process_info(double* utime, double* stime, size_t* peak_rss, size_t* page_faults, size_t* page_reclaim, size_t* peak_commit) {
   *peak_rss = 0;
   *page_faults = 0;
   *page_reclaim = 0;
+  *peak_commit = 0;
   *utime = 0.0;
   *stime = 0.0;
 }

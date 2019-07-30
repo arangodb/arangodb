@@ -98,18 +98,32 @@ static int __cdecl mi_setmaxstdio(int newmax);
 // Microsoft allocation extensions
 // ------------------------------------------------------
 
-#define UNUSED(x) (void)(x)  // suppress unused variable warnings
-
 static void* mi__expand(void* p, size_t newsize) {
   void* res = mi_expand(p, newsize);
   if (res == NULL) errno = ENOMEM;
   return res;
 }
 
+typedef size_t mi_nothrow_t;
+
+static void mi_free_nothrow(void* p, mi_nothrow_t tag) {
+  UNUSED(tag);
+  mi_free(p);
+}
 
 // Versions of `free`, `realloc`, `recalloc`, `expand` and `msize`
 // that are used during termination and are no-ops.
 static void mi_free_term(void* p) {
+  UNUSED(p);
+}
+
+static void mi_free_size_term(void* p, size_t size) {
+  UNUSED(size);
+  UNUSED(p);
+}
+
+static void mi_free_nothrow_term(void* p, mi_nothrow_t tag) {
+  UNUSED(tag);
   UNUSED(p);
 }
 
@@ -261,14 +275,18 @@ static int mi_register_atexit(exit_list_t* list, cbfun_t* fn) {
 }
 
 // Register a global `atexit` function
-static int mi__crt_atexit(cbfun_t* fn) {
+static int mi_atexit(cbfun_t* fn) {
   return mi_register_atexit(&atexit_list,fn);
 }
 
-static int mi__crt_at_quick_exit(cbfun_t* fn) {
+static int mi_at_quick_exit(cbfun_t* fn) {
   return mi_register_atexit(&at_quick_exit_list,fn);
 }
 
+static int mi_register_onexit(void* table, cbfun_t* fn) {
+  // TODO: how can we distinguish a quick_exit from atexit?
+  return mi_atexit(fn);
+}
 
 // Execute exit functions in a list
 static void mi_execute_exit_list(exit_list_t* list) {
@@ -375,45 +393,56 @@ typedef enum patch_apply_e {
   PATCH_TARGET_TERM
 } patch_apply_t;
 
+#define MAX_ENTRIES  4      // maximum number of patched entry points (like `malloc` in ucrtbase and msvcrt)
+
 typedef struct mi_patch_s {
-  const char*   name;       // name of the function to patch
-  void*         original;   // the resolved address of the function (or NULL)
-  void*         target;     // the address of the new target (never NULL)
-  void*         target_term;// the address of the target during termination (or NULL)
-  patch_apply_t applied;    // what target has been applied?
-  mi_jump_t     save;       // the saved instructions in case it was applied
+  const char*   name;                   // name of the function to patch
+  void*         target;                 // the address of the new target (never NULL)
+  void*         target_term;            // the address of the target during termination (or NULL)
+  patch_apply_t applied;                // what target has been applied?
+  void*         originals[MAX_ENTRIES]; // the resolved addresses of the function (or NULLs)
+  mi_jump_t     saves[MAX_ENTRIES];     // the saved instructions in case it was applied
 } mi_patch_t;
 
-#define MI_PATCH_NAME3(name,target,term)  { name, NULL, &target, &term, false }
-#define MI_PATCH_NAME2(name,target)       { name, NULL, &target, NULL, false }
+#define MI_PATCH_NAME3(name,target,term)  { name, &target, &term, PATCH_NONE, {NULL,NULL,NULL,NULL} }
+#define MI_PATCH_NAME2(name,target)       { name, &target, NULL, PATCH_NONE, {NULL,NULL,NULL,NULL} }
 #define MI_PATCH3(name,target,term)       MI_PATCH_NAME3(#name, target, term)
 #define MI_PATCH2(name,target)            MI_PATCH_NAME2(#name, target)
 #define MI_PATCH1(name)                   MI_PATCH2(name,mi_##name)
 
 static mi_patch_t patches[] = {
   // we implement our own global exit handler (as the CRT versions do a realloc internally)
-  MI_PATCH2(_crt_atexit, mi__crt_atexit),
-  MI_PATCH2(_crt_at_quick_exit, mi__crt_at_quick_exit),
+  //MI_PATCH2(_crt_atexit, mi_atexit),
+  //MI_PATCH2(_crt_at_quick_exit, mi_at_quick_exit),
   MI_PATCH2(_setmaxstdio, mi_setmaxstdio),
+  MI_PATCH2(_register_onexit_function, mi_register_onexit),
 
-  // base versions
+  // override higher level atexit functions so we can implement at_quick_exit correcty
+  MI_PATCH2(atexit, mi_atexit),
+  MI_PATCH2(at_quick_exit, mi_at_quick_exit),
+
+  // regular entries
+  MI_PATCH2(malloc, mi_malloc),
+  MI_PATCH2(calloc, mi_calloc),
+  MI_PATCH3(realloc, mi_realloc,mi_realloc_term),
+  MI_PATCH3(free, mi_free,mi_free_term),
+  
+  // extended api
+  MI_PATCH2(_strdup, mi_strdup),
+  MI_PATCH2(_strndup, mi_strndup),
+  MI_PATCH3(_expand, mi__expand,mi__expand_term),
+  MI_PATCH3(_recalloc, mi_recalloc,mi__recalloc_term),
+  MI_PATCH3(_msize, mi_usable_size,mi__msize_term),
+
+  // base versions 
   MI_PATCH2(_malloc_base, mi_malloc),
   MI_PATCH2(_calloc_base, mi_calloc),
   MI_PATCH3(_realloc_base, mi_realloc,mi_realloc_term),
   MI_PATCH3(_free_base, mi_free,mi_free_term),
 
-  // regular entries
-  MI_PATCH3(_expand, mi__expand,mi__expand_term),
-  MI_PATCH3(_recalloc, mi_recalloc,mi__recalloc_term),
-  MI_PATCH3(_msize, mi_usable_size,mi__msize_term),
-
   // these base versions are in the crt but without import records
   MI_PATCH_NAME3("_recalloc_base", mi_recalloc,mi__recalloc_term),
   MI_PATCH_NAME3("_msize_base", mi_usable_size,mi__msize_term),
-
-  // utility
-  MI_PATCH2(_strdup, mi_strdup),
-  MI_PATCH2(_strndup, mi_strndup),
 
   // debug
   MI_PATCH2(_malloc_dbg, mi__malloc_dbg),
@@ -425,51 +454,66 @@ static mi_patch_t patches[] = {
   MI_PATCH3(_recalloc_dbg, mi__recalloc_dbg, mi__recalloc_dbg_term),
   MI_PATCH3(_msize_dbg, mi__msize_dbg, mi__msize_dbg_term),
 
+#if 0
+  // override new/delete variants for efficiency (?)
 #ifdef _WIN64
   // 64 bit new/delete
-  MI_PATCH_NAME2("??2@YAPEAX_K@Z", mi_malloc),
-  MI_PATCH_NAME2("??_U@YAPEAX_K@Z", mi_malloc),
-  MI_PATCH_NAME3("??3@YAXPEAX@Z", mi_free, mi_free_term),
-  MI_PATCH_NAME3("??_V@YAXPEAX@Z", mi_free, mi_free_term),
-  MI_PATCH_NAME2("??2@YAPEAX_KAEBUnothrow_t@std@@@Z", mi_malloc),
-  MI_PATCH_NAME2("??_U@YAPEAX_KAEBUnothrow_t@std@@@Z", mi_malloc),
-  MI_PATCH_NAME3("??3@YAXPEAXAEBUnothrow_t@std@@@Z", mi_free, mi_free_term),
-  MI_PATCH_NAME3("??_V@YAXPEAXAEBUnothrow_t@std@@@Z", mi_free, mi_free_term),
+  MI_PATCH_NAME2("??2@YAPEAX_K@Z", mi_new),
+  MI_PATCH_NAME2("??_U@YAPEAX_K@Z", mi_new),
+  MI_PATCH_NAME3("??3@YAXPEAX@Z", mi_free, mi_free_term),  
+  MI_PATCH_NAME3("??_V@YAXPEAX@Z", mi_free, mi_free_term), 
+  MI_PATCH_NAME3("??3@YAXPEAX_K@Z", mi_free_size, mi_free_size_term), // delete sized
+  MI_PATCH_NAME3("??_V@YAXPEAX_K@Z", mi_free_size, mi_free_size_term), // delete sized
+  MI_PATCH_NAME2("??2@YAPEAX_KAEBUnothrow_t@std@@@Z", mi_new),
+  MI_PATCH_NAME2("??_U@YAPEAX_KAEBUnothrow_t@std@@@Z", mi_new),
+  MI_PATCH_NAME3("??3@YAXPEAXAEBUnothrow_t@std@@@Z", mi_free_nothrow, mi_free_nothrow_term),
+  MI_PATCH_NAME3("??_V@YAXPEAXAEBUnothrow_t@std@@@Z", mi_free_nothrow, mi_free_nothrow_term),
+  
+  
 #else
   // 32 bit new/delete
-  MI_PATCH_NAME2("??2@YAPAXI@Z", mi_malloc),
-  MI_PATCH_NAME2("??_U@YAPAXI@Z", mi_malloc),
+  MI_PATCH_NAME2("??2@YAPAXI@Z", mi_new),
+  MI_PATCH_NAME2("??_U@YAPAXI@Z", mi_new),
   MI_PATCH_NAME3("??3@YAXPAX@Z", mi_free, mi_free_term),
   MI_PATCH_NAME3("??_V@YAXPAX@Z", mi_free, mi_free_term),
-  MI_PATCH_NAME2("??2@YAPAXIABUnothrow_t@std@@@Z", mi_malloc),
-  MI_PATCH_NAME2("??_U@YAPAXIABUnothrow_t@std@@@Z", mi_malloc),
-  MI_PATCH_NAME3("??3@YAXPAXABUnothrow_t@std@@@Z", mi_free, mi_free_term),
-  MI_PATCH_NAME3("??_V@YAXPAXABUnothrow_t@std@@@Z", mi_free, mi_free_term),
-#endif
+  MI_PATCH_NAME3("??3@YAXPAXI@Z", mi_free_size, mi_free_size_term), // delete sized
+  MI_PATCH_NAME3("??_V@YAXPAXI@Z", mi_free_size, mi_free_size_term), // delete sized
 
-  { NULL, NULL, NULL, false }
+  MI_PATCH_NAME2("??2@YAPAXIABUnothrow_t@std@@@Z", mi_new),
+  MI_PATCH_NAME2("??_U@YAPAXIABUnothrow_t@std@@@Z", mi_new),
+  MI_PATCH_NAME3("??3@YAXPAXABUnothrow_t@std@@@Z", mi_free_nothrow, mi_free_nothrow_term),
+  MI_PATCH_NAME3("??_V@YAXPAXABUnothrow_t@std@@@Z", mi_free_nothrow, mi_free_nothrow_term),
+
+#endif
+#endif
+  { NULL, NULL, NULL, PATCH_NONE, {NULL,NULL,NULL,NULL} }
 };
 
 
 // Apply a patch
 static bool mi_patch_apply(mi_patch_t* patch, patch_apply_t apply)
 {
-  if (patch->original == NULL) return true;  // unresolved
+  if (patch->originals[0] == NULL) return true;  // unresolved
   if (apply == PATCH_TARGET_TERM && patch->target_term == NULL) apply = PATCH_TARGET;  // avoid re-applying non-term variants
   if (patch->applied == apply) return false;
 
-  DWORD protect = PAGE_READWRITE;
-  if (!VirtualProtect(patch->original, MI_JUMP_SIZE, PAGE_EXECUTE_READWRITE, &protect)) return false;
-  if (apply == PATCH_NONE) {
-    mi_jump_restore(patch->original, &patch->save);
-  }
-  else {
-    void* target = (apply == PATCH_TARGET ? patch->target : patch->target_term);
-    mi_assert_internal(target!=NULL);
-    if (target != NULL) mi_jump_write(patch->original, target, &patch->save);
+  for (int i = 0; i < MAX_ENTRIES; i++) {
+    void* original = patch->originals[i];
+    if (original == NULL) break; // no more
+
+    DWORD protect = PAGE_READWRITE;
+    if (!VirtualProtect(original, MI_JUMP_SIZE, PAGE_EXECUTE_READWRITE, &protect)) return false;
+    if (apply == PATCH_NONE) {
+      mi_jump_restore(original, &patch->saves[i]);
+    }
+    else {
+      void* target = (apply == PATCH_TARGET ? patch->target : patch->target_term);
+      mi_assert_internal(target != NULL);
+      if (target != NULL) mi_jump_write(original, target, &patch->saves[i]);
+    }
+    VirtualProtect(original, MI_JUMP_SIZE, protect, &protect);
   }
   patch->applied = apply;
-  VirtualProtect(patch->original, MI_JUMP_SIZE, protect, &protect);
   return true;
 }
 
@@ -522,22 +566,29 @@ static int __cdecl mi_setmaxstdio(int newmax) {
 // ------------------------------------------------------
 
 // Try to resolve patches for a given module (DLL)
-static void mi_module_resolve(HMODULE mod) {
+static void mi_module_resolve(const char* fname, HMODULE mod, int priority) {
   // see if any patches apply
   for (size_t i = 0; patches[i].name != NULL; i++) {
     mi_patch_t* patch = &patches[i];
-    if (!patch->applied && patch->original==NULL) {
-      void* addr = GetProcAddress(mod, patch->name);
-      if (addr != NULL) {
-        // found it! set the address
-        patch->original = addr;
+    if (patch->applied == PATCH_NONE) {
+      // find an available entry
+      int i = 0;
+      while (i < MAX_ENTRIES && patch->originals[i] != NULL) i++;
+      if (i < MAX_ENTRIES) {
+        void* addr = GetProcAddress(mod, patch->name);
+        if (addr != NULL) {
+          // found it! set the address
+          patch->originals[i] = addr;          
+          _mi_trace_message("  override %s at %s!%p (entry %i)\n", patch->name, fname, addr, i);
+        }
       }
     }
   }
 }
 
-#define MIMALLOC_NAME "mimalloc-override"
-#define UCRTBASE_NAME "ucrtbase"
+#define MIMALLOC_NAME "mimalloc-override.dll"
+#define UCRTBASE_NAME "ucrtbase.dll"
+#define UCRTBASED_NAME "ucrtbased.dll"
 
 // Resolve addresses of all patches by inspecting the loaded modules
 static atexit_fun_t* crt_atexit = NULL;
@@ -551,11 +602,12 @@ static bool mi_patches_resolve(void) {
   HMODULE modules[400];  // try to stay under 4k to not trigger the guard page
   EnumProcessModules(process, modules, sizeof(modules), &needed);
   if (needed == 0) return false;
-  size_t count = needed / sizeof(HMODULE);
-  size_t ucrtbase_index = 0;
-  size_t mimalloc_index = 0;
+  int count = needed / sizeof(HMODULE);
+  int ucrtbase_index = 0;
+  int mimalloc_index = 0;
   // iterate through the loaded modules
-  for (size_t i = 0; i < count; i++) {
+  _mi_trace_message("overriding malloc dynamically...\n");
+  for (int i = 0; i < count;  i++) {
     HMODULE mod = modules[i];
     char filename[MAX_PATH] = { 0 };
     DWORD slen = GetModuleFileName(mod, filename, MAX_PATH);
@@ -564,16 +616,23 @@ static bool mi_patches_resolve(void) {
       filename[slen] = 0;
       const char* lastsep = strrchr(filename, '\\');
       const char* basename = (lastsep==NULL ? filename : lastsep+1);
-      if (i==0                                    // main module to allow static crt linking
-        || _strnicmp(basename, "ucrt", 4) == 0    // new ucrtbase.dll in windows 10
-        || _strnicmp(basename, "msvcr", 5) == 0)  // older runtimes
-      {
-        // remember indices so we can check load order (in debug mode)
-        if (_stricmp(basename, MIMALLOC_NAME) == 0) mimalloc_index = i;
-        if (_stricmp(basename, UCRTBASE_NAME) == 0) ucrtbase_index = i;
+      _mi_trace_message("  %i: dynamic module %s\n", i, filename);
 
+      // remember indices so we can check load order (in debug mode)
+      if (_stricmp(basename, MIMALLOC_NAME) == 0) mimalloc_index = i;
+      if (_stricmp(basename, UCRTBASE_NAME) == 0) ucrtbase_index = i;
+      if (_stricmp(basename, UCRTBASED_NAME) == 0) ucrtbase_index = i;
+
+      // see if we potentially patch in this module
+      int priority = 0; 
+      if (i == 0) priority = 2; // main module to allow static crt linking
+      else if (_strnicmp(basename, "ucrt", 4) == 0) priority = 3;   // new ucrtbase.dll in windows 10
+      // NOTE: don't override msvcr -- leads to crashes in setlocale (needs more testing)
+      // else if (_strnicmp(basename, "msvcr", 5) == 0) priority = 1;  // older runtimes      
+      
+      if (priority > 0) {
         // probably found a crt module, try to patch it
-        mi_module_resolve(mod);
+        mi_module_resolve(basename,mod,priority);
 
         // try to find the atexit functions for the main process (in `ucrtbase.dll`)
         if (crt_atexit==NULL) crt_atexit = (atexit_fun_t*)GetProcAddress(mod, "_crt_atexit");
@@ -581,13 +640,11 @@ static bool mi_patches_resolve(void) {
       }
     }
   }
-#if (MI_DEBUG)
-  size_t diff = (mimalloc_index > ucrtbase_index ? mimalloc_index - ucrtbase_index : ucrtbase_index - mimalloc_index);
-  if ((mimalloc_index > 0 || ucrtbase_index > 0) && (diff != 1)) {
-    _mi_warning_message("warning: the \"mimalloc-override\" DLL seems not to load right before or after the C runtime (\"ucrtbase\").\n"
-                        "  Try to fix this by changing the linking order.");
+  int diff = mimalloc_index - ucrtbase_index;
+  if (diff > 1) {
+    _mi_warning_message("warning: the \"mimalloc-override\" DLL seems not to load before or right after the C runtime (\"ucrtbase\").\n"
+                        "  Try to fix this by changing the linking order.\n");
   }
-#endif
   return true;
 }
 

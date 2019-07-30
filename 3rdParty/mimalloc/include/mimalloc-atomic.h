@@ -57,33 +57,35 @@ static inline void* mi_atomic_exchange_ptr(volatile void** p, void* exchange) {
 #include <windows.h>
 #include <intrin.h>
 #if (MI_INTPTR_SIZE==8)
+typedef LONG64   msc_intptr_t;
 #define RC64(f)  f##64
 #else
+typedef LONG     msc_intptr_t;
 #define RC64(f)  f
 #endif
 static inline uintptr_t mi_atomic_increment(volatile uintptr_t* p) {
-  return (uintptr_t)RC64(_InterlockedIncrement)((volatile intptr_t*)p);
+  return (uintptr_t)RC64(_InterlockedIncrement)((volatile msc_intptr_t*)p);
 }
 static inline uint32_t mi_atomic_increment32(volatile uint32_t* p) {
-  return (uint32_t)_InterlockedIncrement((volatile int32_t*)p);
+  return (uint32_t)_InterlockedIncrement((volatile LONG*)p);
 }
 static inline uintptr_t mi_atomic_decrement(volatile uintptr_t* p) {
-  return (uintptr_t)RC64(_InterlockedDecrement)((volatile intptr_t*)p);
+  return (uintptr_t)RC64(_InterlockedDecrement)((volatile msc_intptr_t*)p);
 }
 static inline uintptr_t mi_atomic_subtract(volatile uintptr_t* p, uintptr_t sub) {
-  return (uintptr_t)RC64(_InterlockedExchangeAdd)((volatile intptr_t*)p, -((intptr_t)sub)) - sub;
+  return (uintptr_t)RC64(_InterlockedExchangeAdd)((volatile msc_intptr_t*)p, -((msc_intptr_t)sub)) - sub;
 }
 static inline uint32_t mi_atomic_subtract32(volatile uint32_t* p, uint32_t sub) {
-  return (uint32_t)_InterlockedExchangeAdd((volatile int32_t*)p, -((int32_t)sub)) - sub;
+  return (uint32_t)_InterlockedExchangeAdd((volatile LONG*)p, -((LONG)sub)) - sub;
 }
 static inline bool mi_atomic_compare_exchange32(volatile uint32_t* p, uint32_t exchange, uint32_t compare) {
-  return ((int32_t)compare == _InterlockedCompareExchange((volatile int32_t*)p, (int32_t)exchange, (int32_t)compare));
+  return ((int32_t)compare == _InterlockedCompareExchange((volatile LONG*)p, (LONG)exchange, (LONG)compare));
 }
 static inline bool mi_atomic_compare_exchange(volatile uintptr_t* p, uintptr_t exchange, uintptr_t compare) {
-  return (compare == RC64(_InterlockedCompareExchange)((volatile intptr_t*)p, (intptr_t)exchange, (intptr_t)compare));
+  return (compare == RC64(_InterlockedCompareExchange)((volatile msc_intptr_t*)p, (msc_intptr_t)exchange, (msc_intptr_t)compare));
 }
 static inline uintptr_t mi_atomic_exchange(volatile uintptr_t* p, uintptr_t exchange) {
-  return (uintptr_t)RC64(_InterlockedExchange)((volatile intptr_t*)p, (intptr_t)exchange);
+  return (uintptr_t)RC64(_InterlockedExchange)((volatile msc_intptr_t*)p, (msc_intptr_t)exchange);
 }
 static inline void mi_atomic_yield(void) {
   YieldProcessor();
@@ -137,15 +139,15 @@ static inline uint32_t mi_atomic_subtract32(volatile uint32_t* p, uint32_t sub) 
 }
 static inline bool mi_atomic_compare_exchange32(volatile uint32_t* p, uint32_t exchange, uint32_t compare) {
   MI_USING_STD
-  return atomic_compare_exchange_weak_explicit((volatile _Atomic(uint32_t)*)p, &compare, exchange, memory_order_relaxed, memory_order_seq_cst);
+  return atomic_compare_exchange_weak_explicit((volatile _Atomic(uint32_t)*)p, &compare, exchange, memory_order_release, memory_order_relaxed);
 }
 static inline bool mi_atomic_compare_exchange(volatile uintptr_t* p, uintptr_t exchange, uintptr_t compare) {
   MI_USING_STD
-  return atomic_compare_exchange_weak_explicit((volatile atomic_uintptr_t*)p, &compare, exchange, memory_order_relaxed, memory_order_seq_cst);
+  return atomic_compare_exchange_weak_explicit((volatile atomic_uintptr_t*)p, &compare, exchange, memory_order_release, memory_order_relaxed);
 }
 static inline uintptr_t mi_atomic_exchange(volatile uintptr_t* p, uintptr_t exchange) {
   MI_USING_STD
-  return atomic_exchange_explicit((volatile atomic_uintptr_t*)p, exchange, memory_order_relaxed);
+  return atomic_exchange_explicit((volatile atomic_uintptr_t*)p, exchange, memory_order_acquire);
 }
 
 #if defined(__cplusplus)

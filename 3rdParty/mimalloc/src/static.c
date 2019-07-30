@@ -20,5 +20,6 @@ terms of the MIT license. A copy of the license can be found in the file
 #include "heap.c"
 #include "alloc.c"
 #include "alloc-aligned.c"
+#include "alloc-posix.c"
 #include "init.c"
 #include "options.c"

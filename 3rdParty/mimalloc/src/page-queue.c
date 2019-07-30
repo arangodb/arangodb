@@ -56,7 +56,7 @@ static inline uint8_t mi_bsr32(uint32_t x);
 #include <intrin.h>
 static inline uint8_t mi_bsr32(uint32_t x) {
   uint32_t idx;
-  _BitScanReverse(&idx, x);
+  _BitScanReverse((DWORD*)&idx, x);
   return idx;
 }
 #elif defined(__GNUC__) || defined(__clang__)
@@ -293,7 +293,7 @@ static void mi_page_queue_enqueue_from(mi_page_queue_t* to, mi_page_queue_t* fro
   mi_assert_expensive(mi_page_queue_contains(from, page));
   mi_assert_expensive(!mi_page_queue_contains(to, page));
   mi_assert_internal(page->block_size == to->block_size ||
-                     (page->block_size > MI_LARGE_SIZE_MAX && mi_page_queue_is_huge(to)) ||
+                     (page->block_size > MI_LARGE_SIZE_MAX && (mi_page_queue_is_huge(to) || mi_page_queue_is_full(to))) ||
                       (page->block_size == from->block_size && mi_page_queue_is_full(to)));
 
   if (page->prev != NULL) page->prev->next = page->next;
@@ -323,15 +323,17 @@ static void mi_page_queue_enqueue_from(mi_page_queue_t* to, mi_page_queue_t* fro
   page->flags.in_full = mi_page_queue_is_full(to);
 }
 
-void _mi_page_queue_append(mi_heap_t* heap, mi_page_queue_t* pq, mi_page_queue_t* append) {
+size_t _mi_page_queue_append(mi_heap_t* heap, mi_page_queue_t* pq, mi_page_queue_t* append) {
   mi_assert_internal(mi_heap_contains_queue(heap,pq));
   mi_assert_internal(pq->block_size == append->block_size);
 
-  if (append->first==NULL) return;
+  if (append->first==NULL) return 0;
 
-  // set append pages to new heap
+  // set append pages to new heap and count
+  size_t count = 0;
   for (mi_page_t* page = append->first; page != NULL; page = page->next) {
     page->heap = heap;
+    count++;
   }
 
   if (pq->last==NULL) {
@@ -349,4 +351,5 @@ void _mi_page_queue_append(mi_heap_t* heap, mi_page_queue_t* pq, mi_page_queue_t
     append->first->prev = pq->last;
     pq->last = append->last;
   }
+  return count;
 }

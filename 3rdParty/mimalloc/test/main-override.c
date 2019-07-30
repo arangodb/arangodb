@@ -20,6 +20,13 @@ int main() {
   free(p2);
   free(s);
   mi_collect(true);
+
+  /* now test if override worked by allocating/freeing across the api's*/
+  p1 = mi_malloc(32);
+  free(p1);
+  p2 = malloc(32);
+  mi_free(p2);
+
   mi_stats_print(NULL);
   return 0;
 }

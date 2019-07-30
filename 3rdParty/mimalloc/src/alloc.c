@@ -111,18 +111,20 @@ static mi_decl_noinline void _mi_free_block_mt(mi_page_t* page, mi_block_t* bloc
   bool use_delayed;
 
   do {
-    tfreex = tfree = page->thread_free;
-    use_delayed = (tfree.delayed == MI_USE_DELAYED_FREE);
+    tfree = page->thread_free;
+    use_delayed = (mi_tf_delayed(tfree) == MI_USE_DELAYED_FREE ||
+                   (mi_tf_delayed(tfree) == MI_NO_DELAYED_FREE && page->used == page->thread_freed+1)
+                  );
     if (mi_unlikely(use_delayed)) {
       // unlikely: this only happens on the first concurrent free in a page that is in the full list
-      tfreex.delayed = MI_DELAYED_FREEING;
+      tfreex = mi_tf_set_delayed(tfree,MI_DELAYED_FREEING);
     }
     else {
       // usual: directly add to page thread_free list
-      mi_block_set_next(page, block, (mi_block_t*)((uintptr_t)tfree.head << MI_TF_PTR_SHIFT));
-      tfreex.head = (uintptr_t)block >> MI_TF_PTR_SHIFT;
+      mi_block_set_next(page, block, mi_tf_block(tfree));
+      tfreex = mi_tf_set_block(tfree,block);
     }
-  } while (!mi_atomic_compare_exchange((volatile uintptr_t*)&page->thread_free, tfreex.value, tfree.value));
+  } while (!mi_atomic_compare_exchange((volatile uintptr_t*)&page->thread_free, tfreex, tfree));
 
   if (mi_likely(!use_delayed)) {
     // increment the thread free count and return
@@ -144,8 +146,9 @@ static mi_decl_noinline void _mi_free_block_mt(mi_page_t* page, mi_block_t* bloc
     // and reset the MI_DELAYED_FREEING flag
     do {
       tfreex = tfree = page->thread_free;
-      tfreex.delayed = MI_NO_DELAYED_FREE;
-    } while (!mi_atomic_compare_exchange((volatile uintptr_t*)&page->thread_free, tfreex.value, tfree.value));
+      mi_assert_internal(mi_tf_delayed(tfree) == MI_NEVER_DELAYED_FREE || mi_tf_delayed(tfree) == MI_DELAYED_FREEING);
+      if (mi_tf_delayed(tfree) != MI_NEVER_DELAYED_FREE) tfreex = mi_tf_set_delayed(tfree,MI_NO_DELAYED_FREE);
+    } while (!mi_atomic_compare_exchange((volatile uintptr_t*)&page->thread_free, tfreex, tfree));
   }
 }
 
@@ -177,7 +180,7 @@ static inline void _mi_free_block(mi_page_t* page, bool local, mi_block_t* block
 
 
 // Adjust a block that was allocated aligned, to the actual start of the block in the page.
-mi_block_t* _mi_page_ptr_unalign(const mi_segment_t* segment, const mi_page_t* page, void* p) {
+mi_block_t* _mi_page_ptr_unalign(const mi_segment_t* segment, const mi_page_t* page, const void* p) {
   mi_assert_internal(page!=NULL && p!=NULL);
   size_t diff   = (uint8_t*)p - _mi_page_start(segment, page, NULL);
   size_t adjust = (diff % page->block_size);
@@ -246,17 +249,24 @@ void mi_free(void* p) mi_attr_noexcept
   }
 }
 
-void _mi_free_delayed_block(mi_block_t* block) {
-  mi_assert_internal(block != NULL);
+bool _mi_free_delayed_block(mi_block_t* block) {
+  // get segment and page
   const mi_segment_t* segment = _mi_ptr_segment(block);
   mi_assert_internal(_mi_ptr_cookie(segment) == segment->cookie);
   mi_assert_internal(_mi_thread_id() == segment->thread_id);
-  mi_page_t* page = _mi_segment_page_of(segment,block);
+  mi_page_t* page = _mi_segment_page_of(segment, block);
+  if (mi_tf_delayed(page->thread_free) == MI_DELAYED_FREEING) {
+    // we might already start delayed freeing while another thread has not yet
+    // reset the delayed_freeing flag; in that case don't free it quite yet if
+    // this is the last block remaining.
+    if (page->used - page->thread_freed == 1) return false;
+  }
   _mi_free_block(page,true,block);
+  return true;
 }
 
 // Bytes available in a block
-size_t mi_usable_size(void* p) mi_attr_noexcept {
+size_t mi_usable_size(const void* p) mi_attr_noexcept {
   if (p==NULL) return 0;
   const mi_segment_t* segment = _mi_ptr_segment(p);
   const mi_page_t* page = _mi_segment_page_of(segment,p);
@@ -272,9 +282,6 @@ size_t mi_usable_size(void* p) mi_attr_noexcept {
 }
 
 
-
-
-
 // ------------------------------------------------------
 // ensure explicit external inline definitions are emitted!
 // ------------------------------------------------------
@@ -282,17 +289,36 @@ size_t mi_usable_size(void* p) mi_attr_noexcept {
 #ifdef __cplusplus
 void* _mi_externs[] = {
   (void*)&_mi_page_malloc,
-  (void*)&mi_malloc_small,
   (void*)&mi_malloc,
+  (void*)&mi_malloc_small,
+  (void*)&mi_heap_malloc,
+  (void*)&mi_heap_zalloc,
+  (void*)&mi_heap_malloc_small
 };
-
-
 #endif
 
 
 // ------------------------------------------------------
 // Allocation extensions
 // ------------------------------------------------------
+
+void mi_free_size(void* p, size_t size) mi_attr_noexcept {
+  UNUSED_RELEASE(size);
+  mi_assert(size <= mi_usable_size(p));
+  mi_free(p);
+}
+
+void mi_free_size_aligned(void* p, size_t size, size_t alignment) mi_attr_noexcept {
+  UNUSED_RELEASE(alignment);
+  mi_assert(((uintptr_t)p % alignment) == 0);
+  mi_free_size(p,size);
+}
+
+void mi_free_aligned(void* p, size_t alignment) mi_attr_noexcept {
+  UNUSED_RELEASE(alignment);
+  mi_assert(((uintptr_t)p % alignment) == 0);
+  mi_free(p);
+}
 
 extern inline void* mi_heap_calloc(mi_heap_t* heap, size_t count, size_t size) mi_attr_noexcept {
   size_t total;
@@ -323,13 +349,13 @@ void* mi_expand(void* p, size_t newsize) mi_attr_noexcept {
   return p; // it fits
 }
 
-void* _mi_realloc_zero(void* p, size_t newsize, bool zero) {
-  if (p == NULL) return _mi_heap_malloc_zero(mi_get_default_heap(),newsize,zero);
+void* _mi_heap_realloc_zero(mi_heap_t* heap, void* p, size_t newsize, bool zero) {
+  if (p == NULL) return _mi_heap_malloc_zero(heap,newsize,zero);
   size_t size = mi_usable_size(p);
   if (newsize <= size && newsize >= (size / 2)) {
     return p;  // reallocation still fits and not more than 50% waste
   }
-  void* newp = mi_malloc(newsize); // maybe in another heap
+  void* newp = mi_heap_malloc(heap,newsize);
   if (mi_likely(newp != NULL)) {
     if (zero && newsize > size) {
       // also set last word in the previous allocation to zero to ensure any padding is zero-initialized
@@ -342,33 +368,46 @@ void* _mi_realloc_zero(void* p, size_t newsize, bool zero) {
   return newp;
 }
 
-void* mi_realloc(void* p, size_t newsize) mi_attr_noexcept {
-  return _mi_realloc_zero(p,newsize,false);
+void* mi_heap_realloc(mi_heap_t* heap, void* p, size_t newsize) mi_attr_noexcept {
+  return _mi_heap_realloc_zero(heap, p, newsize, false);
 }
 
-// Zero initialized reallocation
-void* mi_rezalloc(void* p, size_t newsize) mi_attr_noexcept {
-  return _mi_realloc_zero(p,newsize,true);
+void* mi_heap_reallocn(mi_heap_t* heap, void* p, size_t count, size_t size) mi_attr_noexcept {
+  size_t total;
+  if (mi_mul_overflow(count, size, &total)) return NULL;
+  return mi_heap_realloc(heap, p, total);
+}
+
+
+// Reallocate but free `p` on errors
+void* mi_heap_reallocf(mi_heap_t* heap, void* p, size_t newsize) mi_attr_noexcept {
+  void* newp = mi_heap_realloc(heap, p, newsize);
+  if (newp==NULL && p!=NULL) mi_free(p);
+  return newp;
+}
+
+void* mi_realloc(void* p, size_t newsize) mi_attr_noexcept {
+  return mi_heap_realloc(mi_get_default_heap(),p,newsize);
 }
 
 void* mi_recalloc(void* p, size_t count, size_t size) mi_attr_noexcept {
   size_t total;
-  if (mi_mul_overflow(count,size,&total)) return NULL;
-  return mi_rezalloc(p,total);
+  if (mi_mul_overflow(count, size, &total)) return NULL;
+  return _mi_heap_realloc_zero(mi_get_default_heap(),p,total,true);
 }
 
 void* mi_reallocn(void* p, size_t count, size_t size) mi_attr_noexcept {
-  size_t total;
-  if (mi_mul_overflow(count,size,&total)) return NULL;
-  return mi_realloc(p,total);
+  return mi_heap_reallocn(mi_get_default_heap(),p,count,size);
 }
 
 // Reallocate but free `p` on errors
 void* mi_reallocf(void* p, size_t newsize) mi_attr_noexcept {
-  void* newp = mi_realloc(p,newsize);
-  if (newp==NULL && p!=NULL) mi_free(p);
-  return newp;
+  return mi_heap_reallocf(mi_get_default_heap(),p,newsize);
 }
+
+// ------------------------------------------------------
+// strdup, strndup, and realpath
+// ------------------------------------------------------
 
 // `strdup` using mi_malloc
 char* mi_heap_strdup(mi_heap_t* heap, const char* s) mi_attr_noexcept {
@@ -424,23 +463,123 @@ char* mi_heap_realpath(mi_heap_t* heap, const char* fname, char* resolved_name) 
   }
 }
 #else
-#include <limits.h>
-#ifndef PATH_MAX
-#define PATH_MAX 260
-#endif
+#include <unistd.h>
+static size_t mi_path_max() {
+  static size_t path_max = 0;
+  if (path_max <= 0) {
+    long m = pathconf("/",_PC_PATH_MAX);
+    if (m <= 0) path_max = 4096;      // guess
+    else if (m < 256) path_max = 256; // at least 256
+    else path_max = m;
+  }
+  return path_max;
+}
 
 char* mi_heap_realpath(mi_heap_t* heap, const char* fname, char* resolved_name) mi_attr_noexcept {
   if (resolved_name != NULL) {
     return realpath(fname,resolved_name);
   }
   else {
-    char buf[PATH_MAX+1];
-    char* rname = realpath(fname,buf);
-    return mi_heap_strndup(heap,rname,PATH_MAX); // ok if `rname==NULL`
+    size_t n  = mi_path_max();
+    char* buf = (char*)mi_malloc(n+1);
+    if (buf==NULL) return NULL;
+    char* rname  = realpath(fname,buf);
+    char* result = mi_heap_strndup(heap,rname,n); // ok if `rname==NULL`
+    mi_free(buf);
+    return result;
   }
 }
 #endif
 
 char* mi_realpath(const char* fname, char* resolved_name) mi_attr_noexcept {
   return mi_heap_realpath(mi_get_default_heap(),fname,resolved_name);
+}
+
+/*-------------------------------------------------------
+C++ new and new_aligned
+The standard requires calling into `get_new_handler` and
+throwing the bad_alloc exception on failure. If we compile
+with a C++ compiler we can implement this precisely. If we
+use a C compiler we cannot throw a `bad_alloc` exception
+but we call `exit` instead (i.e. not returning).
+-------------------------------------------------------*/
+
+#ifdef __cplusplus
+#include <new>
+static bool mi_try_new_handler(bool nothrow) {
+  std::new_handler h = std::get_new_handler();
+  if (h==NULL) {
+    if (!nothrow) throw std::bad_alloc();
+    return false;
+  }
+  else {
+    h();
+    return true;
+  }
+}
+#else
+#include <errno.h>
+#ifndef ENOMEM
+#define ENOMEM 12
+#endif
+typedef void (*std_new_handler_t)();
+
+#if (defined(__GNUC__) || defined(__clang__))
+std_new_handler_t __attribute((weak)) _ZSt15get_new_handlerv() {
+  return NULL;
+}
+std_new_handler_t mi_get_new_handler() {
+  return _ZSt15get_new_handlerv();
+}
+#else
+std_new_handler_t mi_get_new_handler() {
+  return NULL;
+}
+#endif
+
+static bool mi_try_new_handler(bool nothrow) {
+  std_new_handler_t h = mi_get_new_handler();
+  if (h==NULL) {
+    if (!nothrow) exit(ENOMEM);
+    return false;
+  }
+  else {
+    h();
+    return true;
+  }
+}
+#endif
+
+static mi_decl_noinline void* mi_try_new(size_t n, bool nothrow ) {
+  void* p = NULL;
+  while(p == NULL && mi_try_new_handler(nothrow)) {
+    p = mi_malloc(n);
+  }
+  return p;
+}
+
+void* mi_new(size_t n) {
+  void* p = mi_malloc(n);
+  if (mi_unlikely(p == NULL)) return mi_try_new(n,false);
+  return p;
+}
+
+void* mi_new_aligned(size_t n, size_t alignment) {
+  void* p;
+  do { p = mi_malloc_aligned(n, alignment); }
+  while(p == NULL && mi_try_new_handler(false));
+  return p;
+}
+
+void* mi_new_nothrow(size_t n) {
+  void* p = mi_malloc(n);
+  if (mi_unlikely(p == NULL)) return mi_try_new(n,true);
+  return p;
+}
+
+void* mi_new_aligned_nothrow(size_t n, size_t alignment) {
+  void* p;
+  do { p = mi_malloc_aligned(n, alignment); }
+  while (p == NULL && mi_try_new_handler(true));
+  return p;
 }

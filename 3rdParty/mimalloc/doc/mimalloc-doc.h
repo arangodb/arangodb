@@ -122,16 +122,6 @@ void* mi_calloc(size_t count, size_t size);
 /// are uninitialized.
 void* mi_realloc(void* p, size_t newsize);
 
-/// Reallocate memory to \a newsize bytes, with extra memory initialized to zero.
-/// @param p Pointer to a previously allocated block (or \a NULL).
-/// @param newsize The new required size in bytes.
-/// @returns A pointer to a re-allocated block of \a newsize bytes, or \a NULL
-/// if out of memory.
-///
-/// If the \a newsize is larger than the original allocated size of \a p,
-/// the extra bytes are initialized to zero.
-void* mi_rezalloc(void* p, size_t newsize);
-
 /// Re-allocate memory to \a count elements of \a size bytes, with extra memory initialized to zero.
 /// @param p Pointer to a previously allocated block (or \a NULL).
 /// @param count The number of elements.
@@ -141,10 +131,8 @@ void* mi_rezalloc(void* p, size_t newsize);
 ///
 /// If there is no overflow, it behaves exactly like `mi_rezalloc(p,count*size)`.
 /// @see mi_reallocn()
-/// @see mi_rezalloc()
 /// @see [recallocarray()](http://man.openbsd.org/reallocarray) (on BSD).
 void* mi_recalloc(void* p, size_t count, size_t size);
-
 
 /// Try to re-allocate memory to \a newsize bytes _in place_.
 /// @param p  pointer to previously allocated memory (or \a NULL).
@@ -180,7 +168,6 @@ void* mi_mallocn(size_t count, size_t size);
 /// if out of memory or if \a count * \a size overflows.
 ///
 /// If there is no overflow, it behaves exactly like `mi_realloc(p,count*size)`.
-/// @see mi_recalloc()
 /// @see [reallocarray()](<http://man.openbsd.org/reallocarray>) (on BSD)
 void* mi_reallocn(void* p, size_t count, size_t size);
 
@@ -383,8 +370,6 @@ void* mi_malloc_aligned(size_t size, size_t alignment);
 void* mi_zalloc_aligned(size_t size, size_t alignment);
 void* mi_calloc_aligned(size_t count, size_t size, size_t alignment);
 void* mi_realloc_aligned(void* p, size_t newsize, size_t alignment);
-void* mi_rezalloc_aligned(void* p, size_t newsize, size_t alignment);
-void* mi_recalloc_aligned(void* p, size_t count, size_t size, size_t alignment);
 
 /// Allocate \a size bytes aligned by \a alignment at a specified \a offset.
 /// @param size  number of bytes to allocate.
@@ -400,8 +385,6 @@ void* mi_malloc_aligned_at(size_t size, size_t alignment, size_t offset);
 void* mi_zalloc_aligned_at(size_t size, size_t alignment, size_t offset);
 void* mi_calloc_aligned_at(size_t count, size_t size, size_t alignment, size_t offset);
 void* mi_realloc_aligned_at(void* p, size_t newsize, size_t alignment, size_t offset);
-void* mi_rezalloc_aligned_at(void* p, size_t newsize, size_t alignment, size_t offset);
-void* mi_recalloc_aligned_at(void* p, size_t count, size_t size, size_t alignment, size_t offset);
 
 /// \}
 
@@ -488,6 +471,18 @@ char* mi_heap_strndup(mi_heap_t* heap, const char* s, size_t n);
 /// @see mi_realpath()
 char* mi_heap_realpath(mi_heap_t* heap, const char* fname, char* resolved_name);
 
+void* mi_heap_realloc(mi_heap_t* heap, void* p, size_t newsize);
+void* mi_heap_reallocn(mi_heap_t* heap, void* p, size_t count, size_t size);
+void* mi_heap_reallocf(mi_heap_t* heap, void* p, size_t newsize);
+
+void* mi_heap_malloc_aligned(mi_heap_t* heap, size_t size, size_t alignment);
+void* mi_heap_malloc_aligned_at(mi_heap_t* heap, size_t size, size_t alignment, size_t offset);
+void* mi_heap_zalloc_aligned(mi_heap_t* heap, size_t size, size_t alignment);
+void* mi_heap_zalloc_aligned_at(mi_heap_t* heap, size_t size, size_t alignment, size_t offset);
+void* mi_heap_calloc_aligned(mi_heap_t* heap, size_t count, size_t size, size_t alignment);
+void* mi_heap_calloc_aligned_at(mi_heap_t* heap, size_t count, size_t size, size_t alignment, size_t offset);
+void* mi_heap_realloc_aligned(mi_heap_t* heap, void* p, size_t newsize, size_t alignment);
+void* mi_heap_realloc_aligned_at(mi_heap_t* heap, void* p, size_t newsize, size_t alignment, size_t offset);
 
 /// \}
 
@@ -522,20 +517,20 @@ char* mi_heap_realpath(mi_heap_t* heap, const char* fname, char* resolved_name);
 /// Re-allocate to \a count blocks of type \a tp.
 #define mi_reallocn_tp(p,tp,count)  ((tp*)mi_reallocn(p,count,sizeof(tp)))
 
-/// Re-allocate to \a count zero-initialized blocks of type \a tp.
-#define mi_recalloc_tp(p,tp,count)  ((tp*)mi_recalloc(p,count,sizeof(tp)))
-
 /// Allocate a block of type \a tp in a heap \a hp.
-#define mi_heap_malloc_tp(hp,tp)        ((tp*)mi_malloc(hp,sizeof(tp)))
+#define mi_heap_malloc_tp(hp,tp)        ((tp*)mi_heap_malloc(hp,sizeof(tp)))
 
 /// Allocate a zero-initialized block of type \a tp in a heap \a hp.
-#define mi_heap_zalloc_tp(hp,tp)        ((tp*)mi_zalloc(hp,sizeof(tp)))
+#define mi_heap_zalloc_tp(hp,tp)        ((tp*)mi_heap_zalloc(hp,sizeof(tp)))
 
 /// Allocate \a count zero-initialized blocks of type \a tp in a heap \a hp.
-#define mi_heap_calloc_tp(hp,tp,count)      ((tp*)mi_calloc(hp,count,sizeof(tp)))
+#define mi_heap_calloc_tp(hp,tp,count)      ((tp*)mi_heap_calloc(hp,count,sizeof(tp)))
 
 /// Allocate \a count blocks of type \a tp in a heap \a hp.
-#define mi_heap_mallocn_tp(hp,tp,count)     ((tp*)mi_mallocn(hp,count,sizeof(tp)))
+#define mi_heap_mallocn_tp(hp,tp,count)     ((tp*)mi_heap_mallocn(hp,count,sizeof(tp)))
+
+/// Re-allocate to \a count blocks of type \a tp in a heap \a hp.
+#define mi_heap_reallocn_tp(hp,p,tp,count)  ((tp*)mi_heap_reallocn(p,count,sizeof(tp)))
 
 /// \}
 
@@ -630,6 +625,40 @@ void  mi_option_enable_default(mi_option_t option, bool enable);
 long  mi_option_get(mi_option_t option);
 void  mi_option_set(mi_option_t option, long value);
 void  mi_option_set_default(mi_option_t option, long value);
+
+
+/// \}
+
+/// \defgroup posix Posix
+///
+///  `mi_` prefixed implementations of various Posix, Unix, and C++ allocation functions.
+///  Defined for convenience as all redirect to the regular mimalloc API.
+///
+/// \{
+
+void*  mi_recalloc(void* p, size_t count, size_t size);
+size_t mi_malloc_size(const void* p);
+size_t mi_malloc_usable_size(const void *p);
+void   mi_cfree(void* p);
+
+int mi_posix_memalign(void** p, size_t alignment, size_t size);
+int mi__posix_memalign(void** p, size_t alignment, size_t size);
+void* mi_memalign(size_t alignment, size_t size);
+void* mi_valloc(size_t size);
+
+void* mi_pvalloc(size_t size);
+void* mi_aligned_alloc(size_t alignment, size_t size);
+void* mi_reallocarray(void* p, size_t count, size_t size);
+
+void mi_free_size(void* p, size_t size);
+void mi_free_size_aligned(void* p, size_t size, size_t alignment);
+void mi_free_aligned(void* p, size_t alignment);
+
+/// Only defined in C++ compilation; raise `std::bad_alloc` exception on failure.
+void* mi_new(std::size_t n) noexcept(false);
+
+/// Only defined in C++ compilation; raise `std::bad_alloc` exception on failure.
+void* mi_new_aligned(std::size_t n, std::align_val_t alignment) noexcept(false);
 
 
 /// \}
@@ -779,7 +808,7 @@ library so all calls to the standard `malloc` interface are
 resolved to the _mimalloc_ library.
 
 - `env LD_PRELOAD=/usr/lib/libmimalloc.so myprogram` (on Linux, BSD, etc.)
-- `env DYLD_INSERT_LIBRARIES=usr/lib/libmimalloc.dylib myprogram` (On macOS)
+- `env DYLD_INSERT_LIBRARIES=/usr/lib/libmimalloc.dylib myprogram` (On macOS)
 
   Note certain security restrictions may apply when doing this from
   the [shell](https://stackoverflow.com/questions/43941322/dyld-insert-libraries-ignored-when-calling-application-through-bash).
