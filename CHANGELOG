@@ -7,7 +7,11 @@ v3.4.8 (XXXX-XX-XX)
 
 * Fixed issue #9558: RTRIM not working as expected
 
-* Added gzip and encryption options to arangoimport and arangoexport
+* Fixed issue #9459: Optimization rule remove-collect-variables does not KEEP all necessary data.
+
+* Fixed issue #9558: RTRIM not working as expected.
+
+* Added gzip and encryption options to arangoimport and arangoexport.
 
 * Added startup error for bad temporary directory setting.
 
