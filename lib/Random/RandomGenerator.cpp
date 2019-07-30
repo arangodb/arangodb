@@ -35,10 +35,9 @@
 #include "Basics/operating-system.h"
 
 #ifdef _WIN32
-#include <windows.h>
+#include <windows.h>  // must be before Wincrypt.h
 
 #include <Wincrypt.h>
-#include <window.h>
 #endif
 
 #ifdef TRI_HAVE_UNISTD_H
