@@ -24,9 +24,10 @@
 #include "Basics/Common.h"
 
 #include <WinSock2.h>
-#include <errno.h>
+#include <shellapi.h>
 #include <windows.h>
 
+#include <errno.h>
 #include <io.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -52,6 +53,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/directories.h"
 #include "Basics/files.h"
