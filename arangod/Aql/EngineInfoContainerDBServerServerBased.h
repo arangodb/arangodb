@@ -91,12 +91,13 @@ class EngineInfoContainerDBServerServerBased {
   // for ShardLocking
   void addNode(ExecutionNode* node);
 
-  // Open a new snippet, which is connected to the given remoteNode id
-  void openSnippet(size_t idOfRemoteNode);
+  // Open a new snippet, this snippt will be used to produce data
+  // for the given sinkNode (RemoteNode only for now)
+  void openSnippet(size_t idOfSinkNode);
 
-  // Closes the given snippet and connects it
-  // to the given queryid of the coordinator.
-  void closeSnippet(QueryId id);
+  // Closes the given snippet and let it use
+  // the given queryid of the coordinator as data provider.
+  void closeSnippet(QueryId inputSnippet);
 
   // Build the Engines for the DBServer
   //   * Creates one Query-Entry for each Snippet per Shard (multiple on the
@@ -155,6 +156,10 @@ class EngineInfoContainerDBServerServerBased {
   // Insert the TraversalEngine information into the message to be send to DBServers
   void addTraversalEnginesPart(arangodb::velocypack::Builder& builder,
                                ServerID const& server) const;
+
+  // Parse the response of a DBServer to a setup request
+  Result parseResponse(VPackSlice response, MapRemoteToSnippet& queryIds,
+                       ServerID const& server, std::string const& serverDest) const;
 
  private:
   std::stack<std::shared_ptr<QuerySnippet>, std::vector<std::shared_ptr<QuerySnippet>>> _snippetStack;

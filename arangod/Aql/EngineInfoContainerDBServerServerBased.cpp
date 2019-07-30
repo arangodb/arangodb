@@ -32,6 +32,7 @@
 #include "Aql/QuerySnippet.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterTrxMethods.h"
 #include "Graph/BaseOptions.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
@@ -40,6 +41,32 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+namespace {
+const double SETUP_TIMEOUT = 90.0;
+
+Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string& shardId) {
+  TRI_ASSERT(keySlice.isString());  // used as  a key in Json
+  arangodb::velocypack::StringRef key(keySlice);
+  size_t p = key.find(':');
+  if (p == std::string::npos) {
+    return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+            "Unexpected response from DBServer during setup"};
+  }
+  arangodb::velocypack::StringRef remId = key.substr(0, p);
+  remoteId = basics::StringUtils::uint64(remId.begin(), remId.length());
+  if (remoteId == 0) {
+    return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+            "Unexpected response from DBServer during setup"};
+  }
+  shardId = key.substr(p + 1).toString();
+  if (shardId.empty()) {
+    return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+            "Unexpected response from DBServer during setup"};
+  }
+  return {TRI_ERROR_NO_ERROR};
+}
+}  // namespace
 
 void EngineInfoContainerDBServerServerBased::CollectionLockingInformation::mergeShards(
     std::shared_ptr<std::vector<ShardID>> const& shards) {
@@ -70,12 +97,12 @@ void EngineInfoContainerDBServerServerBased::openSnippet(size_t idOfSinkNode) {
 
 // Closes the given snippet and connects it
 // to the given queryid of the coordinator.
-void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId id) {
+void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) {
   TRI_ASSERT(!_snippetStack.empty());
   auto e = _snippetStack.top();
   TRI_ASSERT(e);
   _snippetStack.pop();
-  e->connectToQueryId(id);
+  e->useQueryIdAsInput(inputSnippet);
   _closedSnippets.emplace_back(std::move(e));
 }
 
@@ -147,10 +174,95 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(MapRemoteToSnippet& 
     // We need to have at least one: snippets or traverserEngines
     TRI_ASSERT(infoBuilder.slice().hasKey("snippets") ||
                infoBuilder.slice().hasKey("traverserEngines"));
-    // TODO send messages out per server
+
+    // add the transaction ID header
+    std::unordered_map<std::string, std::string> headers;
+    ClusterTrxMethods::addAQLTransactionHeader(*trx, server, headers);
+
+    CoordTransactionID coordTransactionID = TRI_NewTickServer();
+    auto res = cc->syncRequest(coordTransactionID, serverDest, RequestType::POST,
+                               url, infoBuilder.toJson(), headers, SETUP_TIMEOUT);
+    _query->incHttpRequests(1);
+    if (res->getErrorCode() != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC("f9a77", DEBUG, Logger::AQL)
+          << server << " responded with " << res->getErrorCode() << " -> "
+          << res->stringifyErrorMessage();
+      LOG_TOPIC("41082", TRACE, Logger::AQL) << infoBuilder.toJson();
+      return {res->getErrorCode(), res->stringifyErrorMessage()};
+    }
+    std::shared_ptr<VPackBuilder> builder = res->result->getBodyVelocyPack();
+    VPackSlice response = builder->slice();
+    auto result = parseResponse(response, queryIds, server, serverDest);
+    if (!result.ok()) {
+      return result;
+    }
+  }
+  cleanupGuard.cancel();
+  return TRI_ERROR_NO_ERROR;
+}
+
+Result EngineInfoContainerDBServerServerBased::parseResponse(
+    VPackSlice response, MapRemoteToSnippet& queryIds, ServerID const& server,
+    std::string const& serverDest) const {
+  if (!response.isObject() || !response.get("result").isObject()) {
+    LOG_TOPIC("0c3f2", ERR, Logger::AQL) << "Received error information from "
+                                         << server << " : " << response.toJson();
+    return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+            "Unable to deploy query on all required "
+            "servers. This can happen during "
+            "failover. Please check: " +
+                server};
   }
 
-  return TRI_ERROR_NO_ERROR;
+  VPackSlice result = response.get("result");
+  VPackSlice snippets = result.get("snippets");
+
+  // Link Snippets to their sinks
+  for (auto const& resEntry : VPackObjectIterator(snippets)) {
+    if (!resEntry.value.isString()) {
+      return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+              "Unable to deploy query on all required "
+              "servers. This can happen during "
+              "failover. Please check: " +
+                  server};
+    }
+    size_t remoteId = 0;
+    std::string shardId = "";
+    auto res = ExtractRemoteAndShard(resEntry.key, remoteId, shardId);
+    if (!res.ok()) {
+      return res;
+    }
+    TRI_ASSERT(remoteId != 0);
+    TRI_ASSERT(!shardId.empty());
+    auto& remote = queryIds[remoteId];
+    auto& thisServer = remote[serverDest];
+    thisServer.emplace_back(resEntry.value.copyString());
+  }
+
+  // Link traverser engines to their nodes
+  VPackSlice travEngines = result.get("traverserEngines");
+  if (!travEngines.isNone()) {
+    if (!travEngines.isArray()) {
+      return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+              "Unable to deploy query on all required "
+              "servers. This can happen during "
+              "failover. Please check: " +
+                  server};
+    }
+    if (travEngines.length() != _traverserEngineInfos.size()) {
+      return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+              "The DBServer was not able to create enough "
+              "traversal engines. This can happen during "
+              "failover. Please check; " +
+                  server};
+    }
+    auto idIter = VPackArrayIterator(travEngines);
+    for (auto const& it : _traverserEngineInfos) {
+      it.first->addEngine(idIter.value().getNumber<traverser::TraverserEngineID>(), server);
+      idIter.next();
+    }
+  }
+  return {TRI_ERROR_NO_ERROR};
 }
 
 /**
@@ -164,8 +276,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(MapRemoteToSnippet& 
  * @param cc The ClusterComm
  * @param errorCode error Code to be send to DBServers for logging.
  * @param dbname Name of the database this query is executed in.
- * @param queryIds A map of QueryIds of the format: (remoteNodeId:shardId) ->
- * queryid.
+ * @param queryIds A map of QueryIds of the format: (remoteNodeId:shardId)
+ * -> queryid.
  */
 void EngineInfoContainerDBServerServerBased::cleanupEngines(
     std::shared_ptr<ClusterComm> cc, int errorCode, std::string const& dbname,
@@ -347,7 +459,7 @@ void EngineInfoContainerDBServerServerBased::addSnippetPart(arangodb::velocypack
   builder.add(VPackValue("snippets"));
   builder.openArray();
   for (auto const& snippet : _closedSnippets) {
-    snippet.serializeIntoBuilder(server, builder);
+    snippet->serializeIntoBuilder(server, builder);
   }
   builder.close();  // snippets
 }

@@ -44,7 +44,7 @@ class QuerySnippet {
 
  public:
   QuerySnippet(size_t idOfSinkNode)
-      : _idOfSinkNode(idOfSinkNode), _needToInjectGather(false), _queryId(0) {}
+      : _idOfSinkNode(idOfSinkNode), _needToInjectGather(false), _inputSnippet(0) {}
 
   void addNode(ExecutionNode* node);
 
