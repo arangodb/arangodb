@@ -104,7 +104,7 @@ class EngineInfoContainerDBServerServerBased {
   //   this methods a shutdown request is send to all DBServers.
   //   In case the network is broken and this shutdown request is lost
   //   the DBServers will clean up their snippets after a TTL.
-  Result buildEngines(MapRemoteToSnippet& queryIds) const;
+  Result buildEngines(MapRemoteToSnippet& queryIds);
 
   /**
    * @brief Will send a shutdown to all engines registered in the list of

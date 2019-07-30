@@ -46,6 +46,13 @@ void ShardLocking::CollectionLockingInformation::mergeShards(
 
 void ShardLocking::addNode(ExecutionNode const* baseNode) {
   TRI_ASSERT(baseNode != nullptr);
+  // If we have ever accessed the server lists,
+  // we cannot insert Nodes anymore.
+  // If this needs to be modified in the future, this could
+  // should clear the below lists, fiddling out the diff
+  // is rather confusing.
+  TRI_ASSERT(_serverToLockTypeToShard.empty());
+  TRI_ASSERT(_serverToCollectionToShard.empty());
   switch (baseNode->getType()) {
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::TRAVERSAL: {

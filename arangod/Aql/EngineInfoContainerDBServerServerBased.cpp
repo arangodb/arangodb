@@ -108,10 +108,10 @@ void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) 
 //   this methods a shutdown request is send to all DBServers.
 //   In case the network is broken and this shutdown request is lost
 //   the DBServers will clean up their snippets after a TTL.
-Result EngineInfoContainerDBServerServerBased::buildEngines(MapRemoteToSnippet& queryIds) const {
+Result EngineInfoContainerDBServerServerBased::buildEngines(MapRemoteToSnippet& queryIds) {
   // This needs to be a set with a defined order, it is important, that we contact
   // the database servers only in this specific order to avoid cluster-wide deadlock situations.
-  std::set<ServerID> dbServers;
+  std::vector<ServerID> dbServers = _shardLocking.getRelevantServers();
 
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
