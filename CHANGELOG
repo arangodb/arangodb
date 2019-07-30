@@ -5,8 +5,6 @@ v3.4.8 (XXXX-XX-XX)
   - `--foxx.api`: set to false disables Foxx management API
   - `--foxx.store`: set to false disables Foxx UI
 
-* Fixed issue #9558: RTRIM not working as expected
-
 * Fixed issue #9459: Optimization rule remove-collect-variables does not KEEP all necessary data.
 
 * Fixed issue #9558: RTRIM not working as expected.
