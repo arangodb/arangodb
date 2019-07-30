@@ -556,10 +556,12 @@ void GeneralServerFeature::defineHandlers() {
                                       RestHandlerCreator<arangodb::RestRepairHandler>::createNoData);
   }
 
+#ifdef USE_ENTEPRISE
   if (backup->isAPIEnabled()) {
     _handlerFactory->addPrefixHandler("/_admin/backup",
                                     RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
   }
+#endif
 
 
   // ...........................................................................
