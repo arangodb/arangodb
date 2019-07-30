@@ -62,8 +62,13 @@ function OneShardPropertiesSuite () {
       assertTrue(db._createDatabase(dn));
       db._useDatabase(dn);
       let props = db._properties();
-      assertEqual(props.sharding, "");
-      assertEqual(props.replicationFactor, 1);
+      if(isCluster) {
+        assertEqual(props.sharding, "");
+        assertEqual(props.replicationFactor, 1);
+      } else {
+        assertEqual(props.sharding, undefined);
+        assertEqual(props.replicationFactor, undefined);
+      }
     },
 
     testOneShardDBandOverrides : function () {
@@ -71,45 +76,50 @@ function OneShardPropertiesSuite () {
 
       db._useDatabase(dn);
       let props = db._properties();
-      assertEqual(props.sharding, "single");
-      assertEqual(props.replicationFactor, 2);
+      if(!isCluster) {
+        assertEqual(props.sharding, undefined);
+        assertEqual(props.replicationFactor, undefined);
+      } else {
+        assertEqual(props.sharding, "single");
+        assertEqual(props.replicationFactor, 2);
 
-      { 
-        let col = db._create("oneshardcol");
-        let colProperties = col.properties();
-        let graphsProperties = db._collection("_graphs").properties();
+        {
+          let col = db._create("oneshardcol");
+          let colProperties = col.properties();
+          let graphsProperties = db._collection("_graphs").properties();
 
-        if(isCluster && isEnterprise) {
-          assertEqual(colProperties.distributeShardsLike, "_graphs");
-          assertEqual(colProperties.replicationFactor, graphsProperties.replicationFactor);
+          if(isCluster && isEnterprise) {
+            assertEqual(colProperties.distributeShardsLike, "_graphs");
+            assertEqual(colProperties.replicationFactor, graphsProperties.replicationFactor);
+          }
         }
-      }
 
 
-      {
-        // we want to create a normal collection
-        let col = db._create("overrideOneShardCollection", { distributeShardsLike: ""});
-        let colProperties = col.properties();
-        let graphsProperties = db._collection("_graphs").properties();
+        {
+          // we want to create a normal collection
+          let col = db._create("overrideOneShardCollection", { distributeShardsLike: ""});
+          let colProperties = col.properties();
+          let graphsProperties = db._collection("_graphs").properties();
 
-        if(isCluster) {
-          assertEqual(colProperties.distributeShardsLike, undefined);
-          assertEqual(colProperties.replicationFactor, db._properties().replicationFactor);
+          if(isCluster) {
+            assertEqual(colProperties.distributeShardsLike, undefined);
+            assertEqual(colProperties.replicationFactor, db._properties().replicationFactor);
+          }
         }
-      }
 
 
-      {
-        // we want to create a normal collection and have a different replication factor
-        let nonDefaultReplicationFactor = 1;
-        assertNotEqual(db._properties.ReplicationFactor, nonDefaultReplicationFactor);
-        let col = db._create("overrideOneShardAndReplicationFactor", { distributeShardsLike: "", replicationFactor: nonDefaultReplicationFactor});
-        let colProperties = col.properties();
-        let graphsProperties = db._collection("_graphs").properties();
+        {
+          // we want to create a normal collection and have a different replication factor
+          let nonDefaultReplicationFactor = 1;
+          assertNotEqual(db._properties.ReplicationFactor, nonDefaultReplicationFactor);
+          let col = db._create("overrideOneShardAndReplicationFactor", { distributeShardsLike: "", replicationFactor: nonDefaultReplicationFactor});
+          let colProperties = col.properties();
+          let graphsProperties = db._collection("_graphs").properties();
 
-        if(isCluster) {
-          assertEqual(colProperties.distributeShardsLike, undefined);
-          assertEqual(colProperties.replicationFactor, nonDefaultReplicationFactor);
+          if(isCluster) {
+            assertEqual(colProperties.distributeShardsLike, undefined);
+            assertEqual(colProperties.replicationFactor, nonDefaultReplicationFactor);
+          }
         }
       }
 
@@ -120,66 +130,64 @@ function OneShardPropertiesSuite () {
 
       db._useDatabase(dn);
       let props = db._properties();
-      assertEqual(props.sharding, "");
-      assertEqual(props.replicationFactor, 2);
-      assertEqual(props.minReplicationFactor, 2);
+      if(!isCluster) {
+        assertEqual(props.sharding, undefined);
+        assertEqual(props.replicationFactor, undefined);
+        assertEqual(props.minReplicationFactor, undefined);
+      } else {
+        assertEqual(props.sharding, "");
+        assertEqual(props.replicationFactor, 2);
+        assertEqual(props.minReplicationFactor, 2);
 
-      { 
-        let col = db._create("somecollection");
-        let colProperties = col.properties();
-
-        if(isCluster && isEnterprise) {
+        {
+          let col = db._create("somecollection");
+          let colProperties = col.properties();
           assertEqual(colProperties.replicationFactor, 2);
           assertEqual(colProperties.minReplicationFactor, 2);
         }
-      }
 
 
-      {
-        let col = db._create("overrideCollection1", { minReplicationFactor : 1});
-        let colProperties = col.properties();
-
-        if(isCluster) {
+        {
+          let col = db._create("overrideCollection1", { minReplicationFactor : 1});
+          let colProperties = col.properties();
           assertEqual(colProperties.minReplicationFactor, 1);
           assertEqual(colProperties.minReplicationFactor, 1);
         }
-      }
 
-      {
-        let col = db._create("overrideCollection2", { minReplicationFactor : 1, replicationFactor : 1, numberOfShards : 3});
-        let colProperties = col.properties();
-
-        if(isCluster) {
+        {
+          let col = db._create("overrideCollection2", { minReplicationFactor : 1, replicationFactor : 1, numberOfShards : 3});
+          let colProperties = col.properties();
           assertEqual(colProperties.minReplicationFactor, 1);
           assertEqual(colProperties.minReplicationFactor, 1);
         }
-      }
 
-      {
-        if(isCluster) {
-          // we want to create a normal collection and have a different replication factor
-          let col2 = db._collection("overrideCollection2");
-          let col3 = db._create("overrideCollection3", { distributeShardsLike: "overrideCollection2"});
-          let col2Properties = col2.properties();
-          let col3Properties = col3.properties();
+        {
+            // we want to create a normal collection and have a different replication factor
+            let col2 = db._collection("overrideCollection2");
+            let col3 = db._create("overrideCollection3", { distributeShardsLike: "overrideCollection2"});
+            let col2Properties = col2.properties();
+            let col3Properties = col3.properties();
 
-          assertEqual(col3Properties.distributeShardsLike, col2.name());
-          assertEqual(col3Properties.replicationFactor, col2Properties.replicationFactor);
+            assertEqual(col3Properties.distributeShardsLike, col2.name());
+            assertEqual(col3Properties.replicationFactor, col2Properties.replicationFactor);
         }
       }
-
     },
 
     testSatelliteDB : function () {
       assertTrue(db._createDatabase(dn, { replicationFactor : "satellite"}));
       db._useDatabase(dn);
       let props = db._properties();
-      assertEqual(props.sharding, "");
-      if (isEnterprise) {
-        assertEqual(props.replicationFactor, "satellite");
-      } else {
-        //without enterprise we can not have a replication factor of 1
-        assertEqual(props.replicationFactor, 1);
+      if(!isCluster) {
+        assertEqual(props.sharding, undefined);
+      } else  {
+        assertEqual(props.sharding, "");
+        if (isEnterprise) {
+          assertEqual(props.replicationFactor, "satellite");
+        } else {
+          //without enterprise we can not have a replication factor of 1
+          assertEqual(props.replicationFactor, 1);
+        }
       }
     },
 
