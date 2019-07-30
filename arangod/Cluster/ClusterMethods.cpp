@@ -3594,8 +3594,8 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
     TRI_ASSERT(list.size() == 1);
     using arangodb::methods::Version;
     using arangodb::methods::VersionResult;
-    BackupMeta &meta = list.begin()->second;
 #ifdef USE_ENTERPRISE
+    BackupMeta &meta = list.begin()->second;
     // Will never be called in community
     if (!RocksDBHotBackup::versionTestRestore(meta._version)) {
       return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
