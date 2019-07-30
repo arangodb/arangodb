@@ -31,13 +31,11 @@ namespace arangodb {
 namespace methods {
 
 /// Code to create and initialize databases
-/// Replaces ugrade-database.js for good
+/// Replaces upgrade-database.js for good
 struct UpgradeTasks {
-  static bool upgradeGeoIndexes(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
-  static bool createUsersIndex(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool createSystemCollections(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool createSystemCollectionsIndices(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
   static bool addDefaultUserOther(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
-  static bool createJobsIndex(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
-  static bool createAppsIndex(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
   static bool persistLocalDocumentIds(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
   static bool renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
                                                  velocypack::Slice const& slice);

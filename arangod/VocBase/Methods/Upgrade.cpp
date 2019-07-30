@@ -32,7 +32,6 @@
 #include "Rest/Version.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Utils/ExecContext.h"
-#include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/UpgradeTasks.h"
 #include "VocBase/Methods/Version.h"
 #include "VocBase/vocbase.h"
@@ -213,39 +212,6 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
   return runTasks(vocbase, vinfo, params, clusterFlag, dbflag);
 }
 
-void methods::Upgrade::createSystemCollections(TRI_vocbase_t& vocbase, bool upgrade) {
-  std::vector<CollectionCreationInfo> systemCollectionsToCreate;
-  std::vector<std::string> systemCollections = {"_users",        "_graphs",
-                                                "_aqlfunctions", "_queues",
-                                                "_jobs",         "_apps",
-                                                "_appbundles"};
-
-  typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> FuncCallback;
-  FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
-
-  for (auto const& collection : systemCollections) {
-    auto res = methods::Collections::lookup(vocbase, collection, noop);
-    if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-
-      VPackBuilder options;
-      methods::Collections::createSystemCollectionProperties(collection, options);
-
-      systemCollectionsToCreate.emplace_back(
-          CollectionCreationInfo{collection, TRI_COL_TYPE_DOCUMENT, options.slice()});
-    }
-  }
-
-  auto const res = methods::Collections::create(
-      vocbase, systemCollectionsToCreate, true, true,
-      [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
-
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-}
-
-void methods::Upgrade::createSystemCollectionsIndices(TRI_vocbase_t& vocbase, bool upgrade) {}
-
 /// @brief register tasks, only run once on startup
 void methods::Upgrade::registerTasks() {
   auto* upgradeFeature =
@@ -256,28 +222,18 @@ void methods::Upgrade::registerTasks() {
   auto& _tasks = upgradeFeature->_tasks;
   TRI_ASSERT(_tasks.empty());
 
-  addTask("upgradeGeoIndexes", "upgrade legacy geo indexes",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
-          /*database*/ DATABASE_UPGRADE, &UpgradeTasks::upgradeGeoIndexes);
-  addTask("createUsersIndex", "create index on 'user' attribute in _users",
-          /*system*/ Flags::DATABASE_SYSTEM,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_UPGRADE, &UpgradeTasks::createUsersIndex);
+  addTask("createSystemCollections", "creates all system collections",
+      /*system*/ Flags::DATABASE_ALL,
+      /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
+      /*database*/ DATABASE_UPGRADE, &UpgradeTasks::createSystemCollections);
+  addTask("createSystemCollectionsIndices", "creates all indices for system collections",
+      /*system*/ Flags::DATABASE_ALL,
+      /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
+      /*database*/ DATABASE_UPGRADE, &UpgradeTasks::createSystemCollectionsIndices);
   addTask("addDefaultUserOther", "add default users for a new database",
           /*system*/ Flags::DATABASE_EXCEPT_SYSTEM,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT, &UpgradeTasks::addDefaultUserOther);
-  addTask("createJobsIndex", "create index on attributes in _jobs collection",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::createJobsIndex);
-  addTask("createAppsIndex", "create index on attributes in _apps collection",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::createAppsIndex);
   addTask("persistLocalDocumentIds", "convert collection data from old format",
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,

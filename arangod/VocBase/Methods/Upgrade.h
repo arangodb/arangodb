@@ -104,8 +104,6 @@ struct Upgrade {
  private:
   /// @brief register tasks, only run once on startup
   static void registerTasks();
-  static void createSystemCollections(TRI_vocbase_t& vocbase, bool upgrade);
-  static void createSystemCollectionsIndices(TRI_vocbase_t& vocbase, bool upgrade);
   static UpgradeResult runTasks(TRI_vocbase_t& vocbase, VersionResult& vinfo,
                                 arangodb::velocypack::Slice const& params,
                                 uint32_t clusterFlag, uint32_t dbFlag);
