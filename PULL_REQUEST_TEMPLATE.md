@@ -22,7 +22,7 @@ and merged into ArangoDB. The overarching goal is to:
 - [ ] Bug-Fix for a *released version* (did you remember to port this to all relevant release branches?)
 - [ ] Strictly *new functionality* (i.e. a new feature / new option, no need for porting)
 - [ ] The behavior in this PR can be (and was) *manually tested* (support / qa / customers can test it)
-- [ ] The behaviour change can only be verified via automatic tests
+- [ ] The behavior change can be verified via automatic tests
 
 #### Related Information
 
