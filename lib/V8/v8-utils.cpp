@@ -78,6 +78,7 @@
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Basics/socket-utils.h"
+#include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
 #include "Basics/threads.h"

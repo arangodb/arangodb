@@ -34,6 +34,7 @@
 
 #if _WIN32
 #include <iostream>
+#include "Basics/win-utils.h"
 #endif
 
 #include "LoggerFeature.h"
