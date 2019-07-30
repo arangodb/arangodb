@@ -24,6 +24,7 @@
 #define ARANGODB_V8CLIENT_ARANGO_CLIENT_HELPER_H 1
 
 #include <memory>
+#include <string>
 
 #include "Basics/Common.h"
 

@@ -35,6 +35,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/messages.h"
+#include "Basics/operating-system.h"
 #include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
 #include "Logger/LogMacros.h"
@@ -43,6 +44,10 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Shell/ClientFeature.h"
+
+#if _WIN32
+#include "Basics/win-utils.h"
+#endif
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
