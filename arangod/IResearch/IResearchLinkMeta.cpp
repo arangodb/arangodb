@@ -30,11 +30,13 @@
 #include "utils/locale_utils.hpp"
 
 #include "Basics/StringUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VelocyPackHelper.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
+#include "VocBase/vocbase.h"
 
 #include "IResearchLinkMeta.h"
 #include "Misc.h"
@@ -318,7 +320,7 @@ bool IResearchLinkMeta::init( // initialize meta
             }
           }
         }
-
+        
         // get analyzer potentially creating it (e.g. on cluster)
         // @note do not use emplace(...) since it'll trigger loadAnalyzers(...)
         if (!analyzers->get(name, type, properties, features)) {
@@ -378,6 +380,18 @@ bool IResearchLinkMeta::init( // initialize meta
             shortName = IResearchAnalyzerFeature::normalize( // normalize
               name, *defaultVocbase, *sysVocbase, false // args
             );
+          }
+          { // validate analyzer origin
+            // analyzer should be either from same database as View or from system database
+            auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(name);
+            // normally system db is available and analyzer name succesfully normalized
+            if (ADB_LIKELY(!analyzerVocbase.empty())) { 
+              if (analyzerVocbase != arangodb::StaticStrings::SystemDatabase &&
+                analyzerVocbase != defaultVocbase->name()) {
+                errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]";
+                return false;
+              }
+            }
           }
         }
 

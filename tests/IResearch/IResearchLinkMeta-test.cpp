@@ -183,11 +183,21 @@ class IResearchLinkMetaTest : public ::testing::Test {
         *sysvocbase,
         arangodb::tests::AnalyzerCollectionName);
 
-    TRI_vocbase_t* vocbase;
-    dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-    arangodb::methods::Collections::createSystem(
+    {
+      TRI_vocbase_t* vocbase;
+      dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+      arangodb::methods::Collections::createSystem(
         *vocbase,
         arangodb::tests::AnalyzerCollectionName);
+    }
+    // second database. Needed for cross-db checks
+    {
+      TRI_vocbase_t* vocbase;
+      dbFeature->createDatabase(2, "testVocbase2", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+      arangodb::methods::Collections::createSystem(
+        *vocbase,
+        arangodb::tests::AnalyzerCollectionName);
+    }
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -1620,6 +1630,19 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     std::string errorField;
     EXPECT_TRUE((false == meta.init(json->slice(), true, errorField, &vocbase)));
     EXPECT_TRUE((std::string("analyzerDefinitions=>[0]") == errorField));
+  }
+  // existing analyzer  but wrong database
+  {
+    TRI_vocbase_t vocbaseLocal(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 2,
+                        "testVocbase2");
+    auto json = VPackParser::fromJson(
+        "{ \
+      \"analyzers\": [ \"testVocbase::empty\" ] \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_FALSE(meta.init(json->slice(), true, errorField, &vocbaseLocal));
+    EXPECT_EQ(std::string("analyzers=>[0]"),  errorField);
   }
 }
 

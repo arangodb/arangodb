@@ -918,13 +918,47 @@ function IResearchFeatureDDLTestSuite () {
         db._createView("FOO_view", "arangosearch", {links:{"FOO":{analyzers:[databaseNameAnalyzer + "::TmpIdentity"]}}});
         fail();
       } catch(e) {
-        assertEqual(require("internal").errors.ERROR_BAD_PARAMETER .code,
-                    err.errorNum);
+        assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                    e.errorNum);
       }
       db._useDatabase("_system");
       db._dropDatabase(databaseNameAnalyzer);
       db._dropDatabase(databaseNameView);
     },
+    // Commented as this situation is not documented (user should not do this), will be adressed later
+    //testLinkWithAnalyzerFromOtherDbByAnalyzerDefinitions: function() {
+    //  let databaseNameAnalyzer = "testDatabaseAnalyzer";
+    //  let databaseNameView = "testDatabaseView";
+    //
+    //  db._useDatabase("_system");
+    //  try { db._dropDatabase(databaseNameAnalyzer);} catch(e) {}
+    //  try { db._dropDatabase(databaseNameView);} catch(e) {}
+    //  db._createDatabase(databaseNameAnalyzer);
+    //  db._createDatabase(databaseNameView);
+    //  db._useDatabase(databaseNameAnalyzer);
+    //  db._useDatabase(databaseNameView);
+    //  db._create("FOO");
+    //  try {
+    //    db._createView("FOO_view", "arangosearch", 
+    //      {
+    //        links:{
+    //          "FOO":{ 
+    //            analyzerDefinitions:[{name:databaseNameAnalyzer + "::TmpIdentity", type: "identity"}],
+    //            analyzers:[databaseNameAnalyzer + "::TmpIdentity"]
+    //          }
+    //        }
+    //      });
+    //    fail();
+    //  } catch(e) {
+    //    // analyzerDefinitions should be ignored
+    //    // analyzer should not be found
+    //    assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code, 
+    //                e.errorNum);
+    //  }
+    //  db._useDatabase("_system");
+    //  db._dropDatabase(databaseNameAnalyzer);
+    //  db._dropDatabase(databaseNameView);
+    //},
     ////////////////////////////////////////////////////////////////////////////
     /// @brief test create & drop of a view with a link.
     /// Regression test for arangodb/backlog#486.
