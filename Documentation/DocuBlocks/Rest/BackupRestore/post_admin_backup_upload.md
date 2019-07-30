@@ -20,7 +20,8 @@ attribute.
 @RESTBODYPARAM{config,object,optional,object}
 Configuration of remote repository. This is required when an upload
 operation is scheduled. In this case leave out the `uploadId`
-attribute.
+attribute. See the description of the _arangobackup_ program in the manual
+for a description of the `config` object.
 
 @RESTBODYPARAM{uploadId,string,optional,string}
 Upload ID to specify for which upload operation progress is queried.
