@@ -23,11 +23,12 @@
 
 #include "RestStatusHandler.h"
 
+#include "Rest/HttpRequest.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
-#include "Rest/HttpRequest.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
 
@@ -50,6 +51,17 @@ RestStatusHandler::RestStatusHandler(GeneralRequest* request, GeneralResponse* r
     : RestBaseHandler(request, response) {}
 
 RestStatus RestStatusHandler::execute() {
+  ServerSecurityFeature* security =
+      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
+          "ServerSecurity");
+  TRI_ASSERT(security != nullptr);
+
+  if (!security->canAccessHardenedApi()) {
+    // dont leak information about server internals here
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));
