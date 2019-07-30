@@ -45,6 +45,7 @@ const request = require('@arangodb/request');
 const actions = require('@arangodb/actions');
 const isZipBuffer = require('@arangodb/util').isZipBuffer;
 const codeFrame = require('@arangodb/util').codeFrame;
+const internal  = require('internal');
 
 const SYSTEM_SERVICE_MOUNTS = [
   '/_admin/aardvark', // Admin interface.
@@ -573,7 +574,7 @@ function _prepareService (serviceInfo, legacy = false) {
       }
     } else {
       // Foxx Store
-      const info = store.installationInfo(serviceInfo);
+      const info = !internal.isFoxxApiDisabled() && store.installationInfo(serviceInfo);  //disable foxx store
       if (!info) {
         throw new ArangoError({
           errorNum: errors.ERROR_SERVICE_SOURCE_NOT_FOUND.code,
