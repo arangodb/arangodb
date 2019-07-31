@@ -277,9 +277,9 @@ function iResearchFeatureAqlTestSuite () {
       // removal
       analyzers.remove("testAnalyzer", true);
       assertTrue(null === analyzers.analyzer("testAnalyzer"));
-	    db._useDatabase("_system");
+      db._useDatabase("_system");
       analyzers.remove("testAnalyzer", true);
-	    db._useDatabase(dbName); // switch back to check analyzer with global name
+      db._useDatabase(dbName); // switch back to check analyzer with global name
       assertTrue(null === analyzers.analyzer("::testAnalyzer"));
       assertEqual(oldList.length, analyzers.toArray().length);
 
