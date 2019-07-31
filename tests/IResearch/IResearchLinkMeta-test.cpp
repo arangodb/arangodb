@@ -183,21 +183,13 @@ class IResearchLinkMetaTest : public ::testing::Test {
         *sysvocbase,
         arangodb::tests::AnalyzerCollectionName);
 
-    {
-      TRI_vocbase_t* vocbase;
-      dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-      arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName);
-    }
-    // second database. Needed for cross-db checks
-    {
-      TRI_vocbase_t* vocbase;
-      dbFeature->createDatabase(2, "testVocbase2", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-      arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName);
-    }
+    
+    TRI_vocbase_t* vocbase;
+    dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    arangodb::methods::Collections::createSystem(
+      *vocbase,
+      arangodb::tests::AnalyzerCollectionName);
+    
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
