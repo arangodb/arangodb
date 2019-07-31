@@ -1784,6 +1784,16 @@ constexpr int TRI_ERROR_AGENCY_CANNOT_REBUILD_DBS                               
 /// General supervision failure.
 constexpr int TRI_ERROR_SUPERVISION_GENERAL_FAILURE                             = 20501;
 
+/// 21001: ERROR_DISPATCHER_IS_STOPPING
+/// "dispatcher stopped"
+/// Will be returned if a shutdown is in progress.
+constexpr int TRI_ERROR_DISPATCHER_IS_STOPPING                                  = 21001;
+
+/// 21002: ERROR_QUEUE_UNKNOWN
+/// "named queue does not exist"
+/// Will be returned if a queue with this name does not exist.
+constexpr int TRI_ERROR_QUEUE_UNKNOWN                                           = 21002;
+
 /// 21003: ERROR_QUEUE_FULL
 /// "named queue is full"
 /// Will be returned if a queue with this name is full.
@@ -1793,6 +1803,72 @@ constexpr int TRI_ERROR_QUEUE_FULL                                              
 /// "this maintenance action cannot be stopped"
 /// This maintenance action cannot be stopped once it is started
 constexpr int TRI_ERROR_ACTION_OPERATION_UNABORTABLE                            = 6002;
+
+/// 6003: ERROR_ACTION_UNFINISHED
+/// "maintenance action still processing"
+/// This maintenance action is still processing
+constexpr int TRI_ERROR_ACTION_UNFINISHED                                       = 6003;
+
+/// 6004: ERROR_NO_SUCH_ACTION
+/// "no such maintenance action"
+/// No such maintenance action exists
+constexpr int TRI_ERROR_NO_SUCH_ACTION                                          = 6004;
+
+///  7001: ERROR_HOT_BACKUP_INTERNAL
+/// " "internal hot backup error""
+///  "Failed to create hot backup set"
+constexpr int TRI_ERROR_HOT_BACKUP_INTERNAL                                     =  7001;
+
+///  7002: ERROR_HOT_RESTORE_INTERNAL
+/// " "internal hot restore error""
+///  "Failed to restore to hot backup set"
+constexpr int TRI_ERROR_HOT_RESTORE_INTERNAL                                    =  7002;
+
+///  7003: ERROR_BACKUP_TOPOLOGY
+/// " "backup does not match this topology""
+///  "The hot backup set cannot be restored on non matching cluster topology"
+constexpr int TRI_ERROR_BACKUP_TOPOLOGY                                         =  7003;
+
+///  7004: ERROR_NO_SPACE_LEFT_ON_DEVICE
+/// " "no space left on device""
+///  "No space left on device"
+constexpr int TRI_ERROR_NO_SPACE_LEFT_ON_DEVICE                                 =  7004;
+
+///  7005: ERROR_FAILED_TO_UPLOAD_BACKUP
+/// " "failed to upload hot backup set to remote target""
+///  "Failed to upload hot backup set to remote target"
+constexpr int TRI_ERROR_FAILED_TO_UPLOAD_BACKUP                                 =  7005;
+
+///  7006: ERROR_FAILED_TO_DOWNLOAD_BACKUP
+/// " "failed to download hot backup set from remote source""
+///  "Failed to downloadload hot backup set from remote source"
+constexpr int TRI_ERROR_FAILED_TO_DOWNLOAD_BACKUP                               =  7006;
+
+///  7007: ERROR_NO_SUCH_HOT_BACKUP
+/// " "no such hot backup set can be found"
+///  "Cannot find a hot backup set with this Id"
+constexpr int TRI_ERROR_NO_SUCH_HOT_BACKUP                                      =  7007;
+
+///  7008: ERROR_REMOTE_REPOSITORY_CONFIG_BAD
+/// " "remote hotback repository configuration error""
+///  "The configuration given for upload or download operation to/from remote
+/// hotback repositories is wrong."
+constexpr int TRI_ERROR_REMOTE_REPOSITORY_CONFIG_BAD                            =  7008;
+
+///  7009: ERROR_LOCAL_LOCK_FAILED
+/// " "some db servers cannot be reached for transaction locks""
+///  "Some of the db servers cannot be reached for transaction locks."
+constexpr int TRI_ERROR_LOCAL_LOCK_FAILED                                       =  7009;
+
+///  7010: ERROR_LOCAL_LOCK_RETRY
+/// " "some db servers cannot be reached for transaction locks""
+///  "Some of the db servers cannot be reached for transaction locks."
+constexpr int TRI_ERROR_LOCAL_LOCK_RETRY                                        =  7010;
+
+///  7011: ERROR_HOT_BACKUP_CONFLICT
+/// " "hot backup conflict""
+///  "Conflict of multiple hot backup processes."
+constexpr int TRI_ERROR_HOT_BACKUP_CONFLICT                                     =  7011;
 
 
 /// register all errors for ArangoDB

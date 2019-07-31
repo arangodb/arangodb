@@ -72,7 +72,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   if (nestingLevel() == 0) {
     updateStatus(transaction::Status::RUNNING);
     
-    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr);
+    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr, isReadOnlyTransaction());
     setRegistered();
     
     ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
