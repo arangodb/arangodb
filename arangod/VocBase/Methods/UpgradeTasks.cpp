@@ -214,7 +214,7 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
   systemCollections.push_back(StaticStrings::AppsCollection);
   systemCollections.push_back(StaticStrings::AppBundlesCollection);
 
-  // check wheter we need fishbowl collection, or not.
+  // check wether we need fishbowl collection, or not.
   ServerSecurityFeature* security =
       application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
           "ServerSecurity");
