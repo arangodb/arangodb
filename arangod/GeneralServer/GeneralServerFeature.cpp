@@ -98,7 +98,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #ifdef USE_ENTERPRISE
-#include "StorageEngine/HotBackupFeature.h"
+#include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
 
 using namespace arangodb::rest;
