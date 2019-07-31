@@ -44,6 +44,7 @@
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/vocbase.h"
 
+#include <arangod/RestServer/SystemDatabaseFeature.h>
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -216,7 +217,6 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
           CollectionCreationInfo{collection, TRI_COL_TYPE_DOCUMENT, options.slice()});
     } else if (res.ok()) {
       // if found, upgrade it
-
     }
   }
 
@@ -240,12 +240,65 @@ bool createSystemCollectionsIndices(TRI_vocbase_t& vocbase) {
 }
 
 }  // namespace
+
 bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
                                                      arangodb::velocypack::Slice const& slice) {
   ::createSystemCollections(vocbase);
   ::createSystemCollectionsIndices(vocbase);
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates '_analyzers' collection
+////////////////////////////////////////////////////////////////////////////////
+bool UpgradeTasks::setupAnalyzersCollection(
+    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& /*upgradeParams*/) {
+  return arangodb::methods::Collections::createSystem(vocbase, StaticStrings::AnalyzersCollection)
+      .ok();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops '_iresearch_analyzers' collection
+////////////////////////////////////////////////////////////////////////////////
+bool UpgradeTasks::dropLegacyAnalyzersCollection(TRI_vocbase_t& vocbase,
+                                                 arangodb::velocypack::Slice const& /*upgradeParams*/) {
+  // drop legacy collection if upgrading the system vocbase and collection found
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature<  // find feature
+      arangodb::SystemDatabaseFeature  // feature type
+      >();
+
+  if (!sysDatabase) {
+    LOG_TOPIC("8783e", WARN, Logger::STARTUP)
+        << "failure to find '" << arangodb::SystemDatabaseFeature::name()
+        << "' feature while registering legacy static analyzers with vocbase '"
+        << vocbase.name() << "'";
+    TRI_set_errno(TRI_ERROR_INTERNAL);
+
+    return false;  // internal error
+  }
+
+  auto sysVocbase = sysDatabase->use();
+
+  TRI_ASSERT(sysVocbase.get() == &vocbase || sysVocbase->name() == vocbase.name());
+#endif
+
+  // find legacy analyzer collection
+  arangodb::Result dropRes;
+  auto const lookupRes = arangodb::methods::Collections::lookup(
+      vocbase, arangodb::StaticStrings::LegacyAnalyzersCollection,
+      [&dropRes](std::shared_ptr<arangodb::LogicalCollection> const& col) -> void {  // callback if found
+        if (col) {
+          dropRes = arangodb::methods::Collections::drop(*col, true, -1.0);  // -1.0 same as in RestCollectionHandler
+        }
+      });
+
+  if (lookupRes.ok()) {
+    return dropRes.ok();
+  }
+
+  return lookupRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
 bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,

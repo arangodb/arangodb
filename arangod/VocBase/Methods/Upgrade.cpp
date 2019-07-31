@@ -235,6 +235,30 @@ void methods::Upgrade::registerTasks() {
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
           /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::renameReplicationApplierStateFiles);
+
+  // IResearch related upgrade tasks:
+  // NOTE: db-servers do not have a dedicated collection for storing analyzers,
+  //       instead they get their cache populated from coordinators
+
+  addTask("setupAnalyzers",                           // name
+          "setup _analyzers collection",              // description
+          Upgrade::Flags::DATABASE_ALL,               // system flags
+          Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL  // cluster flags
+              | Upgrade::Flags::CLUSTER_NONE,
+          Upgrade::Flags::DATABASE_INIT  // database flags
+              | Upgrade::Flags::DATABASE_UPGRADE | Upgrade::Flags::DATABASE_EXISTING,
+          &UpgradeTasks::setupAnalyzersCollection  // action
+  );
+
+  addTask("dropLegacyAnalyzersCollection",            // name
+          "drop _iresearch_analyzers collection",     // description
+          Upgrade::Flags::DATABASE_SYSTEM,            // system flags
+          Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL  // cluster flags
+              | Upgrade::Flags::CLUSTER_NONE,
+          Upgrade::Flags::DATABASE_INIT  // database flags
+              | Upgrade::Flags::DATABASE_UPGRADE,
+          &UpgradeTasks::dropLegacyAnalyzersCollection  // action
+  );
 }
 
 UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& vinfo,

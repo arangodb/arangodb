@@ -39,6 +39,9 @@ struct UpgradeTasks {
   static bool persistLocalDocumentIds(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
   static bool renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
                                                  velocypack::Slice const& slice);
+  static bool setupAnalyzersCollection(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool dropLegacyAnalyzersCollection(TRI_vocbase_t& vocbase,
+                                            velocypack::Slice const& slice);
 };
 
 }  // namespace methods
