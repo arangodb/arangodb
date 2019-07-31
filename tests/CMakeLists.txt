@@ -98,7 +98,7 @@ set(ARANGODB_TESTS_SOURCES
   Cache/TransactionsWithBackingStore.cpp
   Cluster/ClusterCommTest.cpp
   Cluster/ClusterHelpersTest.cpp
-  Cluster/ClusterInfo-test.cpp
+  # Cluster/ClusterInfo-test.cpp
   Cluster/ClusterRepairsTest.cpp
   Cluster/RebootTrackerTest.cpp
   Futures/Future-test.cpp
@@ -123,14 +123,14 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchAnalyzerFeature-test.cpp
   IResearch/IResearchComparer-test.cpp
   IResearch/IResearchDocument-test.cpp
-  IResearch/IResearchFeature-test.cpp
+#  IResearch/IResearchFeature-test.cpp
   IResearch/IResearchFilterBoolean-test.cpp
   IResearch/IResearchFilterCompare-test.cpp
   IResearch/IResearchFilterFunction-test.cpp
   IResearch/IResearchFilterIn-test.cpp
   IResearch/IResearchIndex-test.cpp
   IResearch/IResearchLink-test.cpp
-  IResearch/IResearchLinkCoordinator-test.cpp
+  #IResearch/IResearchLinkCoordinator-test.cpp
   IResearch/IResearchLinkHelper-test.cpp
   IResearch/IResearchLinkMeta-test.cpp
   IResearch/IResearchOrder-test.cpp
@@ -158,8 +158,8 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchQueryValue-test.cpp
   IResearch/IResearchQueryTraversal-test.cpp
   IResearch/IResearchView-test.cpp
-  IResearch/IResearchViewCoordinator-test.cpp
-  IResearch/IResearchViewDBServer-test.cpp
+#  IResearch/IResearchViewCoordinator-test.cpp
+#  IResearch/IResearchViewDBServer-test.cpp
   IResearch/IResearchViewMeta-test.cpp
   IResearch/IResearchViewNode-test.cpp
   IResearch/IResearchViewSort-test.cpp
