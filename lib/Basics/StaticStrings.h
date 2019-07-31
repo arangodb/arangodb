@@ -89,6 +89,7 @@ class StaticStrings {
   static std::string const JobsCollection;
   static std::string const AppsCollection;
   static std::string const AppBundlesCollection;
+  static std::string const FishbowlCollection;
 
   // LogicalDataSource definition fields
   static std::string const DataSourceDeleted;  // data-source deletion marker

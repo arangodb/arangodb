@@ -90,6 +90,7 @@ std::string const StaticStrings::QueuesCollection("_queues");
 std::string const StaticStrings::JobsCollection("_jobs");
 std::string const StaticStrings::AppsCollection("_apps");
 std::string const StaticStrings::AppBundlesCollection("_appbundles");
+std::string const StaticStrings::FishbowlCollection("_fishbowl");
 
 // LogicalDataSource definition fields
 std::string const StaticStrings::DataSourceDeleted("deleted");

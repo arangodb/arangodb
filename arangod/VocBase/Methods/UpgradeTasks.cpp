@@ -30,6 +30,7 @@
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -212,6 +213,14 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
   systemCollections.push_back(StaticStrings::JobsCollection);
   systemCollections.push_back(StaticStrings::AppsCollection);
   systemCollections.push_back(StaticStrings::AppBundlesCollection);
+
+  // check wheter we need fishbowl collection, or not.
+  ServerSecurityFeature* security =
+      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
+          "ServerSecurity");
+  if (!security->isFoxxStoreDisabled()) {
+    systemCollections.push_back(StaticStrings::FishbowlCollection);
+  }
 
   typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> FuncCallback;
   FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
