@@ -941,19 +941,16 @@ arangodb::Result PhysicalCollectionMock::updateProperties(arangodb::velocypack::
 }
 
 std::function<void()> StorageEngineMock::before = []() -> void {};
-arangodb::Result StorageEngineMock::flushSubscriptionResult;
-bool StorageEngineMock::inRecoveryResult = false;
+arangodb::RecoveryState StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+TRI_voc_tick_t StorageEngineMock::recoveryTickResult = 0;
+std::function<void()> StorageEngineMock::recoveryTickCallback = []() -> void {};
+
 /*static*/ std::string StorageEngineMock::versionFilenameResult;
 
 StorageEngineMock::StorageEngineMock(arangodb::application_features::ApplicationServer& server)
     : StorageEngine(server, "Mock", "",
                     std::unique_ptr<arangodb::IndexFactory>(new IndexFactoryMock())),
       vocbaseCount(0), _releasedTick(0){
-  arangodb::FlushFeature::_defaultFlushSubscription =
-      [](std::string const&, TRI_vocbase_t const&,
-         arangodb::velocypack::Slice const&, TRI_voc_tick_t) -> arangodb::Result {
-    return flushSubscriptionResult;
-  };
 }
 
 arangodb::WalAccess const* StorageEngineMock::walAccess() const {
@@ -1205,7 +1202,13 @@ arangodb::Result StorageEngineMock::handleSyncKeys(arangodb::DatabaseInitialSync
   return arangodb::Result();
 }
 
-bool StorageEngineMock::inRecovery() { return inRecoveryResult; }
+arangodb::RecoveryState StorageEngineMock::recoveryState() { return recoveryStateResult; }
+TRI_voc_tick_t StorageEngineMock::recoveryTick() {
+  if (recoveryTickCallback) {
+    recoveryTickCallback();
+  }
+  return recoveryTickResult;
+}
 
 arangodb::Result StorageEngineMock::lastLogger(
     TRI_vocbase_t& vocbase, std::shared_ptr<arangodb::transaction::Context> transactionContext,

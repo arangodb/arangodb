@@ -80,8 +80,9 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     std::string patchCount =
         VelocyPackHelper::getStringValue(body, "patchCount", "");
 
-    std::string const& clientId = _request->value("serverId");
+    TRI_server_id_t const clientId = StringUtils::uint64(_request->value("serverId"));
     SyncerId const syncerId = SyncerId::fromRequest(*_request);
+    std::string const clientInfo = _request->value("clientInfo");
 
     // create transaction+snapshot, ttl will be default if `ttl == 0``
     auto ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
@@ -104,7 +105,8 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     b.add("lastTick", VPackValue(std::to_string(ctx->snapshotTick())));
     b.close();
 
-    _vocbase.replicationClients().track(syncerId, clientId, ctx->snapshotTick(), ttl);
+    _vocbase.replicationClients().track(syncerId, clientId, clientInfo,
+                                        ctx->snapshotTick(), ttl);
 
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
@@ -131,13 +133,14 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       return;
     }
 
-    SyncerId const syncerId = res.get().first;
-    std::string const& clientId = res.get().second;
+    SyncerId const syncerId = std::get<SyncerId>(res.get());
+    TRI_server_id_t const clientId = std::get<TRI_server_id_t>(res.get());
+    std::string const& clientInfo = std::get<std::string>(res.get());
 
     // last tick value in context should not have changed compared to the
     // initial tick value used in the context (it's only updated on bind()
     // call, which is only executed when a batch is initially created)
-    _vocbase.replicationClients().extend(syncerId, clientId, ttl);
+    _vocbase.replicationClients().extend(syncerId, clientId, clientInfo, ttl);
 
     resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
@@ -210,8 +213,9 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   }
 
   // add client
-  std::string const& clientId = _request->value("serverId");
+  TRI_server_id_t const clientId = StringUtils::uint64(_request->value("serverId"));
   SyncerId const syncerId = SyncerId::fromRequest(*_request);
+  std::string const clientInfo = _request->value("clientInfo");
 
   bool includeSystem = _request->parsedValue("includeSystem", true);
   auto chunkSize = _request->parsedValue<uint64_t>("chunkSize", 1024 * 1024);
@@ -318,7 +322,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   // lead to the master eventually deleting a WAL section that the
   // slave will still request later
   double ttl = _request->parsedValue("ttl", replutils::BatchInfo::DefaultTimeout);
-  _vocbase.replicationClients().track(syncerId, clientId, tickStart == 0 ? 0 : tickStart - 1, ttl);
+  _vocbase.replicationClients().track(syncerId, clientId, clientInfo,
+                                      tickStart == 0 ? 0 : tickStart - 1, ttl);
 }
 
 /// @brief run the command that determines which transactions were open at

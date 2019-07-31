@@ -120,12 +120,14 @@ std::pair<ExecutionState, size_t> SingleRowFetcherHelper<passBlocksThrough>::ski
     if (state == ExecutionState::DONE) {
       size_t skipped = _skipped;
       _skipped = 0;
+      _totalSkipped += skipped;
       return {state, skipped};
     }
   }
 
   size_t skipped = _skipped;
   _skipped = 0;
+  _totalSkipped += skipped;
   return {state, skipped};
 }
 

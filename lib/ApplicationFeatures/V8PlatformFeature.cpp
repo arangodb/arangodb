@@ -22,8 +22,10 @@
 
 #include "ApplicationFeatures/V8PlatformFeature.h"
 
+#include "Basics/system-functions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "V8/v8-globals.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -59,6 +61,7 @@ static void gcPrologueCallback(v8::Isolate* isolate, v8::GCType /*type*/,
 
 static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
                                v8::GCCallbackFlags flags) {
+  TRI_GET_GLOBALS();
   static size_t const LIMIT_ABS = 200 * 1024 * 1024;
   size_t minFreed = LIMIT_ABS / 10;
 
@@ -69,6 +72,7 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
   v8::HeapStatistics h;
   isolate->GetHeapStatistics(&h);
 
+  auto now = TRI_microtime();
   size_t freed = 0;
   size_t heapSizeAtStop = h.used_heap_size();
   size_t heapSizeAtStart = V8PlatformFeature::getIsolateData(isolate)->_heapSizeAtStart;
@@ -81,10 +85,29 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
   size_t usedHeapSize = h.used_heap_size();
   size_t stillFree = heapSizeLimit - usedHeapSize;
 
+  if (now - v8g->_lastMaxTime > 10) {
+    v8g->_heapMax = heapSizeAtStart;
+    v8g->_heapLow = heapSizeAtStop;
+    v8g->_countOfTimes = 0;
+    v8g->_lastMaxTime = now;
+  } else {
+    v8g->_countOfTimes++;
+    if (heapSizeAtStart > v8g->_heapMax) {
+      v8g->_heapMax = heapSizeAtStart;
+    }
+    if (v8g->_heapLow > heapSizeAtStop) {
+      v8g->_heapLow = heapSizeAtStop;
+    }
+  }
+
   if (stillFree <= LIMIT_ABS && freed <= minFreed) {
+    const char* whereFreed = (v8g->_inForcedCollect)? "Forced collect": "V8 internal collection";
     LOG_TOPIC("95f66", WARN, arangodb::Logger::FIXME)
-        << "reached heap-size limit, interrupting V8 execution ("
-        << "heap size limit " << heapSizeLimit << ", used " << usedHeapSize << ")";
+        << "reached heap-size limit of #" << v8g->_id
+        << " interrupting V8 execution ("
+        << "heap size limit " << heapSizeLimit
+        << ", used " << usedHeapSize
+        << ") during " << whereFreed;
 
     isolate->TerminateExecution();
     V8PlatformFeature::setOutOfMemory(isolate);

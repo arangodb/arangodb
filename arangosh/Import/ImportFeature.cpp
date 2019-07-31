@@ -252,7 +252,7 @@ void ImportFeature::start() {
   *_result = ret;
 
   if (_typeImport == "auto") {
-    std::regex re = std::regex(".*?\\.([a-zA-Z]+)", std::regex::ECMAScript);
+    std::regex re = std::regex(".*?\\.([a-zA-Z]+)(.gz|)", std::regex::ECMAScript);
     std::smatch match;
     if (std::regex_match(_filename, match, re)) {
       std::string extension = StringUtils::tolower(match[1].str());
