@@ -24,7 +24,9 @@
 
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterMethods.h"
-#include "RocksDBEngine/RocksDBHotBackup.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
+#endif
 #include "StorageEngine/EngineSelectorFeature.h"
 
 namespace arangodb {
@@ -60,6 +62,7 @@ arangodb::Result HotBackup::execute (
 arangodb::Result HotBackup::executeRocksDB(
   std::string const& command, VPackSlice const payload, VPackBuilder& report) {
 
+#ifdef USE_ENTERPRISE
   std::shared_ptr<RocksDBHotBackup> operation;
   operation = RocksDBHotBackup::operationFactory(command, payload, report);
 
@@ -72,6 +75,7 @@ arangodb::Result HotBackup::executeRocksDB(
     return arangodb::Result(
       operation->restResponseError(), operation->errorMessage());
   } // if
+#endif
 
   return arangodb::Result();
 
@@ -81,6 +85,7 @@ arangodb::Result HotBackup::executeRocksDB(
 arangodb::Result HotBackup::executeCoordinator(
   std::string const& command, VPackSlice const payload, VPackBuilder& report) {
 
+#ifdef USE_ENTERPRISE
   if (command == "create") {
     return hotBackupCoordinator(payload, report);
   } else if (command == "lock") {
@@ -92,16 +97,16 @@ arangodb::Result HotBackup::executeCoordinator(
     return deleteHotBackupsOnCoordinator(payload, report);
   } else if (command == "list") {
     return listHotBackupsOnCoordinator(payload, report);
-#ifdef USE_ENTERPRISE
   } else if (command == "upload") {
     return uploadBackupsOnCoordinator(payload, report);
   } else if (command == "download") {
     return downloadBackupsOnCoordinator(payload, report);
-#endif
   } else {
     return arangodb::Result(
       TRI_ERROR_NOT_IMPLEMENTED, command + " is not implemented on coordinators");
   }
+
+#endif
 
   // We'll never get here
   return arangodb::Result();

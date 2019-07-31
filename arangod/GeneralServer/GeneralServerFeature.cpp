@@ -65,7 +65,9 @@
 #include "RestHandler/RestExplainHandler.h"
 #include "RestHandler/RestGraphHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
-#include "RestHandler/RestHotBackupHandler.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/RestHandler/RestHotBackupHandler.h"
+#endif
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
@@ -95,7 +97,9 @@
 #include "Ssl/SslServerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#ifdef USE_ENTERPRISE
 #include "StorageEngine/HotBackupFeature.h"
+#endif
 
 using namespace arangodb::rest;
 using namespace arangodb::options;

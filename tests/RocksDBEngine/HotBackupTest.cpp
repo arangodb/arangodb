@@ -31,11 +31,15 @@
 //#include "Basics/Exceptions.h"
 //#include "Basics/VelocyPackHelper.h"
 #include <velocypack/velocypack-aliases.h>
-#include "RocksDBEngine/RocksDBHotBackup.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
+#endif
 #include "Rest/Version.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
+
+#ifdef USE_ENTERPRISE
 
 static bool Initialized = false;
 static uint64_t counter = 0;
@@ -439,4 +443,6 @@ TEST_CASE("RocksDBHotBackupRestore directories", "[rocksdb][devel][hotbackup]") 
 #endif
   }
 }
+
+#endif
 #endif
