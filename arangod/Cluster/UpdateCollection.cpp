@@ -29,6 +29,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/ClusterComm.h"
 #include "Transaction/ClusterUtils.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
@@ -86,6 +87,52 @@ UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescriptio
   }
 }
 
+void sendLeaderChangeRequests(std::vector<ServerID> const& currentServers,
+                              std::shared_ptr<std::vector<ServerID>>& realInsyncFollowers,
+                              ShardID const& shardID) {
+
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return;
+  }
+
+  std::string const& sid = ServerState::instance()->getId();
+
+
+  VPackBuilder bodyBuilder;
+  {
+    VPackObjectBuilder ob(&bodyBuilder);
+    bodyBuilder.add("leaderId", VPackValue(sid));
+    bodyBuilder.add("shard", VPackValue(shardID));
+  }
+
+  std::string const url = "/_api/replication/set-the-leader";
+
+  std::vector<ClusterCommRequest> requests;
+  auto body = std::make_shared<std::string>(bodyBuilder.toJson());
+  for (auto const& srv : currentServers) {
+    if (srv == sid) {
+      continue; // ignore ourself
+    }
+    LOG_DEVEL << "Sending " << bodyBuilder.toJson() << " to " << srv;
+    requests.emplace_back("server:" + srv, RequestType::PUT, url, body);
+  }
+
+  cc->performRequests(requests, 3.0, Logger::COMMUNICATION, false);
+
+  // This code intentionally ignores all errors
+  realInsyncFollowers = std::make_shared<std::vector<ServerID>>();
+  for (auto const& req : requests) {
+    ClusterCommResult const& result = req.result;
+    if (result.errorCode == TRI_ERROR_NO_ERROR) {
+      if (result.result && result.result->getHttpReturnCode() == 200) {
+        realInsyncFollowers->push_back(result.serverID);
+      }
+    }
+  }
+}
+
 void handleLeadership(LogicalCollection& collection, std::string const& localLeader,
                       std::string const& plannedLeader,
                       std::string const& followersToDrop, std::string const& databaseName,
@@ -104,8 +151,24 @@ void handleLeadership(LogicalCollection& collection, std::string const& localLea
         return;
       }
       TRI_ASSERT(currentInfo != nullptr);
-      auto failoverCandidates = currentInfo->failoverCandidates(collection.name());
-      followers->takeOverLeadership(failoverCandidates);
+      std::vector<ServerID> currentServers = currentInfo->servers(collection.name());
+      std::shared_ptr<std::vector<ServerID>> realInsyncFollowers;
+
+      if (currentServers.size() > 0) {
+        std::string& oldLeader = currentServers.at(0);
+        // Check if the old leader has resigned and stopped all write
+        // (if so, we can assume that all servers are still in sync)
+        if (oldLeader.at(0) == '_') {
+          // remove the underscore from the list as it is useless anyway
+          oldLeader = oldLeader.substr(1);
+
+          // Update all follower and tell them that we are the leader now
+          sendLeaderChangeRequests(currentServers, realInsyncFollowers, collection.name());
+        }
+      }
+
+      std::vector<ServerID> failoverCandidates = currentInfo->failoverCandidates(collection.name());
+      followers->takeOverLeadership(failoverCandidates, realInsyncFollowers);
       transaction::cluster::abortFollowerTransactionsOnShard(collection.id());
     } else {
       // If someone (the Supervision most likely) has thrown

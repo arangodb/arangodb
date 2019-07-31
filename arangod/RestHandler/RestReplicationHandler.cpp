@@ -233,6 +233,7 @@ std::string const RestReplicationHandler::ApplierStateAll = "applier-state-all";
 std::string const RestReplicationHandler::ClusterInventory = "clusterInventory";
 std::string const RestReplicationHandler::AddFollower = "addFollower";
 std::string const RestReplicationHandler::RemoveFollower = "removeFollower";
+std::string const RestReplicationHandler::SetTheLeader = "set-the-leader";
 std::string const RestReplicationHandler::HoldReadLockCollection =
     "holdReadLockCollection";
 
@@ -504,6 +505,15 @@ RestStatus RestReplicationHandler::execute() {
       } else {
         handleCommandRemoveFollower();
       }
+    }else if (command == SetTheLeader) {
+      if (type != rest::RequestType::PUT) {
+        goto BAD_CALL;
+      }
+      if (!ServerState::instance()->isDBServer()) {
+        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
+      } else {
+        handleCommandSetTheLeader();
+      }
     } else if (command == HoldReadLockCollection) {
       if (!ServerState::instance()->isDBServer()) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
@@ -579,7 +589,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   applier->startReplication();
 
   while (applier->isInitializing()) {  // wait for initial sync
-    std::this_thread::sleep_for(std::chrono::microseconds(50000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
     if (application_features::ApplicationServer::isStopping()) {
       generateError(Result(TRI_ERROR_SHUTTING_DOWN));
       return;
@@ -647,18 +657,15 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 
   std::unique_ptr<ClusterCommResult> res;
   if (!useVst) {
-    HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
-    if (httpRequest == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid request type");
-    }
+    TRI_ASSERT(_request->transportType() == Endpoint::TransportType::HTTP);
 
+    VPackStringRef body = _request->rawPayload();
     // Send a synchronous request to that shard using ClusterComm:
     res = cc->syncRequest(TRI_NewTickServer(), "server:" + DBserver,
                           _request->requestType(),
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               _request->requestPath() + params,
-                          httpRequest->body(), *headers, 300.0);
+                          body.toString(), *headers, 300.0);
   } else {
     // do we need to handle multiple payloads here - TODO
     // here we switch from vst to http?!
@@ -1334,13 +1341,12 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
 
   allMarkers.clear();
 
-  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
-  if (httpRequest == nullptr) {
+  if (_request->transportType() != Endpoint::TransportType::HTTP) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
 
-  std::string const& bodyStr = httpRequest->body();
-  char const* ptr = bodyStr.c_str();
+  VPackStringRef bodyStr = _request->rawPayload();
+  char const* ptr = bodyStr.data();
   char const* end = ptr + bodyStr.size();
 
   VPackValueLength currentPos = 0;
@@ -2434,6 +2440,53 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
     // this will create an error response with the appropriate message
     THROW_ARANGO_EXCEPTION(res);
   }
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bb(&b);
+    b.add(StaticStrings::Error, VPackValue(false));
+  }
+
+  generateResult(rest::ResponseCode::OK, b.slice());
+}
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief update the leader of a shard
+  //////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandSetTheLeader() {
+  TRI_ASSERT(ServerState::instance()->isDBServer());
+
+  bool success = false;
+  VPackSlice const body = this->parseVPackBody(success);
+  if (!success) {
+    // error already created
+    return;
+  }
+  if (!body.isObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body needs to be an object with attributes 'leaderId' "
+                  "and 'shard'");
+    return;
+  }
+  VPackSlice const leaderId = body.get("leaderId");
+  VPackSlice const shard = body.get("shard");
+  if (!leaderId.isString() || !shard.isString()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "'leaderId' and 'shard' attributes must be strings");
+    return;
+  }
+
+  auto col = _vocbase.lookupCollection(shard.copyString());
+
+  if (col == nullptr) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                  "did not find collection");
+    return;
+  }
+
+  col->followers()->setTheLeader(leaderId.copyString());
+  LOG_DEVEL << "Set leader for " << shard.copyString() << " to " << leaderId.copyString();
 
   VPackBuilder b;
   {
