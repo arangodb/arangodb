@@ -389,7 +389,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
 }
 
 void Collections::createSystemCollectionProperties(std::string collectionName,
-                                                   VPackBuilder& bb) {
+                                                   VPackBuilder& bb, bool isSystem) {
   uint32_t defaultReplFactor = 1;
   uint32_t defaultMinReplFactor = 1;
 
@@ -407,21 +407,26 @@ void Collections::createSystemCollectionProperties(std::string collectionName,
     bb.add("journalSize", VPackValue(1024 * 1024));
     bb.add("replicationFactor", VPackValue(defaultReplFactor));
     bb.add("minReplicationFactor", VPackValue(defaultMinReplFactor));
-    if (collectionName != "_users") {
-      // that forces all collections to be on the same physical DBserver
-      bb.add("distributeShardsLike", VPackValue("_users"));
+    // that forces all collections to be on the same physical DBserver
+    if (isSystem) {
+      if (collectionName != StaticStrings::UsersCollection) {
+        bb.add("distributeShardsLike", VPackValue(StaticStrings::UsersCollection));
+      }
+    } else {
+      if (collectionName != StaticStrings::GraphsCollection) {
+        bb.add("distributeShardsLike", VPackValue(StaticStrings::GraphsCollection));
+      }
     }
   }
 }
 
 /*static*/ Result Collections::createSystem(TRI_vocbase_t& vocbase, std::string const& name) {
   FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
-
   auto res = methods::Collections::lookup(vocbase, name, noop);
 
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     VPackBuilder bb;
-    createSystemCollectionProperties(name, bb);
+    createSystemCollectionProperties(name, bb, vocbase.isSystem());
 
     res = Collections::create(vocbase,  // vocbase to create in
                               name,     // collection name top create

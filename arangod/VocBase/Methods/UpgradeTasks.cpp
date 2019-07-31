@@ -159,7 +159,7 @@ bool upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
 }
 
 bool createAppsIndex(TRI_vocbase_t& vocbase) {
-  return ::createIndex(vocbase,  // collection vocbase
+  return ::createIndex(vocbase,                        // collection vocbase
                        StaticStrings::AppsCollection,  // collection name
                        arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,  // index type
                        {"mount"},  // index fields
@@ -180,13 +180,13 @@ bool createUsersIndex(TRI_vocbase_t& vocbase) {
 
 bool createJobsIndex(TRI_vocbase_t& vocbase) {
   ::createSystemCollection(vocbase, StaticStrings::JobsCollection);
-  ::createIndex(vocbase,  // collection vocbase
+  ::createIndex(vocbase,                        // collection vocbase
                 StaticStrings::JobsCollection,  // collection name
                 arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,  // index type
                 {"queue", "status", "delayUntil"},
                 /*unique*/ false,
                 /*sparse*/ false);
-  ::createIndex(vocbase,  // collection vocbase
+  ::createIndex(vocbase,                        // collection vocbase
                 StaticStrings::JobsCollection,  // collection name
                 arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,  // index type
                 {"status", "queue", "delayUntil"},
@@ -198,28 +198,37 @@ bool createJobsIndex(TRI_vocbase_t& vocbase) {
 
 bool createSystemCollections(TRI_vocbase_t& vocbase) {
   std::vector<CollectionCreationInfo> systemCollectionsToCreate;
-  std::vector<std::string> systemCollections = {StaticStrings::UsersCollection,
-                                                StaticStrings::GraphsCollection,
-                                                StaticStrings::AqlFunctionsCollection,
-                                                StaticStrings::QueuesCollection,
-                                                StaticStrings::JobsCollection,
-                                                StaticStrings::AppsCollection,
-                                                StaticStrings::AppBundlesCollection};
+  // the order of systemCollections is important. If we're in _system db, the
+  // UsersCollection needs to be first, otherwise, the GraphsCollection must be first.
+  std::vector<std::string> systemCollections;
+
+  if (vocbase.isSystem()) {
+    systemCollections.push_back(StaticStrings::UsersCollection);
+  }
+
+  systemCollections.push_back(StaticStrings::UsersCollection);
+  systemCollections.push_back(StaticStrings::GraphsCollection);
+  systemCollections.push_back(StaticStrings::AqlFunctionsCollection);
+  systemCollections.push_back(StaticStrings::QueuesCollection);
+  systemCollections.push_back(StaticStrings::JobsCollection);
+  systemCollections.push_back(StaticStrings::AppsCollection);
+  systemCollections.push_back(StaticStrings::AppBundlesCollection);
 
   typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> FuncCallback;
   FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
+  std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> buffers;
 
   for (auto const& collection : systemCollections) {
     auto res = methods::Collections::lookup(vocbase, collection, noop);
     if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       // if not found, create it
       VPackBuilder options;
-      methods::Collections::createSystemCollectionProperties(collection, options);
+      methods::Collections::createSystemCollectionProperties(collection, options,
+                                                             vocbase.isSystem());
 
       systemCollectionsToCreate.emplace_back(
           CollectionCreationInfo{collection, TRI_COL_TYPE_DOCUMENT, options.slice()});
-    } else if (res.ok()) {
-      // if found, upgrade it
+      buffers.emplace_back(options.steal());
     }
   }
 
@@ -235,9 +244,11 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
 }
 
 bool createSystemCollectionsIndices(TRI_vocbase_t& vocbase) {
+  if (vocbase.isSystem()) {
+    createUsersIndex(vocbase);
+  }
   upgradeGeoIndexes(vocbase);
   createAppsIndex(vocbase);
-  createUsersIndex(vocbase);
   createJobsIndex(vocbase);
   return true;
 }
