@@ -25,11 +25,8 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -41,16 +38,13 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/vocbase.h"
 
-#include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -201,10 +195,7 @@ bool createJobsIndex(TRI_vocbase_t& vocbase) {
   return true;
 }
 
-}  // namespace
-
-bool UpgradeTasks::createSystemCollections(TRI_vocbase_t& vocbase,
-                                           arangodb::velocypack::Slice const& slice) {
+bool createSystemCollections(TRI_vocbase_t& vocbase) {
   std::vector<CollectionCreationInfo> systemCollectionsToCreate;
   std::vector<std::string> systemCollections = {"_users",        "_graphs",
                                                 "_aqlfunctions", "_queues",
@@ -217,11 +208,15 @@ bool UpgradeTasks::createSystemCollections(TRI_vocbase_t& vocbase,
   for (auto const& collection : systemCollections) {
     auto res = methods::Collections::lookup(vocbase, collection, noop);
     if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+      // if not found, create it
       VPackBuilder options;
       methods::Collections::createSystemCollectionProperties(collection, options);
 
       systemCollectionsToCreate.emplace_back(
           CollectionCreationInfo{collection, TRI_COL_TYPE_DOCUMENT, options.slice()});
+    } else if (res.ok()) {
+      // if found, upgrade it
+
     }
   }
 
@@ -235,12 +230,21 @@ bool UpgradeTasks::createSystemCollections(TRI_vocbase_t& vocbase,
 
   return true;
 }
-bool UpgradeTasks::createSystemCollectionsIndices(TRI_vocbase_t& vocbase,
-                                                  arangodb::velocypack::Slice const& slice) {
+
+bool createSystemCollectionsIndices(TRI_vocbase_t& vocbase) {
   upgradeGeoIndexes(vocbase);
   createAppsIndex(vocbase);
   createUsersIndex(vocbase);
   createJobsIndex(vocbase);
+  return true;
+}
+
+}  // namespace
+bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
+                                                     arangodb::velocypack::Slice const& slice) {
+  ::createSystemCollections(vocbase);
+  ::createSystemCollectionsIndices(vocbase);
+
   return true;
 }
 

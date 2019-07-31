@@ -23,21 +23,15 @@
 #include "Upgrade.h"
 #include "Basics/Common.h"
 
-#include "Agency/AgencyComm.h"
-#include "Basics/StringUtils.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Collections.h"
-#include "Rest/Version.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/Methods/UpgradeTasks.h"
 #include "VocBase/Methods/Version.h"
 #include "VocBase/vocbase.h"
 
-#include <arangod/Cluster/ClusterFeature.h>
-#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -222,14 +216,11 @@ void methods::Upgrade::registerTasks() {
   auto& _tasks = upgradeFeature->_tasks;
   TRI_ASSERT(_tasks.empty());
 
-  addTask("createSystemCollections", "creates all system collections",
-      /*system*/ Flags::DATABASE_ALL,
-      /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
-      /*database*/ DATABASE_UPGRADE, &UpgradeTasks::createSystemCollections);
-  addTask("createSystemCollectionsIndices", "creates all indices for system collections",
-      /*system*/ Flags::DATABASE_ALL,
-      /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
-      /*database*/ DATABASE_UPGRADE, &UpgradeTasks::createSystemCollectionsIndices);
+  addTask("createSystemCollectionsAndIndices",
+          "creates all system collections including their indices",
+          /*system*/ Flags::DATABASE_ALL,
+          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
+          /*database*/ DATABASE_UPGRADE, &UpgradeTasks::createSystemCollectionsAndIndices);
   addTask("addDefaultUserOther", "add default users for a new database",
           /*system*/ Flags::DATABASE_EXCEPT_SYSTEM,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
