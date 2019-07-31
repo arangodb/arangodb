@@ -466,6 +466,7 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   Result createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const& database);
   Result createFinalizeDatabaseCoordinator(CreateDatabaseInfo const& database);
+  Result cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& database);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop database in coordinator

@@ -253,7 +253,8 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     } else {
       // Cleanup entries in agency.
       // TODO: is there anything more we could clean up?
-      // auto res = ci->cancelDatabaseCoordinator(databaseInfo);
+      //       *  user entries above
+      auto res = ci->cancelCreateDatabaseCoordinator(databaseInfo);
     }
   } else {  // Single, DBServer, Agency
     // options for database (currently only allows setting "id"

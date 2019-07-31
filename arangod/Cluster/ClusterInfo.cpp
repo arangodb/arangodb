@@ -1500,6 +1500,7 @@ Result ClusterInfo::waitForDatabaseInCurrent(ClusterInfo::CreateDatabaseInfo con
 
       int tmpRes = dbServerResult->load(std::memory_order_acquire);
 
+      // An error was detected on one of the DBServers
       if (tmpRes >= 0) {
         cbGuard.fire();  // unregister cb before accessing errMsg
         loadCurrent();   // update our cache
@@ -1534,11 +1535,12 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(ClusterInfo::CreateDatab
   VPackBuilder builder;
   database.buildIsBuildingSlice(builder);
 
-  AgencyWriteTransaction trx({AgencyOperation("Plan/Databases/" + database.getName(),
-                                          AgencyValueOperationType::SET, builder.slice()),
-                          AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
-                         AgencyPrecondition("Plan/Databases/" + database.getName(),
-                                            AgencyPrecondition::Type::EMPTY, true));
+  AgencyWriteTransaction trx(
+      {AgencyOperation("Plan/Databases/" + database.getName(),
+                       AgencyValueOperationType::SET, builder.slice()),
+       AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
+      AgencyPrecondition("Plan/Databases/" + database.getName(),
+                         AgencyPrecondition::Type::EMPTY, true));
 
   // TODO: Should this never timeout?
   res = ac.sendTransactionWithFailover(trx, 0.0);
@@ -1558,9 +1560,17 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(ClusterInfo::CreateDatab
   auto waitresult = waitForDatabaseInCurrent(database);
 
   if (waitresult.fail()) {
-    // cleanup
-  }
+    // cleanup: remove database from plan?
+    auto ret = cancelCreateDatabaseCoordinator(database);
 
+    if (ret.ok()) {
+      // Creation failed
+      return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE, "database creation failed");
+    } else {
+      // Cleanup failed too
+      return ret;
+    }
+  }
   return Result();
 }
 
@@ -1594,6 +1604,29 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(ClusterInfo::CreateDatabas
 
   // The transaction was successful and the database should
   // now be visible and usable.
+  return Result();
+}
+
+Result ClusterInfo::cancelCreateDatabaseCoordinator(ClusterInfo::CreateDatabaseInfo const& database) {
+  AgencyComm ac;
+
+  VPackBuilder builder;
+  database.buildIsBuildingSlice(builder);
+
+  AgencyWriteTransaction trx(
+    {AgencyOperation("Plan/Databases/" + database.getName(),
+                     AgencySimpleOperationType::DELETE_OP),
+     AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
+    AgencyPrecondition("Plan/Databases/" + database.getName(),
+                       AgencyPrecondition::Type::VALUE, builder.slice()));
+
+  auto res = ac.sendTransactionWithFailover(trx, 0.0);
+
+  if (!res.successful()) {
+    // Creation failed and cleanup failed
+    return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE, "cleanup failed after failed database creation");
+  }
+
   return Result();
 }
 
