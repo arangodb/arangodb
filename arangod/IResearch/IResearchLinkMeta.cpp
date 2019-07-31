@@ -381,18 +381,6 @@ bool IResearchLinkMeta::init( // initialize meta
               name, *defaultVocbase, *sysVocbase, false // args
             );
           }
-          { // validate analyzer origin
-            // analyzer should be either from same database as View or from system database
-            auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(name);
-            // normally system db is available and analyzer name succesfully normalized
-            if (ADB_LIKELY(!analyzerVocbase.empty())) { 
-              if (analyzerVocbase != arangodb::StaticStrings::SystemDatabase &&
-                analyzerVocbase != defaultVocbase->name()) {
-                errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]";
-                return false;
-              }
-            }
-          }
         }
 
         // for cluster only check cache to avoid ClusterInfo locking issues

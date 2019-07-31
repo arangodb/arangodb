@@ -1631,19 +1631,6 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_TRUE((false == meta.init(json->slice(), true, errorField, &vocbase)));
     EXPECT_TRUE((std::string("analyzerDefinitions=>[0]") == errorField));
   }
-  // existing analyzer  but wrong database
-  {
-    TRI_vocbase_t vocbaseLocal(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 2,
-                        "testVocbase2");
-    auto json = VPackParser::fromJson(
-        "{ \
-      \"analyzers\": [ \"testVocbase::empty\" ] \
-    }");
-    arangodb::iresearch::IResearchLinkMeta meta;
-    std::string errorField;
-    EXPECT_FALSE(meta.init(json->slice(), true, errorField, &vocbaseLocal));
-    EXPECT_EQ(std::string("analyzers=>[0]"),  errorField);
-  }
 }
 
 // https://github.com/arangodb/backlog/issues/581
