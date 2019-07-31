@@ -129,8 +129,6 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(MapRemoteToSnippet& 
     cleanupEngines(cc, TRI_ERROR_INTERNAL, _query->vocbase().name(), queryIds);
   });
 
-  // TODO Figure out which servers participate
-
   // Build Lookup Infos
   VPackBuilder infoBuilder;
   transaction::Methods* trx = _query->trx();

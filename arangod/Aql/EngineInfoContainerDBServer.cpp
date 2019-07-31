@@ -367,7 +367,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     // we need to count nodes by type ourselves, as we will set the
     // "varUsageComputed" flag below (which will handle the counting)
     plan.increaseCounter(nodeType);
-    
+
     if (nodeType == ExecutionNode::INDEX || nodeType == ExecutionNode::ENUMERATE_COLLECTION) {
       auto x = dynamic_cast<CollectionAccessingNode*>(clone);
       auto const* prototype = x->prototypeCollection();
@@ -426,7 +426,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
   plan.root()->toVelocyPack(infoBuilder, flags, /*keepTopLevelOpen*/ false);
 
-  // remove shard id hack for all participating collections 
+  // remove shard id hack for all participating collections
   for (auto& it : cleanup) {
     it->resetCurrentShard();
   }
@@ -447,12 +447,14 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
   TRI_ASSERT(!_engineStack.empty());
   _engineStack.top()->addNode(node);
   switch (node->getType()) {
-    case ExecutionNode::ENUMERATE_COLLECTION: 
+    case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::INDEX: {
       auto* scatter = findFirstScatter(*node);
       auto const* colNode = dynamic_cast<CollectionAccessingNode const*>(node);
       if (colNode == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to cast node to CollectionAccessingNode");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            "unable to cast node to CollectionAccessingNode");
       }
       std::unordered_set<std::string> restrictedShard;
       if (colNode->isRestricted()) {
@@ -596,8 +598,7 @@ void EngineInfoContainerDBServer::DBServerInfo::addEngine(
   _engineInfos[info].emplace_back(id);
 }
 
-void EngineInfoContainerDBServer::DBServerInfo::setShardAsResponsibleForInitializeCursor(
-    ShardID const& id) {
+void EngineInfoContainerDBServer::DBServerInfo::setShardAsResponsibleForInitializeCursor(ShardID const& id) {
   _shardsResponsibleForInitializeCursor.emplace(id);
 }
 
@@ -657,10 +658,10 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
            _shardsResponsibleForInitializeCursor.end();
   };
 
-  auto isAnyResponsibleForInitializeCursor =
-      [&isResponsibleForInitializeCursor](std::vector<ShardID> const& ids) {
-        return std::any_of(ids.begin(), ids.end(), isResponsibleForInitializeCursor);
-      };
+  auto isAnyResponsibleForInitializeCursor = [&isResponsibleForInitializeCursor](
+                                                 std::vector<ShardID> const& ids) {
+    return std::any_of(ids.begin(), ids.end(), isResponsibleForInitializeCursor);
+  };
 
   for (auto const& it : _engineInfos) {
     TRI_ASSERT(it.first);
@@ -787,7 +788,8 @@ void EngineInfoContainerDBServer::DBServerInfo::addTraverserEngine(GraphNode* no
   _traverserEngineInfos.emplace_back(std::make_pair(node, std::move(shards)));
 }
 
-void EngineInfoContainerDBServer::addSubquery(ExecutionNode const* super, ExecutionNode const* sub) {
+void EngineInfoContainerDBServer::addSubquery(ExecutionNode const* super,
+                                              ExecutionNode const* sub) {
   TRI_ASSERT(!_engineStack.empty());
   _engineStack.top()->addSubquery(super, sub);
 }
@@ -1054,14 +1056,15 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
   });
 
   // Build Lookup Infos
-  VPackBuilder infoBuilder;  
+  VPackBuilder infoBuilder;
   transaction::Methods* trx = _query->trx();
 
   // we need to lock per server in a deterministic order to avoid deadlocks
   for (auto& it : dbServerMapping) {
     std::string const serverDest = "server:" + it.first;
 
-    LOG_TOPIC("4bbe6", DEBUG, arangodb::Logger::AQL) << "Building Engine Info for " << it.first;
+    LOG_TOPIC("4bbe6", DEBUG, arangodb::Logger::AQL)
+        << "Building Engine Info for " << it.first;
     infoBuilder.clear();
     it.second.buildMessage(it.first, *this, *_query, infoBuilder);
     LOG_TOPIC("2f1fd", DEBUG, arangodb::Logger::AQL)
@@ -1070,7 +1073,7 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
     // Now we send to DBServers.
     // We expect a body with {snippets: {id => engineId}, traverserEngines:
     // [engineId]}}
-    
+
     // add the transaction ID header
     std::unordered_map<std::string, std::string> headers;
     ClusterTrxMethods::addAQLTransactionHeader(*trx, /*server*/ it.first, headers);
@@ -1094,7 +1097,7 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
 
     if (!response.isObject() || !response.get("result").isObject()) {
       LOG_TOPIC("0c3f2", ERR, Logger::AQL) << "Received error information from "
-                                  << it.first << " : " << response.toJson();
+                                           << it.first << " : " << response.toJson();
       return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
               "Unable to deploy query on all required "
               "servers. This can happen during "
@@ -1181,14 +1184,11 @@ void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
   _graphNodes.emplace_back(node);
 }
 
-
 namespace {
 struct NoopCb final : public arangodb::ClusterCommCallback {
-  bool operator()(ClusterCommResult*) override{
-    return true;
-  }
+  bool operator()(ClusterCommResult*) override { return true; }
 };
-}
+}  // namespace
 
 /**
  * @brief Will send a shutdown to all engines registered in the list of
@@ -1223,26 +1223,26 @@ void EngineInfoContainerDBServer::cleanupEngines(std::shared_ptr<ClusterComm> cc
       }
     }
   }
-  
+
   // Shutdown traverser engines
   url = "/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
         "/_internal/traverser/";
   std::unordered_map<std::string, std::string> headers;
   std::shared_ptr<std::string> noBody;
-  
+
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
   auto cb = std::make_shared<::NoopCb>();
-  
+
   constexpr double shortTimeout = 10.0;  // Picked arbitrarily
   for (auto const& gn : _graphNodes) {
     auto allEngines = gn->engines();
     for (auto const& engine : *allEngines) {
       cc->asyncRequest(coordinatorTransactionID, engine.first, rest::RequestType::DELETE_REQ,
-                       url + basics::StringUtils::itoa(engine.second), noBody, headers, cb,
-                       shortTimeout, false, 2.0);
+                       url + basics::StringUtils::itoa(engine.second), noBody,
+                       headers, cb, shortTimeout, false, 2.0);
     }
     _query->incHttpRequests(allEngines->size());
   }
-  
+
   queryIds.clear();
 }

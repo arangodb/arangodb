@@ -82,6 +82,8 @@ class ShardLocking {
   void updateLocking(Collection const* col, AccessMode::Type const& accessType,
                      std::unordered_set<std::string> const& restrictedShards);
 
+  std::unordered_map<ShardID, ServerID> const& getShardMapping();
+
  private:
   Query* _query;
 
@@ -90,6 +92,8 @@ class ShardLocking {
   std::unordered_map<ServerID, std::unordered_map<Collection const*, std::set<ShardID>>> _serverToCollectionToShard;
 
   std::unordered_map<ServerID, std::unordered_map<AccessMode::Type, std::unordered_set<ShardID>>> _serverToLockTypeToShard;
+
+  std::unordered_map<ShardID, ServerID> _shardMapping;
 };
 
 }  // namespace aql

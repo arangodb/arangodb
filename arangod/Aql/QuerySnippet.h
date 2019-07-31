@@ -39,7 +39,13 @@ class QuerySnippet {
   struct ExpansionInformation {
     ExecutionNode* node;
     bool doExpand;
-    std::vector<ShardID> shards;
+    std::shared_ptr<std::vector<ShardID>> shards;
+    bool isSatellite;
+
+    ExpansionInformation() = delete;
+    ExpansionInformation(ExecutionNode* n, bool exp,
+                         std::shared_ptr<std::vector<ShardID>> s, bool sat)
+        : node(n), doExpand(exp), shards(s), isSatellite(sat) {}
   };
 
  public:
@@ -59,7 +65,7 @@ class QuerySnippet {
 
   std::vector<ExecutionNode*> _nodes;
 
-  std::map<ServerID, std::vector<ExpansionInformation>> _expansions;
+  std::vector<ExpansionInformation> _expansions;
 
   QueryId _inputSnippet;
 };

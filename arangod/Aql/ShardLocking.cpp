@@ -178,19 +178,8 @@ std::vector<Collection const*> ShardLocking::getUsedCollections() const {
 std::vector<ServerID> ShardLocking::getRelevantServers() {
   if (_serverToCollectionToShard.empty()) {
     TRI_ASSERT(_serverToLockTypeToShard.empty());
-    std::unordered_set<ShardID> shardIds;
-    for (auto const& lockInfo : _collectionLocking) {
-      for (auto const& sid : lockInfo.second.usedShards) {
-        shardIds.emplace(sid);
-      }
-    }
-    auto ci = ClusterInfo::instance();
-    if (ci == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-    }
-    // TODO get ShardMapping by PR from Jan
-    std::unordered_map<ShardID, ServerID> shardMapping =
-        ci->getResponsibleServers(shardIds);
+    // Will internally fetch shards if not existing
+    auto shardMapping = getShardMapping();
     // Now we need to create the mappings
     // server => locktype => [shards]
     // server => collection => [shards](sorted)
@@ -200,8 +189,8 @@ std::vector<ServerID> ShardLocking::getRelevantServers() {
         // If shard has no leader the above call should have thrown!
         TRI_ASSERT(server != shardMapping.end());
         // We will create all maps as empty default constructions on the way
-        _serverToCollectionToShard[server][lockInfo.first].emplace(sid);
-        _serverToLockTypeToShard[server][lockInfo.second.lockType].emplace(sid);
+        _serverToCollectionToShard[server->second][lockInfo.first].emplace(sid);
+        _serverToLockTypeToShard[server->second][lockInfo.second.lockType].emplace(sid);
       }
     }
   }
@@ -231,4 +220,21 @@ void ShardLocking::serializeIntoBuilder(ServerID const& server,
     builder.close();  // Array
   }
   TRI_ASSERT(builder.isOpenObject());
+}
+
+std::unordered_map<ShardID, ServerID> const& ShardLocking::getShardMapping() {
+  if (_shardMapping.empty()) {
+    std::unordered_set<ShardID> shardIds;
+    for (auto const& lockInfo : _collectionLocking) {
+      for (auto const& sid : lockInfo.second.usedShards) {
+        shardIds.emplace(sid);
+      }
+    }
+    auto ci = ClusterInfo::instance();
+    if (ci == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+    _shardMapping = ci->getResponsibleServers(shardIds);
+  }
+  return _shardMapping;
 }
