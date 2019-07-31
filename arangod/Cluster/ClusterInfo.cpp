@@ -1412,19 +1412,16 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create database in coordinator, the return value is an ArangoDB
-/// error code and the errorMsg is set accordingly. One possible error
-/// is a timeout, a timeout of 0.0 means no timeout.
-////////////////////////////////////////////////////////////////////////////////
-Result ClusterInfo::createIsBuildingDatabaseCoordinator(ClusterInfo::CreateDatabaseInfo const& database) {
-
-  /* formerly an option */
-  std::string const& name = database.getName();
-
+// This waits for the database described in `database` to turn up in `Current` and no
+// DBServer is allowed to report an error.
+Result ClusterInfo::waitForDatabaseInCurrent(ClusterInfo::CreateDatabaseInfo const& database) {
   AgencyComm ac;
   AgencyCommResult res;
 
+  // TODO: Is it important to know the number of DBServers before we start the creation of the database?
+  //       In that case this has to be moved to the createIsBuildingDatabase and passed in.
+  //       PARTA: We update the DBServers list in the loop at the bottom of this function, so tentatively
+  //              *NO*
   auto DBServers = std::make_shared<std::vector<ServerID>>(getCurrentDBServers());
   auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
@@ -1475,33 +1472,11 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(ClusterInfo::CreateDatab
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
   auto agencyCallback =
-      std::make_shared<AgencyCallback>(ac, "Current/Databases/" + name,
+    std::make_shared<AgencyCallback>(ac, "Current/Databases/" + database.getName(),
                                        dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard(
       [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
-
-  VPackBuilder builder;
-  database.buildIsBuildingSlice(builder);
-
-  AgencyOperation newVal("Plan/Databases/" + name, AgencyValueOperationType::SET, builder.slice());
-  AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
-  AgencyPrecondition precondition("Plan/Databases/" + name,
-                                  AgencyPrecondition::Type::EMPTY, true);
-  AgencyWriteTransaction trx({newVal, incrementVersion}, precondition);
-
-  res = ac.sendTransactionWithFailover(trx, 0.0); // realTimeout);
-
-  if (!res.successful()) {
-    if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
-      return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME);
-    }
-
-    return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN);
-  }
-
-  // Now update our own cache of planned databases:
-  loadPlan();
 
   // Waits for the database to turn up in Current/Databases
   {
@@ -1547,6 +1522,48 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(ClusterInfo::CreateDatab
   }
 }
 
+// Start creating a database in a coordinator by entering it into Plan/Databases with,
+// status flag `isBuilding`; this makes the database invisible to the outside world.
+Result ClusterInfo::createIsBuildingDatabaseCoordinator(ClusterInfo::CreateDatabaseInfo const& database) {
+  AgencyComm ac;
+  AgencyCommResult res;
+
+  // Instruct the Agency to enter the creation of the new database
+  // by entering it into Plan/Databases/ but with the fields
+  // isBuilding, coordinator, and rebootId set to us
+  VPackBuilder builder;
+  database.buildIsBuildingSlice(builder);
+
+  AgencyWriteTransaction trx({AgencyOperation("Plan/Databases/" + database.getName(),
+                                          AgencyValueOperationType::SET, builder.slice()),
+                          AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
+                         AgencyPrecondition("Plan/Databases/" + database.getName(),
+                                            AgencyPrecondition::Type::EMPTY, true));
+
+  // TODO: Should this never timeout?
+  res = ac.sendTransactionWithFailover(trx, 0.0);
+
+  if (!res.successful()) {
+    if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+      return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+    }
+
+    return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN);
+  }
+
+  // Now update our own cache of planned databases:
+  loadPlan();
+
+  // And wait for our database to show up in `Current/Databases`
+  auto waitresult = waitForDatabaseInCurrent(database);
+
+  if (waitresult.fail()) {
+    // cleanup
+  }
+
+  return Result();
+}
+
 // Finalize creation of database in cluster by removing isBuilding, coordinator, and coordinatorRebootId;
 // as precondition that the entry we put in createIsBuildingDatabaseCoordinator is still in Plan/ unchanged.
 Result ClusterInfo::createFinalizeDatabaseCoordinator(ClusterInfo::CreateDatabaseInfo const& database) {
@@ -1558,18 +1575,18 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(ClusterInfo::CreateDatabas
   VPackBuilder entryBuilder;
   database.buildCompletedSlice(entryBuilder);
 
-  AgencyOperation newVal("Plan/Databases/" + database.getName(),
-                         AgencyValueOperationType::SET, entryBuilder.slice());
-  AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
-  AgencyPrecondition precondition("Plan/Databases/" + database.getName(),
-                                  AgencyPrecondition::Type::VALUE, pcBuilder.slice());
-  AgencyWriteTransaction trx({newVal, incrementVersion}, precondition);
+  AgencyWriteTransaction trx(
+      {AgencyOperation("Plan/Databases/" + database.getName(),
+                       AgencyValueOperationType::SET, entryBuilder.slice()),
+       AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
+      AgencyPrecondition("Plan/Databases/" + database.getName(),
+                         AgencyPrecondition::Type::VALUE, pcBuilder.slice()));
 
   auto res = ac.sendTransactionWithFailover(trx, 0.0);
 
   if (!res.successful()) {
     if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
-      return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE, "...");
+      return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE, "Could not finish creation of database: Plan/Databases/ entry was modified in Agency");
     }
     // Something else went wrong.
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE);

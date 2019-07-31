@@ -750,6 +750,7 @@ class ClusterInfo final {
   }
 
  private:
+  Result waitForDatabaseInCurrent(CreateDatabaseInfo const& database);
   void loadClusterId();
 
   //////////////////////////////////////////////////////////////////////////////
