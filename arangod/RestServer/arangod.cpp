@@ -112,7 +112,6 @@
 #endif
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/StorageEngine/HotBackupFeature.h"
 #include "Enterprise/RestServer/arangodEE.h"
 #endif
 
@@ -228,9 +227,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature(new aql::AqlFunctionFeature(server));
     server.addFeature(new aql::OptimizerRulesFeature(server));
     server.addFeature(new pregel::PregelFeature(server));
-#ifdef USE_ENTERPRISE
-    server.addFeature(new HotBackupFeature(server));
-#endif
 
 #ifdef ARANGODB_HAVE_FORK
     server.addFeature(new DaemonFeature(server));
