@@ -34,6 +34,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpRequest.h"
@@ -1622,7 +1623,37 @@ static void JS_DebugClearFailAt(v8::FunctionCallbackInfo<v8::Value> const& args)
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_IsFoxxApiDisabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  ServerSecurityFeature* security =
+      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
+          "ServerSecurity");
+  TRI_ASSERT(security != nullptr);
+  TRI_V8_RETURN_BOOL(security->isFoxxApiDisabled());
+
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_IsFoxxStoreDisabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  ServerSecurityFeature* security =
+      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
+          "ServerSecurity");
+  TRI_ASSERT(security != nullptr);
+  TRI_V8_RETURN_BOOL(security->isFoxxStoreDisabled());
+
+  TRI_V8_TRY_CATCH_END
+}
+
 void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_API_DISABLED"), JS_IsFoxxApiDisabled, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_STORE_DISABLED"), JS_IsFoxxStoreDisabled, true);
   // debugging functions
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,

@@ -1,5 +1,3 @@
-'use strict';
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -19,23 +17,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alan Plum
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-const internal = require('internal');
-const { context } = require('@arangodb/locals');
-const { ArangoError, errors } = require('@arangodb');
+#ifndef ARANGODB_APPLICATION_FEATURES_SERVER_SECURITY_FEATURE_H
+#define ARANGODB_APPLICATION_FEATURES_SERVER_SECURITY_FEATURE_H 1
 
-module.context.use(require('./aardvark'));
-if (internal.isFoxxApiDisabled()) {
-  context.service.router.all('/foxxes/*', (_req, res) => {
-    res.throw(403, new ArangoError({
-      errorNum: errors.ERROR_SERVICE_API_DISABLED.code,
-      errorMessage: errors.ERROR_SERVICE_API_DISABLED.message
-    }));
-  });
-} else {
-  module.context.use('/foxxes', require('./foxxes'));
-}
-module.context.use('/cluster', require('./cluster'));
-module.context.use('/statistics', require('./statistics'));
+#include "ApplicationFeatures/ApplicationFeature.h"
+
+namespace arangodb {
+
+class ServerSecurityFeature final : public application_features::ApplicationFeature {
+ public:
+  explicit ServerSecurityFeature(application_features::ApplicationServer& server);
+
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+
+  bool isFoxxApiDisabled() const;
+  bool isFoxxStoreDisabled() const;
+
+ private:
+  bool _enableFoxxApi;
+  bool _enableFoxxStore;
+};
+
+}  // namespace arangodb
+
+#endif

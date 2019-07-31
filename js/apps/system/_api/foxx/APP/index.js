@@ -29,6 +29,7 @@ const dd = require('dedent');
 const fs = require('fs');
 const joi = require('joi');
 
+const internal = require('internal');
 const actions = require('@arangodb/actions');
 const ArangoError = require('@arangodb').ArangoError;
 const errors = require('@arangodb').errors;
@@ -40,8 +41,18 @@ const reporters = Object.keys(require('@arangodb/mocha').reporters);
 const schemas = require('./schemas');
 
 const router = createRouter();
-module.context.registerType('multipart/form-data', require('./multipart'));
-module.context.use(router);
+
+if (internal.isFoxxApiDisabled()) {
+  module.context.service.router.all('*', (_req, res) => {
+    res.throw(403, new ArangoError({
+      errorNum: errors.ERROR_SERVICE_API_DISABLED.code,
+      errorMessage: errors.ERROR_SERVICE_API_DISABLED.message
+    }));
+  });
+} else {
+  module.context.registerType('multipart/form-data', require('./multipart'));
+  module.context.use(router);
+}
 
 const LDJSON = 'application/x-ldjson';
 
