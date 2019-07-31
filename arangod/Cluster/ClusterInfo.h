@@ -264,7 +264,7 @@ class ClusterInfo final {
   ClusterInfo& operator=(ClusterInfo const&) = delete;  // not implemented
 
  public:
-<<<<<<< HEAD
+
   class CreateDatabaseInfo {
   public:
    CreateDatabaseInfo() = default;
@@ -294,7 +294,7 @@ class ClusterInfo final {
     VPackSlice _options;
     std::string _coordinatorId;
     uint64_t _coordinatorRebootId;
-=======
+
   class ServersKnown {
    public:
     ServersKnown() = default;
@@ -316,7 +316,6 @@ class ClusterInfo final {
 
    private:
     std::unordered_map<ServerID, KnownServer> _serversKnown;
->>>>>>> feature/rebootid-notice-changes
   };
 
  public:
