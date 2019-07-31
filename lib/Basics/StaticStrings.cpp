@@ -79,6 +79,8 @@ std::string const StaticStrings::ReplicationHeaderActive(
 
 // database and collection names
 std::string const StaticStrings::SystemDatabase("_system");
+std::string const StaticStrings::AnalyzersCollection("_analyzers");
+std::string const StaticStrings::LegacyAnalyzersCollection("_iresearch_analyzers");
 
 // LogicalDataSource definition fields
 std::string const StaticStrings::DataSourceDeleted("deleted");

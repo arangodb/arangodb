@@ -78,6 +78,8 @@ class StaticStrings {
 
   // database and collection names
   static std::string const SystemDatabase;
+  static std::string const AnalyzersCollection;
+  static std::string const LegacyAnalyzersCollection;
 
   // LogicalDataSource definition fields
   static std::string const DataSourceDeleted;  // data-source deletion marker
