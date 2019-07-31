@@ -27,6 +27,7 @@
 #include <fuerte/types.h>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
