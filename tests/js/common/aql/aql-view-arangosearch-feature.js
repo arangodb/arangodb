@@ -136,7 +136,7 @@ function iResearchFeatureAqlTestSuite () {
       let analyzer = analyzers.save("MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
       assertTrue(null != analyzer);
       analyzer = undefined;
-      db._useDatabase(anotherDbName)
+      db._useDatabase(anotherDbName);
       try {
         analyzer = analyzers.analyzer(dbName + "::MyTrigram");
         fail();
