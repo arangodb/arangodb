@@ -294,6 +294,7 @@ class ClusterInfo final {
     VPackSlice _options;
     std::string _coordinatorId;
     uint64_t _coordinatorRebootId;
+  };
 
   class ServersKnown {
    public:
