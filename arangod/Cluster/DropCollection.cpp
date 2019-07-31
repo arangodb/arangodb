@@ -60,7 +60,7 @@ DropCollection::DropCollection(MaintenanceFeature& feature, ActionDescription co
   }
 }
 
-DropCollection::~DropCollection(){};
+DropCollection::~DropCollection() {}
 
 bool DropCollection::first() {
   auto const& database = _description.get(DATABASE);

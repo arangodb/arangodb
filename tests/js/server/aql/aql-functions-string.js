@@ -1480,12 +1480,18 @@ function ahuacatlStringFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
   testRtrim: function () {
-    var expected = [ '  foo',
-                      '\t\r\nabc',
-                      '\ta\rb\nc',
-                      '\r\nThis\nis\r\na\ttest'
-                    ];
+    var expected = [ '', 
+                     '', 
+                     '',
+                     '  foo',
+                     '\t\r\nabc',
+                     '\ta\rb\nc',
+                     '\r\nThis\nis\r\na\ttest'
+                   ];
     var actual = getQueryResults(`FOR t IN [
+'',
+' ',
+'   ',
 '  foo  ',
 '\t\r\nabc\n\r\t',
 '\ta\rb\nc ',
@@ -1499,11 +1505,21 @@ function ahuacatlStringFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
   testRtrimSpecial1: function () {
-    var expected = [ '  foo',
-                      '\t\r\nabc\n\r\t',
-                      '\ta\rb\nc',
-                      '\r\nThis\nis\r\na\ttest' ];
+    var expected = [ '',
+                     '',
+                     '',
+                     '',
+                     '\t',
+                     '  foo',
+                     '\t\r\nabc\n\r\t',
+                     '\ta\rb\nc',
+                     '\r\nThis\nis\r\na\ttest' ];
     var actual = getQueryResults(`FOR t IN [
+'',
+'\r',
+'\r\n',
+' \r\n',
+'\t\r\n',
 '  foo  ',
 '\t\r\nabc\n\r\t',
 '\ta\rb\nc ',
@@ -1526,6 +1542,20 @@ function ahuacatlStringFunctionsTestSuite () {
 ',,,a,b,c,d,,e,f,,',
 'foo,bar,baz\r\n'
 ] RETURN NOOPT((RTRIM(t, ',\n') ))`);
+    assertEqual(expected, actual);
+  },
+
+  testRtrimChars: function () {
+    var expected = [ '10000', '1000', '100', '10', '1', '', '' ];
+    var actual = getQueryResults(`FOR t IN [
+'10000x',
+'1000x',
+'100x',
+'10x',
+'1x',
+'x',
+''
+] RETURN NOOPT((RTRIM(t, 'x') ))`);
     assertEqual(expected, actual);
   },
 

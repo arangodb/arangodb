@@ -29,7 +29,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Utils/Events.h"
@@ -240,7 +239,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
         break;
       }
       // sleep
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     if (vocbase == nullptr) {

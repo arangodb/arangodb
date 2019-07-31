@@ -55,7 +55,7 @@ CreateDatabase::CreateDatabase(MaintenanceFeature& feature, ActionDescription co
   }
 }
 
-CreateDatabase::~CreateDatabase(){};
+CreateDatabase::~CreateDatabase() {}
 
 bool CreateDatabase::first() {
   VPackSlice users;

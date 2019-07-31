@@ -23,7 +23,6 @@
 
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "RestEngineHandler.h"
-#include "Rest/HttpRequest.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 

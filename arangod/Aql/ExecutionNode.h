@@ -24,21 +24,24 @@
 // Execution plans like the one below are made of Nodes that inherit the
 // ExecutionNode class as a base class.
 //
+// clang-format off
+//
 // Execution plan:
 //  Id   NodeType                  Est.   Comment
 //   1   SingletonNode                1   * ROOT
-//   2   EnumerateCollectionNode   6400     - FOR d IN coll   /* full collection
-//   scan */ 3   CalculationNode           6400       - LET #1 =
-//   DISTANCE(d.`lat`, d.`lon`, 0, 0)   /* simple expression */   /* collections
-//   used: d : coll */ 4   SortNode                  6400       - SORT #1 ASC 5
-//   LimitNode                    5       - LIMIT 0, 5 6   ReturnNode 5       -
-//   RETURN d
+//   2   EnumerateCollectionNode   6400     - FOR d IN coll   /* full collection scan */
+//   3   CalculationNode           6400       - LET #1 = DISTANCE(d.`lat`, d.`lon`, 0, 0)  /* simple expression */   /* collections used: d : coll */
+//   4   SortNode                  6400       - SORT #1 ASC
+//   5   LimitNode                    5       - LIMIT 0, 5
+//   6   ReturnNode                   5       - RETURN d
+//
+// clang-format on
 //
 // Even though the Singleton Node has a label saying it is the "ROOT" node it
 // is not in our definiton. Root Nodes are leaf nodes (at the bottom of the
 // list).
 //
-// To get down (direction to root) from 4 to 5 you need to call getFirst Parent
+// To get down (direction to root) from 4 to 5 you need to call getFirstParent
 // on the SortNode(4) to receive a pointer to the LimitNode(5). If you want to
 // go up from 5 to 4 (away from root) you need to call getFirstDependency at
 // the LimitNode (5) to get a pointer to the SortNode(4).

@@ -35,6 +35,7 @@
 #include "Aql/SortCondition.h"
 #include "Aql/TraversalExecutor.h"
 #include "Aql/Variable.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterTraverser.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Cluster/SmartGraphTraverser.h"

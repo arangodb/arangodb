@@ -27,7 +27,6 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/ExecContext.h"
 

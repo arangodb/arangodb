@@ -43,6 +43,7 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -249,8 +250,9 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   }
 
   // check for serverId
-  std::string const& clientId = _request->value("serverId");
+  TRI_server_id_t const clientId = StringUtils::uint64(_request->value("serverId"));
   SyncerId const syncerId = SyncerId::fromRequest(*_request);
+  std::string const clientInfo = _request->value("clientInfo");
 
   // check if a barrier id was specified in request
   TRI_voc_tid_t barrierId =
@@ -291,7 +293,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
                          if (vocbase != nullptr) {  // database drop has no vocbase
                            prepOpts(*vocbase);
                          }
-
+                         
                          _response->addPayload(marker, &opts, true);
                        });
   } else {
@@ -358,7 +360,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   }
 
   DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
-    vocbase.replicationClients().track(syncerId, clientId, filter.tickStart,
+    vocbase.replicationClients().track(syncerId, clientId, clientInfo, filter.tickStart,
                                        replutils::BatchInfo::DefaultTimeout);
   });
 }

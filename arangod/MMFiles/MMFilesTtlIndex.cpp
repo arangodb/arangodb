@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesTtlIndex.h"
+#include "Basics/FloatingPoint.h"
 #include "Basics/StaticStrings.h"
 #include "Transaction/Helpers.h"
 
@@ -45,6 +46,18 @@ MMFilesTtlIndex::MMFilesTtlIndex(
 }
 
 MMFilesTtlIndex::~MMFilesTtlIndex() {}
+
+/// @brief Test if this index matches the definition
+bool MMFilesTtlIndex::matchesDefinition(VPackSlice const& info) const {
+  // call compare method of parent first
+  if (!MMFilesSkiplistIndex::matchesDefinition(info)) {
+    return false;
+  }
+  // compare our own attribute, "expireAfter"
+  TRI_ASSERT(info.isObject());
+  double const expireAfter = info.get(StaticStrings::IndexExpireAfter).getNumber<double>();
+  return FloatingPoint<double>{expireAfter}.AlmostEquals(FloatingPoint<double>{_expireAfter});
+}
 
 void MMFilesTtlIndex::toVelocyPack(arangodb::velocypack::Builder& builder,
                                    std::underlying_type<Index::Serialize>::type flags) const {

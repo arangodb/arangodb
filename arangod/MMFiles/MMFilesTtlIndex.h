@@ -54,6 +54,8 @@ class MMFilesTtlIndex final : public MMFilesSkiplistIndex {
 
   char const* typeName() const override { return "ttl"; }
   
+  bool matchesDefinition(VPackSlice const&) const override;
+  
   void toVelocyPack(arangodb::velocypack::Builder& builder,
                     std::underlying_type<Index::Serialize>::type flags) const override;
 

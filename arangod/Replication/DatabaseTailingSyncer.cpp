@@ -31,7 +31,6 @@
 #include "Logger/Logger.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
-#include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"

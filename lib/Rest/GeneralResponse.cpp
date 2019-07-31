@@ -430,7 +430,6 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
 GeneralResponse::GeneralResponse(ResponseCode responseCode)
     : _responseCode(responseCode),
       _contentType(ContentType::UNSET),
-      _connectionType(ConnectionType::C_NONE),
+      _contentTypeRequested(ContentType::UNSET),
       _generateBody(false),
-      _allowCompression(false),
-      _contentTypeRequested(ContentType::UNSET) {}
+      _allowCompression(false) {}
