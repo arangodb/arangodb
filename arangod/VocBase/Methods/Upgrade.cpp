@@ -219,8 +219,9 @@ void methods::Upgrade::registerTasks() {
   addTask("createSystemCollectionsAndIndices",
           "creates all system collections including their indices",
           /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
-          /*database*/ DATABASE_UPGRADE, &UpgradeTasks::createSystemCollectionsAndIndices);
+          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
+          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
+          &UpgradeTasks::createSystemCollectionsAndIndices);
   addTask("addDefaultUserOther", "add default users for a new database",
           /*system*/ Flags::DATABASE_EXCEPT_SYSTEM,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,

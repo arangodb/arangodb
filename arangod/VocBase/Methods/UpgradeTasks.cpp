@@ -206,7 +206,6 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
     systemCollections.push_back(StaticStrings::UsersCollection);
   }
 
-  systemCollections.push_back(StaticStrings::UsersCollection);
   systemCollections.push_back(StaticStrings::GraphsCollection);
   systemCollections.push_back(StaticStrings::AqlFunctionsCollection);
   systemCollections.push_back(StaticStrings::QueuesCollection);
