@@ -792,6 +792,42 @@ static void JS_GetResponsibleServerClusterInfo(v8::FunctionCallbackInfo<v8::Valu
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the responsible server
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_GetResponsibleServersClusterInfo(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  ONLY_IN_CLUSTER
+  if (args.Length() != 1 || !args[0]->IsArray()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServers(<shard-ids>)");
+  }
+    
+  std::unordered_set<std::string> shardIds;
+  v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(args[0]);
+
+  uint32_t const n = array->Length();
+  for (uint32_t i = 0; i < n; ++i) {
+    shardIds.emplace(TRI_ObjectToString(isolate, array->Get(i)));
+  }
+
+  if (shardIds.empty()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServers(<shard-ids>)");
+  }
+  
+  auto result = ClusterInfo::instance()->getResponsibleServers(shardIds);
+
+  v8::Handle<v8::Object> responsible = v8::Object::New(isolate);
+  for (auto const& it : result) {
+    responsible->Set(TRI_V8_ASCII_STRING(isolate, it.first.data()), TRI_V8_STD_STRING(isolate, it.second));
+  }
+
+  TRI_V8_RETURN(responsible);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the responsible shard
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1954,6 +1990,9 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "getResponsibleServer"),
                        JS_GetResponsibleServerClusterInfo);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "getResponsibleServers"),
+                       JS_GetResponsibleServersClusterInfo);
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "getResponsibleShard"),
                        JS_GetResponsibleShardClusterInfo);
