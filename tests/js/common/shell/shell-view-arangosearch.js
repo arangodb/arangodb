@@ -191,10 +191,10 @@ function ViewSuite () {
 
       assertTrue(Array.isArray(views));
       assertEqual(views.length, expectedViews.size);
-      for (var i = 0; i < views.length) {
+      for (var i = 0; i < views.length; i++) {
         expectedViews.delete(views[i].name());
       }
-      expectEqual(0, expectedViews.size);
+      assertEqual(0, expectedViews.size);
       abc.drop();
       def.drop();
     },
