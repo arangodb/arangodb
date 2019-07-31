@@ -55,12 +55,7 @@ function getFishbowlUrl () {
 // //////////////////////////////////////////////////////////////////////////////
 
 var getFishbowlStorage = function () {
-  var c = db._collection('_fishbowl');
-  /* if (c === null) { // System Collections are now created in Upgrade.cpp only!
-    c = db._create('_fishbowl', { isSystem: true, distributeShardsLike: '_graphs' });
-  } */
-
-  return c;
+  return db._collection('_fishbowl');
 };
 
 // //////////////////////////////////////////////////////////////////////////////
