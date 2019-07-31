@@ -33,6 +33,16 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace {
+struct NodeExpansion {
+  bool doExpand;
+  std::set<ShardID> shards;
+
+  NodeExpansion() = delete;
+  explicit NodeExpansion(bool exp) : doExpand(exp), shards() {}
+};
+}  // namespace
+
 void QuerySnippet::addNode(ExecutionNode* node) {
   TRI_ASSERT(node != nullptr);
   _nodes.push_back(node);
@@ -105,11 +115,50 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
                                         VPackBuilder& infoBuilder) const {
   TRI_ASSERT(!_nodes.empty());
   TRI_ASSERT(!_expansions.empty());
-  auto it = _expansions.find(server);
-  if (it == _expansions.end()) {
-    // We do not have a snippet for this server sorry.
-    return;
+  bool needToInjectGather = false;
+  size_t numberOfShardsToPermutate = 0;
+  std::unordered_map<ExecutionNode*, NodeExpansion> localExpansions;
+  for (auto const& exp : _expansions) {
+    NodeExpansion myExp(exp.doExpand);
+    for (auto const& s : *exp.shards) {
+      auto check = shardMapping.find(s);
+      // If we find a shard here that is not in this mapping,
+      // we have 1) a problem with locking before that should have thrown
+      // 2) a problem with shardMapping lookup that should have thrown before
+      TRI_ASSERT(check != shardMapping.end());
+      if (check->second == server) {
+        myExp.shards.emplace(s);
+      } else if (exp.isSatellite && _expansions.size() > 1) {
+        // Satellite collection is used for local join.
+        // If we only have one expansion we have a snippet only
+        // based on the satellite, that needs to be only executed once
+        myExp.shards.emplace(s);
+      }
+    }
+    if (myExp.shards.empty()) {
+      // There are no shards in this snippet for this server.
+      // By definition all nodes need to have at LEAST one Shard
+      // on this server for this snippet to work.
+      // Skip it.
+      // We have not modified infoBuilder up until now.
+      return;
+    }
+    if (exp.doExpand) {
+      // All parts need to have exact same size, they need to be permutated pairwise!
+      TRI_ASSERT(numberOfShardsToPermutate == 0 ||
+                 myExp.shards.size() == numberOfShardsToPermutate);
+      // set the max loop index (note this will essentially be done only once)
+      numberOfShardsToPermutate = myExp.shards.size();
+      needToInjectGather = numberOfShardsToPermutate > 1;
+    }
+    localExpansions.emplace(exp.node, std::move(myExp));
   }
+  // If not we hit the return before!
+  TRI_ASSERT(!localExpansions.empty());
+
   // TODO toVPack all nodes for this specific server
   // We clone every Node* and maintain a list of ReportingGroups for profiler
+  if (needToInjectGather) {
+  } else {
+  }
 }
