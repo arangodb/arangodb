@@ -160,7 +160,7 @@ bool upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
 
 bool createAppsIndex(TRI_vocbase_t& vocbase) {
   return ::createIndex(vocbase,  // collection vocbase
-                       "_apps",  // collection name
+                       StaticStrings::AppsCollection,  // collection name
                        arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,  // index type
                        {"mount"},  // index fields
                        /*unique*/ true,
@@ -170,8 +170,8 @@ bool createAppsIndex(TRI_vocbase_t& vocbase) {
 bool createUsersIndex(TRI_vocbase_t& vocbase) {
   TRI_ASSERT(vocbase.isSystem());
 
-  return ::createIndex(vocbase,   // collection vocbase
-                       "_users",  // collection name
+  return ::createIndex(vocbase,                         // collection vocbase
+                       StaticStrings::UsersCollection,  // collection name
                        arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,  // index type
                        {"user"},  // index fields
                        /*unique*/ true,
@@ -179,15 +179,15 @@ bool createUsersIndex(TRI_vocbase_t& vocbase) {
 }
 
 bool createJobsIndex(TRI_vocbase_t& vocbase) {
-  ::createSystemCollection(vocbase, "_jobs");
+  ::createSystemCollection(vocbase, StaticStrings::JobsCollection);
   ::createIndex(vocbase,  // collection vocbase
-                "_jobs",  // collection name
+                StaticStrings::JobsCollection,  // collection name
                 arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,  // index type
                 {"queue", "status", "delayUntil"},
                 /*unique*/ false,
                 /*sparse*/ false);
   ::createIndex(vocbase,  // collection vocbase
-                "_jobs",  // collection name
+                StaticStrings::JobsCollection,  // collection name
                 arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,  // index type
                 {"status", "queue", "delayUntil"},
                 /*unique*/ false,
@@ -198,10 +198,13 @@ bool createJobsIndex(TRI_vocbase_t& vocbase) {
 
 bool createSystemCollections(TRI_vocbase_t& vocbase) {
   std::vector<CollectionCreationInfo> systemCollectionsToCreate;
-  std::vector<std::string> systemCollections = {"_users",        "_graphs",
-                                                "_aqlfunctions", "_queues",
-                                                "_jobs",         "_apps",
-                                                "_appbundles"};
+  std::vector<std::string> systemCollections = {StaticStrings::UsersCollection,
+                                                StaticStrings::GraphsCollection,
+                                                StaticStrings::AqlFunctionsCollection,
+                                                StaticStrings::QueuesCollection,
+                                                StaticStrings::JobsCollection,
+                                                StaticStrings::AppsCollection,
+                                                StaticStrings::AppBundlesCollection};
 
   typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> FuncCallback;
   FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
@@ -252,8 +255,8 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates '_analyzers' collection
 ////////////////////////////////////////////////////////////////////////////////
-bool UpgradeTasks::setupAnalyzersCollection(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& /*upgradeParams*/) {
+bool UpgradeTasks::setupAnalyzersCollection(TRI_vocbase_t& vocbase,
+                                            arangodb::velocypack::Slice const& /*upgradeParams*/) {
   return arangodb::methods::Collections::createSystem(vocbase, StaticStrings::AnalyzersCollection)
       .ok();
 }
@@ -287,7 +290,7 @@ bool UpgradeTasks::dropLegacyAnalyzersCollection(TRI_vocbase_t& vocbase,
   // find legacy analyzer collection
   arangodb::Result dropRes;
   auto const lookupRes = arangodb::methods::Collections::lookup(
-      vocbase, arangodb::StaticStrings::LegacyAnalyzersCollection,
+      vocbase, StaticStrings::LegacyAnalyzersCollection,
       [&dropRes](std::shared_ptr<arangodb::LogicalCollection> const& col) -> void {  // callback if found
         if (col) {
           dropRes = arangodb::methods::Collections::drop(*col, true, -1.0);  // -1.0 same as in RestCollectionHandler

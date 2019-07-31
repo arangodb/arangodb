@@ -76,10 +76,19 @@ class StaticStrings {
   static std::string const ReplicationHeaderFromPresent;
   static std::string const ReplicationHeaderActive;
 
-  // database and collection names
+  // database names
   static std::string const SystemDatabase;
+
+  // collection names
   static std::string const AnalyzersCollection;
   static std::string const LegacyAnalyzersCollection;
+  static std::string const UsersCollection;
+  static std::string const GraphsCollection;
+  static std::string const AqlFunctionsCollection;
+  static std::string const QueuesCollection;
+  static std::string const JobsCollection;
+  static std::string const AppsCollection;
+  static std::string const AppBundlesCollection;
 
   // LogicalDataSource definition fields
   static std::string const DataSourceDeleted;  // data-source deletion marker
