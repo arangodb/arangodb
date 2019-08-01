@@ -411,7 +411,7 @@ JOB_STATUS FailedLeader::status() {
 
   std::string toServerHealth = checkServerHealth(_snapshot, _to);
   if (toServerHealth == "FAILED" || toServerHealth == "UNCLEAR") {
-    finish("", _shard, false, "_to server failed");
+    finish("", _shard, false, "_to server not health");
     return FAILED;
   }
 
