@@ -2050,10 +2050,10 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
   return FEATURE_NAME;
 }
 
-/*static*/ std::string IResearchAnalyzerFeature::extractVocbaseName(
-  irs::string_ref const& name) {// analyzer name (normalized)
+/*static*/ irs::string_ref IResearchAnalyzerFeature::extractVocbaseName(
+    irs::string_ref const& name) {// analyzer name (normalized)
   auto split = splitAnalyzerName(name);
-  return split.first.empty()? "" : split.first;
+  return split.first.empty() ? irs::string_ref::EMPTY : split.first;
 }
 
 
@@ -2281,7 +2281,18 @@ void IResearchAnalyzerFeature::start() {
   if (!isEnabled()) {
     return;
   }
-
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // sanity check: we rely on this condition is true internally
+  {
+    auto sysDbFeature =
+        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>(
+            "SystemDatabase");
+    if (sysDbFeature && sysDbFeature->use()) {  // feature/db may be absent in some unit-test enviroment
+      TRI_ASSERT(sysDbFeature->use()->name() == arangodb::StaticStrings::SystemDatabase);
+    }
+  }
+#endif
   // register analyzer functions
   {
     auto* functions =

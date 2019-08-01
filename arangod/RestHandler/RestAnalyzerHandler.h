@@ -49,8 +49,7 @@ class RestAnalyzerHandler: public RestVocbaseBaseHandler {
   virtual char const* name() const override { return "RestAnalyzerHandler"; }
 
  private:
-  void createAnalyzer(
-    IResearchAnalyzerFeature& analyzers);
+  void createAnalyzer(IResearchAnalyzerFeature& analyzers);
   void getAnalyzer(
     IResearchAnalyzerFeature& analyzers, // analyzer feature
     std::string const& name // analyzer name 

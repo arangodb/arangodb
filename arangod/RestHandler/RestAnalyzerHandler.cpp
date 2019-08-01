@@ -306,8 +306,8 @@ void RestAnalyzerHandler::getAnalyzer( // get analyzer
     IResearchAnalyzerFeature::normalize(name, _vocbase, *sysVocbase) : name;
 
   // need to check if analyzer is from current database or from system database
-  auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(normalizedName);
-  if(!analyzerVocbase.empty() && analyzerVocbase != _vocbase.name() && 
+  const auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(normalizedName);
+  if (!analyzerVocbase.empty() && analyzerVocbase != _vocbase.name() && 
     analyzerVocbase != arangodb::StaticStrings::SystemDatabase) {
     std::string errorMessage("Analyzer '");
     errorMessage.append(normalizedName)
@@ -403,8 +403,6 @@ void RestAnalyzerHandler::removeAnalyzer(
     std::string const& name, // analyzer name 
     bool force
 ) {
-  TRI_ASSERT(_request); // ensured by execute()
-
   if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(name.c_str(), name.size()))) {
     generateError(arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,

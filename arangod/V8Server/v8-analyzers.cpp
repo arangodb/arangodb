@@ -444,9 +444,9 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
-  auto analyzerVocbase = arangodb::iresearch::IResearchAnalyzerFeature::extractVocbaseName(name);
-  if(!analyzerVocbase.empty() && analyzerVocbase != vocbase.name() && 
-    analyzerVocbase != arangodb::StaticStrings::SystemDatabase) {
+  const auto analyzerVocbase = arangodb::iresearch::IResearchAnalyzerFeature::extractVocbaseName(name);
+  if(!analyzerVocbase.empty() && vocbase.name() != analyzerVocbase   && 
+    arangodb::StaticStrings::SystemDatabase != analyzerVocbase) {
     std::string errorMessage("Analyzer '");
     errorMessage.append(name)
       .append("' is not accessible. Only analyzers from current database ('")

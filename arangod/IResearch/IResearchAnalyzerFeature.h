@@ -201,10 +201,10 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   );
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @param name analyzer name (normalized)
   /// @return vocbase prefix extracted from normalized analyzer name
   //////////////////////////////////////////////////////////////////////////////
-  static std::string extractVocbaseName(
-    irs::string_ref const& name); // analyzer name (normalized)
+  static irs::string_ref extractVocbaseName(irs::string_ref const& name); 
 
   void prepare() override;
 
