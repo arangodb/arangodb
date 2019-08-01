@@ -58,7 +58,7 @@ EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher, EnumerateListExec
       _currentRow{CreateInvalidInputRowHint{}},
       _rowState(ExecutionState::HASMORE),
       _inputArrayPosition(0),
-      _inputArrayLength(0){};
+      _inputArrayLength(0) {}
 
 std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRows(OutputAqlItemRow& output) {
   while (true) {

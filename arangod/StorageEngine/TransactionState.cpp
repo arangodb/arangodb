@@ -44,6 +44,7 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase,
                                    transaction::Options const& options)
     : _vocbase(vocbase),
       _id(tid),
+      _lastWrittenOperationTick(0),
       _type(AccessMode::Type::READ),
       _status(transaction::Status::CREATED),
       _arena(),

@@ -43,6 +43,7 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "Utils/UrlHelper.h"
 
 struct TRI_vocbase_t;
 
@@ -171,7 +172,8 @@ std::string const ReplicationUrl = "/_api/replication";
 
 Connection::Connection(Syncer* syncer, ReplicationApplierConfiguration const& applierConfig)
     : _endpointString{applierConfig._endpoint},
-      _localServerId{basics::StringUtils::itoa(ServerIdFeature::getId())} {
+      _localServerId{basics::StringUtils::itoa(ServerIdFeature::getId())},
+      _clientInfo{applierConfig._clientInfoString} {
   std::unique_ptr<httpclient::GeneralClientConnection> connection;
   std::unique_ptr<Endpoint> endpoint{Endpoint::clientFactory(_endpointString)};
   if (endpoint != nullptr) {
@@ -214,6 +216,8 @@ bool Connection::valid() const { return (_client != nullptr); }
 std::string const& Connection::endpoint() const { return _endpointString; }
 
 std::string const& Connection::localServerId() const { return _localServerId; }
+
+std::string const& Connection::clientInfo() const { return _clientInfo; }
 
 void Connection::setAborted(bool value) {
   if (_client) {
@@ -368,9 +372,20 @@ Result BatchInfo::start(replutils::Connection const& connection,
   id = 0;
 
   // SimpleHttpClient automatically add database prefix
-  std::string const url = ReplicationUrl + "/batch" +
-                          "?serverId=" + connection.localServerId() +
-                          "&syncerId=" + syncerId.toString();
+  std::string const url = [&]() {
+    using namespace url;
+    std::string const path{ReplicationUrl + "/batch"};
+    QueryParameters parameters;
+    parameters.add("serverId", connection.localServerId());
+    if (syncerId.value != 0) {
+      parameters.add("syncerId", syncerId.toString());
+    }
+    if (!connection.clientInfo().empty()) {
+      parameters.add("clientInfo", connection.clientInfo());
+    }
+    return Location(Path{path}, Query{parameters}, boost::none).toString();
+  }();
+
   VPackBuilder b;
   {
     VPackObjectBuilder guard(&b, true);
@@ -436,9 +451,19 @@ Result BatchInfo::extend(replutils::Connection const& connection,
     return Result();
   }
 
-  std::string const url = ReplicationUrl + "/batch/" + basics::StringUtils::itoa(id) +
-                          "?serverId=" + connection.localServerId() +
-                          "&syncerId=" + syncerId.toString();
+  std::string const url = [&]() {
+    using namespace url;
+    std::string const path{ReplicationUrl + "/batch/" + basics::StringUtils::itoa(id)};
+    QueryParameters parameters;
+    parameters.add("serverId", connection.localServerId());
+    if (syncerId.value != 0) {
+      parameters.add("syncerId", syncerId.toString());
+    }
+    if (!connection.clientInfo().empty()) {
+      parameters.add("clientInfo", connection.clientInfo());
+    }
+    return Location(Path{path}, Query{parameters}, boost::none).toString();
+  }();
   std::string const body = "{\"ttl\":" + basics::StringUtils::itoa(ttl) + "}";
   progress.set("sending batch extend command to url " + url);
 
@@ -470,9 +495,19 @@ Result BatchInfo::finish(replutils::Connection const& connection,
   }
 
   try {
-    std::string const url = ReplicationUrl + "/batch/" + basics::StringUtils::itoa(id) +
-                            "?serverId=" + connection.localServerId() +
-                            "&syncerId=" + syncerId.toString();
+    std::string const url = [&]() {
+      using namespace url;
+      std::string const path{ReplicationUrl + "/batch/"  + basics::StringUtils::itoa(id)};
+      QueryParameters parameters;
+      parameters.add("serverId", connection.localServerId());
+      if (syncerId.value != 0) {
+        parameters.add("syncerId", syncerId.toString());
+      }
+      if (!connection.clientInfo().empty()) {
+        parameters.add("clientInfo", connection.clientInfo());
+      }
+      return Location(Path{path}, Query{parameters}, boost::none).toString();
+    }();
     progress.set("sending batch finish command to url " + url);
 
     // send request

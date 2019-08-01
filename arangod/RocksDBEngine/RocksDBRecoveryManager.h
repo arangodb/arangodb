@@ -28,6 +28,7 @@
 #include <rocksdb/types.h>
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
+#include "StorageEngine/StorageEngine.h"
 
 namespace rocksdb {
 
@@ -46,20 +47,25 @@ class RocksDBRecoveryManager final : public application_features::ApplicationFea
   void start() override;
 
   void runRecovery();
-  bool inRecovery() const {
-    return _inRecovery.load(std::memory_order_acquire);
+
+  RecoveryState recoveryState() const noexcept {
+    return _recoveryState.load(std::memory_order_acquire);
+  }
+
+  /// @brief current recovery tick
+  rocksdb::SequenceNumber recoveryTick() const noexcept {
+    return _tick;
   }
 
  private:
   Result parseRocksWAL();
 
  protected:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief rocksdb instance
-  //////////////////////////////////////////////////////////////////////////////
   rocksdb::TransactionDB* _db;
 
-  std::atomic<bool> _inRecovery;
+  rocksdb::SequenceNumber _tick;
+  std::atomic<RecoveryState> _recoveryState;
 };
 
 }  // namespace arangodb
