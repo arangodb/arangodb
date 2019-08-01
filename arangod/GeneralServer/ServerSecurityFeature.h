@@ -17,30 +17,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_TEMP_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_TEMP_FEATURE_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_SERVER_SECURITY_FEATURE_H
+#define ARANGODB_APPLICATION_FEATURES_SERVER_SECURITY_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
 
-class TempFeature final : public application_features::ApplicationFeature {
+class ServerSecurityFeature final : public application_features::ApplicationFeature {
  public:
-  TempFeature(application_features::ApplicationServer& server, std::string const& appname);
+  explicit ServerSecurityFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
-  void start() override final;
-  
-  std::string path() const { return _path; }
+
+  bool isFoxxApiDisabled() const;
+  bool isFoxxStoreDisabled() const;
 
  private:
-  std::string _path;
-  std::string _appname;
+  bool _enableFoxxApi;
+  bool _enableFoxxStore;
 };
 
 }  // namespace arangodb

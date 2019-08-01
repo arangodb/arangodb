@@ -37,6 +37,7 @@
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "Utils/ManagedDirectory.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -217,8 +218,10 @@ ImportHelper::~ImportHelper() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ImportHelper::importDelimited(std::string const& collectionName,
-                                   std::string const& fileName,
+                                   std::string const& pathName,
                                    DelimitedImportType typeImport) {
+  ManagedDirectory directory(TRI_Dirname(pathName), false, false, true);
+  std::string fileName(TRI_Basename(pathName.c_str()));
   _collectionName = collectionName;
   _firstLine = "";
   _outputBuffer.clear();
@@ -234,19 +237,20 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   }
 
   // read and convert
-  int fd;
+  // read and convert
   int64_t totalLength;
+  std::unique_ptr<arangodb::ManagedDirectory::File> fd;
 
   if (fileName == "-") {
     // we don't have a filesize
     totalLength = 0;
-    fd = STDIN_FILENO;
+    fd = directory.readableFile(STDIN_FILENO);
   } else {
     // read filesize
-    totalLength = TRI_SizeFile(fileName.c_str());
-    fd = TRI_TRACKED_OPEN_FILE(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    totalLength = TRI_SizeFile(pathName.c_str());
+    fd = directory.readableFile(TRI_Basename(pathName.c_str()), 0);
 
-    if (fd < 0) {
+    if (!fd) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
       return false;
     }
@@ -261,9 +265,6 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
                                            &separatorLength, true);
 
   if (separator == nullptr) {
-    if (fd != STDIN_FILENO) {
-      TRI_TRACKED_CLOSE_FILE(fd);
-    }
     _errorMessages.push_back("out of memory");
     return false;
   }
@@ -289,14 +290,11 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   char buffer[32768];
 
   while (!_hasError) {
-    ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
+    ssize_t n = fd->read(buffer, sizeof(buffer));
 
     if (n < 0) {
       TRI_Free(separator);
       TRI_DestroyCsvParser(&parser);
-      if (fd != STDIN_FILENO) {
-        TRI_TRACKED_CLOSE_FILE(fd);
-      }
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
       return false;
     } else if (n == 0) {
@@ -309,7 +307,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
     }
 
     totalRead += static_cast<int64_t>(n);
-    reportProgress(totalLength, totalRead, nextProgress);
+    reportProgress(totalLength, fd->offset(), nextProgress);
 
     TRI_ParseCsvString(&parser, buffer, n);
   }
@@ -321,19 +319,17 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   TRI_DestroyCsvParser(&parser);
   TRI_Free(separator);
 
-  if (fd != STDIN_FILENO) {
-    TRI_TRACKED_CLOSE_FILE(fd);
-  }
-
   waitForSenders();
-  reportProgress(totalLength, totalRead, nextProgress);
+  reportProgress(totalLength, fd->offset(), nextProgress);
 
   _outputBuffer.clear();
   return !_hasError;
 }
 
 bool ImportHelper::importJson(std::string const& collectionName,
-                              std::string const& fileName, bool assumeLinewise) {
+                              std::string const& pathName, bool assumeLinewise) {
+  ManagedDirectory directory(TRI_Dirname(pathName), false, false, true);
+  std::string fileName(TRI_Basename(pathName.c_str()));
   _collectionName = collectionName;
   _firstLine = "";
   _outputBuffer.clear();
@@ -348,19 +344,19 @@ bool ImportHelper::importJson(std::string const& collectionName,
   }
 
   // read and convert
-  int fd;
   int64_t totalLength;
+  std::unique_ptr<arangodb::ManagedDirectory::File> fd;
 
   if (fileName == "-") {
     // we don't have a filesize
     totalLength = 0;
-    fd = STDIN_FILENO;
+    fd = directory.readableFile(STDIN_FILENO);
   } else {
     // read filesize
-    totalLength = TRI_SizeFile(fileName.c_str());
-    fd = TRI_TRACKED_OPEN_FILE(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    totalLength = TRI_SizeFile(pathName.c_str());
+    fd = directory.readableFile(TRI_Basename(fileName.c_str()), 0);
 
-    if (fd < 0) {
+    if (!fd) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
       return false;
     }
@@ -385,20 +381,14 @@ bool ImportHelper::importJson(std::string const& collectionName,
     if (_outputBuffer.reserve(BUFFER_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
       _errorMessages.push_back(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
 
-      if (fd != STDIN_FILENO) {
-        TRI_TRACKED_CLOSE_FILE(fd);
-      }
       return false;
     }
 
     // read directly into string buffer
-    ssize_t n = TRI_READ(fd, _outputBuffer.end(), BUFFER_SIZE - 1);
+    ssize_t n = fd->read(_outputBuffer.end(), BUFFER_SIZE - 1);
 
     if (n < 0) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
-      if (fd != STDIN_FILENO) {
-        TRI_TRACKED_CLOSE_FILE(fd);
-      }
       return false;
     } else if (n == 0) {
       // we're done
@@ -424,13 +414,10 @@ bool ImportHelper::importJson(std::string const& collectionName,
     }
 
     totalRead += static_cast<int64_t>(n);
-    reportProgress(totalLength, totalRead, nextProgress);
+    reportProgress(totalLength, fd->offset(), nextProgress);
 
     if (_outputBuffer.length() > _maxUploadSize) {
       if (isObject) {
-        if (fd != STDIN_FILENO) {
-          TRI_TRACKED_CLOSE_FILE(fd);
-        }
         _errorMessages.push_back(
             "import file is too big. please increase the value of --batch-size "
             "(currently " +
@@ -454,12 +441,8 @@ bool ImportHelper::importJson(std::string const& collectionName,
     sendJsonBuffer(_outputBuffer.c_str(), _outputBuffer.length(), isObject);
   }
 
-  if (fd != STDIN_FILENO) {
-    TRI_TRACKED_CLOSE_FILE(fd);
-  }
-
   waitForSenders();
-  reportProgress(totalLength, totalRead, nextProgress);
+  reportProgress(totalLength, fd->offset(), nextProgress);
 
   MUTEX_LOCKER(guard, _stats._mutex);
   // this is an approximation only. _numberLines is more meaningful for CSV
@@ -858,7 +841,7 @@ void ImportHelper::sendCsvBuffer() {
   SenderThread* t = findIdleSender();
   if (t != nullptr) {
     uint64_t tmp_length = _outputBuffer.length();
-    t->sendData(url, &_outputBuffer);
+    t->sendData(url, &_outputBuffer, _rowOffset +1, _rowsRead);
     addPeriodByteCount(tmp_length + url.length());
   }
 

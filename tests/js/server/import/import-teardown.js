@@ -33,11 +33,14 @@
 
   db._drop("UnitTestsImportCsvSkip");
   db._drop("UnitTestsImportJson1");
+  db._drop("UnitTestsImportJson1Gz");
   db._drop("UnitTestsImportJson2");
   db._drop("UnitTestsImportJson3");
   db._drop("UnitTestsImportJson4");
+  db._drop("UnitTestsImportJson4Gz");
   db._drop("UnitTestsImportJson5");
   db._drop("UnitTestsImportCsv1");
+  db._drop("UnitTestsImportCsv1Gz");
   db._drop("UnitTestsImportCsv2");
   db._drop("UnitTestsImportCsv3");
   db._drop("UnitTestsImportCsv4");
@@ -46,9 +49,11 @@
   db._drop("UnitTestsImportCsvNoConvert");
   db._drop("UnitTestsImportCsvNoEol");
   db._drop("UnitTestsImportTsv1");
+  db._drop("UnitTestsImportTsv1Gz");
   db._drop("UnitTestsImportTsv2");
   db._drop("UnitTestsImportVertex");
   db._drop("UnitTestsImportEdge");
+  db._drop("UnitTestsImportEdgeGz");
   db._drop("UnitTestsImportIgnore");
   db._drop("UnitTestsImportUniqueConstraints");
   try {
@@ -59,4 +64,3 @@
 return {
   status: true
 };
-

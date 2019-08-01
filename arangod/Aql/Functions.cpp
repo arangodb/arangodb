@@ -2852,7 +2852,7 @@ AqlValue Functions::Right(arangodb::aql::Query*, transaction::Methods* trx,
 }
 
 namespace {
-void ltrimInternal(uint32_t& startOffset, uint32_t& endOffset, UnicodeString& unicodeStr,
+void ltrimInternal(int32_t& startOffset, int32_t& endOffset, UnicodeString& unicodeStr,
                    uint32_t numWhitespaces, UChar32* spaceChars) {
   for (; startOffset < endOffset; startOffset = unicodeStr.moveIndex32(startOffset, 1)) {
     bool found = false;
@@ -2869,22 +2869,26 @@ void ltrimInternal(uint32_t& startOffset, uint32_t& endOffset, UnicodeString& un
     }
   }  // for
 }
-void rtrimInternal(uint32_t& startOffset, uint32_t& endOffset, UnicodeString& unicodeStr,
+
+void rtrimInternal(int32_t& startOffset, int32_t& endOffset, UnicodeString& unicodeStr,
                    uint32_t numWhitespaces, UChar32* spaceChars) {
-  for (uint32_t codeUnitPos = unicodeStr.moveIndex32(unicodeStr.length(), -1);
-       startOffset < codeUnitPos;
-       codeUnitPos = unicodeStr.moveIndex32(codeUnitPos, -1)) {
+  if (unicodeStr.length() == 0) {
+    return;
+  }
+  for (int32_t codePos = unicodeStr.moveIndex32(endOffset, -1); 
+       startOffset <= codePos; 
+       codePos = unicodeStr.moveIndex32(codePos, -1)) {
     bool found = false;
 
     for (uint32_t pos = 0; pos < numWhitespaces; pos++) {
-      if (unicodeStr.char32At(codeUnitPos) == spaceChars[pos]) {
+      if (unicodeStr.char32At(codePos) == spaceChars[pos]) {
         found = true;
+        --endOffset;
         break;
       }
     }
 
-    endOffset = unicodeStr.moveIndex32(codeUnitPos, 1);
-    if (!found) {
+    if (!found || codePos == 0) {
       break;
     }
   }  // for
@@ -2932,7 +2936,7 @@ AqlValue Functions::Trim(arangodb::aql::Query* query, transaction::Methods* trx,
     return AqlValue(AqlValueHintNull());
   }
 
-  uint32_t startOffset = 0, endOffset = unicodeStr.length();
+  int32_t startOffset = 0, endOffset = unicodeStr.length();
 
   if (howToTrim <= 1) {
     ltrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
@@ -2977,7 +2981,7 @@ AqlValue Functions::LTrim(arangodb::aql::Query* query, transaction::Methods* trx
     return AqlValue(AqlValueHintNull());
   }
 
-  uint32_t startOffset = 0, endOffset = unicodeStr.length();
+  int32_t startOffset = 0, endOffset = unicodeStr.length();
 
   ltrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
 
@@ -3016,7 +3020,7 @@ AqlValue Functions::RTrim(arangodb::aql::Query* query, transaction::Methods* trx
     return AqlValue(AqlValueHintNull());
   }
 
-  uint32_t startOffset = 0, endOffset = unicodeStr.length();
+  int32_t startOffset = 0, endOffset = unicodeStr.length();
 
   rtrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
 
