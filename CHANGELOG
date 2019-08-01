@@ -1,6 +1,8 @@
 v3.5.0-rc.6 (2019-07-29)
 ------------------------
 
+* Upgraded arangodb starter version to 0.14.11.
+
 * Fixed issue #9459: Optimization rule remove-collect-variables does not KEEP all necessary data.
 
 * Added gzip and encryption options to arangoimport and arangoexport.
