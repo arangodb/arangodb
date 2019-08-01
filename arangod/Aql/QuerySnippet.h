@@ -32,7 +32,9 @@
 
 namespace arangodb {
 namespace aql {
+
 class ExecutionNode;
+class GatherNode;
 
 class QuerySnippet {
  private:
@@ -51,10 +53,14 @@ class QuerySnippet {
   };
 
  public:
-  QuerySnippet(size_t idOfSinkNode)
-      : _idOfSinkNode(idOfSinkNode),
+  QuerySnippet(GatherNode const* sinkNode, size_t idOfSinkRemoteNode)
+      : _sinkNode(sinkNode),
+        _idOfSinkRemoteNode(idOfSinkRemoteNode),
         _madeResponsibleForShutdown(false),
-        _inputSnippet(0) {}
+        _inputSnippet(0) {
+    TRI_ASSERT(_sinkNode != nullptr);
+    TRI_ASSERT(_idOfSinkRemoteNode != 0);
+  }
 
   void addNode(ExecutionNode* node);
 
@@ -65,7 +71,9 @@ class QuerySnippet {
   void useQueryIdAsInput(QueryId inputSnippet) { _inputSnippet = inputSnippet; }
 
  private:
-  size_t const _idOfSinkNode;
+  GatherNode const* _sinkNode;
+
+  size_t const _idOfSinkRemoteNode;
 
   bool _madeResponsibleForShutdown;
 

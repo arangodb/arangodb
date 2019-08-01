@@ -82,8 +82,9 @@ void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node) {
 }
 
 // Open a new snippet, which provides data for the given sink node (for now only RemoteNode allowed)
-void EngineInfoContainerDBServerServerBased::openSnippet(size_t idOfSinkNode) {
-  _snippetStack.emplace(std::make_shared<QuerySnippet>(idOfSinkNode));
+void EngineInfoContainerDBServerServerBased::openSnippet(GatherNode const* sinkGatherNode,
+                                                         size_t sinkRemoteId) {
+  _snippetStack.emplace(std::make_shared<QuerySnippet>(sinkGatherNode, sinkRemoteId));
 }
 
 // Closes the given snippet and connects it

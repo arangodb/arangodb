@@ -106,11 +106,30 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
   TRI_ASSERT(!_expansions.empty());
   size_t numberOfShardsToPermutate = 0;
   // The Key is required to build up the queryId mapping later
-  infoBuilder.add(VPackValue(arangodb::basics::StringUtils::itoa(_idOfSinkNode) + ":" + server));
+  infoBuilder.add(VPackValue(
+      arangodb::basics::StringUtils::itoa(_idOfSinkRemoteNode) + ":" + server));
 
   std::unordered_map<ExecutionNode*, std::set<ShardID>> localExpansions;
   for (auto const& exp : _expansions) {
     std::set<ShardID> myExp;
+    if (exp.node->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
+      // Special case, VIEWs can serve more than 1 shard per Node.
+      // We need to inject them all at once.
+      auto* viewNode = ExecutionNode::castTo<iresearch::IResearchViewNode*>(exp.node);
+      auto& viewShardList = viewNode->shards();
+      viewShardList.clear();
+      for (auto const& s : *exp.shards) {
+        auto check = shardMapping.find(s);
+        // If we find a shard here that is not in this mapping,
+        // we have 1) a problem with locking before that should have thrown
+        // 2) a problem with shardMapping lookup that should have thrown before
+        TRI_ASSERT(check != shardMapping.end());
+        if (check->second == server) {
+          viewShardList.emplace_back(s);
+        }
+      }
+      continue;
+    }
     for (auto const& s : *exp.shards) {
       auto check = shardMapping.find(s);
       // If we find a shard here that is not in this mapping,
@@ -134,47 +153,39 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
       // We have not modified infoBuilder up until now.
       return;
     }
+    // For all other Nodes we can inject a single shard at a time.
+    // Always use the list of nodes we maintain to hold the first
+    // of all shards.
+    // We later use a cone mechanism to inject other shards of permutation
+    auto collectionAccessingNode =
+        ExecutionNode::castTo<CollectionAccessingNode*>(exp.node);
+    collectionAccessingNode->setUsedShard(*myExp.begin());
     if (exp.doExpand) {
       // All parts need to have exact same size, they need to be permutated pairwise!
       TRI_ASSERT(numberOfShardsToPermutate == 0 || myExp.size() == numberOfShardsToPermutate);
       // set the max loop index (note this will essentially be done only once)
       numberOfShardsToPermutate = myExp.size();
-      if (numberOfShardsToPermutate == 1) {
-        // Special case, we do not need to expand.
-        // However keep track that we found one and cannot have
-        // a query with a collection requiring real permutation.
-        // We only have these other types that can exactly one shard at a time
-        auto collectionAccessingNode =
-            ExecutionNode::castTo<CollectionAccessingNode*>(exp.node);
-        // so let it inject this shard!
-        TRI_ASSERT(myExp.size() == 1);
-        collectionAccessingNode->setUsedShard(*myExp.begin());
-      } else {
+      if (numberOfShardsToPermutate > 1) {
+        // Only in this case we really need to do an expansion
+        // Otherwise we get away with only using the main stream for
+        // this server
+        // NOTE: This might differ between servers.
+        // One server might require an expansion (many shards) while another does not (only one shard).
         localExpansions.emplace(exp.node, std::move(myExp));
       }
     } else {
-      if (exp.node->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
-        // TODO implement shard injection on views
-      } else {
-        // We only have these other types that can exactly one shard at a time
-        auto collectionAccessingNode =
-            ExecutionNode::castTo<CollectionAccessingNode*>(exp.node);
-        // so let it inject this shard!
-        TRI_ASSERT(myExp.size() == 1);
-        collectionAccessingNode->setUsedShard(*myExp.begin());
-      }
+      TRI_ASSERT(myExp.size() == 1);
     }
   }
   // TODO toVPack all nodes for this specific server
   // We clone every Node* and maintain a list of ReportingGroups for profiler
   ExecutionNode* lastNode = _nodes.back();
+  bool lastIsRemote = lastNode->getType() == ExecutionNode::REMOTE;
   // Query can only ed with a REMOTE or SINGLETON
-  TRI_ASSERT(lastNode->getType() == ExecutionNode::REMOTE ||
-             lastNode->getType() == ExecutionNode::SINGLETON);
+  TRI_ASSERT(lastIsRemote || lastNode->getType() == ExecutionNode::SINGLETON);
   // Singleton => noDependency
   TRI_ASSERT(lastNode->getType() != ExecutionNode::SINGLETON || !lastNode->hasDependency());
-
-  if (lastNode->getType() == ExecutionNode::REMOTE) {
+  if (lastIsRemote) {
     auto rem = ExecutionNode::castTo<RemoteNode*>(lastNode);
     if (!_madeResponsibleForShutdown) {
       // Enough to do this step once
@@ -185,6 +196,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
       rem->isResponsibleForInitializeCursor(true);
       // Cut off all dependencies here, they are done implicitly
       rem->removeDependencies();
+      _madeResponsibleForShutdown = true;
     } else {
       rem->isResponsibleForInitializeCursor(false);
     }
@@ -194,18 +206,62 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
 
   if (!localExpansions.empty()) {
     // We have Expansions to permutate
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    // TODO iterate over all localExpansions
-    // Inject the shard for this server into the nodes.
-    /*
-    for (auto const& exp : localExpansions) {
+
+    // Create an internal GatherNode, that will connect to all execution
+    // steams of the query
+    auto plan = lastNode->plan();
+    // Clone the sink node, we do not need dependencies (second bool)
+    // And we do not need variables
+    GatherNode* internalGather =
+        ExecutionNode::castTo<GatherNode*>(_sinkNode->clone(plan, false, false));
+    ScatterNode* internalScatter = nullptr;
+    if (lastIsRemote) {
+      // Not supported yet
+      // TODO Add a scatter node between the top 2 nodes.
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    */
+    // We do not need to copy the first stream, we can use the one we have.
+    // We only need copies for the other streams.
+    internalGather->addDependency(_nodes.front());
+
+    // NOTE: We will copy over the entire snippet stream here.
+    // We will inject the permuted shards on the way.
+    // Also note: the local plan will take memory responsibility
+    // of the ExecutionNodes created during this procedure.
+    for (size_t i = 1; i < numberOfShardsToPermutate; ++i) {
+      ExecutionNode* previous = nullptr;
+      for (auto enIt = _nodes.rbegin(), end = _nodes.rend(); enIt != end; ++enIt) {
+        ExecutionNode* current = *enIt;
+        if (lastIsRemote && current == lastNode) {
+          // Do never clone the remote, link following node
+          // to Scatter instead
+          TRI_ASSERT(internalScatter != nullptr);
+          previous = internalScatter;
+          continue;
+        }
+        ExecutionNode* clone = current->clone(plan, false, false);
+        auto permuter = localExpansions.find(current);
+        if (permuter != localExpansions.end()) {
+          auto collectionAccessingNode =
+              ExecutionNode::castTo<CollectionAccessingNode*>(clone);
+          // Get the `i` th shard
+          collectionAccessingNode->setUsedShard(*std::next(permuter->second.begin(), i));
+        }
+        if (previous != nullptr) {
+          clone->addDependency(previous);
+        }
+        previous = clone;
+      }
+      TRI_ASSERT(previous != nullptr);
+      // Previous is now the last node, where our internal GATHER needs to be connected to
+      internalGather->addDependency(previous);
+    }
+
+    const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
+    internalGather->toVelocyPack(infoBuilder, flags, false);
+    // No need to clean up
   } else {
     const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
     _nodes.front()->toVelocyPack(infoBuilder, flags, false);
   }
-  // If we end up here we have send one that is responsible
-  // to Shutdown the query.
-  _madeResponsibleForShutdown = true;
 }

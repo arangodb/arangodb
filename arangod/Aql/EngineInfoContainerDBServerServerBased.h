@@ -45,6 +45,7 @@ class Builder;
 namespace aql {
 
 class ExecutionNode;
+class GatherNode;
 class GraphNode;
 class Query;
 class QuerySnippet;
@@ -87,7 +88,7 @@ class EngineInfoContainerDBServerServerBased {
 
   // Open a new snippet, this snippt will be used to produce data
   // for the given sinkNode (RemoteNode only for now)
-  void openSnippet(size_t idOfSinkNode);
+  void openSnippet(GatherNode const* sinkGatherNode, size_t idOfSinkNode);
 
   // Closes the given snippet and let it use
   // the given queryid of the coordinator as data provider.

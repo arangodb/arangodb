@@ -224,14 +224,16 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
         // We have to prepare the options before we build the block
         ExecutionNode::castTo<GraphNode*>(en)->prepareOptions();
       }
+      if (!arangodb::ServerState::instance()->isDBServer()) {
+        // do we need to adjust the root node?
+        auto const nodeType = en->getType();
 
-      // do we need to adjust the root node?
-      auto const nodeType = en->getType();
-
-      if (nodeType == ExecutionNode::DISTRIBUTE ||
-          nodeType == ExecutionNode::SCATTER || nodeType == ExecutionNode::GATHER) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL, "logic error, got cluster node in local query");
+        if (nodeType == ExecutionNode::DISTRIBUTE ||
+            nodeType == ExecutionNode::SCATTER || nodeType == ExecutionNode::GATHER) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL,
+              "logic error, got cluster node in local query");
+        }
       }
 
       block = engine.addBlock(en->createBlock(engine, cache));
@@ -474,6 +476,11 @@ struct DistributedQueryInstanciatorHund final : public WalkerWorker<ExecutionNod
   bool const _pushToSingleServer;
   QueryId _lastClosed;
   Query* _query;
+  // This is a handle to the last gather node that we see while traversing the
+  // plan The guarantee is that we only have the combination `Remote <- Gather
+  // <- before` Therefore we will always assert that this is NULLPTR with the
+  // only exception of this case.
+  GatherNode const* _lastGatherNode;
 
  public:
   explicit DistributedQueryInstanciatorHund(Query* query, bool pushToSingleServer)
@@ -481,7 +488,8 @@ struct DistributedQueryInstanciatorHund final : public WalkerWorker<ExecutionNod
         _isCoordinator(true),
         _pushToSingleServer(pushToSingleServer),
         _lastClosed(0),
-        _query(query) {
+        _query(query),
+        _lastGatherNode(nullptr) {
     TRI_ASSERT(_query);
   }
 
@@ -494,10 +502,15 @@ struct DistributedQueryInstanciatorHund final : public WalkerWorker<ExecutionNod
       _coordinatorParts.addNode(en);
 
       switch (nodeType) {
+        case ExecutionNode::GATHER:
+          _lastGatherNode = ExecutionNode::castTo<GatherNode const*>(en);
+          break;
         case ExecutionNode::REMOTE:
           // Flip over to DBServer
           _isCoordinator = false;
-          _dbserverParts.openSnippet(en->id());
+          TRI_ASSERT(_lastGatherNode != nullptr);
+          _dbserverParts.openSnippet(_lastGatherNode, en->id());
+          _lastGatherNode = nullptr;
           break;
         case ExecutionNode::TRAVERSAL:
         case ExecutionNode::SHORTEST_PATH:
@@ -510,6 +523,8 @@ struct DistributedQueryInstanciatorHund final : public WalkerWorker<ExecutionNod
           // Do nothing
           break;
       }
+      // lastGatherNode <=> nodeType is gather
+      TRI_ASSERT((_lastGatherNode != nullptr) == (nodeType == ExecutionNode::GATHER));
     } else {
       // on dbserver
       _dbserverParts.addNode(en);
