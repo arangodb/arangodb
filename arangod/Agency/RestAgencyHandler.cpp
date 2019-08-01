@@ -31,7 +31,6 @@
 #include "Agency/Agent.h"
 #include "Basics/StaticStrings.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"

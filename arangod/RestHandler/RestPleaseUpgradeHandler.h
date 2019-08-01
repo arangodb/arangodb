@@ -35,7 +35,7 @@ class RestPleaseUpgradeHandler : public rest::RestHandler {
   char const* name() const override final { return "RestPleaseUpgradeHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
-  void handleError(const basics::Exception&) override;
+  void handleError(basics::Exception const&) override {}
 };
 }  // namespace arangodb
 

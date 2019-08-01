@@ -77,6 +77,10 @@ void GeneralResponseMock::addPayload(
            ;
 }
 
+void GeneralResponseMock::addRawPayload(arangodb::velocypack::StringRef payload) {
+  TRI_ASSERT(false);
+}
+
 void GeneralResponseMock::reset(arangodb::ResponseCode code) {
   _headers.clear();
   _payload.clear();

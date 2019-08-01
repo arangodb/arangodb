@@ -792,6 +792,42 @@ static void JS_GetResponsibleServerClusterInfo(v8::FunctionCallbackInfo<v8::Valu
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the responsible server
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_GetResponsibleServersClusterInfo(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  ONLY_IN_CLUSTER
+  if (args.Length() != 1 || !args[0]->IsArray()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServers(<shard-ids>)");
+  }
+    
+  std::unordered_set<std::string> shardIds;
+  v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(args[0]);
+
+  uint32_t const n = array->Length();
+  for (uint32_t i = 0; i < n; ++i) {
+    shardIds.emplace(TRI_ObjectToString(isolate, array->Get(i)));
+  }
+
+  if (shardIds.empty()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServers(<shard-ids>)");
+  }
+  
+  auto result = ClusterInfo::instance()->getResponsibleServers(shardIds);
+
+  v8::Handle<v8::Object> responsible = v8::Object::New(isolate);
+  for (auto const& it : result) {
+    responsible->Set(TRI_V8_ASCII_STRING(isolate, it.first.data()), TRI_V8_STD_STRING(isolate, it.second));
+  }
+
+  TRI_V8_RETURN(responsible);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the responsible shard
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1292,7 +1328,7 @@ static void PrepareClusterCommRequest(v8::FunctionCallbackInfo<v8::Value> const&
   if (args[0]->IsString()) {
     TRI_Utf8ValueNFC UTF8(isolate, args[0]);
     std::string methstring = *UTF8;
-    reqType = arangodb::HttpRequest::translateMethod(methstring);
+    reqType = arangodb::GeneralRequest::translateMethod(methstring);
     if (reqType == arangodb::rest::RequestType::ILLEGAL) {
       reqType = arangodb::rest::RequestType::GET;
     }
@@ -1477,30 +1513,24 @@ static void Return_PrepareClusterCommResultForJS(v8::FunctionCallbackInfo<v8::Va
              TRI_V8_ASCII_STRING(isolate,
                                  "required backend was not available"));
     } else if (res.status == CL_COMM_RECEIVED) {  // Everything is OK
-      // FIXME HANDLE VST
-      auto httpRequest = std::dynamic_pointer_cast<HttpRequest>(res.answer);
-      if (httpRequest == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "invalid request type");
-      }
-
       // The headers:
       v8::Handle<v8::Object> h = v8::Object::New(isolate);
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING(isolate, "RECEIVED"));
       TRI_ASSERT(res.answer != nullptr);
       std::unordered_map<std::string, std::string> headers = res.answer->headers();
-      headers["content-length"] = StringUtils::itoa(httpRequest->contentLength());
+      headers[StaticStrings::ContentLength] = StringUtils::itoa(res.answer->contentLength());
       for (auto& it : headers) {
         h->Set(TRI_V8_STD_STRING(isolate, it.first), TRI_V8_STD_STRING(isolate, it.second));
       }
       r->Set(TRI_V8_ASCII_STRING(isolate, "headers"), h);
 
       // The body:
-      std::string const& body = httpRequest->body();
+      // FIXME HANDLE VST
+      VPackStringRef body = res.answer->rawPayload();
       if (!body.empty()) {
-        r->Set(TRI_V8_ASCII_STRING(isolate, "body"), TRI_V8_STD_STRING(isolate, body));
-        V8Buffer* buffer = V8Buffer::New(isolate, body.c_str(), body.length());
+        r->Set(TRI_V8_ASCII_STRING(isolate, "body"), TRI_V8_ASCII_PAIR_STRING(isolate, body.data(), body.size()));
+        V8Buffer* buffer = V8Buffer::New(isolate, body.data(), body.size());
         v8::Local<v8::Object> bufferObject =
             v8::Local<v8::Object>::New(isolate, buffer->_handle);
         r->Set(TRI_V8_ASCII_STRING(isolate, "rawBody"), bufferObject);
@@ -1960,6 +1990,9 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "getResponsibleServer"),
                        JS_GetResponsibleServerClusterInfo);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "getResponsibleServers"),
+                       JS_GetResponsibleServersClusterInfo);
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "getResponsibleShard"),
                        JS_GetResponsibleShardClusterInfo);

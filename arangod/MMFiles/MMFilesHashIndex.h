@@ -304,12 +304,6 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   int removeMultiElement(transaction::Methods*, MMFilesHashIndexElement*, OperationMode mode);
 
-  bool accessFitsIndex(arangodb::aql::AstNode const* access,
-                       arangodb::aql::AstNode const* other,
-                       arangodb::aql::Variable const* reference,
-                       std::unordered_set<size_t>& found) const;
-
-  /// @brief given an element generates a hash integer
  private:
   /// @brief the actual hash index (unique type)
   typedef arangodb::basics::AssocUnique<arangodb::velocypack::Slice, MMFilesHashIndexElement*, MMFilesUniqueHashIndexHelper> TRI_HashArray_t;

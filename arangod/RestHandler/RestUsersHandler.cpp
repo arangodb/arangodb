@@ -23,7 +23,6 @@
 #include "RestUsersHandler.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionNameResolver.h"

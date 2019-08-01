@@ -279,10 +279,10 @@ struct ClusterCommResult {
     auto const& headers = response->headers();
     auto errorCodes = headers.find(StaticStrings::ErrorCodes);
     if (errorCodes != headers.end()) {
-      request->setHeader(StaticStrings::ErrorCodes, errorCodes->second);
+      request->setHeaderV2(StaticStrings::ErrorCodes, errorCodes->second);
     }
-    request->setHeader(StaticStrings::ResponseCode,
-                       GeneralResponse::responseString(answer_code));
+    request->setHeaderV2(StaticStrings::ResponseCode,
+                         GeneralResponse::responseString(answer_code));
     answer.reset(request);
     TRI_ASSERT(response != nullptr);
     result = std::make_shared<httpclient::SimpleHttpCommunicatorResult>(
@@ -487,6 +487,7 @@ class ClusterComm {
 
   void startBackgroundThreads();
   void stopBackgroundThreads();
+  void deleteBackgroundThreads();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief submit an HTTP request to a shard asynchronously.
@@ -688,7 +689,6 @@ class ClusterCommThread : public Thread {
  public:
   ClusterCommThread();
   ~ClusterCommThread();
-
  public:
   void beginShutdown() override;
   bool isSystem() override final { return true; }

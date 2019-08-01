@@ -30,8 +30,6 @@
 #include "Basics/conversions.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;

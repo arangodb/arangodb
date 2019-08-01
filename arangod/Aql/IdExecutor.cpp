@@ -43,7 +43,7 @@ IdExecutorInfos::IdExecutorInfos(RegisterId nrInOutRegisters,
 
 template <class UsedFetcher>
 IdExecutor<UsedFetcher>::IdExecutor(Fetcher& fetcher, IdExecutorInfos& infos)
-    : _fetcher(fetcher){};
+    : _fetcher(fetcher) {}
 
 template <class UsedFetcher>
 IdExecutor<UsedFetcher>::~IdExecutor() = default;

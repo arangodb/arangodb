@@ -176,12 +176,20 @@
         data.distributeShardsLike = object.distributeShardsLike;
       }
 
+      var pattern = new RegExp(/^[0-9]+$/);
       if (object.replicationFactor) {
         data.replicationFactor = object.replicationFactor;
-        var pattern = new RegExp(/^[0-9]+$/);
         if (pattern.test(object.replicationFactor)) {
           // looks like a number
           data.replicationFactor = JSON.parse(object.replicationFactor);
+        }
+      }
+
+      if (object.minReplicationFactor) {
+        data.minReplicationFactor = object.minReplicationFactor;
+        if (pattern.test(object.minReplicationFactor)) {
+          // looks like a number
+          data.minReplicationFactor = JSON.parse(object.minReplicationFactor);
         }
       }
 

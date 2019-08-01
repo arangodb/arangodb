@@ -160,12 +160,12 @@ class StaticStrings {
   static std::string const RequestForwardedTo;
   static std::string const ResponseCode;
   static std::string const Server;
+  static std::string const TransferEncoding;
   static std::string const TransactionBody;
   static std::string const TransactionId;
   static std::string const Unlimited;
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
-  static std::string const XArangoNoLock;
   static std::string const XArangoFrontend;
 
   // mime types
@@ -181,8 +181,14 @@ class StaticStrings {
   static std::string const NumberOfShards;
   static std::string const IsSmart;
   static std::string const DistributeShardsLike;
+  static std::string const CacheEnabled;
+  static std::string const IndexBuckets;
+  static std::string const JournalSize;
+  static std::string const DoCompact;
   static std::string const ReplicationFactor;
+  static std::string const MinReplicationFactor;
   static std::string const ShardKeys;
+  static std::string const ShardingStrategy;
   static std::string const SmartJoinAttribute;
 
   // graph attribute names
@@ -204,6 +210,7 @@ class StaticStrings {
 
   // Replication
   static std::string const ReplicationSoftLockOnly;
+  static std::string const FailoverCandidates;
 
   // misc strings
   static std::string const LastValue;

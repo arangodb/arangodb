@@ -296,7 +296,7 @@ ClusterComm::ClusterComm(bool ignored)
 /// @brief ClusterComm destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterComm::~ClusterComm() { stopBackgroundThreads(); }
+ClusterComm::~ClusterComm() { deleteBackgroundThreads(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getter for our singleton instance
@@ -383,7 +383,16 @@ void ClusterComm::stopBackgroundThreads() {
   }  // for
 
   // pass 2:  verify each thread is stopped, wait if necessary
-  //          (happens in destructor)
+  //          No communication after this.
+  for (ClusterCommThread* thread : _backgroundThreads) {
+    thread->shutdown();
+  }  // for
+}
+
+void ClusterComm::deleteBackgroundThreads() {
+  // pass 3:  de-allocate instances
+  // we want to keep the thread objects allocated till now,
+  // so eventual access to them doesn't fail.
   for (ClusterCommThread* thread : _backgroundThreads) {
     delete thread;
   }
@@ -596,8 +605,8 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     std::atomic<bool> wasSignaled;
 
     SharedVariables() = delete;
-    SharedVariables(ClusterCommResult * preparedResult)
-      : result(preparedResult), wasSignaled(false) {};
+    explicit SharedVariables(ClusterCommResult* preparedResult)
+      : result(preparedResult), wasSignaled(false) {}
   };
 
   // this shared_ptr is not atomic (until c++20), careful
@@ -866,9 +875,7 @@ void ClusterComm::drop(CoordTransactionID const coordTransactionID,
 /// then after another 2 seconds, 4 seconds and so on, until the overall
 /// timeout has been reached. A request that can connect and produces a
 /// result is simply reported back with no retry, even in an error case.
-/// The method returns the number of successful requests and puts the
-/// number of finished ones in nrDone. Thus, the timeout was triggered
-/// if and only if nrDone < requests.size().
+/// The method returns the number of successful requests.
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
@@ -876,7 +883,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
                                     arangodb::LogTopic const& logTopic,
                                     bool retryOnCollNotFound,
                                     bool retryOnBackendUnavailable) {
-  if (requests.size() == 0) {
+  if (requests.empty()) {
     return 0;
   }
 
@@ -1144,6 +1151,27 @@ void ClusterComm::scheduleMe(std::function<void()> task) {
   arangodb::SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL, std::move(task));
 }
 
+
+/// @brief logs a connection error (backend unavailable)
+void ClusterComm::logConnectionError(bool useErrorLogLevel, ClusterCommResult const* result,
+                                     double timeout, int /*line*/) {
+  std::string msg = "cannot create connection to server";
+  if (!result->serverID.empty()) {
+    msg += ": '" + result->serverID + '\'';
+  }
+  msg += " at endpoint '" + result->endpoint + "', timeout: " + std::to_string(timeout);
+
+  if (useErrorLogLevel) {
+    LOG_TOPIC("30467", ERR, Logger::CLUSTER) << msg;
+  } else {
+    LOG_TOPIC("b82cb", INFO, Logger::CLUSTER) << msg;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// Cluster Comm Thread
+////////////////////////////////////////////////////////////////////////////////
+
 ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {
   _cc = ClusterComm::instance().get();
   _communicator = std::make_shared<communicator::Communicator>();
@@ -1209,20 +1237,4 @@ void ClusterCommThread::run() {
   }
 
   LOG_TOPIC("5d12a", DEBUG, Logger::CLUSTER) << "stopped ClusterComm thread";
-}
-
-/// @brief logs a connection error (backend unavailable)
-void ClusterComm::logConnectionError(bool useErrorLogLevel, ClusterCommResult const* result,
-                                     double timeout, int /*line*/) {
-  std::string msg = "cannot create connection to server";
-  if (!result->serverID.empty()) {
-    msg += ": '" + result->serverID + '\'';
-  }
-  msg += " at endpoint '" + result->endpoint + "', timeout: " + std::to_string(timeout);
-
-  if (useErrorLogLevel) {
-    LOG_TOPIC("30467", ERR, Logger::CLUSTER) << msg;
-  } else {
-    LOG_TOPIC("b82cb", INFO, Logger::CLUSTER) << msg;
-  }
 }

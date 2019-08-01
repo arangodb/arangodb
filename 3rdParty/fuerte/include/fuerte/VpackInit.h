@@ -50,6 +50,6 @@ class VpackInit {
   }
 };
 
-}}}}  // namespace arangodb::fuerte::v1::impl
+}}}}  // namespace arangodb::fuerte::v1::helper
 
 #endif

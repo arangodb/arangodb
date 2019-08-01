@@ -246,10 +246,6 @@ void GeneralServerFeature::beginShutdown() {
 }
 
 void GeneralServerFeature::stop() {
-  for (auto& server : _servers) {
-    server->stopWorking();
-  }
-
   _jobManager->deleteJobs();
 }
 

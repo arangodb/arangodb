@@ -25,7 +25,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Rest/HttpRequest.h"
 #include "VocBase/Methods/Ttl.h"
 
 #include <velocypack/Builder.h>

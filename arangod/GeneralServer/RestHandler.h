@@ -43,7 +43,7 @@ enum class RestStatus { DONE, WAITING, FAIL };
 
 namespace rest {
 class RestHandler : public std::enable_shared_from_this<RestHandler> {
-  friend class GeneralCommTask;
+  friend class CommTask;
 
   RestHandler(RestHandler const&) = delete;
   RestHandler& operator=(RestHandler const&) = delete;
