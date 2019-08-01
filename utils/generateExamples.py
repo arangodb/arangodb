@@ -130,11 +130,13 @@ OPTION_FILTER = 3
 OPTION_OUTPUT_FILE = 4
 OPTION_OUTPUT_ENGINE = 5
 OPTION_OUTPUT_FILTER_NONMATCHING = 6
+OPTION_OUTPUT_FILTER_CLUSTER = 7
 
 engines = ["mmfiles", "rocksdb"]
 engine = "mmfiles"
 otherEngine = "mmfiles"
 storageEngineAgnostic = True
+cluster = False
 escapeBS = re.compile("\\\\")
 doubleBS = "\\\\\\\\"
 
@@ -607,7 +609,7 @@ if (allErrors.length > 0) {
 ################################################################################
 
 def loopDirectories():
-    global ArangoshSetup, OutputDir, FilterForTestcase, storageEngineAgnostic, engine, otherEngine
+    global ArangoshSetup, OutputDir, FilterForTestcase, storageEngineAgnostic, cluster, engine, otherEngine
     argv = sys.argv
     argv.pop(0)
     filenames = []
@@ -636,6 +638,10 @@ def loopDirectories():
 
         if filename == "--storageEngineAgnostic":
             fstate = OPTION_OUTPUT_FILTER_NONMATCHING
+            continue
+
+        if filename == "--cluster":
+            fstate = OPTION_OUTPUT_FILTER_CLUSTER
             continue
 
         if fstate == OPTION_NORMAL:
@@ -682,6 +688,10 @@ def loopDirectories():
             fstate = OPTION_NORMAL
             storageEngineAgnostic = filename == "true"
 
+        elif fstate == OPTION_OUTPUT_FILTER_CLUSTER:
+            fstate = OPTION_NORMAL
+            cluster = filename == "true"
+
     for filename in filenames:
         if (filename.find("#") < 0):
             f = open(filename, "r")
@@ -693,7 +703,7 @@ def loopDirectories():
 
 
 def generateTestCases():
-    global TESTLINES, TYPE, LINE_NO, STRING, RunTests, storageEngineAgnostic, engine, otherEngine
+    global TESTLINES, TYPE, LINE_NO, STRING, RunTests, storageEngineAgnostic, cluster, engine, otherEngine
     testNames = RunTests.keys()
     testNames.sort()
 
@@ -702,6 +712,10 @@ def generateTestCases():
             print >> sys.stderr, "skipping " + thisTest
             continue
         if not storageEngineAgnostic and not thisTest.endswith(engine):
+            print >> sys.stderr, "skipping " + thisTest
+            continue
+
+        if cluster and not thisTest.endswith('_cluster'):
             print >> sys.stderr, "skipping " + thisTest
             continue
 
