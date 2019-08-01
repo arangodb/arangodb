@@ -106,6 +106,45 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force
   return false;
 }
 
+static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& col,
+                                    std::string const& claimLeaderId) {
+
+  std::vector<std::string> agencyPath = {
+    "Plan",
+    "Collections",
+    col->vocbase().name(),
+    std::to_string(col->planId()),
+    "shards",
+    col->name()
+  };
+
+  std::string shardAgencyPathString = StringUtils::join(agencyPath, '/');
+
+  LOG_DEVEL << shardAgencyPathString;
+
+  AgencyComm ac;
+  AgencyCommResult res = ac.getValues(shardAgencyPathString);
+
+  if (res.successful()) {
+
+  LOG_DEVEL << "Agency Transaction: " << res.slice().toJson();
+    // This is bullshit. Why does the *fancy* AgencyComm Manager
+    // prepend the agency url with `arango` but in the end returns an object
+    // that is prepended by `arango`! WTF!?
+    VPackSlice plan = res.slice().at(0).get(AgencyCommManager::path()).get(agencyPath);
+    LOG_DEVEL << plan.toJson();
+    TRI_ASSERT(plan.isArray() && plan.length() > 0);
+
+    VPackSlice leaderSlice = plan.at(0);
+    TRI_ASSERT(leaderSlice.isString());
+    if (leaderSlice.isEqualString(claimLeaderId)) {
+      return Result{};
+    }
+  }
+
+  return Result{TRI_ERROR_FORBIDDEN};
+}
+
 static Result restoreDataParser(char const* ptr, char const* pos,
                                 std::string const& collectionName, int line,
                                 std::string& key, VPackBuilder& builder,
@@ -2469,14 +2508,15 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
                   "and 'shard'");
     return;
   }
-  VPackSlice const leaderId = body.get("leaderId");
+  VPackSlice const leaderIdSlice = body.get("leaderId");
   VPackSlice const shard = body.get("shard");
-  if (!leaderId.isString() || !shard.isString()) {
+  if (!leaderIdSlice.isString() || !shard.isString()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "'leaderId' and 'shard' attributes must be strings");
     return;
   }
 
+  std::string leaderId = leaderIdSlice.copyString();
   auto col = _vocbase.lookupCollection(shard.copyString());
 
   if (col == nullptr) {
@@ -2485,8 +2525,13 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
     return;
   }
 
-  col->followers()->setTheLeader(leaderId.copyString());
-  LOG_DEVEL << "Set leader for " << shard.copyString() << " to " << leaderId.copyString();
+  Result res = checkPlanLeaderDirect(col, leaderId);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  col->followers()->setTheLeader(leaderId);
+  LOG_DEVEL << "Set leader for " << shard.copyString() << " to " << leaderId;
 
   VPackBuilder b;
   {
