@@ -46,26 +46,28 @@ class QuerySnippet {
     ExpansionInformation(ExecutionNode* n, bool exp,
                          std::shared_ptr<std::vector<ShardID>> s, bool sat)
         : node(n), doExpand(exp), shards(s), isSatellite(sat) {
-          TRI_ASSERT(shards != nullptr);
-        }
+      TRI_ASSERT(shards != nullptr);
+    }
   };
 
  public:
   QuerySnippet(size_t idOfSinkNode)
-      : _idOfSinkNode(idOfSinkNode), _needToInjectGather(false), _inputSnippet(0) {}
+      : _idOfSinkNode(idOfSinkNode),
+        _madeResponsibleForShutdown(false),
+        _inputSnippet(0) {}
 
   void addNode(ExecutionNode* node);
 
   void serializeIntoBuilder(ServerID const& server,
                             std::unordered_map<ShardID, ServerID> const& shardMapping,
-                            velocypack::Builder& infoBuilder) const;
+                            velocypack::Builder& infoBuilder);
 
   void useQueryIdAsInput(QueryId inputSnippet) { _inputSnippet = inputSnippet; }
 
  private:
   size_t const _idOfSinkNode;
 
-  bool _needToInjectGather;
+  bool _madeResponsibleForShutdown;
 
   std::vector<ExecutionNode*> _nodes;
 

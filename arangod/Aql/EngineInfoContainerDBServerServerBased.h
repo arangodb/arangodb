@@ -138,7 +138,9 @@ class EngineInfoContainerDBServerServerBased {
   void addVariablesPart(arangodb::velocypack::Builder& builder) const;
 
   // Insert the Snippets information into the message to be send to DBServers
-  void addSnippetPart(arangodb::velocypack::Builder& builder, ServerID const& server) const;
+  void addSnippetPart(arangodb::velocypack::Builder& builder,
+                      std::unordered_map<ShardID, ServerID> const& shardMapping,
+                      ServerID const& server) const;
 
   // Insert the TraversalEngine information into the message to be send to DBServers
   void addTraversalEnginesPart(arangodb::velocypack::Builder& builder,

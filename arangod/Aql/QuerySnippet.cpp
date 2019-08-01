@@ -23,25 +23,17 @@
 
 #include "QuerySnippet.h"
 
+#include "Aql/ClusterNodes.h"
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/IResearchViewNode.h"
+#include "Cluster/ServerState.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
-
-namespace {
-struct NodeExpansion {
-  bool doExpand;
-  std::set<ShardID> shards;
-
-  NodeExpansion() = delete;
-  explicit NodeExpansion(bool exp) : doExpand(exp), shards() {}
-};
-}  // namespace
 
 void QuerySnippet::addNode(ExecutionNode* node) {
   TRI_ASSERT(node != nullptr);
@@ -82,9 +74,6 @@ void QuerySnippet::addNode(ExecutionNode* node) {
       } else {
         // Satellite can only have a single shard, and we have a modification node here.
         TRI_ASSERT(!isSatellite || shards->size() == 1);
-        if (shards->size() > 1) {
-          _needToInjectGather = true;
-        }
         _expansions.emplace_back(node, shards->size() > 1, shards, isSatellite);
       }
       break;
@@ -112,14 +101,16 @@ void QuerySnippet::addNode(ExecutionNode* node) {
 
 void QuerySnippet::serializeIntoBuilder(ServerID const& server,
                                         std::unordered_map<ShardID, ServerID> const& shardMapping,
-                                        VPackBuilder& infoBuilder) const {
+                                        VPackBuilder& infoBuilder) {
   TRI_ASSERT(!_nodes.empty());
   TRI_ASSERT(!_expansions.empty());
-  bool needToInjectGather = false;
   size_t numberOfShardsToPermutate = 0;
-  std::unordered_map<ExecutionNode*, NodeExpansion> localExpansions;
+  // The Key is required to build up the queryId mapping later
+  infoBuilder.add(VPackValue(arangodb::basics::StringUtils::itoa(_idOfSinkNode) + ":" + server));
+
+  std::unordered_map<ExecutionNode*, std::set<ShardID>> localExpansions;
   for (auto const& exp : _expansions) {
-    NodeExpansion myExp(exp.doExpand);
+    std::set<ShardID> myExp;
     for (auto const& s : *exp.shards) {
       auto check = shardMapping.find(s);
       // If we find a shard here that is not in this mapping,
@@ -127,15 +118,15 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
       // 2) a problem with shardMapping lookup that should have thrown before
       TRI_ASSERT(check != shardMapping.end());
       if (check->second == server) {
-        myExp.shards.emplace(s);
+        myExp.emplace(s);
       } else if (exp.isSatellite && _expansions.size() > 1) {
         // Satellite collection is used for local join.
         // If we only have one expansion we have a snippet only
         // based on the satellite, that needs to be only executed once
-        myExp.shards.emplace(s);
+        myExp.emplace(s);
       }
     }
-    if (myExp.shards.empty()) {
+    if (myExp.empty()) {
       // There are no shards in this snippet for this server.
       // By definition all nodes need to have at LEAST one Shard
       // on this server for this snippet to work.
@@ -145,20 +136,76 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
     }
     if (exp.doExpand) {
       // All parts need to have exact same size, they need to be permutated pairwise!
-      TRI_ASSERT(numberOfShardsToPermutate == 0 ||
-                 myExp.shards.size() == numberOfShardsToPermutate);
+      TRI_ASSERT(numberOfShardsToPermutate == 0 || myExp.size() == numberOfShardsToPermutate);
       // set the max loop index (note this will essentially be done only once)
-      numberOfShardsToPermutate = myExp.shards.size();
-      needToInjectGather = numberOfShardsToPermutate > 1;
+      numberOfShardsToPermutate = myExp.size();
+      if (numberOfShardsToPermutate == 1) {
+        // Special case, we do not need to expand.
+        // However keep track that we found one and cannot have
+        // a query with a collection requiring real permutation.
+        // We only have these other types that can exactly one shard at a time
+        auto collectionAccessingNode =
+            ExecutionNode::castTo<CollectionAccessingNode*>(exp.node);
+        // so let it inject this shard!
+        TRI_ASSERT(myExp.size() == 1);
+        collectionAccessingNode->setUsedShard(*myExp.begin());
+      } else {
+        localExpansions.emplace(exp.node, std::move(myExp));
+      }
+    } else {
+      if (exp.node->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
+        // TODO implement shard injection on views
+      } else {
+        // We only have these other types that can exactly one shard at a time
+        auto collectionAccessingNode =
+            ExecutionNode::castTo<CollectionAccessingNode*>(exp.node);
+        // so let it inject this shard!
+        TRI_ASSERT(myExp.size() == 1);
+        collectionAccessingNode->setUsedShard(*myExp.begin());
+      }
     }
-    localExpansions.emplace(exp.node, std::move(myExp));
   }
-  // If not we hit the return before!
-  TRI_ASSERT(!localExpansions.empty());
-
   // TODO toVPack all nodes for this specific server
   // We clone every Node* and maintain a list of ReportingGroups for profiler
-  if (needToInjectGather) {
-  } else {
+  ExecutionNode* lastNode = _nodes.back();
+  // Query can only ed with a REMOTE or SINGLETON
+  TRI_ASSERT(lastNode->getType() == ExecutionNode::REMOTE ||
+             lastNode->getType() == ExecutionNode::SINGLETON);
+  // Singleton => noDependency
+  TRI_ASSERT(lastNode->getType() != ExecutionNode::SINGLETON || !lastNode->hasDependency());
+
+  if (lastNode->getType() == ExecutionNode::REMOTE) {
+    auto rem = ExecutionNode::castTo<RemoteNode*>(lastNode);
+    if (!_madeResponsibleForShutdown) {
+      // Enough to do this step once
+      // We need to connect this Node to the sink
+      // update the remote node with the information about the query
+      rem->server("server:" + arangodb::ServerState::instance()->getId());
+      rem->queryId(_inputSnippet);
+      rem->isResponsibleForInitializeCursor(true);
+      // Cut off all dependencies here, they are done implicitly
+      rem->removeDependencies();
+    } else {
+      rem->isResponsibleForInitializeCursor(false);
+    }
+    // We have it all serverbased now
+    rem->ownName(server);
   }
+
+  if (!localExpansions.empty()) {
+    // We have Expansions to permutate
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    // TODO iterate over all localExpansions
+    // Inject the shard for this server into the nodes.
+    /*
+    for (auto const& exp : localExpansions) {
+    }
+    */
+  } else {
+    const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
+    _nodes.front()->toVelocyPack(infoBuilder, flags, false);
+  }
+  // If we end up here we have send one that is responsible
+  // to Shutdown the query.
+  _madeResponsibleForShutdown = true;
 }

@@ -41,8 +41,10 @@ using namespace arangodb::aql;
 CollectionAccessingNode::CollectionAccessingNode(aql::Collection const* collection)
     : _collection(collection),
       _prototypeCollection(nullptr),
-      _prototypeOutVariable(nullptr) {
+      _prototypeOutVariable(nullptr),
+      _usedShard() {
   TRI_ASSERT(_collection != nullptr);
+  TRI_ASSERT(_usedShard.empty());
 }
 
 CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
@@ -51,9 +53,9 @@ CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
           slice.get("collection").copyString())),
       _prototypeCollection(nullptr),
       _prototypeOutVariable(nullptr) {
-    
   if (slice.get("prototype").isString()) {
-    _prototypeCollection = plan->getAst()->query()->collections()->get(slice.get("prototype").copyString());
+    _prototypeCollection =
+        plan->getAst()->query()->collections()->get(slice.get("prototype").copyString());
   }
 
   TRI_ASSERT(_collection != nullptr);
@@ -85,12 +87,17 @@ void CollectionAccessingNode::collection(aql::Collection const* collection) {
 
 void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("database", VPackValue(_collection->vocbase()->name()));
-  builder.add("collection", VPackValue(_collection->name()));
+  if (!_usedShard.empty()) {
+    builder.add("collection", VPackValue(_usedShard));
+  } else {
+    builder.add("collection", VPackValue(_collection->name()));
+  }
+
   if (_prototypeCollection != nullptr) {
     builder.add("prototype", VPackValue(_prototypeCollection->name()));
   }
   builder.add("satellite", VPackValue(_collection->isSatellite()));
-    
+
   if (ServerState::instance()->isCoordinator()) {
     builder.add(StaticStrings::NumberOfShards, VPackValue(_collection->numberOfShards()));
   }

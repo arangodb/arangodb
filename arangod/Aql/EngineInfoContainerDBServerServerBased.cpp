@@ -147,8 +147,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(MapRemoteToSnippet& 
 
     addVariablesPart(infoBuilder);
     TRI_ASSERT(infoBuilder.isOpenObject());
-
-    addSnippetPart(infoBuilder, server);
+    auto shardMapping = _shardLocking.getShardMapping();
+    addSnippetPart(infoBuilder, shardMapping, server);
     TRI_ASSERT(infoBuilder.isOpenObject());
 
     addTraversalEnginesPart(infoBuilder, server);
@@ -167,7 +167,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(MapRemoteToSnippet& 
     // add the transaction ID header
     std::unordered_map<std::string, std::string> headers;
     ClusterTrxMethods::addAQLTransactionHeader(*trx, server, headers);
-
+    LOG_DEVEL << "Sending NEW " << infoBuilder.toJson();
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
     auto res = cc->syncRequest(coordTransactionID, serverDest, RequestType::POST,
                                url, infoBuilder.toJson(), headers, SETUP_TIMEOUT);
@@ -327,13 +327,14 @@ void EngineInfoContainerDBServerServerBased::addVariablesPart(arangodb::velocypa
 }
 
 // Insert the Snippets information into the message to be send to DBServers
-void EngineInfoContainerDBServerServerBased::addSnippetPart(arangodb::velocypack::Builder& builder,
-                                                            ServerID const& server) const {
+void EngineInfoContainerDBServerServerBased::addSnippetPart(
+    arangodb::velocypack::Builder& builder,
+    std::unordered_map<ShardID, ServerID> const& shardMapping, ServerID const& server) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("snippets"));
-  builder.openArray();
+  builder.openObject();
   for (auto const& snippet : _closedSnippets) {
-    snippet->serializeIntoBuilder(server, builder);
+    snippet->serializeIntoBuilder(server, shardMapping, builder);
   }
   builder.close();  // snippets
 }

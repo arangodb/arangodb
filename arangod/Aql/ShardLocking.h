@@ -77,12 +77,12 @@ class ShardLocking {
     return shards->second;
   }
 
+  std::unordered_map<ShardID, ServerID> const& getShardMapping();
+
  private:
   // Adjust locking level of a single collection
   void updateLocking(Collection const* col, AccessMode::Type const& accessType,
                      std::unordered_set<std::string> const& restrictedShards);
-
-  std::unordered_map<ShardID, ServerID> const& getShardMapping();
 
  private:
   Query* _query;
