@@ -577,16 +577,16 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<std::vector<ServerID>> getResponsibleServer(ShardID const&);
-  
+
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief atomically find all servers who are responsible for the given 
+  /// @brief atomically find all servers who are responsible for the given
   /// shards (only the leaders).
   /// will throw an exception if no leader can be found for any
   /// of the shards. will return an empty result if the shards couldn't be
   /// determined after a while - it is the responsibility of the caller to
   /// check for an empty result!
   //////////////////////////////////////////////////////////////////////////////
-  
+
   std::unordered_map<ShardID, ServerID> getResponsibleServers(std::unordered_set<ShardID> const&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -826,7 +826,7 @@ class ClusterInfo final {
     uint64_t _upperValue;
     uint64_t _nextBatchStart;
     uint64_t _nextUpperValue;
-    bool _backgroundJobIsRunning;
+    std::atomic<bool> _backgroundJobIsRunning;
   } _uniqid;
 
   //////////////////////////////////////////////////////////////////////////////
