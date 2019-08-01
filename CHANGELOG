@@ -1,6 +1,8 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Upgraded arangodb starter version to 0.14.12
+
 * Added options to make server more secure:
   - `--foxx.api`: set to false disables Foxx management API
   - `--foxx.store`: set to false disables Foxx UI
