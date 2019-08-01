@@ -1,7 +1,11 @@
-v3.5.0-rc.6 (2019-07-29)
+v3.5.0-rc.7 (2019-08-01)
 ------------------------
 
-* Upgraded arangodb starter version to 0.14.11.
+* Upgraded arangodb starter version to 0.14.X.
+
+
+v3.5.0-rc.6 (2019-07-29)
+------------------------
 
 * Fixed issue #9459: Optimization rule remove-collect-variables does not KEEP all necessary data.
 
