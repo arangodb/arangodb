@@ -184,7 +184,7 @@ void ExecutionNode::getSortElements(SortElementVector& elements, ExecutionPlan* 
     if (path.isArray()) {
       // Get a list of strings out and add to the path:
       auto& element = elements.back();
-      for (auto const& it2 : VPackArrayIterator(it)) {
+      for (auto const& it2 : VPackArrayIterator(path)) {
         if (it2.isString()) {
           element.attributePath.push_back(it2.copyString());
         }
@@ -2062,7 +2062,7 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   RegisterId const numberInputRegisters =
       getRegisterPlan()->nrRegs[previousNode->getDepth()];
   RegisterId const numberOutputRegisters =
-    returnInheritedResults ? getRegisterPlan()->nrRegs[getDepth()] : 1;
+      returnInheritedResults ? getRegisterPlan()->nrRegs[getDepth()] : 1;
 
   if (returnInheritedResults) {
     return std::make_unique<ExecutionBlockImpl<IdExecutor<void>>>(&engine, this,

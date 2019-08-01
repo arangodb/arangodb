@@ -214,6 +214,8 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
     // And we do not need variables
     GatherNode* internalGather =
         ExecutionNode::castTo<GatherNode*>(_sinkNode->clone(plan, false, false));
+    // Use the same elements for sorting
+    internalGather->elements(_sinkNode->elements());
     ScatterNode* internalScatter = nullptr;
     if (lastIsRemote) {
       // Not supported yet
