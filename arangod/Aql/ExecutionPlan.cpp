@@ -205,7 +205,8 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Que
   return ret;
 }
 
-std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast, AstNode* node) {
+std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast,
+                                                  AstNode* node) {
   if (node->type == NODE_TYPE_NOP) {
     return nullptr;
   }
@@ -231,7 +232,10 @@ ExecutionPlan::ExecutionPlan(Ast* ast)
 /// @brief destroy the plan, frees all assigned nodes
 ExecutionPlan::~ExecutionPlan() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (_root != nullptr && _planValid) {
+  // On coordinator there are temporary nodes injected into the Plan, that are NOT part
+  // of the full execution tree. This is in order to reuse a lot of the nodes
+  // for each DBServer instead of having all nodes copy everything once again.
+  if (_root != nullptr && _planValid && !arangodb::ServerState::instance()->isCoordinator()) {
     try {
       // count the actual number of nodes in the plan
       ::NodeCounter counter;
@@ -411,12 +415,13 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) 
 
 void ExecutionPlan::addAppliedRule(int level) {
   if (_appliedRules.empty() || _appliedRules.back() != level) {
-    _appliedRules.emplace_back(level); 
+    _appliedRules.emplace_back(level);
   }
 }
 
 bool ExecutionPlan::hasAppliedRule(int level) const {
-  return std::any_of(_appliedRules.begin(), _appliedRules.end(), [level](int l) { return l == level; });
+  return std::any_of(_appliedRules.begin(), _appliedRules.end(),
+                     [level](int l) { return l == level; });
 }
 
 /// @brief get a node by its id
@@ -1017,7 +1022,8 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode
   }
 
   // Prune Expression
-  std::unique_ptr<Expression> pruneExpression = createPruneExpression(this, _ast, node->getMember(3));
+  std::unique_ptr<Expression> pruneExpression =
+      createPruneExpression(this, _ast, node->getMember(3));
 
   auto options =
       createTraversalOptions(getAst()->query(), direction, node->getMember(4));
@@ -1028,9 +1034,9 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode
   TRI_ASSERT(direction->isIntValue());
 
   // First create the node
-  auto travNode = new TraversalNode(this, nextId(), &(_ast->query()->vocbase()),
-                                    direction, start, graph,
-                                    std::move(pruneExpression), std::move(options));
+  auto travNode =
+      new TraversalNode(this, nextId(), &(_ast->query()->vocbase()), direction, start,
+                        graph, std::move(pruneExpression), std::move(options));
 
   auto variable = node->getMember(5);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
