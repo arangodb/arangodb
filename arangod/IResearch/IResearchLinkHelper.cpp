@@ -790,18 +790,22 @@ namespace iresearch {
       {
         const auto& currentVocbase = vocbase.name();
         for (const auto& analyzer : meta._analyzers) {
-          if (ADB_LIKELY(analyzer._pool)) {
-            auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(analyzer._pool->name());
-            if (ADB_LIKELY(!analyzerVocbase.empty())) {
-              if (analyzerVocbase != arangodb::StaticStrings::SystemDatabase &&
-                  analyzerVocbase != currentVocbase) {
-                return arangodb::Result(
-                  TRI_ERROR_BAD_PARAMETER,
-                  std::string("Analyzer '").append(analyzer._pool->name())
-                  .append("' is not accessible from database '").append(currentVocbase).append("'")
-                );
-              }
-            }
+          if (ADB_UNLIKELY(!analyzer._pool)) { // should be checked in meta init
+            continue; 
+          }
+          auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(analyzer._pool->name());
+          if (ADB_UNLIKELY(analyzerVocbase.empty())) { 
+            // in case of absent system database analyzer name will not be normalized
+            // and may not contain database prefix. But in that case analyzer will be
+            // considered local for current database and this is perefectly fine.
+            continue;
+          }
+          if (analyzerVocbase != arangodb::StaticStrings::SystemDatabase &&
+              analyzerVocbase != currentVocbase) {
+            return arangodb::Result(
+                TRI_ERROR_BAD_PARAMETER,
+                std::string("Analyzer '").append(analyzer._pool->name())
+                .append("' is not accessible from database '").append(currentVocbase).append("'"));
           }
         }
       }
