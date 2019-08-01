@@ -228,15 +228,7 @@ arangodb::RestStatus RestAnalyzerHandler::execute() {
   }
 
   auto* analyzers = 
-    arangodb::application_features::ApplicationServer::lookupFeature<IResearchAnalyzerFeature>();
-  if (!analyzers) {
-    generateError( 
-      arangodb::rest::ResponseCode::SERVER_ERROR, // HTTP code
-      TRI_ERROR_INTERNAL, // code
-      std::string("Failure to find feature '").append(IResearchAnalyzerFeature::name())
-        .append("' while executing REST request for: ").append(ANALYZER_PATH));
-    return arangodb::RestStatus::DONE;
-  }
+    arangodb::application_features::ApplicationServer::getFeature<IResearchAnalyzerFeature>();
 
   auto& suffixes = _request->suffixes();
 

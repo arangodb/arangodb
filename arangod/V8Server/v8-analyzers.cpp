@@ -460,7 +460,6 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_ERROR_FORBIDDEN, // code
       errorMessage
     );
-    return;
   }
 
   if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(name, arangodb::auth::Level::RO)) {
@@ -606,7 +605,6 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
       std::string( "Invalid characters in analyzer name '").append(name)
         .append("'. Analyzer name should be specified without database prefix.")
     );
-    return;
   }
 
   std::string nameBuf;
