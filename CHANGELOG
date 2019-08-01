@@ -1,6 +1,8 @@
 v3.3.24 (XXXX-XX-XX)
 --------------------
 
+* upgraded arangodb starter version to 0.14.12
+
 * upgrade arangosync version to 0.6.5
 
 * arangoimport would not stop, much less report, communications errors.  Add CSV reporting
@@ -30,8 +32,6 @@ v3.3.24 (XXXX-XX-XX)
 
 * fixed a crash when posting an async request to the server using the "x-arango-async"
   request header and the server's request queue was full
-
-* upgraded arangodb starter version to 0.14.4
 
 * fix client id lookup table in agency
 
