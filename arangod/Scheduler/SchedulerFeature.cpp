@@ -21,11 +21,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-#include <stdio.h>
-#include <windows.h>
-#endif
-
 #include <chrono>
 #include <thread>
 
@@ -47,6 +42,10 @@
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-dispatcher.h"
 
+#ifdef _WIN32
+#include <stdio.h>
+#include <windows.h>
+#endif
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
