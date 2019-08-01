@@ -1,6 +1,8 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Significantly reduced "random" 1 second delays in some arangosearch DDL operations.
+
 * Upgraded arangodb starter version to 0.14.12
 
 * Added options to make server more secure:
