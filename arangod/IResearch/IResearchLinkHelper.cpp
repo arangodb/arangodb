@@ -790,7 +790,8 @@ namespace iresearch {
       {
         const auto& currentVocbase = vocbase.name();
         for (const auto& analyzer : meta._analyzers) {
-          if (ADB_UNLIKELY(!analyzer._pool)) { // should be checked in meta init
+          TRI_ASSERT(analyzer._pool); // should be checked in meta init
+          if (ADB_UNLIKELY(!analyzer._pool)) { 
             continue; 
           }
           auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(analyzer._pool->name());
