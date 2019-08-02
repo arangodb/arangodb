@@ -240,19 +240,6 @@ bool FollowerInfo::contains(ServerID const& sid) const {
   auto const& f = *_followers;
   return std::find(f.begin(), f.end(), sid) != f.end();
 }
-  
-void FollowerInfo::addLowerBoundForReplication(ServerID const& sid, 
-                                               TRI_voc_tick_t tick) {
-  WRITE_LOCKER(readLocker, _boundsLock);
-  // will create the entry in bounds for the server if it doesn't yet exist
-  auto& perServer = _bounds[sid];
-  auto it = perServer.find(tick);
-  if (it == perServer.end()) {
-    it = perServer.emplace(tick, 1).first;
-  } else {
-    ++it->second;
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Take over leadership for this shard.
