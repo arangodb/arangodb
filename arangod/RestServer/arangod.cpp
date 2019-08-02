@@ -59,6 +59,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/FileUtils.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceFeature.h"
@@ -304,7 +305,32 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
 
 #endif
 
+// The following is a global pointer which can be set from within the process
+// to configure a restart action which happens directly before main()
+// terminates. This is used for our hotbackup restore functionality.
+// See below in main() for details.
+
+namespace arangodb {
+  std::function<int()>* restartAction = nullptr;
+}
+
+// Here is a sample of how to use this:
+//
+// extern std::function<int()>* restartAction;
+//
+// static int myRestartAction() {
+//   std::cout << "Executing restart action..." << std::endl;
+//   return 0;
+// }
+//
+// And then in some function:
+//
+// restartAction = new std::function<int()>();
+// *restartAction = myRestartAction;
+// arangodb::application_features::ApplicationServer::server->beginShutdown();
+
 int main(int argc, char* argv[]) {
+  std::string workdir(arangodb::basics::FileUtils::currentDirectory().result());
 #ifdef __linux__
 #if USE_ENTERPRISE
   arangodb::checkLicenseKey();
@@ -329,5 +355,34 @@ int main(int argc, char* argv[]) {
   }
 #endif
   ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
-  return runServer(argc, argv, context);
+
+  arangodb::restartAction = nullptr;
+
+  int res = runServer(argc, argv, context);
+  if (res != 0) {
+    return res;
+  }
+  if (arangodb::restartAction == nullptr) {
+    return 0;
+  }
+  try {
+    res = (*arangodb::restartAction)();
+  } catch(...) {
+    res = -1;
+  }
+  delete arangodb::restartAction;
+  if (res != 0) {
+    std::cerr << "FATAL: RestartAction returned non-zero exit status: "
+      << res << ", giving up.";
+    return res;
+  }
+  // It is not clear if we want to do the following under Linux and OSX,
+  // it is a clean way to restart from scratch with the same process ID,
+  // so the process does not have to be terminated. On Windows, we have
+  // to do this because the solution below is not possible. In these
+  // cases, we need outside help to get the process restarted.
+#if defined(__linux__) || defined(__APPLE__)
+  chdir(workdir.c_str());
+  execv(argv[0], argv);
+#endif
 }

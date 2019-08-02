@@ -113,7 +113,7 @@ function main(argv) {
     }
     startServer = false;
     serverEndpoint = options['server.endpoint'];
-    
+
   }
 
   let args = [theScript].concat(internal.toArgv(scriptArguments));
@@ -158,7 +158,8 @@ function main(argv) {
       serverArgs["log.file"] = fs.join(tmpDataDir, engine[0], "log");
       serverArgs["server.authentication"] = "false";
       serverArgs["server.endpoint"] = serverEndpoint;
-      serverArgs["server.storage-engine"] = engine[0]
+      serverArgs["server.storage-engine"] = engine[0];
+      serverArgs["backup.api-enabled"] = "true";
 
       print("================================================================================");
       ARANGOD = locateProgram("arangod", "Cannot find arangod to execute tests against");
@@ -190,7 +191,7 @@ function main(argv) {
         }
       }
     }
-    
+
     let arangoshArgs = {
       'configuration': fs.join(fs.makeAbsolute(''), 'etc', 'relative', 'arangosh.conf'),
       'server.password': "",
