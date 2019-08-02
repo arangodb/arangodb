@@ -76,16 +76,37 @@ bool createDirectory(std::string const& name, int mask, int* errorNumber = nullp
 
 /// @brief copies directories / files recursive
 /// will not copy files/directories for which the filter function
-/// returns true
+/// returns true (now wrapper for version below with TRI_copy_recursive_e filter)
 bool copyRecursive(std::string const& source, std::string const& target,
                    std::function<bool(std::string const&)> const& filter,
                    std::string& error);
 
 /// @brief will not copy files/directories for which the filter function
-/// returns true
+/// returns true (now wrapper for version below with TRI_copy_recursive_e filter)
 bool copyDirectoryRecursive(std::string const& source, std::string const& target,
                             std::function<bool(std::string const&)> const& filter,
                             std::string& error);
+
+enum TRI_copy_recursive_e {
+  TRI_COPY_IGNORE,
+  TRI_COPY_COPY,
+  TRI_COPY_LINK
+};
+
+
+/// @brief copies directories / files recursive
+/// will not copy files/directories for which the filter function
+/// returns true
+bool copyRecursive(std::string const& source, std::string const& target,
+                   std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
+                   std::string& error);
+
+/// @brief will not copy files/directories for which the filter function
+/// returns true
+bool copyDirectoryRecursive(std::string const& source, std::string const& target,
+                            std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
+                            std::string& error);
+
 
 // returns list of files
 std::vector<std::string> listFiles(std::string const& directory);
@@ -126,6 +147,10 @@ std::string dirname(std::string const&);
 
 // returns the output of a program
 std::string slurpProgram(std::string const& program);
+
+// returns the output of a program
+int slurpProgramWithExitcode(std::string const& program, std::string& output);
+
 }  // namespace FileUtils
 }  // namespace basics
 }  // namespace arangodb
