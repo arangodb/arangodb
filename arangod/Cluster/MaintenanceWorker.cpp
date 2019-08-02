@@ -21,6 +21,8 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <thread>
+
 #include "MaintenanceWorker.h"
 
 #include "Cluster/MaintenanceFeature.h"
@@ -59,8 +61,9 @@ void MaintenanceWorker::run() {
   bool more(false);
 
   while (eSTOP != _loopState && !_feature.isShuttingDown()) {
-    try {
-      switch (_loopState) {
+    if (!_feature.isPaused()) {
+      try {
+        switch (_loopState) {
         case eFIND_ACTION:
           _curAction = _feature.findReadyAction(_labels);
           more = (bool)_curAction;
@@ -82,34 +85,39 @@ void MaintenanceWorker::run() {
 
       }  // switch
 
-    } catch (std::exception const& ex) {
-      if (_curAction) {
-        LOG_TOPIC("dd8e8", ERR, Logger::CLUSTER)
+      } catch (std::exception const& ex) {
+        if (_curAction) {
+          LOG_TOPIC("dd8e8", ERR, Logger::CLUSTER)
             << "MaintenanceWorkerRun:  caught exception (" << ex.what() << ")"
             << " state:" << _loopState << " action:" << *_curAction;
 
-        _curAction->setState(FAILED);
-      } else {
-        LOG_TOPIC("16d4c", ERR, Logger::CLUSTER)
+          _curAction->setState(FAILED);
+        } else {
+          LOG_TOPIC("16d4c", ERR, Logger::CLUSTER)
             << "MaintenanceWorkerRun:  caught exception (" << ex.what() << ")"
             << " state:" << _loopState;
-      }
-    } catch (...) {
-      if (_curAction) {
-        LOG_TOPIC("ac2a2", ERR, Logger::CLUSTER)
+        }
+      } catch (...) {
+        if (_curAction) {
+          LOG_TOPIC("ac2a2", ERR, Logger::CLUSTER)
             << "MaintenanceWorkerRun: caught error, state: " << _loopState
             << " state:" << _loopState << " action:" << *_curAction;
 
-        _curAction->setState(FAILED);
-      } else {
-        LOG_TOPIC("88771", ERR, Logger::CLUSTER)
+          _curAction->setState(FAILED);
+        } else {
+          LOG_TOPIC("88771", ERR, Logger::CLUSTER)
             << "MaintenanceWorkerRun: caught error, state: " << _loopState
             << " state:" << _loopState;
+        }
       }
+
+      // determine next loop state
+      nextState(more);
+
+    } else {
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    // determine next loop state
-    nextState(more);
   }  // while
 
 }  // MaintenanceWorker::run
@@ -167,6 +175,7 @@ void MaintenanceWorker::nextState(bool actionMore) {
         }  // else
       } else {
         std::shared_ptr<Action> failAction(_curAction);
+
         // fail all actions that would follow
         do {
           failAction->setState(FAILED);

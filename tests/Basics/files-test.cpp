@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for filec
+/// @brief test suite for files.c
 ///
 /// @file
 ///
@@ -51,7 +51,7 @@ protected:
   CFilesTest () : _directory(true) {
     long systemError;
     std::string errorMessage;
-    
+
     if (!Initialized) {
       Initialized = true;
       arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
@@ -97,6 +97,19 @@ protected:
 
   StringBuffer _directory;
 };
+
+
+struct ByteCountFunctor {
+
+  size_t _byteCount;
+
+  ByteCountFunctor() : _byteCount(0) {};
+
+  bool operator() (const char * data, size_t size) {
+    _byteCount+=size;
+    return true;
+  };
+};// struct ByteCountFunctor
 
 TEST_F(CFilesTest, tst_copyfile) {
   std::ostringstream out;
@@ -350,7 +363,7 @@ TEST_F(CFilesTest, tst_normalize) {
 #else
   EXPECT_TRUE(std::string("\\foo\\bar\\baz") == path);
 #endif
-  
+
   path = "/foo/bar\\baz";
   FileUtils::normalizePath(path);
 #ifdef _WIN32
@@ -358,7 +371,7 @@ TEST_F(CFilesTest, tst_normalize) {
 #else
   EXPECT_TRUE(std::string("/foo/bar\\baz") == path);
 #endif
-  
+
   path = "/foo/bar/\\baz";
   FileUtils::normalizePath(path);
 #ifdef _WIN32
@@ -366,7 +379,7 @@ TEST_F(CFilesTest, tst_normalize) {
 #else
   EXPECT_TRUE(std::string("/foo/bar/\\baz") == path);
 #endif
-  
+
   path = "//foo\\/bar/\\baz";
   FileUtils::normalizePath(path);
 #ifdef _WIN32
@@ -374,7 +387,7 @@ TEST_F(CFilesTest, tst_normalize) {
 #else
   EXPECT_TRUE(std::string("//foo\\/bar/\\baz") == path);
 #endif
-  
+
   path = "\\\\foo\\/bar/\\baz";
   FileUtils::normalizePath(path);
 #ifdef _WIN32
@@ -425,3 +438,33 @@ TEST_F(CFilesTest, tst_dirname) {
   EXPECT_EQ("..", TRI_Dirname(".."));
 #endif
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process data in a file via a functor
+////////////////////////////////////////////////////////////////////////////////
+
+TEST_F(CFilesTest, tst_processFile) {
+  const char* buffer = "the quick brown fox";
+  bool good;
+
+  StringBuffer* filename = writeFile(buffer);
+
+  ByteCountFunctor bcf;
+  auto reader = std::ref(bcf);
+  good = TRI_ProcessFile(filename->c_str(), reader);
+
+  EXPECT_TRUE(good);
+  EXPECT_EQ((int) strlen(buffer), (int) bcf._byteCount);
+
+  TRI_SHA256Functor sha;
+  auto shaReader = std::ref(sha);
+
+  good = TRI_ProcessFile(filename->c_str(), shaReader);
+
+  EXPECT_TRUE(good);
+  EXPECT_TRUE(sha.final().compare("9ecb36561341d18eb65484e833efea61edc74b84cf5e6ae1b81c63533e25fc8f")==0);
+
+  TRI_UnlinkFile(filename->c_str());
+  delete filename;
+}
+

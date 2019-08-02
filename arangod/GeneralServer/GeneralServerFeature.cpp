@@ -1,7 +1,7 @@
 /////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2016-2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -70,6 +70,9 @@
 #include "RestHandler/RestExplainHandler.h"
 #include "RestHandler/RestGraphHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/RestHandler/RestHotBackupHandler.h"
+#endif
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
@@ -101,6 +104,9 @@
 #include "Ssl/SslServerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/StorageEngine/HotBackupFeature.h"
+#endif
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::rest;
@@ -308,6 +314,14 @@ void GeneralServerFeature::defineHandlers() {
           "Authentication");
   TRI_ASSERT(authentication != nullptr);
 
+#ifdef USE_ENTERPRISE
+  HotBackupFeature* backup =
+    application_features::ApplicationServer::getFeature<HotBackupFeature>(
+          "HotBackup");
+  TRI_ASSERT(backup != nullptr);
+#endif
+
+
   auto queryRegistry = QueryRegistryFeature::registry();
   auto traverserEngineRegistry = TraverserEngineRegistryFeature::registry();
   if (_combinedRegistries == nullptr) {
@@ -460,21 +474,21 @@ void GeneralServerFeature::defineHandlers() {
   // And now some handlers which are registered in both /_api and /_admin
   _handlerFactory->addHandler("/_admin/actions",
                               RestHandlerCreator<MaintenanceRestHandler>::createNoData);
-  
+
   _handlerFactory->addHandler("/_admin/aql/reload",
                               RestHandlerCreator<RestAqlReloadHandler>::createNoData);
 
   _handlerFactory->addHandler("/_admin/auth/reload",
                               RestHandlerCreator<RestAuthReloadHandler>::createNoData);
-  
+
   if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->allowAdminExecute()) {
     _handlerFactory->addHandler("/_admin/execute",
                                 RestHandlerCreator<RestAdminExecuteHandler>::createNoData);
   }
-  
+
   _handlerFactory->addHandler("/_admin/time",
                               RestHandlerCreator<RestTimeHandler>::createNoData);
-  
+
   _handlerFactory->addPrefixHandler("/_api/job",
                                     RestHandlerCreator<arangodb::RestJobHandler>::createData<AsyncJobManager*>,
                                     _jobManager.get());
@@ -544,6 +558,14 @@ void GeneralServerFeature::defineHandlers() {
     _handlerFactory->addPrefixHandler("/_admin/repair",
                                       RestHandlerCreator<arangodb::RestRepairHandler>::createNoData);
   }
+
+#ifdef USE_ENTERPRISE
+  if (backup->isAPIEnabled()) {
+    _handlerFactory->addPrefixHandler("/_admin/backup",
+                                    RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
+  }
+#endif
+
 
   // ...........................................................................
   // test handler
