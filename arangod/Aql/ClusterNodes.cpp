@@ -199,7 +199,6 @@ void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const 
 
   // serialize clients
   writeClientsToVelocyPack(nodes);
-
   // And close it:
   nodes.close();
 }
@@ -238,6 +237,7 @@ void ScatterNode::writeClientsToVelocyPack(VPackBuilder& builder) const {
   for (auto const& client : _clients) {
     builder.add(VPackValue(client));
   }
+  builder.add("scatterType", VPackValue(static_cast<uint64_t>(getScatterType())));
 }
 
 /// @brief estimateCost

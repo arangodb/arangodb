@@ -243,9 +243,7 @@ void EngineInfoContainerDBServer::EngineInfo::addClient(ServerID const& server) 
   TRI_ASSERT(source);
 
   if (source->scatter) {
-    auto& clients = source->scatter->clients();
-    TRI_ASSERT(clients.end() == std::find(clients.begin(), clients.end(), server));
-    clients.emplace_back(server);
+    source->scatter->addClient(server);
   }
 
   if (source->gather) {
@@ -570,9 +568,9 @@ EngineInfoContainerDBServer::CollectionInfo& EngineInfoContainerDBServer::handle
   info.mergeShards(shards);
 
   if (scatter) {
-    auto& clients = scatter->clients();
-    clients.reserve(clients.size() + shards->size());
-    std::copy(shards->begin(), shards->end(), std::back_inserter(clients));
+    for (auto const& s : *shards) {
+      scatter->addClient(s);
+    }
   }
 
   return info;

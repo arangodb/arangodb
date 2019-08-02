@@ -3734,7 +3734,8 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
     }
 
     // insert a scatter node
-    auto* scatterNode = new ScatterNode(plan.get(), plan->nextId());
+    auto* scatterNode =
+        new ScatterNode(plan.get(), plan->nextId(), ScatterNode::ScatterType::SHARD);
     plan->registerNode(scatterNode);
     TRI_ASSERT(!deps.empty());
     scatterNode->addDependency(deps[0]);
@@ -3944,7 +3945,8 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         } else {
           inputVariable = ExecutionNode::castTo<RemoveNode const*>(node)->inVariable();
         }
-        distNode = new DistributeNode(plan.get(), plan->nextId(), collection,
+        distNode = new DistributeNode(plan.get(), plan->nextId(),
+                                      ScatterNode::ScatterType::SHARD, collection,
                                       inputVariable, inputVariable, createKeys, true);
       } else if (nodeType == ExecutionNode::REPLACE || nodeType == ExecutionNode::UPDATE) {
         auto updateReplaceNode = ExecutionNode::castTo<UpdateReplaceNode const*>(node);
@@ -3958,14 +3960,16 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
           // was only UPDATE <doc> IN <collection>
           inputVariable = updateReplaceNode->inDocVariable();
         }
-        distNode = new DistributeNode(plan.get(), plan->nextId(), collection,
+        distNode = new DistributeNode(plan.get(), plan->nextId(),
+                                      ScatterNode::ScatterType::SHARD, collection,
                                       inputVariable, inputVariable, false,
                                       updateReplaceNode->inKeyVariable() != nullptr);
       } else if (nodeType == ExecutionNode::UPSERT) {
         // an UPSERT node has two input variables!
         auto upsertNode = ExecutionNode::castTo<UpsertNode const*>(node);
-        auto d = new DistributeNode(plan.get(), plan->nextId(), collection,
-                                    upsertNode->inDocVariable(),
+        auto d = new DistributeNode(plan.get(), plan->nextId(),
+                                    ScatterNode::ScatterType::SHARD,
+                                    collection, upsertNode->inDocVariable(),
                                     upsertNode->insertVariable(), true, true);
         d->setAllowSpecifiedKeys(true);
         distNode = ExecutionNode::castTo<ExecutionNode*>(d);
@@ -6629,25 +6633,24 @@ static void optimizeFilterNode(ExecutionPlan* plan, FilterNode* fn, GeoIndexInfo
     return;  // the expression must exist and must have an AstNode
   }
 
-  Ast::traverseReadOnly(expr->node(),
-                        [&](AstNode const* node) {  // pre
-                          if (node->isSimpleComparisonOperator() ||
-                              node->type == arangodb::aql::NODE_TYPE_FCALL ||
-                              node->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_AND ||
-                              node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND) {
-                            return true;
-                          }
-                          return false;
-                        },
-                        [&](AstNode const* node) {  // post
-                          if (!node->isSimpleComparisonOperator() &&
-                              node->type != arangodb::aql::NODE_TYPE_FCALL) {
-                            return;
-                          }
-                          if (checkGeoFilterExpression(plan, node, info)) {
-                            info.exesToModify.emplace(fn, expr);
-                          }
-                        });
+  Ast::traverseReadOnly(
+      expr->node(),
+      [&](AstNode const* node) {  // pre
+        if (node->isSimpleComparisonOperator() || node->type == arangodb::aql::NODE_TYPE_FCALL ||
+            node->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_AND ||
+            node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND) {
+          return true;
+        }
+        return false;
+      },
+      [&](AstNode const* node) {  // post
+        if (!node->isSimpleComparisonOperator() && node->type != arangodb::aql::NODE_TYPE_FCALL) {
+          return;
+        }
+        if (checkGeoFilterExpression(plan, node, info)) {
+          info.exesToModify.emplace(fn, expr);
+        }
+      });
 }
 
 // modify plan

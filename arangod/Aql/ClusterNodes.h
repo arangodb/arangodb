@@ -118,8 +118,13 @@ class RemoteNode final : public DistributeConsumerNode {
 /// @brief class ScatterNode
 class ScatterNode : public ExecutionNode {
  public:
+  enum ScatterType {
+    SERVER = 0,
+    SHARD = 1
+  };
+
   /// @brief constructor with an id
-  ScatterNode(ExecutionPlan* plan, size_t id) : ExecutionNode(plan, id) {}
+  ScatterNode(ExecutionPlan* plan, size_t id, ScatterType type) : ExecutionNode(plan, id), _type(type) {}
 
   ScatterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -137,24 +142,49 @@ class ScatterNode : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override {
-    auto c = std::make_unique<ScatterNode>(plan, _id);
-    c->clients() = clients();
-
+    auto c = std::make_unique<ScatterNode>(plan, _id, getScatterType());
+    c->copyClients(clients());
     return cloneHelper(std::move(c), withDependencies, withProperties);
   }
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override;
 
+  void addClient(DistributeConsumerNode const* client) {
+    auto const& distId = client->getDistributeId();
+    // We cannot add the same distributeId twice, data is delivered exactly once for each id
+    TRI_ASSERT(std::find(_clients.begin(), _clients.end(), distId) == _clients.end());
+    _clients.emplace_back(distId);
+  }
+
+// Just temporary as long as we have two versions
+// TODO REMOVE ME
+  void addClient(std::string const& clientId) {
+    // We cannot add the same distributeId twice, data is delivered exactly once for each id
+    TRI_ASSERT(std::find(_clients.begin(), _clients.end(), clientId) == _clients.end());
+    _clients.emplace_back(clientId);
+  }
+
   std::vector<std::string> const& clients() const noexcept { return _clients; }
-  std::vector<std::string>& clients() noexcept { return _clients; }
+
+/// @brief get the scatter type, this defines the variation on how we distribute
+/// the data onto our clients.
+  ScatterType getScatterType() const {
+     return _type;
+  };
 
  protected:
   void writeClientsToVelocyPack(VPackBuilder& builder) const;
   bool readClientsFromVelocyPack(VPackSlice base);
 
+  void copyClients(std::vector<std::string> const& other) {
+    TRI_ASSERT(_clients.empty());
+    _clients = other;
+  }
  private:
   std::vector<std::string> _clients;
+
+  ScatterType _type;
 };
 
 /// @brief class DistributeNode
@@ -164,10 +194,11 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
 
   /// @brief constructor with an id
  public:
-  DistributeNode(ExecutionPlan* plan, size_t id, Collection const* collection,
+  DistributeNode(ExecutionPlan* plan, size_t id, ScatterNode::ScatterType type,
+                 Collection const* collection,
                  Variable const* variable, Variable const* alternativeVariable,
                  bool createKeys, bool allowKeyConversionToObject)
-      : ScatterNode(plan, id),
+      : ScatterNode(plan, id, type),
         CollectionAccessingNode(collection),
         _variable(variable),
         _alternativeVariable(alternativeVariable),
@@ -191,10 +222,10 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = std::make_unique<DistributeNode>(plan, _id, _collection, _variable,
+    auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(), _collection, _variable,
                                               _alternativeVariable, _createKeys,
                                               _allowKeyConversionToObject);
-    c->clients() = clients();
+    c->copyClients(clients());
 
     return cloneHelper(std::move(c), withDependencies, withProperties);
   }
