@@ -322,9 +322,9 @@ void SupervisedScheduler::runWorker() {
     state->_sleepTimeout_ms = 1000;
   }
 
-  if (id < 32) {
+  if (id < 32U) {
     // 512 >> 32 => undefined behavior
-    state->_queueRetryCount = (512U >> id) + 3;
+    state->_queueRetryCount = (uint64_t(512) >> id) + 3;
   } else {
     // we want at least 3 retries
     state->_queueRetryCount = 3;
