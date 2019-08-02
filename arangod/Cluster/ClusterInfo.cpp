@@ -267,7 +267,7 @@ void ClusterInfo::triggerBackgroundGetIds() {
 
     }).detach();
   } catch (std::exception const& e) {
-    LOG_TOPIC("adef4", ERR, Logger::CLUSTER) << "Failed to trigger background get ids. " << e.what();
+    LOG_TOPIC("adef4", WARN, Logger::CLUSTER) << "Failed to trigger background get ids. " << e.what();
   }
 }
 
