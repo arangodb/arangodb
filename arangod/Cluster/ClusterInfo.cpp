@@ -248,6 +248,7 @@ void ClusterInfo::triggerBackgroundGetIds() {
     _uniqid._backgroundJobIsRunning = true;
     std::thread([this]{
       auto guardRunning = scopeGuard([this]{
+        MUTEX_LOCKER(mutexLocker, _idLock);
         _uniqid._backgroundJobIsRunning = false;
       });
 

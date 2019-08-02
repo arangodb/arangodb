@@ -866,7 +866,7 @@ class ClusterInfo final {
     uint64_t _upperValue;
     uint64_t _nextBatchStart;
     uint64_t _nextUpperValue;
-    std::atomic<bool> _backgroundJobIsRunning;
+    bool _backgroundJobIsRunning;
   } _uniqid;
 
   //////////////////////////////////////////////////////////////////////////////
