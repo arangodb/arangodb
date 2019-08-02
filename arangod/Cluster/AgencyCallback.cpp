@@ -140,8 +140,7 @@ bool AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
       // ok, we have been signaled already, so there is no need to wait at all
       // directly refetch the values
       _wasSignaled = false;
-      LOG_TOPIC("67690", DEBUG, Logger::CLUSTER)
-          << "We were signaled already. Refetching to be sure";
+      LOG_TOPIC("67690", DEBUG, Logger::CLUSTER) << "We were signaled already";
       return false;
     }
 
