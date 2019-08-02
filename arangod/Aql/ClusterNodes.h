@@ -26,7 +26,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/CollectionAccessingNode.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/DistributeConsumerNode.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
@@ -46,35 +46,21 @@ class RemoveNode;
 struct Collection;
 
 /// @brief class RemoteNode
-class RemoteNode final : public ExecutionNode {
+class RemoteNode final : public DistributeConsumerNode {
   friend class ExecutionBlock;
 
   /// @brief constructor with an id
  public:
   RemoteNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
              std::string const& server, std::string const& ownName, std::string const& queryId)
-      : ExecutionNode(plan, id),
+      : DistributeConsumerNode(plan, id, ownName),
         _vocbase(vocbase),
         _server(server),
-        _ownName(ownName),
-        _queryId(queryId),
-        _isResponsibleForInitializeCursor(true) {
+        _queryId(queryId) {
     // note: server, ownName and queryId may be empty and filled later
   }
 
   RemoteNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
-
-  /// @brief whether or not this node will forward initializeCursor or shutDown
-  /// requests
-  void isResponsibleForInitializeCursor(bool value) {
-    _isResponsibleForInitializeCursor = value;
-  }
-
-  /// @brief whether or not this node will forward initializeCursor or shutDown
-  /// requests
-  bool isResponsibleForInitializeCursor() const {
-    return _isResponsibleForInitializeCursor;
-  }
 
   /// @brief return the type of the node
   NodeType getType() const override final { return REMOTE; }
@@ -90,8 +76,8 @@ class RemoteNode final : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    return cloneHelper(std::make_unique<RemoteNode>(plan, _id, _vocbase,
-                                                    _server, _ownName, _queryId),
+    return cloneHelper(std::make_unique<RemoteNode>(plan, _id, _vocbase, _server,
+                                                    getDistributeId(), _queryId),
                        withDependencies, withProperties);
   }
 
@@ -106,12 +92,6 @@ class RemoteNode final : public ExecutionNode {
 
   /// @brief set the server name
   void server(std::string const& server) { _server = server; }
-
-  /// @brief return our own name
-  std::string ownName() const { return _ownName; }
-
-  /// @brief set our own name
-  void ownName(std::string const& ownName) { _ownName = ownName; }
 
   /// @brief return the query id
   std::string queryId() const { return _queryId; }
@@ -131,16 +111,8 @@ class RemoteNode final : public ExecutionNode {
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"
   std::string _server;
 
-  /// @brief our own identity, in case of the coordinator this is empty,
-  /// in case of the DBservers, this is the shard ID as a string
-  std::string _ownName;
-
   /// @brief the ID of the query on the server as a string
   std::string _queryId;
-
-  /// @brief whether or not this node will forward initializeCursor and shutDown
-  /// requests
-  bool _isResponsibleForInitializeCursor;
 };
 
 /// @brief class ScatterNode

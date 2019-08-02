@@ -201,7 +201,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
       rem->isResponsibleForInitializeCursor(false);
     }
     // We have it all serverbased now
-    rem->ownName(server);
+    rem->setDistributeId(server);
   }
 
   if (!localExpansions.empty()) {
@@ -218,6 +218,23 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
     internalGather->elements(_sinkNode->elements());
     ScatterNode* internalScatter = nullptr;
     if (lastIsRemote) {
+      // A Remote can only contact a global SCATTER or GATHER node.
+      TRI_ASSERT(lastNode->getFirstDependency() != nullptr);
+      TRI_ASSERT(lastNode->getFirstDependency()->getType() == ExecutionNode::SCATTER ||
+                 lastNode->getFirstDependency()->getType() == ExecutionNode::DISTRIBUTE);
+      TRI_ASSERT(lastNode->hasDependency());
+
+      // Need to wire up the internal scatter in between the last two nodes
+      // Note that we need to clean up this after we produced the snippets.
+      internalScatter = ExecutionNode::castTo<ScatterNode*>(
+          lastNode->getFirstDependency()->clone(plan, false, false));
+      internalScatter->addDependency(lastNode);
+
+      TRI_ASSERT(_nodes.size() > 1);
+      ExecutionNode* secondToLast = _nodes[_nodes.size() - 2];
+      TRI_ASSERT(secondToLast->hasDependency());
+      secondToLast->swapFirstDependency(internalScatter);
+
       // Not supported yet
       // TODO Add a scatter node between the top 2 nodes.
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -261,7 +278,15 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
 
     const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
     internalGather->toVelocyPack(infoBuilder, flags, false);
-    // No need to clean up
+
+    // We need to clean up ONLY if we have injected the local scatter
+    if (lastIsRemote) {
+      TRI_ASSERT(internalScatter != nullptr);
+      TRI_ASSERT(_nodes.size() > 1);
+      ExecutionNode* secondToLast = _nodes[_nodes.size() - 2];
+      TRI_ASSERT(secondToLast->hasDependency());
+      secondToLast->swapFirstDependency(lastNode);
+    }
   } else {
     const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
     _nodes.front()->toVelocyPack(infoBuilder, flags, false);

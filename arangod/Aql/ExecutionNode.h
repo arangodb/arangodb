@@ -149,7 +149,8 @@ class ExecutionNode {
     SHORTEST_PATH = 24,
     K_SHORTEST_PATHS = 25,
     REMOTESINGLE = 26,
-    ENUMERATE_IRESEARCH_VIEW,
+    ENUMERATE_IRESEARCH_VIEW = 27,
+    DISTRIBUTE_CONSUMER = 28,
     MAX_NODE_TYPE_VALUE
   };
 
@@ -215,6 +216,13 @@ class ExecutionNode {
 
   /// @brief add a parent
   void addParent(ExecutionNode*);
+
+  /// @brief swap the first dependency
+  ///        use with care, will modify the plan
+  void swapFirstDependency(ExecutionNode* node) {
+    TRI_ASSERT(hasDependency());
+    _dependencies[0] = node;
+  }
 
   /// @brief get all dependencies
   TEST_VIRTUAL std::vector<ExecutionNode*> const& getDependencies() const {

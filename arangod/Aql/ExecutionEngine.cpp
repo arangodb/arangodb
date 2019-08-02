@@ -156,7 +156,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
         for (std::string const& snippetId : serverToSnippet.second) {
           remoteNode->queryId(snippetId);
           remoteNode->server(serverID);
-          remoteNode->ownName({""});
+          remoteNode->setDistributeId({""});
           std::unique_ptr<ExecutionBlock> r = remoteNode->createBlock(*this, {});
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           auto remoteBlock = dynamic_cast<ExecutionBlockImpl<RemoteExecutor>*>(r.get());

@@ -45,6 +45,7 @@
 
 #include <type_traits>
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
@@ -90,13 +91,17 @@ arangodb::velocypack::StringRef toString(GatherNode::SortMode mode) noexcept {
 
 /// @brief constructor for RemoteNode
 RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
-    : ExecutionNode(plan, base),
+    : DistributeConsumerNode(plan, base),
       _vocbase(&(plan->getAst()->query()->vocbase())),
       _server(base.get("server").copyString()),
-      _ownName(base.get("ownName").copyString()),
-      _queryId(base.get("queryId").copyString()),
-      _isResponsibleForInitializeCursor(
-          base.get("isResponsibleForInitializeCursor").getBoolean()) {}
+      _queryId(base.get("queryId").copyString()) {
+  // Backwards compatibility (3.4.x)(3.5.0) and earlier, coordinator might send ownName.
+  arangodb::velocypack::StringRef tmpId(getDistributeId());
+  tmpId = VelocyPackHelper::getStringRef(base, "ownName", tmpId);
+  if (tmpId != getDistributeId()) {
+    setDistributeId(tmpId.toString());
+  }
+}
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
@@ -131,21 +136,18 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
   ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
                       std::move(regsToKeep));
 
-  return std::make_unique<ExecutionBlockImpl<RemoteExecutor>>(&engine, this,
-                                                              std::move(infos), server(),
-                                                              ownName(), queryId());
+  return std::make_unique<ExecutionBlockImpl<RemoteExecutor>>(
+      &engine, this, std::move(infos), server(), getDistributeId(), queryId());
 }
 
 /// @brief toVelocyPack, for RemoteNode
 void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  DistributeConsumerNode::toVelocyPackHelperInternal(nodes, flags);
 
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("server", VPackValue(_server));
-  nodes.add("ownName", VPackValue(_ownName));
   nodes.add("queryId", VPackValue(_queryId));
-  nodes.add("isResponsibleForInitializeCursor", VPackValue(_isResponsibleForInitializeCursor));
 
   // And close it:
   nodes.close();

@@ -289,7 +289,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
       auto rem = ExecutionNode::castTo<RemoteNode*>(clone);
       // update the remote node with the information about the query
       rem->server("server:" + arangodb::ServerState::instance()->getId());
-      rem->ownName(serverId);
+      rem->setDistributeId(serverId);
       rem->queryId(_otherId);
 
       rem->isResponsibleForInitializeCursor(isResponsibleForInitializeCursor);
@@ -401,7 +401,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
       auto rem = ExecutionNode::castTo<RemoteNode*>(clone);
       // update the remote node with the information about the query
       rem->server("server:" + arangodb::ServerState::instance()->getId());
-      rem->ownName(id);
+      rem->setDistributeId(id);
       rem->queryId(_otherId);
 
       rem->isResponsibleForInitializeCursor(isResponsibleForInitializeCursor);

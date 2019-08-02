@@ -211,6 +211,7 @@ SET(ARANGOD_SOURCES
   Aql/CountCollectExecutor.cpp
   Aql/DependencyProxy.cpp
   Aql/DistinctCollectExecutor.cpp
+  Aql/DistributeConsumerNode.cpp
   Aql/DistributeExecutor.cpp
   Aql/DocumentProducingNode.cpp
   Aql/EngineInfoContainerCoordinator.cpp
