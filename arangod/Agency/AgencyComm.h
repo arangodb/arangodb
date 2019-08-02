@@ -40,8 +40,6 @@
 #include <velocypack/velocypack-aliases.h>
 #include <type_traits>
 
-#include "Basics/Common.h"
-
 #include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "GeneralServer/GeneralDefinitions.h"
