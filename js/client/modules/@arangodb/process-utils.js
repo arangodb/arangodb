@@ -1033,6 +1033,17 @@ function checkInstanceAlive (instanceInfo, options) {
   let rc = instanceInfo.arangods.reduce((previous, arangod) => {
     return previous && checkArangoAlive(arangod, options);
   }, true);
+  if (rc && options.cluster && instanceInfo.arangods.length > 1) {
+    try {
+      let health = require('internal').clusterHealth();
+      rc = instanceInfo.arangods.reduce((previous, arangod) => {
+        if (arangod.role === "agent") return true;
+        return health.hasOwnProperty(arangod.id) && health[arangod.id].Status === "GOOD";
+      }, true);
+    } catch (x) {
+      print(Date() + "ClusterHealthCheck failed: " + x);
+    }
+  }
   if (!rc) {
     dumpAgency(instanceInfo, options);
     print(Date() + ' If cluster - will now start killing the rest.');
@@ -1479,6 +1490,18 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
       throw new Error('cluster startup timed out after 10 minutes!');
     }
   }
+  print("Determining server IDs");
+  instanceInfo.arangods.forEach(arangod => {
+    // agents don't support the ID call...
+    if (arangod.role !== "agent") {
+      const reply = download(arangod.url + '/_db/_system/_admin/server/id', '', makeAuthorizationHeaders(instanceInfo.authOpts));
+      if (reply.error || reply.code !== 200) {
+        throw new Error("Server has no detecteable ID! " + reply);
+      }
+      let res = JSON.parse(reply.body);
+      arangod.id = res['id'];
+    }
+  });
 }
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief starts an instance
