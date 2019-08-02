@@ -545,7 +545,7 @@ RestStatus RestReplicationHandler::execute() {
       } else {
         handleCommandRemoveFollower();
       }
-    }else if (command == SetTheLeader) {
+    } else if (command == SetTheLeader) {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }

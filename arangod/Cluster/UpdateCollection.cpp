@@ -128,7 +128,7 @@ void sendLeaderChangeRequests(std::vector<ServerID> const& currentServers,
   realInsyncFollowers = std::make_shared<std::vector<ServerID>>();
   for (auto const& req : requests) {
     ClusterCommResult const& result = req.result;
-    if (result.errorCode == TRI_ERROR_NO_ERROR) {
+    if (result.status == CL_COMM_RECEIVED && result.errorCode == TRI_ERROR_NO_ERROR) {
       if (result.result && result.result->getHttpReturnCode() == 200) {
         realInsyncFollowers->push_back(result.serverID);
       }
