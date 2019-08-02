@@ -297,74 +297,41 @@ void ClusterInfo::logAgencyDump() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t ClusterInfo::uniqid(uint64_t count) {
-  while (true) {
-    uint64_t oldValue;
-    uint64_t oldNextValue;
-    {
-      // The quick path, we have enough in our private reserve:
-      MUTEX_LOCKER(mutexLocker, _idLock);
+  MUTEX_LOCKER(mutexLocker, _idLock);
 
-      if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
-        uint64_t result = _uniqid._currentValue;
-        _uniqid._currentValue += count;
-        //LOG_DEVEL << "handout " << result;
-        return result;
-      }
-
-      // Try if we can use the next batch
-      if (_uniqid._nextBatchStart + count - 1 <= _uniqid._nextUpperValue) {
-        uint64_t result = _uniqid._nextBatchStart;
-        _uniqid._currentValue   = _uniqid._nextBatchStart + count;
-        _uniqid._upperValue     = _uniqid._nextUpperValue;
-        triggerBackgroundGetIds();
-
-        //LOG_DEVEL << "handout " << result;
-        return result;
-      }
-
-      oldValue = _uniqid._currentValue;
-      oldNextValue = _uniqid._nextBatchStart;
-    }
-
-    // We need to fetch from the agency
-
-    uint64_t fetch = count;
-
-    if (fetch < MinIdsPerBatch) {
-      fetch = MinIdsPerBatch;
-    }
-
-    //LOG_DEVEL << "Getting ids on my own";
-
-    uint64_t result = _agency.uniqid(2 * fetch, 0.0);
-
-    {
-      MUTEX_LOCKER(mutexLocker, _idLock);
-
-      //LOG_DEVEL << "Got ids on my own: " << result;
-
-      if (oldValue == _uniqid._currentValue && oldNextValue == _uniqid._nextBatchStart) {
-
-        //LOG_DEVEL << "Yes, updating ids.";
-
-        _uniqid._currentValue = result + count;
-        _uniqid._upperValue = result + fetch - 1;
-        // Invalidate next batch
-        _uniqid._nextBatchStart = _uniqid._upperValue + 1;
-        _uniqid._nextUpperValue = _uniqid._upperValue + fetch - 1;
-        //LOG_DEVEL << "setting _currentValue " << _uniqid._currentValue
-        //  << ", _upperValue " << _uniqid._upperValue << ", _nextBatchStart " << _uniqid._nextBatchStart;
-
-        //LOG_DEVEL << "handout " << result;
-
-        return result;
-      } else {
-        //LOG_DEVEL << "Wait, someone was faster";
-      }
-      // If we get here, somebody else tried succeeded in doing the same,
-      // so we just try again.
-    }
+  if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
+    uint64_t result = _uniqid._currentValue;
+    _uniqid._currentValue += count;
+    return result;
   }
+
+  // Try if we can use the next batch
+  if (_uniqid._nextBatchStart + count - 1 <= _uniqid._nextUpperValue) {
+    uint64_t result = _uniqid._nextBatchStart;
+    _uniqid._currentValue   = _uniqid._nextBatchStart + count;
+    _uniqid._upperValue     = _uniqid._nextUpperValue;
+    triggerBackgroundGetIds();
+
+    return result;
+  }
+
+  // We need to fetch from the agency
+
+  uint64_t fetch = count;
+
+  if (fetch < MinIdsPerBatch) {
+    fetch = MinIdsPerBatch;
+  }
+
+  uint64_t result = _agency.uniqid(2 * fetch, 0.0);
+
+  _uniqid._currentValue = result + count;
+  _uniqid._upperValue = result + fetch - 1;
+  // Invalidate next batch
+  _uniqid._nextBatchStart = _uniqid._upperValue + 1;
+  _uniqid._nextUpperValue = _uniqid._upperValue + fetch - 1;
+
+  return result;
 }
 
 
