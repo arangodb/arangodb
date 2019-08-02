@@ -173,6 +173,10 @@ class ScatterNode : public ExecutionNode {
      return _type;
   };
 
+  void setScatterType(ScatterType targetType) {
+    _type = targetType;
+  }
+
  protected:
   void writeClientsToVelocyPack(VPackBuilder& builder) const;
   bool readClientsFromVelocyPack(VPackSlice base);

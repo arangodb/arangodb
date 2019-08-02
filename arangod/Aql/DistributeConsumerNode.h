@@ -70,8 +70,21 @@ class DistributeConsumerNode : public ExecutionNode {
   /// @brief get the distributeId
   std::string const& getDistributeId() const { return _distributeId; }
 
- protected:
+  /// @brief clone execution Node recursively, this makes the class abstract
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override {
+    // This node is not allowed to be cloned.
+    // Clone specialization!
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
 
+  CostEstimate estimateCost() const override {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
+ protected:
   void toVelocyPackHelperInternal(arangodb::velocypack::Builder& nodes, unsigned flags) const;
 
  private:

@@ -25,8 +25,11 @@
 
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectionAccessingNode.h"
+#include "Aql/DistributeConsumerNode.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/IResearchViewNode.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 
 #include <velocypack/Builder.h>
@@ -34,6 +37,7 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::basics;
 
 void QuerySnippet::addNode(ExecutionNode* node) {
   TRI_ASSERT(node != nullptr);
@@ -206,6 +210,8 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
 
   if (!localExpansions.empty()) {
     // We have Expansions to permutate
+    std::vector<std::string> distIds{};
+    distIds.reserve(numberOfShardsToPermutate);
 
     // Create an internal GatherNode, that will connect to all execution
     // steams of the query
@@ -224,20 +230,52 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
                  lastNode->getFirstDependency()->getType() == ExecutionNode::DISTRIBUTE);
       TRI_ASSERT(lastNode->hasDependency());
 
-      // Need to wire up the internal scatter in between the last two nodes
+      // Need to wire up the internal scatter and distribute consumer in between the last two nodes
       // Note that we need to clean up this after we produced the snippets.
-      internalScatter = ExecutionNode::castTo<ScatterNode*>(
-          lastNode->getFirstDependency()->clone(plan, false, false));
+      auto globalScatter =
+          ExecutionNode::castTo<ScatterNode*>(lastNode->getFirstDependency());
+      // Let the globalScatter node distribute data by server
+      globalScatter->setScatterType(ScatterNode::ScatterType::SERVER);
+      internalScatter =
+          ExecutionNode::castTo<ScatterNode*>(globalScatter->clone(plan, false, false));
       internalScatter->addDependency(lastNode);
+      // Let the local Scatter node distribute data by SHARD
+      internalScatter->setScatterType(ScatterNode::ScatterType::SHARD);
+      if (globalScatter->getType() == ExecutionNode::DISTRIBUTE) {
+        DistributeNode const* dist =
+            ExecutionNode::castTo<DistributeNode const*>(globalScatter);
+        TRI_ASSERT(dist != nullptr);
+        auto distCollection = dist->collection();
+        TRI_ASSERT(distCollection != nullptr);
+        // Now find the node that provides the distribute information
+        for (auto const& exp : localExpansions) {
+          auto colAcc = ExecutionNode::castTo<CollectionAccessingNode*>(exp.first);
+          if (colAcc->collection() == distCollection) {
+            // Found one, use all shards of it
+            for (auto const& s : exp.second) {
+              distIds.emplace_back(s);
+            }
+          }
+        }
+      } else {
+        // In this case we actually do not care for the real value, we just need
+        // to ensure that every client get's exactly one copy.
+        for (size_t i = 0; i < numberOfShardsToPermutate; i++) {
+          distIds.emplace_back(StringUtils::itoa(i));
+        }
+      }
 
+      DistributeConsumerNode* consumer =
+          new DistributeConsumerNode(plan, plan->nextId(), distIds[0]);
+      TRI_ASSERT(consumer != nullptr);
+      consumer->addDependency(internalScatter);
+      internalScatter->addClient(consumer);
+
+      // now wire up the temporary nodes
       TRI_ASSERT(_nodes.size() > 1);
       ExecutionNode* secondToLast = _nodes[_nodes.size() - 2];
       TRI_ASSERT(secondToLast->hasDependency());
-      secondToLast->swapFirstDependency(internalScatter);
-
-      // Not supported yet
-      // TODO Add a scatter node between the top 2 nodes.
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      secondToLast->swapFirstDependency(consumer);
     }
     // We do not need to copy the first stream, we can use the one we have.
     // We only need copies for the other streams.
@@ -253,9 +291,14 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
         ExecutionNode* current = *enIt;
         if (lastIsRemote && current == lastNode) {
           // Do never clone the remote, link following node
-          // to Scatter instead
+          // to Consumer and Scatter instead
           TRI_ASSERT(internalScatter != nullptr);
-          previous = internalScatter;
+          DistributeConsumerNode* consumer =
+              new DistributeConsumerNode(plan, plan->nextId(), distIds[0]);
+          TRI_ASSERT(consumer != nullptr);
+          consumer->addDependency(internalScatter);
+          internalScatter->addClient(consumer);
+          previous = consumer;
           continue;
         }
         ExecutionNode* clone = current->clone(plan, false, false);
