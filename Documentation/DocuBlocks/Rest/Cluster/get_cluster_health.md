@@ -39,4 +39,15 @@ Queries the health of the cluster for monitoring purposes. The response is a JSO
 
 @RESTRETURNCODE{200} is returned when everything went well.
 
+@EXAMPLES
+
+Query cluster health
+
+@EXAMPLE_ARANGOSH_RUN{RestAdminClusterHealth_cluster}
+    var url = "/_admin/cluster/health";
+    var response = logCurlRequest('GET', url);
+    assert(response.code === 200);
+    logJsonResponse(response);
+@END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock
