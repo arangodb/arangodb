@@ -142,11 +142,8 @@ bool AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
       // ok, we have been signaled already, so there is no need to wait at all
       // directly refetch the values
       _wasSignaled = false;
-      LOG_TOPIC(DEBUG, Logger::CLUSTER)
-          << "We were signaled already. Refetching to be sure";
-      // mop: watches have not triggered during our sleep...recheck to be sure
-      refetchAndUpdate(false, true);  // Force a check
-      return true;
+      LOG_TOPIC(DEBUG, Logger::CLUSTER) << "We were signaled already";
+      return false;
     }
 
     if (!_cv.wait(static_cast<uint64_t>(maxTimeout * 1000000.0))) {
