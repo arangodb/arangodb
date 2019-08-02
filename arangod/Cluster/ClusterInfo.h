@@ -308,7 +308,26 @@ class ClusterInfo final {
 
   uint64_t uniqid(uint64_t = 1);
 
+  /**
+   * @brief Agency dump including replicated log and compaction
+   * @param  body  Builder to fill with dump
+   * @return       Operation's result
+   */
   arangodb::Result agencyDump(std::shared_ptr<VPackBuilder> body);
+
+  /**
+   * @brief Agency plan
+   * @param  body  Builder to fill with copy of plan
+   * @return       Operation's result
+   */
+  arangodb::Result agencyPlan(std::shared_ptr<VPackBuilder> body);
+
+  /**
+   * @brief Overwrite agency plan
+   * @param  plan  Plan to adapt to
+   * @return       Operation's result
+   */
+  arangodb::Result agencyReplan(VPackSlice const plan);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief flush the caches (used for testing only)
@@ -658,6 +677,8 @@ class ClusterInfo final {
 
   std::unordered_map<ServerID, std::string> getServerAdvertisedEndpoints();
 
+  std::unordered_map<ServerID, std::string> getServerTimestamps();
+
   uint64_t getPlanVersion() {
     READ_LOCKER(guard, _planProt.lock);
     return _planVersion;
@@ -675,6 +696,24 @@ class ClusterInfo final {
    * @return         List of DB servers serving the shard
    */
   arangodb::Result getShardServers(ShardID const& shardId, std::vector<ServerID>&);
+
+  /**
+   * @brief Lock agency's hot backup with TTL 60 seconds
+   *
+   * @param  timeout  Timeout to wait for in seconds
+   * @return          Operation's result
+   */
+  arangodb::Result agencyHotBackupLock(
+    std::string const& uuid, double const& timeout, bool& supervisionOff);
+
+  /**
+   * @brief Lock agency's hot backup with TTL 60 seconds
+   *
+   * @param  timeout  Timeout to wait for in seconds
+   * @return          Operation's result
+   */
+  arangodb::Result agencyHotBackupUnlock(
+    std::string const& uuid, double const& timeout, const bool& supervisionOff);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get an operation timeout
@@ -756,6 +795,7 @@ class ClusterInfo final {
   std::unordered_map<ServerID, std::string> _servers;  // from Current/ServersRegistered
   std::unordered_map<ServerID, std::string> _serverAliases;  // from Current/ServersRegistered
   std::unordered_map<ServerID, std::string> _serverAdvertisedEndpoints;  // from Current/ServersRegistered
+  std::unordered_map<ServerID, std::string> _serverTimestamps;      // from Current/ServersRegistered
   ProtectionData _serversProt;
 
   // The DBServers, also from Current:

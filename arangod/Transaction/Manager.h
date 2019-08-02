@@ -53,7 +53,7 @@ namespace transaction {
 class Context;
 struct Options;
 
-/// @bried Tracks TransasctionState instances 
+/// @bried Tracks TransasctionState instances
 class Manager final {
   static constexpr size_t numBuckets = 16;
   static constexpr double defaultTTL = 10.0 * 60.0;   // 10 minutes
@@ -91,7 +91,8 @@ class Manager final {
   explicit Manager(bool keepData)
     : _keepTransactionData(keepData),
       _nrRunning(0),
-      _disallowInserts(false) {}
+      _disallowInserts(false),
+      _writeLockHeld(false) {}
 
   // register a list of failed transactions
   void registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions);
@@ -103,51 +104,78 @@ class Manager final {
   std::unordered_set<TRI_voc_tid_t> getFailedTransactions() const;
 
   // register a transaction
-  void registerTransaction(TRI_voc_tid_t, std::unique_ptr<TransactionData> data);
+  void registerTransaction(TRI_voc_tid_t, std::unique_ptr<TransactionData> data, bool isReadOnlyTransaction);
 
   // unregister a transaction
-  void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed);
+  void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed, bool isReadOnlyTransaction);
 
   // iterate all the active transactions
   void iterateActiveTransactions(TrxCallback const&);
 
   uint64_t getActiveTransactionCount();
-  
+
   void disallowInserts() {
     _disallowInserts.store(true, std::memory_order_release);
   }
-  
+
   /// @brief register a AQL transaction
   void registerAQLTrx(TransactionState*);
   void unregisterAQLTrx(TRI_voc_tid_t tid) noexcept;
-  
+
   /// @brief create managed transaction
   Result createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                           velocypack::Slice const trxOpts);
-  
+
   /// @brief create managed transaction
   Result createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                           std::vector<std::string> const& readCollections,
                           std::vector<std::string> const& writeCollections,
                           std::vector<std::string> const& exclusiveCollections,
                           transaction::Options const& options);
-  
+
   /// @brief lease the transaction, increases nesting
   std::shared_ptr<transaction::Context> leaseManagedTrx(TRI_voc_tid_t tid,
                                                         AccessMode::Type mode);
   void returnManagedTrx(TRI_voc_tid_t, AccessMode::Type mode) noexcept;
-  
+
   /// @brief get the meta transasction state
   transaction::Status getManagedTrxStatus(TRI_voc_tid_t) const;
-    
+
   Result commitManagedTrx(TRI_voc_tid_t);
   Result abortManagedTrx(TRI_voc_tid_t);
-  
+
   /// @brief collect forgotten transactions
   bool garbageCollect(bool abortAll);
-  
+
   /// @brief abort all transactions matching
   bool abortManagedTrx(std::function<bool(TransactionState const&)>);
+
+  // ---------------------------------------------------------------------------
+  // Hotbackup Stuff
+  // ---------------------------------------------------------------------------
+
+  // temporarily block all new transactions
+  template<typename TimeOutType>
+  bool holdTransactions(TimeOutType timeout) {
+    std::unique_lock<std::mutex> guard(_mutex);
+    bool ret = false;
+    if (!_writeLockHeld) {
+      ret = _rwLock.writeLock(timeout);
+      if (ret) {
+        _writeLockHeld = true;
+      }
+    }
+    return ret;
+  }
+
+  // remove the block
+  void releaseTransactions() {
+    std::unique_lock<std::mutex> guard(_mutex);
+    if (_writeLockHeld) {
+      _rwLock.unlockWrite();
+      _writeLockHeld = false;
+    }
+  }
 
   /// @brief convert the list of running transactions to a VelocyPack array
   /// the array must be opened already.
@@ -162,14 +190,13 @@ class Manager final {
   inline size_t getBucket(TRI_voc_tid_t tid) const {
     return std::hash<TRI_voc_cid_t>()(tid) % numBuckets;
   }
-  
+
   Result updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
                            bool clearServers);
 
   /// @brief calls the callback function for each managed transaction
   void iterateManagedTrx(std::function<void(TRI_voc_tid_t, ManagedTrx const&)> const&) const;
   
- private:
   bool const _keepTransactionData;
 
   // a lock protecting ALL buckets in _transactions
@@ -184,15 +211,22 @@ class Manager final {
 
     // set of failed transactions
     std::unordered_set<TRI_voc_tid_t> _failedTransactions;
-    
+
     // managed transactions, seperate lifetime from above
     std::unordered_map<TRI_voc_tid_t, ManagedTrx> _managed;
   } _transactions[numBuckets];
 
   /// Nr of running transactions
   std::atomic<uint64_t> _nrRunning;
-  
+
   std::atomic<bool> _disallowInserts;
+
+  std::mutex _mutex;   // Makes sure that we only ever get or release the
+                       // write lock and adjust _writeLockHeld at the same
+                       // time.
+  basics::ReadWriteLock _rwLock;
+  bool _writeLockHeld;
+
 };
 }  // namespace transaction
 }  // namespace arangodb
