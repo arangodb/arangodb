@@ -89,7 +89,8 @@ UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescriptio
 
 void sendLeaderChangeRequests(std::vector<ServerID> const& currentServers,
                               std::shared_ptr<std::vector<ServerID>>& realInsyncFollowers,
-                              std::string const& databaseName, ShardID const& shardID) {
+                              std::string const& databaseName, ShardID const& shardID,
+                              std::string const& oldLeader) {
 
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
@@ -104,6 +105,7 @@ void sendLeaderChangeRequests(std::vector<ServerID> const& currentServers,
   {
     VPackObjectBuilder ob(&bodyBuilder);
     bodyBuilder.add("leaderId", VPackValue(sid));
+    bodyBuilder.add("oldLeaderId", VPackValue(oldLeader));
     bodyBuilder.add("shard", VPackValue(shardID));
   }
 
@@ -163,7 +165,7 @@ void handleLeadership(LogicalCollection& collection, std::string const& localLea
           oldLeader = oldLeader.substr(1);
 
           // Update all follower and tell them that we are the leader now
-          sendLeaderChangeRequests(currentServers, realInsyncFollowers, databaseName, collection.name());
+          sendLeaderChangeRequests(currentServers, realInsyncFollowers, databaseName, collection.name(), oldLeader);
         }
       }
 
