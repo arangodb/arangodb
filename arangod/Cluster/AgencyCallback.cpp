@@ -141,9 +141,7 @@ bool AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
       _wasSignaled = false;
       LOG_TOPIC("67690", DEBUG, Logger::CLUSTER)
           << "We were signaled already. Refetching to be sure";
-      // mop: watches have not triggered during our sleep...recheck to be sure
-      refetchAndUpdate(false, true);  // Force a check
-      return true;
+      return false;
     }
 
     // we haven't yet been signaled. so let's wait for a signal or
