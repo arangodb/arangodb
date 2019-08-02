@@ -33,7 +33,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
-#include "Basics/thread.h"
+#include "Basics/Thread.h"
 #include "Basics/TimedAction.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
