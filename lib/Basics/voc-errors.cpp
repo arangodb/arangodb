@@ -243,6 +243,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_SERVICE_INVALID_MOUNT, "invalid mount");
   REG_ERROR(ERROR_SERVICE_DOWNLOAD_FAILED, "service download failed");
   REG_ERROR(ERROR_SERVICE_UPLOAD_FAILED, "service upload failed");
+  REG_ERROR(ERROR_SERVICE_API_DISABLED, "service api disabled");
   REG_ERROR(ERROR_LDAP_CANNOT_INIT, "cannot init a LDAP connection");
   REG_ERROR(ERROR_LDAP_CANNOT_SET_OPTION, "cannot set a LDAP option");
   REG_ERROR(ERROR_LDAP_CANNOT_BIND, "cannot bind to a LDAP server");

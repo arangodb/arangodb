@@ -331,6 +331,7 @@ SET(ARANGOD_SOURCES
   GeneralServer/HttpCommTask.cpp
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
+  GeneralServer/ServerSecurityFeature.cpp
   GeneralServer/VstCommTask.cpp
   GeoIndex/Index.cpp
   GeoIndex/Near.cpp

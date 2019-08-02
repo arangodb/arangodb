@@ -472,6 +472,10 @@
         }
       };
 
+      if (!frontendConfig.foxxStoreEnabled) {
+        delete menus.Store;
+      }
+
       menus[activeKey].active = true;
       if (disabled) {
         menus[disabled].disabled = true;

@@ -244,6 +244,7 @@
     "ERROR_SERVICE_INVALID_MOUNT"  : { "code" : 1751, "message" : "invalid mount" },
     "ERROR_SERVICE_DOWNLOAD_FAILED" : { "code" : 1752, "message" : "service download failed" },
     "ERROR_SERVICE_UPLOAD_FAILED"  : { "code" : 1753, "message" : "service upload failed" },
+    "ERROR_SERVICE_API_DISABLED"   : { "code" : 3099, "message" : "service api disabled" },
     "ERROR_LDAP_CANNOT_INIT"       : { "code" : 1800, "message" : "cannot init a LDAP connection" },
     "ERROR_LDAP_CANNOT_SET_OPTION" : { "code" : 1801, "message" : "cannot set a LDAP option" },
     "ERROR_LDAP_CANNOT_BIND"       : { "code" : 1802, "message" : "cannot bind to a LDAP server" },
