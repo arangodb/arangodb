@@ -3,6 +3,9 @@ v3.4.8 (XXXX-XX-XX)
 
 * Significantly reduced "random" 1 second delays in some arangosearch DDL operations.
 
+* Decreased unnecessary wait times for agency callbacks in case they were
+  called earlier than expected by main thread.
+
 * Upgraded arangodb starter version to 0.14.12
 
 * Added options to make server more secure:
