@@ -35,6 +35,8 @@
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <map>
+
 namespace arangodb {
 
 namespace velocypack {
@@ -64,6 +66,9 @@ class FollowerInfo {
   mutable Mutex _agencyMutex;
   mutable arangodb::basics::ReadWriteLock _canWriteLock;
   mutable arangodb::basics::ReadWriteLock _dataLock;
+
+  mutable arangodb::basics::ReadWriteLock _boundsLock;
+  std::map<ServerID, std::map<TRI_voc_tick_t, int>> _bounds;
 
   arangodb::LogicalCollection* _docColl;
   // if the latter is empty, then we are leading
@@ -140,6 +145,8 @@ class FollowerInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool contains(ServerID const& s) const;
+  
+  void addLowerBoundForReplication(ServerID const& sid, TRI_voc_tick_t tick); 
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set leadership

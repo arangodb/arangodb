@@ -140,7 +140,7 @@ bool AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
       // directly refetch the values
       _wasSignaled = false;
       LOG_TOPIC("67690", DEBUG, Logger::CLUSTER)
-          << "We were signaled already. Refetching to be sure";
+          << "We were signaled already";
       return false;
     }
 
