@@ -705,7 +705,6 @@
 #include <WinSock2.h>  // must be before windows.h
 #include <io.h>
 #include <stdio.h>
-#include <windows.h>
 // available include files
 
 #define TRI_HAVE_DIRECT_H 1
