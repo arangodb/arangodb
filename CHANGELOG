@@ -1,3 +1,10 @@
+v3.5.1 (XXXX-XX-XX)
+-------------------
+
+* Decreased unnecessary wait times for agency callbacks in case they were
+  called earlier than expected by main thread.
+
+
 v3.5.0-rc.7 (2019-08-01)
 ------------------------
 
