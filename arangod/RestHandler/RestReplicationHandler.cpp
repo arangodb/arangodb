@@ -36,6 +36,7 @@
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/ResignShardLeadership.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Replication/DatabaseInitialSyncer.h"
@@ -2509,8 +2510,9 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
     return;
   }
   VPackSlice const leaderIdSlice = body.get("leaderId");
+  VPackSlice const oldLeaderIdSlice = body.get("oldLeaderId");
   VPackSlice const shard = body.get("shard");
-  if (!leaderIdSlice.isString() || !shard.isString()) {
+  if (!leaderIdSlice.isString() || !shard.isString() || !oldLeaderIdSlice.isString()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "'leaderId' and 'shard' attributes must be strings");
     return;
@@ -2528,6 +2530,17 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
   Result res = checkPlanLeaderDirect(col, leaderId);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
+  }
+
+  std::string currentLeader = col->followers()->getLeader();
+  if (currentLeader == arangodb::maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
+    // We have resigned, check that we are the old leader
+    currentLeader = ServerState::instance()->getId();
+  }
+
+  if (!oldLeaderIdSlice.isEqualString(currentLeader)) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN, "old leader not as expected");
+    return;
   }
 
   col->followers()->setTheLeader(leaderId);
