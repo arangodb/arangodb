@@ -218,6 +218,9 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
     }
     // We have it all serverbased now
     rem->setDistributeId(server);
+    // Wire up this server to the global scatter
+    TRI_ASSERT(_globalScatter != nullptr);
+    _globalScatter->addClient(rem);
   }
 
   if (!localExpansions.empty()) {
@@ -234,6 +237,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
         ExecutionNode::castTo<GatherNode*>(_sinkNode->clone(plan, false, false));
     // Use the same elements for sorting
     internalGather->elements(_sinkNode->elements());
+
     ScatterNode* internalScatter = nullptr;
     if (lastIsRemote) {
       TRI_ASSERT(_globalScatter != nullptr);

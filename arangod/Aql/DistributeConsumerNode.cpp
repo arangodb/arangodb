@@ -50,9 +50,6 @@ void DistributeConsumerNode::toVelocyPackHelperInternal(
     VPackBuilder& nodes, unsigned flags, std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-  // This class is only valid if we send over the _distributeId
-  // Only coordinator can decide on it.
-  TRI_ASSERT(!_distributeId.empty());
   nodes.add("distributeId", VPackValue(_distributeId));
   nodes.add("isResponsibleForInitializeCursor", VPackValue(_isResponsibleForInitializeCursor));
 }

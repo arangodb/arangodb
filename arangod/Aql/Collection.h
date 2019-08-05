@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "Cluster/ClusterComm.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
 
@@ -76,7 +77,7 @@ struct Collection {
     // non-sharding case: simply return the name
     return _name;
   }
-  
+
   /// @brief collection type
   TRI_col_type_e type() const;
 
@@ -128,6 +129,22 @@ struct Collection {
   /// if no smart join attribute is present)
   std::string const& smartJoinAttribute() const;
 
+  /// @brief add a mapping of shard => server id
+  /// for later lookup on DistributeNodes
+  void addShardToServer(ShardID const& sid, ServerID const& server) const {
+    // Cannot add the same shard twice!
+    TRI_ASSERT(_shardToServerMapping.find(sid) == _shardToServerMapping.end());
+    _shardToServerMapping.emplace(sid, server);
+  }
+
+  /// @brief lookup the server responsible for the given shard.
+  ServerID const& getServerForShard(ShardID const& sid) const {
+    auto const& it = _shardToServerMapping.find(sid);
+    // Every shard in question has been registered!
+    TRI_ASSERT(it != _shardToServerMapping.end());
+    return it->second;
+  }
+
  private:
   arangodb::LogicalCollection* _collection;
 
@@ -142,6 +159,11 @@ struct Collection {
   AccessMode::Type _accessType;
 
   bool _isReadWrite;
+
+  /// @brief a constant mapping for shards => ServerName as they ware planned
+  /// at the beginning. This way we can distribute data to servers without
+  /// asking the Agency periodically, or even suffer from failover scenarios.
+  mutable std::unordered_map<ShardID, ServerID> _shardToServerMapping;
 };
 }  // namespace aql
 }  // namespace arangodb

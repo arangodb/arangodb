@@ -28,6 +28,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -49,14 +50,21 @@ CollectionAccessingNode::CollectionAccessingNode(aql::Collection const* collecti
 
 CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
                                                  arangodb::velocypack::Slice slice)
-    : _collection(plan->getAst()->query()->collections()->get(
-          slice.get("collection").copyString())),
-      _prototypeCollection(nullptr),
-      _prototypeOutVariable(nullptr) {
+    : _collection(nullptr), _prototypeCollection(nullptr), _prototypeOutVariable(nullptr) {
   if (slice.get("prototype").isString()) {
     _prototypeCollection =
         plan->getAst()->query()->collections()->get(slice.get("prototype").copyString());
   }
+  auto colName = slice.get("collection").copyString();
+  auto typeId = basics::VelocyPackHelper::getNumericValue<int>(slice, "typeID", 0);
+  if (typeId == ExecutionNode::DISTRIBUTE) {
+    // This is a special case, the distribute node can inject a collection
+    // that is NOT yet known to the plan
+    auto query = plan->getAst()->query();
+    query->addCollection(colName, AccessMode::Type::NONE);
+  }
+
+  _collection = plan->getAst()->query()->collections()->get(colName);
 
   TRI_ASSERT(_collection != nullptr);
 
