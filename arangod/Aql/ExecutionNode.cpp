@@ -637,14 +637,12 @@ ExecutionNode const* ExecutionNode::getLoop() const {
 ///       has to close the array.
 void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flags,
                                               std::unordered_set<ExecutionNode const*>& seen) const {
-  LOG_DEVEL << "Serializing " << id() << "::" << getTypeString();
   TRI_ASSERT(nodes.isOpenArray());
   // We are not allowed to call if this node is already seen.
   TRI_ASSERT(seen.find(this) == seen.end());
   size_t const n = _dependencies.size();
   for (size_t i = 0; i < n; i++) {
     ExecutionNode const* dep = _dependencies[i];
-    LOG_DEVEL << id() << " has dep: " << dep->id();
     if (seen.find(dep) == seen.end()) {
       // Only toVelocypack those that have not been seen
       dep->toVelocyPackHelper(nodes, flags, seen);

@@ -694,7 +694,6 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegist
     bool const hundTest =
         plan->hasAppliedRule(static_cast<int>(OptimizerRule::RuleLevel::doNothingRule));
     if (hundTest) {
-      LOG_DEVEL << "wursti";
       // distributed query
       DistributedQueryInstanciatorHund inst(query, pushToSingleServer);
       plan->root()->walk(inst);
