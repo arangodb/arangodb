@@ -424,9 +424,6 @@ bool ResignLeadership::checkFeasibility() {
     return false;
   }
 
-  // Check that each shard has an in sync follower
-  // TO BE IMPLEMENTED
-
   return true;
 }
 
