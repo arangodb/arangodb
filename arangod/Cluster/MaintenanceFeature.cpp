@@ -61,6 +61,7 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
     : ApplicationFeature(server, "Maintenance"),
       _forceActivation(false),
       _maintenanceThreadsMax(2),
+      _resignLeadershipOnShutdown(false),
       _currentCounter(0) {
   // the number of threads will be adjusted later. it's just that we want to
   // initialize all members properly
