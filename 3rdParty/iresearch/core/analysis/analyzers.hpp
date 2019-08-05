@@ -58,7 +58,11 @@ class IRESEARCH_API analyzer_registrar {
     normalizer_f normalizer,
     const char* source = nullptr
   );
-  operator bool() const NOEXCEPT;
+
+  operator bool() const NOEXCEPT {
+    return registered_;
+  }
+
  private:
   bool registered_;
 };

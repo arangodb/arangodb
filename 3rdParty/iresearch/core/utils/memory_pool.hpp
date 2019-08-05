@@ -419,6 +419,7 @@ template<
       free_ = std::move(rhs.free_);
       blocks_ = std::move(rhs.blocks_);
     }
+    return *this;
   }
 
   ~memory_pool() NOEXCEPT {
