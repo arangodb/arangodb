@@ -719,6 +719,10 @@ def generateTestCases():
             print >> sys.stderr, "skipping " + thisTest
             continue
 
+        if not cluster and thisTest.endswith('_cluster'):
+            print >> sys.stderr, "skipping " + thisTest
+            continue
+
         if RunTests[thisTest][TYPE] == STATE_ARANGOSH_OUTPUT:
             generateArangoshOutput(thisTest)
         elif RunTests[thisTest][TYPE] == STATE_ARANGOSH_RUN:

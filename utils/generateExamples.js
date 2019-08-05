@@ -233,10 +233,10 @@ function main(argv) {
     if (startServer) {
       pu.shutdownInstance(instanceInfo, options);
     }
+    if (res.exit != 0) {
+      throw("generating examples failed - aborting!");
+    }
   });
-  if (res.exit != 0) {
-    throw("generating examples failed!");
-  }
 
   return 0;
 }
