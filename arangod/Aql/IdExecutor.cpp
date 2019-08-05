@@ -36,14 +36,20 @@ IdExecutorInfos::IdExecutorInfos(RegisterId nrInOutRegisters,
                                  // cppcheck-suppress passedByValue
                                  std::unordered_set<RegisterId> registersToKeep,
                                  // cppcheck-suppress passedByValue
-                                 std::unordered_set<RegisterId> registersToClear)
+                                 std::unordered_set<RegisterId> registersToClear,
+                                 std::string const& distributeId)
     : ExecutorInfos(make_shared_unordered_set(), make_shared_unordered_set(),
                     nrInOutRegisters, nrInOutRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)) {}
+                    std::move(registersToClear), std::move(registersToKeep)),
+      _distributeId(distributeId) {}
 
 template <class UsedFetcher>
 IdExecutor<UsedFetcher>::IdExecutor(Fetcher& fetcher, IdExecutorInfos& infos)
-    : _fetcher(fetcher) {}
+    : _fetcher(fetcher) {
+  if (!infos.distributeId().empty()) {
+    _fetcher.setDistributeId(infos.distributeId());
+  }
+}
 
 template <class UsedFetcher>
 IdExecutor<UsedFetcher>::~IdExecutor() = default;

@@ -203,8 +203,9 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Sl
   _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
 }
 
-void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  GraphNode::toVelocyPackHelper(nodes, flags);  // call base class method
+void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                          std::unordered_set<ExecutionNode const*>& seen) const {
+  GraphNode::toVelocyPackHelper(nodes, flags, seen);  // call base class method
   // In variables
   if (usesStartInVariable()) {
     nodes.add(VPackValue("startInVariable"));
@@ -287,8 +288,8 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
                                   getRegsToClear(), calcRegsToKeep(),
                                   std::move(finder), std::move(outputRegisterMapping),
                                   std::move(sourceInput), std::move(targetInput));
-  return std::make_unique<ExecutionBlockImpl<ShortestPathExecutor>>(
-      &engine, this, std::move(infos));
+  return std::make_unique<ExecutionBlockImpl<ShortestPathExecutor>>(&engine, this,
+                                                                    std::move(infos));
 }
 
 ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan, bool withDependencies,

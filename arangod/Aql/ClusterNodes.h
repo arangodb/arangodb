@@ -66,7 +66,8 @@ class RemoteNode final : public DistributeConsumerNode {
   NodeType getType() const override final { return REMOTE; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -118,13 +119,11 @@ class RemoteNode final : public DistributeConsumerNode {
 /// @brief class ScatterNode
 class ScatterNode : public ExecutionNode {
  public:
-  enum ScatterType {
-    SERVER = 0,
-    SHARD = 1
-  };
+  enum ScatterType { SERVER = 0, SHARD = 1 };
 
   /// @brief constructor with an id
-  ScatterNode(ExecutionPlan* plan, size_t id, ScatterType type) : ExecutionNode(plan, id), _type(type) {}
+  ScatterNode(ExecutionPlan* plan, size_t id, ScatterType type)
+      : ExecutionNode(plan, id), _type(type) {}
 
   ScatterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -132,7 +131,8 @@ class ScatterNode : public ExecutionNode {
   NodeType getType() const override { return SCATTER; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -157,8 +157,8 @@ class ScatterNode : public ExecutionNode {
     _clients.emplace_back(distId);
   }
 
-// Just temporary as long as we have two versions
-// TODO REMOVE ME
+  // Just temporary as long as we have two versions
+  // TODO REMOVE ME
   void addClient(std::string const& clientId) {
     // We cannot add the same distributeId twice, data is delivered exactly once for each id
     TRI_ASSERT(std::find(_clients.begin(), _clients.end(), clientId) == _clients.end());
@@ -167,15 +167,11 @@ class ScatterNode : public ExecutionNode {
 
   std::vector<std::string> const& clients() const noexcept { return _clients; }
 
-/// @brief get the scatter type, this defines the variation on how we distribute
-/// the data onto our clients.
-  ScatterType getScatterType() const {
-     return _type;
-  };
+  /// @brief get the scatter type, this defines the variation on how we
+  /// distribute the data onto our clients.
+  ScatterType getScatterType() const { return _type; };
 
-  void setScatterType(ScatterType targetType) {
-    _type = targetType;
-  }
+  void setScatterType(ScatterType targetType) { _type = targetType; }
 
  protected:
   void writeClientsToVelocyPack(VPackBuilder& builder) const;
@@ -185,6 +181,7 @@ class ScatterNode : public ExecutionNode {
     TRI_ASSERT(_clients.empty());
     _clients = other;
   }
+
  private:
   std::vector<std::string> _clients;
 
@@ -199,9 +196,9 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   /// @brief constructor with an id
  public:
   DistributeNode(ExecutionPlan* plan, size_t id, ScatterNode::ScatterType type,
-                 Collection const* collection,
-                 Variable const* variable, Variable const* alternativeVariable,
-                 bool createKeys, bool allowKeyConversionToObject)
+                 Collection const* collection, Variable const* variable,
+                 Variable const* alternativeVariable, bool createKeys,
+                 bool allowKeyConversionToObject)
       : ScatterNode(plan, id, type),
         CollectionAccessingNode(collection),
         _variable(variable),
@@ -216,7 +213,8 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   NodeType getType() const override final { return DISTRIBUTE; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -226,9 +224,9 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(), _collection, _variable,
-                                              _alternativeVariable, _createKeys,
-                                              _allowKeyConversionToObject);
+    auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(), _collection,
+                                              _variable, _alternativeVariable,
+                                              _createKeys, _allowKeyConversionToObject);
     c->copyClients(clients());
 
     return cloneHelper(std::move(c), withDependencies, withProperties);
@@ -305,7 +303,8 @@ class GatherNode final : public ExecutionNode {
   NodeType getType() const override final { return GATHER; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -374,7 +373,8 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   NodeType getType() const override final { return REMOTESINGLE; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

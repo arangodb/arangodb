@@ -35,6 +35,7 @@ namespace aql {
 
 class ExecutionNode;
 class GatherNode;
+class ScatterNode;
 
 class QuerySnippet {
  private:
@@ -57,7 +58,8 @@ class QuerySnippet {
       : _sinkNode(sinkNode),
         _idOfSinkRemoteNode(idOfSinkRemoteNode),
         _madeResponsibleForShutdown(false),
-        _inputSnippet(0) {
+        _inputSnippet(0),
+        _globalScatter(nullptr) {
     TRI_ASSERT(_sinkNode != nullptr);
     TRI_ASSERT(_idOfSinkRemoteNode != 0);
   }
@@ -82,6 +84,8 @@ class QuerySnippet {
   std::vector<ExpansionInformation> _expansions;
 
   QueryId _inputSnippet;
+
+  ScatterNode* _globalScatter;
 };
 }  // namespace aql
 }  // namespace arangodb

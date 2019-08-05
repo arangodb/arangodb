@@ -362,7 +362,8 @@ class ExecutionNode {
   void toVelocyPack(arangodb::velocypack::Builder&, unsigned flags, bool keepTopLevelOpen) const;
 
   /// @brief toVelocyPack
-  virtual void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const = 0;
+  virtual void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                                  std::unordered_set<ExecutionNode const*>& seen) const = 0;
 
   /** Variables used and set are disjunct!
    *   Variables that are read from must be returned by the
@@ -517,9 +518,9 @@ class ExecutionNode {
   void planRegisters(ExecutionNode* super = nullptr);
 
   /// @brief get RegisterPlan
-  RegisterPlan const* getRegisterPlan() const {
+  std::shared_ptr<RegisterPlan> getRegisterPlan() const {
     TRI_ASSERT(_registerPlan != nullptr);
-    return _registerPlan.get();
+    return _registerPlan;
   }
 
   /// @brief get depth
@@ -555,7 +556,8 @@ class ExecutionNode {
                               arangodb::velocypack::Slice const& slice, char const* which);
 
   /// @brief toVelocyPackHelper, for a generic node
-  void toVelocyPackHelperGeneric(arangodb::velocypack::Builder&, unsigned flags) const;
+  void toVelocyPackHelperGeneric(arangodb::velocypack::Builder&, unsigned flags,
+                                 std::unordered_set<ExecutionNode const*>& seen) const;
 
   /// @brief set regs to be deleted
   void setRegsToClear(std::unordered_set<RegisterId>&& toClear) {
@@ -648,7 +650,8 @@ class SingletonNode : public ExecutionNode {
   NodeType getType() const override final { return SINGLETON; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -690,7 +693,8 @@ class EnumerateCollectionNode : public ExecutionNode,
   NodeType getType() const override final { return ENUMERATE_COLLECTION; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -747,7 +751,8 @@ class EnumerateListNode : public ExecutionNode {
   NodeType getType() const override final { return ENUMERATE_LIST; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -800,7 +805,8 @@ class LimitNode : public ExecutionNode {
   NodeType getType() const override final { return LIMIT; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -871,7 +877,8 @@ class CalculationNode : public ExecutionNode {
   NodeType getType() const override final { return CALCULATION; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -944,7 +951,8 @@ class SubqueryNode : public ExecutionNode {
   Variable const* outVariable() const { return _outVariable; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -1017,7 +1025,8 @@ class FilterNode : public ExecutionNode {
   NodeType getType() const override { return FILTER; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -1117,7 +1126,8 @@ class ReturnNode : public ExecutionNode {
   void setCount() { _count = true; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -1162,7 +1172,8 @@ class NoResultsNode : public ExecutionNode {
   NodeType getType() const override final { return NORESULTS; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

@@ -85,6 +85,12 @@ class ConstFetcher {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
+  void setDistributeId(std::string const&) {
+    // This is not implemented for this fetcher
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
  private:
   /**
    * @brief Input block currently in use. Used for memory management by the

@@ -63,7 +63,8 @@ class GraphNode : public ExecutionNode {
  public:
   virtual ~GraphNode();
 
-  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags) const override;
+  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override;
 
   /// @brief the cost of a graph node
   CostEstimate estimateCost() const override;

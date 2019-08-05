@@ -29,6 +29,7 @@ namespace arangodb {
 namespace aql {
 class ExecutionBlock;
 class ExecutionPlan;
+class ScatterNode;
 
 class DistributeConsumerNode : public ExecutionNode {
  public:
@@ -43,7 +44,8 @@ class DistributeConsumerNode : public ExecutionNode {
   NodeType getType() const override { return DISTRIBUTE_CONSUMER; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -84,8 +86,11 @@ class DistributeConsumerNode : public ExecutionNode {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
+  void cloneRegisterPlan(ScatterNode* dependency);
+
  protected:
-  void toVelocyPackHelperInternal(arangodb::velocypack::Builder& nodes, unsigned flags) const;
+  void toVelocyPackHelperInternal(arangodb::velocypack::Builder& nodes, unsigned flags,
+                                  std::unordered_set<ExecutionNode const*>& seen) const;
 
  private:
   /// @brief our own distributeId. If it is set, we will fetch only ata for

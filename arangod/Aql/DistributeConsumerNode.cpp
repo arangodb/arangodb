@@ -22,7 +22,9 @@
 
 #include "DistributeConsumerNode.h"
 
+#include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
+#include "Aql/IdExecutor.h"
 #include "Basics/VelocyPackHelper.h"
 
 using namespace arangodb;
@@ -36,17 +38,18 @@ DistributeConsumerNode::DistributeConsumerNode(ExecutionPlan* plan,
       _isResponsibleForInitializeCursor(
           base.get("isResponsibleForInitializeCursor").getBoolean()) {}
 
-void DistributeConsumerNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+void DistributeConsumerNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                                std::unordered_set<ExecutionNode const*>& seen) const {
   // Local variant
-  toVelocyPackHelperGeneric(nodes, flags);
+  toVelocyPackHelperInternal(nodes, flags, seen);
   // And close it:
   nodes.close();
 }
 
-void DistributeConsumerNode::toVelocyPackHelperInternal(VPackBuilder& nodes,
-                                                        unsigned flags) const {
+void DistributeConsumerNode::toVelocyPackHelperInternal(
+    VPackBuilder& nodes, unsigned flags, std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
   // This class is only valid if we send over the _distributeId
   // Only coordinator can decide on it.
   TRI_ASSERT(!_distributeId.empty());
@@ -56,7 +59,29 @@ void DistributeConsumerNode::toVelocyPackHelperInternal(VPackBuilder& nodes,
 
 std::unique_ptr<ExecutionBlock> DistributeConsumerNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  // implement me
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  return nullptr;
+  TRI_ASSERT(hasDependency());
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
+             getRegisterPlan()->nrRegs[getDepth()]);
+  IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()], calcRegsToKeep(),
+                        getRegsToClear(), _distributeId);
+  return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<true>>>>(
+      &engine, this, std::move(infos));
+}
+
+void DistributeConsumerNode::cloneRegisterPlan(ScatterNode* dependency) {
+  TRI_ASSERT(hasDependency());
+  TRI_ASSERT(getFirstDependency() == dependency);
+  _registerPlan = dependency->getRegisterPlan();
+  _depth = dependency->getDepth();
+  {
+    auto later = dependency->getVarsUsedLater();
+    setVarsUsedLater(later);
+  }
+  {
+    auto valid = dependency->getVarsValid();
+    setVarsValid(valid);
+  }
+  setVarUsageValid();
 }

@@ -126,6 +126,10 @@ class SingleRowFetcher {
     return {_upstreamState, atMost};
   }
 
+  void setDistributeId(std::string const& id) {
+    _dependencyProxy->setDistributeId(id);
+  }
+
  private:
   DependencyProxy<passBlocksThrough>* _dependencyProxy;
 

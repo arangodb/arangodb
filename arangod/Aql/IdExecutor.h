@@ -47,12 +47,18 @@ struct SortRegister;
 class IdExecutorInfos : public ExecutorInfos {
  public:
   IdExecutorInfos(RegisterId nrInOutRegisters, std::unordered_set<RegisterId> registersToKeep,
-                  std::unordered_set<RegisterId> registersToClear);
+                  std::unordered_set<RegisterId> registersToClear,
+                  std::string const& distributeId = "");
 
   IdExecutorInfos() = delete;
   IdExecutorInfos(IdExecutorInfos&&) = default;
   IdExecutorInfos(IdExecutorInfos const&) = delete;
   ~IdExecutorInfos() = default;
+
+  std::string const& distributeId() { return _distributeId; }
+
+ private:
+  std::string const _distributeId;
 };
 
 // forward declaration

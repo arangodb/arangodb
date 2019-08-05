@@ -1079,7 +1079,6 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
     _query->incHttpRequests(1);
-    LOG_DEVEL << "Sending OLD " << infoBuilder.toJson();
     auto res = cc->syncRequest(coordTransactionID, serverDest, RequestType::POST,
                                url, infoBuilder.toJson(), headers, SETUP_TIMEOUT);
 

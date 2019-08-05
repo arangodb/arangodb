@@ -267,8 +267,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _options(nullptr),
       _optionsBuilt(false),
       _isSmart(false) {
-
-  uint64_t dir = arangodb::basics::VelocyPackHelper::stringUInt64(base.get("defaultDirection"));
+  uint64_t dir = arangodb::basics::VelocyPackHelper::stringUInt64(
+      base.get("defaultDirection"));
   _defaultDirection = uint64ToDirection(dir);
 
   // Directions
@@ -397,9 +397,10 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 
 GraphNode::~GraphNode() {}
 
-void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                   std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
 
   // Vocbase
   nodes.add("database", VPackValue(_vocbase->name()));

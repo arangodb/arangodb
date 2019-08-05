@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2019-2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -198,7 +197,20 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
       rem->server("server:" + arangodb::ServerState::instance()->getId());
       rem->queryId(_inputSnippet);
       rem->isResponsibleForInitializeCursor(true);
-      // Cut off all dependencies here, they are done implicitly
+
+      // A Remote can only contact a global SCATTER or GATHER node.
+      TRI_ASSERT(rem->getFirstDependency() != nullptr);
+      TRI_ASSERT(rem->getFirstDependency()->getType() == ExecutionNode::SCATTER ||
+                 rem->getFirstDependency()->getType() == ExecutionNode::DISTRIBUTE);
+      TRI_ASSERT(rem->hasDependency());
+
+      // Need to wire up the internal scatter and distribute consumer in between the last two nodes
+      // Note that we need to clean up this after we produced the snippets.
+      _globalScatter = ExecutionNode::castTo<ScatterNode*>(rem->getFirstDependency());
+      // Let the globalScatter node distribute data by server
+      _globalScatter->setScatterType(ScatterNode::ScatterType::SERVER);
+
+      // Cut off all dependencies here, they are done implicitly from now.
       rem->removeDependencies();
       _madeResponsibleForShutdown = true;
     } else {
@@ -224,26 +236,15 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
     internalGather->elements(_sinkNode->elements());
     ScatterNode* internalScatter = nullptr;
     if (lastIsRemote) {
-      // A Remote can only contact a global SCATTER or GATHER node.
-      TRI_ASSERT(lastNode->getFirstDependency() != nullptr);
-      TRI_ASSERT(lastNode->getFirstDependency()->getType() == ExecutionNode::SCATTER ||
-                 lastNode->getFirstDependency()->getType() == ExecutionNode::DISTRIBUTE);
-      TRI_ASSERT(lastNode->hasDependency());
-
-      // Need to wire up the internal scatter and distribute consumer in between the last two nodes
-      // Note that we need to clean up this after we produced the snippets.
-      auto globalScatter =
-          ExecutionNode::castTo<ScatterNode*>(lastNode->getFirstDependency());
-      // Let the globalScatter node distribute data by server
-      globalScatter->setScatterType(ScatterNode::ScatterType::SERVER);
+      TRI_ASSERT(_globalScatter != nullptr);
       internalScatter =
-          ExecutionNode::castTo<ScatterNode*>(globalScatter->clone(plan, false, false));
+          ExecutionNode::castTo<ScatterNode*>(_globalScatter->clone(plan, false, false));
       internalScatter->addDependency(lastNode);
       // Let the local Scatter node distribute data by SHARD
       internalScatter->setScatterType(ScatterNode::ScatterType::SHARD);
-      if (globalScatter->getType() == ExecutionNode::DISTRIBUTE) {
+      if (_globalScatter->getType() == ExecutionNode::DISTRIBUTE) {
         DistributeNode const* dist =
-            ExecutionNode::castTo<DistributeNode const*>(globalScatter);
+            ExecutionNode::castTo<DistributeNode const*>(_globalScatter);
         TRI_ASSERT(dist != nullptr);
         auto distCollection = dist->collection();
         TRI_ASSERT(distCollection != nullptr);
@@ -265,10 +266,14 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
         }
       }
 
-      DistributeConsumerNode* consumer =
-          new DistributeConsumerNode(plan, plan->nextId(), distIds[0]);
+      auto uniq_consumer =
+          std::make_unique<DistributeConsumerNode>(plan, plan->nextId(), distIds[0]);
+      auto consumer = uniq_consumer.get();
       TRI_ASSERT(consumer != nullptr);
+      // Hand over responsibilty to plan, s.t. it can clean up if one of the below fails
+      plan->registerNode(uniq_consumer.release());
       consumer->addDependency(internalScatter);
+      consumer->cloneRegisterPlan(internalScatter);
       internalScatter->addClient(consumer);
 
       // now wire up the temporary nodes
@@ -293,12 +298,18 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
           // Do never clone the remote, link following node
           // to Consumer and Scatter instead
           TRI_ASSERT(internalScatter != nullptr);
-          DistributeConsumerNode* consumer =
-              new DistributeConsumerNode(plan, plan->nextId(), distIds[0]);
+          auto uniq_consumer =
+              std::make_unique<DistributeConsumerNode>(plan, plan->nextId(), distIds[i]);
+          auto consumer = uniq_consumer.get();
           TRI_ASSERT(consumer != nullptr);
+          // Hand over responsibilty to plan, s.t. it can clean up if one of the below fails
+          plan->registerNode(uniq_consumer.release());
+          consumer->isResponsibleForInitializeCursor(false);
           consumer->addDependency(internalScatter);
+          consumer->cloneRegisterPlan(internalScatter);
           internalScatter->addClient(consumer);
           previous = consumer;
+
           continue;
         }
         ExecutionNode* clone = current->clone(plan, false, false);

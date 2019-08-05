@@ -141,9 +141,10 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
 }
 
 /// @brief toVelocyPack, for RemoteNode
-void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                    std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
-  DistributeConsumerNode::toVelocyPackHelperInternal(nodes, flags);
+  DistributeConsumerNode::toVelocyPackHelperInternal(nodes, flags, seen);
 
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("server", VPackValue(_server));
@@ -193,9 +194,10 @@ std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
 }
 
 /// @brief toVelocyPack, for ScatterNode
-void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                     std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
 
   // serialize clients
   writeClientsToVelocyPack(nodes);
@@ -233,11 +235,11 @@ bool ScatterNode::readClientsFromVelocyPack(VPackSlice base) {
 }
 
 void ScatterNode::writeClientsToVelocyPack(VPackBuilder& builder) const {
+  builder.add("scatterType", VPackValue(static_cast<uint64_t>(getScatterType())));
   VPackArrayBuilder arrayScope(&builder, "clients");
   for (auto const& client : _clients) {
     builder.add(VPackValue(client));
   }
-  builder.add("scatterType", VPackValue(static_cast<uint64_t>(getScatterType())));
 }
 
 /// @brief estimateCost
@@ -316,9 +318,10 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
 }
 
 /// @brief toVelocyPack, for DistributedNode
-void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) const {
+void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
+                                        std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(builder, flags, seen);
 
   // add collection information
   CollectionAccessingNode::toVelocyPack(builder);
@@ -397,9 +400,10 @@ GatherNode::GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode) noexce
     : ExecutionNode(plan, id), _sortmode(sortMode) {}
 
 /// @brief toVelocyPack, for GatherNode
-void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                    std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
 
   if (_elements.empty()) {
     nodes.add("sortmode", VPackValue(SortModeUnset.data()));
@@ -543,9 +547,10 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
 }
 
 /// @brief toVelocyPack, for SingleRemoteOperationNode
-void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                                   std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
   CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(nodes);
 
   // add collection information
