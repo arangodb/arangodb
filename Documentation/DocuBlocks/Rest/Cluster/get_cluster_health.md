@@ -46,7 +46,7 @@ Query cluster health
 @EXAMPLE_ARANGOSH_RUN{RestAdminClusterHealth_cluster}
     var url = "/_admin/cluster/health";
     var response = logCurlRequest('GET', url);
-    assert(response.code === 200);
+    assert(response.code === 666);
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 
