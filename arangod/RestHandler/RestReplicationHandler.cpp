@@ -2527,24 +2527,30 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
     return;
   }
 
-  Result res = checkPlanLeaderDirect(col, leaderId);
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
   std::string currentLeader = col->followers()->getLeader();
+  LOG_DEVEL << "Current leader is " << currentLeader;
   if (currentLeader == arangodb::maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
     // We have resigned, check that we are the old leader
     currentLeader = ServerState::instance()->getId();
+    LOG_DEVEL << "We were old leader";
   }
 
-  if (!oldLeaderIdSlice.isEqualString(currentLeader)) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN, "old leader not as expected");
-    return;
+  if (leaderId != currentLeader) {
+
+    Result res = checkPlanLeaderDirect(col, leaderId);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    if (!oldLeaderIdSlice.isEqualString(currentLeader)) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN, "old leader not as expected");
+      return;
+    }
+
+    col->followers()->setTheLeader(leaderId);
+    LOG_DEVEL << "Set leader for " << shard.copyString() << " to " << leaderId;
   }
 
-  col->followers()->setTheLeader(leaderId);
-  LOG_DEVEL << "Set leader for " << shard.copyString() << " to " << leaderId;
 
   VPackBuilder b;
   {
