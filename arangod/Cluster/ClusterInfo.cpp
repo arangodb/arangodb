@@ -220,7 +220,13 @@ void ClusterInfo::cleanup() {
     return;
   }
 
-  while (theInstance->_uniqid._backgroundJobIsRunning) {
+  while (true) {
+    {
+      MUTEX_LOCKER(mutexLocker, theInstance->_idLock);
+      if (theInstance->_uniqid._backgroundJobIsRunning) {
+        break ;
+      }
+    }
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
