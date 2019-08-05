@@ -104,7 +104,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode) {
         restrictedShard.emplace(colNode->restrictedShard());
       }
 
-      auto const* col = colNode->collection();
+      auto* col = colNode->collection();
       updateLocking(col, AccessMode::Type::READ, restrictedShard);
       break;
     }
@@ -130,7 +130,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL, "unable to cast node to ModificationNode");
       }
-      auto const* col = modNode->collection();
+      auto* col = modNode->collection();
 
       std::unordered_set<std::string> restrictedShard;
       if (modNode->isRestricted()) {
@@ -235,6 +235,12 @@ std::unordered_map<ShardID, ServerID> const& ShardLocking::getShardMapping() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
     _shardMapping = ci->getResponsibleServers(shardIds);
+    TRI_ASSERT(_shardMapping.size() == shardIds.size());
+    for (auto const& lockInfo : _collectionLocking) {
+      for (auto const& sid : lockInfo.second.usedShards) {
+        lockInfo.first->addShardToServer(sid, _shardMapping[sid]);
+      }
+    }
   }
   return _shardMapping;
 }
