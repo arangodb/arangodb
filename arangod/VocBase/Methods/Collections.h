@@ -30,6 +30,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 #include <functional>
 
 namespace arangodb {
@@ -96,6 +97,8 @@ struct Collections {
                        bool createWaitsForSyncReplication,
                        bool enforceReplicationFactor, MultiFuncCallback const&);
   static Result createSystem(TRI_vocbase_t& vocbase, std::string const& name);
+  static void createSystemCollectionProperties(std::string collectionName,
+                                               VPackBuilder& builder, bool isSystem);
 
   static Result load(TRI_vocbase_t& vocbase, LogicalCollection* coll);
   static Result unload(TRI_vocbase_t* vocbase, LogicalCollection* coll);

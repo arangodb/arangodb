@@ -77,8 +77,20 @@ std::string const StaticStrings::ReplicationHeaderFromPresent(
 std::string const StaticStrings::ReplicationHeaderActive(
     "x-arango-replication-active");
 
-// database and collection names
+// database names
 std::string const StaticStrings::SystemDatabase("_system");
+
+// collection names
+std::string const StaticStrings::AnalyzersCollection("_analyzers");
+std::string const StaticStrings::LegacyAnalyzersCollection("_iresearch_analyzers");
+std::string const StaticStrings::UsersCollection("_users");
+std::string const StaticStrings::GraphsCollection("_graphs");
+std::string const StaticStrings::AqlFunctionsCollection("_aqlfunctions");
+std::string const StaticStrings::QueuesCollection("_queues");
+std::string const StaticStrings::JobsCollection("_jobs");
+std::string const StaticStrings::AppsCollection("_apps");
+std::string const StaticStrings::AppBundlesCollection("_appbundles");
+std::string const StaticStrings::FishbowlCollection("_fishbowl");
 
 // LogicalDataSource definition fields
 std::string const StaticStrings::DataSourceDeleted("deleted");
