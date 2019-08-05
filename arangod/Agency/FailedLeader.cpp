@@ -83,58 +83,6 @@ FailedLeader::~FailedLeader() {}
 
 void FailedLeader::run(bool& aborts) { runHelper("", _shard, aborts); }
 
-void FailedLeader::rollback() {
-  // Create new plan servers (exchange _to and _from)
-  std::string planPath =
-      planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  auto const& planned = _snapshot.hasAsSlice(planPath).first;  // if missing, what?
-  std::shared_ptr<Builder> payload = nullptr;
-
-  if (_status == PENDING) {  // Only payload if pending. Otherwise just fail.
-    VPackBuilder rb;
-    if (!_to.empty()) {
-      {
-        VPackArrayBuilder r(&rb);
-        for (auto const i : VPackArrayIterator(planned)) {
-          TRI_ASSERT(i.isString());
-          auto istr = i.copyString();
-          if (istr == _from) {
-            rb.add(VPackValue(_to));
-          } else if (istr == _to) {
-            rb.add(VPackValue(_from));
-          } else {
-            rb.add(i);
-          }
-        }
-      }
-    } else {
-      rb.add(planned);
-    }
-    auto cs = clones(_snapshot, _database, _collection, _shard);
-
-    // Transactions
-    payload = std::make_shared<Builder>();
-    {
-      VPackArrayBuilder a(payload.get());
-      { // opers
-        VPackObjectBuilder b(payload.get());
-        for (auto const c : cs) {
-          payload->add(planColPrefix + _database + "/" + c.collection +
-                           "/shards/" + c.shard,
-                       rb.slice());
-        }
-      }
-      {
-        VPackObjectBuilder p(payload.get());
-        addPreconditionCollectionStillThere(*payload.get(), _database, _collection);
-      }
-    }
-
-  }
-
-  finish("", _shard, false, "Timed out.", payload);
-}
-
 bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
   using namespace std::chrono;
   LOG_TOPIC("46046", INFO, Logger::SUPERVISION)
