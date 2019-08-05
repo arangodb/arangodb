@@ -26,6 +26,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace arangodb {

@@ -25,6 +25,10 @@
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -32,6 +36,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/SmartContext.h"
+#include "Transaction/Status.h"
 #include "Utils/CollectionNameResolver.h"
 
 #include <velocypack/Iterator.h>
@@ -75,7 +80,12 @@ void Manager::unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> con
 }
 
 void Manager::registerTransaction(TRI_voc_tid_t transactionId,
-                                  std::unique_ptr<TransactionData> data) {
+                                  std::unique_ptr<TransactionData> data,
+                                  bool isReadOnlyTransaction) {
+  if (!isReadOnlyTransaction) {
+    _rwLock.readLock();
+  }
+
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
 
   if (_keepTransactionData) {
@@ -95,7 +105,7 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
 }
 
 // unregisters a transaction
-void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed) {
+void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed, bool isReadOnlyTransaction) {
   uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
   TRI_ASSERT(r > 0);
 
@@ -109,6 +119,9 @@ void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFail
     if (markAsFailed) {
       _transactions[bucket]._failedTransactions.emplace(transactionId);
     }
+  }
+  if (!isReadOnlyTransaction) {
+    _rwLock.unlockRead();
   }
 }
 
@@ -188,23 +201,25 @@ void Manager::registerAQLTrx(TransactionState* state) {
   if (_disallowInserts.load(std::memory_order_acquire)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
-  
+
   TRI_ASSERT(state != nullptr);
   const size_t bucket = getBucket(state->id());
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+  {
+    READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
-  auto& buck = _transactions[bucket];
-  auto it = buck._managed.find(state->id());
-  if (it != buck._managed.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
-                                   "transaction ID already used");
+    auto& buck = _transactions[bucket];
+    auto it = buck._managed.find(state->id());
+    if (it != buck._managed.end()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
+                                     "transaction ID already used");
+    }
+
+    buck._managed.emplace(std::piecewise_construct,
+                          std::forward_as_tuple(state->id()),
+                          std::forward_as_tuple(MetaType::StandaloneAQL, state,
+                                                (defaultTTL + TRI_microtime())));
   }
-
-  buck._managed.emplace(std::piecewise_construct,
-                        std::forward_as_tuple(state->id()),
-                        std::forward_as_tuple(MetaType::StandaloneAQL, state,
-                                              (defaultTTL + TRI_microtime())));
 }
 
 void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
@@ -227,6 +242,7 @@ void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
     TRI_ASSERT(false);
     return;
   }
+
   buck._managed.erase(it); // unlocking not necessary
 }
 
@@ -388,7 +404,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return nullptr;
   }
-  
+
   const size_t bucket = getBucket(tid);
   int i = 0;
   TransactionState* state = nullptr;
@@ -621,6 +637,25 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
   return res;
 }
 
+/// @brief calls the callback function for each managed transaction
+void Manager::iterateManagedTrx(
+    std::function<void(TRI_voc_tid_t, ManagedTrx const&)> const& callback) const {
+  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+  
+  // iterate over all active transactions
+  for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
+    READ_LOCKER(locker, _transactions[bucket]._lock);
+
+    auto& buck = _transactions[bucket];
+    for (auto const& it : buck._managed) {
+      if (it.second.type == MetaType::Managed) {
+        // we only care about managed transactions here
+        callback(it.first, it.second);
+      }
+    }
+  }
+}
+
 /// @brief collect forgotten transactions
 bool Manager::garbageCollect(bool abortAll) {
   bool didWork = false;
@@ -721,6 +756,86 @@ bool Manager::abortManagedTrx(std::function<bool(TransactionState const&)> cb) {
     }
   }
   return !toAbort.empty();
+}
+
+void Manager::toVelocyPack(VPackBuilder& builder, 
+                           std::string const& database, 
+                           std::string const& username, 
+                           bool fanout) const {
+  TRI_ASSERT(!builder.isClosed());
+
+  if (fanout) {
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
+    auto ci = ClusterInfo::instance();
+    if (ci == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+      
+    std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
+    if (cc == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    std::vector<ClusterCommRequest> requests;
+    auto auth = AuthenticationFeature::instance();
+    
+    for (auto const& coordinator : ci->getCurrentCoordinators()) {
+      if (coordinator == ServerState::instance()->getId()) {
+        // ourselves!
+        continue;
+      }
+      
+      auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+      if (auth != nullptr && auth->isActive()) {
+        // when in superuser mode, username is empty
+        // in this case ClusterComm will add the default superuser token
+        if (!username.empty()) {
+          VPackBuilder builder;
+          {
+            VPackObjectBuilder payload{&builder};
+            payload->add("preferred_username", VPackValue(username));
+          }
+          VPackSlice slice = builder.slice();
+          headers->emplace(StaticStrings::Authorization,
+                          "bearer " + auth->tokenCache().generateJwt(slice));
+        }
+      }
+
+      requests.emplace_back("server:" + coordinator, rest::RequestType::GET,
+                            "/_db/" + database + "/_api/transaction?local=true", 
+                            std::make_shared<std::string>(), std::move(headers));
+    }
+
+    if (!requests.empty()) {
+      size_t nrGood = cc->performRequests(requests, 30.0, Logger::COMMUNICATION, false);
+      
+      if (nrGood != requests.size()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+      }
+      for (auto const& it : requests) {
+        if (it.result.result && it.result.result->getHttpReturnCode() == 200) {
+          auto const body = it.result.result->getBodyVelocyPack();
+          VPackSlice slice = body->slice();
+          if (slice.isObject()) {
+            slice = slice.get("transactions");
+            if (slice.isArray()) {
+              for (auto const& it : VPackArrayIterator(slice)) {
+                builder.add(it);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // merge with local transactions
+  iterateManagedTrx([&builder](TRI_voc_tid_t tid, ManagedTrx const& trx) {
+    builder.openObject(true);
+    builder.add("id", VPackValue(std::to_string(tid)));
+    builder.add("state", VPackValue(transaction::statusString(trx.state->status())));
+    builder.close();
+  });
 }
 
 }  // namespace transaction

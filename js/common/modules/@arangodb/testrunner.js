@@ -67,6 +67,7 @@ function runJSUnityTests (tests, instanceinfo) {
       allResults[file] = res;
       allResults.duration += res.duration;
       allResults.total +=1;
+      allResults.failed += res.failed;
       allResults.totalSetUp += res.totalSetup;
       allResults.totalTearDown += res.totalTearDown;
 
@@ -86,6 +87,11 @@ function runJSUnityTests (tests, instanceinfo) {
         );
         err = err.cause;
       }
+      allResults[file] = {
+        failed: true,
+        message: runenvironment + ": cannot run test file '" + file + "': " + e
+      };
+      allResults.failed += 1;
       allResults.status = false;
     }
 
@@ -121,6 +127,19 @@ function runMochaTests (testFiles) {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs tests from command-line
 // //////////////////////////////////////////////////////////////////////////////
+function addResults(result, which) {
+  for (let key in which) {
+    if (which.hasOwnProperty(key)) {
+      if (! statusKeys.includes(key)) {
+        if (result.hasOwnProperty(key)) {
+          print('Duplicate test in "' + key + '" - \n"' + JSON.stringify(which) + "\n" + JSON.stringify(result));
+          throw new Error();
+        }
+        result[key] = which[key];
+      }
+    }
+  }
+}
 
 function runCommandLineTests () {
   let instanceinfo;
@@ -143,30 +162,15 @@ function runCommandLineTests () {
 
   let resultJ = runJSUnityTests(jsUnity, instanceinfo);
   let resultM = runMochaTests(mocha);
-
   result = {
     failed: resultJ.failed + resultM.failed,
     total: resultJ.total + resultM.total,
     duration: resultJ.duration + resultM.duration,
-    status: resultJ.status & resultM.status
+    status: resultJ.status && resultM.status
   };
 
-  let addResults = function(which) {
-    for (let key in which) {
-      if (which.hasOwnProperty(key)) {
-        if (! statusKeys.includes(key)) {
-          if (result.hasOwnProperty(key)) {
-            print('Duplicate test in "' + key + '" - \n"' + JSON.stringify(which) + "\n" + JSON.stringify(result));
-            throw new Error();
-          }
-        }
-        result[key] = which[key];
-      }
-    }
-  };
-
-  addResults(resultJ);
-  addResults(resultM);
+  addResults(result, resultJ);
+  addResults(result, resultM);
   fs.write(fs.join(instanceinfo.rootDir, 'testresult.json'), JSON.stringify(result));
 
   internal.setUnitTestsResult(result.status);
