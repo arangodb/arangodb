@@ -52,8 +52,7 @@ class ClientManager {
    * @brief Initializes a client, connects to server, and verifies version
    *
    * If the client fails to connect to the server, or if the version is
-   * mismatched, this will result in a fatal error which will terminate the
-   * running program.
+   * mismatched, this will result in an error.
    *
    * @param  httpclient Output pointer will be set on success
    * @param  force      If true, an incompatible version will not result in an
@@ -64,7 +63,8 @@ class ClientManager {
    * @return            Status code and possible error message
    */
   Result getConnectedClient(std::unique_ptr<httpclient::SimpleHttpClient>& httpClient,
-                            bool force, bool logServerVersion, bool logDatabaseNotFound);
+                            bool force, bool logServerVersion,
+                            bool logDatabaseNotFound, bool quiet);
 
   /**
    * @brief Initializes a client, connects to server, and verifies version

@@ -77,6 +77,7 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
 void MaintenanceFeature::init() {
   _isShuttingDown = false;
   _nextActionId = 1;
+  _pauseUntil = std::chrono::steady_clock::duration::zero();
 
   setOptional(true);
   requiresElevatedPrivileges(false);  // ??? this mean admin priv?
@@ -835,6 +836,20 @@ void MaintenanceFeature::delShardVersion(std::string const& shname) {
   }
 }
 
+bool MaintenanceFeature::isPaused() const {
+  std::chrono::steady_clock::duration t = _pauseUntil;
+  return t > std::chrono::steady_clock::now().time_since_epoch();
+}
+
+void MaintenanceFeature::pause(std::chrono::seconds const& s) {
+  _pauseUntil =
+    std::chrono::steady_clock::now().time_since_epoch() + s;
+}
+
+ void MaintenanceFeature::proceed() {
+  _pauseUntil = std::chrono::steady_clock::duration::zero();
+}
+
 uint64_t MaintenanceFeature::getCurrentCounter() const {
   // It is guaranteed that getCurrentCounter is not executed
   // concurrent to increase / wait.
@@ -875,4 +890,5 @@ void MaintenanceFeature::waitForLargerCurrentCounter(uint64_t old) {
     _currentCounterCondition.wait(guard);
   }
   TRI_ASSERT(_currentCounter > old);
+  return;
 }
