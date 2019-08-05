@@ -1,3 +1,8 @@
+v3.5.1 (XXXX-XX-XX)
+-------------------
+
+* Keep followers in sync if the old leader resigned and stopped writes.
+
 v3.5.0-rc.7 (2019-08-01)
 ------------------------
 
