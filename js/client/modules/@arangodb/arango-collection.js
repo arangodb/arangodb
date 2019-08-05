@@ -975,13 +975,18 @@ ArangoCollection.prototype.save =
         errorMessage: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.message
       });
     }
-
+    let time = require("internal").time;
+    let before = time();
     let requestResult = this._database._connection.POST(
       url, data, headers
     );
 
     arangosh.checkRequestResult(requestResult);
-
+    let after = time();
+    let delta = after - before;
+    if (delta > 0.004) {
+      console.log("bla!" + delta + " " + JSON.stringify(data));
+    }
     return options.silent ? true : requestResult;
 };
 

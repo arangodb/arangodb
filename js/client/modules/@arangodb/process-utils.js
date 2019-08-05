@@ -1038,6 +1038,7 @@ function checkInstanceAlive (instanceInfo, options) {
       let health = require('internal').clusterHealth();
       rc = instanceInfo.arangods.reduce((previous, arangod) => {
         if (arangod.role === "agent") return true;
+        if (arangod.role === "single") return true;
         return health.hasOwnProperty(arangod.id) && health[arangod.id].Status === "GOOD";
       }, true);
     } catch (x) {
@@ -1493,10 +1494,10 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
   print("Determining server IDs");
   instanceInfo.arangods.forEach(arangod => {
     // agents don't support the ID call...
-    if (arangod.role !== "agent") {
+    if ((arangod.role !== "agent") && (arangod.role !== "single")) {
       const reply = download(arangod.url + '/_db/_system/_admin/server/id', '', makeAuthorizationHeaders(instanceInfo.authOpts));
       if (reply.error || reply.code !== 200) {
-        throw new Error("Server has no detecteable ID! " + reply);
+        throw new Error("Server has no detecteable ID! " + JSON.stringify(reply) + "\n" + JSON.stringify(arangod));
       }
       let res = JSON.parse(reply.body);
       arangod.id = res['id'];
