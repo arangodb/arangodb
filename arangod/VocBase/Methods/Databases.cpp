@@ -208,48 +208,27 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     }
 
     uint64_t const id = ClusterInfo::instance()->uniqid();
-    VPackBuilder builder;
-    try {
-      VPackObjectBuilder b(&builder);
-      std::string const idString(basics::StringUtils::itoa(id));
-      builder.add("id", VPackValue(idString));
-      builder.add("name", VPackValue(dbName));
-      builder.add("options", options);
-      builder.add("coordinator", VPackValue(ServerState::instance()->getId()));
-    } catch (VPackException const& e) {
-      return Result(e.errorCode());
-    }
+    // TODO: copy options slice?
+    ClusterInfo::CreateDatabaseInfo databaseInfo(id, dbName, options,
+                                                 ServerState::instance()->getId(),
+                                                 ServerState::instance()->getRebootId());
 
+    // This operation enters the database as isBuilding into the agency
+    // while the database is still building it is not visible.
     ClusterInfo* ci = ClusterInfo::instance();
-    auto res = ci->createDatabaseCoordinator(dbName, builder.slice(), 120.0);
+    auto res = ci->createIsBuildingDatabaseCoordinator(databaseInfo);
 
+    // Even entering the database as building failed; This can happen
+    // because a database with this name already exists, or because we could
+    // not write to Plan/
     if (!res.ok()) {
       events::CreateDatabase(dbName, res.errorNumber());
       return res;
     }
 
-    // database was created successfully in agency
-
-    // now wait for heartbeat thread to create the database object
-    TRI_vocbase_t* vocbase = nullptr;
-    int tries = 0;
-    while (++tries <= 6000) {
-      vocbase = databaseFeature->useDatabase(id);
-      if (vocbase != nullptr) {
-        break;
-      }
-      // sleep
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-
-    if (vocbase == nullptr) {
-      return Result(TRI_ERROR_INTERNAL, "unable to find database");
-    }
-    TRI_DEFER(vocbase->release());
-    TRI_ASSERT(vocbase->id() == id);
-    TRI_ASSERT(vocbase->name() == dbName);
-
-    // we need to add the permissions before running the upgrade script
+    // Need to add the permissions before running the upgrade script.
+    // This can be done while the database is in state `isBuilding`,
+    // since the database will not be usable
     if (ExecContext::CURRENT != nullptr && um != nullptr) {
       // ignore errors here Result r =
       um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
@@ -260,7 +239,23 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     }
 
     TRI_ASSERT(sanitizedUsers.slice().isArray());
-    upgradeRes = methods::Upgrade::createDB(*vocbase, sanitizedUsers.slice());
+
+    // what to do about the vocbase? fake it? remove the need for it in createDB?
+    // TODO: need vocbase :/
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, dbName);
+    // Now actually create all system collections for the database
+    upgradeRes = methods::Upgrade::createDB(vocbase, sanitizedUsers.slice());
+
+    // If the creation of system collections was successful,
+    // make the database visible, otherwise clean up what we can.
+    if(upgradeRes.ok()) {
+      auto res = ci->createFinalizeDatabaseCoordinator(databaseInfo);
+    } else {
+      // Cleanup entries in agency.
+      // TODO: is there anything more we could clean up?
+      //       *  user entries above
+      auto res = ci->cancelCreateDatabaseCoordinator(databaseInfo);
+    }
   } else {  // Single, DBServer, Agency
     // options for database (currently only allows setting "id"
     // for testing purposes)

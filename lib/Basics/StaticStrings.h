@@ -90,6 +90,14 @@ class StaticStrings {
   static std::string const AppsCollection;
   static std::string const AppBundlesCollection;
   static std::string const FishbowlCollection;
+  
+  // database definition fields
+  static std::string const DatabaseId;
+  static std::string const DatabaseName;
+  static std::string const DatabaseOptions;
+  static std::string const DatabaseCoordinator;
+  static std::string const DatabaseCoordinatorRebootId;
+  static std::string const DatabaseIsBuilding;
 
   // LogicalDataSource definition fields
   static std::string const DataSourceDeleted;  // data-source deletion marker

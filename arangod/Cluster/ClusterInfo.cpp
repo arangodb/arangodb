@@ -32,9 +32,9 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/hashes.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterHelpers.h"
+#include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
@@ -114,6 +114,7 @@ static inline arangodb::AgencyOperation CreateCollectionSuccess(
 #endif
 
 using namespace arangodb;
+using namespace arangodb::cluster;
 
 static std::unique_ptr<ClusterInfo> _instance;
 
@@ -171,6 +172,28 @@ CollectionInfoCurrent::CollectionInfoCurrent(uint64_t currentVersion)
 
 CollectionInfoCurrent::~CollectionInfoCurrent() {}
 
+
+Result ClusterInfo::CreateDatabaseInfo::buildSlice(VPackBuilder& builder, bool const building) const {
+  try {
+    VPackObjectBuilder b(&builder);
+    std::string const idString(basics::StringUtils::itoa(_id));
+    builder.add(StaticStrings::DatabaseId, VPackValue(idString));
+    builder.add(StaticStrings::DatabaseName, VPackValue(_name));
+    builder.add(StaticStrings::DatabaseOptions, _options);
+
+    // isBuilding == false should actually not happen
+    // these keys should just not exist.
+    if(building) {
+      builder.add(StaticStrings::DatabaseCoordinator, VPackValue(_coordinatorId));
+      builder.add(StaticStrings::DatabaseCoordinatorRebootId, VPackValue(_coordinatorRebootId));
+      builder.add(StaticStrings::DatabaseIsBuilding, VPackValue(building));
+    }
+  } catch (VPackException const& e) {
+    return Result(e.errorCode());
+  }
+  return Result();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the clusterinfo instance
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,6 +215,7 @@ ClusterInfo* ClusterInfo::instance() { return _instance.get(); }
 ClusterInfo::ClusterInfo(AgencyCallbackRegistry* agencyCallbackRegistry)
     : _agency(),
       _agencyCallbackRegistry(agencyCallbackRegistry),
+      _rebootTracker(SchedulerFeature::SCHEDULER),
       _planVersion(0),
       _currentVersion(0),
       _planLoader(std::thread::id()),
@@ -968,6 +992,13 @@ void ClusterInfo::loadPlan() {
 static std::string const prefixCurrent = "Current";
 
 void ClusterInfo::loadCurrent() {
+
+  // We need to update ServersKnown to notice rebootId changes for all servers.
+  // To keep things simple and separate, we call loadServers here instead of
+  // trying to integrate the servers upgrade code into loadCurrent, even if that
+  // means small bits of the plan are read twice.
+  loadServers();
+
   ++_currentProt.wantedVersion;  // Indicate that after *NOW* somebody has to
                                  // reread from the agency!
 
@@ -1279,6 +1310,15 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
   return std::make_shared<CollectionInfoCurrent>(0);
 }
 
+
+RebootTracker& ClusterInfo::rebootTracker() noexcept {
+  return _rebootTracker;
+}
+
+RebootTracker const& ClusterInfo::rebootTracker() const noexcept {
+  return _rebootTracker;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief ask about a view
 /// If it is not found in the cache, the cache is reloaded once. The second
@@ -1377,23 +1417,16 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create database in coordinator, the return value is an ArangoDB
-/// error code and the errorMsg is set accordingly. One possible error
-/// is a timeout, a timeout of 0.0 means no timeout.
-////////////////////////////////////////////////////////////////////////////////
-Result ClusterInfo::createDatabaseCoordinator(  // create database
-    std::string const& name,                    // database name
-    velocypack::Slice const& slice,             // database definition
-    double timeout                              // request timeout
-) {
+// This waits for the database described in `database` to turn up in `Current` and no
+// DBServer is allowed to report an error.
+Result ClusterInfo::waitForDatabaseInCurrent(ClusterInfo::CreateDatabaseInfo const& database) {
   AgencyComm ac;
   AgencyCommResult res;
 
-  double const realTimeout = getTimeout(timeout);
-  double const endTime = TRI_microtime() + realTimeout;
-  double const interval = getPollInterval();
-
+  // TODO: Is it important to know the number of DBServers before we start the creation of the database?
+  //       In that case this has to be moved to the createIsBuildingDatabase and passed in.
+  //       PARTA: We update the DBServers list in the loop at the bottom of this function, so tentatively
+  //              *NO*
   auto DBServers = std::make_shared<std::vector<ServerID>>(getCurrentDBServers());
   auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
@@ -1444,32 +1477,18 @@ Result ClusterInfo::createDatabaseCoordinator(  // create database
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
   auto agencyCallback =
-      std::make_shared<AgencyCallback>(ac, "Current/Databases/" + name,
+    std::make_shared<AgencyCallback>(ac, "Current/Databases/" + database.getName(),
                                        dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard(
       [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
 
-  AgencyOperation newVal("Plan/Databases/" + name, AgencyValueOperationType::SET, slice);
-  AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
-  AgencyPrecondition precondition("Plan/Databases/" + name,
-                                  AgencyPrecondition::Type::EMPTY, true);
-  AgencyWriteTransaction trx({newVal, incrementVersion}, precondition);
-
-  res = ac.sendTransactionWithFailover(trx, realTimeout);
-
-  if (!res.successful()) {
-    if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
-      return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME);
-    }
-
-    return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN);
-  }
-
-  // Now update our own cache of planned databases:
-  loadPlan();
-
+  // Waits for the database to turn up in Current/Databases
   {
+    //double const realTimeout = getTimeout(timeout);
+    //double const endTime = TRI_microtime() + realTimeout;
+    double const interval = getPollInterval();
+
     CONDITION_LOCKER(locker, agencyCallback->_cv);
 
     int count = 0;  // this counts, when we have to reload the DBServers
@@ -1486,6 +1505,7 @@ Result ClusterInfo::createDatabaseCoordinator(  // create database
 
       int tmpRes = dbServerResult->load(std::memory_order_acquire);
 
+      // An error was detected on one of the DBServers
       if (tmpRes >= 0) {
         cbGuard.fire();  // unregister cb before accessing errMsg
         loadCurrent();   // update our cache
@@ -1493,9 +1513,11 @@ Result ClusterInfo::createDatabaseCoordinator(  // create database
         return Result(tmpRes, *errMsg);
       }
 
+      /*
       if (TRI_microtime() > endTime) {
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
+      */
 
       agencyCallback->executeByCallbackOrTimeout(getReloadServerListTimeout() / interval);
 
@@ -1504,6 +1526,113 @@ Result ClusterInfo::createDatabaseCoordinator(  // create database
       }
     }
   }
+}
+
+// Start creating a database in a coordinator by entering it into Plan/Databases with,
+// status flag `isBuilding`; this makes the database invisible to the outside world.
+Result ClusterInfo::createIsBuildingDatabaseCoordinator(ClusterInfo::CreateDatabaseInfo const& database) {
+  AgencyComm ac;
+  AgencyCommResult res;
+
+  // Instruct the Agency to enter the creation of the new database
+  // by entering it into Plan/Databases/ but with the fields
+  // isBuilding, coordinator, and rebootId set to us
+  VPackBuilder builder;
+  database.buildIsBuildingSlice(builder);
+
+  AgencyWriteTransaction trx(
+      {AgencyOperation("Plan/Databases/" + database.getName(),
+                       AgencyValueOperationType::SET, builder.slice()),
+       AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
+      AgencyPrecondition("Plan/Databases/" + database.getName(),
+                         AgencyPrecondition::Type::EMPTY, true));
+
+  // TODO: Should this never timeout?
+  res = ac.sendTransactionWithFailover(trx, 0.0);
+
+  if (!res.successful()) {
+    if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+      return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+    }
+
+    return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN);
+  }
+
+  // Now update our own cache of planned databases:
+  loadPlan();
+
+  // And wait for our database to show up in `Current/Databases`
+  auto waitresult = waitForDatabaseInCurrent(database);
+
+  if (waitresult.fail()) {
+    // cleanup: remove database from plan?
+    auto ret = cancelCreateDatabaseCoordinator(database);
+
+    if (ret.ok()) {
+      // Creation failed
+      return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE, "database creation failed");
+    } else {
+      // Cleanup failed too
+      return ret;
+    }
+  }
+  return Result();
+}
+
+// Finalize creation of database in cluster by removing isBuilding, coordinator, and coordinatorRebootId;
+// as precondition that the entry we put in createIsBuildingDatabaseCoordinator is still in Plan/ unchanged.
+Result ClusterInfo::createFinalizeDatabaseCoordinator(ClusterInfo::CreateDatabaseInfo const& database) {
+  AgencyComm ac;
+
+  VPackBuilder pcBuilder;
+  database.buildIsBuildingSlice(pcBuilder);
+
+  VPackBuilder entryBuilder;
+  database.buildCompletedSlice(entryBuilder);
+
+  AgencyWriteTransaction trx(
+      {AgencyOperation("Plan/Databases/" + database.getName(),
+                       AgencyValueOperationType::SET, entryBuilder.slice()),
+       AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
+      AgencyPrecondition("Plan/Databases/" + database.getName(),
+                         AgencyPrecondition::Type::VALUE, pcBuilder.slice()));
+
+  auto res = ac.sendTransactionWithFailover(trx, 0.0);
+
+  if (!res.successful()) {
+    if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+      return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE, "Could not finish creation of database: Plan/Databases/ entry was modified in Agency");
+    }
+    // Something else went wrong.
+    return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE);
+  }
+
+  // The transaction was successful and the database should
+  // now be visible and usable.
+  return Result();
+}
+
+Result ClusterInfo::cancelCreateDatabaseCoordinator(ClusterInfo::CreateDatabaseInfo const& database) {
+  AgencyComm ac;
+
+  VPackBuilder builder;
+  database.buildIsBuildingSlice(builder);
+
+  AgencyWriteTransaction trx(
+    {AgencyOperation("Plan/Databases/" + database.getName(),
+                     AgencySimpleOperationType::DELETE_OP),
+     AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
+    AgencyPrecondition("Plan/Databases/" + database.getName(),
+                       AgencyPrecondition::Type::VALUE, builder.slice()));
+
+  auto res = ac.sendTransactionWithFailover(trx, 0.0);
+
+  if (!res.successful()) {
+    // Creation failed and cleanup failed
+    return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE, "cleanup failed after failed database creation");
+  }
+
+  return Result();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3232,7 +3361,8 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::string const prefixServers = "Current/ServersRegistered";
+static std::string const prefixServersRegistered = "Current/ServersRegistered";
+static std::string const prefixServersKnown = "Current/ServersKnown";
 static std::string const mapUniqueToShortId = "Target/MapUniqueToShortID";
 
 void ClusterInfo::loadServers() {
@@ -3247,8 +3377,9 @@ void ClusterInfo::loadServers() {
   }
 
   AgencyCommResult result = _agency.sendTransactionWithFailover(AgencyReadTransaction(
-      std::vector<std::string>({AgencyCommManager::path(prefixServers),
-                                AgencyCommManager::path(mapUniqueToShortId)})));
+      std::vector<std::string>({AgencyCommManager::path(prefixServersRegistered),
+                                AgencyCommManager::path(mapUniqueToShortId),
+                                AgencyCommManager::path(prefixServersKnown)})));
 
   if (result.successful()) {
     velocypack::Slice serversRegistered = result.slice()[0].get(std::vector<std::string>(
@@ -3257,11 +3388,16 @@ void ClusterInfo::loadServers() {
     velocypack::Slice serversAliases = result.slice()[0].get(std::vector<std::string>(
         {AgencyCommManager::path(), "Target", "MapUniqueToShortID"}));
 
+    velocypack::Slice serversKnownSlice = result.slice()[0].get(std::vector<std::string>(
+        {AgencyCommManager::path(), "Current", "ServersKnown"}));
+
     if (serversRegistered.isObject()) {
       decltype(_servers) newServers;
       decltype(_serverAliases) newAliases;
       decltype(_serverAdvertisedEndpoints) newAdvertisedEndpoints;
       decltype(_serverTimestamps) newTimestamps;
+
+      std::unordered_set<ServerID> serverIds;
 
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
         velocypack::Slice slice = res.value;
@@ -3290,8 +3426,11 @@ void ClusterInfo::loadServers() {
           newServers.emplace(std::make_pair(serverId, server));
           newAdvertisedEndpoints.emplace(std::make_pair(serverId, advertised));
           newTimestamps.emplace(std::make_pair(serverId, serverTimestamp));
+          serverIds.emplace(serverId);
         }
       }
+
+      decltype(_serversKnown) newServersKnown(serversKnownSlice, serverIds);
 
       // Now set the new value:
       {
@@ -3300,15 +3439,19 @@ void ClusterInfo::loadServers() {
         _serverAliases.swap(newAliases);
         _serverAdvertisedEndpoints.swap(newAdvertisedEndpoints);
         _serverTimestamps.swap(newTimestamps);
+        _serversKnown = std::move(newServersKnown);
         _serversProt.doneVersion = storedVersion;
         _serversProt.isValid = true;
       }
+      // RebootTracker has its own mutex, and doesn't strictly need to be in sync
+      // with the other members.
+      rebootTracker().updateServerState(_serversKnown.rebootIds());
       return;
     }
   }
 
   LOG_TOPIC("449e0", DEBUG, Logger::CLUSTER)
-      << "Error while loading " << prefixServers
+      << "Error while loading " << prefixServersRegistered
       << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
       << " errorMessage: " << result.errorMessage() << " body: " << result.body();
 }
@@ -4332,6 +4475,53 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(
     TRI_ERROR_HOT_BACKUP_INTERNAL,
     "timeout waiting for maintenance mode to be deactivated in agency");
 
+}
+
+ClusterInfo::ServersKnown::ServersKnown(VPackSlice const serversKnownSlice,
+                                        std::unordered_set<ServerID> const& serverIds)
+    : _serversKnown() {
+
+  TRI_ASSERT(serversKnownSlice.isNone() || serversKnownSlice.isObject());
+  if (serversKnownSlice.isObject()) {
+    for (auto const it : VPackObjectIterator(serversKnownSlice)) {
+      std::string serverId = it.key.copyString();
+      VPackSlice const knownServerSlice = it.value;
+      TRI_ASSERT(knownServerSlice.isObject());
+      if (knownServerSlice.isObject()) {
+        VPackSlice const rebootIdSlice = knownServerSlice.get("rebootId");
+        TRI_ASSERT(rebootIdSlice.isInteger());
+        if (rebootIdSlice.isInteger()) {
+          auto const rebootId = RebootId{rebootIdSlice.getNumericValue<uint64_t>()};
+          _serversKnown.emplace(std::move(serverId), rebootId);
+        }
+      }
+    }
+  }
+
+  // For backwards compatibility / rolling upgrades, add servers that aren't in
+  // ServersKnown but in ServersRegistered with a reboot ID of 0 as a fallback.
+  // We should be able to remove this in 3.6.
+  for (auto const& serverId : serverIds) {
+    auto const rv = _serversKnown.emplace(serverId, RebootId{0});
+    LOG_TOPIC_IF("0acbd", INFO, Logger::CLUSTER, rv.second)
+        << "Server "
+        << serverId << " is in Current/ServersRegistered, but not in "
+                       "Current/ServersKnown. This is expected to happen "
+                       "during a rolling upgrade.";
+  }
+}
+
+std::unordered_map<ServerID, ClusterInfo::ServersKnown::KnownServer> const&
+ClusterInfo::ServersKnown::serversKnown() const noexcept {
+  return _serversKnown;
+}
+
+std::unordered_map<ServerID, RebootId> ClusterInfo::ServersKnown::rebootIds() const noexcept {
+  std::unordered_map<ServerID, RebootId> rebootIds;
+  for (auto const& it : _serversKnown) {
+    rebootIds.emplace(it.first, it.second.rebootId());
+  }
+  return rebootIds;
 }
 
 // -----------------------------------------------------------------------------

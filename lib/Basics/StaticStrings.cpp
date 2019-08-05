@@ -92,6 +92,14 @@ std::string const StaticStrings::AppsCollection("_apps");
 std::string const StaticStrings::AppBundlesCollection("_appbundles");
 std::string const StaticStrings::FishbowlCollection("_fishbowl");
 
+// Database definition fields
+std::string const StaticStrings::DatabaseId("id");
+std::string const StaticStrings::DatabaseName("name");
+std::string const StaticStrings::DatabaseOptions("options");
+std::string const StaticStrings::DatabaseCoordinator("coordinator");
+std::string const StaticStrings::DatabaseCoordinatorRebootId("coordinatorRebootId");
+std::string const StaticStrings::DatabaseIsBuilding("isBuilding");
+
 // LogicalDataSource definition fields
 std::string const StaticStrings::DataSourceDeleted("deleted");
 std::string const StaticStrings::DataSourceGuid("globallyUniqueId");
