@@ -407,6 +407,8 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   }
   results.shutdown = results.shutdown && pu.shutdownInstance(instanceInfo, clonedOpts, forceTerminate);
 
+  loadClusterTestStabilityInfo(results, instanceInfo);
+  
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('postStop')) {
     customInstanceInfos['postStop'] = startStopHandlers.postStop(options,
                                                                  serverOptions,
@@ -608,6 +610,37 @@ function scanTestPaths (paths, options) {
   }
 
   return allTestCases;
+}
+
+
+function loadClusterTestStabilityInfo(results, instanceInfo){
+  
+  if (instanceInfo.hasOwnProperty('clusterHealthMonitorFile')) {
+    let status = true;
+    let slow = [];
+    let buf = fs.readBuffer(instanceInfo.clusterHealthMonitorFile);
+    let lineStart = 0;
+    let maxBuffer = buf.length;
+
+    for (let j = 0; j < maxBuffer; j++) {
+      if (buf[j] === 10) { // \n
+        const line = buf.asciiSlice(lineStart, j);
+        lineStart = j + 1;
+        let val = JSON.parse(line);
+        if (val.state === false) {
+          slow.push(val);
+          status = false;
+        }
+      }
+    }
+    if (!status) {
+      print('found ' + slow.length + ' slow lines!');
+      results.status = false;
+      results.message += 'found ' + slow.length + ' slow lines!';
+    } else {
+      print('everything fast!');
+    }
+  }
 }
 
 // //////////////////////////////////////////////////////////////////////////////

@@ -1238,6 +1238,10 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     }
   }
 
+  if (options.cluster && instanceInfo.hasOwnProperty('clusterHealthMonitor')) {
+    killExternal(instanceInfo.clusterHealthMonitor);
+  }
+  
   // Shut down all non-agency servers:
   const n = instanceInfo.arangods.length;
 
@@ -1478,6 +1482,17 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
       });
       throw new Error('cluster startup timed out after 10 minutes!');
     }
+  }
+
+  if (options.cluster) {
+    print("spawning cluster health inspector");
+    internal.env.INSTANCEINFO = JSON.stringify(instanceInfo);
+    internal.env.OPTIONS = JSON.stringify(options);
+    let args = makeArgsArangosh(options);
+    args['javascript.execute'] = fs.join('js', 'client', 'modules', '@arangodb', 'clusterstats.js');
+    const argv = toArgv(args).concat(args);
+    instanceInfo.clusterHealthMonitor = executeExternal(ARANGOSH_BIN, argv);
+    instanceInfo.clusterHealthMonitorFile = fs.join(instanceInfo.rootDir, 'stats.jsonl');
   }
 }
 // //////////////////////////////////////////////////////////////////////////////
