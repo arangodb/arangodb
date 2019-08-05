@@ -223,7 +223,7 @@ void ClusterInfo::cleanup() {
   while (true) {
     {
       MUTEX_LOCKER(mutexLocker, theInstance->_idLock);
-      if (theInstance->_uniqid._backgroundJobIsRunning) {
+      if (!theInstance->_uniqid._backgroundJobIsRunning) {
         break ;
       }
     }
