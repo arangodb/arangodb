@@ -121,19 +121,14 @@ static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& co
 
   std::string shardAgencyPathString = StringUtils::join(agencyPath, '/');
 
-  LOG_DEVEL << shardAgencyPathString;
-
   AgencyComm ac;
   AgencyCommResult res = ac.getValues(shardAgencyPathString);
 
   if (res.successful()) {
-
-  LOG_DEVEL << "Agency Transaction: " << res.slice().toJson();
     // This is bullshit. Why does the *fancy* AgencyComm Manager
     // prepend the agency url with `arango` but in the end returns an object
     // that is prepended by `arango`! WTF!?
     VPackSlice plan = res.slice().at(0).get(AgencyCommManager::path()).get(agencyPath);
-    LOG_DEVEL << plan.toJson();
     TRI_ASSERT(plan.isArray() && plan.length() > 0);
 
     VPackSlice leaderSlice = plan.at(0);
@@ -2544,8 +2539,6 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
   }
 
   col->followers()->setTheLeader(leaderId);
-  LOG_DEVEL << "Set leader for " << shard.copyString() << " to " << leaderId;
-
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);
