@@ -44,58 +44,68 @@ while(true) {
   const before = time();
   let state = {
     state: true,
-    before: before
+    before: before,
+    fails: []
   };
+  let results = [];
+  for (let i = 0; i < 60; i++) {
+    let oneSet = { state: true };
+    results.push(oneSet);
+    instanceInfo.arangods.forEach(arangod => {
+      let serverId = arangod.role + '_' + arangod.port;
+      let beforeCall = time();
 
-  instanceInfo.arangods.forEach(arangod => {
-    let serverId = arangod.role + '_' + arangod.port;
-    let beforeCall = time();
-
-    if (arangod.role === "agent") {
-      let reply = download(arangod.url + '/_api/version', '', opts);
-      if (reply.hasOwnProperty('error') || reply.code !== 200) {
-        print(reply);
-        state.state = false;
-        state[serverId] = {
-          state: false,
-          start: beforeCall,
-          delta: time() - beforeCall
-        };
+      if (arangod.role === "agent") {
+        let reply = download(arangod.url + '/_api/version', '', opts);
+        if (reply.hasOwnProperty('error') || reply.code !== 200) {
+          print(reply);
+          state.state = false;
+          oneSet.state = false;
+          oneSet[serverId] = {
+            oneSet: false,
+            start: beforeCall,
+            delta: time() - beforeCall
+          };
+        } else {
+          let statisticsReply = JSON.parse(reply.body);
+          oneSet[serverId] = {
+            oneSet: true,
+            start: beforeCall,
+            delta: time() - beforeCall
+          };
+        }
       } else {
-        let statisticsReply = JSON.parse(reply.body);
-        state[serverId] = {
-          state: true,
-          start: beforeCall,
-          delta: time() - beforeCall
-        };
+        let reply = download(arangod.url + '/_admin/statistics', '', opts);
+        if (reply.hasOwnProperty('error') || reply.code !== 200) {
+          print(reply);
+          state.state = false;
+          oneSet.state = false;
+          oneSet[serverId] = {
+            oneSet: false,
+            start: beforeCall,
+            delta: time() - beforeCall
+          };
+        } else {
+          let statisticsReply = JSON.parse(reply.body);
+          oneSet[serverId] = {
+            oneSet: true,
+            start: beforeCall,
+            delta: time() - beforeCall,
+            uptime: statisticsReply.server.uptime
+          };
+        }
       }
-    } else {
-      let reply = download(arangod.url + '/_admin/statistics', '', opts);
-      if (reply.hasOwnProperty('error') || reply.code !== 200) {
-        print(reply);
-        state.state = false;
-        state[serverId] = {
-          state: false,
-          start: beforeCall,
-          delta: time() - beforeCall
-        };
-      } else {
-        let statisticsReply = JSON.parse(reply.body);
-        state[serverId] = {
-          state: true,
-          start: beforeCall,
-          delta: time() - beforeCall,
-          uptime: statisticsReply.server.uptime
-        };
-      }
+    });
+    state['delta'] = time() - before;
+    if (state.delta > 1000) {
+      print("marking FAIL since it took to long");
+      state.state = false;
     }
-  });
-  state['delta'] = time() - before;
-  if (state.delta > 1000) {
-    print("marking FAIL since it took to long");
-    state.state = false;
+    if (!oneSet.state) {
+      state.fails.pushBack(oneSet);
+    }
+    sleep(1);
   }
   fs.append(outfn, JSON.stringify(state) + "\n");
 
-  sleep(1);
 }
