@@ -567,7 +567,7 @@ function killWithCoreDump (options, instanceInfo) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getProcessStats(pid) {
-  let pidStr = "" + pid
+  let pidStr = "" + pid;
   let stat = fs.read(fs.join('/', 'proc', pidStr, 'stat'));
   let vals = stat.split(" ");
   // https://stackoverflow.com/questions/16726779/how-do-i-get-the-total-cpu-usage-of-an-application-from-proc-pid-stat/16731413
