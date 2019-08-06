@@ -240,12 +240,14 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
     }
   }
 
-  auto const res = methods::Collections::create(
-      vocbase, systemCollectionsToCreate, true, true,
-      [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
+  if (systemCollectionsToCreate.size() > 0) {
+    auto const res = methods::Collections::create(
+        vocbase, systemCollectionsToCreate, true, true,
+        [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
 
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
   }
 
   return true;
