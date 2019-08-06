@@ -64,6 +64,7 @@ namespace {
 /// @brief validate the counters of the plan
 struct NodeCounter final : public WalkerWorker<ExecutionNode> {
   std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> counts;
+  std::unordered_set<ExecutionNode const*> seen;
 
   NodeCounter() : counts{} {}
 
@@ -71,7 +72,14 @@ struct NodeCounter final : public WalkerWorker<ExecutionNode> {
     return true;
   }
 
-  void after(ExecutionNode* en) override final { counts[en->getType()]++; }
+  void after(ExecutionNode* en) override final {
+    if (seen.find(en) == seen.end()) {
+      // There is a chance that we ahve the same node twice
+      // if we have multiple streams leading to it (e.g. Distribute)
+      counts[en->getType()]++;
+      seen.emplace(en);
+    }
+  }
 };
 #endif
 
@@ -2277,7 +2285,6 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
   }
 
   VPackSlice nodes = slice.get("nodes");
-
   if (!nodes.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "plan \"nodes\" attribute is not an array");

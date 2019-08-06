@@ -231,6 +231,9 @@ bool ScatterNode::readClientsFromVelocyPack(VPackSlice base) {
     ++pos;
   }
 
+  _type = static_cast<ScatterNode::ScatterType>(
+      basics::VelocyPackHelper::getNumericValue<uint64_t>(base, "scatterType", 0));
+
   return true;
 }
 

@@ -352,7 +352,7 @@ size_t ExecutionBlockImpl<DistributeExecutor>::sendToClient(SharedAqlItemBlockPt
   }
 
   TRI_ASSERT(!shardId.empty());
-  if (ScatterNode::ScatterType::SERVER) {
+  if (_type == ScatterNode::ScatterType::SERVER) {
     // Special case for server based distribution.
     shardId = _collection->getServerForShard(shardId);
     TRI_ASSERT(!shardId.empty());
