@@ -21,10 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "src/api.h"  // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
-#include "src/objects-inl.h"  // (required to avoid compile warnings) must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
-#include "src/objects/scope-info.h"  // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
-
 #include "../IResearch/common.h"
 #include "../Mocks/StorageEngineMock.h"
 #include "Aql/QueryRegistry.h"
@@ -51,6 +47,19 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
 #include "velocypack/Builder.h"
+
+// The following v8 headers must be included late, or MSVC fails to compile
+// (error in mswsockdef.h), because V8's win32-headers.h #undef some macros like
+// CONST and VOID. If, e.g., "Cluster/ClusterInfo.h" (which is in turn included
+// here by "Sharding/ShardingFeature.h") is included after these, compilation
+// fails. Another option than to include the following headers late is to
+// include ClusterInfo.h before them.
+// I have not dug into which header included by ClusterInfo.h will finally
+// include mwsockdef.h. Nor did I check whether all of the following headers
+// will include V8's "src/base/win32-headers.h".
+#include "src/api.h"
+#include "src/objects-inl.h"
+#include "src/objects/scope-info.h"
 
 namespace {
 
