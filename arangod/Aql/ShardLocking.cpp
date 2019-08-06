@@ -176,6 +176,10 @@ std::vector<Collection const*> ShardLocking::getUsedCollections() const {
 }
 
 std::vector<ServerID> ShardLocking::getRelevantServers() {
+  if (_collectionLocking.empty()) {
+    // Nothing todo, there are no DBServers
+    return {};
+  }
   if (_serverToCollectionToShard.empty()) {
     TRI_ASSERT(_serverToLockTypeToShard.empty());
     // Will internally fetch shards if not existing
@@ -223,7 +227,7 @@ void ShardLocking::serializeIntoBuilder(ServerID const& server,
 }
 
 std::unordered_map<ShardID, ServerID> const& ShardLocking::getShardMapping() {
-  if (_shardMapping.empty()) {
+  if (_shardMapping.empty() && !_collectionLocking.empty()) {
     std::unordered_set<ShardID> shardIds;
     for (auto const& lockInfo : _collectionLocking) {
       for (auto const& sid : lockInfo.second.usedShards) {

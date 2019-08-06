@@ -114,6 +114,10 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   // This needs to be a set with a defined order, it is important, that we contact
   // the database servers only in this specific order to avoid cluster-wide deadlock situations.
   std::vector<ServerID> dbServers = _shardLocking.getRelevantServers();
+  if (dbServers.empty()) {
+    // No snippets to be placed on dbservers
+    return TRI_ERROR_NO_ERROR;
+  }
 
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
