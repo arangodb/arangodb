@@ -102,7 +102,7 @@ while(true) {
       state.state = false;
     }
     if (!oneSet.state) {
-      state.fails.pushBack(oneSet);
+      state.fails.push(oneSet);
     }
     sleep(1);
   }
