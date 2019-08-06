@@ -1,6 +1,8 @@
 v3.3.24 (XXXX-XX-XX)
 --------------------
 
+* re-added warning for kernel setting "overcommit_memory=2" if jemalloc is also enabled.
+
 * Decreased unnecessary wait times for agency callbacks in case they were
   called earlier than expected by main thread.
 
