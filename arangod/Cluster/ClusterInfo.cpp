@@ -920,7 +920,7 @@ void ClusterInfo::loadPlan() {
         }
       }
 
-      newCollections.emplace(std::make_pair(std::move(databaseName), std::move(databaseCollections)));
+      newCollections.emplace(std::move(databaseName), std::move(databaseCollections));
     }
     LOG_TOPIC("12dfa", DEBUG, Logger::CLUSTER)
         << "loadPlan done: wantedVersion=" << storedVersion
