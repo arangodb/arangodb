@@ -67,7 +67,7 @@ UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescriptio
   TRI_ASSERT(desc.has(DATABASE));
 
   if (!desc.has(THE_LEADER)) {
-https://github.com/arangodb/arangodb/pull/9623https://github.com/arangodb/arangodb/pull/9623    error << "leader must be specified. ";
+    error << "leader must be specified. ";
   }
   TRI_ASSERT(desc.has(THE_LEADER));
 
