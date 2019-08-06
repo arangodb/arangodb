@@ -26,6 +26,7 @@
 #include "lib/Basics/Exceptions.h"
 #include "lib/Basics/MutexLocker.h"
 #include "lib/Basics/ScopeGuard.h"
+#include "lib/Logger/LogMacros.h"
 #include "lib/Logger/Logger.h"
 
 #include <algorithm>
