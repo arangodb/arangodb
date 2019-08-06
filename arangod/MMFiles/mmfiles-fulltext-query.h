@@ -24,6 +24,8 @@
 #ifndef ARANGOD_MMFILES_MMFILES_FULLTEXT_QUERY_H
 #define ARANGOD_MMFILES_MMFILES_FULLTEXT_QUERY_H 1
 
+#include <cstdlib>
+
 #include "Basics/Common.h"
 
 /// @brief maximum number of search words in a query

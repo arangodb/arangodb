@@ -28,10 +28,16 @@
 #include "Basics/win-utils.h"
 #endif
 
+#include <stddef.h>
+#include <functional>
+#include <string>
+#include <vector>
+
 #include <openssl/sha.h>
 
 #include "Basics/Common.h"
 #include "Basics/StringUtils.h"
+#include "Basics/debugging.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file

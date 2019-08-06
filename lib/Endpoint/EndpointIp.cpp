@@ -22,12 +22,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "EndpointIp.h"
+#include <errno.h>
+#include <stdio.h>
+#include <cstring>
 
-#include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
-
-#include "Endpoint/Endpoint.h"
+#include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_NETDB_H
 #include <netdb.h>
@@ -38,7 +37,14 @@
 #include <netinet/tcp.h>
 #endif
 
-#include <cstring>
+#include "EndpointIp.h"
+
+#include "Basics/StringUtils.h"
+#include "Basics/debugging.h"
+#include "Endpoint/Endpoint.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

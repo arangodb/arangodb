@@ -24,6 +24,8 @@
 #ifndef ARANGOD_STATISTICS_FIGURES_H
 #define ARANGOD_STATISTICS_FIGURES_H 1
 
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"

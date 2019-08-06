@@ -132,7 +132,8 @@ RestStatus RestImportHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string RestImportHandler::positionize(size_t i) const {
-  return std::string("at position " + StringUtils::itoa(i) + ": ");
+  return std::string("at position " +
+                     StringUtils::itoa(static_cast<uint64_t>(i)) + ": ");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

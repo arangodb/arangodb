@@ -24,6 +24,8 @@
 #ifndef ARANGODB_BASICS_CSV_H
 #define ARANGODB_BASICS_CSV_H 1
 
+#include <cstdlib>
+
 #include "Basics/Common.h"
 
 ////////////////////////////////////////////////////////////////////////////////
