@@ -24,7 +24,8 @@
 #ifndef ARANGO_XOROSHIRO128PLUS_H
 #define ARANGO_XOROSHIRO128PLUS_H 1
 
-#include "Basics/Common.h"
+#include <cstdint>
+#include <cstdlib>
 
 namespace arangodb {
 namespace basics {

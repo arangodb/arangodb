@@ -22,20 +22,36 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <chrono>
+#include <cstring>
+#include <iosfwd>
+#include <thread>
+#include <type_traits>
+
 #include "Logger.h"
 
-#include <cstring>
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/Common.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
+#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-#include "Basics/files.h"
+#include "Basics/debugging.h"
+#include "Basics/operating-system.h"
+#include "Basics/voc-errors.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
+#include "Logger/LogMacros.h"
 #include "Logger/LogThread.h"
+
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#endif
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;

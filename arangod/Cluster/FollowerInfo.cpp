@@ -27,6 +27,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/MaintenanceStrings.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "VocBase/LogicalCollection.h"
 
 #include "Basics/ScopeGuard.h"

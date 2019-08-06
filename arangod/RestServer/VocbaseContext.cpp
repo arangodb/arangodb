@@ -24,7 +24,9 @@
 #include "VocbaseContext.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::rest;

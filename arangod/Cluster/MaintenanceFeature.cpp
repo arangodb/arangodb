@@ -30,11 +30,15 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/system-functions.h"
 #include "Cluster/Action.h"
 #include "Cluster/ActionDescription.h"
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb;
@@ -803,5 +807,4 @@ void MaintenanceFeature::waitForLargerCurrentCounter(uint64_t old) {
     _currentCounterCondition.wait(guard);
   }
   TRI_ASSERT(_currentCounter > old);
-  return;
 }

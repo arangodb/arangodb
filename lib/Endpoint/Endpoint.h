@@ -24,14 +24,16 @@
 #ifndef ARANGODB_ENDPOINT_ENDPOINT_H
 #define ARANGODB_ENDPOINT_ENDPOINT_H 1
 
+#include <ostream>
+#include <string>
+
 #include "Basics/Common.h"
+#include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_WINSOCK2_H
 #include <WS2tcpip.h>
 #include <WinSock2.h>
 #endif
-
-#include <ostream>
 
 #include "Basics/socket-utils.h"
 

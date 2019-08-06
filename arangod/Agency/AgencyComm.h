@@ -25,10 +25,11 @@
 #ifndef ARANGOD_CLUSTER_AGENCY_COMM_H
 #define ARANGOD_CLUSTER_AGENCY_COMM_H 1
 
-#include "Basics/Common.h"
-
-#include <list>
 #include <deque>
+#include <list>
+#include <memory>
+#include <string>
+#include <unordered_map>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -40,6 +41,7 @@
 #include <type_traits>
 
 #include "Basics/Mutex.h"
+#include "Basics/Result.h"
 #include "GeneralServer/GeneralDefinitions.h"
 #include "Rest/CommonDefines.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"

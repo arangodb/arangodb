@@ -23,8 +23,10 @@
 #include "ClusterUtils.h"
 
 #include "Cluster/ClusterInfo.h"
-#include "StorageEngine/TransactionState.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"

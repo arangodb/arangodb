@@ -21,7 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <tuple>
+
 #include "v8-globals.h"
+
+#include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 
 TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate, size_t id)

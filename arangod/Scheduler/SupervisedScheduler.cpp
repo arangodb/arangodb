@@ -22,6 +22,9 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "SupervisedScheduler.h"
 #include "Scheduler.h"
 
@@ -32,7 +35,9 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/RestHandler.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"

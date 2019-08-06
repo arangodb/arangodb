@@ -27,10 +27,13 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
-#include "Cluster/ClusterComm.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Transaction/ClusterUtils.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
@@ -64,7 +67,7 @@ UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescriptio
   TRI_ASSERT(desc.has(DATABASE));
 
   if (!desc.has(THE_LEADER)) {
-    error << "leader must be specified. ";
+https://github.com/arangodb/arangodb/pull/9623https://github.com/arangodb/arangodb/pull/9623    error << "leader must be specified. ";
   }
   TRI_ASSERT(desc.has(THE_LEADER));
 

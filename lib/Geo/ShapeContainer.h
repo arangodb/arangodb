@@ -23,26 +23,27 @@
 #ifndef ARANGOD_GEO_SHAPE_CONTAINER_H
 #define ARANGOD_GEO_SHAPE_CONTAINER_H 1
 
-#include <string>
 #include <memory>
+#include <vector>
 
-#include <s2/s2cell_id.h>
-
-#include <velocypack/Slice.h>
+#include <s2/s2point.h>
 
 #include "Basics/Result.h"
-#include "Geo/Shapes.h"
 
+class S2CellId;
 class S2Region;
 class S2RegionCoverer;
-class S2LatLng;
 class S2LatLngRect;
-class S2Cap;
 class S2Polyline;
 class S2Polygon;
 
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
 namespace geo {
+struct Coordinate;
+struct QueryParams;
 
 /// Thin wrapper around S2Region objects combined with
 /// a type and helper methods to do intersect and contains

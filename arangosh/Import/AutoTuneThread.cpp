@@ -24,9 +24,13 @@
 #include <thread>
 
 #include "AutoTuneThread.h"
-#include "Basics/ConditionLocker.h"
 #include "ImportFeature.h"
 #include "ImportHelper.h"
+
+#include "Basics/ConditionLocker.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::import;

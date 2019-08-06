@@ -27,8 +27,11 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/system-functions.h"
 #include "Cluster/TraverserEngine.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Transaction/Context.h"
 #include "VocBase/ticks.h"
 

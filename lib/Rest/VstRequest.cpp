@@ -21,24 +21,32 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <string.h>
+#include <cstdint>
+#include <exception>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
 #include "VstRequest.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/Options.h>
 #include <velocypack/Parser.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/conversions.h"
-#include "Basics/tri-strings.h"
+#include "Basics/debugging.h"
+#include "Endpoint/ConnectionInfo.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Meta/conversion.h"
-
-#include <stdexcept>
+#include "Rest/CommonDefines.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

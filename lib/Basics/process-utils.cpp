@@ -21,10 +21,20 @@
 /// @author Esteban Lombeyda
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <algorithm>
+#include <chrono>
+#include <memory>
+#include <thread>
+#include <type_traits>
+
 #include "process-utils.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
 #include <sys/sysctl.h>
 #endif
@@ -51,10 +61,11 @@
 #endif
 
 #ifdef _WIN32
-#include "Basics/socket-utils.h"
 #include <Psapi.h>
 #include <TlHelp32.h>
 #include <unicode/unistr.h>
+#include "Basics/socket-utils.h"
+#include "Basics/win-utils.h"
 #endif
 #include <fcntl.h>
 
@@ -62,12 +73,20 @@
 #include <unistd.h>
 #endif
 
+#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Basics/memory.h"
+#include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 

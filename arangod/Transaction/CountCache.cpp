@@ -23,6 +23,9 @@
 
 #include "CountCache.h"
 
+#include "Basics/debugging.h"
+#include "Basics/system-functions.h"
+
 using namespace arangodb;
 using namespace arangodb::transaction;
 
