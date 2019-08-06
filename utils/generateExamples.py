@@ -709,18 +709,18 @@ def generateTestCases():
 
     for thisTest in testNames:
         if thisTest.endswith(otherEngine):
-            print >> sys.stderr, "skipping " + thisTest
+            print >> sys.stderr, "skipping " + thisTest + " (needs " + otherEngine + " storage engine)"
             continue
         if not storageEngineAgnostic and not thisTest.endswith(engine):
-            print >> sys.stderr, "skipping " + thisTest
+            print >> sys.stderr, "skipping " + thisTest + " (needs storage engine other than " + engine + ")"
             continue
 
         if cluster and not thisTest.endswith('_cluster'):
-            print >> sys.stderr, "skipping " + thisTest
+            print >> sys.stderr, "skipping " + thisTest + " (needs single server)"
             continue
 
         if not cluster and thisTest.endswith('_cluster'):
-            print >> sys.stderr, "skipping " + thisTest
+            print >> sys.stderr, "skipping " + thisTest + " (needs cluster)"
             continue
 
         if RunTests[thisTest][TYPE] == STATE_ARANGOSH_OUTPUT:
