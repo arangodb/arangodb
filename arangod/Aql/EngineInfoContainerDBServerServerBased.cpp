@@ -109,7 +109,8 @@ void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) 
 //   this methods a shutdown request is send to all DBServers.
 //   In case the network is broken and this shutdown request is lost
 //   the DBServers will clean up their snippets after a TTL.
-Result EngineInfoContainerDBServerServerBased::buildEngines(MapRemoteToSnippet& queryIds) {
+Result EngineInfoContainerDBServerServerBased::buildEngines(
+    MapRemoteToSnippet& queryIds, std::unordered_map<size_t, size_t>& nodeAliases) {
   // This needs to be a set with a defined order, it is important, that we contact
   // the database servers only in this specific order to avoid cluster-wide deadlock situations.
   std::vector<ServerID> dbServers = _shardLocking.getRelevantServers();
@@ -133,6 +134,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(MapRemoteToSnippet& 
   // Build Lookup Infos
   VPackBuilder infoBuilder;
   transaction::Methods* trx = _query->trx();
+
   for (auto const& server : dbServers) {
     std::string const serverDest = "server:" + server;
 
@@ -149,7 +151,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(MapRemoteToSnippet& 
     addVariablesPart(infoBuilder);
     TRI_ASSERT(infoBuilder.isOpenObject());
     auto shardMapping = _shardLocking.getShardMapping();
-    addSnippetPart(infoBuilder, shardMapping, server);
+    addSnippetPart(infoBuilder, shardMapping, nodeAliases, server);
     TRI_ASSERT(infoBuilder.isOpenObject());
 
     addTraversalEnginesPart(infoBuilder, server);
@@ -329,12 +331,13 @@ void EngineInfoContainerDBServerServerBased::addVariablesPart(arangodb::velocypa
 // Insert the Snippets information into the message to be send to DBServers
 void EngineInfoContainerDBServerServerBased::addSnippetPart(
     arangodb::velocypack::Builder& builder,
-    std::unordered_map<ShardID, ServerID> const& shardMapping, ServerID const& server) const {
+    std::unordered_map<ShardID, ServerID> const& shardMapping,
+    std::unordered_map<size_t, size_t>& nodeAliases, ServerID const& server) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("snippets"));
   builder.openObject();
   for (auto const& snippet : _closedSnippets) {
-    snippet->serializeIntoBuilder(server, shardMapping, builder);
+    snippet->serializeIntoBuilder(server, shardMapping, nodeAliases, builder);
   }
   builder.close();  // snippets
 }

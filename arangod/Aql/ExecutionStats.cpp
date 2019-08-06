@@ -46,7 +46,7 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) c
     builder.add("fullCount", VPackValue(fullCount > count ? fullCount : count));
   }
   builder.add("executionTime", VPackValue(executionTime));
-  
+
   builder.add("peakMemoryUsage", VPackValue(peakMemoryUsage));
 
   if (!nodes.empty()) {
@@ -85,7 +85,12 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   // intentionally no modification of executionTime
 
   for (auto const& pair : summand.nodes) {
-    auto result = nodes.insert(pair);
+    size_t nid = pair.first;
+    auto const& alias = _nodeAliases.find(nid);
+    if (alias != _nodeAliases.end()) {
+      nid = alias->second;
+    }
+    auto result = nodes.insert({nid, pair.second});
     if (!result.second) {
       result.first->second += pair.second;
     }
@@ -135,6 +140,10 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
       node.calls = val.get("calls").getNumber<size_t>();
       node.items = val.get("items").getNumber<size_t>();
       node.runtime = val.get("runtime").getNumber<double>();
+      auto const& alias = _nodeAliases.find(nid);
+      if (alias != _nodeAliases.end()) {
+        nid = alias->second;
+      }
       nodes.emplace(nid, node);
     }
   }

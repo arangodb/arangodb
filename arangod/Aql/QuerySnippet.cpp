@@ -104,6 +104,7 @@ void QuerySnippet::addNode(ExecutionNode* node) {
 
 void QuerySnippet::serializeIntoBuilder(ServerID const& server,
                                         std::unordered_map<ShardID, ServerID> const& shardMapping,
+                                        std::unordered_map<size_t, size_t>& nodeAliases,
                                         VPackBuilder& infoBuilder) {
   TRI_ASSERT(!_nodes.empty());
   TRI_ASSERT(!_expansions.empty());
@@ -210,8 +211,6 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
       // Let the globalScatter node distribute data by server
       _globalScatter->setScatterType(ScatterNode::ScatterType::SERVER);
 
-      // Cut off all dependencies here, they are done implicitly from now.
-      rem->removeDependencies();
       _madeResponsibleForShutdown = true;
     } else {
       rem->isResponsibleForInitializeCursor(false);
@@ -328,6 +327,8 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
         if (previous != nullptr) {
           clone->addDependency(previous);
         }
+        TRI_ASSERT(clone->id() != current->id());
+        nodeAliases.emplace(clone->id(), current->id());
         previous = clone;
       }
       TRI_ASSERT(previous != nullptr);
@@ -336,10 +337,22 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
     }
 
     const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
+    if (lastIsRemote) {
+      // For serialization remove the dependency of Remote
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      std::vector<ExecutionNode*> deps;
+      lastNode->dependencies(deps);
+      TRI_ASSERT(deps.size() == 1);
+      TRI_ASSERT(deps[0] == _globalScatter);
+#endif
+      lastNode->removeDependencies();
+    }
     internalGather->toVelocyPack(infoBuilder, flags, false);
 
     // We need to clean up ONLY if we have injected the local scatter
     if (lastIsRemote) {
+      // For the local copy readd the dependency of Remote
+      lastNode->addDependency(_globalScatter);
       TRI_ASSERT(internalScatter != nullptr);
       TRI_ASSERT(_nodes.size() > 1);
       ExecutionNode* secondToLast = _nodes[_nodes.size() - 2];

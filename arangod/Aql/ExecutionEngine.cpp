@@ -580,8 +580,8 @@ struct DistributedQueryInstanciatorHund final : public WalkerWorker<ExecutionNod
       _dbserverParts.cleanupEngines(ClusterComm::instance(), TRI_ERROR_INTERNAL,
                                     _query->vocbase().name(), queryIds);
     });
-
-    ExecutionEngineResult res = _dbserverParts.buildEngines(queryIds);
+    std::unordered_map<size_t, size_t> nodeAliases;
+    ExecutionEngineResult res = _dbserverParts.buildEngines(queryIds, nodeAliases);
     if (res.fail()) {
       return res;
     }
@@ -592,6 +592,8 @@ struct DistributedQueryInstanciatorHund final : public WalkerWorker<ExecutionNod
                                          _query->queryOptions().shardIds, queryIds);
 
     if (res.ok()) {
+      TRI_ASSERT(_query->engine() != nullptr);
+      _query->engine()->_stats.addAliases(std::move(nodeAliases));
       cleanupGuard.cancel();
     }
 

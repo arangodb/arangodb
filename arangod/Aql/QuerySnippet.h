@@ -68,6 +68,7 @@ class QuerySnippet {
 
   void serializeIntoBuilder(ServerID const& server,
                             std::unordered_map<ShardID, ServerID> const& shardMapping,
+                            std::unordered_map<size_t, size_t>& nodeAliases,
                             velocypack::Builder& infoBuilder);
 
   void useQueryIdAsInput(QueryId inputSnippet) { _inputSnippet = inputSnippet; }
