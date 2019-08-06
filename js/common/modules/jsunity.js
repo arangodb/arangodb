@@ -47,15 +47,16 @@ var TOTALTEARDOWNS = 0;
 var jsUnity = require('./jsunity/jsunity').jsUnity;
 var STARTTEST = 0.0;
 var testFilter = "undefined";
+var currentSuiteName = "undefined"
 
 function setTestFilter(filter) {
   testFilter = filter;
 }
 
 jsUnity.results.begin = function (total, suiteName) {
-  print(Date() + ' Running ' + (suiteName || 'unnamed test suite'));
-  print(' ' + total + ' test(s) found');
   print();
+  currentSuiteName = suiteName;
+  print(jsUnity.env.getDate().toISOString() + internal.COLORS.COLOR_YELLOW + " [------------] " + total + " tests from " + (suiteName || 'unnamed test suite') + internal.COLORS.COLOR_RESET);
   RESULTS = {};
 
   STARTTEST = jsUnity.env.getDate();
@@ -67,8 +68,8 @@ jsUnity.results.pass = function (index, testName) {
   RESULTS[testName].status = true;
   RESULTS[testName].duration = newtime - STARTTEST;
 
-  print(newtime.toISOString() + internal.COLORS.COLOR_GREEN +  ' [PASSED] ' + testName + internal.COLORS.COLOR_RESET +
-    ' in ' + STARTTEST.toISOString() + '+' + ((newtime - STARTTEST) / 1000).toFixed(3) + 's');
+  print(newtime.toISOString() + internal.COLORS.COLOR_GREEN +  ' [     PASSED ] ' + testName + internal.COLORS.COLOR_RESET +
+    ' (' + RESULTS[testName].duration + ' ms)');
 
   STARTTEST = newtime;
 };
@@ -80,26 +81,29 @@ jsUnity.results.fail = function (index, testName, message) {
   RESULTS[testName].message = message;
   RESULTS[testName].duration = newtime - STARTTEST;
 
-  print(newtime.toISOString() + internal.COLORS.COLOR_RED + ' [FAILED] ' + testName + internal.COLORS.COLOR_RESET +
-    ' in ' + STARTTEST.toISOString() + '+' + ((newtime - STARTTEST) / 1000).toFixed(3) + 's: ' +
-    internal.COLORS.COLOR_RED + message + internal.COLORS.COLOR_RESET);
+  print(newtime.toISOString() + internal.COLORS.COLOR_RED + " [   FAILED   ] " + testName +
+    ' (' + RESULTS[testName].duration + ' ms)\n' + message + internal.COLORS.COLOR_RESET);
 
   STARTTEST = newtime;
 };
 
 jsUnity.results.end = function (passed, failed, duration) {
-  print(' ' + passed + ' test(s) passed');
-  print(' ' + ((failed > 0) ?
-      internal.COLORS.COLOR_RED :
-      internal.COLORS.COLOR_RESET) +
-    failed + ' test(s) failed' + internal.COLORS.COLOR_RESET);
-  print(' ' + duration + ' millisecond(s) elapsed');
-  print();
+  print(jsUnity.env.getDate().toISOString() + internal.COLORS.COLOR_YELLOW + " [------------] " +
+       (passed + failed) + " tests from " + currentSuiteName + " ran. (" +
+       duration + "  ms total)" + internal.COLORS.COLOR_RESET);
+  print(jsUnity.env.getDate().toISOString() + internal.COLORS.COLOR_GREEN +
+       " [   PASSED   ] " + passed + " tests." + internal.COLORS.COLOR_RESET);
+  if(failed > 0)
+  {
+    print(jsUnity.env.getDate().toISOString() + internal.COLORS.COLOR_RED +
+        " [   FAILED   ] " + failed + ' tests.' + internal.COLORS.COLOR_RESET);
+  }
 };
 
 jsUnity.results.beginSetUp = function(index, testName) {
   RESULTS[testName] = {};
   SETUPS = jsUnity.env.getDate();
+  print(jsUnity.env.getDate().toISOString() + internal.COLORS.COLOR_GREEN + ' [ RUN        ] ' + testName + internal.COLORS.COLOR_RESET);
 };
 jsUnity.results.endSetUp = function(index, testName) {
   RESULTS[testName].setUpDuration = jsUnity.env.getDate() - SETUPS;
@@ -220,7 +224,10 @@ function Run (testsuite) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function Done (suiteName) {
-  internal.printf('%d total, %d passed, %d failed, %d ms', TOTAL, PASSED, FAILED, DURATION);
+  print();
+  print(jsUnity.env.getDate().toISOString() + internal.COLORS.COLOR_YELLOW + " [============] " +
+       "Ran: " + TOTAL + " tests (" + PASSED + " passed, " + FAILED + " failed) (" +
+       DURATION + "  ms total)" + internal.COLORS.COLOR_RESET);
   print();
 
   var ok = FAILED === 0;
