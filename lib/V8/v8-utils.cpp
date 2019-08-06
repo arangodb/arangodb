@@ -4559,6 +4559,11 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #else
   pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(isolate, args[0], true));
 #endif
+  if (pid._pid == 0) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to kill 0");
+  }
 
   // return the result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
