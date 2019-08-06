@@ -27,6 +27,7 @@
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/types.h"
+#include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Transaction/Context.h"
 #include "VocBase/AccessMode.h"

@@ -28,6 +28,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
 #include "Basics/HashSet.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 

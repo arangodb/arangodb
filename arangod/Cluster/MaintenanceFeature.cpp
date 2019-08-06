@@ -30,11 +30,15 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/system-functions.h"
 #include "Cluster/Action.h"
 #include "Cluster/ActionDescription.h"
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb;
@@ -73,6 +77,7 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
 void MaintenanceFeature::init() {
   _isShuttingDown = false;
   _nextActionId = 1;
+  _pauseUntil = std::chrono::steady_clock::duration::zero();
 
   setOptional(true);
   requiresElevatedPrivileges(false);  // ??? this mean admin priv?
@@ -746,6 +751,20 @@ void MaintenanceFeature::delShardVersion(std::string const& shname) {
   if (it != _shardVersion.end()) {
     _shardVersion.erase(it);
   }
+}
+
+bool MaintenanceFeature::isPaused() const {
+  std::chrono::steady_clock::duration t = _pauseUntil;
+  return t > std::chrono::steady_clock::now().time_since_epoch();
+}
+
+void MaintenanceFeature::pause(std::chrono::seconds const& s) {
+  _pauseUntil =
+    std::chrono::steady_clock::now().time_since_epoch() + s;
+}
+
+ void MaintenanceFeature::proceed() {
+  _pauseUntil = std::chrono::steady_clock::duration::zero();
 }
 
 uint64_t MaintenanceFeature::getCurrentCounter() const {

@@ -23,7 +23,9 @@
 
 #include "RocksDBReplicationTailing.h"
 #include "Basics/StaticStrings.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Replication/common-defines.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"

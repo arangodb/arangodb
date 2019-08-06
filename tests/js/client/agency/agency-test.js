@@ -155,7 +155,7 @@ function agencyTestSuite () {
         agencyLeader = res.headers.location;
         var l = 0;
         for (var i = 0; i < 3; ++i) {
-          l = agencyLeader.indexOf('/', l+1);
+          l = agencyLeader.indexOf('/', l + 1);
         }
         agencyLeader = agencyLeader.substring(0,l);
         if (clientIds.length > 0 && api === 'write') {
@@ -237,10 +237,10 @@ function agencyTestSuite () {
     res = accessAgency("read", trxs);
     assertEqual(200, res.statusCode);
     for (i = 0; i < start + count; ++i) {
-      let key = "key"+i;
+      let key = "key" + i;
       let correct = {};
       correct[key] = "value" + i;
-      assertEqual(correct, res.bodyParsed[i]);
+      assertEqual(correct, res.bodyParsed[i], JSON.stringify(res.bodyParsed));
     }
   }
 
@@ -253,8 +253,8 @@ function agencyTestSuite () {
       var agents = getCompactions(servers), i, old;
       var ready = true;
       for (i = 1; i < agents.length; ++i) {
-        if (agents[0].state.log[agents[0].state.log.length-1].index !==
-            agents[i].state.log[agents[i].state.log.length-1].index) {
+        if (agents[0].state.log[agents[0].state.log.length - 1].index !==
+            agents[i].state.log[agents[i].state.log.length - 1].index) {
           ready = false;
           break;
         } 
@@ -265,9 +265,9 @@ function agencyTestSuite () {
       agents.forEach( function (agent) {
 
         var results = agent.compactions.result;         // All compactions 
-        var llog = agent.state.log[agent.state.log.length-1];   // Last log entry
+        var llog = agent.state.log[agent.state.log.length - 1];   // Last log entry
         llogi = llog.index;                         // Last log index
-        var lcomp = results[results.length-1];          // Last compaction entry
+        var lcomp = results[results.length - 1];          // Last compaction entry
         var lcompi = parseInt(lcomp._key);              // Last compaction index
         var stepsize = compactionConfig.compactionStepSize;
 

@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 
 #include <iosfwd>
+#include <string>
 
 namespace arangodb {
 namespace aql {

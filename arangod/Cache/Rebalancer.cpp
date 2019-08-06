@@ -22,7 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cache/Rebalancer.h"
-#include "Basics/Common.h"
+
+#include "Basics/voc-errors.h"
 #include "Cache/Manager.h"
 
 using namespace arangodb::cache;

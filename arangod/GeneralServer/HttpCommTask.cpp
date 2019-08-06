@@ -26,6 +26,7 @@
 #include "HttpCommTask.h"
 
 #include "Basics/EncodingUtils.h"
+#include "Basics/asio_ns.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
@@ -33,6 +34,9 @@
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "GeneralServer/VstCommTask.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Meta/conversion.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -480,7 +484,7 @@ bool allowCredentials(std::string const& origin) {
   }
   return allowCredentials;
 }
-}
+} // namespace
 
 
 /// handle an OPTIONS request

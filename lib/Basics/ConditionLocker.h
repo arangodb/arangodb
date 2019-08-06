@@ -26,6 +26,7 @@
 #define ARANGODB_BASICS_CONDITION_LOCKER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Locking.h"
 
 #include <chrono>
 

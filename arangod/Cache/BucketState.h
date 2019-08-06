@@ -24,10 +24,11 @@
 #ifndef ARANGODB_CACHE_BUCKET_STATE_H
 #define ARANGODB_CACHE_BUCKET_STATE_H
 
-#include "Basics/Common.h"
-
 #include <atomic>
 #include <cstdint>
+#include <functional>
+
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace cache {

@@ -45,6 +45,7 @@
 #include "Basics/build-date.h"
 #include "Basics/build-repository.h"
 #include "Basics/conversions.h"
+#include "Basics/debugging.h"
 
 #include "3rdParty/iresearch/core/utils/version_defines.hpp"
 

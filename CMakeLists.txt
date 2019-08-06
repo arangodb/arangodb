@@ -261,7 +261,7 @@ set(ARANGODB_SNAP_REVISION "1")
 message(STATUS "SNAP REVISION: ${ARANGODB_SNAP_REVISION}")
 
 # ------------------------------------------------------------------------------
-# 
+#
 # ------------------------------------------------------------------------------
 
 if (WIN32)
@@ -308,13 +308,14 @@ set(ARANGODB_CONTACT         "hackers@arangodb.com")
 set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model NoSQL database")
 
 # MSVC
-set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test tool")
-set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - dump data and configuration")
-set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - restore data and configuration")
-set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - data exporter")
-set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - data importer")
-set(ARANGOSH_FRIENDLY_STRING       "arangosh - command-line client")
-set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - VelocyPack pretty-printer")
+set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test program")
+set(ARANGO_BACKUP_FRIENDLY_STRING  "arangobackup - hot backup tool")
+set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - export")
+set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - importer")
+set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - datae xporter")
+set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - TSV/CSV/JSON importer")
+set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
+set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - vpack printer")
 
 # libraries
 set(LIB_ARANGO        arango)
@@ -323,6 +324,7 @@ set(LIB_ARANGO_V8     arango_v8)
 
 # binaries
 set(BIN_ARANGOBENCH   arangobench)
+set(BIN_ARANGOBACKUP  arangobackup)
 set(BIN_ARANGOD       arangod)
 set(BIN_ARANGODUMP    arangodump)
 set(BIN_ARANGOEXPORT  arangoexport)
@@ -1006,7 +1008,7 @@ endif()
 ## OPENSSL
 ################################################################################
 
-# Some special stuff for Mac OSX and homebrew as a preparation for the 
+# Some special stuff for Mac OSX and homebrew as a preparation for the
 # generic FindOpenSSL script:
 if (APPLE AND BREW AND NOT OPENSSL_ROOT_DIR)
   message("searching openssl with brew (${BREW})")
@@ -1281,6 +1283,7 @@ if (USE_GOOGLE_TESTS)
 endif()
 
 add_dependencies(arangobench   zlibstatic)
+add_dependencies(arangobackup  zlibstatic)
 add_dependencies(arangod       zlibstatic)
 add_dependencies(arangodump    zlibstatic)
 add_dependencies(arangoexport  zlibstatic)
@@ -1290,6 +1293,7 @@ add_dependencies(arangosh      zlibstatic)
 
 if(UNIX)
   add_dependencies(arangobench   man)
+  add_dependencies(arangobackup  man)
   add_dependencies(arangod       man)
   add_dependencies(arangodump    man)
   add_dependencies(arangoexport  man)
@@ -1301,6 +1305,7 @@ endif()
 if (NOT USE_PRECOMPILED_V8)
   # all binaries depend on v8_build because it contains ICU as well
   add_dependencies(arangobench   v8_build)
+  add_dependencies(arangobackup  v8_build)
   add_dependencies(arangod       v8_build)
   add_dependencies(arangodump    v8_build)
   add_dependencies(arangoexport  v8_build)

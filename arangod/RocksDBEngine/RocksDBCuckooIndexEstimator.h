@@ -32,7 +32,9 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/fasthash.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 
 #include <rocksdb/types.h>

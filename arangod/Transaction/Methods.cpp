@@ -36,6 +36,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/encoding.h"
+#include "Basics/system-compiler.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
@@ -797,7 +798,8 @@ transaction::Methods::~Methods() {
     // store result in context
     _transactionContextPtr->storeTransactionResult(_state->id(),
                                                    _state->hasFailedOperations(),
-                                                   _state->wasRegistered());
+                                                   _state->wasRegistered(),
+                                                   _state->isReadOnlyTransaction());
 
     delete _state;
     _state = nullptr;

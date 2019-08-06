@@ -22,6 +22,8 @@
 
 #include "ExecutorInfos.h"
 
+#include "Basics/debugging.h"
+
 using namespace arangodb::aql;
 
 ExecutorInfos::ExecutorInfos(

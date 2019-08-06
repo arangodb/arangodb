@@ -28,6 +28,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
+#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Import/SenderThread.h"
 #include "Logger/Logger.h"

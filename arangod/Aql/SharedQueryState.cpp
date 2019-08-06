@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SharedQueryState.h"
+
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 

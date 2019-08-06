@@ -26,6 +26,7 @@
 #include "Cache/Common.h"
 
 #include <stdint.h>
+#include <algorithm>
 #include <memory>
 #include <stdexcept>
 

@@ -20,19 +20,34 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stdlib.h>
+#include <algorithm>
+#include <cstdint>
+#include <exception>
+#include <iterator>
+#include <map>
+#include <sstream>
+#include <stdexcept>
+#include <utility>
+
 #include "ApplicationFeatures/V8SecurityFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Basics/files.h"
-#include "Basics/tri-strings.h"
+#include "Basics/operating-system.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
-
-#include <stdexcept>
-#include <v8.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
