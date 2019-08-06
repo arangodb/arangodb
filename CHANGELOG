@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Keep followers in sync if the old leader resigned and stopped writes.
+
 * Abort a FailedLeader job when its _to_ server fails.
 
 * Decreased unnecessary wait times for agency callbacks in case they were
