@@ -28,6 +28,7 @@
 #include "Rest/GeneralResponse.h"
 
 #include "Basics/StringBuffer.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 class RestBatchHandler;

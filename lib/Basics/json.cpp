@@ -21,8 +21,12 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cmath>
+
 #include "json.h"
+
 #include "Basics/StringBuffer.h"
+#include "Basics/debugging.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"

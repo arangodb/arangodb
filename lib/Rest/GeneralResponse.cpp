@@ -26,6 +26,7 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

@@ -22,14 +22,19 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <velocypack/velocypack-aliases.h>
+
 #include "GeneralRequest.h"
 
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "Rest/RequestContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

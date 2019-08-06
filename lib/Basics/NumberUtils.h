@@ -25,6 +25,7 @@
 #define ARANGODB_BASICS_NUMBER_UTILS_H 1
 
 #include "Basics/Common.h"
+#include "Basics/system-compiler.h"
 
 #include <limits>
 #include <type_traits>

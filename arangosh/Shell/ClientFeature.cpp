@@ -23,6 +23,8 @@
 #include "ClientFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/FileUtils.h"
+#include "Basics/application-exit.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -31,7 +33,6 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Ssl/ssl-helper.h"
-#include "Basics/FileUtils.h"
 
 #include <chrono>
 #include <iostream>

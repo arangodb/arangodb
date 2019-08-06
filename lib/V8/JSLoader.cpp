@@ -21,9 +21,21 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <map>
+#include <utility>
+
+#include <v8.h>
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "JSLoader.h"
+
 #include "Basics/StringUtils.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 
@@ -41,7 +53,8 @@ JSLoader::JSLoader() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate, v8::Handle<v8::Context>& context,
-                                      std::string const& name, VPackBuilder* builder) {
+                                      std::string const& name,
+                                      velocypack::Builder* builder) {
   v8::HandleScope scope(isolate);
   v8::TryCatch tryCatch(isolate);
 

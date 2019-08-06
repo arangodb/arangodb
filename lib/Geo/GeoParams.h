@@ -24,6 +24,7 @@
 #define ARANGOD_GEO_GEO_PARAMS_H 1
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 #include "Geo/ShapeContainer.h"
 
 #include <cmath>

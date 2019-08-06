@@ -26,6 +26,8 @@
 /// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <thread>
+
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 

@@ -24,9 +24,12 @@
 #ifndef ARANGODB_BASICS_HYBRID_LOGICAL_CLOCK_H
 #define ARANGODB_BASICS_HYBRID_LOGICAL_CLOCK_H 1
 
-#include "Basics/Common.h"
-
+#include <algorithm>
+#include <atomic>
 #include <chrono>
+#include <string>
+
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace basics {

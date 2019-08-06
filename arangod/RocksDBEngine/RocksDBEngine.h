@@ -51,6 +51,7 @@ namespace arangodb {
 class PhysicalCollection;
 class PhysicalView;
 class RocksDBBackgroundThread;
+class RocksDBEventListener;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
@@ -119,8 +120,8 @@ class RocksDBFilePurgeEnabler {
 };
 
 class RocksDBEngine final : public StorageEngine {
-  friend class RocksDBFilePurgePreventer; 
-  friend class RocksDBFilePurgeEnabler; 
+  friend class RocksDBFilePurgePreventer;
+  friend class RocksDBFilePurgeEnabler;
 
  public:
   // create the storage engine
@@ -178,6 +179,9 @@ class RocksDBEngine final : public StorageEngine {
   int getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
 
   std::string versionFilename(TRI_voc_tick_t id) const override;
+  std::string dataPath() const override {
+    return _basePath + TRI_DIR_SEPARATOR_STR + "engine-rocksdb";
+  }
   std::string databasePath(TRI_vocbase_t const* /*vocbase*/) const override {
     return _basePath;
   }
@@ -185,7 +189,7 @@ class RocksDBEngine final : public StorageEngine {
                              ) const override {
     return std::string();  // no path to be returned here
   }
-  
+
   void cleanupReplicationContexts() override;
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
@@ -352,7 +356,19 @@ class RocksDBEngine final : public StorageEngine {
   void validateJournalFiles() const;
 
   enterprise::RocksDBEngineEEData _eeData;
+
+public:
+  std::string const& getEncryptionKey();
 #endif
+private:
+  // activate generation of SHA256 files to parallel .sst files
+  bool _createShaFiles;
+
+public:
+  // returns whether sha files are created or not
+  bool getCreateShaFiles() { return _createShaFiles; }
+  // enabled or disable sha file creation. Requires feature not be started.
+  void setCreateShaFiles(bool create) { _createShaFiles = create; }
 
  public:
   static std::string const EngineName;
@@ -466,9 +482,13 @@ class RocksDBEngine final : public StorageEngine {
   // (will only be set if _useThrottle is true)
   std::shared_ptr<RocksDBThrottle> _listener;
 
+  // optional code to notice when rocksdb creates or deletes .ssh files.  Currently
+  //  uses that input to create or delete parallel sha256 files
+  std::shared_ptr<RocksDBEventListener> _shaListener;
+
   arangodb::basics::ReadWriteLock _purgeLock;
 };
-  
+
 }  // namespace arangodb
 
 #endif

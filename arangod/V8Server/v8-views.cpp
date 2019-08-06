@@ -438,12 +438,6 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     return true;
   });
-  std::sort(views.begin(), views.end(),
-            [](std::shared_ptr<LogicalView> const& lhs,
-               std::shared_ptr<LogicalView> const& rhs) -> bool {
-              return StringUtils::tolower(lhs->name()) <
-                     StringUtils::tolower(rhs->name());
-            });
 
   bool error = false;
   // already create an array of the correct size
