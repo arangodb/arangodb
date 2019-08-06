@@ -3,6 +3,16 @@ v3.5.1 (XXXX-XX-XX)
 
 * Keep followers in sync if the old leader resigned and stopped writes.
 
+* Abort a FailedLeader job when its _to_ server fails.
+
+* Decreased unnecessary wait times for agency callbacks in case they were
+  called earlier than expected by main thread.
+
+* Make arangosh not close the connection after the user aborts an operation.
+  This restores the same behavior as in previous versions of ArangoDB, which also
+  left the connection open.
+
+
 v3.5.0-rc.7 (2019-08-01)
 ------------------------
 
