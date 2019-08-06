@@ -57,7 +57,7 @@ class RemoteNode final : public DistributeConsumerNode {
         _vocbase(vocbase),
         _server(server),
         _queryId(queryId) {
-    // note: server, ownName and queryId may be empty and filled later
+    // note: server and queryId may be empty and filled later
   }
 
   RemoteNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);

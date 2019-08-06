@@ -222,6 +222,17 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
     _globalScatter->addClient(rem);
   }
 
+  if (lastIsRemote) {
+    // For serialization remove the dependency of Remote
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    std::vector<ExecutionNode*> deps;
+    lastNode->dependencies(deps);
+    TRI_ASSERT(deps.size() == 1);
+    TRI_ASSERT(deps[0] == _globalScatter);
+#endif
+    lastNode->removeDependencies();
+  }
+
   if (!localExpansions.empty()) {
     // We have Expansions to permutate
     std::vector<std::string> distIds{};
@@ -337,22 +348,10 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
     }
 
     const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
-    if (lastIsRemote) {
-      // For serialization remove the dependency of Remote
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      std::vector<ExecutionNode*> deps;
-      lastNode->dependencies(deps);
-      TRI_ASSERT(deps.size() == 1);
-      TRI_ASSERT(deps[0] == _globalScatter);
-#endif
-      lastNode->removeDependencies();
-    }
     internalGather->toVelocyPack(infoBuilder, flags, false);
 
     // We need to clean up ONLY if we have injected the local scatter
     if (lastIsRemote) {
-      // For the local copy readd the dependency of Remote
-      lastNode->addDependency(_globalScatter);
       TRI_ASSERT(internalScatter != nullptr);
       TRI_ASSERT(_nodes.size() > 1);
       ExecutionNode* secondToLast = _nodes[_nodes.size() - 2];
@@ -362,5 +361,9 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
   } else {
     const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
     _nodes.front()->toVelocyPack(infoBuilder, flags, false);
+  }
+  if (lastIsRemote) {
+    // For the local copy readd the dependency of Remote
+    lastNode->addDependency(_globalScatter);
   }
 }
