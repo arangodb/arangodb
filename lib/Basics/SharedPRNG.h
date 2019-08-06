@@ -24,7 +24,8 @@
 #ifndef ARANGO_SHARED_PRNG_H
 #define ARANGO_SHARED_PRNG_H 1
 
-#include "Basics/Common.h"
+#include <memory>
+
 #include "Basics/Thread.h"
 #include "Basics/fasthash.h"
 #include "Basics/xoroshiro128plus.h"

@@ -30,6 +30,9 @@
 
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/LogicalCollection.h"

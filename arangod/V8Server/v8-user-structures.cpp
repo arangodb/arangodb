@@ -29,6 +29,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/hashes.h"
 #include "Basics/json.h"
+#include "Basics/memory.h"
 #include "Basics/tri-strings.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"

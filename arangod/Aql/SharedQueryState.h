@@ -24,7 +24,10 @@
 #define ARANGOD_AQL_SHARED_QUERY_STATE_H 1
 
 #include <condition_variable>
+#include <functional>
+
 #include "Basics/Common.h"
+#include "Basics/system-compiler.h"
 
 namespace arangodb {
 namespace aql {

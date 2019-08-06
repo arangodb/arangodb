@@ -22,11 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
+
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/tri-strings.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "MMFiles/MMFilesPersistentIndexKeyComparator.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"

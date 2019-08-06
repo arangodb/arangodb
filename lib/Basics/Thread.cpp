@@ -22,22 +22,29 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Thread.h"
-
 #include <errno.h>
 #include <signal.h>
+#include <chrono>
+#include <thread>
+
+#include "Basics/operating-system.h"
+
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+
+#include "Thread.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/application-exit.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-
-#include <chrono>
-#include <thread>
+#include "Logger/LoggerStream.h"
 
 #ifdef TRI_HAVE_PROCESS_H
 #include <process.h>

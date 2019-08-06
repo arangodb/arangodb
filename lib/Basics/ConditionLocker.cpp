@@ -23,7 +23,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ConditionLocker.h"
+
 #include "Basics/ConditionVariable.h"
+#include "Basics/debugging.h"
 
 #ifdef TRI_SHOW_LOCK_TIME
 #include "Logger/Logger.h"

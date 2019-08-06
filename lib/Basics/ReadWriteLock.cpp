@@ -23,6 +23,8 @@
 
 #include "ReadWriteLock.h"
 
+#include "Basics/debugging.h"
+
 using namespace arangodb::basics;
 
 /// @brief locks for writing

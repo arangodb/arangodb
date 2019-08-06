@@ -31,6 +31,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/system-functions.h"
 #include "Logger/Logger.h"
 #include "Replication/InitialSyncer.h"
 #include "Replication/ReplicationApplier.h"

@@ -23,10 +23,12 @@
 #include "ClusterTransactionState.h"
 
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Manager.h"

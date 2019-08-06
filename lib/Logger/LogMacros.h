@@ -59,6 +59,7 @@
 #define ARANGODB_LOGGER_LOG_MACROS_H 1
 
 #include "Logger.h"
+#include "LoggerStream.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for a topic

@@ -24,12 +24,16 @@
 #ifndef ARANGODB_SIMPLE_HTTP_CLIENT_CLIENT_CONNECTION_H
 #define ARANGODB_SIMPLE_HTTP_CLIENT_CLIENT_CONNECTION_H 1
 
-#include "Basics/Common.h"
+#include <stddef.h>
+#include <memory>
 
-#include "Basics/socket-utils.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 
 namespace arangodb {
+class Endpoint;
+namespace basics {
+class StringBuffer;
+}
 namespace httpclient {
 
 ////////////////////////////////////////////////////////////////////////////////

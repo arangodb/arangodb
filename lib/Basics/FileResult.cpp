@@ -19,8 +19,11 @@
 ///
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
-#include "Basics/FileResult.h"
 #include <cstring>
+
+#include "FileResult.h"
+
+#include "Basics/voc-errors.h"
 
 namespace arangodb {
 

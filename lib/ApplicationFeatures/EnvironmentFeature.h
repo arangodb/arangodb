@@ -26,6 +26,9 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 class EnvironmentFeature final : public application_features::ApplicationFeature {
  public:

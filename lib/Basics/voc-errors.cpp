@@ -1,7 +1,8 @@
 /// auto-generated file generated from errors.dat
 
-#include "Basics/Common.h"
 #include "Basics/voc-errors.h"
+#include "Basics/Common.h"
+#include "Basics/error.h"
 
 /// helper macro to define an error string
 #define REG_ERROR(id, label) TRI_set_errno_string(TRI_ ## id, label);

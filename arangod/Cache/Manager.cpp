@@ -21,9 +21,21 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stdint.h>
+#include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <cmath>
+#include <memory>
+#include <set>
+#include <stack>
+#include <utility>
+
 #include "Cache/Manager.h"
+
 #include "Basics/Common.h"
 #include "Basics/SharedPRNG.h"
+#include "Basics/voc-errors.h"
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -34,16 +46,9 @@
 #include "Cache/Table.h"
 #include "Cache/Transaction.h"
 #include "Cache/TransactionalCache.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-
-#include <stdint.h>
-#include <algorithm>
-#include <atomic>
-#include <chrono>
-#include <memory>
-#include <set>
-#include <stack>
-#include <utility>
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb::cache;
 

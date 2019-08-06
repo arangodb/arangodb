@@ -24,6 +24,11 @@
 #define ARANGODB_PREGEL_FEATURE_H 1
 
 #include <cstdint>
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"

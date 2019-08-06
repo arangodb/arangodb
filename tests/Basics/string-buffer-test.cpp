@@ -26,6 +26,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cmath>
+
 #include "Basics/Common.h"
 
 #include "gtest/gtest.h"
