@@ -23,6 +23,8 @@
 #ifndef ARANGODB_PREGEL_RECOVERY_H
 #define ARANGODB_PREGEL_RECOVERY_H 1
 
+#include <map>
+
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/vpack.h>
 //#include "Cluster/AgencyCallbackRegistry.h"

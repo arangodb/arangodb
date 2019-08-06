@@ -24,7 +24,10 @@
 #ifndef ARANGODB_UTILITIES_SCRIPT_LOADER_H
 #define ARANGODB_UTILITIES_SCRIPT_LOADER_H 1
 
-#include "Basics/Common.h"
+#include <map>
+#include <string>
+#include <vector>
+
 #include "Basics/Mutex.h"
 
 namespace arangodb {

@@ -37,7 +37,7 @@ class TransactionState;
 
 namespace transaction {
 
-class StandaloneContext final : public Context {
+class StandaloneContext : public Context {
  public:
   /// @brief create the context
   explicit StandaloneContext(TRI_vocbase_t& vocbase);
@@ -49,7 +49,7 @@ class StandaloneContext final : public Context {
   std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() override final;
 
   /// @brief return the parent transaction (none in our case)
-  TransactionState* getParentTransaction() const override { return nullptr; }
+  TransactionState* getParentTransaction() const override final { return nullptr; }
 
   /// @brief register the transaction, does nothing
   void registerTransaction(TransactionState*) override {}
@@ -58,10 +58,10 @@ class StandaloneContext final : public Context {
   CollectionNameResolver const& resolver() override final;
 
   /// @brief unregister the transaction
-  void unregisterTransaction() noexcept override {}
+  void unregisterTransaction() noexcept override final {}
 
   /// @brief whether or not the transaction is embeddable
-  bool isEmbeddable() const override { return false; }
+  bool isEmbeddable() const override final { return false; }
 
   /// @brief create a context, returned in a shared ptr
   static std::shared_ptr<transaction::Context> Create(TRI_vocbase_t& vocbase);

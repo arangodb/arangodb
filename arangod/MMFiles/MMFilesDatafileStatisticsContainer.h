@@ -24,6 +24,8 @@
 #ifndef ARANGOD_MMFILES_MMFILES_DATAFILE_STATISTICS_CONTAINER_H
 #define ARANGOD_MMFILES_MMFILES_DATAFILE_STATISTICS_CONTAINER_H 1
 
+#include <cstdint>
+
 #include "Basics/Common.h"
 
 namespace arangodb {

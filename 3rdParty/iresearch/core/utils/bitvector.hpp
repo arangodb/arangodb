@@ -40,6 +40,18 @@ class bitvector final {
   bitvector(const bitvector& other) { *this = other; }
   bitvector(bitvector&& other) NOEXCEPT { *this = std::move(other); }
 
+  bool operator==(const bitvector& rhs) const NOEXCEPT {
+    if (this->size() != rhs.size()) {
+      return false;
+    }
+
+    return 0 == std::memcmp(this->begin(), rhs.begin(), this->size());
+  }
+
+  bool operator!=(const bitvector& rhs) const NOEXCEPT {
+    return !(*this == rhs);
+  }
+
   operator const bitset&() const { return set_; }
 
   bitvector& operator=(const bitvector& other) {
@@ -304,6 +316,16 @@ class bitvector final {
   void unset(size_t i) { reset(i, false); }
 
   size_t words() const NOEXCEPT { return set_.words(); }
+
+  template<typename Visitor>
+  bool visit(Visitor visitor) const {
+    for (size_t i = 0; i < size_; ++i) {
+      if (set_.test(i) && !visitor(i)) {
+        return false;
+      }
+    }
+    return true;
+  }
 
  private:
   bitset set_;

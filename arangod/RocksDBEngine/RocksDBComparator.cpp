@@ -23,12 +23,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBComparator.h"
+
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/system-compiler.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;

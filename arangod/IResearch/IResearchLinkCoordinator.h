@@ -73,14 +73,6 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
   // IResearch does not provide a fixed default sort order
   virtual bool isSorted() const override { return IResearchLink::isSorted(); }
 
-  virtual arangodb::IndexIterator* iteratorForCondition(
-      arangodb::transaction::Methods* trx, 
-      arangodb::aql::AstNode const* condNode, arangodb::aql::Variable const* var,
-      arangodb::IndexIteratorOptions const& opts) override {
-    TRI_ASSERT(false);  // should not be called
-    return nullptr;
-  }
-
   virtual void load() override { IResearchLink::load(); }
 
   virtual bool matchesDefinition(arangodb::velocypack::Slice const& slice) const override {

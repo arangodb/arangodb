@@ -819,10 +819,53 @@ AstNode* Ast::createNodeUnaryOperator(AstNodeType type, AstNode const* operand) 
 /// @brief create an AST binary operator node
 AstNode* Ast::createNodeBinaryOperator(AstNodeType type, AstNode const* lhs,
                                        AstNode const* rhs) {
+  // do a bit of normalization here, so that attribute accesses are normally
+  // on the left side of a comparison. this may allow future simplifications
+  // of code that check filter conditions
+  // note that there will still be cases in which both sides of the comparsion
+  // contain an attribute access, e.g.  doc.value1 == doc.value2
+  bool swap = false;
+  if (type == NODE_TYPE_OPERATOR_BINARY_EQ &&
+      rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+      lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // value == doc.value  =>  doc.value == value
+    swap = true;
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_NE &&
+             rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+             lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // value != doc.value  =>  doc.value != value
+    swap = true;
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_GT &&
+             rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+             lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // value > doc.value  =>  doc.value < value
+    type = NODE_TYPE_OPERATOR_BINARY_LT;
+    swap = true;
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_LT &&
+             rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+             lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // value < doc.value  =>  doc.value > value
+    type = NODE_TYPE_OPERATOR_BINARY_GT;
+    swap = true;
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_GE &&
+             rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+             lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // value >= doc.value  =>  doc.value <= value
+    type = NODE_TYPE_OPERATOR_BINARY_LE;
+    swap = true;
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_LE &&
+             rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+             lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // value <= doc.value  =>  doc.value >= value
+    type = NODE_TYPE_OPERATOR_BINARY_GE;
+    swap = true;
+  }
+
   AstNode* node = createNode(type);
   node->reserve(2);
-  node->addMember(lhs);
-  node->addMember(rhs);
+
+  node->addMember(swap ? rhs : lhs);
+  node->addMember(swap ? lhs : rhs);
 
   // initialize sortedness information (currently used for the IN/NOT IN
   // operators only) for nodes of type ==, < or <=, the bool means if the range
@@ -1883,9 +1926,9 @@ void Ast::validateAndOptimize() {
       }
     } else if (node->type == NODE_TYPE_AGGREGATIONS) {
       --ctx->stopOptimizationRequests;
-    } else if (node->type == NODE_TYPE_ARRAY && 
-               node->hasFlag(DETERMINED_CONSTANT) && 
-               !node->hasFlag(VALUE_CONSTANT) && 
+    } else if (node->type == NODE_TYPE_ARRAY &&
+               node->hasFlag(DETERMINED_CONSTANT) &&
+               !node->hasFlag(VALUE_CONSTANT) &&
                node->numMembers() < 10) {
       // optimization attempt: we are speculating that this array contains function
       // call parameters, which may have been optimized somehow.
@@ -2499,7 +2542,7 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
       auto member = node->getMemberUnchecked(i);
       VPackSlice rhs = member->computeValue();
 
-      if (arangodb::basics::VelocyPackHelper::compare(lhs, rhs, false, nullptr) == 0) {
+      if (arangodb::basics::VelocyPackHelper::equal(lhs, rhs, false, nullptr)) {
         unique = false;
         break;
       }
@@ -3163,12 +3206,12 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
     }
 #if 0
   } else if (func->name == "LIKE") {
-    // optimize a LIKE(x, y) into a plain x == y or a range scan in case the 
+    // optimize a LIKE(x, y) into a plain x == y or a range scan in case the
     // search is case-sensitive and the pattern is either a full match or a
     // left-most prefix
 
     // this is desirable in 99.999% of all cases, but would cause the following incompatibilities:
-    // - the AQL LIKE function will implicitly cast its operands to strings, whereas 
+    // - the AQL LIKE function will implicitly cast its operands to strings, whereas
     //   operator == in AQL will not do this. So LIKE(1, '1') would behave differently
     //   when executed via the AQL LIKE function or via 1 == '1'
     // - for left-most prefix searches (e.g. LIKE(text, 'abc%')) we need to determine
@@ -3189,7 +3232,7 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
         caseInsensitive = caseArg->isTrue();
       }
     }
-      
+
     auto patternArg = args->getMember(1);
 
     if (!caseInsensitive && patternArg->isStringValue()) {
@@ -3222,7 +3265,7 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
 
         AstNode* op = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, lhs, rhs);
         if (wildcardIsLastChar) {
-          // replace LIKE with >= && <= 
+          // replace LIKE with >= && <=
           return op;
         }
         // add >= && <=, but keep LIKE in place

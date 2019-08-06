@@ -39,6 +39,8 @@ const gm = require('@arangodb/general-graph');
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 const isCluster = require('@arangodb/cluster').isCluster();
+const roundCost = require('@arangodb/aql-helper').roundCost;
+
 var _ = require('lodash');
 var vertex = {};
 var edge = {};
@@ -1965,13 +1967,13 @@ function optimizeInSuite() {
       var noOptPlans = AQL_EXPLAIN(vertexQuery, bindVars, noOpt).plan;
       assertEqual(optPlans.rules, []);
       // This query cannot be optimized by traversal rule
-      assertEqual(optPlans, noOptPlans);
+      assertEqual(roundCost(optPlans), roundCost(noOptPlans));
 
       optPlans = AQL_EXPLAIN(edgeQuery, bindVars, opt).plan;
       noOptPlans = AQL_EXPLAIN(edgeQuery, bindVars, noOpt).plan;
       assertEqual(optPlans.rules, []);
       // This query cannot be optimized by traversal rule
-      assertEqual(optPlans, noOptPlans);
+      assertEqual(roundCost(optPlans), roundCost(noOptPlans));
     }
   };
 }

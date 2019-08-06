@@ -52,6 +52,72 @@ if (USE_JEMALLOC)
   add_dependencies(arangobench jemalloc)
 endif ()
 
+if(MSVC)
+  target_compile_options(arangobench PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangobench PRIVATE -Werror)
+endif()
+
+################################################################################
+## arangobackup
+################################################################################
+
+if (MSVC AND NOT(SKIP_PACKAGING))
+  generate_product_version(ProductVersionFiles_arangobackup
+    NAME arangobackup
+    FILE_DESCRIPTION ${ARANGO_BACKUP_FRIENDLY_STRING}
+    ICON ${ARANGO_ICON}
+    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
+    VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
+    VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
+    VERSION_REVISION ${BUILD_ID}
+  )
+endif ()
+
+add_executable(${BIN_ARANGOBACKUP}
+  ${ProductVersionFiles_arangobackup}
+  Backup/BackupFeature.cpp
+  Backup/arangobackup.cpp
+  Shell/ClientFeature.cpp
+  Shell/ConsoleFeature.cpp
+  Utils/ClientManager.cpp
+  ${ADDITIONAL_BIN_ARANGOBACKUP_SOURCES}
+)
+
+target_link_libraries(${BIN_ARANGOBACKUP}
+  ${LIB_ARANGO}
+  ${MSVC_LIBS}
+  ${SYSTEM_LIBRARIES}
+  boost_system
+  boost_boost
+)
+
+install(
+  TARGETS ${BIN_ARANGOBACKUP}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+install_config(arangobackup)
+
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangobackup zlibstatic v8_build) # v8_build includes ICU build
+else ()
+  add_dependencies(arangobackup zlibstatic)
+endif ()
+
+if (USE_JEMALLOC)
+  add_dependencies(arangobackup jemalloc)
+endif ()
+
+if(MSVC)
+  target_compile_options(arangobackup PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangobackup PRIVATE -Werror)
+endif()
+
 ################################################################################
 ## arangodump
 ################################################################################
@@ -103,6 +169,14 @@ if (USE_JEMALLOC)
   add_dependencies(arangodump jemalloc)
 endif ()
 
+if(MSVC)
+  target_compile_options(arangodump PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangodump PRIVATE -Werror)
+endif()
+
 ################################################################################
 ## arangoexport
 ################################################################################
@@ -125,6 +199,7 @@ add_executable(${BIN_ARANGOEXPORT}
   Export/arangoexport.cpp
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
+  Utils/ManagedDirectory.cpp
   V8Client/ArangoClientHelper.cpp
 )
 
@@ -152,6 +227,14 @@ if (USE_JEMALLOC)
   add_dependencies(arangoexport jemalloc)
 endif ()
 
+if(MSVC)
+  target_compile_options(arangoexport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangoexport PRIVATE -Werror)
+endif()
+
 ################################################################################
 ## arangoimport
 ################################################################################
@@ -168,7 +251,7 @@ if (MSVC AND NOT(SKIP_PACKAGING))
   )
 endif ()
 
-add_executable(${BIN_ARANGOIMPORT}
+add_executable(arangoimport
   ${ProductVersionFiles_arangoimport}
   Import/AutoTuneThread.cpp
   Import/ImportFeature.cpp
@@ -177,6 +260,7 @@ add_executable(${BIN_ARANGOIMPORT}
   Import/arangoimport.cpp
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
+  Utils/ManagedDirectory.cpp
   V8Client/ArangoClientHelper.cpp
 )
 
@@ -184,15 +268,18 @@ target_link_libraries(${BIN_ARANGOIMPORT}
   ${LIB_ARANGO}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
+  fuerte
   boost_system
   boost_boost
 )
 
 install(
-  TARGETS ${BIN_ARANGOIMPORT}
+  TARGETS arangoimport
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install_config(arangoimport)
+
+add_dependencies(arangoimport fuerte)
 
 if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangoimport zlibstatic v8_build) # v8_build includes ICU
@@ -205,10 +292,19 @@ if (USE_JEMALLOC)
   add_dependencies(arangoimport jemalloc)
 endif ()
 
-install_command_alias(${BIN_ARANGOIMPORT}
+install_command_alias(arangoimport
   ${CMAKE_INSTALL_BINDIR}
   arangoimp
 )
+
+if(MSVC)
+  target_compile_options(arangoimport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangoimport PRIVATE -Werror)
+endif()
+
 ################################################################################
 ## arangorestore
 ################################################################################
@@ -260,6 +356,14 @@ if (USE_JEMALLOC)
   add_dependencies(arangorestore jemalloc)
 endif ()
 
+if(MSVC)
+  target_compile_options(arangorestore PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangorestore PRIVATE -Werror)
+endif()
+
 ################################################################################
 ## arangosh
 ################################################################################
@@ -287,6 +391,7 @@ add_executable(${BIN_ARANGOSH}
   Shell/V8ClientConnection.cpp
   Shell/V8ShellFeature.cpp
   Shell/arangosh.cpp
+  Utils/ManagedDirectory.cpp
   V8Client/ArangoClientHelper.cpp
 )
 
@@ -295,6 +400,7 @@ target_link_libraries(${BIN_ARANGOSH}
   ${LIB_ARANGO}
   ${LINENOISE_LIBS}
   ${V8_LIBS}
+  fuerte
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
@@ -316,6 +422,14 @@ endif ()
 if (USE_JEMALLOC)
   add_dependencies(arangosh jemalloc)
 endif ()
+
+if(MSVC)
+  target_compile_options(arangosh PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangosh PRIVATE -Werror)
+endif()
 
 ################################################################################
 ## arangovpack
@@ -364,6 +478,14 @@ endif ()
 if (USE_JEMALLOC)
   add_dependencies(arangovpack jemalloc)
 endif ()
+
+if(MSVC)
+  target_compile_options(arangovpack PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangovpack PRIVATE -Werror)
+endif()
 
 ################################################################################
 ## foxx-manager

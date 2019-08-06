@@ -26,6 +26,7 @@
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
 #include "Agency/Supervision.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -238,7 +239,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
 
   std::vector<std::string> disabledFeatures({
-    "MMFilesPersistentIndex", "ArangoSearch", "IResearchAnalyzer",
+    "MMFilesPersistentIndex", "ArangoSearch", "ArangoSearchAnalyzer",
     "Statistics", "Action", "Script", "FoxxQueues", "Frontend"});
 
   if (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) {
@@ -326,7 +327,7 @@ void AgencyFeature::stop() {
   if (_agent->inception() != nullptr) {  // can only exist in resilient agents
     int counter = 0;
     while (_agent->inception()->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(100000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
       // emit warning after 5 seconds
       if (++counter == 10 * 5) {
         LOG_TOPIC("bf6a6", WARN, Logger::AGENCY)
@@ -338,7 +339,7 @@ void AgencyFeature::stop() {
   if (_agent != nullptr) {
     int counter = 0;
     while (_agent->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(100000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
       // emit warning after 5 seconds
       if (++counter == 10 * 5) {
         LOG_TOPIC("5d3a5", WARN, Logger::AGENCY) << "waiting for agent thread to finish";

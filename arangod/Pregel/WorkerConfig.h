@@ -23,6 +23,9 @@
 #ifndef ARANGODB_PREGEL_WORKER_CONFIG_H
 #define ARANGODB_PREGEL_WORKER_CONFIG_H 1
 
+#include <set>
+#include <map>
+
 #include <velocypack/velocypack-aliases.h>
 #include <algorithm>
 #include "Basics/Common.h"
@@ -57,7 +60,7 @@ class WorkerConfig {
   inline bool asynchronousMode() const { return _asynchronousMode; }
 
   inline bool lazyLoading() const { return _lazyLoading; }
-  
+
   inline bool useMemoryMaps() const { return _useMemoryMaps; }
 
   inline uint64_t parallelism() const { return _parallelism; }
@@ -88,7 +91,7 @@ class WorkerConfig {
     }
     return StaticStrings::Empty;
   }
-  
+
   // same content on every worker, has to stay equal!!!!
   inline std::vector<ShardID> const& globalShardIDs() const {
     return _globalShardIDs;
@@ -146,7 +149,7 @@ class WorkerConfig {
 
   std::unordered_map<std::string, std::string> _collectionPlanIdMap;
   std::map<ShardID, std::string> _shardToCollectionName;
-  
+
   // Map from edge collection to their shards, only iterated over keep sorted
   std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards, _edgeCollectionShards;
 

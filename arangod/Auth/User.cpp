@@ -24,15 +24,18 @@
 
 #include "Auth/User.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
-#include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Random/UniformCharacter.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Ssl/SslInterface.h"
@@ -424,7 +427,7 @@ void auth::User::grantDatabase(std::string const& dbname, auth::Level level) {
     it->second._databaseAuthLevel = level;
   } else {
     // grantDatabase is not supposed to change any rights on the
-    // collection level code which relies on the old behaviour
+    // collection level code which relies on the old behavior
     // will need to be adjusted
     _dbAccess.emplace(dbname, DBAuthContext(level, CollLevelMap()));
   }

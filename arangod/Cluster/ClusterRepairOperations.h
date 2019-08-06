@@ -27,7 +27,7 @@
 #include <boost/variant.hpp>
 
 #include <velocypack/velocypack-common.h>
-
+#include <map>
 #include "ClusterInfo.h"
 
 namespace arangodb {

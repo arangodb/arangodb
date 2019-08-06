@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global arango, assertEqual, assertTrue, assertEqual, assertNotEqual, fail */
+/*global arango, assertEqual, assertTrue, assertFalse, assertEqual, assertNotEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test ttl configuration
@@ -215,7 +215,7 @@ function TtlSuite () {
       }
     },
     
-    testCreateIndexMultipleTimes : function () {
+    testCreateIndexMultipleTimesDifferentField : function () {
       let c = db._create(cn, { numberOfShards: 2 });
       c.ensureIndex({ type: "ttl", fields: ["test"], expireAfter: 10 });
       try {
@@ -224,6 +224,27 @@ function TtlSuite () {
       } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
+    },
+    
+    testCreateIndexMultipleTimesDifferentExpire : function () {
+      let c = db._create(cn, { numberOfShards: 2 });
+      c.ensureIndex({ type: "ttl", fields: ["test"], expireAfter: 10 });
+      try {
+        c.ensureIndex({ type: "ttl", fields: ["test"], expireAfter: 11 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+    
+    testCreateIndexMultipleTimesSameAttributes : function () {
+      let c = db._create(cn, { numberOfShards: 2 });
+      let idx1 = c.ensureIndex({ type: "ttl", fields: ["test"], expireAfter: 10 });
+      let idx2 = c.ensureIndex({ type: "ttl", fields: ["test"], expireAfter: 10 });
+
+      assertTrue(idx1.isNewlyCreated);
+      assertFalse(idx2.isNewlyCreated);
+      assertEqual(idx1.id, idx2.id);
     },
     
     testCreateIndexOnMultipleAttributes : function () {
@@ -290,7 +311,7 @@ function TtlSuite () {
       });
     },
     
-    testIndexNotUsed : function() {
+    testIndexNotUsedForFiltering : function() {
       let c = db._create(cn, { numberOfShards: 2 });
       c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
 
@@ -303,9 +324,6 @@ function TtlSuite () {
         "FOR doc IN @@collection FILTER doc.@indexAttribute >= '2019-01-01' RETURN doc",
         "FOR doc IN @@collection FILTER doc.@indexAttribute <= '2019-01-31' RETURN doc",
         "FOR doc IN @@collection FILTER doc.@indexAttribute >= '2019-01-01' && doc.@indexAttribute <= '2019-01-31' RETURN doc",
-        "FOR doc IN @@collection FILTER doc.@indexAttribute >= '2019-01-01' SORT doc.@indexAttribute RETURN doc",
-        "FOR doc IN @@collection FILTER doc.@indexAttribute <= '2019-01-31' SORT doc.@indexAttribute RETURN doc",
-        "FOR doc IN @@collection FILTER doc.@indexAttribute >= '2019-01-01' && doc.@indexAttribute <= '2019-01-31' SORT doc.@indexAttribute RETURN doc",
       ];
       
       let bindVars = { "@collection": cn, indexAttribute: "dateCreated" };
@@ -320,6 +338,27 @@ function TtlSuite () {
         plan.nodes.forEach(function(node) {
           assertNotEqual("IndexNode", node.type);
         });
+      });
+    },
+    
+    testIndexUsedForSorting : function() {
+      let c = db._create(cn, { numberOfShards: 2 });
+      c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
+
+      let queries = [
+        "FOR doc IN @@collection FILTER doc.@indexAttribute >= '2019-01-01' SORT doc.@indexAttribute RETURN doc",
+        "FOR doc IN @@collection FILTER doc.@indexAttribute <= '2019-01-31' && doc.@indexAttribute != null SORT doc.@indexAttribute RETURN doc",
+        "FOR doc IN @@collection FILTER doc.@indexAttribute >= '2019-01-01' && doc.@indexAttribute <= '2019-01-31' SORT doc.@indexAttribute RETURN doc",
+      ];
+      
+      let bindVars = { "@collection": cn, indexAttribute: "dateCreated" };
+
+      queries.forEach(function(query) {
+        let stmt = db._createStatement({ query, bindVars });
+        let plan = stmt.explain().plan;
+        let rules = plan.rules;
+        assertEqual(-1, rules.indexOf("use-indexes"), query);
+        assertNotEqual(-1, rules.indexOf("use-index-for-sort"), query);
       });
     },
     

@@ -28,11 +28,8 @@
 
 NS_ROOT
 
-bitset_doc_iterator::bitset_doc_iterator(
-    const bitset& set,
-    const order::prepared& order /*= order::prepared::unordered()*/
-) : doc_iterator_base(order),
-    begin_(set.begin()),
+bitset_doc_iterator::bitset_doc_iterator(const bitset& set)
+  : begin_(set.begin()),
     end_(set.end()),
     size_(set.size()) {
   auto docs_count = set.count();
@@ -48,24 +45,19 @@ bitset_doc_iterator::bitset_doc_iterator(
 }
 
 bitset_doc_iterator::bitset_doc_iterator(
-    const sub_reader& reader,
-    const attribute_store& prepared_filter_attrs,
-    const bitset& set,
-    const order::prepared& order
-): bitset_doc_iterator(set, order) {
-  if (!order.empty()) {
-    // set scorers
-    scorers_ = ord_->prepare_scorers(
-      reader,
-      empty_term_reader(cost_.estimate()),
-      prepared_filter_attrs,
-      attributes() // doc_iterator attributes
-    );
-
-    prepare_score([this](irs::byte_type* score) {
-      scorers_.score(*ord_, score);
-    });
-  }
+      const sub_reader& reader,
+      const byte_type* stats,
+      const bitset& set,
+      const order::prepared& order,
+      boost_t boost)
+  : bitset_doc_iterator(set) {
+  prepare_score(order, order.prepare_scorers(
+    reader,
+    empty_term_reader(cost_.estimate()),
+    stats,
+    attributes(), // doc_iterator attributes
+    boost
+  ));
 }
 
 bool bitset_doc_iterator::next() NOEXCEPT {

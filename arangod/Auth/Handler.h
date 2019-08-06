@@ -24,10 +24,12 @@
 #ifndef ARANGOD_AUTHENTICATION_HANDLER_H
 #define ARANGOD_AUTHENTICATION_HANDLER_H 1
 
-#include "Basics/Result.h"
 #include "Auth/Common.h"
+#include "Basics/Result.h"
+#include "Basics/voc-errors.h"
 
 #include <velocypack/Slice.h>
+#include <set>
 
 namespace arangodb {
 namespace auth {

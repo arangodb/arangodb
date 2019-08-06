@@ -67,6 +67,7 @@ TEST_F(analyzer_test, duplicate_register) {
     irs::attribute_view attrs_;
     DECLARE_ANALYZER_TYPE() { static irs::analysis::analyzer::type_id type("dummy_analyzer"); return type; }
     static ptr make(const irs::string_ref&) { return ptr(new dummy_analyzer()); }
+    static bool normalize(const irs::string_ref&, std::string&) { return true; }
     dummy_analyzer(): irs::analysis::analyzer(dummy_analyzer::type()) { }
     virtual const irs::attribute_view& attributes() const NOEXCEPT override { return attrs_; }
     virtual bool next() override { return false; }
@@ -86,10 +87,20 @@ TEST_F(analyzer_test, duplicate_register) {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::text_format::text, irs::string_ref::NIL));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::text_format::xml, irs::string_ref::NIL));
 
-    irs::analysis::analyzer_registrar initial0(dummy_analyzer::type(), irs::text_format::csv, &dummy_analyzer::make);
-    irs::analysis::analyzer_registrar initial1(dummy_analyzer::type(), irs::text_format::json, &dummy_analyzer::make);
-    irs::analysis::analyzer_registrar initial2(dummy_analyzer::type(), irs::text_format::text, &dummy_analyzer::make);
-    irs::analysis::analyzer_registrar initial3(dummy_analyzer::type(), irs::text_format::xml, &dummy_analyzer::make);
+    irs::analysis::analyzer_registrar initial0(dummy_analyzer::type(), 
+                                               irs::text_format::csv, 
+                                               &dummy_analyzer::make,
+                                               &dummy_analyzer::normalize);
+    irs::analysis::analyzer_registrar initial1(dummy_analyzer::type(), 
+                                               irs::text_format::json, &dummy_analyzer::make,
+                                               &dummy_analyzer::normalize);
+    irs::analysis::analyzer_registrar initial2(dummy_analyzer::type(), 
+                                               irs::text_format::text, &dummy_analyzer::make,
+                                               &dummy_analyzer::normalize);
+    irs::analysis::analyzer_registrar initial3(dummy_analyzer::type(), 
+                                               irs::text_format::xml, 
+                                               &dummy_analyzer::make,
+                                               &dummy_analyzer::normalize);
     ASSERT_EQ(!initial_expected, !initial0);
     ASSERT_EQ(!initial_expected, !initial1);
     ASSERT_EQ(!initial_expected, !initial2);
@@ -97,10 +108,22 @@ TEST_F(analyzer_test, duplicate_register) {
   }
 
   initial_expected = false; // next test iteration will not be able to register the same analyzer
-  irs::analysis::analyzer_registrar duplicate0(dummy_analyzer::type(), irs::text_format::csv, &dummy_analyzer::make);
-  irs::analysis::analyzer_registrar duplicate1(dummy_analyzer::type(), irs::text_format::json, &dummy_analyzer::make);
-  irs::analysis::analyzer_registrar duplicate2(dummy_analyzer::type(), irs::text_format::text, &dummy_analyzer::make);
-  irs::analysis::analyzer_registrar duplicate3(dummy_analyzer::type(), irs::text_format::xml, &dummy_analyzer::make);
+  irs::analysis::analyzer_registrar duplicate0(dummy_analyzer::type(), 
+                                               irs::text_format::csv, 
+                                               &dummy_analyzer::make,
+                                               &dummy_analyzer::normalize);
+  irs::analysis::analyzer_registrar duplicate1(dummy_analyzer::type(),
+                                               irs::text_format::json,
+                                               &dummy_analyzer::make,
+                                               &dummy_analyzer::normalize);
+  irs::analysis::analyzer_registrar duplicate2(dummy_analyzer::type(), 
+                                               irs::text_format::text, 
+                                               &dummy_analyzer::make,
+                                               &dummy_analyzer::normalize);
+  irs::analysis::analyzer_registrar duplicate3(dummy_analyzer::type(),
+                                               irs::text_format::xml, 
+                                               &dummy_analyzer::make,
+                                               &dummy_analyzer::normalize);
   ASSERT_TRUE(!duplicate0);
   ASSERT_TRUE(!duplicate1);
   ASSERT_TRUE(!duplicate2);
@@ -134,7 +157,7 @@ TEST_F(analyzer_test, test_load) {
 
   // locale with provided ignored_words
   {
-    auto analyzer = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en\", \"ignored_words\":[\"abc\", \"def\", \"ghi\"]}");
+    auto analyzer = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en\", \"stopwords\":[\"abc\", \"def\", \"ghi\"]}");
 
     ASSERT_NE(nullptr, analyzer);
     ASSERT_TRUE(analyzer->reset("abc"));
@@ -148,8 +171,8 @@ TEST_F(analyzer_test, test_load) {
   ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text", irs::text_format::json, "{}"));
 
   // invalid ignored_words
-  ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text", irs::text_format::json, "{{\"locale\":\"en\", \"ignored_words\":\"abc\"}}"));
-  ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text", irs::text_format::json, "{{\"locale\":\"en\", \"ignored_words\":[1, 2, 3]}}"));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text", irs::text_format::json, "{{\"locale\":\"en\", \"stopwords\":\"abc\"}}"));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text", irs::text_format::json, "{{\"locale\":\"en\", \"stopwords\":[1, 2, 3]}}"));
 }
 
 // -----------------------------------------------------------------------------

@@ -39,7 +39,12 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
+#include "Basics/files.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -180,16 +185,23 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
 bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
   VPackSlice const left = l.slice().get("parameters");
   VPackSlice const right = r.slice().get("parameters");
-
+  
+  std::string leftName =
+      arangodb::basics::VelocyPackHelper::getStringValue(left, "name", "");
+  std::string rightName =
+      arangodb::basics::VelocyPackHelper::getStringValue(right, "name", "");
+  
   // First we sort by shard distribution.
   // We first have to create the collections which have no dependencies.
   // NB: Dependency graph has depth at most 1, no need to manage complex DAG
   VPackSlice leftDist = left.get("distributeShardsLike");
   VPackSlice rightDist = right.get("distributeShardsLike");
-  if (leftDist.isNone() && !rightDist.isNone()) {
+  if (leftDist.isNone() && rightDist.isString() &&
+      rightDist.copyString() == leftName) {
     return true;
   }
-  if (rightDist.isNone() && !leftDist.isNone()) {
+  if (rightDist.isNone() && leftDist.isString() &&
+      leftDist.copyString() == rightName) {
     return false;
   }
 
@@ -204,11 +216,15 @@ bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
   }
 
   // Finally, sort by name so we have stable, reproducible results
-  std::string leftName =
-      arangodb::basics::VelocyPackHelper::getStringValue(left, "name", "");
-  std::string rightName =
-      arangodb::basics::VelocyPackHelper::getStringValue(right, "name", "");
-
+  // Sort system collections first
+  if (!leftName.empty() && leftName[0] == '_' &&
+      !rightName.empty() && rightName[0] != '_') {
+    return true;
+  }
+  if (!leftName.empty() && leftName[0] != '_' &&
+      !rightName.empty() && rightName[0] == '_') {
+    return false;
+  }
   return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
 }
 
@@ -279,7 +295,7 @@ arangodb::Result tryCreateDatabase(std::string const& name) {
   } catch (...) {
     LOG_TOPIC("832ef", FATAL, arangodb::Logger::RESTORE)
         << "cannot create server connection, giving up!";
-    return {TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT};
+    return {TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT};
   }
 
   VPackBuilder builder;
@@ -1369,8 +1385,8 @@ void RestoreFeature::start() {
   Result result;
 
   result = _clientManager.getConnectedClient(httpClient, _options.force,
-                                             true, !_options.createDatabase);
-  if (result.is(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
+                                             true, !_options.createDatabase, false);
+  if (result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
     LOG_TOPIC("c23bf", FATAL, Logger::RESTORE)
         << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
@@ -1393,7 +1409,7 @@ void RestoreFeature::start() {
       client->setDatabaseName(dbName);
 
       // re-check connection and version
-      result = _clientManager.getConnectedClient(httpClient, _options.force, true, true);
+      result = _clientManager.getConnectedClient(httpClient, _options.force, true, true, false);
     } else {
       LOG_TOPIC("ad95b", WARN, Logger::RESTORE) << "Database '" << dbName << "' does not exist on target endpoint. In order to create this database along with the restore, please use the --create-database option";
     }
@@ -1454,8 +1470,8 @@ void RestoreFeature::start() {
       _directory = std::make_unique<ManagedDirectory>(basics::FileUtils::buildFilename(_options.inputPath, db), false, false);
 
       result = _clientManager.getConnectedClient(httpClient, _options.force,
-                                                 false, !_options.createDatabase);
-      if (result.is(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
+                                                 false, !_options.createDatabase, false);
+      if (result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
         LOG_TOPIC("3e715", FATAL, Logger::RESTORE)
             << "cannot create server connection, giving up!";
         FATAL_ERROR_EXIT();
@@ -1478,7 +1494,7 @@ void RestoreFeature::start() {
           client->setDatabaseName(db);
 
           // re-check connection and version
-          result = _clientManager.getConnectedClient(httpClient, _options.force, false, true);
+          result = _clientManager.getConnectedClient(httpClient, _options.force, false, true, false);
         } else {
           LOG_TOPIC("be594", WARN, Logger::RESTORE) << "Database '" << db << "' does not exist on target endpoint. In order to create this database along with the restore, please use the --create-database option";
         }

@@ -102,7 +102,9 @@ struct IRESEARCH_API payload : basic_attribute<bytes_ref> {
 struct IRESEARCH_API document: basic_attribute<doc_id_t> {
   DECLARE_ATTRIBUTE_TYPE();
 
-  document() NOEXCEPT;
+  document(irs::doc_id_t doc = irs::doc_limits::invalid()) NOEXCEPT
+    : basic_attribute<doc_id_t>(doc) {
+  }
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -141,6 +143,8 @@ struct IRESEARCH_API norm : stored_attribute {
   }
 
   norm() NOEXCEPT;
+  norm(norm&& rhs) NOEXCEPT;
+  norm& operator=(norm&& rhs) NOEXCEPT;
 
   bool reset(const sub_reader& segment, field_id column, const document& doc);
   float_t read() const;
@@ -162,28 +166,35 @@ struct IRESEARCH_API norm : stored_attribute {
 /// @brief iterator represents term positions in a document
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API position
-  : public attribute, public util::const_attribute_view_provider {
+  : public attribute,
+    public util::const_attribute_view_provider {
  public:
   typedef uint32_t value_t;
 
   DECLARE_REFERENCE(position);
   DECLARE_TYPE_ID(attribute::type_id);
 
-  const irs::attribute_view& attributes() const NOEXCEPT override { return attrs_; }
-  virtual void clear() = 0;
-  virtual bool next() = 0;
-
-  value_t seek(value_t target) {
-    irs::seek(*this, target);
-
-    return value();
+  const irs::attribute_view& attributes() const NOEXCEPT override {
+    return attrs_;
   }
 
-  virtual value_t value() const = 0;
+  value_t seek(value_t target) {
+    while ((value_< target) && next());
+    return value_;
+  }
+
+  value_t value() const NOEXCEPT {
+    return value_;
+  }
+
+  virtual void clear() = 0;
+
+  virtual bool next() = 0;
 
  protected:
   position(size_t reserve_attrs) NOEXCEPT;
 
+  value_t value_{ pos_limits::invalid() };
   attribute_view attrs_;
 }; // position
 

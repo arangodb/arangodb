@@ -94,15 +94,10 @@ struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
 
   size_t estimatedEdgeSize() const override { return 0; };
 
-  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        ECValue* targetPtr, size_t maxSize) override {
-    return sizeof(ECValue);
-  }
+  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                      ECValue& targetPtr) override {}
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document, int8_t* targetPtr,
-                      size_t maxSize) override {
-    return 0;
-  }
+  void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b, const ECValue* ptr,
                            size_t size) const override {

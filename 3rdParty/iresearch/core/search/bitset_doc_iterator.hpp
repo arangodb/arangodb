@@ -31,18 +31,16 @@
 
 NS_ROOT
 
-class bitset_doc_iterator final: public doc_iterator_base, util::noncopyable {
+class bitset_doc_iterator final: public basic_doc_iterator_base, util::noncopyable {
  public:
-  explicit bitset_doc_iterator(
-    const bitset& set,
-    const order::prepared& order = order::prepared::unordered()
-  );
+  explicit bitset_doc_iterator(const bitset& set);
 
   bitset_doc_iterator(
     const sub_reader& reader,
-    const attribute_store& prepared_filter_attrs,
+    const byte_type* stats,
     const bitset& set,
-    const order::prepared& order
+    const order::prepared& order,
+    boost_t boost
   );
 
   virtual bool next() NOEXCEPT override;
@@ -53,7 +51,6 @@ class bitset_doc_iterator final: public doc_iterator_base, util::noncopyable {
   document doc_;
   const bitset::word_t* begin_;
   const bitset::word_t* end_;
-  order::prepared::scorers scorers_;
   size_t size_;
 }; // bitset_doc_iterator
 

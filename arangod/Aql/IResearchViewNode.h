@@ -132,13 +132,14 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   }
 
   /// @return sort condition satisfied by a sorted index
-  IResearchViewSort const* sort() const noexcept {
+  std::pair<IResearchViewSort const*, size_t> const& sort() const noexcept {
     return _sort;
   }
 
   /// @brief set sort condition satisfied by a sorted index
-  void sort(IResearchViewSort const* sort) noexcept {
-    _sort = sort;
+  void sort(IResearchViewSort const* sort, size_t size) noexcept {
+    _sort.first = sort;
+    _sort.second = sort ? std::min(size, sort->size()) : 0;
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
@@ -182,7 +183,9 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   aql::AstNode const* _filterCondition;
 
   /// @brief sort condition covered by the view
-  IResearchViewSort const* _sort{};
+  /// first - sort condition
+  /// second - number of sort buckets to use
+  std::pair<IResearchViewSort const*, size_t> _sort{};
 
   /// @brief scorers related to the view
   std::vector<Scorer> _scorers;

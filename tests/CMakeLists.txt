@@ -20,9 +20,9 @@ set(ARANGODB_TESTS_SOURCES
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
-  Aql/AllRowsFetcherTest.cpp
-  Aql/AqlItemBlockHelper.cpp
+  Aql/AqlHelper.cpp
   Aql/AqlItemRowTest.cpp
+  Aql/AllRowsFetcherTest.cpp
   Aql/CalculationExecutorTest.cpp
   Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
@@ -33,6 +33,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/EnumerateListExecutorTest.cpp
   Aql/ExecutionBlockImplTest.cpp
   Aql/ExecutionBlockImplTestInstances.cpp
+  Aql/ExecutorTestHelper.cpp
   Aql/FilterExecutorTest.cpp
   Aql/HashedCollectExecutorTest.cpp
   Aql/IdExecutorTest.cpp
@@ -75,6 +76,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/CompileTimeStrlenTest.cpp
   Basics/EndpointTest.cpp
   Basics/HashSetTest.cpp
+  Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
@@ -110,6 +112,7 @@ set(ARANGODB_TESTS_SOURCES
   Graph/ConstantWeightShortestPathFinder.cpp
   Graph/GraphTestTools.cpp
   Graph/KShortestPathsFinder.cpp
+  HotBackup/HotBackupCoordinatorTest.cpp
   IResearch/common.cpp
   IResearch/AgencyMock.cpp
   IResearch/AgencyCommManagerMock.cpp
@@ -136,9 +139,11 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchQueryBooleanTerm-test.cpp
   IResearch/IResearchQueryComplexBoolean-test.cpp
   IResearch/IResearchQueryExists-test.cpp
+  IResearch/IResearchQueryFilter-test.cpp
   IResearch/IResearchQueryIn-test.cpp
   IResearch/IResearchQueryInRange-test.cpp
   IResearch/IResearchQueryJoin-test.cpp
+  IResearch/IResearchQueryMinMatch-test.cpp
   IResearch/IResearchQueryNullTerm-test.cpp
   IResearch/IResearchQueryNumericTerm-test.cpp
   IResearch/IResearchQueryOptimization-test.cpp
@@ -170,15 +175,21 @@ set(ARANGODB_TESTS_SOURCES
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp
   Pregel/typedbuffer.cpp
+  Replication/ReplicationClientsProgressTrackerTest.cpp
   RestHandler/RestAnalyzerHandler-test.cpp
+  RestHandler/RestDocumentHandler-test.cpp
   RestHandler/RestUsersHandler-test.cpp
   RestHandler/RestViewHandler-test.cpp
   RestServer/FlushFeature-test.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
+  RocksDBEngine/HotBackupTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
+  RocksDBEngine/ShaEventListener.cpp
+  RocksDBEngine/TransactionManagerTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
+  StorageEngine/PhysicalCollectionTest.cpp
   Transaction/Context-test.cpp
   Transaction/Manager-test.cpp
   Transaction/RestTransactionHandler-test.cpp
@@ -219,19 +230,31 @@ endif()
 target_link_libraries(arangodbtests
   arangoserver
   rocksdb
+  fuerte
   gtest
+  snappy
 )
 
 target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
-  ${V8_INCLUDE_DIR}
 )
+
+
+if(MSVC)
+  target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  # Missing Braces is broken in older CLangs - disable them here.
+  target_compile_options(arangodbtests PRIVATE -Werror -Wno-missing-braces)
+endif()
 
 # add these includes as system includes because otherwise
 # the compiler will emit warnings for fakeit.hpp
 target_include_directories(arangodbtests SYSTEM PRIVATE
+  ${V8_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
-  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.7.0/fused-src
+  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
 )
 
 find_package(OpenSSL REQUIRED)

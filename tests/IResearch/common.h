@@ -62,6 +62,9 @@ class ByExpression;
 
 namespace tests {
 
+ extern std::string const AnalyzerCollectionName;
+
+
 extern std::string testResourceDir;
 
 void init(bool withICU = false);
@@ -112,6 +115,11 @@ uint64_t getCurrentPlanVersion();
 
 void setDatabasePath(arangodb::DatabasePathFeature& feature);
 
+#define EXPECT_EQUAL_SLICES_STRINGIFY(x) #x
+#define EXPECT_EQUAL_SLICES_EXPANDER(leftSlice, rightSlice, file, line) arangodb::tests::expectEqualSlices_(leftSlice, rightSlice, file ":" EXPECT_EQUAL_SLICES_STRINGIFY(line))
+#define EXPECT_EQUAL_SLICES(leftSlice, rightSlice) EXPECT_EQUAL_SLICES_EXPANDER(leftSlice, rightSlice, __FILE__, __LINE__)
+void expectEqualSlices_(const VPackSlice& lhs, const VPackSlice& rhs, const char* where);
+
 }
 }
 
@@ -133,7 +141,7 @@ inline arangodb::aql::AstNode* wrappedExpressionExtractor(arangodb::aql::AstNode
 
 void assertExpressionFilter(
   std::string const& queryString,
-  irs::boost::boost_t boost = irs::boost::no_boost(),
+  irs::boost_t boost = irs::no_boost(),
   std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const& expressionExtractor = &defaultExpressionExtractor,
   std::string const& refName = "d"
 );

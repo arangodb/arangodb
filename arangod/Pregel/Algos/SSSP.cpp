@@ -43,8 +43,9 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
       *state = tmp;  // update state
 
       RangeIterator<Edge<int64_t>> edges = getEdges();
-      for (Edge<int64_t>* edge : edges) {
-        int64_t val = *edge->data() + tmp;
+      for (; edges.hasMore(); ++edges) {
+        Edge<int64_t>* edge = *edges;
+        int64_t val = edge->data() + tmp;
         sendMessage(edge, val);
       }
     }
@@ -75,10 +76,9 @@ struct SSSPGraphFormat : public InitGraphFormat<int64_t, int64_t> {
   SSSPGraphFormat(std::string const& source, std::string const& result)
       : InitGraphFormat<int64_t, int64_t>(result, 0, 1), _sourceDocId(source) {}
 
-  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        int64_t* targetPtr, size_t maxSize) override {
-    *targetPtr = documentId == _sourceDocId ? 0 : INT64_MAX;
-    return sizeof(int64_t);
+  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                        int64_t& targetPtr) override {
+    targetPtr = (documentId == _sourceDocId) ? 0 : INT64_MAX;
   }
 
   bool buildEdgeDocument(arangodb::velocypack::Builder& b,

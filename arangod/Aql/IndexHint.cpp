@@ -23,8 +23,11 @@
 
 #include "IndexHint.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "Aql/AstNode.h"
 #include "Basics/StaticStrings.h"
@@ -125,11 +128,18 @@ IndexHint::IndexHint(AstNode const* node)
 }
 
 IndexHint::IndexHint(VPackSlice const& slice)
-    : _type{::fromTypeName(
-          basics::VelocyPackHelper::getStringValue(slice.get(::FieldContainer),
-                                                   ::FieldType, ""))},
-      _forced{basics::VelocyPackHelper::getBooleanValue(slice.get(::FieldContainer),
-                                                        ::FieldForced, false)} {
+    : IndexHint() {
+      
+  // read index hint from slice
+  // index hints were introduced in version 3.5. in previous versions they
+  // are not available, so we need to be careful when reading them
+  VPackSlice s = slice.get(::FieldContainer);
+  if (s.isObject()) {
+    _type = ::fromTypeName(
+          basics::VelocyPackHelper::getStringValue(s, ::FieldType, ""));
+    _forced = basics::VelocyPackHelper::getBooleanValue(s, ::FieldForced, false);
+  }
+
   if (_type != HintType::Illegal && _type != HintType::None) {
     VPackSlice container = slice.get(::FieldContainer);
     TRI_ASSERT(container.isObject());

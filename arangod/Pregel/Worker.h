@@ -45,7 +45,7 @@ class RestPregelHandler;
 
 namespace pregel {
 
-class IWorker {
+class IWorker : public std::enable_shared_from_this<IWorker> {
  public:
   virtual ~IWorker() {}
   virtual void setupWorker() = 0;
@@ -72,7 +72,6 @@ class OutCache;
 
 template <typename T>
 class RangeIterator;
-class VertexEntry;
 
 template <typename V, typename E, typename M>
 class VertexContext;
@@ -139,7 +138,7 @@ class Worker : public IWorker {
   void _initializeMessageCaches();
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);
   void _startProcessing();
-  bool _processVertices(size_t threadId, RangeIterator<VertexEntry>& vertexIterator);
+  bool _processVertices(size_t threadId, RangeIterator<Vertex<V,E>>& vertexIterator);
   void _finishedProcessing();
   void _continueAsync();
   void _callConductor(std::string const& path, VPackBuilder const& message);

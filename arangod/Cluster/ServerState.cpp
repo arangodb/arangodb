@@ -31,13 +31,19 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include "Agency/AgencyComm.h"
+#include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
+#include "Basics/files.h"
 #include "Cluster/ClusterInfo.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -553,7 +559,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
 
   // coordinator is already/still registered from an previous unclean shutdown;
   // must establish a new short ID
-  bool forceChangeShortId = (!res.successful() && isCoordinator(role));
+  bool forceChangeShortId = isCoordinator(role);
 
   std::string targetIdPath = "Target/" + latestIdKey;
   std::string targetUrl = "Target/MapUniqueToShortID/" + _id;
@@ -625,7 +631,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
 
     preconditions.push_back(*(latestIdPrecondition.get()));
     preconditions.push_back(AgencyPrecondition(targetUrl, AgencyPrecondition::Type::EMPTY,
-                                               !forceChangeShortId));
+                                               mapSlice.isNone()));
 
     AgencyWriteTransaction trx(operations, preconditions);
     result = comm.sendTransactionWithFailover(trx, 0.0);
@@ -655,6 +661,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm) {
       builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
       builder.add("versionString", VPackValue(rest::Version::getServerVersion()));
       builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
+      builder.add("timestamp", VPackValue(timepointToString(std::chrono::system_clock::now())));
     } catch (...) {
       LOG_TOPIC("de625", FATAL, arangodb::Logger::CLUSTER) << "out of memory";
       FATAL_ERROR_EXIT();

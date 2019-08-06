@@ -38,6 +38,7 @@ function ArangoStatement (database, data) {
   this._bindVars = {};
   this._options = undefined;
   this._cache = undefined;
+  this._stream = false;
 
   if (!data) {
     throw 'ArangoStatement needs initial data';
@@ -72,6 +73,9 @@ function ArangoStatement (database, data) {
   }
   if (data.cache !== undefined) {
     this.setCache(data.cache);
+  }
+  if (data.stream !== undefined) {
+    this._stream = data.stream;
   }
 }
 

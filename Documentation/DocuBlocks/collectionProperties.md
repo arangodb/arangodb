@@ -52,7 +52,11 @@ In a cluster setup, the result will also contain the following attributes:
   determine the target shard for documents.
 
 * *replicationFactor*: determines how many copies of each shard are kept 
-  on different DBServers.
+  on different DBServers. Has to be in the range of 1-10 *(Cluster only)*
+
+* *minReplicationFactor* : determines the number of minimal shard copies kept on
+  different DBServers, a shard will refuse to write if less than this amount
+  of copies are in sync. Has to be in the range of 1-replicationFactor *(Cluster only)*
 
 * *shardingStrategy*: the sharding strategy selected for the collection.
   This attribute will only be populated in cluster mode and is not populated
@@ -76,6 +80,10 @@ one or more of the following attribute(s):
 * *replicationFactor* : Change the number of shard copies kept on 
   different DBServers, valid values are  integer numbers
   in the range of 1-10 *(Cluster only)*
+
+* *minReplicationFactor* : Change the number of minimal shard copies to be in sync on 
+  different DBServers, a shard will refuse to write if less than this amount
+  of copies are in sync. Has to be in the range of 1-replicationFactor *(Cluster only)*
 
 **Note**: some other collection properties, such as *type*, *isVolatile*,
 *keyOptions*, *numberOfShards* or *shardingStrategy* cannot be changed once 

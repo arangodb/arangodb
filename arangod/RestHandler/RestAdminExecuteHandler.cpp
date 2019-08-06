@@ -26,16 +26,18 @@
 #include "Actions/ActionFeature.h"
 #include "Actions/actions.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/ScopeGuard.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/v8-actions.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/v8-actions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
@@ -133,12 +135,8 @@ RestStatus RestAdminExecuteHandler::execute() {
         _response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
         switch (_response->transportType()) {
           case Endpoint::TransportType::HTTP: {
-            HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
-            if (httpResponse == nullptr) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to cast response object");
-            }
             _response->setContentType(rest::ContentType::TEXT);
-            httpResponse->body().appendText(errorMessage.data(), errorMessage.size());
+            _response->addRawPayload(VPackStringRef(errorMessage));
             break;
           }
           case Endpoint::TransportType::VST: {

@@ -2490,8 +2490,8 @@ class num_put_facet: public std::num_put<CharType> {
   struct context_t {
     DECLARE_UNIQUE_PTR(context_t);
     std::basic_string<char_type> buf_;
-    UnicodeString icu_buf0_;
-    UnicodeString icu_buf1_;
+    icu::UnicodeString icu_buf0_;
+    icu::UnicodeString icu_buf1_;
     std::unique_ptr<icu::NumberFormat> regular_;
     std::unique_ptr<icu::NumberFormat> scientific_; // uppercase (instead of mixed case by default)
 
@@ -2840,7 +2840,7 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   ctx->scientific_->setMinimumFractionDigits(6); // default 6 as per specification
   ctx->scientific_->setMaximumFractionDigits(6); // default 6 as per specification
 
-  static const UnicodeString point(".");
+  static const icu::UnicodeString point(".");
   icu::UnicodeString* icu_buf;
   bool negative = false;
 

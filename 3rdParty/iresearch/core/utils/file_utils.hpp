@@ -139,7 +139,7 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT;
 // --SECTION--                                                        path utils
 // -----------------------------------------------------------------------------
 
-bool mkdir(const file_path_t path) NOEXCEPT; // recursive directory creation
+bool mkdir(const file_path_t path, bool createNew) NOEXCEPT;  // recursive directory creation
 
 bool move(const file_path_t src_path, const file_path_t dst_path) NOEXCEPT;
 

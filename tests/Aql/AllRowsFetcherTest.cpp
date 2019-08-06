@@ -110,10 +110,12 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_done_immedia
     std::tie(state, matrix) = testee.fetchAllRows();
     ASSERT_TRUE(state == ExecutionState::DONE);
     ASSERT_TRUE(matrix != nullptr);
-    ASSERT_TRUE(matrix->getNrRegisters() == 1);
-    ASSERT_TRUE(!matrix->empty());
-    ASSERT_TRUE(matrix->size() == 1);
-    ASSERT_TRUE(matrix->getRow(0).getValue(0).slice().getInt() == 42);
+    EXPECT_EQ(1, matrix->getNrRegisters());
+    EXPECT_FALSE(matrix->empty());
+    EXPECT_EQ(1, matrix->size());
+    auto rowIndexes = matrix->produceRowIndexes();
+    ASSERT_EQ(matrix->size(), rowIndexes.size());
+    ASSERT_EQ(42, matrix->getRow(rowIndexes[0]).getValue(0).slice().getInt());
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
@@ -139,10 +141,12 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_hasmore_then
     std::tie(state, matrix) = testee.fetchAllRows();
     ASSERT_TRUE(state == ExecutionState::DONE);
     ASSERT_TRUE(matrix != nullptr);
-    ASSERT_TRUE(matrix->getNrRegisters() == 1);
-    ASSERT_TRUE(!matrix->empty());
-    ASSERT_TRUE(matrix->size() == 1);
-    ASSERT_TRUE(matrix->getRow(0).getValue(0).slice().getInt() == 42);
+    EXPECT_EQ(1, matrix->getNrRegisters());
+    EXPECT_FALSE(matrix->empty());
+    EXPECT_EQ(1, matrix->size());
+    auto rowIndexes = matrix->produceRowIndexes();
+    ASSERT_EQ(matrix->size(), rowIndexes.size());
+    EXPECT_EQ(42, matrix->getRow(rowIndexes[0]).getValue(0).slice().getInt());
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
@@ -172,10 +176,12 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_then_returns_d
     std::tie(state, matrix) = testee.fetchAllRows();
     ASSERT_TRUE(state == ExecutionState::DONE);
     ASSERT_TRUE(matrix != nullptr);
-    ASSERT_TRUE(!matrix->empty());
-    ASSERT_TRUE(matrix->size() == 1);
-    ASSERT_TRUE(matrix->getNrRegisters() == 1);
-    ASSERT_TRUE(matrix->getRow(0).getValue(0).slice().getInt() == 42);
+    EXPECT_EQ(1, matrix->getNrRegisters());
+    EXPECT_FALSE(matrix->empty());
+    EXPECT_EQ(1, matrix->size());
+    auto rowIndexes = matrix->produceRowIndexes();
+    ASSERT_EQ(matrix->size(), rowIndexes.size());
+    EXPECT_EQ(42, matrix->getRow(rowIndexes[0]).getValue(0).slice().getInt());
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
@@ -206,10 +212,12 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_returns_hasmor
     std::tie(state, matrix) = testee.fetchAllRows();
     ASSERT_TRUE(state == ExecutionState::DONE);
     ASSERT_TRUE(matrix != nullptr);
-    ASSERT_TRUE(!matrix->empty());
-    ASSERT_TRUE(matrix->size() == 1);
-    ASSERT_TRUE(matrix->getNrRegisters() == 1);
-    ASSERT_TRUE(matrix->getRow(0).getValue(0).slice().getInt() == 42);
+    EXPECT_EQ(1, matrix->getNrRegisters());
+    EXPECT_FALSE(matrix->empty());
+    EXPECT_EQ(1, matrix->size());
+    auto rowIndexes = matrix->produceRowIndexes();
+    ASSERT_EQ(matrix->size(), rowIndexes.size());
+    EXPECT_EQ(42, matrix->getRow(rowIndexes[0]).getValue(0).slice().getInt());
 
     AqlItemMatrix const* matrix2 = nullptr;
     std::tie(state, matrix2) = testee.fetchAllRows();
@@ -242,15 +250,16 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_does_not_wait) {
     std::tie(state, matrix) = testee.fetchAllRows();
     ASSERT_TRUE(state == ExecutionState::DONE);
     ASSERT_TRUE(matrix != nullptr);
-    ASSERT_TRUE(!matrix->empty());
-    ASSERT_TRUE(matrix->size() == 6);
-    ASSERT_TRUE(matrix->getNrRegisters() == 1);
+    EXPECT_EQ(1, matrix->getNrRegisters());
+    EXPECT_FALSE(matrix->empty());
+    EXPECT_EQ(6, matrix->size());
+    auto rowIndexes = matrix->produceRowIndexes();
+    ASSERT_EQ(matrix->size(), rowIndexes.size());
     for (int64_t i = 0; i < 6; i++) {
-      int64_t rowIdx = i;
       int64_t rowValue = i + 1;
-      auto row = matrix->getRow(rowIdx);
+      auto row = matrix->getRow(rowIndexes[i]);
       ASSERT_TRUE(row.isInitialized());
-      ASSERT_TRUE(row.getValue(0).slice().getInt() == rowValue);
+      EXPECT_EQ(rowValue, row.getValue(0).slice().getInt());
     }
 
     AqlItemMatrix const* matrix2 = nullptr;
@@ -296,13 +305,15 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits) {
     std::tie(state, matrix) = testee.fetchAllRows();
     ASSERT_TRUE(state == ExecutionState::DONE);
     ASSERT_TRUE(matrix != nullptr);
-    ASSERT_TRUE(!matrix->empty());
-    ASSERT_TRUE(matrix->size() == 6);
-    ASSERT_TRUE(matrix->getNrRegisters() == 1);
+    EXPECT_EQ(1, matrix->getNrRegisters());
+    EXPECT_FALSE(matrix->empty());
+    EXPECT_EQ(6, matrix->size());
+    auto rowIndexes = matrix->produceRowIndexes();
+    ASSERT_EQ(matrix->size(), rowIndexes.size());
     for (int64_t i = 0; i < 6; i++) {
-      int64_t rowIdx = i;
       int64_t rowValue = i + 1;
-      ASSERT_TRUE(matrix->getRow(rowIdx).getValue(0).slice().getInt() == rowValue);
+      auto row = matrix->getRow(rowIndexes[i]);
+      EXPECT_EQ(rowValue, row.getValue(0).slice().getInt());
     }
 
     AqlItemMatrix const* matrix2 = nullptr;
@@ -349,13 +360,15 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits_and_does_not_
     std::tie(state, matrix) = testee.fetchAllRows();
     ASSERT_TRUE(state == ExecutionState::DONE);
     ASSERT_TRUE(matrix != nullptr);
-    ASSERT_TRUE(!matrix->empty());
-    ASSERT_TRUE(matrix->size() == 6);
-    ASSERT_TRUE(matrix->getNrRegisters() == 1);
+    EXPECT_EQ(1, matrix->getNrRegisters());
+    EXPECT_FALSE(matrix->empty());
+    EXPECT_EQ(6, matrix->size());
+    auto rowIndexes = matrix->produceRowIndexes();
+    ASSERT_EQ(matrix->size(), rowIndexes.size());
     for (int64_t i = 0; i < 6; i++) {
-      int64_t rowIdx = i;
       int64_t rowValue = i + 1;
-      ASSERT_TRUE(matrix->getRow(rowIdx).getValue(0).slice().getInt() == rowValue);
+      auto row = matrix->getRow(rowIndexes[i]);
+      EXPECT_EQ(rowValue, row.getValue(0).slice().getInt());
     }
 
     AqlItemMatrix const* matrix2 = nullptr;
@@ -369,6 +382,6 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits_and_does_not_
   ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 7);
 }
 
-}  // namespace arangodb
+}  // namespace aql
 }  // namespace tests
 }  // namespace arangodb

@@ -38,6 +38,7 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
+
 using namespace arangodb;
 
 template <typename CMP = geo_index::DocumentsAscending>
@@ -325,7 +326,15 @@ Result MMFilesGeoIndex::insert(transaction::Methods& trx, LocalDocumentId const&
 
   IndexValue value(documentId, std::move(centroid));
   for (S2CellId cell : cells) {
+// The bool comperator is warned about in a unused code branch (which expects an int), MSVC doesn't properly detect this.
+#if (_MSC_VER >= 1)
+#pragma warning(push)
+#pragma warning( disable : 4804)
+#endif
     _tree.insert(std::make_pair(cell, value));
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
   }
 
   return res;
@@ -364,7 +373,7 @@ Result MMFilesGeoIndex::remove(transaction::Methods& trx, LocalDocumentId const&
 }
 
 /// @brief creates an IndexIterator for the given Condition
-IndexIterator* MMFilesGeoIndex::iteratorForCondition(
+std::unique_ptr<IndexIterator> MMFilesGeoIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
@@ -396,11 +405,9 @@ IndexIterator* MMFilesGeoIndex::iteratorForCondition(
 
   // why does this have to be shit?
   if (params.ascending) {
-    return new NearIterator<geo_index::DocumentsAscending>(&_collection, trx, this,
-                                                           std::move(params));
+    return std::make_unique<NearIterator<geo_index::DocumentsAscending>>(&_collection, trx, this, std::move(params));
   } else {
-    return new NearIterator<geo_index::DocumentsDescending>(&_collection, trx, this,
-                                                            std::move(params));
+    return std::make_unique<NearIterator<geo_index::DocumentsDescending>>(&_collection, trx, this, std::move(params));
   }
 }
 

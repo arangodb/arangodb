@@ -863,11 +863,12 @@ int search(
   for (size_t i = search_threads; i; --i) {
     thread_pool.run([&task_provider, &dir, &reader, &order, limit, &out, csv, scored_terms_limit]()->void {
       static const std::string analyzer_name("text");
-      static const std::string analyzer_args("{\"locale\":\"en\", \"ignored_words\":[\"abc\", \"def\", \"ghi\"]}"); // from index-put
+      static const std::string analyzer_args("{\"locale\":\"en\", \"stopwords\":[\"abc\", \"def\", \"ghi\"]}"); // from index-put
       auto analyzer = irs::analysis::analyzers::get(analyzer_name, irs::text_format::json, analyzer_args);
       irs::filter::prepared::ptr filter;
       std::string tmpBuf;
 
+#ifdef IRESEARCH_COMPLEX_SCORING
       #if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
         typedef irs::memory::memory_multi_size_pool<irs::memory::identity_grow> pool_t;
         typedef irs::memory::memory_pool_multi_size_allocator<Entry, pool_t> alloc_t;
@@ -878,7 +879,6 @@ int search(
 
       pool_t pool(limit + 1); // +1 for least significant overflow element
 
-#ifdef IRESEARCH_COMPLEX_SCORING
       auto comparer = [&order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
         return order.less(lhs.c_str(), rhs.c_str());
       };
@@ -886,9 +886,8 @@ int search(
         comparer, alloc_t{pool}
       );
 #else
-      std::multimap<float, irs::doc_id_t, std::less<float>, alloc_t> sorted(
-        std::less<float>(), alloc_t{pool}
-      );
+      std::vector<std::pair<float_t, irs::doc_id_t>> sorted;
+      sorted.reserve(limit + 1); // +1 for least significant overflow element
 #endif
 
       // process a single task
@@ -935,7 +934,9 @@ int search(
 
           for (auto& segment: reader) {
             auto docs = filter->execute(segment, order); // query segment
-            const irs::score& score = irs::score::extract(docs->attributes());
+            auto& attributes = docs->attributes();
+            const irs::score& score = irs::score::extract(attributes);
+            const irs::document* doc = attributes.get<irs::document>().get();
 
 #ifdef IRESEARCH_COMPLEX_SCORING
             // ensure we avoid COW for pre c++11 std::basic_string
@@ -955,13 +956,41 @@ int search(
                 std::forward_as_tuple(raw_score_value),
                 std::forward_as_tuple(docs->value(), score_value)
               );
-#else
-              sorted.emplace(score_value, docs->value());
-#endif
+
+              sorted.emplace(score_value, doc->value);
 
               if (sorted.size() > limit) {
                 sorted.erase(--(sorted.end()));
               }
+#else
+              std::push_heap(
+                sorted.begin(), sorted.end(),
+                [](const std::pair<float_t, irs::doc_id_t>& lhs,
+                   const std::pair<float_t, irs::doc_id_t>& rhs) NOEXCEPT {
+                  return lhs.first < rhs.first;
+              });
+
+              if (sorted.size() > limit) {
+                std::pop_heap(
+                  sorted.begin(), sorted.end(),
+                  [](const std::pair<float_t, irs::doc_id_t>& lhs,
+                     const std::pair<float_t, irs::doc_id_t>& rhs) NOEXCEPT {
+                    return lhs.first < rhs.first;
+                });
+
+                sorted.pop_back();
+              }
+
+              auto end = sorted.end();
+              for (auto begin = sorted.begin(); begin != end; --end) {
+                std::pop_heap(
+                  begin, end,
+                  [](const std::pair<float_t, irs::doc_id_t>& lhs,
+                     const std::pair<float_t, irs::doc_id_t>& rhs) NOEXCEPT {
+                    return lhs.first < rhs.first;
+                });
+              }
+#endif
             }
           }
         }

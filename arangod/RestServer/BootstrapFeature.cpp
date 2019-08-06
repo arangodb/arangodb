@@ -28,7 +28,9 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Rest/GeneralResponse.h"
@@ -250,7 +252,7 @@ void runActiveFailoverStart(std::string const& myId) {
 
       if (leader.isString() && leader.getStringLength() > 0) {
         ServerState::instance()->setFoxxmaster(leader.copyString());
-        if (leader == myIdBuilder.slice()) {
+        if (basics::VelocyPackHelper::equal(leader, myIdBuilder.slice(), false)) {
           LOG_TOPIC("95023", INFO, Logger::STARTUP)
               << "Became leader in active-failover setup";
         } else {

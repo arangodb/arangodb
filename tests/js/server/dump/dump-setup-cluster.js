@@ -183,11 +183,9 @@ function setupSatelliteCollections() {
   c.ensureUniqueSkiplist("a_su");
   c.ensureHashIndex("a_hs1", "a_hs2", { sparse: true });
   c.ensureSkiplist("a_ss1", "a_ss2", { sparse: true });
-
   c.ensureFulltextIndex("a_f");
-  if (db._engine().name !== "rocksdb") {
-    c.ensureGeoIndex("a_la", "a_lo");
-  }
+
+  c.ensureGeoIndex("a_la", "a_lo");
 
   // we insert data and remove it
   c = db._create("UnitTestsDumpTruncated", { isVolatile: db._engine().name === "mmfiles" });
@@ -225,7 +223,6 @@ function setupSatelliteCollections() {
 
   // setup a view
   try {
-    analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
     c = db._create("UnitTestsDumpViewCollection");
 
     let view = db._createView("UnitTestsDumpView", "arangosearch", {});

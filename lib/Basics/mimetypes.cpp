@@ -21,6 +21,9 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <string>
+#include <unordered_map>
+
 #include "Basics/Common.h"
 #include "Basics/voc-mimetypes.h"
 

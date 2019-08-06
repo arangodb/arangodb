@@ -25,7 +25,9 @@
 #include "ConsoleFeature.h"
 
 #include "Basics/messages.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/ConsoleThread.h"
@@ -76,7 +78,7 @@ void ConsoleFeature::unprepare() {
   int iterations = 0;
 
   while (_consoleThread->isRunning() && ++iterations < 30) {
-    std::this_thread::sleep_for(std::chrono::microseconds(100 * 1000));  // spin while console is still needed
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));  // sleep while console is still needed
   }
 
   std::cout << std::endl << TRI_BYE_MESSAGE << std::endl;

@@ -195,7 +195,7 @@ const upgradeData = (engine, version) => {
 
     args['database.auto-upgrade'] = false;
 
-    const testCases = tu.scanTestPaths(['tests/js/server/upgrade-data'])
+    const testCases = tu.scanTestPaths(['tests/js/server/upgrade-data'], options)
       .filter(byMinimumSuportedVersion(version));
     require('internal').print('Checking results...');
     return tu.performTests(

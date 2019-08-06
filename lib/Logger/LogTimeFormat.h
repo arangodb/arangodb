@@ -24,9 +24,10 @@
 #ifndef ARANGODB_LOGGER_LOG_TIME_FORMAT_H
 #define ARANGODB_LOGGER_LOG_TIME_FORMAT_H 1
 
-#include "Basics/Common.h"
-
 #include <iosfwd>
+#include <ostream>
+#include <string>
+#include <unordered_set>
 
 namespace arangodb {
 namespace LogTimeFormats {

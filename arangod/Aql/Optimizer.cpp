@@ -60,9 +60,9 @@ bool Optimizer::runOnlyRequiredRules(size_t extraPlans) const {
 
 // @brief add a plan to the optimizer
 void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan,
-                        OptimizerRule const* rule, bool wasModified, int newLevel) {
+                        OptimizerRule const& rule, bool wasModified, int newLevel) {
   TRI_ASSERT(plan != nullptr);
-  TRI_ASSERT(&_currentRule->second.rule == rule);
+  TRI_ASSERT(_currentRule->second.rule.level == rule.level);
         
   plan->setValidity(true);
 
@@ -75,10 +75,10 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan,
   }
 
   if (wasModified) {
-    if (!rule->isHidden) {
+    if (!rule.isHidden()) {
       // register which rules modified / created the plan
       // hidden rules are excluded here
-      plan->addAppliedRule(static_cast<int>(rule->level));
+      plan->addAppliedRule(static_cast<int>(rule.level));
     }
 
     plan->clearVarUsageComputed();
@@ -149,20 +149,20 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         auto it = _currentRule;
         TRI_ASSERT(it != _rules.end());
 
-        auto& rule = it->second.rule;
+        auto const& rule = it->second.rule;
 
         // skip over rules if we should
         // however, we don't want to skip those rules that will not create
         // additional plans
         if (!it->second.enabled ||
-            (_runOnlyRequiredRules && rule.canCreateAdditionalPlans && rule.canBeDisabled)) {
+            (_runOnlyRequiredRules && rule.canCreateAdditionalPlans() && rule.canBeDisabled())) {
           // we picked a disabled rule or we have reached the max number of
           // plans and just skip this rule
           ++it;  // move it to the next rule to be processed in the next
                  // iteration
           _newPlans.push_back(std::move(p), it);  // nothing to do, just keep it
 
-          if (!rule.isHidden) {
+          if (!rule.isHidden()) {
             ++_stats.rulesSkipped;
           }
 
@@ -185,9 +185,9 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         //   thus the rule must not have deleted the plan itself or add it
         //   back to the optimizer
         p->setValidity(false);
-        rule.func(this, std::move(p), &rule);
+        rule.func(this, std::move(p), rule);
 
-        if (!rule.isHidden) {
+        if (!rule.isHidden()) {
           ++_stats.rulesExecuted;
         }
       }

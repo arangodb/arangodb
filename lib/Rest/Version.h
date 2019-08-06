@@ -24,7 +24,9 @@
 #ifndef ARANGODB_REST_VERSION_H
 #define ARANGODB_REST_VERSION_H 1
 
-#include "Basics/Common.h"
+#include <map>
+
+#include "Basics/operating-system.h"
 
 #include "Basics/build.h"
 

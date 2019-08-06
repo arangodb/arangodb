@@ -311,7 +311,7 @@ void test_base::SetUp() {
 
   test_case_dir_ /= ti->test_case_name();
   (test_dir_ = test_case_dir_) /= ti->name();
-  test_dir_.mkdir();
+  test_dir_.mkdir(false);
 }
 
 // -----------------------------------------------------------------------------

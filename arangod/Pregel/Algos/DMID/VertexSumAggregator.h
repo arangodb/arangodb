@@ -35,8 +35,8 @@ namespace arangodb {
 namespace pregel {
 
 struct VertexSumAggregator : public IAggregator {
-  typedef std::map<PregelShard, std::unordered_map<PregelKey, double>> VertexMap;
-  typedef std::pair<PregelShard, std::unordered_map<PregelKey, double>> MyPair;
+  typedef std::map<PregelShard, std::unordered_map<std::string, double>> VertexMap;
+  typedef std::pair<PregelShard, std::unordered_map<std::string, double>> MyPair;
 
   VertexSumAggregator(bool perm = false) : _permanent(perm) {}
 
@@ -53,7 +53,7 @@ struct VertexSumAggregator : public IAggregator {
   void parseAggregate(VPackSlice const& slice) override {
     for (auto const& pair : VPackObjectIterator(slice)) {
       PregelShard shard = std::stoi(pair.key.copyString());
-      PregelKey key;
+      std::string key;
       VPackValueLength i = 0;
       for (VPackSlice const& val : VPackArrayIterator(pair.value)) {
         if (i % 2 == 0) {
@@ -71,7 +71,7 @@ struct VertexSumAggregator : public IAggregator {
   void setAggregatedValue(VPackSlice const& slice) override {
     for (auto const& pair : VPackObjectIterator(slice)) {
       PregelShard shard = std::stoi(pair.key.copyString());
-      PregelKey key;
+      std::string key;
       VPackValueLength i = 0;
       for (VPackSlice const& val : VPackArrayIterator(pair.value)) {
         if (i % 2 == 0) {
@@ -104,7 +104,7 @@ struct VertexSumAggregator : public IAggregator {
     }
   }
 
-  double getAggregatedValue(PregelShard shard, PregelKey const& key) const {
+  double getAggregatedValue(PregelShard shard, std::string const& key) const {
     auto const& it1 = _entries.find(shard);
     if (it1 != _entries.end()) {
       auto const& it2 = it1->second.find(key);
@@ -119,7 +119,7 @@ struct VertexSumAggregator : public IAggregator {
   //  _entries[shard][key] = val;
   //}
 
-  void aggregate(PregelShard shard, PregelKey const& key, double val) {
+  void aggregate(PregelShard shard, std::string const& key, double val) {
     _entries[shard][key] += val;
   }
 
@@ -128,8 +128,8 @@ struct VertexSumAggregator : public IAggregator {
   void forEach(std::function<void(PregelID const& _id, double value)> func) const {
     for (auto const& pair : _entries) {
       PregelShard shard = pair.first;
-      std::unordered_map<PregelKey, double> const& vertexMap = pair.second;
-      for (std::pair<PregelKey, double> const& vertexMessage : vertexMap) {
+      std::unordered_map<std::string, double> const& vertexMap = pair.second;
+      for (std::pair<std::string, double> const& vertexMessage : vertexMap) {
         func(PregelID(shard, vertexMessage.first), vertexMessage.second);
       }
     }

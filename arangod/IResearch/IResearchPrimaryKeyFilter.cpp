@@ -101,9 +101,8 @@ size_t PrimaryKeyFilter::hash() const noexcept {
 
 irs::filter::prepared::ptr PrimaryKeyFilter::prepare(irs::index_reader const& /*index*/,
                                                      irs::order::prepared const& /*ord*/,
-                                                     irs::boost::boost_t /*boost*/,
-                                                     irs::attribute_view const& /*ctx*/
-                                                     ) const {
+                                                     irs::boost_t /*boost*/,
+                                                     irs::attribute_view const& /*ctx*/) const {
   // optimization, since during:
   // * regular runtime should have at most 1 identical primary key in the entire
   // datastore

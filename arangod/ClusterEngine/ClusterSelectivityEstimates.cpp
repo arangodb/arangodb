@@ -23,6 +23,7 @@
 
 #include "ClusterSelectivityEstimates.h"
 
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
@@ -43,7 +44,7 @@ void ClusterSelectivityEstimates::flush() {
     _updating.store(false, std::memory_order_release);
   });
   
-  std::atomic_store<InternalData>(&_data, std::shared_ptr<InternalData>());
+  std::atomic_store(&_data, std::shared_ptr<InternalData>());
 }
 
 IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdating, TRI_voc_tid_t tid) {
@@ -116,5 +117,5 @@ void ClusterSelectivityEstimates::set(IndexEstMap const& estimates) {
   }
 
   // finally update the cache
-  std::atomic_store<ClusterSelectivityEstimates::InternalData>(&_data, std::make_shared<ClusterSelectivityEstimates::InternalData>(estimates, ttl));
+  std::atomic_store(&_data, std::make_shared<ClusterSelectivityEstimates::InternalData>(estimates, ttl));
 }

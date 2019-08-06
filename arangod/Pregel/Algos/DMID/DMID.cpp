@@ -157,8 +157,9 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
   void superstep0(MessageIterator<DMIDMessage> const& messages) {
     DMIDMessage message(pregelId(), 0);
     RangeIterator<Edge<float>> edges = getEdges();
-    for (Edge<float>* edge : edges) {
-      message.weight = *edge->data();  // edge weight
+    for(; edges.hasMore(); ++edges) {
+      Edge<float>* edge = *edges;
+      message.weight = edge->data();  // edge weight
       sendMessage(edge, message);
     }
   }
@@ -230,7 +231,7 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
      * */
 
     VertexSumAggregator* agg = (VertexSumAggregator*)getWriteAggregator(DA_AGG);
-    agg->aggregate(this->shard(), this->key(), 1.0 / context()->vertexCount());
+    agg->aggregate(this->shard(), this->key().toString(), 1.0 / context()->vertexCount());
     // DoubleDenseVector init = new DoubleDenseVector(
     //                                               (int)
     //                                               getTotalNumVertices());
@@ -264,7 +265,7 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
       }
     });
     VertexSumAggregator* newDA = (VertexSumAggregator*)getWriteAggregator(DA_AGG);
-    newDA->aggregate(this->shard(), this->key(), newEntryDA);
+    newDA->aggregate(this->shard(), this->key().toString(), newEntryDA);
   }
 
   /**
@@ -278,10 +279,10 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
     // DoubleDenseVector finalDA = getAggregatedValue(DA_AGG);
     // vertex.getValue().getWeightedInDegree();
     double weightedInDegree = vertexState->weightedInDegree;
-    double lsAggValue = finalDA->getAggregatedValue(shard(), key()) * weightedInDegree;
+    double lsAggValue = finalDA->getAggregatedValue(shard(), key().toString()) * weightedInDegree;
 
     VertexSumAggregator* tmpLS = (VertexSumAggregator*)getWriteAggregator(LS_AGG);
-    tmpLS->aggregate(this->shard(), this->key(), lsAggValue);
+    tmpLS->aggregate(this->shard(), this->key().toString(), lsAggValue);
 
     // finalDA->aggregateValue(shard(), key(), );
     // int vertexID = (int) vertex.getId().get();
@@ -308,14 +309,17 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
 
       float senderWeight = message->weight;
 
-      float myInfluence = (float)vecLS->getAggregatedValue(this->shard(), this->key());
+      float myInfluence = (float)vecLS->getAggregatedValue(this->shard(), this->key().toString());
       myInfluence *= senderWeight;
 
       /**
        * hasEdgeToSender determines if sender has influence on this vertex
        */
       bool hasEdgeToSender = false;
-      for (Edge<float>* edge : getEdges()) {
+      
+      for (auto edges = getEdges(); edges.hasMore(); ++edges) {
+        Edge<float>* edge = *edges;
+        
         if (edge->targetShard() == senderID.shard && edge->toKey() == senderID.key) {
           hasEdgeToSender = true;
           /**
@@ -324,7 +328,7 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
            */
           float senderInfluence =
               (float)vecLS->getAggregatedValue(senderID.shard, senderID.key);
-          senderInfluence *= *(edge->data());
+          senderInfluence *= edge->data();
 
           if (myInfluence > senderInfluence) {
             /** send new message */
@@ -588,17 +592,14 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
     }
   }
 
-  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        DMIDValue* value, size_t maxSize) override {
+  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                        DMIDValue& value) override {
     // SCCValue* senders = (SCCValue*)targetPtr;
     // senders->vertexID = vertexIdRange++;
-    return sizeof(SCCValue);
   }
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document, float* targetPtr,
-                      size_t maxSize) override {
-    *targetPtr = 1.0f;
-    return sizeof(float);
+  void copyEdgeData(arangodb::velocypack::Slice document, float& targetPtr) override {
+    targetPtr = 1.0f;
   }
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,

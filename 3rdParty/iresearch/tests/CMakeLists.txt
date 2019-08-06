@@ -161,24 +161,24 @@ add_executable(${IResearchTests_TARGET_NAME}-static
 add_sanitizers(${IResearchTests_TARGET_NAME}-static)
 
 add_dependencies(${IResearchTests_TARGET_NAME}-shared
-  ${IResearch_TARGET_NAME}-analyzer-delimited-shared
+  ${IResearch_TARGET_NAME}-analyzer-delimiter-shared
   ${IResearch_TARGET_NAME}-analyzer-ngram-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
-  ${IResearch_TARGET_NAME}-analyzer-text-normalizing-shared
-  ${IResearch_TARGET_NAME}-analyzer-text-stemming-shared
-  ${IResearch_TARGET_NAME}-analyzer-token-masking-shared
+  ${IResearch_TARGET_NAME}-analyzer-norm-shared
+  ${IResearch_TARGET_NAME}-analyzer-stem-shared
+  ${IResearch_TARGET_NAME}-analyzer-mask-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${IResearch_TARGET_NAME}-scorer-tfidf-shared
   ${IResearch_TARGET_NAME}-scorer-bm25-shared
 )
 
 add_dependencies(${IResearchTests_TARGET_NAME}-static
-  ${IResearch_TARGET_NAME}-analyzer-delimited-static
+  ${IResearch_TARGET_NAME}-analyzer-delimiter-static
   ${IResearch_TARGET_NAME}-analyzer-ngram-static
   ${IResearch_TARGET_NAME}-analyzer-text-static
-  ${IResearch_TARGET_NAME}-analyzer-text-normalizing-static
-  ${IResearch_TARGET_NAME}-analyzer-text-stemming-static
-  ${IResearch_TARGET_NAME}-analyzer-token-masking-static
+  ${IResearch_TARGET_NAME}-analyzer-norm-static
+  ${IResearch_TARGET_NAME}-analyzer-stem-static
+  ${IResearch_TARGET_NAME}-analyzer-mask-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
@@ -217,12 +217,12 @@ set_target_properties(${IResearchTests_TARGET_NAME}-static
 target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${GCOV_LIBRARY}
   ${IResearch_TARGET_NAME}-shared
-  ${IResearch_TARGET_NAME}-analyzer-delimited-shared
+  ${IResearch_TARGET_NAME}-analyzer-delimiter-shared
   ${IResearch_TARGET_NAME}-analyzer-ngram-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
-  ${IResearch_TARGET_NAME}-analyzer-text-normalizing-shared
-  ${IResearch_TARGET_NAME}-analyzer-text-stemming-shared
-  ${IResearch_TARGET_NAME}-analyzer-token-masking-shared
+  ${IResearch_TARGET_NAME}-analyzer-norm-shared
+  ${IResearch_TARGET_NAME}-analyzer-stem-shared
+  ${IResearch_TARGET_NAME}-analyzer-mask-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}

@@ -84,6 +84,8 @@ Graph::Graph(velocypack::Slice const& slice)
                                                                            1)),
       _replicationFactor(basics::VelocyPackHelper::readNumericValue<uint64_t>(
           slice, StaticStrings::ReplicationFactor, 1)),
+      _minReplicationFactor(basics::VelocyPackHelper::readNumericValue<uint64_t>(
+              slice, StaticStrings::MinReplicationFactor, 1)),
       _rev(basics::VelocyPackHelper::getStringValue(slice, StaticStrings::RevString,
                                                     "")) {
   // If this happens we have a document without an _key Attribute.
@@ -118,6 +120,7 @@ Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& 
       _edgeColls(),
       _numberOfShards(1),
       _replicationFactor(1),
+      _minReplicationFactor(1),
       _rev("") {
   if (_graphName.empty()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
@@ -135,6 +138,8 @@ Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& 
         VelocyPackHelper::readNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 1);
     _replicationFactor =
         VelocyPackHelper::readNumericValue<uint64_t>(options, StaticStrings::ReplicationFactor, 1);
+    _minReplicationFactor =
+            VelocyPackHelper::readNumericValue<uint64_t>(options, StaticStrings::MinReplicationFactor, 1);
   }
 }
 
@@ -189,6 +194,8 @@ std::map<std::string, EdgeDefinition>& Graph::edgeDefinitions() {
 uint64_t Graph::numberOfShards() const { return _numberOfShards; }
 
 uint64_t Graph::replicationFactor() const { return _replicationFactor; }
+
+uint64_t Graph::minReplicationFactor() const { return _minReplicationFactor; }
 
 std::string const Graph::id() const {
   return std::string(StaticStrings::GraphCollection + "/" + _graphName);
@@ -258,6 +265,10 @@ void Graph::setReplicationFactor(uint64_t replicationFactor) {
   _replicationFactor = replicationFactor;
 }
 
+void Graph::setMinReplicationFactor(uint64_t minReplicationFactor) {
+  _minReplicationFactor = minReplicationFactor;
+}
+
 void Graph::setRev(std::string&& rev) { _rev = std::move(rev); }
 
 void Graph::toVelocyPack(VPackBuilder& builder) const {
@@ -289,6 +300,7 @@ void Graph::toPersistence(VPackBuilder& builder) const {
   // Cluster Information
   builder.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
   builder.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
+  builder.add(StaticStrings::MinReplicationFactor, VPackValue(_minReplicationFactor));
   builder.add(StaticStrings::GraphIsSmart, VPackValue(isSmart()));
 
   // EdgeDefinitions
@@ -666,6 +678,7 @@ void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) con
   builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
   builder.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards()));
   builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor()));
+  builder.add(StaticStrings::MinReplicationFactor, VPackValue(minReplicationFactor()));
 }
 
 boost::optional<const EdgeDefinition&> Graph::getEdgeDefinition(std::string const& collectionName) const {

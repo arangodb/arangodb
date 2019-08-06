@@ -33,7 +33,7 @@ WakeupQueryCallback::WakeupQueryCallback(ExecutionBlock* initiator, Query* query
 WakeupQueryCallback::~WakeupQueryCallback() {}
 
 bool WakeupQueryCallback::operator()(ClusterCommResult* result) {
-  return _sharedState->execute([&, this]() {
+  return _sharedState->execute([result, this]() {
     TRI_ASSERT(_initiator != nullptr);
     TRI_ASSERT(_query != nullptr);
     // TODO Validate that _initiator and _query have not been deleted (ttl)

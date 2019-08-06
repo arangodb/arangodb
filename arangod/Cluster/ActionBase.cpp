@@ -28,6 +28,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -122,12 +125,12 @@ void ActionBase::createPreAction(std::shared_ptr<ActionDescription> const& descr
 
 /// @brief Retrieve pointer to action that should run before this one
 std::shared_ptr<Action> ActionBase::getPreAction() {
-  return (_preAction != nullptr) ? _feature.findAction(_preAction) : nullptr;
+  return (_preAction != nullptr) ? _feature.findFirstNotDoneAction(_preAction) : nullptr;
 }
 
 /// @brief Retrieve pointer to action that should run after this one
 std::shared_ptr<Action> ActionBase::getPostAction() {
-  return (_postAction != nullptr) ? _feature.findAction(_postAction) : nullptr;
+  return (_postAction != nullptr) ? _feature.findFirstNotDoneAction(_postAction) : nullptr;
 }
 
 // FIXMEMAINTENANCE: Code path could corrupt registry object because

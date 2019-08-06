@@ -11,6 +11,9 @@ project(${IResearch_TARGET_NAME})
 # attach additional cmake modules
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
+# load cmake utils
+include(Utils)
+
 if (NOT MSVC)
   # put GCC version into GCC_VERSION variable
   execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
@@ -24,6 +27,7 @@ option(USE_TESTS "Build tests" OFF)
 option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
+add_option_gprof(FALSE)
 
 if (USE_VALGRIND)
   add_definitions(-DIRESEARCH_VALGRIND)

@@ -24,7 +24,6 @@
 #include "v8-statistics.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/process-utils.h"
@@ -98,16 +97,6 @@ static void FillDistribution(v8::Isolate* isolate, v8::Handle<v8::Object> list,
 static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
-  
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-  TRI_ASSERT(v8security != nullptr);
-
-  if (v8security->isInternalModuleHardened(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to provide this information");
-  }
 
   ServerStatistics info = ServerStatistics::statistics();
 
@@ -134,6 +123,30 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
                      v8::Number::New(isolate, static_cast<int32_t>(v8Counters.free)));
   v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "max"),
                      v8::Number::New(isolate, static_cast<int32_t>(v8Counters.max)));
+
+  auto memoryStatistics = dealer->getCurrentMemoryNumbers();
+
+  v8::Handle<v8::Array> v8ListOfMemory = v8::Array::New(isolate, static_cast<int>(memoryStatistics.size()));
+  uint32_t pos = 0;
+  for (auto memStatistic : memoryStatistics) {
+    v8::Handle<v8::Object> v8MemStat = v8::Object::New(isolate);
+    v8MemStat->Set(TRI_V8_ASCII_STRING(isolate, "contextId"),
+                   v8::Integer::New(isolate, static_cast<int32_t>(memStatistic.id)));
+    v8MemStat->Set(TRI_V8_ASCII_STRING(isolate, "tMax"),
+                   v8::Number::New(isolate, (double)memStatistic.tMax));
+    v8MemStat->Set(TRI_V8_ASCII_STRING(isolate, "countOfTimes"),
+                   v8::Integer::New(isolate, static_cast<int32_t>(memStatistic.countOfTimes)));
+    v8MemStat->Set(TRI_V8_ASCII_STRING(isolate, "heapMax"),
+                   v8::Number::New(isolate, (double)memStatistic.heapMax));
+    v8MemStat->Set(TRI_V8_ASCII_STRING(isolate, "heapMin"),
+                   v8::Number::New(isolate, (double)memStatistic.heapMin));
+
+    v8ListOfMemory->Set(pos++, v8MemStat);
+  }
+
+  v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "memory"),
+                     v8ListOfMemory);
+  
   result->Set(TRI_V8_ASCII_STRING(isolate, "v8Context"), v8CountersObj);
 
   v8::Handle<v8::Object> counters = v8::Object::New(isolate);
@@ -175,16 +188,6 @@ static void JS_EnabledStatistics(v8::FunctionCallbackInfo<v8::Value> const& args
 static void JS_ClientStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
-  
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-  TRI_ASSERT(v8security != nullptr);
-
-  if (v8security->isInternalModuleHardened(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to provide this information");
-  }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
@@ -230,16 +233,6 @@ static void JS_ClientStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
 static void JS_HttpStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-  TRI_ASSERT(v8security != nullptr);
-
-  if (v8security->isInternalModuleHardened(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to provide this information");
-  }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 

@@ -23,7 +23,11 @@
 #ifndef ARANGOD_GRAPH_TRAVERSER_CACHE_H
 #define ARANGOD_GRAPH_TRAVERSER_CACHE_H 1
 
+#include <memory>
+#include <unordered_set>
+
 #include "Basics/Common.h"
+
 #include <velocypack/StringRef.h>
 
 namespace arangodb {

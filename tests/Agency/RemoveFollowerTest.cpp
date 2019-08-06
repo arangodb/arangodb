@@ -183,7 +183,6 @@ TEST_F(RemoveFollowerTest, collection_still_exists_if_missing_job_is_finished_mo
       if (path == "/arango/Target/ToDo") {
         builder->add(jobId, createBuilder(todo).slice());
       }
-      builder->close();
     } else {
       builder->add(s);
     }

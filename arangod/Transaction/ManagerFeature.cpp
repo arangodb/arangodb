@@ -23,7 +23,9 @@
 #include "ManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/MutexLocker.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -73,7 +75,6 @@ void ManagerFeature::start() {
   if (scheduler != nullptr) {  // is nullptr in catch tests
     auto off = std::chrono::seconds(1);
     std::lock_guard<std::mutex> guard(_workItemMutex);
-    auto off = std::chrono::seconds(1);
     _workItem = scheduler->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
   }
 }

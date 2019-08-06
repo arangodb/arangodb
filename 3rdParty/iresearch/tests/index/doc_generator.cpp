@@ -313,7 +313,7 @@ csv_doc_generator::csv_doc_generator(
     const irs::utf8_path& file, doc_template& doc
 ): doc_(doc),
    ifs_(file.native(), std::ifstream::in | std::ifstream::binary),
-   stream_(irs::analysis::analyzers::get("delimited", irs::text_format::text, ",")) {
+   stream_(irs::analysis::analyzers::get("delimiter", irs::text_format::text, ",")) {
   doc_.init();
   doc_.reset();
 }

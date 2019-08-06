@@ -499,25 +499,36 @@ router.get('/coordshort', function (req, res) {
   var coordinatorStats;
   if (Array.isArray(coordinators)) {
     coordinatorStats = coordinators.map(coordinator => {
-      var endpoint = global.ArangoClusterInfo.getServerEndpoint(coordinator);
-      if (endpoint.substring(0, 3) === 'ssl') {
-        // if protocol ssl is returned, change it to https
-        endpoint = 'https' + endpoint.substring(3);
+      const op = ArangoClusterComm.asyncRequest(
+        "GET",
+        "server:" + coordinator,
+        "_system",
+        '/_admin/aardvark/statistics/short?count=' + coordinators.length, 
+        "",
+        {},
+        { timeout: 10 }
+      );
+
+      const r = ArangoClusterComm.wait(op);
+
+      if (r.status === "RECEIVED") {
+        res.set("content-type", "application/json; charset=utf-8");
+        return JSON.parse(r.body);
+      } 
+      if (r.status === "TIMEOUT") {
+        throw new httperr.BadRequest("operation timed out");
+      } 
+      let body;
+      try {
+        body = JSON.parse(r.body);
+      } catch (e) {
+        // noop
       }
-      if (endpoint !== '') {
-        var response = download(endpoint.replace(/^tcp/, 'http') + '/_db/_system/_admin/aardvark/statistics/short?count=' + coordinators.length, '', {headers: {}});
-        if (response.body === undefined) {
-          console.warn('cannot contact coordinator ' + coordinator + ' on endpoint ' + endpoint);
-        } else {
-          try {
-            return JSON.parse(response.body);
-          } catch (e) {
-            console.error("Couldn't read statistics response:", response.body);
-            throw e;
-          }
-        }
-      }
-      return false;
+
+      throw Object.assign(
+        new httperr.BadRequest("error from DBserver, possibly DBserver unknown"),
+        {extra: {body}}
+      );
     });
 
     if (coordinatorStats) {

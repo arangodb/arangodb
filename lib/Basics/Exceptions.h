@@ -25,10 +25,14 @@
 #ifndef ARANGODB_BASICS_EXCEPTIONS_H
 #define ARANGODB_BASICS_EXCEPTIONS_H 1
 
-#include "Basics/Common.h"
-#include "Basics/Result.h"
+#include <exception>
+#include <new>
+#include <string>
+#include <utility>
 
-#include <errno.h>
+#include "Basics/Result.h"
+#include "Basics/error.h"
+#include "Basics/voc-errors.h"
 
 /// @brief diagnostic output
 #define DIAGNOSTIC_INFORMATION(e) e.what()
@@ -58,10 +62,10 @@
   throw arangodb::basics::Exception(code, message, __FILE__, __LINE__)
 
 /// @brief throws an arango result if the result fails
-#define THROW_ARANGO_EXCEPTION_IF_FAIL(reSUlt)                         \
+#define THROW_ARANGO_EXCEPTION_IF_FAIL(result)                         \
   do {                                                                 \
-    if ((reSUlt).fail()) {                                             \
-      throw arangodb::basics::Exception((reSUlt), __FILE__, __LINE__); \
+    if ((result).fail()) {                                             \
+      throw arangodb::basics::Exception((result), __FILE__, __LINE__); \
     }                                                                  \
   } while (0);
 

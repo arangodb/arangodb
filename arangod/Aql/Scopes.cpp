@@ -23,6 +23,7 @@
 
 #include "Aql/Scopes.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 
 using namespace arangodb::aql;
 

@@ -26,6 +26,7 @@
 #include <chrono>
 #include <thread>
 
+#include "Basics/debugging.h"
 #include "Futures/Exceptions.h"
 #include "Futures/Promise.h"
 #include "Futures/SharedState.h"
@@ -326,7 +327,7 @@ class Future {
             }));
           }
         });
-    return std::move(future);
+    return future;
   }
 
   /// Variant: callable accepts T&&, returns future
@@ -358,7 +359,7 @@ class Future {
         }
       }
     });
-    return std::move(future);
+    return future;
   }
 
   /// Variant: callable accepts Try<T&&>, returns value
@@ -380,7 +381,7 @@ class Future {
         return futures::invoke(std::forward<DF>(fn), std::move(t));
       }));
     });
-    return std::move(future);
+    return future;
   }
 
   /// Variant: callable accepts Try<T&&>, returns future
@@ -404,7 +405,7 @@ class Future {
         pr.setException(std::current_exception());
       }
     });
-    return std::move(future);
+    return future;
   }
 
   /// Variant: function returns void and accepts Try<T>&&
@@ -442,7 +443,7 @@ class Future {
         pr.setTry(std::move(t));
       }
     });
-    return std::move(future);
+    return future;
   }
 
   /// Set an error continuation for this Future where the continuation can
@@ -476,7 +477,7 @@ class Future {
             pr.setTry(std::move(t));
           }
         });
-    return std::move(future);
+    return future;
   }
 
  private:

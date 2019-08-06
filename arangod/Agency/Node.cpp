@@ -25,6 +25,9 @@
 #include "Store.h"
 
 #include "Basics/StringUtils.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
@@ -375,6 +378,17 @@ Store& Node::store() { return *(root()._store); }
 
 Store const& Node::store() const { return *(root()._store); }
 
+Store* Node::getStore() {
+  Node* par = _parent;
+  Node* tmp = this;
+  while (par != nullptr) {
+    tmp = par;
+    par = par->_parent;
+  }
+  return tmp->_store; // Can be nullptr if we are not in a Node that belongs
+                      // to a store.
+}
+
 // velocypack value type of this node
 ValueType Node::valueType() const { return slice().type(); }
 
@@ -396,11 +410,14 @@ TimePoint const& Node::timeToLive() const {
 
 // remove time to live entry for this node
 bool Node::removeTimeToLive() {
-  if (_store != nullptr) {
-    _store->removeTTL(uri());
-    if (_ttl != std::chrono::system_clock::time_point()) {
-      _ttl = std::chrono::system_clock::time_point();
-    }
+
+  Store* s = getStore();  // We could be in a Node that belongs to a store,
+                          // or in one that doesn't.
+  if (s != nullptr) {
+    s->removeTTL(uri());
+  }
+  if (_ttl != std::chrono::system_clock::time_point()) {
+    _ttl = std::chrono::system_clock::time_point();
   }
   return true;
 }
@@ -539,7 +556,7 @@ bool Node::handle<ERASE>(VPackSlice const& slice) {
       if (haveVal) {
         VPackSlice valToErase = slice.get("val");
         for (auto const& old : VPackArrayIterator(this->slice())) {
-          if (VelocyPackHelper::compare(old, valToErase, /*useUTF8*/ true) != 0) {
+          if (!VelocyPackHelper::equal(old, valToErase, /*useUTF8*/ true)) {
             tmp.add(old);
           }
         }
@@ -582,7 +599,7 @@ bool Node::handle<REPLACE>(VPackSlice const& slice) {
     if (this->slice().isArray()) {
       VPackSlice valToRepl = slice.get("val");
       for (auto const& old : VPackArrayIterator(this->slice())) {
-        if (VelocyPackHelper::compare(old, valToRepl, /*useUTF8*/ true) == 0) {
+        if (VelocyPackHelper::equal(old, valToRepl, /*useUTF8*/ true)) {
           tmp.add(slice.get("new"));
         } else {
           tmp.add(old);
@@ -1147,7 +1164,7 @@ Slice Node::getArray() const {
 
 void Node::clear() {
   _children.clear();
-  _ttl = std::chrono::system_clock::time_point();
+  removeTimeToLive();
   _value.clear();
   _vecBuf.clear();
   _vecBufDirty = true;

@@ -163,6 +163,9 @@ class GraphNode : public ExecutionNode {
   /// @brief the vertex collection names
   std::vector<std::unique_ptr<aql::Collection>> _vertexColls;
 
+  /// @brief The default direction given in the query
+  TRI_edge_direction_e _defaultDirection;
+
   /// @brief The directions edges are followed
   std::vector<TRI_edge_direction_e> _directions;
 

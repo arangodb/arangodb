@@ -43,7 +43,7 @@ std::pair<std::shared_ptr<irs::directory>, std::string> fs_directory(const test_
     auto dir = test->test_dir();
 
     dir /= "index";
-    dir.mkdir();
+    dir.mkdir(false);
 
     impl = std::shared_ptr<irs::fs_directory>(
       new irs::fs_directory(dir.utf8()),
@@ -63,7 +63,7 @@ std::pair<std::shared_ptr<irs::directory>, std::string> mmap_directory(const tes
     auto dir = test->test_dir();
 
     dir /= "index";
-    dir.mkdir();
+    dir.mkdir(false);
 
     impl = std::shared_ptr<irs::mmap_directory>(
       new irs::mmap_directory(dir.utf8()),

@@ -59,6 +59,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/Methods/Collections.h"
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
@@ -133,7 +134,7 @@ class IResearchFilterFunctionTest : public ::testing::Test {
       f.first->prepare();
     }
 
-    auto const databases = arangodb::velocypack::Parser::fromJson(
+    auto const databases = VPackParser::fromJson(
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     auto* dbFeature =
@@ -178,8 +179,11 @@ class IResearchFilterFunctionTest : public ::testing::Test {
     TRI_vocbase_t* vocbase;
 
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    arangodb::methods::Collections::createSystem(
+        *vocbase,
+        arangodb::tests::AnalyzerCollectionName);
     analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
-                       "abc");  // cache analyzer
+                       VPackParser::fromJson("\"abc\"")->slice());  // cache analyzer
   }
 
   ~IResearchFilterFunctionTest() {
@@ -213,7 +217,7 @@ TEST_F(IResearchFilterFunctionTest, AttributeAccess) {
   // attribute access, non empty object
   {
     auto obj =
-        arangodb::velocypack::Parser::fromJson("{ \"a\": { \"b\": \"1\" } }");
+        VPackParser::fromJson("{ \"a\": { \"b\": \"1\" } }");
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(obj->slice()));
@@ -228,7 +232,7 @@ TEST_F(IResearchFilterFunctionTest, AttributeAccess) {
   // attribute access, non empty object, boost
   {
     auto obj =
-        arangodb::velocypack::Parser::fromJson("{ \"a\": { \"b\": \"1\" } }");
+        VPackParser::fromJson("{ \"a\": { \"b\": \"1\" } }");
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(obj->slice()));
@@ -242,7 +246,7 @@ TEST_F(IResearchFilterFunctionTest, AttributeAccess) {
 
   // attribute access, empty object
   {
-    auto obj = arangodb::velocypack::Parser::fromJson("{}");
+    auto obj = VPackParser::fromJson("{}");
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(obj->slice()));
@@ -256,7 +260,7 @@ TEST_F(IResearchFilterFunctionTest, AttributeAccess) {
 
   // attribute access, empty object, boost
   {
-    auto obj = arangodb::velocypack::Parser::fromJson("{}");
+    auto obj = VPackParser::fromJson("{}");
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(obj->slice()));
@@ -483,7 +487,7 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
 
   // Array reference
   {
-    auto obj = arangodb::velocypack::Parser::fromJson("[]");
+    auto obj = VPackParser::fromJson("[]");
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(obj->slice())));
@@ -525,7 +529,7 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
 
   // Object reference
   {
-    auto obj = arangodb::velocypack::Parser::fromJson("{}");
+    auto obj = VPackParser::fromJson("{}");
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(obj->slice())));

@@ -27,9 +27,10 @@
 
 #include "gtest/gtest.h"
 
+#include "Rest/GeneralResponse.h"
 #include "Rest/HttpRequest.h"
-#include "SimpleHttpClient/Communicator.h"
 #include "SimpleHttpClient/Callbacks.h"
+#include "SimpleHttpClient/Communicator.h"
 
 #include <thread>
 #include <chrono>
@@ -47,7 +48,7 @@ TEST(SimpleHttpClientCommunicatorTest, requests_are_properly_aborted) {
     callbacksCalled = true;
   }, [&callbacksCalled](int errorCode, std::unique_ptr<GeneralResponse> response) {
     ASSERT_TRUE(!response);
-    ASSERT_TRUE(errorCode == TRI_COMMUNICATOR_REQUEST_ABORTED);
+    ASSERT_TRUE(errorCode == TRI_ERROR_COMMUNICATOR_REQUEST_ABORTED);
     callbacksCalled = true;
   });
   auto request = std::unique_ptr<HttpRequest>(HttpRequest::createHttpRequest(rest::ContentType::TEXT, "", 0, {}));

@@ -83,7 +83,8 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
 
     viewBuilder.openObject();
 
-    auto res = view->properties(viewBuilder, true, false);
+    auto res = view->properties(viewBuilder, LogicalDataSource::makeFlags(
+                                                 LogicalDataSource::Serialize::Detailed));
 
     if (!res.ok()) {
       generateError(res);
@@ -100,7 +101,10 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
 
   builder.openObject();
 
-  auto res = view->properties(builder, detailed, false);
+  auto res =
+      view->properties(builder, LogicalDataSource::makeFlags(
+                                    detailed ? LogicalDataSource::Serialize::Detailed
+                                             : LogicalDataSource::Serialize::Basics));
 
   builder.close();
 
@@ -162,14 +166,9 @@ void RestViewHandler::createView() {
     return;
   }
 
-  auto badParamError = [&]() -> void {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                  "expecting body to be of the form {name: <string>, type: "
-                  "<string>, properties: <object>}");
-  };
-
   if (!body.isObject()) {
-    badParamError();
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "request body is not an object");
     events::CreateView(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     return;
   }
@@ -177,10 +176,20 @@ void RestViewHandler::createView() {
   auto nameSlice = body.get(StaticStrings::DataSourceName);
   auto typeSlice = body.get(StaticStrings::DataSourceType);
 
-  if (!nameSlice.isString() || !typeSlice.isString()) {
-    badParamError();
+  if (!nameSlice.isString()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "expecting name parameter to be of the form of \"name: "
+                  "<string>\"");
+    events::CreateView(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
+    return;
+  }
+
+  if (!typeSlice.isString()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "expecting type parameter to be of the form of \"type: "
+                  "<string>\"");
     events::CreateView(_vocbase.name(),
-                       (nameSlice.isString() ? nameSlice.copyString() : ""),
+                       nameSlice.copyString(),
                        TRI_ERROR_BAD_PARAMETER);
     return;
   }
@@ -216,7 +225,8 @@ void RestViewHandler::createView() {
     velocypack::Builder builder;
 
     builder.openObject();
-    res = view->properties(builder, true, false);
+    res = view->properties(builder, LogicalDataSource::makeFlags(
+                                        LogicalDataSource::Serialize::Detailed));
 
     if (!res.ok()) {
       generateError(res);
@@ -296,7 +306,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
         viewBuilder.openObject();
 
-        auto res = view->properties(viewBuilder, true, false);
+        auto res = view->properties(viewBuilder, LogicalDataSource::makeFlags(
+                                                     LogicalDataSource::Serialize::Detailed));
 
         if (!res.ok()) {
           generateError(res);
@@ -337,7 +348,9 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
       builderCurrent.openObject();
 
-      auto resCurrent = view->properties(builderCurrent, true, false);
+      auto resCurrent =
+          view->properties(builderCurrent, LogicalDataSource::makeFlags(
+                                               LogicalDataSource::Serialize::Detailed));
 
       if (!resCurrent.ok()) {
         generateError(resCurrent);
@@ -366,7 +379,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
     updated.openObject();
 
-    auto res = view->properties(updated, true, false);
+    auto res = view->properties(updated, LogicalDataSource::makeFlags(
+                                             LogicalDataSource::Serialize::Detailed));
 
     updated.close();
 
@@ -509,7 +523,9 @@ void RestViewHandler::getViews() {
 
         viewBuilder.openObject();
 
-        if (!view->properties(viewBuilder, true, false).ok()) {
+        if (!view->properties(viewBuilder, LogicalDataSource::makeFlags(
+                                               LogicalDataSource::Serialize::Detailed))
+                 .ok()) {
           continue;  // skip view
         }
       } catch (...) {
@@ -521,7 +537,7 @@ void RestViewHandler::getViews() {
       viewBuilder.openObject();
 
       try {
-        auto res = view->properties(viewBuilder, false, false);
+        auto res = view->properties(viewBuilder, LogicalDataSource::makeFlags());
 
         if (!res.ok()) {
           generateError(res);

@@ -1106,7 +1106,7 @@ class fs_directory_test : public test_base {
     path_ = test_case_dir();
     path_ /= name_;
 
-    ASSERT_TRUE(path_.mkdir());
+    ASSERT_TRUE(path_.mkdir(false));
     dir_ = std::make_shared<fs_directory>(path_.utf8());
   }
 

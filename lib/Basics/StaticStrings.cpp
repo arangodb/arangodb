@@ -173,13 +173,13 @@ std::string const StaticStrings::RequestForwardedTo(
     "x-arango-request-forwarded-to");
 std::string const StaticStrings::ResponseCode("x-arango-response-code");
 std::string const StaticStrings::Server("server");
+std::string const StaticStrings::TransferEncoding("transfer-encoding");
 std::string const StaticStrings::TransactionBody("x-arango-trx-body");
 std::string const StaticStrings::TransactionId("x-arango-trx-id");
 
 std::string const StaticStrings::Unlimited = "unlimited";
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
-std::string const StaticStrings::XArangoNoLock("x-arango-nolock");
 std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
 
 // mime types
@@ -189,12 +189,21 @@ std::string const StaticStrings::MimeTypeText("text/plain; charset=utf-8");
 std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 
+// accept-encodings
+std::string const StaticStrings::EncodingDeflate("deflate");
+
 // collection attributes
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
 std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
+std::string const StaticStrings::CacheEnabled("cacheEnabled");
+std::string const StaticStrings::IndexBuckets("indexBuckets");
+std::string const StaticStrings::JournalSize("journalSize");
+std::string const StaticStrings::DoCompact("doCompact");
 std::string const StaticStrings::ReplicationFactor("replicationFactor");
+std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
 std::string const StaticStrings::ShardKeys("shardKeys");
+std::string const StaticStrings::ShardingStrategy("shardingStrategy");
 std::string const StaticStrings::SmartJoinAttribute("smartJoinAttribute");
 
 // graph attribute names
@@ -219,7 +228,10 @@ std::string const StaticStrings::GraphCreateCollection("createCollection");
 
 // Replication
 std::string const StaticStrings::ReplicationSoftLockOnly("doSoftLockOnly");
+std::string const StaticStrings::FailoverCandidates("failoverCandidates");
 
 // misc strings
 std::string const StaticStrings::LastValue("lastValue");
 std::string const StaticStrings::checksumFileJs("JS_SHA1SUM.txt");
+
+std::string const StaticStrings::IsBuilding("isBuilding");

@@ -195,7 +195,7 @@ size_t ConnectionPool::numOpenConnections() const {
 }
 
 std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::ConnectionBuilder& builder) {
-  builder.timeout(std::chrono::milliseconds(_config.requestTimeoutMilli));
+  builder.idleTimeout(std::chrono::milliseconds(_config.requestTimeoutMilli));
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af != nullptr && af->isActive()) {
     std::string const& token = af->tokenCache().jwtToken();

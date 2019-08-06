@@ -29,6 +29,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -93,7 +96,8 @@ CreateCollection::CreateCollection(MaintenanceFeature& feature, ActionDescriptio
   TRI_ASSERT(type == TRI_COL_TYPE_DOCUMENT || type == TRI_COL_TYPE_EDGE);
 
   if (!error.str().empty()) {
-    LOG_TOPIC("7c60f", ERR, Logger::MAINTENANCE) << "CreateCollection: " << error.str();
+    LOG_TOPIC("7c60f", ERR, Logger::MAINTENANCE)
+        << "CreateCollection: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
@@ -156,10 +160,12 @@ bool CreateCollection::first() {
                               LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)
                                   << "local collection " << database << "/"
                                   << shard << " successfully created";
-                              col->followers()->setTheLeader(leader);
 
                               if (leader.empty()) {
-                                col->followers()->clear();
+                                std::vector<std::string> noFollowers;
+                                col->followers()->takeOverLeadership(noFollowers, nullptr);
+                              } else {
+                                col->followers()->setTheLeader(leader);
                               }
                             });
 
@@ -186,7 +192,7 @@ bool CreateCollection::first() {
   }
 
   LOG_TOPIC("4562c", DEBUG, Logger::MAINTENANCE)
-    << "Create collection done, notifying Maintenance";
+      << "Create collection done, notifying Maintenance";
 
   notify();
 

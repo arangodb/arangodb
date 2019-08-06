@@ -32,8 +32,10 @@
 #include "velocypack/Iterator.h"
 
 TEST(IResearchComparerTest, test_comparer_single_entry) {
+  arangodb::tests::init(true);
+
   irs::utf8_path resource;
-  resource /= irs::string_ref(IResearch_test_resource_dir);
+  resource /= irs::string_ref(arangodb::tests::testResourceDir);
   resource /= irs::string_ref("simple_sequential.json");
 
   auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
@@ -75,8 +77,10 @@ TEST(IResearchComparerTest, test_comparer_single_entry) {
 }
 
 TEST(IResearchComparerTest, test_comparer_multiple_entries) {
+  arangodb::tests::init(true);
+
   irs::utf8_path resource;
-  resource /= irs::string_ref(IResearch_test_resource_dir);
+  resource /= irs::string_ref(arangodb::tests::testResourceDir);
   resource /= irs::string_ref("simple_sequential.json");
 
   auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());

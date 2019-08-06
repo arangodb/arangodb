@@ -25,16 +25,24 @@
 #ifndef ARANGODB_BASICS_UTF8HELPER_H
 #define ARANGODB_BASICS_UTF8HELPER_H 1
 
-#include "Basics/Common.h"
-
-#include <velocypack/StringRef.h>
+#include <stddef.h>
+#include <cstdint>
+#include <set>
+#include <string>
 
 #include <unicode/coll.h>
-#include <unicode/regex.h>
-#include <unicode/ustring.h>
-#include <unicode/locid.h>
+#include <unicode/umachine.h>
+
+#include "Basics/Common.h"
+
+namespace icu_58 {
+class RegexMatcher;
+}
 
 namespace arangodb {
+namespace velocypack {
+class StringRef;
+}
 namespace basics {
 
 #ifdef _WIN32

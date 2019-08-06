@@ -21,37 +21,46 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <string.h>
+#include <cstdint>
+#include <exception>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
 #include "VstRequest.h"
-#include "VstMessage.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/Options.h>
 #include <velocypack/Parser.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/conversions.h"
-#include "Basics/tri-strings.h"
+#include "Basics/debugging.h"
+#include "Endpoint/ConnectionInfo.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Meta/conversion.h"
-
-#include <stdexcept>
+#include "Rest/CommonDefines.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 
 VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
-                       VstInputMessage&& message, uint64_t messageId)
+                       velocypack::Buffer<uint8_t> buffer,
+                       size_t payloadOffset,
+                       uint64_t messageId)
     : GeneralRequest(connectionInfo),
+      _buffer(std::move(buffer)),
+      _vpackBuilder(nullptr),
+      _payloadOffset(payloadOffset),
       _messageId(messageId),
-      _message(std::move(message)),
-      _validatedPayload(false),
-      _vpackBuilder(nullptr) {
-  _protocol = "vst";
+      _validatedPayload(false) {
   _contentType = ContentType::VPACK;
   _contentTypeResponse = ContentType::VPACK;
   parseHeaderInformation();
@@ -61,18 +70,16 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
   TRI_ASSERT(options != nullptr);
 
   if (_contentType == ContentType::JSON) {
-    if (!_vpackBuilder) {
-      arangodb::velocypack::StringRef json = _message.payload();
-      if (!json.empty()) {
-        _vpackBuilder = VPackParser::fromJson(json.data(), json.length());
-      }
+    if (!_vpackBuilder && _buffer.size() > _payloadOffset) {
+      _vpackBuilder = VPackParser::fromJson(_buffer.data() + _payloadOffset,
+                                            _buffer.size() - _payloadOffset);
     }
     if (_vpackBuilder) {
       return _vpackBuilder->slice();
     }
   } else if (_contentType == ContentType::VPACK) {
-    arangodb::velocypack::StringRef vpack = _message.payload();
-    if (!vpack.empty()) {
+    if (_buffer.size() > _payloadOffset) {
+      uint8_t const* ptr = _buffer.data() + _payloadOffset;
       if (!_validatedPayload) {
         VPackOptions validationOptions = *options;  // intentional copy
         validationOptions.validateUtf8Strings = true;
@@ -81,9 +88,9 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
         validationOptions.disallowCustom = true;
         VPackValidator validator(&validationOptions);
         // will throw on error
-        _validatedPayload = validator.validate(vpack.data(), vpack.length());
+        _validatedPayload = validator.validate(ptr, _buffer.size() - _payloadOffset);
       }
-      return VPackSlice(reinterpret_cast<uint8_t const*>(vpack.data()));
+      return VPackSlice(ptr);
     }
   }
   return VPackSlice::noneSlice();  // no body
@@ -114,7 +121,8 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
 
 void VstRequest::parseHeaderInformation() {
   using namespace std;
-  auto vHeader = _message.header();
+  
+  VPackSlice vHeader(_buffer.data());
   if (!vHeader.isArray() || vHeader.length() != 7) {
     LOG_TOPIC("0007b", WARN, Logger::COMMUNICATION) << "invalid VST message header";
     throw std::runtime_error("invalid VST message header");

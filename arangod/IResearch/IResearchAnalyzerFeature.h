@@ -24,23 +24,49 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_ANALYZER_FEATURE_H
 #define ARANGOD_IRESEARCH__IRESEARCH_ANALYZER_FEATURE_H 1
 
-#include "analysis/analyzer.hpp"
-#include "utils/async_utils.hpp"
-#include "utils/hash_utils.hpp"
-#include "utils/object_pool.hpp"
+#include <chrono>
+#include <functional>
+#include <memory>
+#include <ostream>
+#include <string>
+#include <unordered_map>
+#include <utility>
+
+#include <analysis/analyzer.hpp>
+#include <analysis/analyzers.hpp>
+#include <utils/async_utils.hpp>
+#include <utils/attributes.hpp>
+#include <utils/hash_utils.hpp>
+#include <utils/memory.hpp>
+#include <utils/noncopyable.hpp>
+#include <utils/object_pool.hpp>
+#include <utils/string.hpp>
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Auth/Common.h"
-#include "VocBase/voc-types.h"
+#include "Basics/Result.h"
+
+namespace iresearch {
+namespace text_format {
+class type_id;
+const type_id& vpack_t();
+static const auto& vpack = vpack_t();
+}
+}
+
+#define REGISTER_ANALYZER_VPACK(analyzer_name, factory, normalizer) \
+  REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::vpack, factory, normalizer)
 
 struct TRI_vocbase_t; // forward declaration
 
 namespace arangodb {
-namespace transaction {
-
-class Methods;  // forward declaration
-
-}  // namespace transaction
+namespace application_features {
+class ApplicationServer;
+}
 }  // namespace arangodb
 
 namespace arangodb {
@@ -63,8 +89,10 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
     irs::flags const& features() const noexcept { return _features; }
     irs::analysis::analyzer::ptr get() const noexcept;  // nullptr == error creating analyzer
     std::string const& name() const noexcept { return _name; }
-    irs::string_ref const& properties() const noexcept { return _properties; }
+    VPackSlice properties() const noexcept { return _properties; }
     irs::string_ref const& type() const noexcept { return _type; }
+
+    void toVelocyPack(arangodb::velocypack::Builder& builder, bool forPersistence = false);
 
    private:
     friend class IResearchAnalyzerFeature; // required for calling AnalyzerPool::init(...) and AnalyzerPool::setKey(...)
@@ -72,7 +100,7 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
     // 'make(...)' method wrapper for irs::analysis::analyzer types
     struct Builder {
       typedef irs::analysis::analyzer::ptr ptr;
-      DECLARE_FACTORY(irs::string_ref const& type, irs::string_ref const& properties);
+      DECLARE_FACTORY(irs::string_ref const& type, VPackSlice properties);
     };
 
     mutable irs::unbounded_object_pool<Builder> _cache;  // cache of irs::analysis::analyzer (constructed via
@@ -81,10 +109,11 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
     irs::flags _features;  // cached analyzer features
     irs::string_ref _key; // the key of the persisted configuration for this pool, null == static analyzer
     std::string _name;  // ArangoDB alias for an IResearch analyzer configuration
-    irs::string_ref _properties;  // IResearch analyzer configuration
+    VPackSlice _properties;  // IResearch analyzer configuration
     irs::string_ref _type;        // IResearch analyzer name
 
-    bool init(irs::string_ref const& type, irs::string_ref const& properties,
+    bool init(irs::string_ref const& type,
+              VPackSlice const properties,
               irs::flags const& features = irs::flags::empty_instance());
     void setKey(irs::string_ref const& type);
   };
@@ -125,13 +154,14 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   ///       allowed during recovery
   //////////////////////////////////////////////////////////////////////////////
   typedef std::pair<AnalyzerPool::ptr, bool> EmplaceResult;
-  arangodb::Result emplace( // emplace an analyzer
-    EmplaceResult& result, // emplacement result on success (out-param)
-    irs::string_ref const& name, // analyzer name
-    irs::string_ref const& type, // analyzer type
-    irs::string_ref const& properties, // analyzer properties
-    irs::flags const& features = irs::flags::empty_instance() // analyzer features
-  );
+  arangodb::Result emplace(
+      EmplaceResult& result,
+      irs::string_ref const& name,
+      irs::string_ref const& type,
+      VPackSlice properties,
+      irs::flags const& features = irs::flags::empty_instance()) {
+    return ensure(result, name, type, properties, features, true);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find analyzer
@@ -167,7 +197,7 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   AnalyzerPool::ptr get( // find analyzer
     irs::string_ref const& name, // analyzer name
     irs::string_ref const& type, // analyzer type
-    irs::string_ref const& properties, // analyzer properties
+    VPackSlice const properties, // analyzer properties
     irs::flags const& features // analyzer features
   );
 
@@ -183,6 +213,12 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
     TRI_vocbase_t const& systemVocbase, // the system vocbase for use with empty prefix
     bool expandVocbasePrefix = true // use full vocbase name as prefix for active/system v.s. EMPTY/'::'
   );
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @param name analyzer name (normalized)
+  /// @return vocbase prefix extracted from normalized analyzer name
+  //////////////////////////////////////////////////////////////////////////////
+  static irs::string_ref extractVocbaseName(irs::string_ref const& name); 
 
   void prepare() override;
 
@@ -201,13 +237,9 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   /// @param vocbase only visit analysers for this vocbase (nullptr == static)
   /// @return visitation compleated fully
   //////////////////////////////////////////////////////////////////////////////
-  bool visit( // visit all analyzers
-    std::function<bool(AnalyzerPool::ptr const& analyzer)> const& visitor // visitor
-  ) const;
-  bool visit( // visit analyzers
-    std::function<bool(AnalyzerPool::ptr const& analyzer)> const& visitor, // visitor
-    TRI_vocbase_t const* vocbase // analyzers for vocbase
-  ) const;
+  bool visit(std::function<bool(AnalyzerPool::ptr const& analyzer)> const& visitor) const;
+  bool visit(std::function<bool(AnalyzerPool::ptr const& analyzer)> const& visitor,
+             TRI_vocbase_t const* vocbase) const;
 
  private:
   // map of caches of irs::analysis::analyzer pools indexed by analyzer name and
@@ -229,7 +261,7 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
     arangodb::iresearch::IResearchAnalyzerFeature::Analyzers& analyzers, // analyzers
     irs::string_ref const& name, // analyzer name
     irs::string_ref const& type, // analyzer type
-    irs::string_ref const& properties, // analyzer properties
+    VPackSlice const properties, // analyzer properties
     irs::flags const& features // analyzer features
   );
 
@@ -256,7 +288,7 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
     EmplaceResult& result, // emplacement result on success (out-param)
     irs::string_ref const& name, // analyzer name
     irs::string_ref const& type, // analyzer type
-    irs::string_ref const& properties, // analyzer properties
+    VPackSlice const properties, // analyzer properties
     irs::flags const& features, // analyzer features
     bool isEmplace
   );

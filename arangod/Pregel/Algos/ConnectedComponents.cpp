@@ -58,7 +58,7 @@ VertexComputation<int64_t, int64_t, int64_t>* ConnectedComponents::createComputa
   return new MyComputation();
 }
 
-struct MyGraphFormat : public VertexGraphFormat<int64_t, int64_t> {
+struct MyGraphFormat final : public VertexGraphFormat<int64_t, int64_t> {
   uint64_t vertexIdRange = 0;
 
   explicit MyGraphFormat(std::string const& result)
@@ -74,10 +74,9 @@ struct MyGraphFormat : public VertexGraphFormat<int64_t, int64_t> {
     }
   }
 
-  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        int64_t* targetPtr, size_t maxSize) override {
-    *targetPtr = vertexIdRange++;
-    return sizeof(int64_t);
+  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                      int64_t& targetPtr) override {
+    targetPtr = vertexIdRange++;
   }
 };
 

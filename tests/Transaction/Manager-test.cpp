@@ -24,6 +24,7 @@
 
 #include "Aql/Query.h"
 
+#include "Rest/GeneralResponse.h"
 #include "Transaction/Manager.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
@@ -103,6 +104,8 @@ TEST_F(TransactionManagerTest, parsing_errors) {
 }
 
 TEST_F(TransactionManagerTest, collection_not_found) {
+  arangodb::ExecContextScope execContextScope(arangodb::ExecContext::superuser());
+
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"33\"]}}");
   Result res = mgr->createManagedTrx(vocbase, tid, json->slice());

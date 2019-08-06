@@ -70,7 +70,7 @@ class NoResultsExecutorTest : public ::testing::Test {
 
 TEST_F(NoResultsExecutorTest, no_rows_upstream_the_producer_doesnt_wait) {
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(input.steal(), false);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
   NoResultsExecutor testee(fetcher, infos);
   NoStats stats{};
 
@@ -82,7 +82,7 @@ TEST_F(NoResultsExecutorTest, no_rows_upstream_the_producer_doesnt_wait) {
 
 TEST_F(NoResultsExecutorTest, no_rows_upstream_the_producer_waits) {
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(input.steal(), true);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
   NoResultsExecutor testee(fetcher, infos);
   NoStats stats{};
 
@@ -99,7 +99,7 @@ TEST_F(NoResultsExecutorTest, no_rows_upstream_the_producer_waits) {
 
 TEST_F(NoResultsExecutorTest, rows_upstream_the_producer_doesnt_wait) {
   auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
-  SingleRowFetcherHelper<false> fetcher(input->steal(), false);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
   NoResultsExecutor testee(fetcher, infos);
   NoStats stats{};
 
@@ -116,7 +116,7 @@ TEST_F(NoResultsExecutorTest, rows_upstream_the_producer_doesnt_wait) {
 
 TEST_F(NoResultsExecutorTest, rows_upstream_the_producer_waits) {
   auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
-  SingleRowFetcherHelper<false> fetcher(input->steal(), true);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
   NoResultsExecutor testee(fetcher, infos);
   NoStats stats{};
 

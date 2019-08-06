@@ -31,6 +31,7 @@
 #include "Aql/IndexExecutor.h"
 #include "Aql/Query.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -166,6 +167,7 @@ void IndexNode::initIndexCoversProjections() {
   }
 
   _coveringIndexAttributePositions = std::move(coveringAttributePositions);
+  _options.forceProjection = true;
 }
 
 /// @brief toVelocyPack, for IndexNode
@@ -429,25 +431,15 @@ CostEstimate IndexNode::estimateCost() const {
   auto root = _condition->root();
 
   for (size_t i = 0; i < _indexes.size(); ++i) {
-    double estimatedCost = 0.0;
-    size_t estimatedItems = 0;
+    Index::FilterCosts costs = Index::FilterCosts::defaultCosts(itemsInCollection);
 
-    arangodb::aql::AstNode const* condition;
-    if (root == nullptr || root->numMembers() <= i) {
-      condition = nullptr;
-    } else {
-      condition = root->getMember(i);
+    if (root != nullptr && root->numMembers() > i) {
+      arangodb::aql::AstNode const* condition = root->getMember(i);
+      costs = _indexes[i].getIndex()->supportsFilterCondition(std::vector<std::shared_ptr<Index>>(), condition, _outVariable, itemsInCollection);
     }
 
-    if (condition != nullptr &&
-        trx->supportsFilterCondition(_indexes[i], condition, _outVariable, itemsInCollection,
-                                     estimatedItems, estimatedCost)) {
-      totalItems += estimatedItems;
-      totalCost += estimatedCost;
-    } else {
-      totalItems += itemsInCollection;
-      totalCost += static_cast<double>(itemsInCollection);
-    }
+    totalItems += costs.estimatedItems;
+    totalCost += costs.estimatedCosts;
   }
 
   estimate.estimatedNrItems *= totalItems;

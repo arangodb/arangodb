@@ -208,7 +208,12 @@
       }
 
       if ($(e.currentTarget).hasClass('tile')) {
-        e.currentTarget = $(e.currentTarget).find('.fa');
+        if ($(e.currentTarget).find('.fa').attr('id')) {
+          e.currentTarget = $(e.currentTarget).find('.fa');
+        } else {
+          // check if gravatar icon is enabled
+          e.currentTarget = $(e.currentTarget).find('.icon');
+        }
       }
 
       this.collection.fetch({

@@ -23,6 +23,7 @@
 #include "RocksDBIncrementalSync.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/system-functions.h"
 #include "Indexes/IndexIterator.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/utilities.h"
@@ -563,7 +564,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   }
 
   if (!syncer._state.isChildSyncer) {
-    syncer._batch.extend(syncer._state.connection, syncer._progress);
+    syncer._batch.extend(syncer._state.connection, syncer._progress, syncer._state.syncerId);
     syncer._state.barrier.extend(syncer._state.connection);
   }
 
@@ -675,7 +676,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     auto resetChunk = [&]() -> void {
       if (!syncer._state.isChildSyncer) {
-        syncer._batch.extend(syncer._state.connection, syncer._progress);
+        syncer._batch.extend(syncer._state.connection, syncer._progress, syncer._state.syncerId);
         syncer._state.barrier.extend(syncer._state.connection);
       }
 

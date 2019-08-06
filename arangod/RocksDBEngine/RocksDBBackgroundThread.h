@@ -53,24 +53,8 @@ class RocksDBBackgroundThread final : public Thread {
 
   void beginShutdown() override;
 
-  /// disable pruning of wal files
-  void disableWalFilePruning(bool disable) {
-    int sub = 0;
-    if (disable) {
-      sub = _disableWalFilePruning.fetch_add(1);
-    } else {
-      sub = _disableWalFilePruning.fetch_sub(1);
-    }
-    TRI_ASSERT(sub >= 0);
-  }
-  
-  bool disableWalFilePruning() const {
-    return _disableWalFilePruning.load(std::memory_order_acquire) > 0;
-  }
-
  protected:
   void run() override;
-  std::atomic<int> _disableWalFilePruning;
 };
 }  // namespace arangodb
 

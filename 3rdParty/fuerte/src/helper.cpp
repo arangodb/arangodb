@@ -20,7 +20,9 @@
 /// @author Jan Christoph Uhde
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
+
 #include <fuerte/helper.h>
+
 #include <string.h>
 #include <sstream>
 #include <stdexcept>
@@ -73,7 +75,7 @@ std::string to_string(Message& message) {
   ss << "Header:\n";
   if (message.type() == MessageType::Request) {
     Request const& req = static_cast<Request const&>(message);
-#ifndef NDEBUG
+#ifdef FUERTE_DEBUG
     if (req.header.byteSize) {
       ss << "byteSize: " << req.header.byteSize << std::endl;
     }
@@ -114,7 +116,7 @@ std::string to_string(Message& message) {
     }
   } else if (message.type() == MessageType::Response) {
     Response const& res = static_cast<Response const&>(message);
-#ifndef NDEBUG
+#ifdef FUERTE_DEBUG
     if (res.header.byteSize) {
       ss << "byteSize: " << res.header.byteSize << std::endl;
     }
@@ -229,4 +231,9 @@ std::string encodeBase64U(std::string const& in) {
   std::replace(encoded.begin(), encoded.end(), '/', '_');
   return encoded;
 }
+  
+fuerte::Error checkEOFError(asio_ns::error_code e, fuerte::Error c) {
+  return e == asio_ns::error::misc_errors::eof ? fuerte::Error::ConnectionClosed : c;
+}
+  
 }}}  // namespace arangodb::fuerte::v1

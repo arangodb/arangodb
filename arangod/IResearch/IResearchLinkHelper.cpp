@@ -36,6 +36,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
@@ -118,6 +119,23 @@ arangodb::Result createLink( // create link
         std::string("failed to create link between arangosearch view '") + view.name() + "' and collection '" + collection.name() + "'"
       );
     }
+
+    // ensure link is synchronized after upgrade in single-server
+    if (arangodb::ServerState::instance()->isSingleServer()) {
+      auto* db = arangodb::DatabaseFeature::DATABASE;
+
+      if (db && (db->checkVersion() || db->upgrade())) {
+        // FIXME find a better way to retrieve an IResearch Link
+        // cannot use static_cast/reinterpret_cast since Index is not related to
+        // IResearchLink
+        auto impl = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(link);
+
+        if (impl) {
+          return impl->commit();
+        }
+      }
+    }
+
   } catch (arangodb::basics::Exception const& e) {
     return arangodb::Result(e.code(), e.what());
   }
@@ -559,7 +577,7 @@ namespace iresearch {
   auto lhsViewSlice = lhs.get(StaticStrings::ViewIdField);
   auto rhsViewSlice = rhs.get(StaticStrings::ViewIdField);
 
-  if (!lhsViewSlice.equals(rhsViewSlice)) {
+  if (!lhsViewSlice.binaryEquals(rhsViewSlice)) {
     if (!lhsViewSlice.isString() || !rhsViewSlice.isString()) {
       return false;
     }
@@ -758,14 +776,40 @@ namespace iresearch {
     IResearchLinkMeta meta;
     std::string errorField;
 
-    if (!linkDefinition.isNull() // have link definition
-        && !meta.init(linkDefinition, false, errorField, &vocbase)) { // for db-server analyzer validation should have already applied on coordinator
-      return arangodb::Result( // result
-        TRI_ERROR_BAD_PARAMETER, // code
-        errorField.empty()
-         ? (std::string("while validating arangosearch link definition, error: invalid link definition for collection '") + collectionName.copyString() + "': " + linkDefinition.toString())
-         : (std::string("while validating arangosearch link definition, error: invalid link definition for collection '") + collectionName.copyString() + "' error in attribute: " + errorField)
-      );
+    if (!linkDefinition.isNull()) { // have link definition
+      if (!meta.init(linkDefinition, false, errorField, &vocbase)) { // for db-server analyzer validation should have already applied on coordinator
+        return arangodb::Result( // result
+          TRI_ERROR_BAD_PARAMETER, // code
+          errorField.empty()
+          ? (std::string("while validating arangosearch link definition, error: invalid link definition for collection '") + collectionName.copyString() + "': " + linkDefinition.toString())
+          : (std::string("while validating arangosearch link definition, error: invalid link definition for collection '") + collectionName.copyString() + "' error in attribute: " + errorField)
+        );
+      }
+      // validate analyzers origin
+      // analyzer should be either from same database as view (and collection) or from system database
+      {
+        const auto& currentVocbase = vocbase.name();
+        for (const auto& analyzer : meta._analyzers) {
+          TRI_ASSERT(analyzer._pool); // should be checked in meta init
+          if (ADB_UNLIKELY(!analyzer._pool)) { 
+            continue; 
+          }
+          auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(analyzer._pool->name());
+          if (ADB_UNLIKELY(analyzerVocbase.empty())) { 
+            // in case of absent system database analyzer name will not be normalized
+            // and may not contain database prefix. But in that case analyzer will be
+            // considered local for current database and this is perefectly fine.
+            continue;
+          }
+          if (analyzerVocbase != arangodb::StaticStrings::SystemDatabase &&
+              analyzerVocbase != currentVocbase) {
+            return arangodb::Result(
+                TRI_ERROR_BAD_PARAMETER,
+                std::string("Analyzer '").append(analyzer._pool->name())
+                .append("' is not accessible from database '").append(currentVocbase).append("'"));
+          }
+        }
+      }
     }
   }
 

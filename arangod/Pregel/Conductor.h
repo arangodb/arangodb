@@ -29,6 +29,7 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/asio_ns.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Statistics.h"
@@ -94,6 +95,7 @@ class Conductor {
   double _computationStartTimeSecs = 0;
   double _finalizationStartTimeSecs = 0;
   double _endTimeSecs = 0;
+  double _stepStartTimeSecs = 0; // start time of current gss
   Scheduler::WorkHandle _workHandle;
 
   bool _startGlobalStep();

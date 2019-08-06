@@ -48,14 +48,13 @@ function runSetup () {
   internal.debugSetFailAt("FlushThreadDisableAll");
   internal.wait(2); // make sure failure point takes effect
 
-// FIXME uncomment when we'll be able to handle tons of removals properly
-//  for (let i = 0; i < 20000; i++) {
-//    c.save({ a: "foo_" + i, b: "bar_" + i, c: i, _key: "doc_" + i });
-//  }
-//
-//  for (let i = 10000; i < 20000; i++) {
-//    c.remove("doc_" + i);
-//  }
+  for (let i = 0; i < 20000; i++) {
+    c.save({ a: "foo_" + i, b: "bar_" + i, c: i, _key: "doc_" + i });
+  }
+
+  for (let i = 10000; i < 20000; i++) {
+    c.remove("doc_" + i);
+  }
 
   c.save({ name: 'crashme' }, { waitForSync: true });
 
@@ -86,11 +85,10 @@ function recoverySuite () {
       assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
       assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
 
-// FIXME uncomment when we'll be able to handle tons of removals properly
-//      var result = AQL_EXECUTE("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync:true} COLLECT WITH COUNT INTO length RETURN length").json;
-//      assertEqual(result[0], 10000);
+      var result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync:true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+      var expectedResult = db._query("FOR doc IN UnitTestsRecoveryDummy FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
+      assertEqual(result[0], expectedResult[0]);
     }
-
   };
 }
 

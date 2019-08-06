@@ -20,15 +20,24 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-#include "Basics/StringUtils.h"
-#include "Basics/FileUtils.h"
-#include "Logger/Logger.h"
-
+#include <stddef.h>
+#include <map>
 #include <sstream>
+#include <vector>
 
 #include <unicode/unistr.h>
-#include "ProgramOptions/IniFileParser.h"
+
+#include "IniFileParser.h"
+
+#include "Basics/Common.h"
+#include "Basics/Exceptions.h"
+#include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/ProgramOptions.h"
 
 namespace arangodb {
 namespace options {
@@ -69,6 +78,14 @@ bool IniFileParser::parse(std::string const& filename, bool endPassAfterwards) {
     return _options->fail(std::string("Couldn't open configuration file: '") +
                           filename + "' - " + ex.what());
   }
+  
+  return parseContent(filename, buf, endPassAfterwards);
+}
+
+// parse a config file, with the contents already read into <buf>. 
+// returns true if all is well, false otherwise
+// errors that occur during parse are reported to _options
+bool IniFileParser::parseContent(std::string const& filename, std::string const& buf, bool endPassAfterwards) {
   bool isCommunity = false;
   bool isEnterprise = false;
   std::string currentSection;

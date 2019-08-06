@@ -97,7 +97,7 @@ class HashedCollectExecutorTestNoRows : public ::testing::Test {
 };
 
 TEST_F(HashedCollectExecutorTestNoRows, the_producer_doesnt_wait) {
-  SingleRowFetcherHelper<false> fetcher(input.steal(), false);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -108,7 +108,7 @@ TEST_F(HashedCollectExecutorTestNoRows, the_producer_doesnt_wait) {
 }
 
 TEST_F(HashedCollectExecutorTestNoRows, the_producer_waits) {
-  SingleRowFetcherHelper<false> fetcher(input.steal(), true);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -172,7 +172,7 @@ class HashedCollectExecutorTestRowsNoCount : public ::testing::Test {
 
 TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_1) {
   auto input = VPackParser::fromJson("[ [1], [2] ]");
-  SingleRowFetcherHelper<false> fetcher(input->steal(), false);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -192,7 +192,7 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_1) {
   ASSERT_TRUE(state == ExecutionState::DONE);
   ASSERT_TRUE(!result.produced());
 
-  std::vector<int> myNumbers;
+  std::vector<int64_t> myNumbers;
   auto block = result.stealBlock();
 
   // check for types
@@ -212,7 +212,7 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_1) {
 
 TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_2) {
   auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
-  SingleRowFetcherHelper<false> fetcher(input->steal(), false);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -237,7 +237,7 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_2) {
   ASSERT_TRUE(state == ExecutionState::DONE);
   ASSERT_TRUE(!result.produced());
 
-  std::vector<int> myNumbers;
+  std::vector<int64_t> myNumbers;
   auto block = result.stealBlock();
 
   // check for types
@@ -262,7 +262,7 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_2) {
 
 TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_3) {
   auto input = VPackParser::fromJson("[ [1], [2], [3], [1], [2] ]");
-  SingleRowFetcherHelper<false> fetcher(input->steal(), false);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -287,7 +287,7 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_3) {
   ASSERT_TRUE(state == ExecutionState::DONE);
   ASSERT_TRUE(!result.produced());
 
-  std::vector<int> myNumbers;
+  std::vector<int64_t> myNumbers;
   auto block = result.stealBlock();
 
   // check for types
@@ -312,7 +312,7 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_3) {
 
 TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_4) {
   auto input = VPackParser::fromJson("[ [1], [2], [1], [2] ]");
-  SingleRowFetcherHelper<false> fetcher(input->steal(), false);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -332,7 +332,7 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_4) {
   ASSERT_TRUE(state == ExecutionState::DONE);
   ASSERT_TRUE(!result.produced());
 
-  std::vector<int> myNumbers;
+  std::vector<int64_t> myNumbers;
   auto block = result.stealBlock();
 
   // check for types
@@ -352,7 +352,7 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_4) {
 
 TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_waits) {
   auto input = VPackParser::fromJson("[ [1], [2] ]");
-  SingleRowFetcherHelper<false> fetcher(input->steal(), true);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -380,7 +380,7 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_waits) {
   ASSERT_TRUE(state == ExecutionState::DONE);
   ASSERT_TRUE(!result.produced());
 
-  std::vector<int> myNumbers;
+  std::vector<int64_t> myNumbers;
   auto block = result.stealBlock();
 
   // check for types
@@ -442,7 +442,7 @@ TEST(HashedCollectExecutorTestRowsCount, the_producer_doesnt_wait) {
   NoStats stats{};
 
   auto input = VPackParser::fromJson("[ [1], [2] ]");
-  SingleRowFetcherHelper<false> fetcher(input->steal(), false);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -462,7 +462,7 @@ TEST(HashedCollectExecutorTestRowsCount, the_producer_doesnt_wait) {
   ASSERT_TRUE(state == ExecutionState::DONE);
   ASSERT_TRUE(!result.produced());
 
-  std::vector<int> myNumbers;
+  std::vector<int64_t> myNumbers;
   std::vector<double> myCountNumbers;
   auto newBlock = result.stealBlock();
 
@@ -539,7 +539,7 @@ TEST(HashedCollectExecutorTestRowsCountNumbers, the_producer_doesnt_wait) {
   NoStats stats{};
 
   auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
-  SingleRowFetcherHelper<false> fetcher(input->steal(), false);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -564,8 +564,8 @@ TEST(HashedCollectExecutorTestRowsCountNumbers, the_producer_doesnt_wait) {
   ASSERT_TRUE(state == ExecutionState::DONE);
   ASSERT_TRUE(!result.produced());
 
-  std::vector<int> myNumbers;
-  std::vector<int> myCountNumbers;
+  std::vector<int64_t> myNumbers;
+  std::vector<int64_t> myCountNumbers;
   auto newBlock = result.stealBlock();
 
   // check for types
@@ -652,7 +652,7 @@ TEST(HashedCollectExecutorTestRowsCountStrings, the_producer_doesnt_wait) {
   NoStats stats{};
 
   auto input = VPackParser::fromJson("[ [\"a\"], [\"aa\"], [\"aaa\"] ]");
-  SingleRowFetcherHelper<false> fetcher(input->steal(), false);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -678,7 +678,7 @@ TEST(HashedCollectExecutorTestRowsCountStrings, the_producer_doesnt_wait) {
   ASSERT_TRUE(!result.produced());
 
   std::vector<std::string> myStrings;
-  std::vector<int> myCountNumbers;
+  std::vector<int64_t> myCountNumbers;
   auto newBlock = result.stealBlock();
 
   // check for types

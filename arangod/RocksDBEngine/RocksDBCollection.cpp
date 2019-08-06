@@ -20,6 +20,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RocksDBCollection.h"
 #include "Aql/PlanCache.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
@@ -27,6 +28,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/system-functions.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
@@ -35,7 +37,6 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
@@ -76,7 +77,6 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
       _revisionId(0),
       _primaryIndex(nullptr),
       _cache(nullptr),
-      _cachePresent(false),
       _cacheEnabled(
           !collection.system() &&
           basics::VelocyPackHelper::readBooleanValue(info, "cacheEnabled", false) &&
@@ -107,7 +107,6 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
       _revisionId(0),
       _primaryIndex(nullptr),
       _cache(nullptr),
-      _cachePresent(false),
       _cacheEnabled(static_cast<RocksDBCollection const*>(physical)->_cacheEnabled &&
                     CacheManagerFeature::MANAGER != nullptr),
       _numIndexCreations(0) {
@@ -190,7 +189,7 @@ int RocksDBCollection::close() {
 void RocksDBCollection::load() {
   if (_cacheEnabled) {
     createCache();
-    if (_cachePresent) {
+    if (_cache) {
       uint64_t numDocs = numberDocuments();
       if (numDocs > 0) {
         _cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
@@ -204,11 +203,12 @@ void RocksDBCollection::load() {
 }
 
 void RocksDBCollection::unload() {
+  WRITE_LOCKER(guard, _exclusiveLock);
   if (useCache()) {
     destroyCache();
-    TRI_ASSERT(!_cachePresent);
+    TRI_ASSERT(_cache.get() == nullptr);
   }
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(indexGuard, _indexesLock);
   for (auto it : _indexes) {
     it->unload();
   }
@@ -331,6 +331,13 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     if ((idx = findIndex(info, _indexes)) != nullptr) {
       // We already have this index.
       if (idx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
+        // special handling for TTL indexes
+        // if there is exactly the same index present, we return it
+        if (idx->matchesDefinition(info)) {
+          created = false;
+          return idx;
+        }
+        // if there is another TTL index already, we make things abort here
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
             "there can only be one ttl index per collection");
@@ -345,11 +352,12 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 
   // Step 2. We are sure that we do not have an index of this type.
   // We also hold the lock. Create it
-  const bool generateKey = !restore;
-  idx = engine->indexFactory().prepareIndexFromSlice(info, generateKey,
-                                                     _logicalCollection, false);
-  if (!idx) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
+  bool const generateKey = !restore;
+  try {
+    idx = engine->indexFactory().prepareIndexFromSlice(info, generateKey,
+                                                       _logicalCollection, false);
+  } catch (std::exception const& ex) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED, ex.what());
   }
 
   // we cannot persist primary or edge indexes
@@ -395,10 +403,10 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
         res.reset(rocksutils::convertStatus(s));
         break;
       }
-
+      
       VPackBuilder builder;
       builder.openObject();
-      for (auto const& pair : VPackObjectIterator(VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())))) {
+      for (auto const& pair : VPackObjectIterator(RocksDBValue::data(ps))) {
         if (pair.key.isEqualString("indexes")) {  // append new index
           VPackArrayBuilder arrGuard(&builder, "indexes");
           builder.add(VPackArrayIterator(pair.value));
@@ -455,9 +463,11 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 
     // Step 6. persist in rocksdb
     if (!engine->inRecovery()) {  // write new collection marker
-      auto builder =
-      _logicalCollection.toVelocyPackIgnore({"path", "statusString"}, true,
-                                            /*forPersistence*/ true);
+      auto builder = _logicalCollection.toVelocyPackIgnore(
+          {"path", "statusString"},
+          LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                       LogicalDataSource::Serialize::ForPersistence,
+                                       LogicalDataSource::Serialize::IncludeInProgress));
       VPackBuilder indexInfo;
       idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::Internals));
       res = engine->writeCreateCollectionMarker(_logicalCollection.vocbase().id(),
@@ -538,8 +548,12 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
     return true; // skip writing WAL marker if inRecovery()
   }
 
-  auto builder = // RocksDB path
-    _logicalCollection.toVelocyPackIgnore({"path", "statusString"}, true, true);
+  auto builder =  // RocksDB path
+      _logicalCollection.toVelocyPackIgnore(
+          {"path", "statusString"},
+          LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                       LogicalDataSource::Serialize::ForPersistence,
+                                       LogicalDataSource::Serialize::IncludeInProgress));
 
   // log this event in the WAL and in the collection meta-data
   res = engine->writeCreateCollectionMarker( // write marker
@@ -1253,6 +1267,21 @@ void RocksDBCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Bu
   }
 }
 
+namespace {
+template<typename F>
+void reverseIdxOps(std::vector<std::shared_ptr<Index>> const& vector,
+                   std::vector<std::shared_ptr<Index>>::const_iterator& it,
+                   F&& op) {
+  while (it != vector.begin()) {
+    it--;
+    auto* rIdx = static_cast<RocksDBIndex*>(it->get());
+    if (rIdx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+      std::forward<F>(op)(rIdx);
+    }
+  }
+}
+}
+
 Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
                                          LocalDocumentId const& documentId,
                                          VPackSlice const& doc,
@@ -1273,7 +1302,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     
   RocksDBMethods* mthds = state->rocksdbMethods();
   // disable indexing in this transaction if we are allowed to
-  IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
+  IndexingDisabler disabler(mthds, state->isSingleOperation());
 
   TRI_ASSERT(key->containsLocalDocumentId(documentId));
   rocksdb::Status s =
@@ -1285,11 +1314,20 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   }
 
   READ_LOCKER(guard, _indexesLock);
-  for (std::shared_ptr<Index> const& idx : _indexes) {
-    RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
+  
+  bool needReversal = false;
+  for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
+    RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
     res = rIdx->insert(*trx, mthds, documentId, doc, options.indexOperationMode);
-
+    
+    needReversal = needReversal || rIdx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK;
+    
     if (res.fail()) {
+      if (needReversal && !state->isSingleOperation()) {
+        ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc, &options](RocksDBIndex* rid) {
+          rid->remove(*trx, mthds, documentId, doc, options.indexOperationMode);
+        });
+      }
       break;
     }
   }
@@ -1732,7 +1770,7 @@ void RocksDBCollection::estimateSize(velocypack::Builder& builder) {
 }
 
 void RocksDBCollection::createCache() const {
-  if (!_cacheEnabled || _cachePresent || _logicalCollection.isAStub() ||
+  if (!_cacheEnabled || _cache || _logicalCollection.isAStub() ||
       ServerState::instance()->isCoordinator()) {
     // we leave this if we do not need the cache
     // or if cache already created
@@ -1744,12 +1782,11 @@ void RocksDBCollection::createCache() const {
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   LOG_TOPIC("f5df2", DEBUG, Logger::CACHE) << "Creating document cache";
   _cache = CacheManagerFeature::MANAGER->createCache(cache::CacheType::Transactional);
-  _cachePresent = (_cache.get() != nullptr);
   TRI_ASSERT(_cacheEnabled);
 }
 
 void RocksDBCollection::destroyCache() const {
-  if (!_cachePresent) {
+  if (!_cache) {
     return;
   }
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
@@ -1758,7 +1795,6 @@ void RocksDBCollection::destroyCache() const {
   LOG_TOPIC("7137b", DEBUG, Logger::CACHE) << "Destroying document cache";
   CacheManagerFeature::MANAGER->destroyCache(_cache);
   _cache.reset();
-  _cachePresent = false;
 }
 
 // blacklist given key from transactional cache

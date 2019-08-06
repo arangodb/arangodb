@@ -34,6 +34,10 @@
 #include <chrono>
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 namespace network {
 
 /// @brief resolve 'shard:' or 'server:' url to actual endpoint
@@ -43,7 +47,7 @@ int resolveDestination(DestinationId const& dest, std::string&);
 OperationResult errorFromBody(arangodb::velocypack::Buffer<uint8_t> const& body,
                               int defaultErrorCode);
 /// @brief extract the error from a cluster response
-OperationResult errorFromBody(std::shared_ptr<VPackBuilder> const&, int defaultErrorCode);
+OperationResult errorFromBody(std::shared_ptr<arangodb::velocypack::Builder> const&, int defaultErrorCode);
 /// @brief extract the error from a cluster response
 OperationResult errorFromBody(arangodb::velocypack::Slice const& body, int defaultErrorCode);
 

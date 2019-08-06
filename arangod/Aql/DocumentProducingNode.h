@@ -29,6 +29,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include <unordered_set>
+
 namespace arangodb {
 namespace aql {
 class ExecutionPlan;

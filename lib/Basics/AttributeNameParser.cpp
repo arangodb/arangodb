@@ -21,9 +21,16 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stddef.h>
+#include <memory>
+#include <ostream>
+
 #include "AttributeNameParser.h"
+
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
+#include "Basics/debugging.h"
+#include "Basics/fasthash.h"
+#include "Basics/voc-errors.h"
 
 #include <velocypack/StringRef.h>
 
@@ -34,6 +41,10 @@ arangodb::basics::AttributeName::AttributeName(arangodb::velocypack::StringRef c
 
 arangodb::basics::AttributeName::AttributeName(arangodb::velocypack::StringRef const& name, bool expand)
     : name(name.toString()), shouldExpand(expand) {}
+
+uint64_t arangodb::basics::AttributeName::hash(uint64_t seed) const {
+  return fasthash64(name.data(), name.size(), seed) ^ (shouldExpand ? 0xec59a4d : 0x4040ec59a4d40);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two attribute name vectors

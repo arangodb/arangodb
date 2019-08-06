@@ -27,6 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/memory.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -495,7 +496,7 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
   return Result();
 }
 
-IndexIterator* RocksDBFulltextIndex::iteratorForCondition(
+std::unique_ptr<IndexIterator> RocksDBFulltextIndex::iteratorForCondition(
     transaction::Methods* trx, aql::AstNode const* condNode,
     aql::Variable const* var, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
@@ -527,5 +528,5 @@ IndexIterator* RocksDBFulltextIndex::iteratorForCondition(
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  return new RocksDBFulltextIndexIterator(&_collection, trx, std::move(results));
+  return std::make_unique<RocksDBFulltextIndexIterator>(&_collection, trx, std::move(results));
 }

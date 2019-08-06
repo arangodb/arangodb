@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 export PID=$$
 
 if test -n "$ORIGINAL_PATH"; then

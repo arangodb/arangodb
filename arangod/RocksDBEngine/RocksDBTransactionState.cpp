@@ -25,10 +25,13 @@
 
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
+#include "Basics/system-compiler.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Manager.h"
 #include "Cache/Transaction.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -85,8 +88,8 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     _hints = hints;  // set hints before useCollections
   }
 
-  Result result = useCollections(nestingLevel());
-  if (result.fail()) {
+  Result res = useCollections(nestingLevel());
+  if (res.fail()) {
     // something is wrong
     if (nestingLevel() == 0) {
       updateStatus(transaction::Status::ABORTED);
@@ -95,12 +98,12 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     // free what we have got so far
     unuseCollections(nestingLevel());
 
-    return result;
+    return res;
   }
 
   if (nestingLevel() == 0) { // result is valid
     // register with manager
-    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr);
+    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr, isReadOnlyTransaction());
     updateStatus(transaction::Status::RUNNING);
 
     setRegistered();
@@ -177,7 +180,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
 
-  return result;
+  return res;
 }
 
 // create a rocksdb transaction. will only be called for write transactions
@@ -322,6 +325,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
         postCommitSeq += numOps - 1;  // add to get to the next batch
       }
       TRI_ASSERT(postCommitSeq <= rocksutils::globalRocksDB()->GetLatestSequenceNumber());
+      _lastWrittenOperationTick = postCommitSeq;
 
       for (auto& trxColl : _collections) {
         auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);

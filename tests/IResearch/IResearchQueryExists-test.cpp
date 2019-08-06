@@ -51,6 +51,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RestServer/AqlFeature.h"
@@ -101,6 +102,7 @@ protected:
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
+    features.emplace_back(new arangodb::FlushFeature(server), false);
     features.emplace_back(new arangodb::SystemDatabaseFeature(server), true); // required by IResearchFilterFactory::extractAnalyzerFromArg(...) and IResearchAnalyzerFeature
     features.emplace_back(new arangodb::V8DealerFeature(server), false); // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::ViewTypesFeature(server), true);
@@ -134,7 +136,7 @@ protected:
       f.first->prepare();
     }
 
-    auto const databases = arangodb::velocypack::Parser::fromJson(std::string("[ { \"name\": \"") + arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto const databases = VPackParser::fromJson(std::string("[ { \"name\": \"") + arangodb::StaticStrings::SystemDatabase + "\" } ]");
     auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
       arangodb::DatabaseFeature
     >("Database");
@@ -153,7 +155,10 @@ protected:
     TRI_vocbase_t* vocbase;
 
     dbFeature->createDatabase(1, "testVocbase", vocbase); // required for IResearchAnalyzerFeature::emplace(...)
-    analyzers->emplace(result, "testVocbase::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() }); // cache analyzer
+    analyzers->emplace(
+        result, "testVocbase::text_en", "text",
+        VPackParser::fromJson("{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }")->slice(), 
+        { irs::frequency::type(), irs::norm::type(), irs::position::type() }); // cache analyzer
 
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
     arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
@@ -199,17 +204,17 @@ TEST_F(IResearchQueryExistsTest, test) {
 
   // create collection0
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
+    auto createJson = VPackParser::fromJson("{ \"name\": \"testCollection0\" }");
     auto collection = vocbase.createCollection(createJson->slice());
     ASSERT_TRUE((nullptr != collection));
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -6, \"value\": null }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -5, \"value\": true }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -4, \"value\": \"abc\" }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -3, \"value\": 3.14 }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
+      VPackParser::fromJson("{ \"seq\": -6, \"value\": null }"),
+      VPackParser::fromJson("{ \"seq\": -5, \"value\": true }"),
+      VPackParser::fromJson("{ \"seq\": -4, \"value\": \"abc\" }"),
+      VPackParser::fromJson("{ \"seq\": -3, \"value\": 3.14 }"),
+      VPackParser::fromJson("{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
+      VPackParser::fromJson("{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
     };
 
     arangodb::OperationOptions options;
@@ -232,7 +237,7 @@ TEST_F(IResearchQueryExistsTest, test) {
 
   // create collection1
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
+    auto createJson = VPackParser::fromJson("{ \"name\": \"testCollection1\" }");
     auto collection = vocbase.createCollection(createJson->slice());
     ASSERT_TRUE((nullptr != collection));
 
@@ -264,7 +269,7 @@ TEST_F(IResearchQueryExistsTest, test) {
 
   // create view
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto createJson = VPackParser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto logicalView = vocbase.createView(createJson->slice());
     ASSERT_TRUE((false == !logicalView));
 
@@ -272,7 +277,7 @@ TEST_F(IResearchQueryExistsTest, test) {
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
     ASSERT_TRUE((false == !impl));
 
-    auto updateJson = arangodb::velocypack::Parser::fromJson(
+    auto updateJson = VPackParser::fromJson(
       "{ \"links\": {"
         "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true, \"storeValues\": \"id\"},"
         "\"testCollection1\": { \"includeAllFields\": true, \"storeValues\": \"id\" }"
@@ -824,7 +829,7 @@ TEST_F(IResearchQueryExistsTest, test) {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, @type) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
-      arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\" }")
+      VPackParser::fromJson("{ \"type\" : \"bool\" }")
     );
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -848,7 +853,7 @@ TEST_F(IResearchQueryExistsTest, test) {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN  @@testView SEARCH EXISTS(d.value, @type) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
-      arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"testView\" }")
+      VPackParser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"testView\" }")
     );
 
     ASSERT_TRUE(result.result.ok());
@@ -873,7 +878,7 @@ TEST_F(IResearchQueryExistsTest, test) {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN  @@testView SEARCH EXISTS(d.value, @type) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
-      arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"invlaidViewName\" }")
+      VPackParser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"invlaidViewName\" }")
     );
 
     ASSERT_TRUE(result.result.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
@@ -1454,17 +1459,17 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
   // create collection0
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
+    auto createJson = VPackParser::fromJson("{ \"name\": \"testCollection0\" }");
     auto collection = vocbase.createCollection(createJson->slice());
     ASSERT_TRUE((nullptr != collection));
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -6, \"value\": null }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -5, \"value\": true }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -4, \"value\": \"abc\" }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -3, \"value\": 3.14 }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
+      VPackParser::fromJson("{ \"seq\": -6, \"value\": null }"),
+      VPackParser::fromJson("{ \"seq\": -5, \"value\": true }"),
+      VPackParser::fromJson("{ \"seq\": -4, \"value\": \"abc\" }"),
+      VPackParser::fromJson("{ \"seq\": -3, \"value\": 3.14 }"),
+      VPackParser::fromJson("{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
+      VPackParser::fromJson("{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
     };
 
     arangodb::OperationOptions options;
@@ -1487,7 +1492,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
   // create collection1
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
+    auto createJson = VPackParser::fromJson("{ \"name\": \"testCollection1\" }");
     auto collection = vocbase.createCollection(createJson->slice());
     ASSERT_TRUE((nullptr != collection));
 
@@ -1519,7 +1524,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
   // create view
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto createJson = VPackParser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto logicalView = vocbase.createView(createJson->slice());
     ASSERT_TRUE((false == !logicalView));
 
@@ -1527,7 +1532,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
     ASSERT_TRUE((false == !impl));
 
-    auto updateJson = arangodb::velocypack::Parser::fromJson(
+    auto updateJson = VPackParser::fromJson(
       "{ \"links\": {"
         "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true },"
         "\"testCollection1\": { \"includeAllFields\": true, \"storeValues\": \"id\" }"
@@ -2053,7 +2058,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, @type) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
-      arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\" }")
+      VPackParser::fromJson("{ \"type\" : \"bool\" }")
     );
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -2066,7 +2071,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN  @@testView SEARCH EXISTS(d.value, @type) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
-      arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"testView\" }")
+      VPackParser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"testView\" }")
     );
 
     ASSERT_TRUE(result.result.ok());
@@ -2080,7 +2085,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN  @@testView SEARCH EXISTS(d.value, @type) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
-      arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"invlaidViewName\" }")
+      VPackParser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"invlaidViewName\" }")
     );
 
     ASSERT_TRUE(result.result.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));

@@ -24,6 +24,8 @@
 #ifndef ARANGOD_STORAGE_ENGINE_WAL_ACCESS_H
 #define ARANGOD_STORAGE_ENGINE_WAL_ACCESS_H 1
 
+#include <map>
+
 #include "Basics/Result.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
@@ -109,7 +111,7 @@ class WalAccess {
 
     /// In case collection is == 0,
     bool includeSystem = false;
-    
+
     /// export _queues and _jobs collection
     bool includeFoxxQueues = false;
 

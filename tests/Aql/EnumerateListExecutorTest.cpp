@@ -62,7 +62,7 @@ TEST_F(EnumerateListExecutorTest, there_are_no_rows_upstream_the_producer_does_n
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   VPackBuilder input;
 
-  SingleRowFetcherHelper<false> fetcher(input.steal(), false);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
   EnumerateListExecutor testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -80,7 +80,7 @@ TEST_F(EnumerateListExecutorTest, there_are_no_rows_upstream_the_producer_waits)
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   VPackBuilder input;
 
-  SingleRowFetcherHelper<false> fetcher(input.steal(), true);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
   EnumerateListExecutor testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -103,7 +103,7 @@ TEST_F(EnumerateListExecutorTest, there_is_one_row_in_the_upstream_the_producer_
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 5)};
   auto input = VPackParser::fromJson("[ [1, 2, 3, [true, true, true]] ]");
 
-  SingleRowFetcherHelper<false> fetcher(input->steal(), true);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
   EnumerateListExecutor testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -188,7 +188,7 @@ TEST_F(EnumerateListExecutorTest, there_is_one_empty_array_row_in_the_upstream_t
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 5)};
   auto input = VPackParser::fromJson("[ [1, 2, 3, [] ] ]");
 
-  SingleRowFetcherHelper<false> fetcher(input->steal(), true);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
   EnumerateListExecutor testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -216,7 +216,7 @@ TEST_F(EnumerateListExecutorTest, there_are_rows_in_the_upstream_the_producer_wa
   auto input = VPackParser::fromJson(
       "[ [1, 2, 3, [true, true, true]], [1, 2, 3, [true, true, true]] ]");
 
-  SingleRowFetcherHelper<false> fetcher(input->steal(), true);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
   EnumerateListExecutor testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
