@@ -186,7 +186,8 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
                      std::unordered_set<std::string>& indis,
                      MaintenanceFeature::errors_t& errors, MaintenanceFeature& feature,
                      std::vector<ActionDescription>& actions) {
-  bool shouldBeLeading = serverId == leaderId;
+  bool shouldBeLeading = (serverId == leaderId ||
+                          "_" + serverId == leaderId);
 
   commonShrds.emplace(shname);
   auto props = createProps(cprops);  // Only once might need often!
