@@ -1239,7 +1239,12 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
   }
 
   if (options.cluster && instanceInfo.hasOwnProperty('clusterHealthMonitor')) {
-    killExternal(instanceInfo.clusterHealthMonitor);
+    try {
+      killExternal(instanceInfo.clusterHealthMonitor.pid);
+    }
+    catch (x) {
+      print(x)
+    }
   }
   
   // Shut down all non-agency servers:
@@ -1490,10 +1495,11 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
     internal.env.OPTIONS = JSON.stringify(options);
     let args = makeArgsArangosh(options);
     args['javascript.execute'] = fs.join('js', 'client', 'modules', '@arangodb', 'clusterstats.js');
-    const argv = toArgv(args).concat(args);
+    const argv = toArgv(args);
     instanceInfo.clusterHealthMonitor = executeExternal(ARANGOSH_BIN, argv);
     instanceInfo.clusterHealthMonitorFile = fs.join(instanceInfo.rootDir, 'stats.jsonl');
   }
+
 }
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief starts an instance
