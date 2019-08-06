@@ -250,13 +250,14 @@ bool FollowerInfo::contains(ServerID const& sid) const {
 ///        before a failover to this server has happened
 ////////////////////////////////////////////////////////////////////////////////
 
-void FollowerInfo::takeOverLeadership(std::vector<std::string> const& previousInsyncFollowers) {
+void FollowerInfo::takeOverLeadership(std::vector<ServerID> const& previousInsyncFollowers,
+                                      std::shared_ptr<std::vector<ServerID>> realInsyncFollowers) {
   // This function copies over the information taken from the last CURRENT into a local vector.
   // Where we remove the old leader and ourself from the list of followers
   WRITE_LOCKER(canWriteLocker, _canWriteLock);
   WRITE_LOCKER(writeLocker, _dataLock);
   // Reset local structures, if we take over leadership we do not know anything!
-  _followers = std::make_shared<std::vector<ServerID>>();
+  _followers = realInsyncFollowers ? realInsyncFollowers : std::make_shared<std::vector<ServerID>>();
   _failoverCandidates = std::make_shared<std::vector<ServerID>>();
   // We disallow writes until the first write.
   _canWrite = false;

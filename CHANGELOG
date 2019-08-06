@@ -1,6 +1,8 @@
 devel
 -----
 
+* Keep followers in sync if the old leader resigned and stopped writes.
+
 * Abort a FailedLeader job when its _to_ server fails.
 
 * add gzip and encryption options to arangoimport and arangoexport
@@ -17,7 +19,7 @@ devel
   many insync followers. With this mechanism users can avoid to have collections diverge too much in case of failure scenarios.
   minReplicationFactor can have the values: 1 <= minReplicationFactor <= replicationFactor.
   Having minReplicationFactor == 1 ArangoDB behaves the same way as in any previous version.
-  
+
 * Fixed a performance regression of COLLECT WITH COUNT INTO.
 
 * arangoimport would not stop, much less report, communications errors.  Add CSV reporting
