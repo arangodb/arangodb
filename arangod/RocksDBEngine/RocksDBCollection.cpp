@@ -1301,6 +1301,21 @@ arangodb::Result RocksDBCollection::fillIndexes(transaction::Methods* trx,
   return Result();
 }
 
+namespace {
+template<typename F>
+void reverseIdxOps(std::vector<std::shared_ptr<Index>> const& vector,
+                   std::vector<std::shared_ptr<Index>>::const_iterator& it,
+                   F&& op) {
+  while (it != vector.begin()) {
+    it--;
+    auto* rIdx = static_cast<RocksDBIndex*>(it->get());
+    if (rIdx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+      std::forward<F>(op)(rIdx);
+    }
+  }
+}
+}
+
 Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
                                          LocalDocumentId const& documentId,
                                          VPackSlice const& doc,
@@ -1326,9 +1341,11 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   }
 
   READ_LOCKER(guard, _indexesLock);
-  for (std::shared_ptr<Index> const& idx : _indexes) {
-    RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-    Result tmpres = rIdx->insertInternal(trx, mthds, documentId, doc, options.indexOperationMode);
+  bool needReversal = false;
+  for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
+    auto rIdx = static_cast<RocksDBIndex*>(it->get());
+    auto tmpres = rIdx->insertInternal(trx, mthds, documentId, doc, options.indexOperationMode);
+    needReversal = needReversal || rIdx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK;
     if (!tmpres.ok()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
         // in case of OOM return immediately
@@ -1337,9 +1354,14 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
         // "prefer" unique constraint violated over other errors
         res.reset(tmpres);
       }
+      if (needReversal && !trx->isSingleOperationTransaction()) {
+        ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc, &options](RocksDBIndex* rid) {
+          rid->remove(trx,  documentId, doc, options.indexOperationMode);
+        });
+      }
+      break; // no point to continue index operations, insert is failed anyway
     }
   }
-
   return res;
 }
 
