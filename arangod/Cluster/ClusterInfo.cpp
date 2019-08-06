@@ -2024,13 +2024,13 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     TRI_ASSERT(agencyCallbacks.size() == infos.size());
     for (size_t i = 0; i < infos.size(); ++i) {
       if (infos[i].state == ClusterCollectionCreationInfo::INIT) {
-        bool wokenUp = false;
+        bool gotTimeout;
         {
           // This one has not responded, wait for it.
           CONDITION_LOCKER(locker, agencyCallbacks[i]->_cv);
-          wokenUp = agencyCallbacks[i]->executeByCallbackOrTimeout(interval);
+          gotTimeout = agencyCallbacks[i]->executeByCallbackOrTimeout(interval);
         }
-        if (wokenUp) {
+        if (gotTimeout) {
           ++i;
           // We got woken up by waittime, not by  callback.
           // Let us check if we skipped other callbacks as well
