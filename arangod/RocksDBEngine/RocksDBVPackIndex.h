@@ -78,7 +78,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) override;
   void recalculateEstimates() override;
 
-  void toVelocyPack(VPackBuilder&, std::underlying_type<Index::Serialize>::type) const override;
+  void toVelocyPack(velocypack::Builder&,
+                    std::underlying_type<Index::Serialize>::type) const override;
 
   bool canBeDropped() const override { return true; }
 

@@ -21,22 +21,30 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <errno.h>
+#include <cstdint>
 #include <cstring>
+#include <limits>
+
 #include "Endpoint.h"
 
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
+#include "Basics/debugging.h"
+#include "Basics/operating-system.h"
 #include "Basics/socket-utils.h"
+#include "Basics/voc-errors.h"
+#include "Endpoint/EndpointIp.h"
 #include "Endpoint/EndpointIpV4.h"
 #include "Endpoint/EndpointIpV6.h"
 #include "Endpoint/EndpointSrv.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #if ARANGODB_HAVE_DOMAIN_SOCKETS
 #include "Endpoint/EndpointUnixDomain.h"
 #endif
-
-#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::basics;

@@ -20,6 +20,7 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Jan Steemann
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterInfo.h"
@@ -32,6 +33,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/hashes.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ServerState.h"
@@ -54,6 +56,10 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 namespace {
 
@@ -424,7 +430,7 @@ void ClusterInfo::loadClusterId() {
 /// @brief (re-)load the information about our plan
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
-//
+
 static std::string const prefixPlan = "Plan";
 
 void ClusterInfo::loadPlan() {
@@ -496,10 +502,8 @@ void ClusterInfo::loadPlan() {
   auto slice = resultSlice[0].get(  // get slice
       std::vector<std::string>({AgencyCommManager::path(), "Plan"})  // args
   );
-  auto planBuilder = std::make_shared<velocypack::Builder>();
 
-  planBuilder->add(slice);
-
+  auto planBuilder = std::make_shared<velocypack::Builder>(slice);
   auto planSlice = planBuilder->slice();
 
   if (!planSlice.isObject()) {
@@ -571,7 +575,7 @@ void ClusterInfo::loadPlan() {
         throw;
       }
 
-      newDatabases.emplace(name, database.value);
+      newDatabases.emplace(std::move(name), database.value);
     }
   }
 
@@ -671,7 +675,7 @@ void ClusterInfo::loadPlan() {
           LOG_TOPIC("ec9e6", ERR, Logger::AGENCY)
               << "Failed to load information for view '" << viewId
               << "': " << ex.what() << ". invalid information in Plan. The "
-              << "view  will be ignored for now and the invalid "
+              << "view will be ignored for now and the invalid "
               << "information will be repaired. VelocyPack: " << viewSlice.toJson();
 
           TRI_ASSERT(false);
@@ -867,14 +871,11 @@ void ClusterInfo::loadPlan() {
             databaseCollections.emplace(collectionId, newCollection);
           }
 
-          auto shardKeys = std::make_shared<std::vector<std::string>>(  // shard keys
-              newCollection->shardKeys()                                // args
-          );
-
-          newShardKeys.emplace(collectionId, shardKeys);
+          newShardKeys.emplace(collectionId, std::make_shared<std::vector<std::string>>(newCollection->shardKeys()));
 
           auto shardIDs = newCollection->shardIds();
           auto shards = std::make_shared<std::vector<std::string>>();
+          shards->reserve(shardIDs->size());
 
           for (auto const& p : *shardIDs) {
             shards->push_back(p.first);
@@ -890,7 +891,7 @@ void ClusterInfo::loadPlan() {
                        std::strtol(b.c_str() + 1, nullptr, 10);
               }  // comparator
           );
-          newShards.emplace(collectionId, shards);
+          newShards.emplace(collectionId, std::move(shards));
         } catch (std::exception const& ex) {
           // The plan contains invalid collection information.
           // This should not happen in healthy situations.
@@ -920,7 +921,7 @@ void ClusterInfo::loadPlan() {
         }
       }
 
-      newCollections.emplace(std::make_pair(databaseName, databaseCollections));
+      newCollections.emplace(std::move(databaseName), std::move(databaseCollections));
     }
     LOG_TOPIC("12dfa", DEBUG, Logger::CLUSTER)
         << "loadPlan done: wantedVersion=" << storedVersion
@@ -929,7 +930,7 @@ void ClusterInfo::loadPlan() {
 
   WRITE_LOCKER(writeLocker, _planProt.lock);
 
-  _plan = planBuilder;
+  _plan = std::move(planBuilder);
   _planVersion = newPlanVersion;
 
   if (swapDatabases) {
@@ -2024,13 +2025,13 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     TRI_ASSERT(agencyCallbacks.size() == infos.size());
     for (size_t i = 0; i < infos.size(); ++i) {
       if (infos[i].state == ClusterCollectionCreationInfo::INIT) {
-        bool wokenUp = false;
+        bool gotTimeout;
         {
           // This one has not responded, wait for it.
           CONDITION_LOCKER(locker, agencyCallbacks[i]->_cv);
-          wokenUp = agencyCallbacks[i]->executeByCallbackOrTimeout(interval);
+          gotTimeout = agencyCallbacks[i]->executeByCallbackOrTimeout(interval);
         }
-        if (wokenUp) {
+        if (gotTimeout) {
           ++i;
           // We got woken up by waittime, not by  callback.
           // Let us check if we skipped other callbacks as well
@@ -3256,6 +3257,7 @@ void ClusterInfo::loadServers() {
       decltype(_servers) newServers;
       decltype(_serverAliases) newAliases;
       decltype(_serverAdvertisedEndpoints) newAdvertisedEndpoints;
+      decltype(_serverTimestamps) newTimestamps;
 
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
         velocypack::Slice slice = res.value;
@@ -3278,8 +3280,12 @@ void ClusterInfo::loadServers() {
             }
           } catch (...) {
           }
+          std::string serverTimestamp =
+              arangodb::basics::VelocyPackHelper::getStringValue(
+                  slice, "timestamp", "");
           newServers.emplace(std::make_pair(serverId, server));
           newAdvertisedEndpoints.emplace(std::make_pair(serverId, advertised));
+          newTimestamps.emplace(std::make_pair(serverId, serverTimestamp));
         }
       }
 
@@ -3289,6 +3295,7 @@ void ClusterInfo::loadServers() {
         _servers.swap(newServers);
         _serverAliases.swap(newAliases);
         _serverAdvertisedEndpoints.swap(newAdvertisedEndpoints);
+        _serverTimestamps.swap(newTimestamps);
         _serversProt.doneVersion = storedVersion;
         _serversProt.isValid = true;
       }
@@ -3690,29 +3697,27 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(ShardID
 
   while (true) {
     {
-      {
-        READ_LOCKER(readLocker, _currentProt.lock);
-        // _shardIds is a map-type <ShardId,
-        // std::shared_ptr<std::vector<ServerId>>>
-        auto it = _shardIds.find(shardID);
+      READ_LOCKER(readLocker, _currentProt.lock);
+      // _shardIds is a map-type <ShardId,
+      // std::shared_ptr<std::vector<ServerId>>>
+      auto it = _shardIds.find(shardID);
 
-        if (it != _shardIds.end()) {
-          auto serverList = (*it).second;
-          if (serverList != nullptr && serverList->size() > 0 &&
-              (*serverList)[0].size() > 0 && (*serverList)[0][0] == '_') {
-            // This is a temporary situation in which the leader has already
-            // resigned, let's wait half a second and try again.
-            --tries;
-            LOG_TOPIC("b1dc5", INFO, Logger::CLUSTER)
-                << "getResponsibleServer: found resigned leader,"
-                << "waiting for half a second...";
-          } else {
-            return (*it).second;
-          }
+      if (it != _shardIds.end()) {
+        auto serverList = (*it).second;
+        if (serverList != nullptr && serverList->size() > 0 &&
+            (*serverList)[0].size() > 0 && (*serverList)[0][0] == '_') {
+          // This is a temporary situation in which the leader has already
+          // resigned, let's wait half a second and try again.
+          --tries;
+          LOG_TOPIC("b1dc5", INFO, Logger::CLUSTER)
+              << "getResponsibleServer: found resigned leader,"
+              << "waiting for half a second...";
+        } else {
+          return (*it).second;
         }
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     if (++tries >= 2) {
       break;
@@ -3723,6 +3728,78 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(ShardID
   }
 
   return std::make_shared<std::vector<ServerID>>();
+}
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief atomically find all servers who are responsible for the given 
+/// shards (only the leaders).
+/// will throw an exception if no leader can be found for any
+/// of the shards. will return an empty result if the shards couldn't be
+/// determined after a while - it is the responsibility of the caller to
+/// check for an empty result!
+//////////////////////////////////////////////////////////////////////////////
+
+std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(std::unordered_set<ShardID> const& shardIds) {
+  TRI_ASSERT(!shardIds.empty());
+
+  std::unordered_map<ShardID, ServerID>  result;
+  int tries = 0;
+
+  if (!_currentProt.isValid) {
+    loadCurrent();
+    tries++;
+  }
+
+  while (true) {
+    TRI_ASSERT(result.empty());
+    {
+      READ_LOCKER(readLocker, _currentProt.lock);
+      for (auto const& shardId : shardIds) {
+        auto it = _shardIds.find(shardId);
+
+        if (it == _shardIds.end()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "no servers found for shard " + shardId);
+        }
+
+        auto serverList = (*it).second;
+        if (serverList == nullptr || serverList->empty()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no servers found for shard " + shardId);
+        }
+
+        if ((*serverList)[0].size() > 0 && (*serverList)[0][0] == '_') {
+          // This is a temporary situation in which the leader has already
+          // resigned, let's wait half a second and try again.
+          --tries;
+          break;
+        }
+
+        // put leader into result
+        result.emplace(shardId, (*it).second->front());
+      }
+    }
+
+    if (result.size() == shardIds.size()) {
+      // result is complete
+      break;
+    }
+    
+    // reset everything we found so far for the next round
+    result.clear();
+    
+    if (++tries >= 2 || application_features::ApplicationServer::isStopping()) {
+      break;
+    }
+
+    LOG_TOPIC("31428", INFO, Logger::CLUSTER)
+              << "getResponsibleServers: found resigned leader,"
+              << "waiting for half a second...";
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    // must load collections outside the lock
+    loadCurrent();
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3903,6 +3980,12 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAdvertisedEndpoi
   return ret;
 }
 
+std::unordered_map<ServerID, std::string> ClusterInfo::getServerTimestamps() {
+  READ_LOCKER(readLocker, _serversProt.lock);
+  return _serverTimestamps;
+}
+
+
 arangodb::Result ClusterInfo::getShardServers(ShardID const& shardId,
                                               std::vector<ServerID>& servers) {
   READ_LOCKER(readLocker, _planProt.lock);
@@ -3920,8 +4003,331 @@ arangodb::Result ClusterInfo::getShardServers(ShardID const& shardId,
 
 arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
   AgencyCommResult dump = _agency.dump();
+
+  if (!dump.successful()) {
+    LOG_TOPIC("93c0e", ERR, Logger::CLUSTER)
+      << "failed to acquire agency dump: " << dump.errorMessage();
+    return Result(dump.errorCode(),dump.errorMessage());
+  }
+
   body->add(dump.slice());
   return Result();
+}
+
+
+arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
+
+  AgencyCommResult dump = _agency.getValues("Plan");
+
+  if (!dump.successful()) {
+    LOG_TOPIC("ce937", ERR, Logger::CLUSTER)
+      << "failed to acquire agency dump: " << dump.errorMessage();
+    return Result(dump.errorCode(),dump.errorMessage());
+  }
+
+  body->add(dump.slice());
+  return Result();
+
+}
+
+
+arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
+
+  // Apply only Collections and DBServers
+  AgencyWriteTransaction planTransaction(
+    std::vector<AgencyOperation>
+    {AgencyOperation(
+        "Plan/Collections", AgencyValueOperationType::SET,
+        plan.get(std::vector<std::string>{"arango", "Plan", "Collections"})),
+     AgencyOperation(
+       "Plan/Databases", AgencyValueOperationType::SET,
+       plan.get(std::vector<std::string>{"arango", "Plan", "Databases"})),
+     AgencyOperation(
+       "Plan/Views", AgencyValueOperationType::SET,
+       plan.get(std::vector<std::string>{"arango", "Plan", "Views"})),
+     AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP),
+     AgencyOperation("Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP)});
+
+  AgencyCommResult r = _agency.sendTransactionWithFailover(planTransaction);
+  if (!r.successful()) {
+    arangodb::Result result (
+      TRI_ERROR_HOT_BACKUP_INTERNAL,
+      std::string("Error reporting to agency: _statusCode: ") + std::to_string(r.errorCode()));
+    return result;
+  }
+
+  return arangodb::Result();
+
+}
+
+
+std::string const backupKey = "/arango/Target/HotBackup/Create/";
+std::string const maintenanceKey = "/arango/Supervision/Maintenance";
+std::string const toDoKey = "/arango/Target/ToDo";
+std::string const pendingKey = "/arango/Target/Pending";
+std::string const writeURL = "_api/agency/write";
+std::vector<std::string> modepv = {"arango","Supervision","State","Mode"};
+
+
+arangodb::Result ClusterInfo::agencyHotBackupLock(
+  std::string const& backupId, double const& timeout, bool& supervisionOff) {
+
+  using namespace std::chrono;
+
+  auto const endTime =
+    steady_clock::now() + milliseconds(static_cast<uint64_t>(1.0e3*timeout));
+  supervisionOff = false;
+
+  LOG_TOPIC("e74e5", DEBUG, Logger::BACKUP)
+    << "initiating agency lock for hot backup " << backupId;
+
+  VPackBuilder builder;
+  {
+    VPackArrayBuilder trxs(&builder);
+    {
+      VPackArrayBuilder trx (&builder);
+
+      // Operations
+      {
+        VPackObjectBuilder o(&builder);
+        builder.add(backupKey + backupId, VPackValue(0)); // Hot backup key
+        builder.add(maintenanceKey, VPackValue("on"));    // Turn off supervision
+      }
+
+      //Preconditions
+      {
+        VPackObjectBuilder precs(&builder);
+        builder.add(VPackValue(backupKey)); // Backup key empty
+        {
+          VPackObjectBuilder oe(&builder);
+          builder.add("oldEmpty", VPackValue(true));
+        }
+        builder.add(VPackValue(pendingKey)); // No jobs pending
+        {
+          VPackObjectBuilder oe(&builder);
+          builder.add("old", VPackSlice::emptyObjectSlice());
+        }
+        builder.add(VPackValue(toDoKey));  // No jobs to do
+        {
+          VPackObjectBuilder oe(&builder);
+          builder.add("old", VPackSlice::emptyObjectSlice());
+        }
+        builder.add(VPackValue(maintenanceKey)); // Supervision on
+        {
+          VPackObjectBuilder old(&builder);
+          builder.add("oldEmpty", VPackValue(true));
+        }
+      }
+    }
+
+    {
+      VPackArrayBuilder trx (&builder);
+
+      // Operations
+      {
+        VPackObjectBuilder o(&builder);
+        builder.add(backupKey + backupId, VPackValue(0)); // Hot backup key
+        builder.add(maintenanceKey, VPackValue("on"));    // Turn off maintenance
+      }
+
+      // Prevonditions
+      {
+        VPackObjectBuilder precs(&builder);
+        builder.add(VPackValue(backupKey));               // Backup key empty
+        {
+          VPackObjectBuilder oe(&builder);
+          builder.add("oldEmpty", VPackValue(true));
+        }
+        builder.add(VPackValue(pendingKey));              // No jobs pending
+        {
+          VPackObjectBuilder oe(&builder);
+          builder.add("old", VPackSlice::emptyObjectSlice());
+        }
+        builder.add(VPackValue(toDoKey));                 // No jobs to do
+        {
+          VPackObjectBuilder oe(&builder);
+          builder.add("old", VPackSlice::emptyObjectSlice());
+        }
+        builder.add(VPackValue(maintenanceKey));          // Supervision off
+        {
+          VPackObjectBuilder old(&builder);
+          builder.add("old", VPackValue("on"));
+        }
+      }
+    }
+  }
+
+  // Try to establish hot backup lock in agency.
+  auto result =
+    _agency.sendWithFailover(
+      arangodb::rest::RequestType::POST, timeout, writeURL, builder.slice());
+
+  LOG_TOPIC("53a93", DEBUG, Logger::BACKUP)
+    << "agency lock for hot backup " << backupId << " scheduled with " << builder.toJson();
+
+  // *** ATTENTION ***: Result will always be 412.
+  // So we're going to fail, if we have an error OTHER THAN 412:
+  if (!result.successful() &&
+      result.httpCode() != (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+    return arangodb::Result(
+      TRI_ERROR_HOT_BACKUP_INTERNAL, "failed to acquire backup lock in agency" );
+  }
+
+  auto rv = VPackParser::fromJson(result.bodyRef());
+
+  LOG_TOPIC("a94d5", DEBUG, Logger::BACKUP)
+    << "agency lock response for backup id " << backupId << ": " << rv->toJson();
+
+  if (!rv->slice().isObject() || !rv->slice().hasKey("results") ||
+      !rv->slice().get("results").isArray() ||
+      rv->slice().get("results").length() != 2) {
+    return arangodb::Result(
+      TRI_ERROR_HOT_BACKUP_INTERNAL, "invalid agency result while acuiring backup lock" );
+  }
+  auto ar = rv->slice().get("results");
+
+  uint64_t first = ar[0].getNumber<uint64_t>();
+  uint64_t second = ar[1].getNumber<uint64_t>();
+
+  if (first == 0 && second == 0) { // tough luck
+    return arangodb::Result(
+      TRI_ERROR_HOT_BACKUP_INTERNAL,
+      "preconditions failed while trying to acquire backup lock in the agency");
+  }
+
+  if (first > 0) {          // Supervision was on
+    LOG_TOPIC("b6c98", DEBUG, Logger::BACKUP) << "agency lock found supervision on before";
+    supervisionOff = false;
+  } else {
+    LOG_TOPIC("bbb55", DEBUG, Logger::BACKUP) << "agency lock found supervision off before";
+    supervisionOff = true;
+  }
+
+  double wait = 0.1;
+  while (!application_features::ApplicationServer::isStopping() &&
+         std::chrono::steady_clock::now() < endTime) {
+
+    result = _agency.getValues("Supervision/State/Mode");
+    if (result.successful()) {
+      if (!result.slice().isArray() || result.slice().length() != 1) {
+        return arangodb::Result(
+          TRI_ERROR_HOT_BACKUP_INTERNAL,
+          std::string("invalid JSON from agency, when acquiring supervision mode: ") +
+          result.slice().toJson());
+      }
+      if (result.slice()[0].hasKey(modepv) && result.slice()[0].get(modepv).isString()) {
+        if (result.slice()[0].get(modepv).isEqualString("Maintenance")) {
+          LOG_TOPIC("76a2c", DEBUG, Logger::BACKUP) << "agency hot backup lock acquired";
+          return arangodb::Result();
+        }
+      }
+    }
+
+    LOG_TOPIC("ede54", DEBUG, Logger::BACKUP) << "agency hot backup lock waiting: "
+                                        << result.slice().toJson();
+
+    if (wait < 2.0) {
+      wait *= 1.1;
+    }
+
+    std::this_thread::sleep_for(std::chrono::duration<double>(wait));
+
+  }
+
+  return arangodb::Result(
+    TRI_ERROR_HOT_BACKUP_INTERNAL,
+    "timeout waiting for maintenance mode to be activated in agency");
+
+}
+
+
+arangodb::Result ClusterInfo::agencyHotBackupUnlock(
+  std::string const& backupId, double const& timeout, const bool& supervisionOff) {
+
+  using namespace std::chrono;
+
+  auto const endTime =
+    steady_clock::now() + milliseconds(static_cast<uint64_t>(1.0e3*timeout));
+
+  LOG_TOPIC("6ae41", DEBUG, Logger::BACKUP) <<
+    "unlocking backup lock for backup " + backupId + "  in agency";
+
+  VPackBuilder builder;
+  {
+    VPackArrayBuilder trxs(&builder);
+    {
+      VPackArrayBuilder trx (&builder);
+      {
+        VPackObjectBuilder o(&builder);
+        builder.add(VPackValue(backupKey)); // Remove backup key
+        {
+          VPackObjectBuilder oo(&builder);
+          builder.add("op", VPackValue("delete"));
+        }
+        if (!supervisionOff) {  // Turn supervision on, if it was on before
+          builder.add(VPackValue(maintenanceKey));
+          VPackObjectBuilder d(&builder);
+          builder.add("op", VPackValue("delete"));
+        }
+      }
+    }
+  }
+
+  // Try to establish hot backup lock in agency. Result will always be 412.
+  // Question is: How 412?
+  auto result =
+    _agency.sendWithFailover(
+      arangodb::rest::RequestType::POST, timeout, writeURL, builder.slice());
+  if (!result.successful() &&
+      result.httpCode() != (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+    return arangodb::Result(
+      TRI_ERROR_HOT_BACKUP_INTERNAL, "failed to release backup lock in agency" );
+  }
+
+  auto rv = VPackParser::fromJson(result.bodyRef());
+
+  if (!rv->slice().isObject() || !rv->slice().hasKey("results") ||
+      !rv->slice().get("results").isArray()) {
+    return arangodb::Result(
+      TRI_ERROR_HOT_BACKUP_INTERNAL, "invalid agency result while releasing backup lock" );
+  }
+
+  auto ar = rv->slice().get("results");
+  if (!ar[0].isNumber()) {
+    return arangodb::Result(
+      TRI_ERROR_HOT_BACKUP_INTERNAL, "invalid agency result while releasing backup lock" );
+  }
+
+  double wait = 0.1;
+  while (!application_features::ApplicationServer::isStopping() &&
+         std::chrono::steady_clock::now() < endTime) {
+
+    result = _agency.getValues("/arango/Supervision/State/Mode");
+    if (result.successful()) {
+      if (!result.slice().isArray() || result.slice().length() != 1 ||
+          !result.slice()[0].hasKey(modepv) || !result.slice()[0].get(modepv).isString()) {
+        return arangodb::Result(
+          TRI_ERROR_HOT_BACKUP_INTERNAL,
+          std::string("invalid JSON from agency, when desctivating supervision mode:") + result.slice().toJson());
+      }
+
+      if (result.slice()[0].get(modepv).isEqualString("Normal")) {
+        return arangodb::Result();
+      }
+    }
+
+    if (wait < 2.0) {
+      wait *= 1.1;
+    }
+
+    std::this_thread::sleep_for(std::chrono::duration<double>(wait));
+
+  }
+
+  return arangodb::Result(
+    TRI_ERROR_HOT_BACKUP_INTERNAL,
+    "timeout waiting for maintenance mode to be deactivated in agency");
+
 }
 
 // -----------------------------------------------------------------------------

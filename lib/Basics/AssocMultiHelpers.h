@@ -32,6 +32,7 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 namespace basics {

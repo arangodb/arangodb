@@ -28,6 +28,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/voc-errors.h"
 #include "Endpoint/Endpoint.h"
 #include "GeneralRequest.h"
 #include "Logger/Logger.h"

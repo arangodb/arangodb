@@ -24,12 +24,14 @@
 #ifndef ARANGOD_VOC_BASE_VOC_TYPES_H
 #define ARANGOD_VOC_BASE_VOC_TYPES_H 1
 
-#include "Basics/Common.h"
+#include <cstdint>
+#include <cstdlib>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
-
-#include <unordered_set>
 
 /// @brief tick type (56bit)
 typedef uint64_t TRI_voc_tick_t;

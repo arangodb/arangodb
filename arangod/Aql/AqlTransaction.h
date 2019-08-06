@@ -35,6 +35,10 @@
 #include <map>
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 namespace aql {
 
 class AqlTransaction : public transaction::Methods {

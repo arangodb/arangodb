@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
+#include "Basics/debugging.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb::options;

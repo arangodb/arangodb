@@ -24,6 +24,7 @@
 #include "MMFilesWalLogfile.h"
 #include "Basics/FileUtils.h"
 #include "Basics/encoding.h"
+#include "Basics/error.h"
 #include "Basics/files.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 
