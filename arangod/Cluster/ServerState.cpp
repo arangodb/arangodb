@@ -728,7 +728,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
     auto result = readRebootIdFromAgency(comm);
 
     if (result) {
-      setRebootId(result);
+      setRebootId(result.get());
       return true;
     }
     std::this_thread::sleep_for(std::chrono::seconds(1));
