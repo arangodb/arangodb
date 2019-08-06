@@ -361,6 +361,12 @@ class AgencyCommResult {
                    std::string const& transactionId = std::string());
 
   ~AgencyCommResult() = default;
+  
+  AgencyCommResult(AgencyCommResult const& other) = delete;
+  AgencyCommResult& operator=(AgencyCommResult const& other) = delete;
+
+  AgencyCommResult(AgencyCommResult&& other) noexcept;
+  AgencyCommResult& operator=(AgencyCommResult&& other) noexcept;
 
  public:
   void set(int code, std::string const& message);
