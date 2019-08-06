@@ -36,6 +36,7 @@
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/ResignShardLeadership.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Replication/DatabaseInitialSyncer.h"
@@ -105,6 +106,40 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force
   }
 #endif
   return false;
+}
+
+static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& col,
+                                    std::string const& claimLeaderId) {
+
+  std::vector<std::string> agencyPath = {
+    "Plan",
+    "Collections",
+    col->vocbase().name(),
+    std::to_string(col->planId()),
+    "shards",
+    col->name()
+  };
+
+  std::string shardAgencyPathString = StringUtils::join(agencyPath, '/');
+
+  AgencyComm ac;
+  AgencyCommResult res = ac.getValues(shardAgencyPathString);
+
+  if (res.successful()) {
+    // This is bullshit. Why does the *fancy* AgencyComm Manager
+    // prepend the agency url with `arango` but in the end returns an object
+    // that is prepended by `arango`! WTF!?
+    VPackSlice plan = res.slice().at(0).get(AgencyCommManager::path()).get(agencyPath);
+    TRI_ASSERT(plan.isArray() && plan.length() > 0);
+
+    VPackSlice leaderSlice = plan.at(0);
+    TRI_ASSERT(leaderSlice.isString());
+    if (leaderSlice.isEqualString(claimLeaderId)) {
+      return Result{};
+    }
+  }
+
+  return Result{TRI_ERROR_FORBIDDEN};
 }
 
 static Result restoreDataParser(char const* ptr, char const* pos,
@@ -466,6 +501,15 @@ RestStatus RestReplicationHandler::execute() {
       } else {
         handleCommandRemoveFollower();
       }
+    } else if (command == "set-the-leader") {
+      if (type != rest::RequestType::PUT) {
+        goto BAD_CALL;
+      }
+      if (!ServerState::instance()->isDBServer()) {
+        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
+      } else {
+        handleCommandSetTheLeader();
+      }
     } else if (command == "holdReadLockCollection") {
       if (!ServerState::instance()->isDBServer()) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
@@ -499,6 +543,69 @@ BAD_CALL:
   }
 
   return RestStatus::DONE;
+}
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief update the leader of a shard
+  //////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandSetTheLeader() {
+  TRI_ASSERT(ServerState::instance()->isDBServer());
+
+  bool success = false;
+  VPackSlice const body = this->parseVPackBody(success);
+  if (!success) {
+    // error already created
+    return;
+  }
+  if (!body.isObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body needs to be an object with attributes 'leaderId' "
+                  "and 'shard'");
+    return;
+  }
+  VPackSlice const leaderIdSlice = body.get("leaderId");
+  VPackSlice const oldLeaderIdSlice = body.get("oldLeaderId");
+  VPackSlice const shard = body.get("shard");
+  if (!leaderIdSlice.isString() || !shard.isString() || !oldLeaderIdSlice.isString()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "'leaderId' and 'shard' attributes must be strings");
+    return;
+  }
+
+  std::string leaderId = leaderIdSlice.copyString();
+  auto col = _vocbase.lookupCollection(shard.copyString());
+
+  if (col == nullptr) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                  "did not find collection");
+    return;
+  }
+
+  Result res = checkPlanLeaderDirect(col, leaderId);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  std::string currentLeader = col->followers()->getLeader();
+  if (currentLeader == arangodb::maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
+    // We have resigned, check that we are the old leader
+    currentLeader = ServerState::instance()->getId();
+  }
+
+  if (!oldLeaderIdSlice.isEqualString(currentLeader)) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN, "old leader not as expected");
+    return;
+  }
+
+  col->followers()->setTheLeader(leaderId);
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bb(&b);
+    b.add(StaticStrings::Error, VPackValue(false));
+  }
+
+  generateResult(rest::ResponseCode::OK, b.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1105,7 +1212,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // when in the community version, we need to turn off specific attributes
   // because they are only supported in enterprise mode
-  
+
   // watch out for "isSmart" -> we need to set this to false in the community version
   VPackSlice s = parameters.get(StaticStrings::GraphIsSmart);
   if (s.isBoolean() && s.getBoolean()) {
@@ -1113,7 +1220,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     toMerge.add(StaticStrings::GraphIsSmart, VPackValue(false));
     changes.push_back("changed 'isSmart' attribute value to false");
   }
-  
+
   // "smartGraphAttribute" needs to be set to be removed too
   s = parameters.get(StaticStrings::GraphSmartGraphAttribute);
   if (s.isString() && !s.copyString().empty()) {
@@ -1121,7 +1228,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     toMerge.add(StaticStrings::GraphSmartGraphAttribute, VPackSlice::nullSlice());
     changes.push_back("removed 'smartGraphAttribute' attribute value");
   }
-  
+
   // same for "smartJoinAttribute"
   s = parameters.get(StaticStrings::SmartJoinAttribute);
   if (s.isString() && !s.copyString().empty()) {
@@ -1129,7 +1236,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     toMerge.add(StaticStrings::SmartJoinAttribute, VPackSlice::nullSlice());
     changes.push_back("removed 'smartJoinAttribute' attribute value");
   }
-  
+
   // finally rewrite all enterprise sharding strategies to a simple hash-based strategy
   s = parameters.get("shardingStrategy");
   if (s.isString() && s.copyString().find("enterprise") != std::string::npos) {
@@ -1142,7 +1249,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   if (s.isString() && s.copyString() == "satellite") {
     // set "satellite" replicationFactor to the default replication factor
     ClusterFeature* cl = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
-    
+
     uint32_t replicationFactor = cl->systemReplicationFactor();
     toMerge.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
     changes.push_back(std::string("changed 'replicationFactor' attribute value to ") + std::to_string(replicationFactor));;
