@@ -430,7 +430,7 @@ void ClusterInfo::loadClusterId() {
 /// @brief (re-)load the information about our plan
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
-//
+
 static std::string const prefixPlan = "Plan";
 
 void ClusterInfo::loadPlan() {
@@ -502,10 +502,8 @@ void ClusterInfo::loadPlan() {
   auto slice = resultSlice[0].get(  // get slice
       std::vector<std::string>({AgencyCommManager::path(), "Plan"})  // args
   );
-  auto planBuilder = std::make_shared<velocypack::Builder>();
 
-  planBuilder->add(slice);
-
+  auto planBuilder = std::make_shared<velocypack::Builder>(slice);
   auto planSlice = planBuilder->slice();
 
   if (!planSlice.isObject()) {
@@ -577,7 +575,7 @@ void ClusterInfo::loadPlan() {
         throw;
       }
 
-      newDatabases.emplace(name, database.value);
+      newDatabases.emplace(std::move(name), database.value);
     }
   }
 
@@ -677,7 +675,7 @@ void ClusterInfo::loadPlan() {
           LOG_TOPIC("ec9e6", ERR, Logger::AGENCY)
               << "Failed to load information for view '" << viewId
               << "': " << ex.what() << ". invalid information in Plan. The "
-              << "view  will be ignored for now and the invalid "
+              << "view will be ignored for now and the invalid "
               << "information will be repaired. VelocyPack: " << viewSlice.toJson();
 
           TRI_ASSERT(false);
@@ -873,14 +871,11 @@ void ClusterInfo::loadPlan() {
             databaseCollections.emplace(collectionId, newCollection);
           }
 
-          auto shardKeys = std::make_shared<std::vector<std::string>>(  // shard keys
-              newCollection->shardKeys()                                // args
-          );
-
-          newShardKeys.emplace(collectionId, shardKeys);
+          newShardKeys.emplace(collectionId, std::make_shared<std::vector<std::string>>(newCollection->shardKeys()));
 
           auto shardIDs = newCollection->shardIds();
           auto shards = std::make_shared<std::vector<std::string>>();
+          shards->reserve(shardIDs->size());
 
           for (auto const& p : *shardIDs) {
             shards->push_back(p.first);
@@ -896,7 +891,7 @@ void ClusterInfo::loadPlan() {
                        std::strtol(b.c_str() + 1, nullptr, 10);
               }  // comparator
           );
-          newShards.emplace(collectionId, shards);
+          newShards.emplace(collectionId, std::move(shards));
         } catch (std::exception const& ex) {
           // The plan contains invalid collection information.
           // This should not happen in healthy situations.
@@ -926,7 +921,7 @@ void ClusterInfo::loadPlan() {
         }
       }
 
-      newCollections.emplace(std::make_pair(databaseName, databaseCollections));
+      newCollections.emplace(std::move(databaseName), std::move(databaseCollections));
     }
     LOG_TOPIC("12dfa", DEBUG, Logger::CLUSTER)
         << "loadPlan done: wantedVersion=" << storedVersion
@@ -935,7 +930,7 @@ void ClusterInfo::loadPlan() {
 
   WRITE_LOCKER(writeLocker, _planProt.lock);
 
-  _plan = planBuilder;
+  _plan = std::move(planBuilder);
   _planVersion = newPlanVersion;
 
   if (swapDatabases) {
