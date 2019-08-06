@@ -213,7 +213,7 @@ function main(argv) {
       // let port = findFreePort();
       options.storageEngine = engine[0];
       options.cluster = engine[2];
-      let testname = engine[0] + "-" + "clusterodernicht";
+      let testname = engine[0] + "-" + "clusterOrNot";
       print(options)
       instanceInfo = pu.startInstance(options.protocol, options, {}, testname);
       print(instanceInfo)
