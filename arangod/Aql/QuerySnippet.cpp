@@ -60,7 +60,7 @@ void QuerySnippet::addNode(ExecutionNode* node) {
       // Satellites can only be used on ReadNodes
       bool isSatellite = col->isSatellite() &&
                          (node->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
-                          ExecutionNode::INDEX);
+                          node->getType() == ExecutionNode::INDEX);
       if (collectionAccessingNode->isRestricted()) {
         std::string const& onlyShard = collectionAccessingNode->restrictedShard();
         bool found =
@@ -243,6 +243,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
       TRI_ASSERT(_globalScatter != nullptr);
       internalScatter =
           ExecutionNode::castTo<ScatterNode*>(_globalScatter->clone(plan, false, false));
+      internalScatter->clearClients();
       internalScatter->addDependency(lastNode);
       // Let the local Scatter node distribute data by SHARD
       internalScatter->setScatterType(ScatterNode::ScatterType::SHARD);

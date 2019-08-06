@@ -168,7 +168,6 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(MapRemoteToSnippet& 
     // add the transaction ID header
     std::unordered_map<std::string, std::string> headers;
     ClusterTrxMethods::addAQLTransactionHeader(*trx, server, headers);
-    LOG_DEVEL << "Sending NEW " << infoBuilder.toJson();
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
     auto res = cc->syncRequest(coordTransactionID, serverDest, RequestType::POST,
                                url, infoBuilder.toJson(), headers, SETUP_TIMEOUT);

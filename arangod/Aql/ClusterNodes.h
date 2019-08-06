@@ -165,6 +165,9 @@ class ScatterNode : public ExecutionNode {
     _clients.emplace_back(clientId);
   }
 
+  /// @brief drop the current clients.
+  void clearClients() { _clients.clear(); }
+
   std::vector<std::string> const& clients() const noexcept { return _clients; }
 
   /// @brief get the scatter type, this defines the variation on how we
