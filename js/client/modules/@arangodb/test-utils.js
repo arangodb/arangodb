@@ -230,6 +230,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           continue;
         } else if (reply.hasOwnProperty('status')) {
           results[te] = reply;
+          results[te]['processStats'] = pu.getDeltaProcessStats(instanceInfo);
 
           if (results[te].status === false) {
             options.cleanup = false;

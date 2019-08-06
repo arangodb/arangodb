@@ -563,6 +563,70 @@ function killWithCoreDump (options, instanceInfo) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief aggregates information from /proc about the SUT
+// //////////////////////////////////////////////////////////////////////////////
+
+function getProcessStats(pid) {
+  let pidStr = "" + pid
+  let stat = fs.read(fs.join('/', 'proc', pidStr, 'stat'));
+  let vals = stat.split(" ");
+  // https://stackoverflow.com/questions/16726779/how-do-i-get-the-total-cpu-usage-of-an-application-from-proc-pid-stat/16731413
+  let processStats = {
+    'userTime': vals[14],
+    'systemTime': vals[15],
+    'virtual': vals[23],
+    'rss': vals[24]
+  };
+  
+  let ioraw = fs.readBuffer(fs.join('/', 'proc', pidStr, 'io'));
+  let lineStart = 0;
+  let maxBuffer = ioraw.length;
+  for (let j = 0; j < maxBuffer; j++) {
+    if (ioraw[j] === 10) { // \n
+      const line = ioraw.asciiSlice(lineStart, j);
+      lineStart = j + 1;
+      let x = line.split(":");
+      processStats[x[0]] = parseInt(x[1]);
+    }
+  }
+  return processStats;
+}
+
+function initProcessStats(instanceInfo) {
+  instanceInfo.arangods.forEach((arangod) => {
+    arangod.stats = getProcessStats(arangod.pid);
+  });
+}
+
+function getDeltaProcessStats(instanceInfo) {
+  let deltaStats = {};
+  instanceInfo.arangods.forEach((arangod) => {
+    let newStats = getProcessStats(arangod.pid);
+    let myDeltaStats = {};
+    for (let key in arangod.stats) {
+      myDeltaStats[key] = newStats[key] - arangod.stats[key];
+    }
+    deltaStats[arangod.pid + '_' + arangod.role] = myDeltaStats;
+    arangod.stats = newStats;
+  });
+  return deltaStats;
+}
+
+function sumarizeStats(deltaStats) {
+  let sumStats = {};
+  for (let instance in deltaStats) {
+    for (let key in deltaStats[instance]) {
+      if (!sumStats.hasOwnProperty(key)) {
+        sumStats[key] = 0;
+      }
+      sumStats[key] += deltaStats[instance][key];
+    }
+  }
+  return sumStats;
+}
+
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -1243,7 +1307,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
       killExternal(instanceInfo.clusterHealthMonitor.pid);
     }
     catch (x) {
-      print(x)
+      print(x);
     }
   }
   
@@ -1685,6 +1749,7 @@ function launchFinalize(options, instanceInfo, startTime) {
   }
   print(processInfo.join('\n') + '\n');
   internal.sleep(options.sleepBeforeStart);
+  initProcessStats(instanceInfo);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1995,6 +2060,8 @@ exports.run = {
 };
 
 exports.shutdownInstance = shutdownInstance;
+exports.getDeltaProcessStats = getDeltaProcessStats;
+exports.sumarizeStats = sumarizeStats;
 exports.startArango = startArango;
 exports.startInstance = startInstance;
 exports.reStartInstance = reStartInstance;

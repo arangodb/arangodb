@@ -270,7 +270,8 @@ const internalMembers = [
   'crashed',
   'ok',
   'message',
-  'suiteName'
+  'suiteName',
+  'processStats'
 ];
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -284,7 +285,24 @@ function testCaseMessage (test) {
     return test.message;
   }
 }
+function fancyTimeFormat(time)
+{   
+    // Hours, minutes and seconds
+    var hrs = ~~(time / 3600);
+    var mins = ~~((time % 3600) / 60);
+    var secs = ~~time % 60;
 
+    // Output like "1:01" or "4:03:59" or "123:03:59"
+    var ret = "";
+
+    if (hrs > 0) {
+        ret += "" + hrs + ":" + (mins < 10 ? "0" : "");
+    }
+
+    ret += "" + mins + ":" + (secs < 10 ? "0" : "");
+    ret += "" + secs;
+    return ret;
+}
 function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
   function skipInternalMember (r, a) {
     return !r.hasOwnProperty(a) || internalMembers.indexOf(a) !== -1;
@@ -300,6 +318,7 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
   let failedMessages = '';
   let SuccessMessages = '';
   let bucketName = "";
+  let sortedByDuration = [];
   if (options.testBuckets) {
     let n = options.testBuckets.split('/');
     bucketName = "_" + n[1];
@@ -323,6 +342,15 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
         }
 
         let test = testrun[testName];
+
+        if (test.hasOwnProperty('duration') && test.duration !== 0) {
+          sortedByDuration.push({ testName: testName,
+                                  duration: test.duration,
+                                  test: test,
+                                  count: Object.keys(test).length});
+        } else {
+          print(RED + "This test doesn't have a duration: " + testName + "\n" + JSON.stringify(test) + RESET);
+        }        
 
         if (test.status) {
           successCases[testName] = test;
@@ -419,6 +447,47 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
     }
     print(SuccessMessages);
     print(failedMessages);
+
+    sortedByDuration.sort(function(a, b) {
+      return a.duration - b.duration;
+    });
+    for (let i = sortedByDuration.length - 1; (i >= 0) && (i > sortedByDuration.length - 11); i --) {
+      print(" - " + fancyTimeFormat(sortedByDuration[i].duration / 1000) + " - " +
+            sortedByDuration[i].count + " - " +
+            sortedByDuration[i].testName);
+      let testCases = [];
+      let thisTestSuite = sortedByDuration[i];
+      print(pu.sumarizeStats(thisTestSuite.test['processStats']));
+      for (let testName in thisTestSuite.test) {
+        if (skipInternalMember(thisTestSuite.test, testName)) {
+          continue;
+        }
+        let test = thisTestSuite.test[testName];
+        let duration = 0;
+        if (test.hasOwnProperty('duration')) {
+          duration += test.duration;
+        }
+        if (test.hasOwnProperty('setUpDuration')) {
+          duration += test.setUpDuration;
+        }
+        if (test.hasOwnProperty('tearDownDuration')) {
+          duration += test.tearDownDuration;
+        }
+        testCases.push({
+          testName: testName,
+          duration: duration
+        });
+      }
+      testCases.sort(function(a, b) {
+        return a.duration - b.duration;
+      });
+
+      let testSummary = "    ";
+      for (let j = testCases.length - 1; (j >= 0) && (j > testCases.length - 11); j --) {
+        testSummary += fancyTimeFormat(testCases[j].duration / 1000) + " - " + testCases[j].testName + " ";
+      }
+      print(testSummary);
+    }
     /* jshint forin: true */
 
     let color = (!res.crashed && res.status === true) ? GREEN : RED;
