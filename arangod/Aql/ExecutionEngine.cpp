@@ -688,9 +688,12 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegist
 
   std::unique_ptr<ExecutionEngine> engine;
   ExecutionBlock* root = nullptr;
-
+#ifdef USE_ENTERPRISE
   bool const pushToSingleServer = plan->hasAppliedRule(
       static_cast<int>(OptimizerRule::RuleLevel::clusterOneShardRule));
+#else
+  bool const pushToSingleServer = false;
+#endif
 
   if (arangodb::ServerState::isCoordinator(role)) {
     bool const hundTest =
