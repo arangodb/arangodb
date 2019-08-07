@@ -109,10 +109,6 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
   TRI_ASSERT(!_nodes.empty());
   TRI_ASSERT(!_expansions.empty());
   size_t numberOfShardsToPermutate = 0;
-  // The Key is required to build up the queryId mapping later
-  infoBuilder.add(VPackValue(
-      arangodb::basics::StringUtils::itoa(_idOfSinkRemoteNode) + ":" + server));
-
   std::unordered_map<ExecutionNode*, std::set<ShardID>> localExpansions;
   for (auto const& exp : _expansions) {
     std::set<ShardID> myExp;
@@ -181,7 +177,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
       TRI_ASSERT(myExp.size() == 1);
     }
   }
-  // TODO toVPack all nodes for this specific server
+
   // We clone every Node* and maintain a list of ReportingGroups for profiler
   ExecutionNode* lastNode = _nodes.back();
   bool lastIsRemote = lastNode->getType() == ExecutionNode::REMOTE;
@@ -232,6 +228,9 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
 #endif
     lastNode->removeDependencies();
   }
+  // The Key is required to build up the queryId mapping later
+  infoBuilder.add(VPackValue(
+      arangodb::basics::StringUtils::itoa(_idOfSinkRemoteNode) + ":" + server));
 
   if (!localExpansions.empty()) {
     // We have Expansions to permutate
