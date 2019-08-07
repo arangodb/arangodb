@@ -203,7 +203,14 @@ ArangoGlobalContext::~ArangoGlobalContext() {
 #endif
 
   TRIAGENS_REST_SHUTDOWN;
+#if (_MSC_VER >= 1)
+#pragma warning(push)
+#pragma warning(disable : 4722)  // destructor never returns, potential memory leak
+#endif
   ADB_WindowsExitFunction(_ret, nullptr);
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
 }
 
 int ArangoGlobalContext::exit(int ret) {
