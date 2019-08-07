@@ -261,7 +261,7 @@ void ClusterInfo::triggerBackgroundGetIds() {
       uint64_t result;
       try {
         result = _agency.uniqid(MinIdsPerBatch, 0.0);
-      } catch (std::exception const& e) {
+      } catch (std::exception const&) {
         return ;
       }
 
