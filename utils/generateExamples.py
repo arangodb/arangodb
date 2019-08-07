@@ -130,11 +130,13 @@ OPTION_FILTER = 3
 OPTION_OUTPUT_FILE = 4
 OPTION_OUTPUT_ENGINE = 5
 OPTION_OUTPUT_FILTER_NONMATCHING = 6
+OPTION_OUTPUT_FILTER_CLUSTER = 7
 
 engines = ["mmfiles", "rocksdb"]
 engine = "mmfiles"
 otherEngine = "mmfiles"
 storageEngineAgnostic = True
+cluster = False
 escapeBS = re.compile("\\\\")
 doubleBS = "\\\\\\\\"
 
@@ -177,7 +179,7 @@ def matchStartLine(line, filename):
         if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
             print >> sys.stderr, "Arangosh: filtering out testcase '%s'" %name
             filterTestList.append(name)
-            return("", STATE_BEGIN);
+            return("", STATE_BEGIN)
 
         return (name, STATE_ARANGOSH_OUTPUT)
 
@@ -195,7 +197,7 @@ def matchStartLine(line, filename):
         if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
             filterTestList.append(name)
             print >> sys.stderr, "CuRL: filtering out testcase '%s'" %name
-            return("", STATE_BEGIN);
+            return("", STATE_BEGIN)
 
         ArangoshFiles[name] = True
         return (name, STATE_ARANGOSH_RUN)
@@ -213,7 +215,7 @@ def matchStartLine(line, filename):
         if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
             print >> sys.stderr, "AQL: filtering out testcase '%s'" %name
             filterTestList.append(name)
-            return("", STATE_BEGIN);
+            return("", STATE_BEGIN)
 
         AQLFiles[name] = True
         return (name, STATE_AQL)
@@ -273,7 +275,7 @@ def analyzeFile(f, filename):
     partialLineStart = 0
     exampleStartLine = 0
     state = STATE_BEGIN
-    lineNo = 0;
+    lineNo = 0
 
     for line in f:
         lineNo += 1
@@ -293,12 +295,12 @@ def analyzeFile(f, filename):
                 RunTests[name][TESTLINES] = []
 
             if state == STATE_ARANGOSH_RUN:
-                RunTests[name][LINE_NO] = lineNo;
-                RunTests[name][STRING] = "";
+                RunTests[name][LINE_NO] = lineNo
+                RunTests[name][STRING] = ""
 
             if state == STATE_AQL:
-                RunTests[name][LINE_NO] = lineNo;
-                RunTests[name][AQL] = "";
+                RunTests[name][LINE_NO] = lineNo
+                RunTests[name][AQL] = ""
             continue
 
         if state == STATE_AQL:
@@ -332,9 +334,9 @@ def analyzeFile(f, filename):
             state = STATE_BEGIN
             continue
 
-        line = line.lstrip('/');
+        line = line.lstrip('/')
         if state != STATE_AQL:
-            line = line.lstrip(' ');
+            line = line.lstrip(' ')
         if state == STATE_ARANGOSH_OUTPUT:
             line = line.replace("\\", "\\\\").replace("'", "\\'")
         #print line
@@ -607,7 +609,7 @@ if (allErrors.length > 0) {
 ################################################################################
 
 def loopDirectories():
-    global ArangoshSetup, OutputDir, FilterForTestcase, storageEngineAgnostic, engine, otherEngine
+    global ArangoshSetup, OutputDir, FilterForTestcase, storageEngineAgnostic, cluster, engine, otherEngine
     argv = sys.argv
     argv.pop(0)
     filenames = []
@@ -638,6 +640,10 @@ def loopDirectories():
             fstate = OPTION_OUTPUT_FILTER_NONMATCHING
             continue
 
+        if filename == "--cluster":
+            fstate = OPTION_OUTPUT_FILTER_CLUSTER
+            continue
+
         if fstate == OPTION_NORMAL:
             if os.path.isdir(filename):
                 for root, dirs, files in os.walk(filename):
@@ -650,7 +656,7 @@ def loopDirectories():
         elif fstate == OPTION_FILTER:
             fstate = OPTION_NORMAL
             if (len(filename) > 0):
-                FilterForTestcase = re.compile(filename);
+                FilterForTestcase = re.compile(filename)
 
         elif fstate == OPTION_ARANGOSH_SETUP:
             fstate = OPTION_NORMAL
@@ -682,6 +688,10 @@ def loopDirectories():
             fstate = OPTION_NORMAL
             storageEngineAgnostic = filename == "true"
 
+        elif fstate == OPTION_OUTPUT_FILTER_CLUSTER:
+            fstate = OPTION_NORMAL
+            cluster = filename == "true"
+
     for filename in filenames:
         if (filename.find("#") < 0):
             f = open(filename, "r")
@@ -693,7 +703,7 @@ def loopDirectories():
 
 
 def generateTestCases():
-    global TESTLINES, TYPE, LINE_NO, STRING, RunTests, storageEngineAgnostic, engine, otherEngine
+    global TESTLINES, TYPE, LINE_NO, STRING, RunTests, storageEngineAgnostic, cluster, engine, otherEngine
     testNames = RunTests.keys()
     testNames.sort()
 
@@ -701,7 +711,17 @@ def generateTestCases():
         if thisTest.endswith(otherEngine):
             print >> sys.stderr, "skipping " + thisTest
             continue
+
+        # skip agnostic examples if storage engine is mmfiles to not generate them twice
         if not storageEngineAgnostic and not thisTest.endswith(engine):
+            print >> sys.stderr, "skipping " + thisTest
+            continue
+
+        if cluster and not thisTest.endswith('_cluster'):
+            print >> sys.stderr, "skipping " + thisTest
+            continue
+
+        if not cluster and thisTest.endswith('_cluster'):
             print >> sys.stderr, "skipping " + thisTest
             continue
 
