@@ -318,20 +318,20 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
     } else {
       // We have to adjust the estimate with an insert
-      uint64_t hash = 0;
+      uint64_t hashval = 0;
       if (column_family_id == RocksDBColumnFamily::vpack()->GetID()) {
-        hash = RocksDBVPackIndex::HashForKey(key);
+        hashval = RocksDBVPackIndex::HashForKey(key);
       } else if (column_family_id == RocksDBColumnFamily::edge()->GetID()) {
-        hash = RocksDBEdgeIndex::HashForKey(key);
+        hashval = RocksDBEdgeIndex::HashForKey(key);
       }
 
-      if (hash != 0) {
+      if (hashval != 0) {
         auto* idx = findIndex(RocksDBKey::objectId(key));
         if (idx) {
           RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
           if (est && est->appliedSeq() < _currentSequence) {
             // We track estimates for this index
-            est->insert(hash);
+            est->insert(hashval);
           }
         }
       }
@@ -368,20 +368,20 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
     } else {
       // We have to adjust the estimate with an insert
-      uint64_t hash = 0;
+      uint64_t hashval = 0;
       if (cfId == RocksDBColumnFamily::vpack()->GetID()) {
-        hash = RocksDBVPackIndex::HashForKey(key);
+        hashval = RocksDBVPackIndex::HashForKey(key);
       } else if (cfId == RocksDBColumnFamily::edge()->GetID()) {
-        hash = RocksDBEdgeIndex::HashForKey(key);
+        hashval = RocksDBEdgeIndex::HashForKey(key);
       }
 
-      if (hash != 0) {
+      if (hashval != 0) {
         auto* idx = findIndex(RocksDBKey::objectId(key));
         if (idx) {
           RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
           if (est && est->appliedSeq() < _currentSequence) {
             // We track estimates for this index
-            est->remove(hash);
+            est->remove(hashval);
           }
         }
       }

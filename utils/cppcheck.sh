@@ -8,6 +8,7 @@ cppcheck $* \
   -I enterprise \
   -I arangod \
   -I arangosh \
+  -D USE_PLAN_CACHE \
   --std=c++17 \
   --enable=warning,style,performance,portability,missingInclude \
   --force \
@@ -34,12 +35,20 @@ cppcheck $* \
   --suppress="redundantAssignment" \
   --suppress="shadowFunction" \
   --suppress="shadowVar" \
+  --suppress="stlFindInsert" \
   --suppress="uninitMemberVar" \
   --suppress="unreadVariable" \
   --suppress="useStlAlgorithm" \
   --suppress="variableScope" \
-  lib/ 2>> cppcheck.tmp
+  arangod/IResearch 2>> cppcheck.tmp
 #  arangod/ arangosh/ lib/ enterprise/ 2>> cppcheck.tmp
 
-sort cppcheck.tmp | uniq > cppcheck.log
+cat cppcheck.tmp \
+  | fgrep -v "Syntax Error: AST broken, binary operator '=' doesn't have two operands" \
+  | fgrep -v "Found suspicious operator ','" \
+  | fgrep -v "SymbolDatabase bailout; unhandled code" \
+  | sort \
+  | uniq > cppcheck.log
 cat cppcheck.log
+
+test ! -s cppcheck.log

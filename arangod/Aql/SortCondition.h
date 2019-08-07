@@ -45,10 +45,10 @@ class SortCondition {
 
   /// @brief create the sort condition
   SortCondition(ExecutionPlan* plan, 
-                std::vector<std::pair<Variable const*, bool>> const& variableDefinitions,
+                std::vector<std::pair<Variable const*, bool>> const& sorts,
                 std::vector<std::vector<arangodb::basics::AttributeName>> const& constAttributes,
                 arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> const& nonNullAttributes,
-                std::unordered_map<VariableId, AstNode const*> const& sorts);
+                std::unordered_map<VariableId, AstNode const*> const& variableDefinitions);
 
   /// @brief destroy the sort condition
   ~SortCondition();

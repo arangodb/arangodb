@@ -70,7 +70,6 @@ class LogicalView : public LogicalDataSource {
     // do not use dynamic_cast<typename target_type_t::reference>(view)
     // to explicitly expose our intention to fail in 'noexcept' function
     // in case of wrong type
-    // cpp-suppress
     auto impl = dynamic_cast<typename target_type_t::pointer>(&view);
 
     if (!impl) {

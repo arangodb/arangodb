@@ -4222,9 +4222,9 @@ AqlValue Functions::Fnv64(ExpressionContext*, transaction::Methods* trx,
 
   ::appendAsString(trx, adapter, value);
 
-  uint64_t hash = TRI_FnvHashPointer(buffer->c_str(), buffer->length());
+  uint64_t hashval = TRI_FnvHashPointer(buffer->c_str(), buffer->length());
   char out[17];
-  size_t length = TRI_StringUInt64HexInPlace(hash, &out[0]);
+  size_t length = TRI_StringUInt64HexInPlace(hashval, &out[0]);
   return AqlValue(&out[0], length);
 }
 

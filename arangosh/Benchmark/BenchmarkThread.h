@@ -68,9 +68,8 @@ class BenchmarkThread : public arangodb::Thread {
         _offset(0),
         _counter(0),
         _time(0.0),
-        _verbose(verbose) {
-    _errorHeader = basics::StringUtils::tolower(StaticStrings::Errors);
-  }
+        _verbose(verbose),
+        _errorHeader(basics::StringUtils::tolower(StaticStrings::Errors)) {}
 
   ~BenchmarkThread() { shutdown(); }
 
@@ -126,6 +125,7 @@ class BenchmarkThread : public arangodb::Thread {
 
     // wait for start condition to be broadcasted
     {
+      // cppcheck-suppress redundantPointerOp
       CONDITION_LOCKER(guard, (*_startCondition));
       guard.wait();
     }
