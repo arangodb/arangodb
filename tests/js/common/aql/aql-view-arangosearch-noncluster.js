@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertTrue, assertFalse*/
+/*global assertUndefined, assertEqual, assertTrue, assertFalse, fail*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for iresearch usage
@@ -751,13 +751,13 @@ function iResearchAqlTestSuite () {
         consolidationIntervalMsec:0,
         cleanupIntervalStep:0
       });
-      let docs = new Array();
+      let docs = [];
       for (let i = 0; i < 10; i++) {
         let docId = "TestDoc" + i;
         docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
       }
       docsCollection.save(docs);
-      
+
       // test singleOperationTransaction
       try {
         docsCollection.save(docs[5]);
@@ -771,7 +771,7 @@ function iResearchAqlTestSuite () {
                                         " OPTIONS { waitForSync : true }  COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
 
       // testMultipleOparationTransaction (no index revert as PK will be violated)
-      let docsNew = new Array();
+      let docsNew = [];
       for (let i = 11; i < 20; i++) {
         let docId = "TestDoc" + i;
         docsNew.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
@@ -803,7 +803,7 @@ function iResearchAqlTestSuite () {
                            " OPTIONS { waitForSync : true } COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
 
       // testMultipleOparationTransaction  (arangosearch index revert will be needed)
-      let docsNew2 = new Array();
+      let docsNew2 = [];
       for (let i = 21; i < 30; i++) {
         let docId = "TestDoc" + i;
         docsNew2.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
