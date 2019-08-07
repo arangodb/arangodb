@@ -49,18 +49,45 @@ MS = re.M | re.S
 ################################################################################
 
 swagger = {
-  "swagger": "2.0",
-  "info": {
-    "description": "ArangoDB REST API Interface",
-    "version": "1.0",
-    "title": "ArangoDB",
-    "license": {
-      "name": "Apache License, Version 2.0"
-    }
-  },
-  "basePath": "/",
-  "definitions": {},
-  "paths" : {}
+    "swagger": "2.0",
+    "info": {
+        "description": "ArangoDB REST API Interface",
+        "version": "1.0",
+        "title": "ArangoDB",
+        "license": {
+            "name": "Apache License, Version 2.0"
+        }
+    },
+    "basePath": "/",
+    "definitions": {
+        "ARANGO_ERROR": {
+            "description": "An ArangoDB Error code",
+            "type": "integer"
+        },
+        "ArangoError": {
+            "description": "the arangodb error type",
+            "properties": {
+                "code": {
+                    "description": "the HTTP Status code",
+                    "type": "integer"
+                },
+                "error": {
+                    "description": "boolean flag to indicate whether an error occurred (*true* in this case)",
+                    "type": "boolean"
+                },
+                "errorMessage": {
+                    "description": "a descriptive error message describing what happened, may contain additional information",
+                    "type": "string"
+                },
+                "errorNum": {
+                    "description": "the ARANGO_ERROR code",
+                    "type": "integer"
+                }
+            }
+        }
+        
+    },
+    "paths" : {}
 }
 
 ################################################################################
@@ -70,6 +97,7 @@ swagger = {
 swaggerBaseTypes = [
     'object',
     'array',
+    'number',
     'integer',
     'long',
     'float',
@@ -82,6 +110,11 @@ swaggerBaseTypes = [
     'dateTime',
     'password'
 ]
+
+swaggerFormats = {
+    "number": ["", "float", "double"],
+    "integer": ["", "int32", "int64"]
+}
 
 ################################################################################
 ### @brief length of the swagger definition namespace
@@ -354,10 +387,10 @@ class StateMachine:
                     raise RuntimeError, "Invalid target %s" % newState
                 else:
                     handler = newState
-        except:
+        except Exception as x:
             print >> sys.stderr, "while parsing '" + self.fn + "'"
             print >> sys.stderr, "trying to use handler '"  + handler.__name__ + "'"
-            raise
+            raise x
 
 ################################################################################
 ### @brief Regexen
@@ -479,7 +512,7 @@ def generic_handler_desc(cargo, r, message, op, para, name):
                     operation[op].append(para)
                 except AttributeError as x:
                     print >> sys.stderr, "trying to set '%s' on operations - failed. '%s'" % (op, para)
-                    raise
+                    raise x
             return next, c
 
         line = Typography(line)
@@ -496,7 +529,7 @@ def start_docublock(cargo, r=Regexen()):
           currentDocuBlock = last.split(' ')[1].rstrip()
     except Exception as x:
         print >> sys.stderr, "failed to fetch docublock in '" + last + "': " + str(x)
-        raise
+        raise x
 
     return generic_handler(cargo, r, 'start_docublock')
 
@@ -667,7 +700,7 @@ def restbodyparam(cargo, r=Regexen()):
     except Exception as x:
         print >> sys.stderr, "RESTBODYPARAM: 4 arguments required. You gave me: " + parameters(last)
         print >> sys.stderr, "In this docublock: " + currentDocuBlock
-        raise
+        raise Exception("Argument count error")
 
     CheckReqOpt(required)
     if required == 'required':
@@ -736,6 +769,9 @@ def restbodyparam(cargo, r=Regexen()):
     elif ptype == 'object':
             swagger['definitions'][currentDocuBlock]['properties'][name]['additionalProperties'] = {}
     elif ptype != 'string':
+        if ptype in swaggerFormats and ptype2 not in swaggerFormats[ptype]:
+            print >> sys.stderr, "RESTSTRUCT: ptype2 (format)[" + ptype2 + "]  not valid: " + parameters(last)
+            raise Exception("'%s' is not one of %s!" % (ptype2, str(swaggerFormats)))
         swagger['definitions'][currentDocuBlock]['properties'][name]['format'] = ptype2
 
 
@@ -796,7 +832,7 @@ def reststruct(cargo, r=Regexen()):
         (name, className, ptype, required, ptype2) = parameters(last).split(',')
     except Exception as x:
         print >> sys.stderr, "RESTSTRUCT: 5 arguments required (name, className, ptype, required, ptype2). You gave me: " + parameters(last)
-        raise
+        raise Exception("Argument count error")
 
     CheckReqOpt(required)
     if required == 'required':
@@ -846,6 +882,9 @@ def reststruct(cargo, r=Regexen()):
                                     'description')
 
     elif ptype != 'string' and ptype != 'boolean':
+        if ptype in swaggerFormats and ptype2 not in swaggerFormats[ptype]:
+            print >> sys.stderr, "RESTSTRUCT: ptype2 (format)[" + ptype2 + "]  not valid: " + parameters(last)
+            raise Exception("'%s' is not one of %s!" % (ptype2, str(swaggerFormats)))
         swagger['definitions'][className]['properties'][name]['format'] = ptype2
 
     return generic_handler_desc(cargo, r, "restbodyparam", None,
@@ -857,8 +896,8 @@ def reststruct(cargo, r=Regexen()):
 ################################################################################
 
 def restqueryparam(cargo, r=Regexen()):
-    global swagger, operation, httpPath, method
-    (fp, last) = cargo
+    global swagger, operation, httpPath, method, swaggerBaseTypes
+    (dummy, last) = cargo
 
     parametersList = parameters(last).split(',')
 
@@ -867,12 +906,17 @@ def restqueryparam(cargo, r=Regexen()):
         required = True
     else:
         required = False
+    swaggerType = parametersList[1].lower()
+    
+    if swaggerType not in swaggerBaseTypes:
+        print >> sys.stderr, "RESTQUERYPARAM is supposed to be a swagger type."
+        raise Exception("'%s' is not one of %s!" % (swaggerType, str(swaggerBaseTypes)))
 
     para = {
         'name': parametersList[0],
         'in': 'query',
         'description': '',
-        'type': parametersList[1].lower(),
+        'type': swaggerType,
         'required': required
         }
 
@@ -1100,9 +1144,9 @@ def example_arangosh_run(cargo, r=Regexen()):
         examplefile = open(fn)
     except:
         print >> sys.stderr, "Failed to open example file:\n  '%s'" % fn
-        raise
-    operation['x-examples'][currentExample]= '\n\n**Example:**\n ' + exampleHeader.strip('\n ') + '\n\n<pre>'
-    
+        raise Exception("failed to open example file:" + fn)
+    operation['x-examples'][currentExample] = '\n\n**Example:**\n ' + exampleHeader.strip('\n ') + '\n\n<pre>'
+
     for line in examplefile.readlines():
         operation['x-examples'][currentExample] += '<code>' + line + '</code>'
     
@@ -1218,7 +1262,7 @@ def getReference(name, source, verb):
     except Exception as x:
         print >>sys.stderr, "No reference in: "
         print >>sys.stderr, name
-        raise
+        raise Exception("No reference in: " + name)
     if not ref in swagger['definitions']:
         fn = ''
         if verb:
@@ -1362,7 +1406,7 @@ for name, filenames in sorted(files.items(), key=operator.itemgetter(0)):
             getOneApi(infile, name + " - " + ', '.join(filenames), fn)
         except Exception as x:
             print >> sys.stderr, "\nwhile parsing file: '%s' error: %s" % (thisfn, x)
-            raise
+            raise Exception("while parsing file '%s' error: %s" %(thisfn, x))
         infile.close()
         currentDocuBlock = None
         lastDocuBlock = None

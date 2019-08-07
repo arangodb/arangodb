@@ -13,7 +13,7 @@ The type of the view. must be equal to *"arangosearch"*
 The view properties. If specified, then *properties* should be a JSON object
 containing the following attributes:
 
-@RESTSTRUCT{cleanupIntervalStep,post_api_view_props,integer,optional,uint64}
+@RESTSTRUCT{cleanupIntervalStep,post_api_view_props,integer,optional,int64}
 Wait at least this many commits between removing unused files in the
 ArangoSearch data directory (default: 10, to disable use: 0).
 For the case where the consolidation policies merge segments often (i.e. a lot
@@ -30,7 +30,7 @@ _Background:_
   However, the files for the released states/snapshots are left on disk, and
   only removed by "cleanup" operation.
 
-@RESTSTRUCT{consolidationIntervalMsec,post_api_view_props,integer,optional,uint64}
+@RESTSTRUCT{consolidationIntervalMsec,post_api_view_props,integer,optional,int64}
 Wait at least this many milliseconds between committing view data store
 changes and making documents visible to queries (default: 60000, to disable
 use: 0).

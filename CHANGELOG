@@ -1,6 +1,27 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Re-added warning for kernel setting "overcommit_memory=2" if jemalloc is also enabled.
+
+* Significantly reduced "random" 1 second delays in some arangosearch DDL operations.
+
+* Decreased unnecessary wait times for agency callbacks in case they were
+  called earlier than expected by main thread.
+
+* Upgraded arangodb starter version to 0.14.12
+
+* Added options to make server more secure:
+  - `--foxx.api`: set to false disables Foxx management API
+  - `--foxx.store`: set to false disables Foxx UI
+
+* updated arangosync to 0.6.5
+
+* Fixed issue #9459: Optimization rule remove-collect-variables does not KEEP all necessary data.
+
+* Fixed issue #9558: RTRIM not working as expected.
+
+* Added gzip and encryption options to arangoimport and arangoexport.
+
 * Added startup error for bad temporary directory setting.
 
   If the temporary directory (--temp.path) setting is identical to the database 
@@ -12,8 +33,6 @@ v3.4.8 (XXXX-XX-XX)
   Now, if the database directory and temporary directory are set to the same path, there 
   will be a startup warning about potential data loss (though in ArangoDB 3.4 allowing to 
   continue the startup - in 3.5 and higher we will abort the startup).
-
-* Add gzip and encryption options to arangoimport and arangoexport.
 
 * Fixed a query abort error in smart joins when both collections were
   restricted to a single shard.
