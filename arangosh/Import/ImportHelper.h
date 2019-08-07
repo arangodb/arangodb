@@ -26,6 +26,7 @@
 #define ARANGODB_IMPORT_IMPORT_HELPER_H 1
 
 #include <atomic>
+#include <unordered_map>
 
 #include "AutoTuneThread.h"
 #include "QuickHistogram.h"

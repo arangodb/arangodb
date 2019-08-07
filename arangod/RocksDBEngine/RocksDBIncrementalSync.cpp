@@ -23,6 +23,7 @@
 #include "RocksDBIncrementalSync.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/system-functions.h"
 #include "Indexes/IndexIterator.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/utilities.h"

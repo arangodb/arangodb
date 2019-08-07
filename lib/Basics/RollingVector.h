@@ -24,7 +24,8 @@
 #ifndef ARANGODB_BASICS_ROLLING_VECTOR_H
 #define ARANGODB_BASICS_ROLLING_VECTOR_H 1
 
-#include "Common.h"
+#include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 #include <type_traits>
 

@@ -24,6 +24,8 @@
 #ifndef ARANGOD_TRANSACTION_OPTIONS_H
 #define ARANGOD_TRANSACTION_OPTIONS_H 1
 
+#include <cstdint>
+
 #include "Basics/Common.h"
 
 namespace arangodb {

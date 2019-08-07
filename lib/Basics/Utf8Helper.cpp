@@ -22,19 +22,38 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <string.h>
+#include <memory>
+
+#include <unicode/brkiter.h>
+#include <unicode/coll.h>
+#include <unicode/locid.h>
+#include <unicode/regex.h>
+#include <unicode/stringpiece.h>
+#include <unicode/ucasemap.h>
+#include <unicode/uchar.h>
+#include <unicode/uclean.h>
+#include <unicode/ucol.h>
+#include <unicode/udata.h>
+#include <unicode/uloc.h>
+#include <unicode/unistr.h>
+#include <unicode/unorm2.h>
+#include <unicode/urename.h>
+#include <unicode/ustring.h>
+#include <unicode/utypes.h>
+
+#include <velocypack/StringRef.h>
+
 #include "Utf8Helper.h"
+
 #include "Basics/StaticStrings.h"
-#include "Basics/directories.h"
+#include "Basics/debugging.h"
+#include "Basics/memory.h"
+#include "Basics/system-compiler.h"
 #include "Basics/tri-strings.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "unicode/brkiter.h"
-#include "unicode/normalizer2.h"
-#include "unicode/putil.h"
-#include "unicode/ucasemap.h"
-#include "unicode/uclean.h"
-#include "unicode/udata.h"
-#include "unicode/unorm2.h"
-#include "unicode/ustdio.h"
+#include "Logger/LoggerStream.h"
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"

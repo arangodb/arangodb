@@ -25,6 +25,7 @@
 #define ARANGOD_MMFILES_DOCUMENT_OPERATION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 

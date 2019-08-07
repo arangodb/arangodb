@@ -25,10 +25,12 @@
 #ifndef ARANGODB_BASICS_STRING_UTILS_H
 #define ARANGODB_BASICS_STRING_UTILS_H 1
 
-#include "Basics/Common.h"
-
-#include <utility>
+#include <stddef.h>
+#include <cstdint>
+#include <string>
 #include <vector>
+
+#include "Basics/Common.h"
 
 #if __cpp_lib_to_chars >= 201611
 // use non-throwing, non-allocating std::from_chars etc. from standard library
@@ -38,6 +40,10 @@
 // use own functionality
 #undef TRI_STRING_UTILS_USE_FROM_CHARS
 #endif
+
+/// @brief helper macro for calculating strlens for static strings at
+/// a compile-time (unless compiled with fno-builtin-strlen etc.)
+#define TRI_CHAR_LENGTH_PAIR(value) (value), strlen(value)
 
 namespace arangodb {
 namespace basics {

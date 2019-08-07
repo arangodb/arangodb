@@ -24,13 +24,15 @@
 #ifndef ARANGOD_AQL_QUERY_CACHE_H
 #define ARANGOD_AQL_QUERY_CACHE_H 1
 
+#include <memory>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
 #include "Aql/QueryString.h"
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
-
-#include <unordered_set>
-#include <memory>
 
 struct TRI_vocbase_t;
 

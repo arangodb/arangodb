@@ -24,10 +24,13 @@
 #ifndef ARANGODB_LOGGER_LOGGER_STREAM_H
 #define ARANGODB_LOGGER_LOGGER_STREAM_H 1
 
+#include <stddef.h>
+#include <sstream>
+#include <string>
+
+#include "Logger/LogLevel.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
-
-#include <sstream>
 
 namespace arangodb {
 class LoggerStream {

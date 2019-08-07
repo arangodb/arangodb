@@ -28,7 +28,9 @@
 
 #include "Basics/StringUtils.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/Events.h"
 
