@@ -105,7 +105,6 @@ class RebootTracker {
   CallbackGuard callMeOnChange(PeerState const& peerState, Callback callback,
                                std::string callbackDescription);
 
-  // void notifyChanges(std::vector<PeerState> const& peerStates);
   void updateServerState(std::unordered_map<ServerID, RebootId> const& state);
 
  private:
