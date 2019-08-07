@@ -1664,6 +1664,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
   };
   static const Instance instance;
 
+  // cppcheck-suppress returnReference
   return instance.analyzers;
 }
 

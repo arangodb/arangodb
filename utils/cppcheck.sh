@@ -29,6 +29,7 @@ cppcheck $* \
   --suppress="*:lib/Zip/*" \
   --suppress="duplicateCondition" \
   --suppress="duplicateConditionalAssign" \
+  --suppress="mismatchingContainerExpression" \
   --suppress="noExplicitConstructor:lib/Futures/Future.h" \
   --suppress="passedByValue" \
   --suppress="redundantAssignInSwitch" \
@@ -40,8 +41,7 @@ cppcheck $* \
   --suppress="unreadVariable" \
   --suppress="useStlAlgorithm" \
   --suppress="variableScope" \
-  arangod/IResearch 2>> cppcheck.tmp
-#  arangod/ arangosh/ lib/ enterprise/ 2>> cppcheck.tmp
+  arangod/ arangosh/ lib/ enterprise/ 2>> cppcheck.tmp
 
 cat cppcheck.tmp \
   | fgrep -v "Syntax Error: AST broken, binary operator '=' doesn't have two operands" \

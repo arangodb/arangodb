@@ -739,10 +739,10 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
       // intentionally falls through
     }
 
-    int hash = o->GetIdentityHash();
+    int hashval = o->GetIdentityHash();
 
-    if (seenHashes.find(hash) != seenHashes.end()) {
-      // LOG_TOPIC("a6d3e", TRACE, arangodb::Logger::FIXME) << "found hash " << hash;
+    if (seenHashes.find(hashval) != seenHashes.end()) {
+      // LOG_TOPIC("a6d3e", TRACE, arangodb::Logger::FIXME) << "found hash " << hashval;
 
       for (auto it : seenObjects) {
         if (parameter->StrictEquals(it)) {
@@ -752,7 +752,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
         }
       }
     } else {
-      seenHashes.emplace(hash);
+      seenHashes.emplace(hashval);
     }
 
     seenObjects.emplace_back(o);

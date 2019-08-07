@@ -565,6 +565,7 @@ namespace iresearch {
     }
   } emptySlice;
 
+  // cppcheck-suppress returnReference
   return emptySlice._slice;
 }
 
