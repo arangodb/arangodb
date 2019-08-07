@@ -23,7 +23,25 @@
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
 // 
 // @author Max Neunhoeffer
+// @author Wilfried Goesgnes
 // /////////////////////////////////////////////////////////////////////////////
+
+const _ = require('lodash');
+const fs = require('fs');
+
+const pu = require('@arangodb/process-utils');
+const rp = require('@arangodb/result-processing');
+const cu = require('@arangodb/crash-utils');
+const tu = require('@arangodb/test-utils');
+const internal = require('internal');
+const platform = internal.platform;
+
+const BLUE = internal.COLORS.COLOR_BLUE;
+const CYAN = internal.COLORS.COLOR_CYAN;
+const GREEN = internal.COLORS.COLOR_GREEN;
+const RED = internal.COLORS.COLOR_RED;
+const RESET = internal.COLORS.COLOR_RESET;
+const YELLOW = internal.COLORS.COLOR_YELLOW;
 
 let functionsDocumentation = {
   'all': 'run all tests (marked with [x])',
@@ -75,15 +93,17 @@ let optionsDocumentation = [
   '   - `agencySupervision`: run supervision in agency',
   '   - `oneTestTimeout`: how long a single testsuite (.js, .rb)  should run',
   '   - `isAsan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
-  '   - `test`: path to single test to execute for "single" test target',
-  '   - `cleanup`: if set to true (the default), the cluster data files',
-  '     and logs are removed after termination of the test.',
+  '   - `test`: path to single test to execute for "single" test target, ',
+  '             or pattern to filter for other suites',
+  '   - `cleanup`: if set to false the data files',
+  '                and logs are not removed after termination of the test.',
   '',
   '   - `protocol`: the protocol to talk to the server - [tcp (default), ssl, unix]',
   '   - `sniff`: if we should try to launch tcpdump / windump for a testrun',
   '              false / true / sudo',
   '   - `sniffDevice`: the device tcpdump / tshark should use',
   '   - `sniffProgram`: specify your own programm',
+  '',
   '   - `build`: the directory containing the binaries',
   '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
   '   - `configDir`: the directory containing the config files, defaults to',
@@ -133,7 +153,7 @@ const optionsDefaults = {
   'agencyWaitForSync': false,
   'agencySupervision': true,
   'build': '',
-  'buildType': '',
+  'buildType': (platform.substr(0, 3) === 'win') ? 'RelWithDebInfo':'',
   'cleanup': true,
   'cluster': false,
   'concurrency': 3,
@@ -193,62 +213,10 @@ const optionsDefaults = {
   'sleepBeforeStart' : 0,
 };
 
-const _ = require('lodash');
-const fs = require('fs');
-const yaml = require('js-yaml');
+let globalStatus = true;
 
-const pu = require('@arangodb/process-utils');
-const cu = require('@arangodb/crash-utils');
-const tu = require('@arangodb/test-utils');
-
-const BLUE = require('internal').COLORS.COLOR_BLUE;
-const CYAN = require('internal').COLORS.COLOR_CYAN;
-const GREEN = require('internal').COLORS.COLOR_GREEN;
-const RED = require('internal').COLORS.COLOR_RED;
-const RESET = require('internal').COLORS.COLOR_RESET;
-const YELLOW = require('internal').COLORS.COLOR_YELLOW;
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief test functions for all
-// //////////////////////////////////////////////////////////////////////////////
-
-let allTests = [
-];
-
-// /////////////////////////////////////////////////////////////////////////////
-// blacklisting
-// /////////////////////////////////////////////////////////////////////////////
-
-let useBlacklist = false;
-
-let blacklistTests = {};
-
-function skipTest(type, name) {
-  let ntype = type.toUpperCase();
-  return useBlacklist && !!blacklistTests[ntype + ":" + name];
-}
-
-function loadBlacklist(name) {
-  let content = fs.read("BLACKLIST");
-  let a = _.filter(
-    _.map(content.split("\n"),
-          function(x) {return x.trim();}),
-    function(x) {return x.length > 0 && x[0] !== '#';});
-
-  for (let i = 0; i < a.length; ++i) {
-    blacklistTests[a[i]] = true;
-  }
-
-  useBlacklist = true;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: all
-// //////////////////////////////////////////////////////////////////////////////
-
-let testFuncs = {
-  'all': function () {}
-};
+let allTests = [];
+let testFuncs = {};
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief print usage information
@@ -353,7 +321,6 @@ function findTest(options) {
   }
 }
 
-
 function autoTest(options) {
   if (!options.hasOwnProperty('test') || (typeof (options.test) === 'undefined')) {
     return {
@@ -416,16 +383,13 @@ function loadTestSuites () {
       throw x;
     }
   }
+  testFuncs['all'] = allTests;
   testFuncs['find'] = findTest;
   testFuncs['auto'] = autoTest;
 }
 
-let globalStatus = true;
-
-function iterateTests(cases, options) {
-  // tests to run
+function translateTestList(cases) {
   let caselist = [];
-
   const expandWildcard = ( name ) => {
     if (!name.endsWith('*')) {
       return name;
@@ -436,29 +400,18 @@ function iterateTests(cases, options) {
 
   for (let n = 0; n < cases.length; ++n) {
     let splitted = expandWildcard(cases[n]).split(/[,;|]/);
-
     for (let m = 0; m < splitted.length; ++m) {
       let which = splitted[m];
 
-      if (which === 'all') {
-        caselist = caselist.concat(allTests);
-      } else if (testFuncs.hasOwnProperty(which)) {
+      if (testFuncs.hasOwnProperty(which)) {
         caselist.push(which);
       } else {
         print('Unknown test "' + which + '"\nKnown tests are: ' + Object.keys(testFuncs).join(', '));
-
-        return {
-          status: false
-        };
+        throw new Error("USAGE ERROR");
       }
     }
   }
-
-  let results = {};
-  let cleanup = true;
-
-  // real ugly hack. there are some suites which are just placeholders
-  // for other suites
+  // Expand meta tests like ldap, all
   caselist = (function() {
     let flattened = [];
     for (let n = 0; n < caselist.length; ++n) {
@@ -471,12 +424,27 @@ function iterateTests(cases, options) {
     }
     return flattened;
   })();
+  if (cases === undefined || cases.length === 0) {
+    printUsage();
+    
+    print('\nFATAL: "which" is undefined\n');
+    throw new Error("USAGE ERROR");
+  }
+  return caselist;
+}
 
+function iterateTests(cases, options) {
+  // tests to run
+  let caselist = [];
+
+  let results = {};
+  let cleanup = true;
+
+  caselist = translateTestList(cases);
   // running all tests
   for (let n = 0; n < caselist.length; ++n) {
     const currentTest = caselist[n];
     var localOptions = _.cloneDeep(options);
-    localOptions.skipTest = skipTest;
     let printTestName = currentTest;
     if (options.testBuckets) {
       printTestName += " - " + options.testBuckets;
@@ -493,34 +461,23 @@ function iterateTests(cases, options) {
     let status = true;
     let shutdownSuccess = true;
 
-    if (skipTest("SUITE", currentTest)) {
-      result = {
-        failed: 0,
-        status: true,
-        crashed: false,
-      };
-
-      print(YELLOW + "[SKIPPED] " + currentTest + RESET + "\n");
-    } else {
-      result = testFuncs[currentTest](localOptions);
-      // grrr...normalize structure
-      delete result.status;
-      delete result.failed;
-      delete result.crashed;
-      if (result.hasOwnProperty('shutdown')) {
-        shutdownSuccess = result['shutdown'];
-        delete result.shutdown;
-      }
-
-      status = Object.values(result).every(testCase => testCase.status === true);
-      let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
-      if (!status) {
-        globalStatus = false;
-      }
-      result.failed = failed;
-      result.status = status;
+    result = testFuncs[currentTest](localOptions);
+    // grrr...normalize structure
+    delete result.status;
+    delete result.failed;
+    delete result.crashed;
+    if (result.hasOwnProperty('shutdown')) {
+      shutdownSuccess = result['shutdown'];
+      delete result.shutdown;
     }
 
+    status = Object.values(result).every(testCase => testCase.status === true);
+    let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
+    if (!status) {
+      globalStatus = false;
+    }
+    result.failed = failed;
+    result.status = status;
     results[currentTest] = result;
 
     if (status && localOptions.cleanup && shutdownSuccess ) {
@@ -528,7 +485,6 @@ function iterateTests(cases, options) {
     } else {
       cleanup = false;
     }
-
     pu.aggregateFatalErrors(currentTest);
   }
 
@@ -546,16 +502,7 @@ function iterateTests(cases, options) {
   } else {
     print("not cleaning up since we didn't start the server ourselves\n");
   }
-
-  if (options.extremeVerbosity === true) {
-    try {
-      print(yaml.safeDump(JSON.parse(JSON.stringify(results))));
-    } catch (err) {
-      print(RED + 'cannot dump results: ' + String(err) + RESET);
-      print(RED + require('internal').inspect(results) + RESET);
-    }
-  }
-
+  rp.yamlDumpResults(options, results);
   return results;
 }
 
@@ -574,17 +521,6 @@ function unitTest (cases, options) {
   }
   loadTestSuites();
   _.defaults(options, optionsDefaults);
-
-  if (cases === undefined || cases.length === 0) {
-    printUsage();
-
-    print('FATAL: "which" is undefined\n');
-
-    return {
-      status: false,
-      crashed: false
-    };
-  }
 
   try {
     pu.setupBinaries(options.build, options.buildType, options.configDir);
@@ -614,4 +550,3 @@ function unitTest (cases, options) {
 exports.unitTest = unitTest;
 
 exports.testFuncs = testFuncs;
-exports.loadBlacklist = loadBlacklist;

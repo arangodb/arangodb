@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print, arango */
+/* global print */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -34,6 +34,7 @@ const inspect = internal.inspect;
 const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 const cu = require('@arangodb/crash-utils');
+const yaml = require('js-yaml');
 
 /* Constants: */
 const BLUE = internal.COLORS.COLOR_BLUE;
@@ -512,6 +513,18 @@ function addFailRunsMessage(testcase, message) {
   failedRuns[testcase] = message;
 }
 
+function yamlDumpResults(options, results) {
+  if (options.extremeVerbosity === true) {
+    try {
+      print(yaml.safeDump(JSON.parse(JSON.stringify(results))));
+    } catch (err) {
+      print(RED + 'cannot dump results: ' + String(err) + RESET);
+      print(RED + require('internal').inspect(results) + RESET);
+    }
+  }
+}
+
+exports.yamlDumpResults = yamlDumpResults;
 exports.addFailRunsMessage = addFailRunsMessage;
 exports.dumpAllResults = dumpAllResults;
 exports.writeDefaultReports = writeDefaultReports;
