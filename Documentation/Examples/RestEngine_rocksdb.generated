@@ -13,16 +13,9 @@ x-content-type-options: nosniff
       <span class="hljs-string">"edge"</span>, 
       <span class="hljs-string">"hash"</span>, 
       <span class="hljs-string">"skiplist"</span>, 
-      <span class="hljs-string">"ttl"</span>, 
       <span class="hljs-string">"persistent"</span>, 
       <span class="hljs-string">"geo"</span>, 
       <span class="hljs-string">"fulltext"</span> 
-    ], 
-    <span class="hljs-string">"aliases"</span> : { 
-      <span class="hljs-string">"indexes"</span> : { 
-        <span class="hljs-string">"skiplist"</span> : <span class="hljs-string">"persistent"</span>, 
-        <span class="hljs-string">"hash"</span> : <span class="hljs-string">"persistent"</span> 
-      } 
-    } 
+    ] 
   } 
 }
