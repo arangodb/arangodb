@@ -970,7 +970,7 @@ actions.defineHttp({
 
     if (!req.isAdminUser) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only allowed for admins users');
+        'only allowed for admin users');
       return;
     }
 
