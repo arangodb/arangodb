@@ -258,6 +258,12 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
     // not handle the case of a controlled leadership resignation, see below
     // in handleLocalShard for this.
     if (leading != shouldBeLeading && !shouldResign) {
+      LOG_TOPIC("52412", DEBUG, Logger::MAINTENANCE)
+        << "Triggering TakeoverShardLeadership job for shard "
+        << dbname << "/" << colname << "/" << shname
+        << ", local leader: " << lcol.get(THE_LEADER).copyString()
+        << ", should be leader: "
+        << (shouldBeLeading ? std::string() : leaderId);
       actions.emplace_back(ActionDescription(
             std::map<std::string, std::string>{
                 {NAME, TAKEOVER_SHARD_LEADERSHIP},
