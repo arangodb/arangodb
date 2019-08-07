@@ -208,7 +208,7 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
     return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
                                               infos().registersToKeep(),
                                               infos().registersToClear(),
-                                              OutputAqlItemRow::CopyRowBehaviour::DoNotCopyInputRows);
+                                              OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
   } else {
     return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
                                               infos().registersToKeep(),
@@ -372,9 +372,12 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   static_assert(!std::is_same<Executor, IndexExecutor>::value || customInit,
                 "IndexExecutor is expected to implement a custom "
                 "initializeCursor method!");
+  static_assert(!std::is_same<Executor, DistinctCollectExecutor>::value || customInit,
+                "DistinctCollectExecutor is expected to implement a custom "
+                "initializeCursor method!");
   InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
 
-  // // use this with c++17 instead of specialisation below
+  // // use this with c++17 instead of specialization below
   // if constexpr (std::is_same_v<Executor, IdExecutor>) {
   //   if (items != nullptr) {
   //     _executor._inputRegisterValues.reset(

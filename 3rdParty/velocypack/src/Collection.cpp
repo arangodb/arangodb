@@ -128,7 +128,7 @@ bool Collection::contains(Slice const& slice, Slice const& other) {
   ArrayIterator it(slice);
 
   while (it.valid()) {
-    if (it.value().equals(other)) {
+    if (it.value().binaryEquals(other)) {
       return true;
     }
     it.next();
@@ -142,7 +142,7 @@ ValueLength Collection::indexOf(Slice const& slice, Slice const& other) {
   ValueLength index = 0;
 
   while (it.valid()) {
-    if (it.value().equals(other)) {
+    if (it.value().binaryEquals(other)) {
       return index;
     }
     it.next();

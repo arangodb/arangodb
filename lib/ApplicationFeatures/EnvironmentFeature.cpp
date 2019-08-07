@@ -20,12 +20,23 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stdlib.h>
+#include <cmath>
+#include <cstdint>
+#include <string>
+#include <vector>
+
 #include "EnvironmentFeature.h"
+
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "Basics/FileUtils.h"
+#include "Basics/Result.h"
 #include "Basics/StringUtils.h"
+#include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #ifdef __linux__
 #include <sys/sysinfo.h>

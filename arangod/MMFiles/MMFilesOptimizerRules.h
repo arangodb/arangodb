@@ -24,6 +24,8 @@
 #ifndef ARANGOD_MMFILES_MMFILES_OPTIMIZER_RULES_H
 #define ARANGOD_MMFILES_MMFILES_OPTIMIZER_RULES_H 1
 
+#include <memory>
+
 #include "Basics/Common.h"
 
 namespace arangodb {
@@ -38,7 +40,7 @@ struct MMFilesOptimizerRules {
 
   static void removeSortRandRule(aql::Optimizer* opt,
                                  std::unique_ptr<aql::ExecutionPlan> plan,
-                                 aql::OptimizerRule const* rule);
+                                 aql::OptimizerRule const& rule);
 };
 
 }  // namespace arangodb

@@ -101,6 +101,10 @@ class ClusterEngine final : public StorageEngine {
     // the cluster engine does not have any versioning information
     return std::string();
   }
+  std::string dataPath() const override {
+    // the cluster engine does not have any data path
+    return std::string();
+  }
   std::string databasePath(TRI_vocbase_t const* vocbase) const override {
     // the cluster engine does not have any database path
     return std::string();
@@ -177,8 +181,10 @@ class ClusterEngine final : public StorageEngine {
   Result dropDatabase(TRI_vocbase_t& database) override;
   void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
 
-  // wal in recovery
-  bool inRecovery() override;
+  // current recovery state
+  RecoveryState recoveryState() override;
+  // current recovery tick
+  TRI_voc_tick_t recoveryTick() override;
   // start compactor thread and delete files form collections marked as deleted
   void recoveryDone(TRI_vocbase_t& vocbase) override;
 

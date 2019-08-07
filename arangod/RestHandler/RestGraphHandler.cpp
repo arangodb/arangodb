@@ -113,7 +113,7 @@ Result RestGraphHandler::executeGharial() {
   // most operations. So fetching an edge via
   // /_api/gharial/{graph}/vertex/{coll}/{key} works just fine. Should this be
   // changed? One way or the other, make sure there are tests for the desired
-  // behaviour!
+  // behavior!
   /*
     if (collType == vertex) {
       if (graph->vertexCollections().find(setName) ==

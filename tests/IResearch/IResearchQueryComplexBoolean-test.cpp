@@ -48,6 +48,7 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -61,6 +62,7 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/Methods/Collections.h"
 
 #include "IResearch/VelocyPackHelper.h"
 #include "analysis/analyzers.hpp"
@@ -102,6 +104,7 @@ class IResearchQueryComplexBooleanTest : public ::testing::Test {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
+    features.emplace_back(new arangodb::FlushFeature(server), false);
     features.emplace_back(new arangodb::V8DealerFeature(server),
                           false);  // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::ViewTypesFeature(server), true);
@@ -137,7 +140,7 @@ class IResearchQueryComplexBooleanTest : public ::testing::Test {
       f.first->prepare();
     }
 
-    auto const databases = arangodb::velocypack::Parser::fromJson(
+    auto const databases = VPackParser::fromJson(
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     auto* dbFeature =
@@ -157,13 +160,18 @@ class IResearchQueryComplexBooleanTest : public ::testing::Test {
     TRI_vocbase_t* vocbase;
 
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    arangodb::methods::Collections::createSystem(
+        *vocbase,
+        arangodb::tests::AnalyzerCollectionName);
+
     analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
-                       "abc", irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
+                       VPackParser::fromJson("\"abc\"")->slice(), 
+                       irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
     );  // cache analyzer
 
     analyzers->emplace(result, "testVocbase::test_csv_analyzer",
                        "TestDelimAnalyzer",
-                       ",");  // cache analyzer
+                       VPackParser::fromJson("\",\"")->slice());  // cache analyzer
 
     auto* dbPathFeature =
         arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
@@ -211,23 +219,23 @@ TEST_F(IResearchQueryComplexBooleanTest, test) {
 
   // create collection0
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson(
+    auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testCollection0\" }");
     auto collection = vocbase.createCollection(createJson->slice());
     ASSERT_TRUE((nullptr != collection));
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
-        arangodb::velocypack::Parser::fromJson(
+        VPackParser::fromJson(
             "{ \"seq\": -6, \"value\": null }"),
-        arangodb::velocypack::Parser::fromJson(
+        VPackParser::fromJson(
             "{ \"seq\": -5, \"value\": true }"),
-        arangodb::velocypack::Parser::fromJson(
+        VPackParser::fromJson(
             "{ \"seq\": -4, \"value\": \"abc\" }"),
-        arangodb::velocypack::Parser::fromJson(
+        VPackParser::fromJson(
             "{ \"seq\": -3, \"value\": 3.14 }"),
-        arangodb::velocypack::Parser::fromJson(
+        VPackParser::fromJson(
             "{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
-        arangodb::velocypack::Parser::fromJson(
+        VPackParser::fromJson(
             "{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
     };
 
@@ -249,7 +257,7 @@ TEST_F(IResearchQueryComplexBooleanTest, test) {
 
   // create collection1
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson(
+    auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testCollection1\" }");
     auto collection = vocbase.createCollection(createJson->slice());
     ASSERT_TRUE((nullptr != collection));
@@ -281,7 +289,7 @@ TEST_F(IResearchQueryComplexBooleanTest, test) {
 
   // create view
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson(
+    auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto logicalView = vocbase.createView(createJson->slice());
     ASSERT_TRUE((false == !logicalView));
@@ -290,7 +298,7 @@ TEST_F(IResearchQueryComplexBooleanTest, test) {
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
     ASSERT_TRUE((false == !impl));
 
-    auto updateJson = arangodb::velocypack::Parser::fromJson(
+    auto updateJson = VPackParser::fromJson(
         "{ \"links\": {"
         "\"testCollection0\": { \"includeAllFields\": true, "
         "\"nestListValues\": true, \"storeValues\":\"id\" },"

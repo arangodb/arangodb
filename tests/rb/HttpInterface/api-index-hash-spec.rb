@@ -6,9 +6,9 @@ require 'arangodb.rb'
 describe ArangoDB do
   prefix = "api-index-hash"
 
-################################################################################
-## unique constraints during create
-################################################################################
+  ################################################################################
+  ## unique constraints during create
+  ################################################################################
 
   context "creating hash index:" do
     context "dealing with unique constraints violation:" do
@@ -17,11 +17,11 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
         @cid = ArangoDB.create_collection(@cn)
       end
-      
+
       after do
         ArangoDB.drop_collection(@cn)
       end
-      
+
       it "does not create the index in case of violation" do
         # create a document
         cmd1 = "/_api/document?collection=#{@cn}"
@@ -126,9 +126,9 @@ describe ArangoDB do
     end
   end
 
-################################################################################
-## unique constraints during create
-################################################################################
+  ################################################################################
+  ## unique constraints during create
+  ################################################################################
 
   context "creating documents:" do
     context "dealing with unique constraints:" do
@@ -137,11 +137,11 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
         @cid = ArangoDB.create_collection(@cn)
       end
-      
+
       after do
         ArangoDB.drop_collection(@cn)
       end
-      
+
       it "rolls back in case of violation, array index w/o deduplication" do
         cmd = "/_api/index?collection=#{@cn}"
         body = "{ \"type\" : \"hash\", \"unique\" : true, \"fields\" : [ \"a[*]\" ], \"deduplicate\": false }"
@@ -151,24 +151,24 @@ describe ArangoDB do
         doc.parsed_response['type'].should eq("hash")
         doc.parsed_response['unique'].should eq(true)
         doc.parsed_response['deduplicate'].should eq(false)
-            
+
         # create a document
         cmd1 = "/_api/document?collection=#{@cn}"
         body = "{ \"a\" : [ 1 ] }"
         doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
 
         doc.code.should eq(201)
-        
+
         body = "{ \"a\" : [ 2 ] }"
         doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
 
         doc.code.should eq(201)
-        
+
         body = "{ \"a\" : [ 3, 4 ] }"
         doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
 
         doc.code.should eq(201)
-        
+
         doc.code.should eq(201)
 
         # create a unique constraint violation
@@ -177,7 +177,7 @@ describe ArangoDB do
 
         doc.code.should eq(409)
       end
-      
+
       it "rolls back in case of violation, array index" do
         cmd = "/_api/index?collection=#{@cn}"
         body = "{ \"type\" : \"hash\", \"unique\" : true, \"fields\" : [ \"a[*]\" ] }"
@@ -187,24 +187,24 @@ describe ArangoDB do
         doc.parsed_response['type'].should eq("hash")
         doc.parsed_response['unique'].should eq(true)
         doc.parsed_response['deduplicate'].should eq(true)
-            
+
         # create a document
         cmd1 = "/_api/document?collection=#{@cn}"
         body = "{ \"a\" : [ 1, 1 ] }"
         doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
 
         doc.code.should eq(201)
-        
+
         body = "{ \"a\" : [ 2 ] }"
         doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
 
         doc.code.should eq(201)
-        
+
         body = "{ \"a\" : [ 3, 4 ] }"
         doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
 
         doc.code.should eq(201)
-        
+
         body = "{ \"a\" : [ 5, 5 ] }"
         doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
 
@@ -216,7 +216,7 @@ describe ArangoDB do
 
         doc.code.should eq(409)
       end
-      
+
       it "rolls back in case of violation" do
         cmd = "/_api/index?collection=#{@cn}"
         body = "{ \"type\" : \"hash\", \"unique\" : true, \"fields\" : [ \"a\" ] }"
@@ -225,7 +225,7 @@ describe ArangoDB do
         doc.code.should eq(201)
         doc.parsed_response['type'].should eq("hash")
         doc.parsed_response['unique'].should eq(true)
-            
+
         # create a document
         cmd1 = "/_api/document?collection=#{@cn}"
         body = "{ \"a\" : 1, \"b\" : 1 }"
@@ -279,34 +279,39 @@ describe ArangoDB do
         doc.parsed_response['_id'].should eq(id1)
         doc.parsed_response['_rev'].should eq(rev1)
 
-        # unload collection
-        cmd3 = "/_api/collection/#{@cn}/unload"
-        doc = ArangoDB.log_put("#{prefix}", cmd3)
+        if RSpec.configuration.STORAGE_ENGINE == "mmfiles"
+          # unload collection
+          cmd3 = "/_api/collection/#{@cn}/unload"
+          doc = ArangoDB.log_put("#{prefix}", cmd3)
 
-        doc.code.should eq(200)
-        
-        # flush wal
-        doc = ArangoDB.put("/_admin/wal/flush");
-        doc.code.should eq(200)
-
-        cmd3 = "/_api/collection/#{@cn}"
-        doc = ArangoDB.log_get("#{prefix}", cmd3)
-        doc.code.should eq(200)
-
-        while doc.parsed_response['status'] != 2
-          doc = ArangoDB.get(cmd3)
           doc.code.should eq(200)
-          sleep 1
+
+          # flush wal
+          doc = ArangoDB.put("/_admin/wal/flush");
+          doc.code.should eq(200)
+
+          cmd3 = "/_api/collection/#{@cn}"
+          doc = ArangoDB.log_get("#{prefix}", cmd3)
+          doc.code.should eq(200)
+
+          i = 0
+          while (doc.parsed_response['status'] != 2) && (i < 100)
+            doc = ArangoDB.get(cmd3)
+            doc.code.should eq(200)
+            i += 1
+            sleep 1
+          end
+          expect(i).to be < 100 # Timeout...
+
+          # check it again
+          doc = ArangoDB.log_get("#{prefix}", cmd2)
+
+          doc.code.should eq(200)
+          doc.parsed_response['a'].should eq(1)
+          doc.parsed_response['b'].should eq(1)
+          doc.parsed_response['_id'].should eq(id1)
+          doc.parsed_response['_rev'].should eq(rev1)
         end
-
-        # check it again
-        doc = ArangoDB.log_get("#{prefix}", cmd2)
-
-        doc.code.should eq(200)
-        doc.parsed_response['a'].should eq(1)
-        doc.parsed_response['b'].should eq(1)
-        doc.parsed_response['_id'].should eq(id1)
-        doc.parsed_response['_rev'].should eq(rev1)
       end
 
       it "rolls back in case of violation, sparse index" do
@@ -317,7 +322,7 @@ describe ArangoDB do
         doc.code.should eq(201)
         doc.parsed_response['type'].should eq("hash")
         doc.parsed_response['unique'].should eq(true)
-            
+
         # create a document
         cmd1 = "/_api/document?collection=#{@cn}"
         body = "{ \"a\" : 1, \"b\" : 1 }"
@@ -371,42 +376,47 @@ describe ArangoDB do
         doc.parsed_response['_id'].should eq(id1)
         doc.parsed_response['_rev'].should eq(rev1)
 
-        # unload collection
-        cmd3 = "/_api/collection/#{@cn}/unload"
-        doc = ArangoDB.log_put("#{prefix}", cmd3)
+        if RSpec.configuration.STORAGE_ENGINE == "mmfiles"
+          # unload collection
+          cmd3 = "/_api/collection/#{@cn}/unload"
+          doc = ArangoDB.log_put("#{prefix}", cmd3)
 
-        doc.code.should eq(200)
-        
-        # flush wal
-        doc = ArangoDB.put("/_admin/wal/flush");
-        doc.code.should eq(200)
-
-        cmd3 = "/_api/collection/#{@cn}"
-        doc = ArangoDB.log_get("#{prefix}", cmd3)
-        doc.code.should eq(200)
-
-        while doc.parsed_response['status'] != 2
-          doc = ArangoDB.get(cmd3)
           doc.code.should eq(200)
-          sleep 1
+
+          # flush wal
+          doc = ArangoDB.put("/_admin/wal/flush");
+          doc.code.should eq(200)
+
+          cmd3 = "/_api/collection/#{@cn}"
+          doc = ArangoDB.log_get("#{prefix}", cmd3)
+          doc.code.should eq(200)
+
+          i = 0
+          while (doc.parsed_response['status'] != 2) && (i < 100)
+            doc = ArangoDB.get(cmd3)
+            doc.code.should eq(200)
+            i += 1
+            sleep 1
+          end
+          expect(i).to be < 100 # Timeout...
+
+          # check it again
+          doc = ArangoDB.log_get("#{prefix}", cmd2)
+
+          doc.code.should eq(200)
+          doc.parsed_response['a'].should eq(1)
+          doc.parsed_response['b'].should eq(1)
+          doc.parsed_response['_id'].should eq(id1)
+          doc.parsed_response['_rev'].should eq(rev1)
         end
-
-        # check it again
-        doc = ArangoDB.log_get("#{prefix}", cmd2)
-
-        doc.code.should eq(200)
-        doc.parsed_response['a'].should eq(1)
-        doc.parsed_response['b'].should eq(1)
-        doc.parsed_response['_id'].should eq(id1)
-        doc.parsed_response['_rev'].should eq(rev1)
       end
 
     end
   end
 
-################################################################################
-## unique constraints during update
-################################################################################
+  ################################################################################
+  ## unique constraints during update
+  ################################################################################
 
   context "updating documents:" do
     context "dealing with unique constraints:" do
@@ -415,11 +425,11 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
         @cid = ArangoDB.create_collection(@cn)
       end
-      
+
       after do
         ArangoDB.drop_collection(@cn)
       end
-      
+
       it "rolls back in case of violation" do
         cmd = "/_api/index?collection=#{@cn}"
         body = "{ \"type\" : \"hash\", \"unique\" : true, \"fields\" : [ \"a\" ] }"
@@ -428,7 +438,7 @@ describe ArangoDB do
         doc.code.should eq(201)
         doc.parsed_response['type'].should eq("hash")
         doc.parsed_response['unique'].should eq(true)
-            
+
         # create a document
         cmd1 = "/_api/document?collection=#{@cn}"
         body = "{ \"a\" : 1, \"b\" : 1 }"
@@ -508,35 +518,40 @@ describe ArangoDB do
         doc.parsed_response['_rev'].should eq(rev1)
         doc.parsed_response['_rev'].should_not eq(rev2)
 
-        # unload collection
-        cmd4 = "/_api/collection/#{@cn}/unload"
-        doc = ArangoDB.log_put("#{prefix}", cmd4)
+        if RSpec.configuration.STORAGE_ENGINE == "mmfiles"
+          # unload collection
+          cmd4 = "/_api/collection/#{@cn}/unload"
+          doc = ArangoDB.log_put("#{prefix}", cmd4)
 
-        doc.code.should eq(200)
-
-        # flush wal
-        doc = ArangoDB.put("/_admin/wal/flush");
-        doc.code.should eq(200)
-
-        cmd4 = "/_api/collection/#{@cn}"
-        doc = ArangoDB.log_get("#{prefix}", cmd4)
-        doc.code.should eq(200)
-
-        while doc.parsed_response['status'] != 2
-          doc = ArangoDB.get(cmd4)
           doc.code.should eq(200)
-          sleep 1
+
+          # flush wal
+          doc = ArangoDB.put("/_admin/wal/flush");
+          doc.code.should eq(200)
+
+          cmd4 = "/_api/collection/#{@cn}"
+          doc = ArangoDB.log_get("#{prefix}", cmd4)
+          doc.code.should eq(200)
+
+          i = 0
+          while (doc.parsed_response['status'] != 2) && (i < 100)
+            doc = ArangoDB.get(cmd4)
+            doc.code.should eq(200)
+            i += 1
+            sleep 1
+          end
+          expect(i).to be < 100 # Timeout...
+
+          # check the first document again
+          doc = ArangoDB.log_get("#{prefix}", cmd2)
+
+          doc.code.should eq(200)
+          doc.parsed_response['a'].should eq(1)
+          doc.parsed_response['b'].should eq(1)
+          doc.parsed_response['_id'].should eq(id1)
+          doc.parsed_response['_rev'].should eq(rev1)
+          doc.parsed_response['_rev'].should_not eq(rev2)
         end
-
-        # check the first document again
-        doc = ArangoDB.log_get("#{prefix}", cmd2)
-
-        doc.code.should eq(200)
-        doc.parsed_response['a'].should eq(1)
-        doc.parsed_response['b'].should eq(1)
-        doc.parsed_response['_id'].should eq(id1)
-        doc.parsed_response['_rev'].should eq(rev1)
-        doc.parsed_response['_rev'].should_not eq(rev2)
       end
 
       it "rolls back in case of violation, sparse index" do
@@ -547,7 +562,7 @@ describe ArangoDB do
         doc.code.should eq(201)
         doc.parsed_response['type'].should eq("hash")
         doc.parsed_response['unique'].should eq(true)
-            
+
         # create a document
         cmd1 = "/_api/document?collection=#{@cn}"
         body = "{ \"a\" : 1, \"b\" : 1 }"
@@ -627,35 +642,40 @@ describe ArangoDB do
         doc.parsed_response['_rev'].should eq(rev1)
         doc.parsed_response['_rev'].should_not eq(rev2)
 
-        # unload collection
-        cmd4 = "/_api/collection/#{@cn}/unload"
-        doc = ArangoDB.log_put("#{prefix}", cmd4)
+        if RSpec.configuration.STORAGE_ENGINE == "mmfiles"
+          # unload collection
+          cmd4 = "/_api/collection/#{@cn}/unload"
+          doc = ArangoDB.log_put("#{prefix}", cmd4)
 
-        doc.code.should eq(200)
-
-        # flush wal
-        doc = ArangoDB.put("/_admin/wal/flush");
-        doc.code.should eq(200)
-
-        cmd4 = "/_api/collection/#{@cn}"
-        doc = ArangoDB.log_get("#{prefix}", cmd4)
-        doc.code.should eq(200)
-
-        while doc.parsed_response['status'] != 2
-          doc = ArangoDB.get(cmd4)
           doc.code.should eq(200)
-          sleep 1
+
+          # flush wal
+          doc = ArangoDB.put("/_admin/wal/flush");
+          doc.code.should eq(200)
+
+          cmd4 = "/_api/collection/#{@cn}"
+          doc = ArangoDB.log_get("#{prefix}", cmd4)
+          doc.code.should eq(200)
+
+          i = 0
+          while (doc.parsed_response['status'] != 2) && (i < 100)
+            doc = ArangoDB.get(cmd4)
+            doc.code.should eq(200)
+            i += 1
+            sleep 1
+          end
+          expect(i).to be < 100 # Timeout...
+
+          # check the first document again
+          doc = ArangoDB.log_get("#{prefix}", cmd2)
+
+          doc.code.should eq(200)
+          doc.parsed_response['a'].should eq(1)
+          doc.parsed_response['b'].should eq(1)
+          doc.parsed_response['_id'].should eq(id1)
+          doc.parsed_response['_rev'].should eq(rev1)
+          doc.parsed_response['_rev'].should_not eq(rev2)
         end
-
-        # check the first document again
-        doc = ArangoDB.log_get("#{prefix}", cmd2)
-
-        doc.code.should eq(200)
-        doc.parsed_response['a'].should eq(1)
-        doc.parsed_response['b'].should eq(1)
-        doc.parsed_response['_id'].should eq(id1)
-        doc.parsed_response['_rev'].should eq(rev1)
-        doc.parsed_response['_rev'].should_not eq(rev2)
       end
     end
 

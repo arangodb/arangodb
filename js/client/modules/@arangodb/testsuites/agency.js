@@ -43,7 +43,7 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function agency (options) {
-  let testCases = tu.scanTestPaths(testPaths.agency);
+  let testCases = tu.scanTestPaths(testPaths.agency, options);
 
   let saveAgency = options.agency;
   let saveCluster = options.cluster;

@@ -24,6 +24,9 @@
 #ifndef ARANGODB_ENDPOINT_ENDPOINT_LIST_H
 #define ARANGODB_ENDPOINT_ENDPOINT_LIST_H 1
 
+#include <string>
+#include <vector>
+
 #include "Basics/Common.h"
 
 #include "Endpoint/Endpoint.h"

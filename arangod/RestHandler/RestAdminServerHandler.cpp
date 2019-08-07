@@ -25,6 +25,9 @@
 
 #include "Actions/RestActionHandler.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Replication/ReplicationFeature.h"
 
 using namespace arangodb;
@@ -67,7 +70,7 @@ void RestAdminServerHandler::handleId() {
 
   auto instance = ServerState::instance();
   if (!instance->isRunningInCluster()) {
-    // old behaviour...klingt komisch, is aber so
+    // old behavior...klingt komisch, is aber so
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
     return;
   }

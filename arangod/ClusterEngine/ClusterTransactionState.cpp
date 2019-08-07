@@ -23,10 +23,12 @@
 #include "ClusterTransactionState.h"
 
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Manager.h"
@@ -55,17 +57,16 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     _hints = hints;
   }
   
-  auto cleanup = [&] {
+  auto cleanup = scopeGuard([&] {
     if (nestingLevel() == 0) {
       updateStatus(transaction::Status::ABORTED);
     }
     // free what we have got so far
     unuseCollections(nestingLevel());
-  };
-
+  });
+  
   Result res = useCollections(nestingLevel());
   if (res.fail()) { // something is wrong
-    cleanup();
     return res;
   }
   
@@ -73,7 +74,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   if (nestingLevel() == 0) {
     updateStatus(transaction::Status::RUNNING);
     
-    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr);
+    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr, isReadOnlyTransaction());
     setRegistered();
     
     ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
@@ -94,14 +95,14 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
       
       res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders);
       if (res.fail()) { // something is wrong
-        cleanup();
+        return res;
       }
     }
-    
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
-
+  
+  cleanup.cancel();
   return res;
 }
 

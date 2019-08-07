@@ -83,7 +83,7 @@ option(VERBOSE "be verbose about flags used" OFF)
 # ARANGODB_RPM_REVISION
 
 set(ARANGODB_VERSION_MAJOR "3")
-set(ARANGODB_VERSION_MINOR "5")
+set(ARANGODB_VERSION_MINOR "6")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
@@ -254,7 +254,7 @@ set(ARANGODB_SNAP_REVISION "1")
 message(STATUS "SNAP REVISION: ${ARANGODB_SNAP_REVISION}")
 
 # ------------------------------------------------------------------------------
-# 
+#
 # ------------------------------------------------------------------------------
 
 if (WIN32)
@@ -302,10 +302,11 @@ set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model NoSQL database")
 
 # MSVC
 set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test program")
-set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - backup creation tool")
-set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - backup recovery tool")
-set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - data exporter")
-set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - data importer")
+set(ARANGO_BACKUP_FRIENDLY_STRING  "arangobackup - hot backup tool")
+set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - export")
+set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - importer")
+set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - datae xporter")
+set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - TSV/CSV/JSON importer")
 set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
 set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - VelocyPack formatter")
 
@@ -316,6 +317,7 @@ set(LIB_ARANGO_V8     arango_v8)
 
 # binaries
 set(BIN_ARANGOBENCH   arangobench)
+set(BIN_ARANGOBACKUP  arangobackup)
 set(BIN_ARANGOD       arangod)
 set(BIN_ARANGODUMP    arangodump)
 set(BIN_ARANGOEXPORT  arangoexport)
@@ -568,18 +570,24 @@ if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
 endif ()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+  # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
   if (MSVC_VERSION VERSION_LESS 1915)
     message(FATAL_ERROR "ArangoDB Requires at least MSVC 2017 update 15.8!")
   endif()
 
-  # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
   # MSVC2018.8 requires the following define
   add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
 endif()
 
 if (CMAKE_COMPILER_IS_CLANG)
   if (APPLE)
-    set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++")
+    if (NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET} OR ENV{MACOSX_DEPLOYMENT_TARGET} STREQUAL "")
+      set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++")
+    else ()
+      set(BASE_C_FLAGS "${BASE_C_FLAGS} -mmacosx-version-min=$ENV{MACOSX_DEPLOYMENT_TARGET}")
+      set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++ -mmacosx-version-min=$ENV{MACOSX_DEPLOYMENT_TARGET}")
+      set(BASE_LD_FLAGS "${BASE_LD_FLAGS} -mmacosx-version-min=$ENV{MACOSX_DEPLOYMENT_TARGET}")
+    endif ()
     add_definitions("-Wno-deprecated-declarations")
   else ()
     if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "3.3")
@@ -968,7 +976,7 @@ endif()
 ## OPENSSL
 ################################################################################
 
-# Some special stuff for Mac OSX and homebrew as a preparation for the 
+# Some special stuff for Mac OSX and homebrew as a preparation for the
 # generic FindOpenSSL script:
 if (APPLE AND BREW AND NOT OPENSSL_ROOT_DIR)
   message("searching openssl with brew (${BREW})")
@@ -1243,6 +1251,7 @@ if (USE_GOOGLE_TESTS)
 endif()
 
 add_dependencies(arangobench   zlibstatic)
+add_dependencies(arangobackup  zlibstatic)
 add_dependencies(arangod       zlibstatic)
 add_dependencies(arangodump    zlibstatic)
 add_dependencies(arangoexport  zlibstatic)
@@ -1252,6 +1261,7 @@ add_dependencies(arangosh      zlibstatic)
 
 if(UNIX)
   add_dependencies(arangobench   man)
+  add_dependencies(arangobackup  man)
   add_dependencies(arangod       man)
   add_dependencies(arangodump    man)
   add_dependencies(arangoexport  man)
@@ -1263,6 +1273,7 @@ endif()
 if (NOT USE_PRECOMPILED_V8)
   # all binaries depend on v8_build because it contains ICU as well
   add_dependencies(arangobench   v8_build)
+  add_dependencies(arangobackup  v8_build)
   add_dependencies(arangod       v8_build)
   add_dependencies(arangodump    v8_build)
   add_dependencies(arangoexport  v8_build)

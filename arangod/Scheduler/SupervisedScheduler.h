@@ -46,7 +46,7 @@ class SupervisedScheduler final : public Scheduler {
   bool queue(RequestLane lane, std::function<void()>, bool allowDirectHandling = false) override;
 
  private:
-  std::atomic<size_t> _numWorker;
+  std::atomic<size_t> _numWorkers;
   std::atomic<bool> _stopping;
 
  protected:
@@ -56,9 +56,8 @@ class SupervisedScheduler final : public Scheduler {
   bool start() override;
   void shutdown() override;
 
-  void addQueueStatistics(velocypack::Builder&) const override;
+  void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
-  std::string infoStatus() const override;
 
  private:
   friend class SupervisedSchedulerManagerThread;
@@ -93,7 +92,7 @@ class SupervisedScheduler final : public Scheduler {
   //
   // The last submit time is a thread local variable that stores the time of the last
   // queue operation.
-  alignas(64) std::atomic<uint64_t> _wakeupQueueLength;                        // q1
+  alignas(64) std::atomic<uint64_t> _wakeupQueueLength;            // q1
   std::atomic<uint64_t> _wakeupTime_ns, _definitiveWakeupTime_ns;  // t3, t4
 
   // each worker thread has a state block which contains configuration values.
@@ -139,6 +138,8 @@ class SupervisedScheduler final : public Scheduler {
   std::condition_variable _conditionSupervisor;
   std::unique_ptr<SupervisedSchedulerManagerThread> _manager;
 
+  size_t _maxFifoSize;
+
   std::unique_ptr<WorkItem> getWork(std::shared_ptr<WorkerState>& state);
 
   void startOneThread();
@@ -146,6 +147,10 @@ class SupervisedScheduler final : public Scheduler {
 
   bool cleanupAbandonedThreads();
   void sortoutLongRunningThreads();
+
+  // Check if we are allowed to pull from a queue with the given index
+  // This is used to give priority to "FAST" and "MED" lanes accordingly.
+  bool canPullFromQueue(uint64_t queueIdx) const;
 };
 
 }  // namespace arangodb

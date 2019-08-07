@@ -54,29 +54,13 @@ struct basic_sort : irs::sort {
     : irs::sort(basic_sort::type()), idx(idx) {
   }
 
-  struct basic_scorer : irs::sort::scorer_base<size_t> {
+  struct basic_scorer : irs::sort::score_ctx {
     explicit basic_scorer(size_t idx) : idx(idx) {}
-
-    void score(irs::byte_type* score) override {
-      score_cast(score) = idx;
-    }
 
     size_t idx;
   };
 
   struct prepared_sort : irs::sort::prepared {
-    template<typename T>
-    FORCE_INLINE static T& score_cast(irs::byte_type* score_buf) {
-      assert(score_buf);
-      return *reinterpret_cast<T*>(score_buf);
-    }
-
-    template<typename T>
-    FORCE_INLINE static const T& score_cast(const irs::byte_type* score_buf) {
-      assert(score_buf);
-      return *reinterpret_cast<const T*>(score_buf);
-    }
-
     explicit prepared_sort(size_t idx) : idx(idx) { }
 
     virtual void collect(
@@ -96,14 +80,20 @@ struct basic_sort : irs::sort {
       return nullptr; // do not need to collect stats
     }
 
-    scorer::ptr prepare_scorer(
+    std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type*,
         const irs::attribute_view&,
         irs::boost_t
     ) const override {
-      return scorer::ptr(new basic_scorer(idx));
+      return {
+        score_ctx::ptr(new basic_scorer(idx)),
+        [](const void* ctx, irs::byte_type* score) {
+          auto& state = *reinterpret_cast<const basic_scorer*>(ctx);
+          sort::score_cast<size_t>(score) = state.idx;
+        }
+      };
     }
 
     void prepare_stats(irs::byte_type*) const override { }
@@ -180,8 +170,9 @@ class basic_doc_iterator: public irs::doc_iterator {
         boost
       );
 
-      score_.prepare(ord, [this] (irs::byte_type* score) {
-        scorers_.score(score);
+      score_.prepare(ord, this, [](const void* ctx, irs::byte_type* score) {
+        auto& self = *static_cast<const basic_doc_iterator*>(ctx);
+        self.scorers_.score(score);
       });
 
       attrs_.emplace(score_);

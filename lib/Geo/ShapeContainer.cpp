@@ -20,26 +20,36 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ShapeContainer.h"
+#include <stddef.h>
+#include <algorithm>
 
-#include <s2/s2cap.h>
+#include <s2/s1angle.h>
 #include <s2/s2cell.h>
+#include <s2/s2cell_id.h>
+#include <s2/s2latlng.h>
 #include <s2/s2latlng_rect.h>
-#include <s2/s2metrics.h>
+#include <s2/s2loop.h>
 #include <s2/s2point_region.h>
 #include <s2/s2polygon.h>
+#include <s2/s2polyline.h>
 #include <s2/s2region.h>
 #include <s2/s2region_coverer.h>
+#include <s2/util/math/vector.h>
 
-#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ShapeContainer.h"
+
+#include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 #include "Geo/GeoParams.h"
 #include "Geo/S2/S2MultiPointRegion.h"
 #include "Geo/S2/S2MultiPolyline.h"
+#include "Geo/Shapes.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::geo;

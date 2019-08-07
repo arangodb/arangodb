@@ -58,23 +58,19 @@ class format_test_case : public index_test_base {
       }
     }
 
-    uint32_t value() const override {
-      return begin_;
-    }
-
     bool next() override {
-      if (begin_ == end_) {
-        begin_ = irs::type_limits<irs::type_t::pos_t>::eof();
+      if (value_ == end_) {
+        value_ = irs::type_limits<irs::type_t::pos_t>::eof();
 
         return false;
       }
 
-      ++begin_;
+      ++value_;
 
-      const auto written = sprintf(pay_data_, "%d", begin_);
+      const auto written = sprintf(pay_data_, "%d", value_);
       pay_.value = irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(pay_data_), written);
 
-      offs_.start = begin_;
+      offs_.start = value_;
       offs_.end = offs_.start + written;
       return true;
     }
@@ -87,7 +83,6 @@ class format_test_case : public index_test_base {
    private:
     friend class postings;
 
-    uint32_t begin_{ irs::type_limits<irs::type_t::pos_t>::invalid() };
     uint32_t end_;
     irs::offset offs_{};
     irs::payload pay_{};
@@ -122,8 +117,8 @@ class format_test_case : public index_test_base {
       }
 
       doc_ = *next_;
-      pos_.begin_ = doc_;
-      pos_.end_ = pos_.begin_ + 10;
+      pos_.value_ = doc_;
+      pos_.end_ = pos_.value_ + 10;
       pos_.clear();
       ++next_;
 

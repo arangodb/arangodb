@@ -25,6 +25,7 @@
 #define ARANGODB_BASICS_SCOPE_GUARD_H 1
 
 #include <type_traits>
+#include <utility>
 
 #define SCOPE_GUARD_TOKEN_PASTE_WRAPPED(x, y) x##y
 #define SCOPE_GUARD_TOKEN_PASTE(x, y) SCOPE_GUARD_TOKEN_PASTE_WRAPPED(x, y)

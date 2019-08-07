@@ -57,6 +57,7 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -228,6 +229,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     arangodb::iresearch::IResearchFeature feature(server);
     arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
     arangodb::DatabasePathFeature* dbPathFeature;
+    server.addFeature(new arangodb::FlushFeature(server)); // required to skip IResearchView validation
     server.addFeature(new arangodb::DatabaseFeature(server)); // required to skip IResearchView validation
     server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server)); // required for IResearchLink::initDataStore()
     server.addFeature(analyzerFeature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for restoring link analyzers
@@ -268,7 +270,11 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     EXPECT_TRUE((viewDataPath.exists(result) && !result)); // ensure no view directory
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    EXPECT_TRUE((logicalView0->properties(builder, true, true).ok()));
+    EXPECT_TRUE((logicalView0
+                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                               arangodb::LogicalDataSource::Serialize::Detailed,
+                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
+                     .ok()));
     builder.close();
     EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 0 before upgrade
 
@@ -286,7 +292,11 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     EXPECT_TRUE((viewDataPath.exists(result) && !result)); // ensure view directory not created
     builder.clear();
     builder.openObject();
-    EXPECT_TRUE((logicalView1->properties(builder, true, true).ok()));
+    EXPECT_TRUE((logicalView1
+                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                               arangodb::LogicalDataSource::Serialize::Detailed,
+                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
+                     .ok()));
     builder.close();
     EXPECT_TRUE((1 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 1 after upgrade
   }
@@ -311,6 +321,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     arangodb::iresearch::IResearchFeature feature(server);
     arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
     arangodb::DatabasePathFeature* dbPathFeature;
+    server.addFeature(new arangodb::FlushFeature(server)); // required to skip IResearchView validation
     server.addFeature(new arangodb::DatabaseFeature(server)); // required to skip IResearchView validation
     server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server)); // required for IResearchLink::initDataStore()
     server.addFeature(analyzerFeature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for restoring link analyzers
@@ -353,7 +364,11 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     EXPECT_TRUE((viewDataPath.exists(result) && result));
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    EXPECT_TRUE((logicalView0->properties(builder, true, true).ok()));
+    EXPECT_TRUE((logicalView0
+                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                               arangodb::LogicalDataSource::Serialize::Detailed,
+                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
+                     .ok()));
     builder.close();
     EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 0 before upgrade
 
@@ -371,7 +386,11 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     EXPECT_TRUE((viewDataPath.exists(result) && !result)); // ensure view directory not created
     builder.clear();
     builder.openObject();
-    EXPECT_TRUE((logicalView1->properties(builder, true, true).ok()));
+    EXPECT_TRUE((logicalView1
+                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                               arangodb::LogicalDataSource::Serialize::Detailed,
+                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
+                     .ok()));
     builder.close();
     EXPECT_TRUE((1 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 1 after upgrade
 
@@ -404,6 +423,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     arangodb::DatabaseFeature* database;
     arangodb::iresearch::IResearchFeature feature(server);
     arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
+    server.addFeature(new arangodb::FlushFeature(server)); // required for constructing TRI_vocbase_t
     server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
     TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
     server.addFeature(new arangodb::AuthenticationFeature(server)); // required for ClusterComm::instance()
@@ -439,7 +459,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
 
     ASSERT_TRUE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase)));
     ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).ok()));
-    ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), 0.0).ok()));
+    ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false, collectionJson->slice(), 0.0).ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
     EXPECT_TRUE((ci->createViewCoordinator(vocbase->name(), viewId, viewJson->slice()).ok()));
@@ -461,7 +481,11 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    EXPECT_TRUE((logicalView0->properties(builder, true, true).ok()));
+    EXPECT_TRUE((logicalView0
+                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                               arangodb::LogicalDataSource::Serialize::Detailed,
+                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
+                     .ok()));
     builder.close();
     EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 0 before upgrade
 
@@ -483,7 +507,11 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     EXPECT_TRUE((link0->id() == link1->id())); // ensure new link
     builder.clear();
     builder.openObject();
-    EXPECT_TRUE((logicalView1->properties(builder, true, true).ok()));
+    EXPECT_TRUE((logicalView1
+                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                               arangodb::LogicalDataSource::Serialize::Detailed,
+                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
+                     .ok()));
     builder.close();
     EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 0 after upgrade
 
@@ -514,6 +542,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     arangodb::iresearch::IResearchFeature feature(server);
     arangodb::DatabasePathFeature* dbPathFeature;
     arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
+    server.addFeature(new arangodb::FlushFeature(server)); // required to skip IResearchView validation
     server.addFeature(new arangodb::AuthenticationFeature(server)); // required for ClusterInfo::loadPlan()
     server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(server)); // required for SimpleHttpClient::doRequest()
     server.addFeature(new arangodb::DatabaseFeature(server)); // required to skip IResearchView validation
@@ -560,7 +589,11 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     EXPECT_TRUE((viewDataPath.exists(result) && !result)); // ensure no view directory
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    EXPECT_TRUE((logicalView->properties(builder, true, true).ok()));
+    EXPECT_TRUE((logicalView
+                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                               arangodb::LogicalDataSource::Serialize::Detailed,
+                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
+                     .ok()));
     builder.close();
     EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 0 before upgrade
 
@@ -596,6 +629,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     arangodb::iresearch::IResearchFeature feature(server);
     arangodb::DatabasePathFeature* dbPathFeature;
     arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
+    server.addFeature(new arangodb::FlushFeature(server)); // required to skip IResearchView validation
     server.addFeature(new arangodb::AuthenticationFeature(server)); // required for ClusterInfo::loadPlan()
     server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(server)); // required for SimpleHttpClient::doRequest()
     server.addFeature(new arangodb::DatabaseFeature(server)); // required to skip IResearchView validation
@@ -645,7 +679,11 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     EXPECT_TRUE((viewDataPath.exists(result) && result));
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    EXPECT_TRUE((logicalView->properties(builder, true, true).ok()));
+    EXPECT_TRUE((logicalView
+                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                               arangodb::LogicalDataSource::Serialize::Detailed,
+                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
+                     .ok()));
     builder.close();
     EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 0 before upgrade
 

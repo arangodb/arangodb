@@ -179,7 +179,7 @@ void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* new
 }
 
 bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPlan* plan,
-                                                    OptimizerRule const* rule) {
+                                                    OptimizerRule const& rule) {
   bool modified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
@@ -275,7 +275,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
 }
 
 bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionPlan* plan,
-                                                      OptimizerRule const* rule) {
+                                                      OptimizerRule const& rule) {
   bool modified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
@@ -388,8 +388,11 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
 
 }  // namespace
 
-void arangodb::aql::substituteClusterSingleDocumentOperations(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const* rule) {
+namespace arangodb {
+namespace aql {
+
+void substituteClusterSingleDocumentOperationsRule(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const& rule) {
   bool modified = false;
 
   for (auto const& fun : {&::substituteClusterSingleDocumentOperationsIndex,
@@ -401,4 +404,7 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(
   }
 
   opt->addPlan(std::move(plan), rule, modified);
+}
+
+}
 }

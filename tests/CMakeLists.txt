@@ -112,6 +112,7 @@ set(ARANGODB_TESTS_SOURCES
   Graph/ConstantWeightShortestPathFinder.cpp
   Graph/GraphTestTools.cpp
   Graph/KShortestPathsFinder.cpp
+  HotBackup/HotBackupCoordinatorTest.cpp
   IResearch/common.cpp
   IResearch/AgencyMock.cpp
   IResearch/AgencyCommManagerMock.cpp
@@ -138,9 +139,11 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchQueryBooleanTerm-test.cpp
   IResearch/IResearchQueryComplexBoolean-test.cpp
   IResearch/IResearchQueryExists-test.cpp
+  IResearch/IResearchQueryFilter-test.cpp
   IResearch/IResearchQueryIn-test.cpp
   IResearch/IResearchQueryInRange-test.cpp
   IResearch/IResearchQueryJoin-test.cpp
+  IResearch/IResearchQueryMinMatch-test.cpp
   IResearch/IResearchQueryNullTerm-test.cpp
   IResearch/IResearchQueryNumericTerm-test.cpp
   IResearch/IResearchQueryOptimization-test.cpp
@@ -169,15 +172,21 @@ set(ARANGODB_TESTS_SOURCES
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp
   Pregel/typedbuffer.cpp
+  Replication/ReplicationClientsProgressTrackerTest.cpp
   RestHandler/RestAnalyzerHandler-test.cpp
+  RestHandler/RestDocumentHandler-test.cpp
   RestHandler/RestUsersHandler-test.cpp
   RestHandler/RestViewHandler-test.cpp
   RestServer/FlushFeature-test.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
+  RocksDBEngine/HotBackupTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
+  RocksDBEngine/ShaEventListener.cpp
+  RocksDBEngine/TransactionManagerTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
+  StorageEngine/PhysicalCollectionTest.cpp
   Transaction/Context-test.cpp
   Transaction/Manager-test.cpp
   Transaction/RestTransactionHandler-test.cpp

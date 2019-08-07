@@ -23,6 +23,7 @@
 #include "AqlHelper.h"
 
 #include "Aql/ExecutionStats.h"
+#include "Basics/VelocyPackHelper.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -90,7 +91,7 @@ bool arangodb::aql::operator==(arangodb::aql::AqlItemBlock const& left,
       AqlValue const& l = left.getValueReference(row, reg);
       AqlValue const& r = right.getValueReference(row, reg);
       // Doesn't work for docvecs or ranges
-      if (l.slice() != r.slice()) {
+      if (arangodb::basics::VelocyPackHelper::compare(l.slice(), r.slice(), false) != 0) {
         return false;
       }
     }

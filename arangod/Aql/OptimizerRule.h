@@ -25,6 +25,8 @@
 
 #include "Basics/Common.h"
 
+#include <type_traits>
+
 namespace arangodb {
 namespace aql {
 class ExecutionPlan;
@@ -38,10 +40,49 @@ struct OptimizerRule;
 /// set the level of the appended plan to the largest level of rule
 /// that ought to be considered as done to indicate which rule is to be
 /// applied next.
-typedef std::function<void(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*)> RuleFunction;
+typedef void (*RuleFunction)(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
 /// @brief type of an optimizer rule
 struct OptimizerRule {
+  enum class Flags : int {
+    Default = 0,
+    Hidden = 1,
+    ClusterOnly = 2,
+    CanBeDisabled = 4,
+    CanCreateAdditionalPlans = 8,
+  };
+
+  /// @brief helper for building flags
+  template <typename... Args>
+  static std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) {
+    return static_cast<std::underlying_type<Flags>::type>(flag) + makeFlags(args...);
+  }
+
+  static std::underlying_type<Flags>::type makeFlags() {
+    return static_cast<std::underlying_type<Flags>::type>(Flags::Default);
+  }
+  
+  /// @brief check a flag for the rule
+  bool hasFlag(Flags flag) const {
+    return ((flags & static_cast<std::underlying_type<Flags>::type>(flag)) != 0);
+  }
+
+  bool canBeDisabled() const {
+    return hasFlag(Flags::CanBeDisabled);
+  }
+  
+  bool isClusterOnly() const {
+    return hasFlag(Flags::ClusterOnly);
+  }
+  
+  bool isHidden() const {
+    return hasFlag(Flags::Hidden);
+  }
+  
+  bool canCreateAdditionalPlans() const {
+    return hasFlag(Flags::CanCreateAdditionalPlans);
+  }
+
   /// @brief optimizer rules
   enum RuleLevel : int {
     // List all the rules in the system here:
@@ -55,9 +96,6 @@ struct OptimizerRule {
     replaceNearWithinFulltext,
 
     inlineSubqueriesRule,
-
-    // split and-combined filters into multiple smaller filters
-    splitFiltersRule,
 
     /// simplify some conditions in CalculationNodes
     simplifyConditionsRule,
@@ -197,7 +235,9 @@ struct OptimizerRule {
 
     // optimize queries in the cluster so that the entire query
     // gets pushed to a single server
-    optimizeClusterSingleShardRule,
+    // if applied, this rule will turn all other cluster rules off
+    // for the current plan
+    clusterOneShardRule,
 
     // make operations on sharded collections use distribute
     distributeInClusterRule,
@@ -250,20 +290,15 @@ struct OptimizerRule {
   std::string name;
   RuleFunction func;
   RuleLevel const level;
-  bool const canCreateAdditionalPlans;
-  bool const canBeDisabled;
-  bool const isHidden;
+  std::underlying_type<Flags>::type const flags;
 
   OptimizerRule() = delete;
 
-  OptimizerRule(std::string const& name, RuleFunction const& func, RuleLevel level,
-                bool canCreateAdditionalPlans, bool canBeDisabled, bool isHidden)
+  OptimizerRule(std::string const& name, RuleFunction const& func, RuleLevel level, std::underlying_type<Flags>::type flags)
       : name(name),
         func(func),
         level(level),
-        canCreateAdditionalPlans(canCreateAdditionalPlans),
-        canBeDisabled(canBeDisabled),
-        isHidden(isHidden) {}
+        flags(flags) {}
 };
 
 }  // namespace aql

@@ -62,7 +62,7 @@ const testPaths = {
 var _resilience = function(path) {
   this.func = function resilience (options) {
     let suiteName = path;
-    let testCases = tu.scanTestPaths(testPaths[path]);
+    let testCases = tu.scanTestPaths(testPaths[path], options);
     options.cluster = true;
     options.propagateInstanceInfo = true;
     if (options.test !== undefined) {
@@ -94,7 +94,7 @@ const resilienceSharddist = (new _resilience('resilience_sharddist')).func;
 // //////////////////////////////////////////////////////////////////////////////
 
 function clientResilience (options) {
-  let testCases = tu.scanTestPaths(testPaths.client_resilience);
+  let testCases = tu.scanTestPaths(testPaths.client_resilience, options);
   options.cluster = true;
   if (options.coordinators < 2) {
     options.coordinators = 2;
@@ -121,7 +121,7 @@ function activeFailover (options) {
     };
   }
 
-  let testCases = tu.scanTestPaths(testPaths.active_failover);
+  let testCases = tu.scanTestPaths(testPaths.active_failover, options);
   options.activefailover = true;
   options.singles = 4;
   options.disableMonitor = true;

@@ -25,6 +25,11 @@ concurrent modifications to this graph.
 @RESTSTRUCT{replicationFactor,graph_representation,integer,required,}
 The replication factor used for every new collection in the graph.
 
+@RESTSTRUCT{minReplicationFactor,graph_representation,integer,optional,}
+The minimal replication factor used for every new collection in the graph.
+If one shard has less than minReplicationFactor copies, we cannot write
+to this shard, but to all others.
+
 @RESTSTRUCT{isSmart,graph_representation,boolean,required,}
 Flag if the graph is a SmartGraph (Enterprise Edition only) or not.
 

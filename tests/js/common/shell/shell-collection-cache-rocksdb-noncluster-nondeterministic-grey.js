@@ -115,7 +115,7 @@ function CollectionCacheSuite () {
       });
     },
 
-    testCollectionCacheBehaviour : function () {
+    testCollectionCacheBehavior : function () {
       let c = db._create(cn, {cacheEnabled:true});
       let p = c.properties();
       assertTrue(p.cacheEnabled, p);

@@ -24,9 +24,10 @@
 #ifndef ARANGOD_VOC_BASE_KEY_LOCK_INFO_H
 #define ARANGOD_VOC_BASE_KEY_LOCK_INFO_H 1
 
-#include "Basics/Common.h"
-
 #include <functional>
+#include <string>
+
+#include "Basics/Common.h"
 
 namespace arangodb {
 

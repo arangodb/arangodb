@@ -36,7 +36,7 @@ InitialSyncer::~InitialSyncer() {
 
   try {
     if (!_state.isChildSyncer) {
-      _batch.finish(_state.connection, _progress);
+      _batch.finish(_state.connection, _progress, _state.syncerId);
     }
   } catch (...) {
   }
@@ -61,9 +61,9 @@ void InitialSyncer::startRecurringBatchExtension() {
         if (!cancelled) {
           auto syncer = self.lock();
           if (syncer) {
-            InitialSyncer* s = static_cast<InitialSyncer*>(syncer.get());
+            auto* s = static_cast<InitialSyncer*>(syncer.get());
             if (s->_batch.id != 0 && !s->isAborted()) {
-              s->_batch.extend(s->_state.connection, s->_progress);
+              s->_batch.extend(s->_state.connection, s->_progress, s->_state.syncerId);
               s->startRecurringBatchExtension();
             }
           }

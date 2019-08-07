@@ -28,6 +28,10 @@
 #include "Basics/win-utils.h"
 #endif
 
+#include <cstdint>
+#include <string>
+#include <vector>
+
 #include "Basics/Common.h"
 
 int TRI_Adler32(char const* filename, uint32_t& checksum);

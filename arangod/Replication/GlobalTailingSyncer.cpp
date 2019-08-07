@@ -23,7 +23,9 @@
 
 #include "GlobalTailingSyncer.h"
 #include "Basics/Thread.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Replication/GlobalInitialSyncer.h"
 #include "Replication/ReplicationFeature.h"
 

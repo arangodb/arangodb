@@ -41,17 +41,15 @@ class text_token_stemming_stream: public analyzer, util::noncopyable {
   DECLARE_ANALYZER_TYPE();
 
   // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY(const string_ref& locale);
+  DECLARE_FACTORY(const irs::string_ref& locale);
 
-  text_token_stemming_stream(const irs::string_ref& locale);
+  text_token_stemming_stream(const std::locale& locale);
   virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     return attrs_;
   }
   static void init(); // for trigering registration in a static build
   virtual bool next() override;
   virtual bool reset(const irs::string_ref& data) override;
-  virtual bool to_string(const ::irs::text_format::type_id& format,
-                         std::string& definition) const override;
 
   private:
    class term_attribute final: public irs::term_attribute {

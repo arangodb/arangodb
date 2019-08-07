@@ -770,7 +770,7 @@ struct equal_to<arangodb::aql::AqlValue> {
     if (type == arangodb::aql::AqlValue::VPACK_INLINE) {
       try {
         return arangodb::velocypack::Slice(&a._data.internal[0])
-            .equals(arangodb::velocypack::Slice(&b._data.internal[0]));
+            .binaryEquals(arangodb::velocypack::Slice(&b._data.internal[0]));
       } catch (...) {
         TRI_ASSERT(false);
       }

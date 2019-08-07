@@ -196,7 +196,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
     }
 
     if (!syncer._state.isChildSyncer) {
-      syncer._batch.extend(syncer._state.connection, syncer._progress);
+      syncer._batch.extend(syncer._state.connection, syncer._progress, syncer._state.syncerId);
       syncer._state.barrier.extend(syncer._state.connection);
     }
 
@@ -233,7 +233,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
   }
 
   if (!syncer._state.isChildSyncer) {
-    syncer._batch.extend(syncer._state.connection, syncer._progress);
+    syncer._batch.extend(syncer._state.connection, syncer._progress, syncer._state.syncerId);
     syncer._state.barrier.extend(syncer._state.connection);
   }
 
@@ -402,7 +402,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
                        " for collection '" + coll->name() + "'");
 
     if (!syncer._state.isChildSyncer) {
-      syncer._batch.extend(syncer._state.connection, syncer._progress);
+      syncer._batch.extend(syncer._state.connection, syncer._progress, syncer._state.syncerId);
       syncer._state.barrier.extend(syncer._state.connection);
     }
 

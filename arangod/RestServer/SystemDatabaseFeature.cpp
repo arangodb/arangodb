@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SystemDatabaseFeature.h"
+
+#include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/vocbase.h"

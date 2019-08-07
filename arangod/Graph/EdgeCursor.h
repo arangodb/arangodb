@@ -24,6 +24,8 @@
 #ifndef ARANGOD_GRAPH_EDGECURSOR_H
 #define ARANGOD_GRAPH_EDGECURSOR_H 1
 
+#include <functional>
+
 #include "Basics/Common.h"
 
 namespace arangodb {

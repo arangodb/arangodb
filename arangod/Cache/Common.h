@@ -24,9 +24,10 @@
 #ifndef ARANGODB_CACHE_COMMON_H
 #define ARANGODB_CACHE_COMMON_H
 
-#include "Basics/Common.h"
+#include <cstdint>
+#include <cstdlib>
 
-#include <stdint.h>
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace cache {

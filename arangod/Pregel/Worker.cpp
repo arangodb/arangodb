@@ -34,6 +34,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/system-compiler.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
 #include "Scheduler/Scheduler.h"
@@ -86,7 +87,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo, VPackS
 template <typename V, typename E, typename M>
 Worker<V, E, M>::~Worker() {
   _state = WorkerState::DONE;
-  std::this_thread::sleep_for(std::chrono::microseconds(50000));  // 50ms wait for threads to die
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));  // wait for threads to die
   delete _readCache;
   delete _writeCache;
   delete _writeCacheNextGSS;

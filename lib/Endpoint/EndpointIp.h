@@ -25,6 +25,10 @@
 #ifndef ARANGODB_ENDPOINT_ENDPOINT_IP_H
 #define ARANGODB_ENDPOINT_ENDPOINT_IP_H 1
 
+#include <cstdint>
+#include <string>
+
+#include "Basics/socket-utils.h"
 #include "Endpoint/Endpoint.h"
 
 struct addrinfo;

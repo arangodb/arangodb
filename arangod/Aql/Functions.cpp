@@ -43,6 +43,7 @@
 #include "Basics/conversions.h"
 #include "Basics/fpconv.h"
 #include "Basics/hashes.h"
+#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
@@ -85,7 +86,6 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <algorithm>
-#include <regex>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -714,8 +714,7 @@ bool listContainsElement(transaction::Methods* trx, VPackOptions const* options,
 
   VPackArrayIterator it(slice);
   while (it.valid()) {
-    if (arangodb::basics::VelocyPackHelper::compare(testeeSlice, it.value(),
-                                                    false, options) == 0) {
+    if (arangodb::basics::VelocyPackHelper::equal(testeeSlice, it.value(), false, options)) {
       index = static_cast<size_t>(it.index());
       return true;
     }
@@ -730,7 +729,7 @@ bool listContainsElement(VPackOptions const* options, VPackSlice const& list,
                          VPackSlice const& testee, size_t& index) {
   TRI_ASSERT(list.isArray());
   for (size_t i = 0; i < static_cast<size_t>(list.length()); ++i) {
-    if (arangodb::basics::VelocyPackHelper::compare(testee, list.at(i), false, options) == 0) {
+    if (arangodb::basics::VelocyPackHelper::equal(testee, list.at(i), false, options)) {
       index = i;
       return true;
     }
@@ -2397,7 +2396,7 @@ AqlValue Functions::Right(ExpressionContext*, transaction::Methods* trx,
 }
 
 namespace {
-void ltrimInternal(uint32_t& startOffset, uint32_t& endOffset, icu::UnicodeString& unicodeStr,
+void ltrimInternal(int32_t& startOffset, int32_t& endOffset, icu::UnicodeString& unicodeStr,
                    uint32_t numWhitespaces, UChar32* spaceChars) {
   for (; startOffset < endOffset; startOffset = unicodeStr.moveIndex32(startOffset, 1)) {
     bool found = false;
@@ -2414,22 +2413,26 @@ void ltrimInternal(uint32_t& startOffset, uint32_t& endOffset, icu::UnicodeStrin
     }
   }  // for
 }
-void rtrimInternal(uint32_t& startOffset, uint32_t& endOffset, icu::UnicodeString& unicodeStr,
+
+void rtrimInternal(int32_t& startOffset, int32_t& endOffset, icu::UnicodeString& unicodeStr,
                    uint32_t numWhitespaces, UChar32* spaceChars) {
-  for (uint32_t codeUnitPos = unicodeStr.moveIndex32(unicodeStr.length(), -1);
-       startOffset < codeUnitPos;
-       codeUnitPos = unicodeStr.moveIndex32(codeUnitPos, -1)) {
+  if (unicodeStr.length() == 0) {
+    return;
+  }
+  for (int32_t codePos = unicodeStr.moveIndex32(endOffset, -1); 
+       startOffset <= codePos; 
+       codePos = unicodeStr.moveIndex32(codePos, -1)) {
     bool found = false;
 
     for (uint32_t pos = 0; pos < numWhitespaces; pos++) {
-      if (unicodeStr.char32At(codeUnitPos) == spaceChars[pos]) {
+      if (unicodeStr.char32At(codePos) == spaceChars[pos]) {
         found = true;
+        --endOffset;
         break;
       }
     }
 
-    endOffset = unicodeStr.moveIndex32(codeUnitPos, 1);
-    if (!found) {
+    if (!found || codePos == 0) {
       break;
     }
   }  // for
@@ -2477,7 +2480,7 @@ AqlValue Functions::Trim(ExpressionContext* expressionContext, transaction::Meth
     return AqlValue(AqlValueHintNull());
   }
 
-  uint32_t startOffset = 0, endOffset = unicodeStr.length();
+  int32_t startOffset = 0, endOffset = unicodeStr.length();
 
   if (howToTrim <= 1) {
     ltrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
@@ -2523,7 +2526,7 @@ AqlValue Functions::LTrim(ExpressionContext* expressionContext, transaction::Met
     return AqlValue(AqlValueHintNull());
   }
 
-  uint32_t startOffset = 0, endOffset = unicodeStr.length();
+  int32_t startOffset = 0, endOffset = unicodeStr.length();
 
   ltrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
 
@@ -2563,7 +2566,7 @@ AqlValue Functions::RTrim(ExpressionContext* expressionContext, transaction::Met
     return AqlValue(AqlValueHintNull());
   }
 
-  uint32_t startOffset = 0, endOffset = unicodeStr.length();
+  int32_t startOffset = 0, endOffset = unicodeStr.length();
 
   rtrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
 
@@ -4048,7 +4051,7 @@ AqlValue Functions::Sleep(ExpressionContext* expressionContext,
   double const until = TRI_microtime() + value.toDouble();
 
   while (TRI_microtime() < until) {
-    std::this_thread::sleep_for(std::chrono::microseconds(30000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
     if (expressionContext->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
@@ -5594,8 +5597,7 @@ AqlValue Functions::Matches(ExpressionContext* expressionContext, transaction::M
 
       if (keySlice.isNone() ||
           // compare inner content
-          basics::VelocyPackHelper::compare(keySlice, it.value, false, options,
-                                            &docSlice, &example) != 0) {
+          !basics::VelocyPackHelper::equal(keySlice, it.value, false, options, &docSlice, &example)) {
         foundMatch = false;
         break;
       }
@@ -5962,7 +5964,8 @@ AqlValue Functions::Append(ExpressionContext* expressionContext, transaction::Me
     return AqlValue(AqlValueHintNull());
   }
 
-  std::unordered_set<VPackSlice> added;
+  std::unordered_set<VPackSlice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> added(
+      11, basics::VelocyPackHelper::VPackHash(), basics::VelocyPackHelper::VPackEqual());
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -6116,7 +6119,7 @@ AqlValue Functions::RemoveValue(ExpressionContext* expressionContext,
       builder->add(it);
       continue;
     }
-    if (arangodb::basics::VelocyPackHelper::compare(r, it, false, options) == 0) {
+    if (arangodb::basics::VelocyPackHelper::equal(r, it, false, options)) {
       --limit;
       continue;
     }

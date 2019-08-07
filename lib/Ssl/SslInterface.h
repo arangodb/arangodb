@@ -24,6 +24,9 @@
 #ifndef ARANGODB_REST_SSL_INTERFACE_H
 #define ARANGODB_REST_SSL_INTERFACE_H 1
 
+#include <cstdlib>
+#include <string>
+
 #include "Basics/Common.h"
 
 namespace arangodb {

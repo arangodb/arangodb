@@ -404,9 +404,8 @@ function CollectionSuite () {
       c.unload();
     },
 
-    testEdgeCacheBehaviour : function() {
-
-      var cn = "UnitLoadBehaviour123";
+    testEdgeCacheBehavior : function() {
+      var cn = "UnitLoadBehavior123";
       db._drop(cn);
       var c = db._createEdgeCollection(cn);
       c.load();

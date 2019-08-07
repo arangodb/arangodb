@@ -55,6 +55,7 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -86,7 +87,7 @@ NS_LOCAL
 
 bool findEmptyNodes(TRI_vocbase_t& vocbase, std::string const& queryString,
                     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr) {
-  auto options = arangodb::velocypack::Parser::fromJson(
+  auto options = VPackParser::fromJson(
       //    "{ \"tracing\" : 1 }"
       "{ }");
 
@@ -130,6 +131,7 @@ class IResearchQueryOptimizationTest : public ::testing::Test {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
+    features.emplace_back(new arangodb::FlushFeature(server), false);
     features.emplace_back(new arangodb::V8DealerFeature(server),
                           false);  // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::ViewTypesFeature(server), true);
@@ -166,7 +168,7 @@ class IResearchQueryOptimizationTest : public ::testing::Test {
       f.first->prepare();
     }
 
-    auto const databases = arangodb::velocypack::Parser::fromJson(
+    auto const databases = VPackParser::fromJson(
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     auto* dbFeature =
@@ -212,9 +214,10 @@ class IResearchQueryOptimizationTest : public ::testing::Test {
 
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
-                       "abc");  // cache analyzer
+                       VPackParser::fromJson("\"abc\"")->slice());  // cache analyzer
     analyzers->emplace(result, "testVocbase::test_csv_analyzer",
-                       "TestDelimAnalyzer", ",");  // cache analyzer
+                       "TestDelimAnalyzer", 
+                       VPackParser::fromJson("\",\"")->slice());  // cache analyzer
 
     auto* dbPathFeature =
         arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
@@ -249,15 +252,41 @@ class IResearchQueryOptimizationTest : public ::testing::Test {
 
 NS_END
 
+static std::vector<std::string> const EMPTY;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
+void addLinkToCollection(std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
+  auto updateJson = VPackParser::fromJson(
+    "{ \"links\" : {"
+    "\"collection_1\" : { \"includeAllFields\" : true }"
+    "}}");
+  EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+
+  arangodb::velocypack::Builder builder;
+
+  builder.openObject();
+  view->properties(builder, arangodb::LogicalDataSource::makeFlags(
+    arangodb::LogicalDataSource::Serialize::Detailed));
+  builder.close();
+
+  auto slice = builder.slice();
+  EXPECT_TRUE(slice.isObject());
+  EXPECT_TRUE(slice.get("name").copyString() == "testView");
+  EXPECT_TRUE(slice.get("type").copyString() ==
+              arangodb::iresearch::DATA_SOURCE_TYPE.name());
+  EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
+  auto tmpSlice = slice.get("links");
+  EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+}
+
+
 // dedicated to https://github.com/arangodb/arangodb/issues/8294
 TEST_F(IResearchQueryOptimizationTest, test) {
-  static std::vector<std::string> const EMPTY;
 
-  auto createJson = arangodb::velocypack::Parser::fromJson(
+  auto createJson = VPackParser::fromJson(
       "{ \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\" \
@@ -270,7 +299,7 @@ TEST_F(IResearchQueryOptimizationTest, test) {
 
   // add collection_1
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+    auto collectionJson = VPackParser::fromJson(
         "{ \"name\": \"collection_1\" }");
     logicalCollection1 = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection1));
@@ -282,28 +311,7 @@ TEST_F(IResearchQueryOptimizationTest, test) {
   ASSERT_TRUE((false == !view));
 
   // add link to collection
-  {
-    auto updateJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"links\" : {"
-        "\"collection_1\" : { \"includeAllFields\" : true }"
-        "}}");
-    EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
-
-    arangodb::velocypack::Builder builder;
-
-    builder.openObject();
-    view->properties(builder, true, false);
-    builder.close();
-
-    auto slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_TRUE(slice.get("name").copyString() == "testView");
-    EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::DATA_SOURCE_TYPE.name());
-    EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
-    auto tmpSlice = slice.get("links");
-    EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
-  }
+  addLinkToCollection(view);
 
   std::deque<arangodb::ManagedDocumentResult> insertedDocs;
 
@@ -317,7 +325,7 @@ TEST_F(IResearchQueryOptimizationTest, test) {
     EXPECT_TRUE((trx.begin().ok()));
 
     // insert into collection
-    auto builder = arangodb::velocypack::Parser::fromJson(
+    auto builder = VPackParser::fromJson(
         "[{ \"values\" : [ \"A\", \"C\", \"B\" ] }]");
 
     auto root = builder->slice();

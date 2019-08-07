@@ -625,7 +625,7 @@ Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mt
                                    Index::OperationMode mode) {
   Result res;
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
-  TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
+  TRI_ASSERT(keySlice.binaryEquals(oldDoc.get(StaticStrings::KeyString)));
   RocksDBKeyLeaser key(&trx);
 
   key->constructPrimaryIndexValue(_objectId, arangodb::velocypack::StringRef(keySlice));
@@ -669,28 +669,16 @@ Result RocksDBPrimaryIndex::remove(transaction::Methods& trx, RocksDBMethods* mt
 }
 
 /// @brief checks whether the index supports the condition
-Index::UsageCosts RocksDBPrimaryIndex::supportsFilterCondition(
+Index::FilterCosts RocksDBPrimaryIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
-  std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
-  std::unordered_set<std::string> nonNullAttributes;
-
-  std::size_t values = 0;
-  SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found,
-                                               values, nonNullAttributes,
-                                               /*skip evaluation (during execution)*/ false);
-
-  Index::UsageCosts costs;
-  costs.estimatedItems = values;
-  // TODO: estimatedCost??
-  costs.supportsCondition = !found.empty();
-  return costs;
+  return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
 }
 
-Index::UsageCosts RocksDBPrimaryIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                                             arangodb::aql::Variable const* reference,
-                                                             size_t itemsInIndex) const {
+Index::SortCosts RocksDBPrimaryIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                                            arangodb::aql::Variable const* reference,
+                                                            size_t itemsInIndex) const {
   return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex);
 }
 

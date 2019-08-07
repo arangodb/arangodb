@@ -175,7 +175,7 @@ TRI_voc_rid_t PhysicalCollection::newRevisionId() const {
 /// @brief merge two objects for update, oldValue must have correctly set
 /// _key and _id attributes
 Result PhysicalCollection::mergeObjectsForUpdate(
-    transaction::Methods* trx, VPackSlice const& oldValue,
+    transaction::Methods*, VPackSlice const& oldValue,
     VPackSlice const& newValue, bool isEdgeCollection, bool mergeObjects,
     bool keepNull, VPackBuilder& b, bool isRestore, TRI_voc_rid_t& revisionId) const {
   b.openObject();
@@ -325,7 +325,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
 }
 
 /// @brief new object for insert, computes the hash of the key
-Result PhysicalCollection::newObjectForInsert(transaction::Methods* trx,
+Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
                                               VPackSlice const& value, bool isEdgeCollection,
                                               VPackBuilder& builder, bool isRestore,
                                               TRI_voc_rid_t& revisionId) const {
@@ -348,6 +348,8 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods* trx,
   } else if (!s.isString()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   } else {
+    TRI_ASSERT(s.isString());
+
     VPackValueLength l;
     char const* p = s.getStringUnchecked(l);
 
@@ -426,7 +428,7 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods* trx,
 }
 
 /// @brief new object for remove, must have _key set
-void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
+void PhysicalCollection::newObjectForRemove(transaction::Methods*,
                                             VPackSlice const& oldValue,
                                             VPackBuilder& builder, bool isRestore,
                                             TRI_voc_rid_t& revisionId) const {
@@ -449,7 +451,7 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
 
 /// @brief new object for replace, oldValue must have _key and _id correctly
 /// set
-Result PhysicalCollection::newObjectForReplace(transaction::Methods* trx,
+Result PhysicalCollection::newObjectForReplace(transaction::Methods*,
                                                VPackSlice const& oldValue,
                                                VPackSlice const& newValue, bool isEdgeCollection,
                                                VPackBuilder& builder, bool isRestore,
@@ -515,7 +517,7 @@ Result PhysicalCollection::newObjectForReplace(transaction::Methods* trx,
 }
 
 /// @brief checks the revision of a document
-int PhysicalCollection::checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,
+int PhysicalCollection::checkRevision(transaction::Methods*, TRI_voc_rid_t expected,
                                       TRI_voc_rid_t found) const {
   if (expected != 0 && found != expected) {
     return TRI_ERROR_ARANGO_CONFLICT;

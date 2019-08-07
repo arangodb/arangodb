@@ -31,6 +31,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/system-functions.h"
 #include "Logger/Logger.h"
 #include "Replication/InitialSyncer.h"
 #include "Replication/ReplicationApplier.h"
@@ -328,7 +329,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
           TRI_ERROR_REPLICATION_INVALID_RESPONSE,
           "create database marker did not contain data");
     }
-    TRI_ASSERT(data.get("name") == nameSlice);
+    TRI_ASSERT(basics::VelocyPackHelper::equal(data.get("name"), nameSlice, false));
 
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
 
