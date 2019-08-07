@@ -22,7 +22,10 @@
 
 #include "ClusterRepairDistributeShardsLike.h"
 
-#include <lib/Basics/StringUtils.h>
+#include <Basics/StringUtils.h>
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #include <boost/range/combine.hpp>
 

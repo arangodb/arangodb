@@ -7,11 +7,12 @@
 #ifndef ARANGODB_HASH_SET_H
 #define ARANGODB_HASH_SET_H 1
 
+#include <algorithm>
+#include <cstring>
+#include <initializer_list>
 #include <iterator>
 #include <type_traits>
 #include <utility>
-#include <initializer_list>
-#include <cstring>
 
 namespace emilib {
 

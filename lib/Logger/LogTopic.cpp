@@ -21,11 +21,16 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cstdint>
+#include <map>
+#include <type_traits>
+
 #include "LogTopic.h"
 
 #include "Basics/MutexLocker.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include <map>
+#include "Logger/LoggerStream.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Audit/AuditFeature.h"

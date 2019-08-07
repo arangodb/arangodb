@@ -24,10 +24,6 @@
 #ifndef ARANGODB_BASICS_OPERATING__SYSTEM_H
 #define ARANGODB_BASICS_OPERATING__SYSTEM_H 1
 
-#ifndef TRI_WITHIN_COMMON
-#error use <Basics/Common.h>
-#endif
-
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
 #endif
@@ -668,6 +664,7 @@
 
 // user and group types
 
+#include <sys/types.h>
 #define TRI_uid_t uid_t
 #define TRI_gid_t gid_t
 
@@ -705,7 +702,7 @@
 
 //#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES     1
 
-#include <WinSock2.h>
+#include <WinSock2.h>  // must be before windows.h
 #include <io.h>
 #include <stdio.h>
 // available include files

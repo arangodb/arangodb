@@ -23,7 +23,12 @@
 
 #include "ShellBase.h"
 
+#include <algorithm>
 #include <cstring>
+#include <string>
+#include <vector>
+
+#include "Basics/operating-system.h"
 
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"

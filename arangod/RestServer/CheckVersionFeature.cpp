@@ -23,10 +23,13 @@
 #include "CheckVersionFeature.h"
 
 #include "Basics/FileUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationFeature.h"

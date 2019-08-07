@@ -25,6 +25,8 @@
 #ifndef ARANGODB_REST_COMMON_DEFINES_H
 #define ARANGODB_REST_COMMON_DEFINES_H 1
 
+#include <ostream>
+
 namespace arangodb {
 namespace rest {
 

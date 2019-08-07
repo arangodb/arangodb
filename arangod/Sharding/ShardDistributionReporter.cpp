@@ -20,17 +20,18 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ShardDistributionReporter.h"
-#include "Basics/StringUtils.h"
-#include "Cluster/ClusterComm.h"
-#include "Cluster/ClusterInfo.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
+#include <queue>
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <queue>
+#include "Basics/StringUtils.h"
+#include "Basics/system-functions.h"
+#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterInfo.h"
+#include "ShardDistributionReporter.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/ticks.h"
 
 using namespace arangodb;
 using namespace arangodb::cluster;

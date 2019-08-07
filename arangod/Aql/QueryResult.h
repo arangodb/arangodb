@@ -24,7 +24,10 @@
 #ifndef ARANGOD_AQL_QUERY_RESULT_H
 #define ARANGOD_AQL_QUERY_RESULT_H 1
 
+#include <memory>
 #include <unordered_set>
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 

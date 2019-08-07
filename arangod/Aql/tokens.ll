@@ -23,8 +23,13 @@
 
 %{
 #include "Basics/Common.h"
-#include "Basics/conversions.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/conversions.h"
+#include "Basics/operating-system.h"
+
+#if _WIN32
+#include "Basics/win-utils.h"
+#endif
 
 // introduce the namespace here, otherwise following references to
 // the namespace in auto-generated headers might fail

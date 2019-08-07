@@ -24,6 +24,7 @@
 #include "GossipCallback.h"
 
 #include "Agency/Agent.h"
+#include "Basics/application-exit.h"
 
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;

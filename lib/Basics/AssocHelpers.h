@@ -24,6 +24,8 @@
 #ifndef ARANGODB_BASICS_ASSOC_HELPERS_H
 #define ARANGODB_BASICS_ASSOC_HELPERS_H 1
 
+#include <cstdint>
+
 #include "Basics/Common.h"
 
 /// @brief incrementing a uint64_t modulo a number with wraparound

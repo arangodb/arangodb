@@ -34,6 +34,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ClusterComm.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
