@@ -142,6 +142,7 @@ function agencyTestSuite () {
                        headers: {"Content-Type": "application/json"},
                        timeout: timeout  /* essentially for the huge trx package
                                             running under ASAN in the CI */ });
+        require('console').topic("agency=info", 'Sent out agency request, statusCode:', res.statusCode);
       } else { // inquire. Remove successful commits. For later retries
         res = request({url: agencyLeader + "/_api/agency/inquire",
                        method: "POST", followRedirect: false,
@@ -149,6 +150,7 @@ function agencyTestSuite () {
                        headers: {"Content-Type": "application/json"},
                        timeout: timeout
                       });
+        require('console').topic("agency=info", 'Sent out agency inquiry, statusCode:', res.statusCode);
       }
 
       if (res.statusCode === 307) {
@@ -178,15 +180,23 @@ function agencyTestSuite () {
       var done = 0;
       res.bodyParsed = JSON.parse(res.body);
       res.bodyParsed.results.forEach(function (index) {
+        var noZeroYet = true;
         if (index > 0) {
           done++;
+          assertTrue(noZeroYet);
+        } else {
+          noZeroYet = false;
         }
       });
+      require('console').topic("agency=info", 'Inquiry analysis: done=', done, ' body:', res.body);
       if (done === clientIds.length) {
+        require('console').topic("agency=info", 'Inquiry analysis, accepting result as good!');
         break;
       } else {
         list = list.slice(done);
+        clientIds = clientIds.slice(done);
         inquire = false;
+        require('console').topic("agency=info", 'Inquiry analysis: have accepted', done, 'transactions as done, continuing with this list:', JSON.stringify(list));
       }
     }
     try {
