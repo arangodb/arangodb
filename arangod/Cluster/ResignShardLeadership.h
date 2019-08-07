@@ -18,7 +18,8 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
+/// @author Kaveh Vahedipour
+/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_MAINTENANCE_RESIGN_SHARD_LEADERSHIP_H
