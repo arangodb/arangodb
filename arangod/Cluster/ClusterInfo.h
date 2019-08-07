@@ -43,11 +43,13 @@
 #include "Cluster/RebootTracker.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/Methods/Databases.h"
 
 namespace arangodb {
 namespace velocypack {
 class Slice;
 }
+
 class ClusterInfo;
 class LogicalCollection;
 struct ClusterCollectionCreationInfo;
@@ -265,37 +267,6 @@ class ClusterInfo final {
 
  public:
 
-  class CreateDatabaseInfo {
-  public:
-   CreateDatabaseInfo() = default;
-   CreateDatabaseInfo(uint64_t const id, std::string const& name, VPackSlice const& options,
-                      std::string const& coordinatorId, uint64_t coordinatorRebootId)
-       : _id(id),
-         _name(name),
-         _options(options),
-         _coordinatorId(coordinatorId),
-         _coordinatorRebootId(coordinatorRebootId){};
-
-   Result buildIsBuildingSlice(VPackBuilder& builder) const {
-     return buildSlice(builder, true);
-   };
-   Result buildCompletedSlice(VPackBuilder& builder) const {
-     return buildSlice(builder, false);
-   };
-
-   std::string getName() const {return _name; };
-
-  private:
-   Result buildSlice(VPackBuilder& builder, bool const isBuilding) const;
-
-  private:
-    uint64_t _id;
-    std::string _name;
-    VPackSlice _options;
-    std::string _coordinatorId;
-    uint64_t _coordinatorRebootId;
-  };
-
   class ServersKnown {
    public:
     ServersKnown() = default;
@@ -483,9 +454,9 @@ class ClusterInfo final {
   /// If any error happens on the way, a pending database will be cleaned up
   ///
   //////////////////////////////////////////////////////////////////////////////
-  Result createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const& database);
-  Result createFinalizeDatabaseCoordinator(CreateDatabaseInfo const& database);
-  Result cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& database);
+  Result createIsBuildingDatabaseCoordinator(methods::CreateDatabaseInfo const& database);
+  Result createFinalizeDatabaseCoordinator(methods::CreateDatabaseInfo const& database);
+  Result cancelCreateDatabaseCoordinator(methods::CreateDatabaseInfo const& database);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop database in coordinator
@@ -790,7 +761,10 @@ class ClusterInfo final {
   }
 
  private:
-  Result waitForDatabaseInCurrent(CreateDatabaseInfo const& database);
+  Result buildIsBuildingSlice(methods::CreateDatabaseInfo const& database,
+                              VPackBuilder& builder);
+
+  Result waitForDatabaseInCurrent(methods::CreateDatabaseInfo const& database);
   void loadClusterId();
 
   //////////////////////////////////////////////////////////////////////////////

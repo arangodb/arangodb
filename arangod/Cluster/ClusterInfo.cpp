@@ -46,6 +46,8 @@
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/Methods/Databases.h"
+
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/SmartVertexCollection.h"
@@ -117,6 +119,7 @@ static inline arangodb::AgencyOperation CreateCollectionSuccess(
 
 using namespace arangodb;
 using namespace arangodb::cluster;
+using namespace arangodb::methods;
 
 static std::unique_ptr<ClusterInfo> _instance;
 
@@ -174,27 +177,6 @@ CollectionInfoCurrent::CollectionInfoCurrent(uint64_t currentVersion)
 
 CollectionInfoCurrent::~CollectionInfoCurrent() {}
 
-
-Result ClusterInfo::CreateDatabaseInfo::buildSlice(VPackBuilder& builder, bool const building) const {
-  try {
-    VPackObjectBuilder b(&builder);
-    std::string const idString(basics::StringUtils::itoa(_id));
-    builder.add(StaticStrings::DatabaseId, VPackValue(idString));
-    builder.add(StaticStrings::DatabaseName, VPackValue(_name));
-    builder.add(StaticStrings::DatabaseOptions, _options);
-
-    // isBuilding == false should actually not happen
-    // these keys should just not exist.
-    if(building) {
-      builder.add(StaticStrings::DatabaseCoordinator, VPackValue(_coordinatorId));
-      builder.add(StaticStrings::DatabaseCoordinatorRebootId, VPackValue(_coordinatorRebootId));
-      builder.add(StaticStrings::DatabaseIsBuilding, VPackValue(building));
-    }
-  } catch (VPackException const& e) {
-    return Result(e.errorCode());
-  }
-  return Result();
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the clusterinfo instance
@@ -1414,9 +1396,21 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
   return result;
 }
 
+// Build the VPackSlice that contains the `isBuilding` entry
+Result ClusterInfo::buildIsBuildingSlice(methods::CreateDatabaseInfo const& database, VPackBuilder& builder) {
+  database.buildSlice(builder);
+  builder.add(StaticStrings::DatabaseCoordinator,
+              VPackValue(ServerState::instance()->getId()));
+  builder.add(StaticStrings::DatabaseCoordinatorRebootId,
+              VPackValue(ServerState::instance()->getRebootId()));
+  builder.add(StaticStrings::DatabaseIsBuilding, VPackValue(true));
+
+  return Result();
+}
+
 // This waits for the database described in `database` to turn up in `Current` and no
 // DBServer is allowed to report an error.
-Result ClusterInfo::waitForDatabaseInCurrent(ClusterInfo::CreateDatabaseInfo const& database) {
+Result ClusterInfo::waitForDatabaseInCurrent(methods::CreateDatabaseInfo const& database) {
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -1527,15 +1521,16 @@ Result ClusterInfo::waitForDatabaseInCurrent(ClusterInfo::CreateDatabaseInfo con
 
 // Start creating a database in a coordinator by entering it into Plan/Databases with,
 // status flag `isBuilding`; this makes the database invisible to the outside world.
-Result ClusterInfo::createIsBuildingDatabaseCoordinator(ClusterInfo::CreateDatabaseInfo const& database) {
+Result ClusterInfo::createIsBuildingDatabaseCoordinator(methods::CreateDatabaseInfo const& database) {
   AgencyComm ac;
   AgencyCommResult res;
 
   // Instruct the Agency to enter the creation of the new database
   // by entering it into Plan/Databases/ but with the fields
-  // isBuilding, coordinator, and rebootId set to us
+  // isBuilding: true, and coordinator and rebootId set to our respective
+  // id and rebootId
   VPackBuilder builder;
-  database.buildIsBuildingSlice(builder);
+  buildIsBuildingSlice(database, builder);
 
   AgencyWriteTransaction trx(
       {AgencyOperation("Plan/Databases/" + database.getName(),
@@ -1578,14 +1573,14 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(ClusterInfo::CreateDatab
 
 // Finalize creation of database in cluster by removing isBuilding, coordinator, and coordinatorRebootId;
 // as precondition that the entry we put in createIsBuildingDatabaseCoordinator is still in Plan/ unchanged.
-Result ClusterInfo::createFinalizeDatabaseCoordinator(ClusterInfo::CreateDatabaseInfo const& database) {
+Result ClusterInfo::createFinalizeDatabaseCoordinator(methods::CreateDatabaseInfo const& database) {
   AgencyComm ac;
 
   VPackBuilder pcBuilder;
-  database.buildIsBuildingSlice(pcBuilder);
+  buildIsBuildingSlice(database, pcBuilder);
 
   VPackBuilder entryBuilder;
-  database.buildCompletedSlice(entryBuilder);
+  database.buildSlice(entryBuilder);
 
   AgencyWriteTransaction trx(
       {AgencyOperation("Plan/Databases/" + database.getName(),
@@ -1609,11 +1604,11 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(ClusterInfo::CreateDatabas
   return Result();
 }
 
-Result ClusterInfo::cancelCreateDatabaseCoordinator(ClusterInfo::CreateDatabaseInfo const& database) {
+Result ClusterInfo::cancelCreateDatabaseCoordinator(methods::CreateDatabaseInfo const& database) {
   AgencyComm ac;
 
   VPackBuilder builder;
-  database.buildIsBuildingSlice(builder);
+  buildIsBuildingSlice(database, builder);
 
   AgencyWriteTransaction trx(
     {AgencyOperation("Plan/Databases/" + database.getName(),
