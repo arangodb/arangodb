@@ -568,6 +568,9 @@ function killWithCoreDump (options, instanceInfo) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getProcessStats(pid) {
+  if (platform !== 'linux') {
+    return {};
+  }
   let pidStr = "" + pid;
   let stat = fs.read(fs.join('/', 'proc', pidStr, 'stat'));
   let vals = stat.split(" ");
