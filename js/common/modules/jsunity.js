@@ -46,17 +46,26 @@ var TOTALTEARDOWNS = 0;
 
 var jsUnity = require('./jsunity/jsunity').jsUnity;
 var STARTTEST = 0.0;
+var ENDTEST = 0.0;
+var STARTSUITE = 0.0;
+var ENDTEARDOWN = 0.0;
 var testFilter = "undefined";
 var currentSuiteName = "undefined"
+var testCount = 0;
+var startMessage = "";
 
 function setTestFilter(filter) {
   testFilter = filter;
 }
 
 jsUnity.results.begin = function (total, suiteName) {
-  print();
+  if (testCount > 0)
+  {
+    print();
+    testCount = 0;
+  }
   currentSuiteName = suiteName;
-  print(jsUnity.env.getDate().toISOString() + internal.COLORS.COLOR_YELLOW + " [------------] " + total + " tests from " + (suiteName || 'unnamed test suite') + internal.COLORS.COLOR_RESET);
+  startMessage = " [------------] " + total + " tests from " + (suiteName || 'unnamed test suite');
   RESULTS = {};
 
   STARTTEST = jsUnity.env.getDate();
@@ -66,31 +75,63 @@ jsUnity.results.pass = function (index, testName) {
   var newtime = jsUnity.env.getDate();
 
   RESULTS[testName].status = true;
-  RESULTS[testName].duration = newtime - STARTTEST;
+  RESULTS[testName].duration = (ENDTEST - STARTTEST);
 
-  print(newtime.toISOString() + internal.COLORS.COLOR_GREEN +  ' [     PASSED ] ' + testName + internal.COLORS.COLOR_RESET +
-    ' (' + RESULTS[testName].duration + ' ms)');
+  print(newtime.toISOString() + internal.COLORS.COLOR_GREEN +  ' [     PASSED ] ' +
+       testName + internal.COLORS.COLOR_RESET +
+       ' (setUp: ' + RESULTS[testName].setUpDuration + 'ms, ' +
+       ' test: ' + RESULTS[testName].duration + 'ms, ' +
+       ' tearDown: ' + RESULTS[testName].tearDownDuration + 'ms)');
 
   STARTTEST = newtime;
+
+  ++testCount;
 };
 
 jsUnity.results.fail = function (index, testName, message) {
   var newtime = jsUnity.env.getDate();
 
+  ++testCount;
+
+  if (RESULTS[testName] === undefined)
+  {
+    if (testCount == 1)
+    {
+      print(newtime.toISOString() + internal.COLORS.COLOR_RED + " [   FAILED   ] " + currentSuiteName +
+           internal.COLORS.COLOR_RESET + " (setUpAll: " + (jsUnity.env.getDate() - STARTTEST) + "ms)");
+
+      ENDTEST = newtime;
+    }
+    print(internal.COLORS.COLOR_RED + message + internal.COLORS.COLOR_RESET);
+
+    return;
+  }
+
   RESULTS[testName].status = false;
   RESULTS[testName].message = message;
-  RESULTS[testName].duration = newtime - STARTTEST;
+  RESULTS[testName].duration = (ENDTEST - STARTTEST);
 
-  print(newtime.toISOString() + internal.COLORS.COLOR_RED + " [   FAILED   ] " + testName +
-    ' (' + RESULTS[testName].duration + ' ms)\n' + message + internal.COLORS.COLOR_RESET);
+  if (RESULTS[testName].setUpDuration === undefined)
+  {
+    RESULTS[testName].setUpDuration = newtime - SETUPS;
+    RESULTS[testName].duration = 0;
+  }
+
+  print(newtime.toISOString() + internal.COLORS.COLOR_RED + " [   FAILED   ] " +
+       testName + internal.COLORS.COLOR_RESET +
+       ' (setUp: ' + RESULTS[testName].setUpDuration + 'ms, ' +
+       ' test: ' + RESULTS[testName].duration + 'ms, ' +
+       ' tearDown: ' +  (newtime - ENDTEST) + 'ms)\n' +
+       internal.COLORS.COLOR_RED + message + internal.COLORS.COLOR_RESET);
 
   STARTTEST = newtime;
 };
 
 jsUnity.results.end = function (passed, failed, duration) {
-  print(jsUnity.env.getDate().toISOString() + internal.COLORS.COLOR_YELLOW + " [------------] " +
-       (passed + failed) + " tests from " + currentSuiteName + " ran. (" +
-       duration + "  ms total)" + internal.COLORS.COLOR_RESET);
+  print(jsUnity.env.getDate().toISOString() +
+       ((failed > 0) ? internal.COLORS.COLOR_RED : internal.COLORS.COLOR_GREEN) + " [------------] " +
+       (passed + failed) + " tests from " + currentSuiteName + " ran" + internal.COLORS.COLOR_RESET +
+       " (tearDownAll: " + (jsUnity.env.getDate() - ENDTEST) + "ms)");
   print(jsUnity.env.getDate().toISOString() + internal.COLORS.COLOR_GREEN +
        " [   PASSED   ] " + passed + " tests." + internal.COLORS.COLOR_RESET);
   if(failed > 0)
@@ -101,17 +142,30 @@ jsUnity.results.end = function (passed, failed, duration) {
 };
 
 jsUnity.results.beginSetUp = function(index, testName) {
+  if (testCount == 0)
+  {
+    print(STARTTEST.toISOString() + internal.COLORS.COLOR_GREEN +
+         startMessage + internal.COLORS.COLOR_RESET + ' (setUpAll: ' +
+         (jsUnity.env.getDate() - STARTTEST) + 'ms)' + internal.COLORS.COLOR_RESET);
+  }
   RESULTS[testName] = {};
   SETUPS = jsUnity.env.getDate();
   print(jsUnity.env.getDate().toISOString() + internal.COLORS.COLOR_GREEN + ' [ RUN        ] ' + testName + internal.COLORS.COLOR_RESET);
 };
+
 jsUnity.results.endSetUp = function(index, testName) {
   RESULTS[testName].setUpDuration = jsUnity.env.getDate() - SETUPS;
   TOTALSETUPS += RESULTS[testName].setUpDuration;
+
+  STARTTEST = jsUnity.env.getDate();
 };
+
 jsUnity.results.beginTeardown = function(index, testName) {
   TEARDOWNS = jsUnity.env.getDate();
+
+  ENDTEST = jsUnity.env.getDate();
 };
+
 jsUnity.results.endTeardown = function(index, testName) {
   RESULTS[testName].tearDownDuration = jsUnity.env.getDate() - TEARDOWNS;
   TOTALTEARDOWNS += RESULTS[testName].tearDownDuration;
@@ -224,13 +278,14 @@ function Run (testsuite) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function Done (suiteName) {
-  print();
-  print(jsUnity.env.getDate().toISOString() + internal.COLORS.COLOR_YELLOW + " [============] " +
-       "Ran: " + TOTAL + " tests (" + PASSED + " passed, " + FAILED + " failed) (" +
-       DURATION + "  ms total)" + internal.COLORS.COLOR_RESET);
-  print();
+  let newtime = jsUnity.env.getDate();
 
   var ok = FAILED === 0;
+
+  print(newtime.toISOString() + (ok ? internal.COLORS.COLOR_GREEN : internal.COLORS.COLOR_RED) +
+       " [============] " + "Ran: " + TOTAL + " tests (" + PASSED + " passed, " + FAILED + " failed)" +
+       internal.COLORS.COLOR_RESET+ " (" + DURATION + "ms total)");
+  print();
 
   COMPLETE.duration = DURATION;
   COMPLETE.status = ok;
