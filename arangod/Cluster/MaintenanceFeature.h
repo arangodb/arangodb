@@ -437,6 +437,8 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// independant actions
   std::unordered_map<std::string, size_t> _shardVersion;
 
+  bool _resignLeadershipOnShutdown;
+
   std::atomic<std::chrono::steady_clock::duration> _pauseUntil;
 
   /// @brief Mutex for the current counter condition variable

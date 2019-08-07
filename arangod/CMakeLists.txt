@@ -173,6 +173,7 @@ SET(ARANGOD_SOURCES
   Agency/MoveShard.cpp
   Agency/Node.cpp
   Agency/RemoveFollower.cpp
+  Agency/ResignLeadership.cpp
   Agency/RestAgencyHandler.cpp
   Agency/RestAgencyPrivHandler.cpp
   Agency/State.cpp
@@ -365,6 +366,7 @@ SET(ARANGOD_SOURCES
   Cluster/RestClusterHandler.cpp
   Cluster/ServerState.cpp
   Cluster/SynchronizeShard.cpp
+  Cluster/TakeoverShardLeadership.cpp
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
   Cluster/UpdateCollection.cpp

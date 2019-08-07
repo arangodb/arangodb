@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,27 +18,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Kaveh Vahedipour
+/// @author Matthew Von-Maszewski
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/SharedPRNG.h"
-#include "Basics/splitmix64.h"
+#ifndef ARANGODB_MAINTENANCE_TAKEOVER_SHARD_LEADERSHIP_H
+#define ARANGODB_MAINTENANCE_TAKEOVER_SHARD_LEADERSHIP_H
 
-using namespace arangodb::basics;
+#include "ActionBase.h"
+#include "ActionDescription.h"
 
-std::unique_ptr<SharedPRNG> SharedPRNG::_global = std::make_unique<SharedPRNG>();
+#include <chrono>
 
-PaddedPRNG::PaddedPRNG() {}
+namespace arangodb {
+namespace maintenance {
 
-void PaddedPRNG::seed(uint64_t seed1, uint64_t seed2) {
-  _prng.seed(seed1, seed2);
-}
+class TakeoverShardLeadership : public ActionBase {
+ public:
+  TakeoverShardLeadership(MaintenanceFeature&, ActionDescription const& d);
 
-SharedPRNG::SharedPRNG() : _mask(SharedPRNG::_stripes - 1) {
-  splitmix64 seeder(0xdeadbeefdeadbeefULL);
-  for (size_t i = 0; i < _stripes; i++) {
-    uint64_t seed1 = seeder.next();
-    uint64_t seed2 = seeder.next();
-    _prng[i].seed(seed1, seed2);
-  }
-}
+  virtual ~TakeoverShardLeadership();
+
+  virtual bool first() override final;
+};
+
+}  // namespace maintenance
+}  // namespace arangodb
+
+#endif
