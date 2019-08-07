@@ -84,10 +84,6 @@ class ExecutionPlan {
   /// @brief check if the plan is empty
   inline bool empty() const { return (_root == nullptr); }
 
-  bool isResponsibleForInitialize() const {
-    return _isResponsibleForInitialize;
-  }
-
   /// @brief note that an optimizer rule was applied
   inline void addAppliedRule(int level) { 
     if (_appliedRules.empty() || _appliedRules.back() != level) {
@@ -356,8 +352,6 @@ class ExecutionPlan {
 
   /// @brief flag to indicate whether the variable usage is computed
   bool _varUsageComputed;
-
-  bool _isResponsibleForInitialize;
 
   /// @brief current nesting level while building the plan
   int _nestingLevel;
