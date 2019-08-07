@@ -76,8 +76,6 @@ class CallbackGuard {
 // scheduler is destroyed.
 class RebootTracker {
  public:
-  // TODO Maybe pass information about the change(s) to the callback - is there
-  //      anything useful?
   using Callback = std::function<void(void)>;
   using SchedulerPointer = decltype(SchedulerFeature::SCHEDULER);
   static_assert(std::is_pointer<SchedulerPointer>::value,
