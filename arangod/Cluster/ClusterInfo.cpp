@@ -867,8 +867,8 @@ void ClusterInfo::loadPlan() {
               // inside the IF
               if (!isBuilding) {
                 // register with name as well as with id:
-                databaseCollections.emplace(std::make_pair(collectionName, newCollection));
-                databaseCollections.emplace(std::make_pair(collectionId, newCollection));
+                databaseCollections.emplace(collectionName, newCollection);
+                databaseCollections.emplace(collectionId, newCollection);
               }
 
               auto shardKeys =
