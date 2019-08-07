@@ -294,7 +294,7 @@ int TRI_ZipFile(char const* filename, char const* dir,
     return TRI_ERROR_CANNOT_OVERWRITE_FILE;
   }
 
-  int bufferSize = 16384;
+  constexpr int bufferSize = 16384;
   buffer = TRI_Allocate((size_t)bufferSize);
 
   if (buffer == nullptr) {

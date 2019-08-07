@@ -32,8 +32,8 @@
 #include "Replication/ReplicationClients.h"
 #include "VocBase/voc-types.h"
 
-#include "velocypack/Builder.h"
-#include "velocypack/Slice.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 #include <functional>
 

@@ -26,8 +26,8 @@
 
 #include "Basics/Common.h"
 
-#include "velocypack/Slice.h"
-#include "velocypack/velocypack-aliases.h"
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "utils/string.hpp"  // for irs::string_ref
 

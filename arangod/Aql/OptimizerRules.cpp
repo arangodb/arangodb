@@ -148,7 +148,6 @@ void replaceGatherNodeVariables(arangodb::aql::ExecutionPlan* plan,
   using EN = arangodb::aql::ExecutionNode;
 
   std::string cmp;
-  std::string other;
   arangodb::basics::StringBuffer buffer(128, false);
 
   // look for all sort elements in the GatherNode and replace them
@@ -2468,6 +2467,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
       if (simplified != root) {
         nn->expression()->replaceNode(simplified);
       }
+      // cppcheck-suppress knownConditionTrueFalse
       if (modifiedNode) {
         nn->expression()->invalidateAfterReplacements();
         modified = true;

@@ -29,12 +29,13 @@
 #include "utils/hash_utils.hpp"
 #include "utils/locale_utils.hpp"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VelocyPackHelper.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Iterator.h"
 
 #include "IResearchLinkMeta.h"
 #include "Misc.h"

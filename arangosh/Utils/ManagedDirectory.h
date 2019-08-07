@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 
-#include "zlib.h"
+#include <zlib.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>

@@ -34,7 +34,7 @@ class SharedAqlItemBlockPtr {
 
   // allow implicit cast from nullptr:
   // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
-  inline SharedAqlItemBlockPtr(std::nullptr_t) noexcept;
+  explicit inline SharedAqlItemBlockPtr(std::nullptr_t) noexcept;
 
   inline SharedAqlItemBlockPtr() noexcept;
 

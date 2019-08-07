@@ -25,6 +25,7 @@
 #define ARANGODB_SIMPLE_HTTP_CLIENT_COMMUNICATOR_H 1
 
 #include <chrono>
+#include <curl/curl.h>
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -33,7 +34,6 @@
 #include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/Callbacks.h"
 #include "SimpleHttpClient/Options.h"
-#include "curl/curl.h"
 
 namespace arangodb {
 namespace communicator {

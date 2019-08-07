@@ -302,6 +302,7 @@ void Thread::markAsStopped() {
   _state.store(ThreadState::STOPPED);
 
   if (_finishedCondition != nullptr) {
+    // cppcheck-suppress redundantPointerOp
     CONDITION_LOCKER(locker, *_finishedCondition);
     locker.broadcast();
   }

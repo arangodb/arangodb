@@ -33,7 +33,7 @@ class Result final {
 
   Result(bool /*avoidCastingErrors*/) = delete;
 
-  Result(int errorNumber);
+  explicit Result(int errorNumber);
 
   Result(int errorNumber, std::string const& errorMessage);
 

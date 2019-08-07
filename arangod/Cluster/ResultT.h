@@ -93,7 +93,7 @@ class ResultT {
   template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
   // This is not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ResultT(Result const& other) : _result(other) {
+  explicit ResultT(Result const& other) : _result(other) {
     // .ok() is not allowed here, as _val should be expected to be initialized
     // iff .ok() is true.
     TRI_ASSERT(other.fail());
@@ -105,7 +105,7 @@ class ResultT {
   template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
   // This is not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ResultT(Result&& other) : _result(std::move(other)) {
+  explicit ResultT(Result&& other) : _result(std::move(other)) {
     // .ok() is not allowed here, as _val should be expected to be initialized
     // iff .ok() is true.
     TRI_ASSERT(other.fail());
@@ -117,7 +117,7 @@ class ResultT {
   template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
   // This is not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ResultT(T&& val) : ResultT(std::move(val), TRI_ERROR_NO_ERROR) {}
+  explicit ResultT(T&& val) : ResultT(std::move(val), TRI_ERROR_NO_ERROR) {}
 
   // This is disabled if U is implicitly convertible to Result
   // (e.g., if U = int) to avoid ambiguous construction.
@@ -125,7 +125,7 @@ class ResultT {
   template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
   // This is not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ResultT(T const& val) : ResultT(val, TRI_ERROR_NO_ERROR) {}
+  explicit ResultT(T const& val) : ResultT(val, TRI_ERROR_NO_ERROR) {}
 
   ResultT() = delete;
 

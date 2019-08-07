@@ -22,6 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAnalyzerHandler.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+
 #include "Basics/StringUtils.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -29,8 +33,6 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "utils/string.hpp"
-#include "velocypack/Iterator.h"
-#include "velocypack/Parser.h"
 
 namespace arangodb {
 namespace iresearch {

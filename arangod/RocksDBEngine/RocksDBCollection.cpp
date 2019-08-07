@@ -1662,6 +1662,7 @@ uint64_t RocksDBCollection::recalculateCounts() {
     return numberDocuments();
   }
   auto useGuard = scopeGuard([&] {
+    // cppcheck-suppress knownConditionTrueFalse
     if (snapshot) {
       db->ReleaseSnapshot(snapshot);
     }

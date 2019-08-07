@@ -169,6 +169,7 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
     this->asyncAccept();
   };
 
+  // cppcheck-suppress accessMoved
   _acceptor.async_accept(_asioSocket->socket, _asioSocket->peer, std::move(handler));
 }
 
@@ -238,6 +239,7 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
     this->asyncAccept();
   };
 
+  // cppcheck-suppress accessMoved
   _acceptor.async_accept(_asioSocket->socket.lowest_layer(), _asioSocket->peer,
                          std::move(handler));
 }

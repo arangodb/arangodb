@@ -559,6 +559,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   bool bufOwner = true;  // out parameter from AqlValue denoting ownership
                          // aquisition (must be true initially)
   auto release = irs::make_finally([&buffer, &bufOwner]() -> void {
+    // cppcheck-suppress knownConditionTrueFalse
     if (!bufOwner) {
       buffer.release();
     }
@@ -1249,6 +1250,7 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
   if (itr.second) {
     bool erase = true; // potentially invalid insertion took place
     auto cleanup = irs::make_finally([&erase, &analyzers, &itr]()->void {
+      // cppcheck-suppress knownConditionTrueFalse
       if (erase) {
         analyzers.erase(itr.first); // ensure no broken analyzers are left behind
       }
@@ -1380,6 +1382,7 @@ arangodb::Result IResearchAnalyzerFeature::ensure( // ensure analyzer existence 
 
       if (res.ok()) {
         result = std::make_pair(pool, itr.second);
+	// cppcheck-suppress unreadVariable
         erase = false; // successful pool creation, cleanup not required
       }
 

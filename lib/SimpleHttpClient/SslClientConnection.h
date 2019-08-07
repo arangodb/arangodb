@@ -26,11 +26,11 @@
 
 #include "Basics/Common.h"
 
-#include "SimpleHttpClient/GeneralClientConnection.h"
+#include <openssl/bio.h>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
 
-#include "openssl/bio.h"
-#include "openssl/err.h"
-#include "openssl/ssl.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
 
 namespace arangodb {
 namespace httpclient {

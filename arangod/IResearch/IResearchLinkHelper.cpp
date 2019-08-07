@@ -24,6 +24,9 @@
 #include "Basics/Common.h"
 
 #include "IResearchLinkHelper.h"
+
+#include <velocypack/Iterator.h>
+
 #include "IResearchCommon.h"
 #include "IResearchFeature.h"
 #include "IResearchLink.h"
@@ -43,7 +46,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
-#include "velocypack/Iterator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 

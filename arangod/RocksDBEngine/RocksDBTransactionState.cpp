@@ -288,6 +288,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     bool committed = false;
     auto cleanupCollectionTransactions = scopeGuard([this, &committed]() {
       // if we didn't commit, make sure we remove blockers, etc.
+      // cppcheck-suppress knownConditionTrueFalse
       if (!committed) {
         for (auto& trxColl : _collections) {
           auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
@@ -334,6 +335,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
           continue;
         }
         coll->commitCounts(id(), postCommitSeq);
+        // cppcheck-suppress unreadVariable
         committed = true;
       }
 

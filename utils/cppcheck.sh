@@ -3,22 +3,43 @@ rm -f cppcheck.log cppcheck.tmp
 trap "rm -rf cppcheck.tmp" EXIT
 touch cppcheck.tmp
 
-cppcheck -j4 \
-  --std=c++11 \
-  --enable=style,warning \
+cppcheck $* \
+  -I lib \
+  -I enterprise \
+  -I arangod \
+  -I arangosh \
+  --std=c++17 \
+  --enable=warning,style,performance,portability,missingInclude \
   --force \
   --quiet \
   --platform=unix64 \
   --inline-suppr \
-  --suppress="*:lib/V8/v8-json.cpp" \
-  --suppress="*:lib/Zip/crypt.h" \
-  --suppress="*:lib/Zip/iowin32.cpp" \
-  --suppress="*:lib/Zip/unzip.cpp" \
-  --suppress="*:lib/Zip/zip.cpp" \
+  --suppress="*:*yacc.c*" \
   --suppress="*:Aql/grammar.cpp" \
   --suppress="*:Aql/tokens.cpp" \
   --suppress="*:Aql/tokens.ll" \
-  arangod/ arangosh/ lib/ enterprise/ 2>> cppcheck.tmp
+  --suppress="*:lib/Basics/Endian.h" \
+  --suppress="*:lib/Basics/fpconv.cpp" \
+  --suppress="*:lib/Basics/memory-map-win32.cpp" \
+  --suppress="*:lib/Basics/short_alloc.h" \
+  --suppress="*:lib/Basics/xxhash.cpp" \
+  --suppress="*:lib/Futures/function2/function2.hpp" \
+  --suppress="*:lib/V8/v8-json.ll" \
+  --suppress="*:lib/Zip/*" \
+  --suppress="duplicateCondition" \
+  --suppress="duplicateConditionalAssign" \
+  --suppress="noExplicitConstructor:lib/Futures/Future.h" \
+  --suppress="passedByValue" \
+  --suppress="redundantAssignInSwitch" \
+  --suppress="redundantAssignment" \
+  --suppress="shadowFunction" \
+  --suppress="shadowVar" \
+  --suppress="uninitMemberVar" \
+  --suppress="unreadVariable" \
+  --suppress="useStlAlgorithm" \
+  --suppress="variableScope" \
+  lib/ 2>> cppcheck.tmp
+#  arangod/ arangosh/ lib/ enterprise/ 2>> cppcheck.tmp
 
 sort cppcheck.tmp | uniq > cppcheck.log
 cat cppcheck.log
