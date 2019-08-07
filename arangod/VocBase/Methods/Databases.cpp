@@ -96,11 +96,13 @@ CreateDatabaseInfo::CreateDatabaseInfo(std::string const& name, VPackSlice const
 
 Result CreateDatabaseInfo::buildSlice(VPackBuilder& builder) const {
   try {
-    VPackObjectBuilder b(&builder);
+    builder.openObject();
     std::string const idString(basics::StringUtils::itoa(_id));
     builder.add(StaticStrings::DatabaseId, VPackValue(idString));
     builder.add(StaticStrings::DatabaseName, VPackValue(_name));
     builder.add(StaticStrings::DatabaseOptions, _options.slice());
+    // we intentionally do not close the object, because other functions,
+    // for example in the cluster code, might want to add stuff.
   } catch (VPackException const& e) {
     return Result(e.errorCode());
   }
@@ -366,9 +368,9 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   //       a struct to avoid the try/catch
   CreateDatabaseInfo createInfo;
   try {
-    createInfo = CreateDatabaseInfo(dbName, options, users);
-  } catch (Result& e) {
-    return e;
+      createInfo = CreateDatabaseInfo(dbName, options, users);
+  } catch(Result& e) {
+    return std::move(e);
   } catch (...) {
     LOG_TOPIC("c9189", ERR, Logger::FIXME)
         << "Unhandled exception while creating database";

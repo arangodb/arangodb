@@ -763,6 +763,8 @@ class ClusterInfo final {
  private:
   Result buildIsBuildingSlice(methods::CreateDatabaseInfo const& database,
                               VPackBuilder& builder);
+  Result buildFinalSlice(methods::CreateDatabaseInfo const& database,
+                         VPackBuilder& builder);
 
   Result waitForDatabaseInCurrent(methods::CreateDatabaseInfo const& database);
   void loadClusterId();
