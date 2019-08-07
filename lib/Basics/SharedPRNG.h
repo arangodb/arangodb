@@ -34,6 +34,7 @@ namespace arangodb {
 namespace basics {
 
 struct PaddedPRNG {
+  PaddedPRNG();
   void seed(uint64_t seed1, uint64_t seed2);
   inline uint64_t next() { return _prng.next(); }
 
