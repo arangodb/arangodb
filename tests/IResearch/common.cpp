@@ -258,7 +258,7 @@ namespace arangodb {
 
 namespace tests {
 
-std::string const AnalyzerCollectionName(StaticStrings::AnalyzersCollection);
+std::string const AnalyzerCollectionName("_analyzers");
 
 std::string testResourceDir;
 
