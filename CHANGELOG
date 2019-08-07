@@ -1,6 +1,8 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #9612: Concurrent Writes leads to data loss in ArangoSearch/Views.
+
 * Re-added warning for kernel setting "overcommit_memory=2" if jemalloc is also enabled.
 
 * Significantly reduced "random" 1 second delays in some arangosearch DDL operations.
@@ -59,8 +61,6 @@ v3.4.8 (XXXX-XX-XX)
 
 * Fixed an error condition in which an ex-leader for a short still believed
   to be the leader and wrongly reported to Current.
-
-* Fixed issue #9612: Concurrent Writes leads to data loss in ArangoSearch/Views 
 
 v3.4.7 (2019-07-02)
 -------------------
