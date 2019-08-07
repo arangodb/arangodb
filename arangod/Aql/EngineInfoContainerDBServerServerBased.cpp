@@ -77,25 +77,25 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
       query->queryOptions().shardIds;
   // Extract the local shards for edge collections.
   for (auto const& col : edges) {
-    _edgeCollections.emplace_back(getAllLocalShards(shardMapping, server, restrictToShards,
-                                                    col->shardIds(restrictToShards)));
+    _edgeCollections.emplace_back(
+        getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards)));
   }
   // Extract vertices
   auto const& vertices = _node->vertexColls();
   // Guaranteed by addGraphNode, this will inject vertex collections
   // in anonymous graph case
-  TRI_ASSERT(!vertices.empty());
+  // It might in fact be empty, if we only have edge collections in a graph.
+  // Or if we guarantee to never read vertex data.
   for (auto const& col : vertices) {
     _vertexCollections.emplace(col->name(),
-                               getAllLocalShards(shardMapping, server, restrictToShards,
+                               getAllLocalShards(shardMapping, server,
                                                  col->shardIds(restrictToShards)));
   }
 }
 
 std::vector<ShardID> EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::getAllLocalShards(
     std::unordered_map<ShardID, ServerID> const& shardMapping,
-    ServerID const& server, std::unordered_set<std::string> const& restrictToShards,
-    std::shared_ptr<std::vector<std::string>> shardIds) {
+    ServerID const& server, std::shared_ptr<std::vector<std::string>> shardIds) {
   std::vector<ShardID> localShards;
   for (auto const& shard : *shardIds) {
     auto const& it = shardMapping.find(shard);
