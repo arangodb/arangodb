@@ -119,7 +119,7 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
 
-  RocksDBReplicationContext(double ttl, SyncerId syncerId, std::string clientId);
+  RocksDBReplicationContext(double ttl, SyncerId syncerId, TRI_server_id_t clientId);
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const;  // batchId
@@ -207,8 +207,12 @@ class RocksDBReplicationContext {
     return _syncerId;
   }
 
-  std::string const& replicationClientServerId() const {
+  TRI_server_id_t replicationClientServerId() const {
     return _clientId;
+  }
+
+  std::string const& clientInfo() const {
+    return _clientInfo;
   }
 
  private:
@@ -220,10 +224,11 @@ class RocksDBReplicationContext {
   void releaseDumpIterator(CollectionIterator*);
 
  private:
-  mutable Mutex _contextLock;
-  SyncerId _syncerId;
-  std::string _clientId;
   TRI_voc_tick_t const _id;  // batch id
+  mutable Mutex _contextLock;
+  SyncerId const _syncerId;
+  TRI_server_id_t const _clientId;
+  std::string const _clientInfo;
 
   uint64_t _snapshotTick;  // tick in WAL from _snapshot
   rocksdb::Snapshot const* _snapshot;

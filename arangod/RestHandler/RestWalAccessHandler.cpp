@@ -27,6 +27,11 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
@@ -250,8 +255,9 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   }
 
   // check for serverId
-  std::string const& clientId = _request->value("serverId");
+  TRI_server_id_t const clientId = StringUtils::uint64(_request->value("serverId"));
   SyncerId const syncerId = SyncerId::fromRequest(*_request);
+  std::string const clientInfo = _request->value("clientInfo");
 
   // check if a barrier id was specified in request
   TRI_voc_tid_t barrierId =
@@ -359,7 +365,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   }
 
   DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
-    vocbase.replicationClients().track(syncerId, clientId, filter.tickStart,
+    vocbase.replicationClients().track(syncerId, clientId, clientInfo, filter.tickStart,
                                        replutils::BatchInfo::DefaultTimeout);
   });
 }

@@ -60,22 +60,22 @@ StatusCode constexpr StatusUnavailable = 505;
 
 enum class Error : uint16_t {
   NoError = 0,
-  
+
   CouldNotConnect = 1000,
   CloseRequested = 1001,
   ConnectionClosed = 1002,
   Timeout = 1003,
   QueueCapacityExceeded = 1004,
-  
+
   ReadError = 1102,
   WriteError = 1103,
-  
+
   Canceled = 1104,
-  
+
   ProtocolError = 3000,
 };
 std::string to_string(Error error);
-  
+
 // RequestCallback is called for finished connection requests.
 // If the given Error is zero, the request succeeded, otherwise an error
 // occurred.
@@ -122,8 +122,7 @@ enum class MessageType : int {
 MessageType intToMessageType(int integral);
 
 std::string to_string(MessageType type);
-  
-  
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     SocketType
 // -----------------------------------------------------------------------------
@@ -175,7 +174,8 @@ struct ConnectionConfiguration {
         _host("localhost"),
         _port("8529"),
         _verifyHost(false),
-        _idleTimeout(120000),
+        _connectTimeout(10000),
+        _idleTimeout(300000),
         _maxConnectRetries(3),
         _authenticationType(AuthenticationType::None),
         _user(""),
@@ -183,17 +183,18 @@ struct ConnectionConfiguration {
         _jwtToken("") {}
 
   ConnectionFailureCallback _onFailure;
-  SocketType _socketType;  // tcp, ssl or unix
+  SocketType _socketType;      // tcp, ssl or unix
   ProtocolType _protocolType;  // vst or http
   vst::VSTVersion _vstVersion;
-  
+
   std::string _host;
   std::string _port;
   bool _verifyHost;
-  
+
+  std::chrono::milliseconds _connectTimeout;
   std::chrono::milliseconds _idleTimeout;
   unsigned _maxConnectRetries;
-  
+
   AuthenticationType _authenticationType;
   std::string _user;
   std::string _password;

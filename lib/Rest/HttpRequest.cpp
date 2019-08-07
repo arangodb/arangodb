@@ -34,6 +34,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
+#include "Basics/debugging.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 
@@ -440,22 +441,23 @@ namespace {
   }
 }
 
-void HttpRequest::parseUrl(const char* url, size_t urlLen) {
-  _fullUrl.reserve(urlLen);
+void HttpRequest::parseUrl(const char* path, size_t length) {
+  std::string tmp;
+  tmp.reserve(length);
   // get rid of '//'
-  for (size_t i = 0; i < urlLen; ++i) {
-    _fullUrl.push_back(url[i]);
-    if (url[i] == '/') {
-      while (i + 1 < urlLen && url[i+1] == '/') {
+  for (size_t i = 0; i < length; ++i) {
+    tmp.push_back(path[i]);
+    if (path[i] == '/') {
+      while (i + 1 < length && path[i+1] == '/') {
         ++i;
       }
     }
   }
   
-  const char* start = _fullUrl.data();
-  const char* end = start + _fullUrl.size();
+  const char* start = tmp.data();
+  const char* end = start + tmp.size();
   // look for database name in URL
-  if (_fullUrl.size() >= 5) {
+  if (end - start >= 5) {
     char const* q = start;
     
     // check if the prefix is "_db"
@@ -474,10 +476,16 @@ void HttpRequest::parseUrl(const char* url, size_t urlLen) {
       
       TRI_ASSERT(q >= start);
       _databaseName = std::string(start, q - start);
+      _fullUrl.assign(q, end - q);
       
       start = q;
+    } else {
+      _fullUrl.assign(start, end - start); 
     }
+  } else {
+    _fullUrl.assign(start, end - start);
   }
+  TRI_ASSERT(!_fullUrl.empty());
   
   char const* q = start;
   while (q != end && *q != '?') {
@@ -543,7 +551,9 @@ void HttpRequest::setHeaderV2(std::string key, std::string value) {
   } else if (key == StaticStrings::AcceptEncoding) {
     // This can be much more elaborated as the can specify weights on encodings
     // However, for now just toggle on deflate if deflate is requested
-    if (value.find(StaticStrings::EncodingDeflate) != std::string::npos) {
+    if (StaticStrings::EncodingDeflate == value) {
+      // FXIME: cannot use substring search, Java driver chokes on deflated response
+      //if (value.find(StaticStrings::EncodingDeflate) != std::string::npos) {
       _acceptEncoding = EncodingType::DEFLATE;
     }
   }
@@ -899,7 +909,7 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
     validationOptions.disallowExternals = true;
     validationOptions.disallowCustom = true;
     VPackValidator validator(&validationOptions);
-    validator.validate(_body.data(), _body.length());
+    validator.validate(_body.data(), _body.length()); // throws on error
     return VPackSlice(reinterpret_cast<uint8_t const*>(_body.data()));
   }
   return VPackSlice::noneSlice();

@@ -25,6 +25,7 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_VELOCY_PACK_HELPER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 #include "velocypack/Slice.h"
 #include "velocypack/velocypack-aliases.h"
@@ -96,6 +97,26 @@ arangodb::velocypack::Builder& addStringRef( // add a value
   arangodb::velocypack::Builder& builder, // builder
   irs::string_ref const& value // value
 );
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps bytes ref with VPackValuePair
+////////////////////////////////////////////////////////////////////////////////
+inline arangodb::velocypack::ValuePair toValuePair(irs::bytes_ref const& ref) {
+  TRI_ASSERT(!ref.null()); // consumers of ValuePair usually use memcpy(...) which cannot handle nullptr
+  return arangodb::velocypack::ValuePair( // value pair
+    ref.c_str(), ref.size(), arangodb::velocypack::ValueType::Binary // args
+  );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps string ref with VPackValuePair
+////////////////////////////////////////////////////////////////////////////////
+inline arangodb::velocypack::ValuePair toValuePair(irs::string_ref const& ref) {
+  TRI_ASSERT(!ref.null()); // consumers of ValuePair usually use memcpy(...) which cannot handle nullptr
+  return arangodb::velocypack::ValuePair( // value pair
+    ref.c_str(), ref.size(), arangodb::velocypack::ValueType::String // args
+  );
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a string_ref value to the 'builder' (for JSON objects)

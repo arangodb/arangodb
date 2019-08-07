@@ -29,8 +29,13 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/application-exit.h"
+#include "Basics/files.h"
+#include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"
@@ -156,7 +161,7 @@ void V8ShellFeature::start() {
 
   auto* isolate = _isolate;
   TRI_GET_GLOBALS();
-  v8g = TRI_CreateV8Globals(isolate);
+  v8g = TRI_CreateV8Globals(isolate, 0);
   v8g->_securityContext = arangodb::JavaScriptSecurityContext::createAdminScriptContext();
 
   // create the global template

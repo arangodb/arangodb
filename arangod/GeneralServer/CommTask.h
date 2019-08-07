@@ -106,7 +106,9 @@ protected:
   virtual bool allowDirectHandling() const = 0;
 
  protected:
+  
   enum class Flow : bool { Continue = true, Abort = false };
+  static constexpr size_t MaximalBodySize = 1024 * 1024 * 1024;  // 1024 MB
 
   /// Must be called before calling executeRequest, will add an error
   /// response if execution is supposed to be aborted
@@ -138,7 +140,6 @@ protected:
   
  private:
   bool handleRequestSync(std::shared_ptr<RestHandler>);
-  void handleRequestDirectly(std::shared_ptr<RestHandler> const&);
   bool handleRequestAsync(std::shared_ptr<RestHandler>, uint64_t* jobId = nullptr);
   
  protected:

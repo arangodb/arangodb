@@ -51,6 +51,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RestServer/AqlFeature.h"
@@ -101,6 +102,7 @@ protected:
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
+    features.emplace_back(new arangodb::FlushFeature(server), false);
     features.emplace_back(new arangodb::SystemDatabaseFeature(server), true); // required by IResearchFilterFactory::extractAnalyzerFromArg(...) and IResearchAnalyzerFeature
     features.emplace_back(new arangodb::V8DealerFeature(server), false); // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::ViewTypesFeature(server), true);

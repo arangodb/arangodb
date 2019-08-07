@@ -23,6 +23,9 @@
 
 #include "ShardingFeature.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Sharding/ShardingInfo.h"
 #include "Sharding/ShardingStrategyDefault.h"
 #include "VocBase/LogicalCollection.h"

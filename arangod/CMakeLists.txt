@@ -173,6 +173,7 @@ SET(ARANGOD_SOURCES
   Agency/MoveShard.cpp
   Agency/Node.cpp
   Agency/RemoveFollower.cpp
+  Agency/ResignLeadership.cpp
   Agency/RestAgencyHandler.cpp
   Agency/RestAgencyPrivHandler.cpp
   Agency/State.cpp
@@ -544,6 +545,7 @@ SET(ARANGOD_SOURCES
   Statistics/StatisticsFeature.cpp
   Statistics/StatisticsWorker.cpp
   StorageEngine/EngineSelectorFeature.cpp
+  StorageEngine/HotBackup.cpp
   StorageEngine/PhysicalCollection.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp
@@ -569,6 +571,7 @@ SET(ARANGOD_SOURCES
   Utils/FlushThread.cpp
   Utils/OperationCursor.cpp
   Utils/SingleCollectionTransaction.cpp
+  Utils/UrlHelper.cpp
   V8Server/FoxxQueuesFeature.cpp
   V8Server/V8Context.cpp
   V8Server/V8DealerFeature.cpp

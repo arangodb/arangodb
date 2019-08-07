@@ -25,6 +25,7 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
@@ -449,7 +450,7 @@ void ClusterFeature::stop() {
   if (_heartbeatThread != nullptr) {
     int counter = 0;
     while (_heartbeatThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(100000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
       // emit warning after 5 seconds
       if (++counter == 10 * 5) {
         LOG_TOPIC("acaa9", WARN, arangodb::Logger::CLUSTER)
@@ -480,7 +481,7 @@ void ClusterFeature::unprepare() {
   if (_heartbeatThread != nullptr) {
     int counter = 0;
     while (_heartbeatThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(100000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
       // emit warning after 5 seconds
       if (++counter == 10 * 5) {
         LOG_TOPIC("26835", WARN, arangodb::Logger::CLUSTER)
@@ -514,7 +515,7 @@ void ClusterFeature::unprepare() {
   comm.sendTransactionWithFailover(unreg, 120.0);
 
   while (_heartbeatThread->isRunning()) {
-    std::this_thread::sleep_for(std::chrono::microseconds(50000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
 
   AgencyCommManager::MANAGER->stop();
@@ -544,7 +545,7 @@ void ClusterFeature::startHeartbeatThread(AgencyCallbackRegistry* agencyCallback
 
   while (!_heartbeatThread->isReady()) {
     // wait until heartbeat is ready
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 }
 

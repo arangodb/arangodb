@@ -21,15 +21,15 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/CacheManagerFeatureThreads.h"
-#include "Basics/Common.h"
+#include <stdint.h>
+
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
+#include "Basics/voc-errors.h"
+#include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
 #include "Cache/Rebalancer.h"
-
-#include <stdint.h>
 
 using namespace arangodb;
 

@@ -21,13 +21,24 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ssl-helper.h"
+#include <string.h>
+#include <algorithm>
+#include <cstdint>
+
+#include <boost/asio/ssl/context_base.hpp>
+#include <boost/asio/ssl/impl/context.ipp>
+#include <boost/system/error_code.hpp>
 
 #include <openssl/err.h>
+#include <openssl/opensslconf.h>
+
+#include "ssl-helper.h"
 
 #include "Basics/Exceptions.h"
-#include "Basics/asio_ns.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 

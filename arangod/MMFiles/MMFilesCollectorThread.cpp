@@ -556,7 +556,7 @@ void MMFilesCollectorThread::clearQueuedOperations() {
         break;
       }
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   TRI_ASSERT(_operationsQueueInUse);  // by us
@@ -1042,7 +1042,7 @@ void MMFilesCollectorThread::queueOperations(arangodb::MMFilesWalLogfile* logfil
     }
 
     // wait outside the mutex for the flag to be cleared
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   if (maxNumPendingOperations > 0 && _numPendingOperations < maxNumPendingOperations &&

@@ -28,8 +28,11 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/application-exit.h"
 #include "Basics/tri-strings.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Rest/Version.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/V8LineEditor.h"
@@ -61,7 +64,7 @@ ConsoleThread::~ConsoleThread() { shutdown(); }
 static char const* USER_ABORTED = "user aborted";
 
 void ConsoleThread::run() {
-  std::this_thread::sleep_for(std::chrono::microseconds(100 * 1000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   bool v8Enabled = V8DealerFeature::DEALER && V8DealerFeature::DEALER->isEnabled();
   if (!v8Enabled) {

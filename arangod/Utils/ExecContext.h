@@ -25,6 +25,7 @@
 
 #include "Auth/Common.h"
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 #include "Rest/RequestContext.h"
 
 namespace arangodb {

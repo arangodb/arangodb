@@ -183,11 +183,13 @@ class IResearchLinkMetaTest : public ::testing::Test {
         *sysvocbase,
         arangodb::tests::AnalyzerCollectionName);
 
+    
     TRI_vocbase_t* vocbase;
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName);
+      *vocbase,
+      arangodb::tests::AnalyzerCollectionName);
+    
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -1343,10 +1345,10 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
         "{ \
       \"analyzers\": [ \"empty1\" ] \
     }");
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
     auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_TRUE((false == meta.init(json->slice(), true, errorField, &vocbase)));
@@ -1458,10 +1460,10 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       \"analyzerDefinitions\": [ { \"name\": \"missing3\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"missing3\" ] \
     }");
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
     auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_TRUE((false == meta.init(json->slice(), true, errorField, &vocbase)));
@@ -1494,10 +1496,10 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
         "{ \
       \"analyzers\": [ \"empty\" ] \
     }");
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
     auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_TRUE((true == meta.init(json->slice(), true, errorField, &vocbase)));
@@ -1574,10 +1576,10 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"de\"}, \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"empty\" ] \
     }");
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
     auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_TRUE((true == meta.init(json->slice(), true, errorField, &vocbase)));
@@ -1612,10 +1614,10 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"empty\" ] \
     }");
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
     auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_TRUE((false == meta.init(json->slice(), true, errorField, &vocbase)));

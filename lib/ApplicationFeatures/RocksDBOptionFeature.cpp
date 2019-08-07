@@ -21,11 +21,22 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stddef.h>
+#include <algorithm>
+#include <ios>
+
 #include "RocksDBOptionFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 #include <rocksdb/options.h>
 #include <rocksdb/table.h>

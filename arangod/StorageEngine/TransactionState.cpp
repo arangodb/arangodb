@@ -25,7 +25,9 @@
 
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -44,6 +46,7 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase,
                                    transaction::Options const& options)
     : _vocbase(vocbase),
       _id(tid),
+      _lastWrittenOperationTick(0),
       _type(AccessMode::Type::READ),
       _status(transaction::Status::CREATED),
       _arena(),

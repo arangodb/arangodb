@@ -24,6 +24,8 @@
 #ifndef ARANGOD_MMFILES_MMFILES_OPTIMIZER_RULES_H
 #define ARANGOD_MMFILES_MMFILES_OPTIMIZER_RULES_H 1
 
+#include <memory>
+
 #include "Basics/Common.h"
 
 namespace arangodb {

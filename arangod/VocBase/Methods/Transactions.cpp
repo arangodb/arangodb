@@ -357,10 +357,9 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   } catch (...) {
     rv.reset(TRI_ERROR_INTERNAL, "caught unknown exception during transaction");
   }
+  
+  rv = trx->finish(rv);
 
-  if (!rv.fail()) {
-    rv = trx->commit();
-  }
   // if we do not remove unused V8Cursors, V8Context might not reset global
   // state
   vocbase.cursorRepository()->garbageCollect(/*force*/ false);

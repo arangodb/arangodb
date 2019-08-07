@@ -28,7 +28,9 @@
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -117,7 +119,8 @@ void RestBatchHandler::processSubHandlerResult(RestHandler const& handler) {
     httpResponse->body().appendText(_boundary + "--");
 
     if (_errors > 0) {
-      httpResponse->setHeaderNC(StaticStrings::Errors, StringUtils::itoa(_errors));
+      httpResponse->setHeaderNC(StaticStrings::Errors,
+                                StringUtils::itoa(static_cast<uint64_t>(_errors)));
     }
     continueHandlerExecution();
   } else {
@@ -188,7 +191,10 @@ bool RestBatchHandler::executeNextHandler() {
     LOG_TOPIC("63afb", TRACE, arangodb::Logger::REPLICATION)
         << "part body is '" << std::string(bodyStart, bodyLength) << "'";
     request->body().clear();
+    request->body().reserve(bodyLength+1);
     request->body().append(bodyStart, bodyLength);
+    request->body().push_back('\0');
+    request->body().resetTo(bodyLength); // ensure null terminated
   }
 
   if (!authorization.empty()) {

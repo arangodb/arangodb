@@ -33,8 +33,9 @@
 #include "Agency/GossipCallback.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/WriteLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VocBase/vocbase.h"
@@ -112,7 +113,7 @@ void Agent::waitForThreadsStop() {
   while (_constituent.isRunning() || _compactor.isRunning() ||
          (_config.supervision() && _supervision.isRunning()) ||
          (_inception != nullptr && _inception->isRunning())) {
-    std::this_thread::sleep_for(std::chrono::microseconds(100000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     // fail fatally after 5 mins:
     if (++counter >= 10 * 60 * 5) {
@@ -1200,14 +1201,15 @@ read_ret_t Agent::read(query_t const& query) {
     return read_ret_t(false, NO_LEADER);
   }
 
-  std::string leaderId = _constituent.leaderID();
+  leader = _constituent.leaderID();
+  auto result = std::make_shared<arangodb::velocypack::Builder>();
+
   READ_LOCKER(oLocker, _outputLock);
 
   // Retrieve data from readDB
-  auto result = std::make_shared<arangodb::velocypack::Builder>();
   std::vector<bool> success = _readDB.read(query, result);
 
-  return read_ret_t(true, leaderId, success, result);
+  return read_ret_t(true, leader, std::move(success), std::move(result));
 }
 
 /// Send out append entries to followers regularly or on event
