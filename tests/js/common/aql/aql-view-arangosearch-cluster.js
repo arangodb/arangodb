@@ -706,8 +706,96 @@ function IResearchAqlTestSuite(args) {
       result.forEach(function(res) {
         assertTrue(res.c >= 1 && res.c <= 3);
       });
-    }
+    },
 
+    testViewWithInterruptedInserts : function() {
+      let docsCollectionName = "docs";
+      let docsViewName  = "docs_view";
+      try { db._drop(docsCollectionName); } catch(e) {}
+      try { db._dropView(docsViewName); } catch(e) {}
+      let docsCollection = db._create(docsCollectionName);
+      let docsView = db._createView(docsViewName, "arangosearch", {
+        "links": {
+            "docs": {
+              "analyzers": ["identity"],
+              "fields": {},
+              "includeAllFields": true,
+              "storeValues": "id",
+              "trackListPositions": false
+            }
+          } ,
+        consolidationIntervalMsec:0,
+        cleanupIntervalStep:0
+      });
+      let docs = new Array();
+      for (let i = 0; i < 10; i++) {
+        let docId = "TestDoc" + i;
+        docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
+      }
+      docsCollection.save(docs);
+      
+      // test singleOperationTransaction
+      try {
+        docsCollection.save(docs[5]);
+        fail();
+      } catch(e) {
+        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, e.errorNum);
+      }
+      assertEqual(docs.length, db._query("FOR u IN " + docsCollectionName + 
+                                         " COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
+      assertEqual(docs.length, db._query("FOR u IN " + docsViewName + 
+                                        " OPTIONS { waitForSync : true }  COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
+
+      // testMultipleOparationTransaction (no index revert as PK will be violated)
+      let docsNew = new Array();
+      for (let i = 11; i < 20; i++) {
+        let docId = "TestDoc" + i;
+        docsNew.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
+      }
+      docsNew.push(docs[5]); // this one will cause PK violation 
+      docsCollection.save(docsNew);
+      assertEqual(docs.length + docsNew.length - 1,
+                 db._query("FOR u IN " + docsCollectionName + 
+                           " COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
+      assertEqual(docs.length + docsNew.length - 1,
+                 db._query("FOR u IN " + docsViewName + 
+                           " OPTIONS { waitForSync : true }  COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
+
+      // add another index (to make it fail after arangosearch insert passed)
+      docsCollection.ensureIndex({type: "hash", unique: true, fields:["indexField"]});
+      
+      // single operation insert (will fail on unique index)
+      try {
+        docsCollection.save({ _id: "docs/fail", _key: "fail", "indexField": 0 });
+        fail();
+      } catch(e) {
+        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, e.errorNum);
+      }
+      assertEqual(docs.length + docsNew.length - 1,
+                 db._query("FOR u IN " + docsCollectionName + 
+                           " COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
+      assertEqual(docs.length + docsNew.length - 1,
+                 db._query("FOR u IN " + docsViewName + 
+                           " OPTIONS { waitForSync : true } COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
+
+      // testMultipleOparationTransaction  (arangosearch index revert will be needed)
+      let docsNew2 = new Array();
+      for (let i = 21; i < 30; i++) {
+        let docId = "TestDoc" + i;
+        docsNew2.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
+      }
+      docsNew2.push({ _id: "docs/fail2", _key: "fail2", "indexField": 0 });// this one will cause hash unique violation 
+      docsCollection.save(docsNew2);
+      assertEqual(docs.length + docsNew.length  + docsNew2.length - 2,
+                 db._query("FOR u IN " + docsCollectionName + 
+                           " COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
+      assertEqual(docs.length + docsNew.length  + docsNew2.length - 2,
+                 db._query("FOR u IN " + docsViewName + 
+                           " OPTIONS { waitForSync : true } COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
+
+      db._drop(docsCollectionName);
+      db._dropView(docsViewName);
+    }
   };
 }
 

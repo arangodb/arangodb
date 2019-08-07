@@ -27,6 +27,7 @@
 #include "IResearch/IResearchViewNode.h"
 
 #include "StorageEngineMock.h"
+#include "ExecutionBlockMock.h"
 
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
@@ -72,6 +73,7 @@
 #include "utils/utf8_path.hpp"
 
 #include "velocypack/Iterator.h"
+#include "Transaction/StandaloneContext.h"
 
 namespace {
 
@@ -1218,6 +1220,135 @@ SECTION("createBlockCoordinator") {
 
 }
 
+TEST_CASE("IResearchViewBlockTest", "[iresearch][iresearch-view-block]") {
+  IResearchViewNodeSetup s;
+  UNUSED(s);
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                        "testVocbase");
+  std::shared_ptr<arangodb::LogicalCollection> collection0;
+  // create collection0
+  {
+    auto createJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
+    collection0 = vocbase.createCollection(createJson->slice());
+    REQUIRE((nullptr != collection0));
+  }
+  // create view
+  auto createJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+  auto logicalView = vocbase.createView(createJson->slice());
+  REQUIRE((false == !logicalView));
+  // link collections
+  auto updateJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"links\": {"
+      "\"testCollection0\": { \"includeAllFields\": true, "
+      "\"trackListPositions\": true }"
+      "}}");
+  CHECK((logicalView->properties(updateJson->slice(), true).ok()));
+  auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+  static std::vector<std::string> const EMPTY_VECTOR;
+  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     EMPTY_VECTOR,
+                                     std::vector<std::string>{collection0->name()},
+                                     EMPTY_VECTOR, arangodb::transaction::Options());
+
+  CHECK((trx.begin().ok()));
+
+  // Fill dummy data in index only (to simulate some documents where already removed from collection)
+  arangodb::iresearch::IResearchLinkMeta meta;
+  meta._includeAllFields = true;
+  {
+    auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+    for (size_t i = 2; i < 10; ++i) {
+      viewImpl->insert(trx, collection0->id(), arangodb::LocalDocumentId(i),
+                       doc->slice(), meta);
+    }
+  }
+  // in collection only one alive doc
+  auto aliveDoc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+  arangodb::ManagedDocumentResult insertResult;
+  TRI_voc_tick_t masterTick = 1;
+  collection0->insert(&trx, aliveDoc->slice(), insertResult,
+                      arangodb::OperationOptions(), masterTick, false);
+  REQUIRE(insertResult.localDocumentId() != 0);
+
+  CHECK((trx.commit().ok()));
+  CHECK(viewImpl->commit().ok());
+  SECTION("retrieveWithMissingInCollectionUnordered") {
+    // query
+    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("FOR d IN testView RETURN d"),
+                               nullptr, arangodb::velocypack::Parser::fromJson("{}"),
+                               arangodb::aql::PART_MAIN);
+    // register collection with the query
+    query.addCollection(std::to_string(collection0->id()), arangodb::AccessMode::Type::READ);
+    // prepare query
+    query.prepare(arangodb::QueryRegistryFeature::registry());
+    arangodb::aql::Variable const outVariable("variable", 0);
+    // dummy engine
+    arangodb::aql::ExecutionEngine engine(&query);
+    arangodb::iresearch::IResearchViewNode node(*query.plan(),
+                                                collection0->id(),  // id
+                                                vocbase,            // database
+                                                logicalView,        // view
+                                                outVariable,
+                                                nullptr,  // no filter condition
+                                                nullptr,  // no options
+                                                {}        // no sort condition
+    );
+    auto reader =
+        viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto block =
+        std::make_unique<arangodb::iresearch::IResearchViewUnorderedBlock>(*reader, engine, node);
+    MockNode<arangodb::aql::SingletonNode> rootNode;
+    arangodb::aql::SingletonBlock rootBlock(query.engine(), &rootNode);
+    block->addDependency(&rootBlock);
+    node.addDependency(&rootNode);
+    node.setVarUsageValid();
+    node.planRegisters();
+
+    auto results = block->getSome(5);
+    REQUIRE(results.second);
+    CHECK(results.second->size() == 1);
+  }
+  SECTION("retrieveWithMissingInCollection") {
+    // query
+    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("FOR d IN testView RETURN d"),
+                               nullptr, arangodb::velocypack::Parser::fromJson("{}"),
+                               arangodb::aql::PART_MAIN);
+    // register collection with the query
+    query.addCollection(std::to_string(collection0->id()), arangodb::AccessMode::Type::READ);
+
+    // prepare query
+    query.prepare(arangodb::QueryRegistryFeature::registry());
+    arangodb::aql::Variable const outVariable("variable", 0);
+    // dummy engine
+    arangodb::aql::ExecutionEngine engine(&query);
+
+    arangodb::iresearch::IResearchViewNode node(*query.plan(),
+                                                collection0->id(),  // id
+                                                vocbase,            // database
+                                                logicalView,        // view
+                                                outVariable,
+                                                nullptr,  // no filter condition
+                                                nullptr,  // no options
+                                                {}        // no sort condition
+    );
+    auto reader =
+        viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto block =
+        std::make_unique<arangodb::iresearch::IResearchViewBlock>(*reader, engine, node);
+    MockNode<arangodb::aql::SingletonNode> rootNode;
+    arangodb::aql::SingletonBlock rootBlock(query.engine(), &rootNode);
+    block->addDependency(&rootBlock);
+    node.addDependency(&rootNode);
+    node.setVarUsageValid();
+    node.planRegisters();
+
+    auto results = block->getSome(5);
+    REQUIRE(results.second);
+    CHECK(results.second->size() == 1);
+  }
+}
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
