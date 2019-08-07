@@ -254,10 +254,6 @@ target_include_directories(arangodbtests SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
 )
 
-# Note that with clang, at least with v7.0.0, if arangoserver is compiled with -flto,
-# linking an executable without -flto fails with
-# ../bin/libarangoserver.a: error adding symbols: File format not recognized
-# . Thus we cannot use IPO for arangod, and not use it for arangodbtests.
 set_property(TARGET ${BIN_ARANGODB_TESTS} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
 
 find_package(OpenSSL REQUIRED)

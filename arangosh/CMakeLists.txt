@@ -120,6 +120,8 @@ if (DARWIN)
   target_compile_options(arangobackup PRIVATE -Werror)
 endif()
 
+set_property(TARGET ${BIN_ARANGOBACKUP} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
+
 ################################################################################
 ## arangodump
 ################################################################################
