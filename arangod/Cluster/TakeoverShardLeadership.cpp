@@ -89,7 +89,7 @@ TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
   TRI_ASSERT(desc.has(OLD_CURRENT_COUNTER));
 
   if (!error.str().empty()) {
-    LOG_TOPIC("2aa84", ERR, Logger::MAINTENANCE) << "TakeoverLeadership: " << error.str();
+    LOG_TOPIC("2aa85", ERR, Logger::MAINTENANCE) << "TakeoverLeadership: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
@@ -239,7 +239,7 @@ bool TakeoverShardLeadership::first() {
     std::stringstream error;
 
     error << "action " << _description << " failed with exception " << e.what();
-    LOG_TOPIC("79442", WARN, Logger::MAINTENANCE)
+    LOG_TOPIC("79443", WARN, Logger::MAINTENANCE)
         << "TakeoverShardLeadership: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
   }
