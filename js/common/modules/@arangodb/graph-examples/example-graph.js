@@ -506,7 +506,7 @@ var knownGraphs = {
       'edges', 'circles'
   ]},
   'kShortestPathsGraph': {create: createKShortestPathsGraph, dependencies: [
-      'places', 'connections'
+      'connections', 'places'
   ]}
 };
 
