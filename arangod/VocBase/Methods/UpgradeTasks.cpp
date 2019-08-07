@@ -198,6 +198,9 @@ bool createJobsIndex(TRI_vocbase_t& vocbase) {
 }
 
 bool createSystemCollections(TRI_vocbase_t& vocbase) {
+  typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> FuncCallback;
+  FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
+
   std::vector<CollectionCreationInfo> systemCollectionsToCreate;
   // the order of systemCollections is important. If we're in _system db, the
   // UsersCollection needs to be first, otherwise, the GraphsCollection must be first.
@@ -214,6 +217,28 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
   systemCollections.push_back(StaticStrings::AppsCollection);
   systemCollections.push_back(StaticStrings::AppBundlesCollection);
 
+  TRI_IF_FAILURE("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions") {
+    VPackBuilder testOptions;
+    std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> testBuffers;
+    std::vector<CollectionCreationInfo> testSystemCollectionsToCreate;
+    std::vector<std::string> testSystemCollections = {StaticStrings::GraphsCollection,
+                                                      StaticStrings::AqlFunctionsCollection};
+
+    for (auto const& collection : testSystemCollections) {
+      VPackBuilder options;
+      methods::Collections::createSystemCollectionProperties(collection, options,
+                                                             vocbase.isSystem());
+
+      testSystemCollectionsToCreate.emplace_back(
+          CollectionCreationInfo{collection, TRI_COL_TYPE_DOCUMENT, options.slice()});
+      testBuffers.emplace_back(options.steal());
+    }
+
+    methods::Collections::create(
+        vocbase, testSystemCollectionsToCreate, true, true,
+        [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
+  }
+
   // check wether we need fishbowl collection, or not.
   ServerSecurityFeature* security =
       application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
@@ -222,8 +247,6 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
     systemCollections.push_back(StaticStrings::FishbowlCollection);
   }
 
-  typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> FuncCallback;
-  FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
   std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> buffers;
 
   for (auto const& collection : systemCollections) {
