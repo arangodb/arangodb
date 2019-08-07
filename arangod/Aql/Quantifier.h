@@ -24,6 +24,9 @@
 #ifndef ARANGOD_AQL_QUANTIFIER_H
 #define ARANGOD_AQL_QUANTIFIER_H 1
 
+#include <cstdint>
+#include <string>
+
 #include "Basics/Common.h"
 
 namespace arangodb {

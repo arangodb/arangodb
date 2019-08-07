@@ -109,6 +109,7 @@
 
 #ifdef _WIN32
 #include "ApplicationFeatures/WindowsServiceFeature.h"
+#include "Basics/win-utils.h"
 #endif
 
 #ifdef USE_ENTERPRISE

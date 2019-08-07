@@ -29,30 +29,57 @@
 #endif
 
 #include <deque>
-#include "analysis/analyzers.hpp"
-#include "analysis/delimited_token_stream.hpp"
-#include "analysis/ngram_token_stream.hpp"
-#include "analysis/text_token_normalizing_stream.hpp"
-#include "analysis/text_token_stemming_stream.hpp"
-#include "analysis/text_token_stream.hpp"
-#include "analysis/token_attributes.hpp"
-#include "analysis/token_streams.hpp"
-#include "utils/hash_utils.hpp"
-#include "utils/object_pool.hpp"
 
+#include <string.h>
+#include <cstdint>
+#include <exception>
+#include <iterator>
+#include <map>
+#include <unordered_set>
+#include <vector>
+
+#include <analysis/analyzers.hpp>
+#include <analysis/delimited_token_stream.hpp>
+#include <analysis/ngram_token_stream.hpp>
+#include <analysis/text_token_normalizing_stream.hpp>
+#include <analysis/text_token_stemming_stream.hpp>
+#include <analysis/text_token_stream.hpp>
+#include <analysis/token_attributes.hpp>
+#include <analysis/token_streams.hpp>
+#include <utils/hash_utils.hpp>
+#include <utils/object_pool.hpp>
+
+#include <velocypack/Buffer.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationServerHelper.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/AqlValue.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Function.h"
+#include "Aql/Functions.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Basics/system-compiler.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchCommon.h"
 #include "Logger/LogMacros.h"
+#include "Logger/LoggerStream.h"
+#include "Rest/CommonDefines.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -64,11 +91,12 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VelocyPackHelper.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
+#include "shared.hpp"
 
 namespace iresearch {
 namespace text_format {

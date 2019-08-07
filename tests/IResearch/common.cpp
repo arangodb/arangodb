@@ -33,6 +33,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
+#include "Basics/system-functions.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ExpressionContextMock.h"
 #include "IResearch/AqlHelper.h"
@@ -54,6 +55,9 @@
 #include "search/boolean_filter.hpp"
 
 #include "3rdParty/iresearch/tests/tests_config.hpp"
+
+#include <libplatform/libplatform.h>
+#include <v8.h>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
@@ -254,7 +258,7 @@ namespace arangodb {
 
 namespace tests {
 
-std::string const AnalyzerCollectionName("_analyzers");
+std::string const AnalyzerCollectionName(StaticStrings::AnalyzersCollection);
 
 std::string testResourceDir;
 

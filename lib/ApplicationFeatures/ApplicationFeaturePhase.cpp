@@ -22,7 +22,9 @@
 
 #include "ApplicationFeaturePhase.h"
 
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 namespace arangodb {
 namespace application_features {

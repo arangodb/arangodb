@@ -24,6 +24,7 @@
 #include "MMFilesWalRecoveryFeature.h"
 
 #include "Basics/Exceptions.h"
+#include "Basics/application-exit.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "ProgramOptions/ProgramOptions.h"

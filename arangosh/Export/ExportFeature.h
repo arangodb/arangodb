@@ -23,12 +23,15 @@
 #ifndef ARANGODB_EXPORT_EXPORT_FEATURE_H
 #define ARANGODB_EXPORT_EXPORT_FEATURE_H 1
 
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "V8Client/ArangoClientHelper.h"
-#include "lib/Rest/CommonDefines.h"
+#include "Basics/files.h"
+#include "Rest/CommonDefines.h"
 #include "Utils/ManagedDirectory.h"
+#include "V8Client/ArangoClientHelper.h"
 
 namespace arangodb {
 

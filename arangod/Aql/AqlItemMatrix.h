@@ -27,6 +27,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/system-compiler.h"
 
 #include <math.h>
 

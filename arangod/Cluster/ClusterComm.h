@@ -33,6 +33,7 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Thread.h"
+#include "Basics/error.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/LogTopic.h"
 #include "Rest/GeneralRequest.h"

@@ -59,12 +59,17 @@
 #ifndef ARANGODB_LOGGER_LOGGER_H
 #define ARANGODB_LOGGER_LOGGER_H 1
 
-#include "Basics/CleanupFunctions.h"
+#include <stddef.h>
+#include <atomic>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/threads.h"
 #include "Logger/LogLevel.h"
-#include "Logger/LogMacros.h"
 #include "Logger/LogTimeFormat.h"
 #include "Logger/LogTopic.h"
 
@@ -266,7 +271,7 @@ class Logger {
  private:
   static Mutex _initializeMutex;
 
-  // these varaibles might be changed asynchronously
+  // these variables might be changed asynchronously
   static std::atomic<bool> _active;
   static std::atomic<LogLevel> _level;
 
@@ -290,7 +295,5 @@ class Logger {
   static std::unique_ptr<LogThread> _loggingThread;
 };
 }  // namespace arangodb
-
-#include "Logger/LoggerStream.h"
 
 #endif
