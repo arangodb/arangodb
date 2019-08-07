@@ -542,7 +542,7 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
       type == "activeFailover") {
     return false;
   } else if (type == "addFollower" || type == "moveShard" ||
-             type == "cleanOutServer") {
+             type == "cleanOutServer" || type == "resignLeadership") {
     return true;
   }
 
