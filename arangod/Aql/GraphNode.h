@@ -130,6 +130,8 @@ class GraphNode : public ExecutionNode {
   /// @brief return any of the collections
   Collection const* collection() const;
 
+  void injectVertexCollection(aql::Collection const* other);
+
  private:
   void addEdgeCollection(std::string const& n, TRI_edge_direction_e dir);
 

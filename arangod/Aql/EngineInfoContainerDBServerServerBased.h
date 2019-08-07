@@ -55,26 +55,44 @@ class EngineInfoContainerDBServerServerBased {
   // @brief Local struct to create the
   // information required to build traverser engines
   // on DB servers.
-  struct TraverserEngineShardLists {
-    explicit TraverserEngineShardLists(size_t length) {
-      // Make sure they all have a fixed size.
-      edgeCollections.resize(length);
-    }
+  class TraverserEngineShardLists {
+   public:
+    TraverserEngineShardLists(GraphNode const*, ServerID const& server,
+                              std::unordered_map<ShardID, ServerID> const& shardMapping,
+                              Query const* query);
 
     ~TraverserEngineShardLists() {}
+
+    void serializeIntoBuilder(arangodb::velocypack::Builder& infoBuilder) const;
+
+    bool hasShard() const { return _hasShard; }
+
+   private:
+    std::vector<ShardID> getAllLocalShards(
+        std::unordered_map<ShardID, ServerID> const& shardMapping,
+        ServerID const& server, std::unordered_set<std::string> const& restrictToShards,
+        std::shared_ptr<std::vector<std::string>> shardIds);
+
+   private:
+    // The graph node we need to serialize
+    GraphNode const* _node;
+
+    // Flag if we found any shard for the given server.
+    // If not serializeToBuilder will be a noop
+    bool _hasShard;
 
     // Mapping for edge collections to shardIds.
     // We have to retain the ordering of edge collections, all
     // vectors of these in one run need to have identical size.
     // This is because the conditions to query those edges have the
     // same ordering.
-    std::vector<std::vector<ShardID>> edgeCollections;
+    std::vector<std::vector<ShardID>> _edgeCollections;
 
     // Mapping for vertexCollections to shardIds.
-    std::unordered_map<std::string, std::vector<ShardID>> vertexCollections;
+    std::unordered_map<std::string, std::vector<ShardID>> _vertexCollections;
 
 #ifdef USE_ENTERPRISE
-    std::set<ShardID> inaccessibleShards;
+    std::set<ShardID> _inaccessibleShards;
 #endif
   };
 
@@ -119,8 +137,8 @@ class EngineInfoContainerDBServerServerBased {
    * @param cc The ClusterComm
    * @param errorCode error Code to be send to DBServers for logging.
    * @param dbname Name of the database this query is executed in.
-   * @param queryIds A map of QueryIds of the format: (remoteNodeId:shardId) ->
-   * queryid.
+   * @param queryIds A map of QueryIds of the format: (remoteNodeId:shardId)
+   * -> queryid.
    */
   void cleanupEngines(std::shared_ptr<ClusterComm> cc, int errorCode,
                       std::string const& dbname, MapRemoteToSnippet& queryIds) const;
@@ -146,12 +164,14 @@ class EngineInfoContainerDBServerServerBased {
                       ServerID const& server) const;
 
   // Insert the TraversalEngine information into the message to be send to DBServers
-  void addTraversalEnginesPart(arangodb::velocypack::Builder& builder,
-                               ServerID const& server) const;
+  std::vector<bool> addTraversalEnginesPart(arangodb::velocypack::Builder& builder,
+                                            std::unordered_map<ShardID, ServerID> const& shardMapping,
+                                            ServerID const& server) const;
 
   // Parse the response of a DBServer to a setup request
   Result parseResponse(VPackSlice response, MapRemoteToSnippet& queryIds,
-                       ServerID const& server, std::string const& serverDest) const;
+                       ServerID const& server, std::string const& serverDest,
+                       std::vector<bool> const& didCreateEngine) const;
 
  private:
   std::stack<std::shared_ptr<QuerySnippet>, std::vector<std::shared_ptr<QuerySnippet>>> _snippetStack;
@@ -159,9 +179,6 @@ class EngineInfoContainerDBServerServerBased {
   std::vector<std::shared_ptr<QuerySnippet>> _closedSnippets;
 
   Query* _query;
-
-  // @brief List of all information required for traverser engines
-  std::vector<std::pair<GraphNode*, TraverserEngineShardLists>> _traverserEngineInfos;
 
   // @brief List of all graphNodes that need to create TraverserEngines on
   // DBServers

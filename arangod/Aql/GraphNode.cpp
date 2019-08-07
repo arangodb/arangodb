@@ -511,6 +511,26 @@ Collection const* GraphNode::collection() const {
   return _edgeColls.front().get();
 }
 
+void GraphNode::injectVertexCollection(aql::Collection const* other) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+  for (auto const& e : _edgeColls) {
+    if (e->name() == other->name()) {
+      // This collection is already known.
+      // unfortunately we cannot do pointer comparison
+      return;
+    }
+  }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // This is a workaround to inject all unknown aql collections into
+  // this node, that should be list of unique values!
+  for (auto const& v : _vertexColls) {
+    TRI_ASSERT(v->name() != other->name());
+  }
+#endif
+  _vertexColls.emplace_back(std::make_unique<aql::Collection>(other->name(), _vocbase,
+                                                              AccessMode::Type::READ));
+}
+
 #ifndef USE_ENTERPRISE
 void GraphNode::enhanceEngineInfo(VPackBuilder& builder) const {
   if (_graphObj != nullptr) {

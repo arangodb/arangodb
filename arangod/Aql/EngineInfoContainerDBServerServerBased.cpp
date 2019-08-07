@@ -66,6 +66,116 @@ Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string&
 }
 }  // namespace
 
+EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngineShardLists(
+    GraphNode const* node, ServerID const& server,
+    std::unordered_map<ShardID, ServerID> const& shardMapping, Query const* query)
+    : _node(node), _hasShard(false) {
+  TRI_ASSERT(query != nullptr);
+  auto const& edges = _node->edgeColls();
+  TRI_ASSERT(!edges.empty());
+  std::unordered_set<std::string> const& restrictToShards =
+      query->queryOptions().shardIds;
+  // Extract the local shards for edge collections.
+  for (auto const& col : edges) {
+    _edgeCollections.emplace_back(getAllLocalShards(shardMapping, server, restrictToShards,
+                                                    col->shardIds(restrictToShards)));
+  }
+  // Extract vertices
+  auto const& vertices = _node->vertexColls();
+  // Guaranteed by addGraphNode, this will inject vertex collections
+  // in anonymous graph case
+  TRI_ASSERT(!vertices.empty());
+  for (auto const& col : vertices) {
+    _vertexCollections.emplace(col->name(),
+                               getAllLocalShards(shardMapping, server, restrictToShards,
+                                                 col->shardIds(restrictToShards)));
+  }
+}
+
+std::vector<ShardID> EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::getAllLocalShards(
+    std::unordered_map<ShardID, ServerID> const& shardMapping,
+    ServerID const& server, std::unordered_set<std::string> const& restrictToShards,
+    std::shared_ptr<std::vector<std::string>> shardIds) {
+  std::vector<ShardID> localShards;
+  for (auto const& shard : *shardIds) {
+    auto const& it = shardMapping.find(shard);
+    TRI_ASSERT(it != shardMapping.end());
+    if (it->second == server) {
+      localShards.emplace_back(shard);
+      _hasShard = true;
+    }
+  }
+  return localShards;
+}
+
+void EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::serializeIntoBuilder(
+    VPackBuilder& infoBuilder) const {
+  TRI_ASSERT(_hasShard);
+  TRI_ASSERT(infoBuilder.isOpenArray());
+  infoBuilder.openObject();
+  {
+    // Options
+    infoBuilder.add(VPackValue("options"));
+    graph::BaseOptions* opts = _node->options();
+    opts->buildEngineInfo(infoBuilder);
+  }
+  {
+    // Variables
+    std::vector<aql::Variable const*> vars;
+    _node->getConditionVariables(vars);
+    if (!vars.empty()) {
+      infoBuilder.add(VPackValue("variables"));
+      infoBuilder.openArray();
+      for (auto v : vars) {
+        v->toVelocyPack(infoBuilder);
+      }
+      infoBuilder.close();
+    }
+  }
+
+  infoBuilder.add(VPackValue("shards"));
+  infoBuilder.openObject();
+  infoBuilder.add(VPackValue("vertices"));
+  infoBuilder.openObject();
+  for (auto const& col : _vertexCollections) {
+    infoBuilder.add(VPackValue(col.first));
+    infoBuilder.openArray();
+    for (auto const& v : col.second) {
+      infoBuilder.add(VPackValue(v));
+    }
+    infoBuilder.close();  // this collection
+  }
+  infoBuilder.close();  // vertices
+
+  infoBuilder.add(VPackValue("edges"));
+  infoBuilder.openArray();
+  for (auto const& edgeShards : _edgeCollections) {
+    infoBuilder.openArray();
+    for (auto const& e : edgeShards) {
+      infoBuilder.add(VPackValue(e));
+    }
+    infoBuilder.close();
+  }
+  infoBuilder.close();  // edges
+
+#ifdef USE_ENTERPRISE
+  if (!_inaccessibleShards.empty()) {
+    infoBuilder.add(VPackValue("inaccessible"));
+    infoBuilder.openArray();
+    for (ShardID const& shard : _inaccessibleShards) {
+      infoBuilder.add(VPackValue(shard));
+    }
+    infoBuilder.close();  // inaccessible
+  }
+#endif
+  infoBuilder.close();  // shards
+
+  _node->enhanceEngineInfo(infoBuilder);
+
+  infoBuilder.close();  // base
+  TRI_ASSERT(infoBuilder.isOpenArray());
+}
+
 EngineInfoContainerDBServerServerBased::EngineInfoContainerDBServerServerBased(Query* query) noexcept
     : _query(query), _shardLocking(query) {}
 
@@ -158,7 +268,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     addSnippetPart(infoBuilder, shardMapping, nodeAliases, server);
     TRI_ASSERT(infoBuilder.isOpenObject());
 
-    addTraversalEnginesPart(infoBuilder, server);
+    std::vector<bool> didCreateEngine =
+        addTraversalEnginesPart(infoBuilder, shardMapping, server);
+    TRI_ASSERT(didCreateEngine.size() == _graphNodes.size());
     TRI_ASSERT(infoBuilder.isOpenObject());
 
     infoBuilder.close();  // Base object
@@ -167,8 +279,11 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     TRI_ASSERT(infoBuilder.slice().hasKey("lockInfo"));
     TRI_ASSERT(infoBuilder.slice().hasKey("options"));
     TRI_ASSERT(infoBuilder.slice().hasKey("variables"));
-    // We need to have at least one: snippets or traverserEngines
-    TRI_ASSERT(infoBuilder.slice().hasKey("snippets") ||
+    // We need to have at least one: snippets (non empty) or traverserEngines
+
+    TRI_ASSERT((infoBuilder.slice().hasKey("snippets") &&
+                infoBuilder.slice().get("snippets").isObject() &&
+                !infoBuilder.slice().get("snippets").isEmptyObject()) ||
                infoBuilder.slice().hasKey("traverserEngines"));
 
     // add the transaction ID header
@@ -187,7 +302,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     }
     std::shared_ptr<VPackBuilder> builder = res->result->getBodyVelocyPack();
     VPackSlice response = builder->slice();
-    auto result = parseResponse(response, queryIds, server, serverDest);
+    auto result = parseResponse(response, queryIds, server, serverDest, didCreateEngine);
     if (!result.ok()) {
       return result;
     }
@@ -198,7 +313,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
 Result EngineInfoContainerDBServerServerBased::parseResponse(
     VPackSlice response, MapRemoteToSnippet& queryIds, ServerID const& server,
-    std::string const& serverDest) const {
+    std::string const& serverDest, std::vector<bool> const& didCreateEngine) const {
   if (!response.isObject() || !response.get("result").isObject()) {
     LOG_TOPIC("0c3f2", ERR, Logger::AQL) << "Received error information from "
                                          << server << " : " << response.toJson();
@@ -244,18 +359,24 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
               "failover. Please check: " +
                   server};
     }
-    if (travEngines.length() != _traverserEngineInfos.size()) {
-      return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-              "The DBServer was not able to create enough "
-              "traversal engines. This can happen during "
-              "failover. Please check; " +
-                  server};
-    }
     auto idIter = VPackArrayIterator(travEngines);
-    for (auto const& it : _traverserEngineInfos) {
-      it.first->addEngine(idIter.value().getNumber<traverser::TraverserEngineID>(), server);
-      idIter.next();
+    TRI_ASSERT(_graphNodes.size() == didCreateEngine.size());
+    for (size_t i = 0; i < _graphNodes.size(); ++i) {
+      if (didCreateEngine[i]) {
+        if (!idIter.valid()) {
+          return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+                  "The DBServer was not able to create enough "
+                  "traversal engines. This can happen during "
+                  "failover. Please check; " +
+                      server};
+        }
+        _graphNodes[i]->addEngine(idIter.value().getNumber<traverser::TraverserEngineID>(),
+                                  server);
+        idIter.next();
+      }
     }
+    // We need to consume all traverser engines
+    TRI_ASSERT(!idIter.valid());
   }
   return {TRI_ERROR_NO_ERROR};
 }
@@ -282,6 +403,16 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
 // the DBServers. The GraphNode itself will retain on the coordinator.
 void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node) {
   _shardLocking.addNode(node);
+  auto const& vCols = node->vertexColls();
+  if (vCols.empty()) {
+    std::map<std::string, Collection*> const* allCollections =
+        _query->collections()->collections();
+    for (auto const& it : *allCollections) {
+      // All known edge collections will be ignored by this call!
+      node->injectVertexCollection(it.second);
+    }
+  }
+
   _graphNodes.emplace_back(node);
 }
 
@@ -347,79 +478,26 @@ void EngineInfoContainerDBServerServerBased::addSnippetPart(
 }
 
 // Insert the TraversalEngine information into the message to be send to DBServers
-void EngineInfoContainerDBServerServerBased::addTraversalEnginesPart(
-    arangodb::velocypack::Builder& infoBuilder, ServerID const& server) const {
-  if (_traverserEngineInfos.empty()) {
-    return;
+std::vector<bool> EngineInfoContainerDBServerServerBased::addTraversalEnginesPart(
+    arangodb::velocypack::Builder& infoBuilder,
+    std::unordered_map<ShardID, ServerID> const& shardMapping, ServerID const& server) const {
+  std::vector<bool> result;
+  if (_graphNodes.empty()) {
+    return result;
   }
+  result.reserve(_graphNodes.size());
   TRI_ASSERT(infoBuilder.isOpenObject());
   infoBuilder.add(VPackValue("traverserEngines"));
   infoBuilder.openArray();
-  for (auto const& it : _traverserEngineInfos) {
-    GraphNode* en = it.first;
-    TraverserEngineShardLists const& list = it.second;
-    infoBuilder.openObject();
-    {
-      // Options
-      infoBuilder.add(VPackValue("options"));
-      graph::BaseOptions* opts = en->options();
-      opts->buildEngineInfo(infoBuilder);
+  for (auto const* graphNode : _graphNodes) {
+    TraverserEngineShardLists list(graphNode, server, shardMapping, _query);
+    if (list.hasShard()) {
+      list.serializeIntoBuilder(infoBuilder);
     }
-    {
-      // Variables
-      std::vector<aql::Variable const*> vars;
-      en->getConditionVariables(vars);
-      if (!vars.empty()) {
-        infoBuilder.add(VPackValue("variables"));
-        infoBuilder.openArray();
-        for (auto v : vars) {
-          v->toVelocyPack(infoBuilder);
-        }
-        infoBuilder.close();
-      }
-    }
-
-    infoBuilder.add(VPackValue("shards"));
-    infoBuilder.openObject();
-    infoBuilder.add(VPackValue("vertices"));
-    infoBuilder.openObject();
-    for (auto const& col : list.vertexCollections) {
-      infoBuilder.add(VPackValue(col.first));
-      infoBuilder.openArray();
-      for (auto const& v : col.second) {
-        infoBuilder.add(VPackValue(v));
-      }
-      infoBuilder.close();  // this collection
-    }
-    infoBuilder.close();  // vertices
-
-    infoBuilder.add(VPackValue("edges"));
-    infoBuilder.openArray();
-    for (auto const& edgeShards : list.edgeCollections) {
-      infoBuilder.openArray();
-      for (auto const& e : edgeShards) {
-        infoBuilder.add(VPackValue(e));
-      }
-      infoBuilder.close();
-    }
-    infoBuilder.close();  // edges
-
-#ifdef USE_ENTERPRISE
-    if (!list.inaccessibleShards.empty()) {
-      infoBuilder.add(VPackValue("inaccessible"));
-      infoBuilder.openArray();
-      for (ShardID const& shard : list.inaccessibleShards) {
-        infoBuilder.add(VPackValue(shard));
-      }
-      infoBuilder.close();  // inaccessible
-    }
-#endif
-    infoBuilder.close();  // shards
-
-    en->enhanceEngineInfo(infoBuilder);
-
-    infoBuilder.close();  // base
+    // If we have a shard, we expect to get a response back for this engine
+    result.emplace_back(list.hasShard());
+    TRI_ASSERT(infoBuilder.isOpenArray());
   }
-
   infoBuilder.close();  // traverserEngines
+  return result;
 }
