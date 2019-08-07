@@ -1268,8 +1268,9 @@ TEST_CASE("IResearchViewBlockTest", "[iresearch][iresearch-view-block]") {
   auto aliveDoc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
   arangodb::ManagedDocumentResult insertResult;
   TRI_voc_tick_t masterTick = 1;
+  arangodb::OperationOptions options;
   collection0->insert(&trx, aliveDoc->slice(), insertResult,
-                      arangodb::OperationOptions(), masterTick, false);
+                      options, masterTick, false);
   REQUIRE(insertResult.localDocumentId() != 0);
 
   CHECK((trx.commit().ok()));
