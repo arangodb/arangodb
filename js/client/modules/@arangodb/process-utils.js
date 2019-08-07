@@ -28,6 +28,7 @@
 /* Modules: */
 const _ = require('lodash');
 const fs = require('fs');
+const rp = require('@arangodb/result-processing');
 const yaml = require('js-yaml');
 const internal = require('internal');
 const toArgv = internal.toArgv;
@@ -625,6 +626,26 @@ function sumarizeStats(deltaStats) {
   return sumStats;
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief if we forgot about processes, this safe guard will clean up and mark failed
+// //////////////////////////////////////////////////////////////////////////////
+
+function killRemainingProcesses(results) {
+  let running = internal.getExternalSpawned();
+  results.status = results.status && (running.length === 0);
+  let i = 0;
+  for (i = 0; i < running.length; i++) {
+    let status = require("internal").statusExternal(running[i].pid, false);
+    if (status.status === "TERMINATED") {
+      print("process exited without us joining it (marking crashy): " + JSON.stringify(running[i]) + JSON.stringify(status));
+    }
+    else {
+      print("Killing remaining process & marking crashy: " + JSON.stringify(running[i]));
+      print(killExternal(running[i].pid, abortSignal));
+    }
+    results.crashed = true;
+  };
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief executes a command and waits for result
@@ -2028,6 +2049,12 @@ function reStartInstance(options, instanceInfo, moreArgs) {
   launchFinalize(options, instanceInfo, startTime);
 }
 
+function aggregateFatalErrors(currentTest) {
+  if (serverCrashedLocal) {
+    rp.addFailRunsMessage(currentTest, serverFailMessagesLocal);
+    serverFailMessagesLocal = "";
+  }
+}
 // exports.analyzeServerCrash = analyzeServerCrash;
 exports.makeArgs = {
   arangod: makeArgsArangod,
@@ -2047,6 +2074,7 @@ exports.findFreePort = findFreePort;
 
 exports.executeArangod = executeArangod;
 exports.executeAndWait = executeAndWait;
+exports.killRemainingProcesses = killRemainingProcesses;
 exports.stopProcdump = stopProcdump;
 
 exports.createBaseConfig = createBaseConfigBuilder;
@@ -2068,8 +2096,8 @@ exports.reStartInstance = reStartInstance;
 exports.setupBinaries = setupBinaries;
 exports.executableExt = executableExt;
 exports.serverCrashed = serverCrashedLocal;
-exports.serverFailMessages = serverFailMessagesLocal;
 
+exports.aggregateFatalErrors = aggregateFatalErrors;
 exports.cleanupDBDirectoriesAppend = cleanupDBDirectoriesAppend;
 exports.cleanupDBDirectories = cleanupDBDirectories;
 exports.cleanupLastDirectory = cleanupLastDirectory;
