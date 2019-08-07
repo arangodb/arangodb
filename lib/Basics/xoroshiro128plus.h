@@ -24,7 +24,8 @@
 #ifndef ARANGO_XOROSHIRO128PLUS_H
 #define ARANGO_XOROSHIRO128PLUS_H 1
 
-#include "Basics/Common.h"
+#include <cstdint>
+#include <cstdlib>
 
 namespace arangodb {
 namespace basics {
@@ -62,6 +63,8 @@ struct xoroshiro128plus {
      The state must be seeded so that it is not everywhere zero. If you have
      a 64-bit seed, we suggest to seed a splitmix64 generator and use its
      output to fill s. */
+
+  xoroshiro128plus() : _s{0, 0} {}
 
   void seed(uint64_t seed1, uint64_t seed2) {
     _s[0] = seed1;

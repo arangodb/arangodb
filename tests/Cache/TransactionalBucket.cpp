@@ -25,8 +25,9 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
 #include "Cache/TransactionalBucket.h"
+#include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 #include "gtest/gtest.h"
 

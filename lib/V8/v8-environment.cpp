@@ -20,10 +20,18 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stdlib.h>
+#include <string.h>
+#include <cstdint>
+#include <string>
+
+#include <v8.h>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/Common.h"
-#include "v8-utils.h"
+#include "Basics/debugging.h"
+#include "V8/v8-globals.h"
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -42,7 +50,6 @@ static bool canExpose(v8::Isolate* isolate, v8::Local<v8::Name> property) {
   }
   v8::String::Utf8Value const key(isolate, property);
   std::string utf8String(*key, key.length());
-
   if (utf8String == "hasOwnProperty") {
     return true;
   }

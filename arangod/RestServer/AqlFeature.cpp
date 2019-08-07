@@ -20,11 +20,15 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <thread>
+
 #include "RestServer/AqlFeature.h"
 
 #include "Aql/QueryRegistry.h"
 #include "Cluster/TraverserEngineRegistry.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 

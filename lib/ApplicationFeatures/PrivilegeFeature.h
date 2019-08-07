@@ -23,11 +23,20 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_PRIVILEGE_FEATURE_H
 #define ARANGODB_APPLICATION_FEATURES_PRIVILEGE_FEATURE_H 1
 
+#include <memory>
+#include <string>
+
+#include "Basics/operating-system.h"
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include <sys/types.h>
-
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
+namespace options {
+class ProgramOptions;
+}
 
 class PrivilegeFeature final : public application_features::ApplicationFeature {
  public:

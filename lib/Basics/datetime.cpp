@@ -20,17 +20,37 @@
 /// @author Manuel Baesler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/datetime.h"
-#include "Basics/NumberUtils.h"
-#include "Logger/Logger.h"
+#include <stdlib.h>
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cstdint>
+#include <iterator>
+#include <map>
+#include <ratio>
+#include <regex>
+#include <sstream>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
-#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/detail/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/trim.hpp>
+#include <boost/iterator/iterator_facade.hpp>
+#include <boost/range/distance.hpp>
+#include <boost/type_index/type_index_facade.hpp>
+
 #include <date/date.h>
 #include <date/iso_week.h>
 
-#include <chrono>
-#include <regex>
-#include <vector>
+#include "Basics/NumberUtils.h"
+#include "Basics/datetime.h"
+#include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 namespace {
 using namespace date;

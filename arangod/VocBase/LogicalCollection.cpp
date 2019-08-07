@@ -226,6 +226,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
     }
   }
 #else
+  // force _isSmart to be false in non-enterprise mode
+  _isSmart = false;
   // whatever we got passed in, in a non-enterprise build, we just ignore
   // any specification for the smartJoinAttribute
   _smartJoinAttribute.clear();
