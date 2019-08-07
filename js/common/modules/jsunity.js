@@ -50,7 +50,7 @@ var ENDTEST = 0.0;
 var STARTSUITE = 0.0;
 var ENDTEARDOWN = 0.0;
 var testFilter = "undefined";
-var currentSuiteName = "undefined"
+var currentSuiteName = "undefined";
 var testCount = 0;
 var startMessage = "";
 
@@ -95,7 +95,7 @@ jsUnity.results.fail = function (index, testName, message) {
 
   if (RESULTS[testName] === undefined)
   {
-    if (testCount == 1)
+    if (testCount === 1)
     {
       print(newtime.toISOString() + internal.COLORS.COLOR_RED + " [   FAILED   ] " + currentSuiteName +
            internal.COLORS.COLOR_RESET + " (setUpAll: " + (jsUnity.env.getDate() - STARTTEST) + "ms)");
@@ -142,7 +142,7 @@ jsUnity.results.end = function (passed, failed, duration) {
 };
 
 jsUnity.results.beginSetUp = function(index, testName) {
-  if (testCount == 0)
+  if (testCount === 0)
   {
     print(STARTTEST.toISOString() + internal.COLORS.COLOR_GREEN +
          startMessage + internal.COLORS.COLOR_RESET + ' (setUpAll: ' +
