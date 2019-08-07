@@ -60,9 +60,9 @@ actions.defineHttp({
     } catch (e) {
     }
 
-    if (typeof serverId !== 'string') {
+    if (typeof serverId !== 'string' || serverId.length === 0) {
       actions.resultError(req, res, actions.HTTP_BAD,
-        'required parameter ServerID was not given');
+        'body must be a string with the server id');
       return;
     }
 
@@ -77,7 +77,7 @@ actions.defineHttp({
 
     if (serverId.substr(0, 4) !== 'CRDN' && serverId.substr(0, 4) !== 'PRMR') {
       actions.resultError(req, res, actions.HTTP_BAD,
-        'couldn\'t determine role for serverid ' + serverId);
+        'couldn\'t determine role for server id ' + serverId);
       return;
     }
 
@@ -157,7 +157,7 @@ actions.defineHttp({
     if (req.requestType !== actions.PUT || 
         (role !== 'COORDINATOR' && role !== 'SINGLE')) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET and PUT requests are allowed and only to coordinators or singles');
+        'only PUT requests are allowed and only to coordinators or single servers');
       return;
     }
 
@@ -246,7 +246,7 @@ actions.defineHttp({
     if (req.requestType !== actions.GET ||
       !cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET requests are allowed and only on coordinator');
+        'only GET requests are allowed and only on coordinators');
       return;
     }
 
@@ -260,7 +260,7 @@ actions.defineHttp({
 
     if (typeof serverId !== 'string' || serverId.length === 0) {
       actions.resultError(req, res, actions.HTTP_BAD,
-        'required parameter ServerID was not given');
+        'required parameter ServerID was not given or invalid');
       return;
     }
 
@@ -286,7 +286,7 @@ actions.defineHttp({
       } catch (err) {}
       res.body = JSON.stringify({
         'error': true,
-        'errorMessage': 'error from Server, possibly Server unknown',
+        'errorMessage': 'error from server, possibly server unknown',
         'body': bodyobj
       });
     }
@@ -306,7 +306,7 @@ actions.defineHttp({
     if (req.requestType !== actions.GET ||
       !cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET requests are allowed and only on coordinator');
+        'only GET requests are allowed and only on coordinators');
       return;
     }
 
@@ -320,7 +320,7 @@ actions.defineHttp({
 
     if (typeof serverId !== 'string') {
       actions.resultError(req, res, actions.HTTP_BAD,
-        'required parameter ServerID was not given');
+        'required parameter ServerID was not given or invalid');
       return;
     }
 
@@ -346,7 +346,7 @@ actions.defineHttp({
       } catch (err) {}
       res.body = JSON.stringify({
         'error': true,
-        'errorMessage': 'error from Server, possibly Server unknown',
+        'errorMessage': 'error from server, possibly server unknown',
         'body': bodyobj
       });
     }
@@ -366,7 +366,7 @@ actions.defineHttp({
     if (req.requestType !== actions.GET ||
       !cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET requests are allowed and only on coordinator');
+        'only GET requests are allowed and only on coordinators');
       return;
     }
 
@@ -406,7 +406,7 @@ actions.defineHttp({
       } catch (err) {}
       res.body = JSON.stringify({
         'error': true,
-        'errorMessage': 'error from Server, possibly Server unknown',
+        'errorMessage': 'error from server, possibly server unknown',
         'body': bodyobj
       });
     }
@@ -483,7 +483,7 @@ actions.defineHttp({
     if (req.requestType !== actions.GET ||
         (role !== 'COORDINATOR' && role !== 'SINGLE')) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET requests are allowed and only to coordinators or singles');
+        'only GET requests are allowed and only on coordinators or single servers');
       return;
     }
 
@@ -1081,7 +1081,7 @@ actions.defineHttp({
     if (!req.isAdminUser && 
         users.permission(req.user, body.database) !== 'rw') {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'insufficent permissions on database to move shard');
+        'insufficient permissions on database to move shard');
       return;
     }
 
@@ -1150,17 +1150,17 @@ actions.defineHttp({
     var body = actions.getJsonBody(req, res);
     if (typeof body !== 'object') {
       actions.resultError(req, res, actions.HTTP_BAD,
-        'body must be an object.');
+        'body must be an object');
       return;
     }
     if (!body.collection) {
       actions.resultError(req, res, actions.HTTP_BAD,
-        'body missing. expected collection name.');
+        'body missing, expected collection name');
       return;
     }
     if (typeof body.collection !== 'string') {
       actions.resultError(req, res, actions.HTTP_BAD,
-        'collection name must be a string.');
+        'collection name must be a string');
       return;
     }
 
@@ -1276,13 +1276,13 @@ actions.defineHttp({
     }
     if (typeof body !== 'object') {
       actions.resultError(req, res, actions.HTTP_BAD,
-        'body must be an object.');
+        'body must be an object');
       return;
     }
     var ok = cluster.rebalanceShards();
     if (!ok) {
       actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
-        'Cannot write to agency.');
+        'Cannot write to agency');
       return;
     }
     actions.resultOk(req, res, actions.HTTP_ACCEPTED, true);
