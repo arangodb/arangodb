@@ -19,9 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Kaveh Vahedipour
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CleanOutServer.h"
+#include "Agency/ResignLeadership.h"
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
@@ -31,12 +32,12 @@
 
 using namespace arangodb::consensus;
 
-CleanOutServer::CleanOutServer(Node const& snapshot, AgentInterface* agent,
+ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
                                std::string const& jobId, std::string const& creator,
                                std::string const& server)
     : Job(NOTFOUND, snapshot, agent, jobId, creator), _server(id(server)) {}
 
-CleanOutServer::CleanOutServer(Node const& snapshot, AgentInterface* agent,
+ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
                                JOB_STATUS status, std::string const& jobId)
     : Job(status, snapshot, agent, jobId) {
   // Get job details from agency:
@@ -50,23 +51,23 @@ CleanOutServer::CleanOutServer(Node const& snapshot, AgentInterface* agent,
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
-    LOG_TOPIC("38962", ERR, Logger::SUPERVISION) << err.str();
+    LOG_TOPIC("dead5", ERR, Logger::SUPERVISION) << err.str();
     finish(tmp_server.first, "", false, err.str());
     _status = FAILED;
   }
 }
 
-CleanOutServer::~CleanOutServer() {}
+ResignLeadership::~ResignLeadership() {}
 
-void CleanOutServer::run(bool& aborts) { runHelper(_server, "", aborts); }
+void ResignLeadership::run(bool& aborts) { runHelper(_server, "", aborts); }
 
-JOB_STATUS CleanOutServer::status() {
+JOB_STATUS ResignLeadership::status() {
   if (_status != PENDING) {
     return _status;
   }
 
-  Node::Children const& todos = _snapshot.hasAsChildren(toDoPrefix).first;
-  Node::Children const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  auto const& todos = _snapshot.hasAsChildren(toDoPrefix).first;
+  auto const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
   size_t found = 0;
 
   for (auto const& subJob : todos) {
@@ -88,7 +89,7 @@ JOB_STATUS CleanOutServer::status() {
     Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
     Supervision::TimePoint now(std::chrono::system_clock::now());
     if (now - timeCreated > std::chrono::duration<double>(86400.0)) { // 1 day
-      abort("job timed out");
+      abort("timed out");
       return FAILED;
     }
     return PENDING;
@@ -103,7 +104,7 @@ JOB_STATUS CleanOutServer::status() {
   }
 
   if (failedFound > 0) {
-    abort("child job failed");
+    abort("failed found");
     return FAILED;
   }
 
@@ -115,12 +116,6 @@ JOB_STATUS CleanOutServer::status() {
     VPackArrayBuilder arrayGuard(&reportTrx);
     {
       VPackObjectBuilder objectGuard(&reportTrx);
-      reportTrx.add(VPackValue("/Target/CleanedServers"));
-      {
-        VPackObjectBuilder guard4(&reportTrx);
-        reportTrx.add("op", VPackValue("push"));
-        reportTrx.add("new", VPackValue(_server));
-      }
       reportTrx.add(VPackValue(toBeCleanedPrefix));
       {
         VPackObjectBuilder guard4(&reportTrx);
@@ -139,19 +134,17 @@ JOB_STATUS CleanOutServer::status() {
   write_ret_t res = singleWriteTransaction(_agent, reportTrx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0] != 0) {
-    LOG_TOPIC("dd49e", DEBUG, Logger::SUPERVISION)
-        << "Have reported " << _server << " in /Target/CleanedServers";
     return FINISHED;
   }
 
-  LOG_TOPIC("21acb", ERR, Logger::SUPERVISION)
-      << "Failed to report " << _server << " in /Target/CleanedServers";
+  LOG_TOPIC("dead6", ERR, Logger::SUPERVISION)
+      << "Failed to report " << _jobId;
   return FAILED;
 }
 
-bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
-  LOG_TOPIC("8a94c", DEBUG, Logger::SUPERVISION)
-      << "Todo: Clean out server " + _server + " for shrinkage";
+bool ResignLeadership::create(std::shared_ptr<VPackBuilder> envelope) {
+  LOG_TOPIC("dead7", DEBUG, Logger::SUPERVISION)
+      << "Todo: Resign leadership server " + _server;
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
 
@@ -169,7 +162,7 @@ bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb->add(VPackValue(path));
     {
       VPackObjectBuilder guard3(_jb.get());
-      _jb->add("type", VPackValue("cleanOutServer"));
+      _jb->add("type", VPackValue("resignLeadership"));
       _jb->add("server", VPackValue(_server));
       _jb->add("jobId", VPackValue(_jobId));
       _jb->add("creator", VPackValue(_creator));
@@ -192,11 +185,11 @@ bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
 
   _status = NOTFOUND;
 
-  LOG_TOPIC("525fa", INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
+  LOG_TOPIC("dead8", INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
   return false;
 }
 
-bool CleanOutServer::start(bool& aborts) {
+bool ResignLeadership::start(bool& aborts) {
   // If anything throws here, the run() method catches it and finishes
   // the job.
 
@@ -208,18 +201,18 @@ bool CleanOutServer::start(bool& aborts) {
 
   // Check that the server is not locked:
   if (_snapshot.has(blockedServersPrefix + _server)) {
-    LOG_TOPIC("7a453", DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("dead9", DEBUG, Logger::SUPERVISION)
         << "server " << _server
-        << " is currently locked, not starting CleanOutServer job " << _jobId;
+        << " is currently locked, not starting ResignLeadership job " << _jobId;
     return false;
   }
 
   // Check that the server is in state "GOOD":
   std::string health = checkServerHealth(_snapshot, _server);
   if (health != "GOOD") {
-    LOG_TOPIC("a7580", DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("deada", DEBUG, Logger::SUPERVISION)
         << "server " << _server << " is currently " << health
-        << ", not starting CleanOutServer job " << _jobId;
+        << ", not starting ResignLeadership job " << _jobId;
     return false;
   }
 
@@ -273,7 +266,7 @@ bool CleanOutServer::start(bool& aborts) {
 
   // Check if we can get things done in the first place
   if (!checkFeasibility()) {
-    finish("", "", false, "server " + _server + " cannot be cleaned out");
+    finish("", "", false, "server " + _server + " cannot resign");
     return false;
   }
 
@@ -292,7 +285,7 @@ bool CleanOutServer::start(bool& aborts) {
       if (!tmp_todo.second) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
-        LOG_TOPIC("1e9a9", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
+        LOG_TOPIC("deadb", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
                                                     " from agency snapshot";
         return false;
       }
@@ -302,7 +295,7 @@ bool CleanOutServer::start(bool& aborts) {
       } catch (std::exception const& e) {
         // Just in case, this is never going to happen, since when _jb is
         // set, then the current job is stored under ToDo.
-        LOG_TOPIC("7b79a", WARN, Logger::SUPERVISION)
+        LOG_TOPIC("deadc", WARN, Logger::SUPERVISION)
             << e.what() << ": " << __FILE__ << ":" << __LINE__;
         return false;
       }
@@ -351,18 +344,18 @@ bool CleanOutServer::start(bool& aborts) {
   write_ret_t res = singleWriteTransaction(_agent, *pending, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC("e341c", DEBUG, Logger::SUPERVISION) << "Pending: Clean out server " + _server;
+    LOG_TOPIC("deadd", DEBUG, Logger::SUPERVISION) << "Pending: Clean out server " + _server;
 
     return true;
   }
 
-  LOG_TOPIC("3a348", INFO, Logger::SUPERVISION)
-      << "Precondition failed for starting CleanOutServer job " + _jobId;
+  LOG_TOPIC("deade", INFO, Logger::SUPERVISION)
+      << "Precondition failed for starting ResignLeadership job " + _jobId;
 
   return false;
 }
 
-bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
+bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
   std::vector<std::string> servers = availableServers(_snapshot);
 
   Node::Children const& databases = _snapshot.hasAsChildren("/Plan/Collections").first;
@@ -392,57 +385,27 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           continue;
         }
 
-        auto replicationFactor = collection.hasAsString("replicationFactor");
-        bool isSatellite = replicationFactor.second && replicationFactor.first == "satellite";
-
-
-
         bool isLeader = (found == 0);
 
-        if (isSatellite) {
-          if (isLeader) {
+        if (isLeader) {
 
-            std::string toServer = Job::findNonblockedCommonHealthyInSyncFollower(
-              _snapshot, database.first, collptr.first, shard.first);
+          std::string toServer = Job::findNonblockedCommonHealthyInSyncFollower(
+            _snapshot, database.first, collptr.first, shard.first);
 
-            MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                    _jobId, database.first, collptr.first, shard.first, _server,
-                    toServer, isLeader, false)
-              .create(trx);
-
-          } else {
-            // Intentionally do nothing. RemoveServer will remove the failed follower
-            LOG_TOPIC("22ca1", DEBUG, Logger::SUPERVISION) <<
-              "Do nothing for cleanout of follower of the satellite collection " << collection.hasAsString("id").first;
-            continue ;
-          }
-        } else {
-          decltype(servers) serversCopy(servers);  // a copy
-
-          // Only destinations, which are not already holding this shard
-          for (auto const& dbserver : VPackArrayIterator(shard.second->slice())) {
-            serversCopy.erase(std::remove(serversCopy.begin(), serversCopy.end(),
-                                          dbserver.copyString()),
-                              serversCopy.end());
+          if (toServer.empty()) {
+            continue ; // can not resign from that shard
           }
 
-          // Among those a random destination:
-          std::string toServer;
-          if (serversCopy.empty()) {
-            LOG_TOPIC("3c316", DEBUG, Logger::SUPERVISION)
-                << "No servers remain as target for MoveShard";
-            return false;
-          }
-
-          toServer = serversCopy.at(
-              arangodb::RandomGenerator::interval(static_cast<int64_t>(0),
-                                                  serversCopy.size() - 1));
-
-          // Schedule move into trx:
           MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                    _jobId, database.first, collptr.first, shard.first, _server,
-                    toServer, isLeader, false)
-              .create(trx);
+                  _jobId, database.first, collptr.first, shard.first, _server,
+                  toServer, isLeader, true)
+            .create(trx);
+
+        } else {
+          // Intentionally do nothing. RemoveServer will remove the failed follower
+          LOG_TOPIC("deadf", DEBUG, Logger::SUPERVISION) <<
+            "Do nothing for resign leadership of follower of the collection " << collection.hasAsString("id").first;
+          continue ;
         }
       }
     }
@@ -451,62 +414,20 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
   return true;
 }
 
-bool CleanOutServer::checkFeasibility() {
+bool ResignLeadership::checkFeasibility() {
   std::vector<std::string> availServers = availableServers(_snapshot);
 
   // Minimum 1 DB server must remain:
   if (availServers.size() == 1) {
-    LOG_TOPIC("ac9b8", ERR, Logger::SUPERVISION)
+    LOG_TOPIC("deaa0", ERR, Logger::SUPERVISION)
         << "DB server " << _server << " is the last standing db server.";
-    return false;
-  }
-
-  // Remaining after clean out:
-  uint64_t numRemaining = availServers.size() - 1;
-
-  // Find conflicting collections:
-  uint64_t maxReplFact = 1;
-  std::vector<std::string> tooLargeCollections;
-  std::vector<uint64_t> tooLargeFactors;
-  Node::Children const& databases = _snapshot.hasAsChildren("/Plan/Collections").first;
-  for (auto const& database : databases) {
-    for (auto const& collptr : database.second->children()) {
-      try {
-        uint64_t replFact = (*collptr.second).hasAsUInt("replicationFactor").first;
-        if (replFact > numRemaining) {
-          tooLargeCollections.push_back(collptr.first);
-          tooLargeFactors.push_back(replFact);
-        }
-        if (replFact > maxReplFact) {
-          maxReplFact = replFact;
-        }
-      } catch (...) {
-      }
-    }
-  }
-
-  // Report if problems exist
-  if (maxReplFact > numRemaining) {
-    std::stringstream collections;
-    std::stringstream factors;
-
-    for (auto const collection : tooLargeCollections) {
-      collections << collection << " ";
-    }
-    for (auto const factor : tooLargeFactors) {
-      factors << std::to_string(factor) << " ";
-    }
-
-    LOG_TOPIC("e598a", ERR, Logger::SUPERVISION)
-        << "Cannot accomodate shards " << collections.str() << "with replication factors "
-        << factors.str() << "after cleaning out server " << _server;
     return false;
   }
 
   return true;
 }
 
-arangodb::Result CleanOutServer::abort(std::string const& reason) {
+arangodb::Result ResignLeadership::abort(std::string const& reason) {
   // We can assume that the job is either in ToDo or in Pending.
   Result result;
 
@@ -518,7 +439,7 @@ arangodb::Result CleanOutServer::abort(std::string const& reason) {
 
   // Can now only be TODO or PENDING
   if (_status == TODO) {
-    finish("", "", false, "job aborted:" + reason);
+    finish("", "", false, "job aborted: " + reason);
     return result;
   }
 
@@ -526,16 +447,16 @@ arangodb::Result CleanOutServer::abort(std::string const& reason) {
   Node::Children const& todos = _snapshot.hasAsChildren(toDoPrefix).first;
   Node::Children const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
 
-  std::string childAbortReason = "parent job aborted - reason: " + reason;
+  std::string moveShardAbortReason = "resign leadership aborted: " + reason;
 
   for (auto const& subJob : todos) {
     if (subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {
-      JobContext(TODO, subJob.first, _snapshot, _agent).abort(childAbortReason);
+      JobContext(TODO, subJob.first, _snapshot, _agent).abort(moveShardAbortReason);
     }
   }
   for (auto const& subJob : pends) {
     if (subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {
-      JobContext(PENDING, subJob.first, _snapshot, _agent).abort(childAbortReason);
+      JobContext(PENDING, subJob.first, _snapshot, _agent).abort(moveShardAbortReason);
     }
   }
 
