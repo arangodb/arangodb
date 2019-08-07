@@ -58,9 +58,7 @@ using namespace arangodb::velocypack;
 
 CreateDatabaseInfo::CreateDatabaseInfo(std::string const& name, VPackSlice const& users,
                                        VPackSlice const& options)
-  : _id(0),
-    _name(name) {
-
+    : _id(0), _name(name) {
   Result res;
 
   // TODO: throw.
@@ -168,7 +166,8 @@ Result CreateDatabaseInfo::sanitizeUsers(VPackSlice const& users, VPackBuilder& 
   return Result();
 }
 
-Result CreateDatabaseInfo::sanitizeOptions(VPackSlice const& options, VPackBuilder& sanitizedOptions) {
+Result CreateDatabaseInfo::sanitizeOptions(VPackSlice const& options,
+                                           VPackBuilder& sanitizedOptions) {
   if (options.isNone() || options.isNull()) {
     sanitizedOptions.openObject();
     sanitizedOptions.close();
@@ -259,10 +258,10 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
 
   if (ExecContext::CURRENT != nullptr && um != nullptr) {
     return um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
-        entry.grantDatabase(info.getName(), auth::Level::RW);
-        entry.grantCollection(info.getName(), "*", auth::Level::RW);
-        return TRI_ERROR_NO_ERROR;
-      });
+      entry.grantDatabase(info.getName(), auth::Level::RW);
+      entry.grantCollection(info.getName(), "*", auth::Level::RW);
+      return TRI_ERROR_NO_ERROR;
+    });
   }
 
   // TODO: what happens if ExecContext::CURRENT or um are nullptr?
@@ -321,7 +320,6 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
 
 // Create a database on SingleServer, DBServer,
 Result Databases::createOther(CreateDatabaseInfo const& info) {
-
   // Without the database feature, we can't create a database
   DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
   if (databaseFeature == nullptr) {
@@ -368,17 +366,17 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   //       a struct to avoid the try/catch
   CreateDatabaseInfo createInfo;
   try {
-      createInfo = CreateDatabaseInfo(dbName, options, users);
-  } catch(Result e) {
+    createInfo = CreateDatabaseInfo(dbName, options, users);
+  } catch (Result& e) {
     return e;
   } catch (...) {
     LOG_TOPIC("c9189", ERR, Logger::FIXME)
-      << "Unhandled exception while creating database";
+        << "Unhandled exception while creating database";
   }
 
   if (ServerState::instance()->isCoordinator()) {
     res = createCoordinator(createInfo);
-  } else { // Single, DBServer, Agency
+  } else {  // Single, DBServer, Agency
     res = createOther(createInfo);
   }
 
@@ -517,7 +515,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
     auto cb = [&](auth::User& entry) -> bool {
       return entry.removeDatabase(dbName);
     };
-    res = um->enumerateUsers(cb, /*retryOnConflict*/true);
+    res = um->enumerateUsers(cb, /*retryOnConflict*/ true);
   }
 
   return res;

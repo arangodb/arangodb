@@ -59,9 +59,6 @@ class CreateDatabaseInfo {
   VPackBuilder _options;
   VPackBuilder _users;
   VPackSlice _userSlice;
-
-  std::string _coordinatorId;
-  uint64_t _coordinatorRebootId;
 };
 
 /// Common code for the db._database(),
