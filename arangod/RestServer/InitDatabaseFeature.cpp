@@ -37,12 +37,16 @@
 #include <thread>
 
 #include "Basics/FileUtils.h"
-#include "Basics/exitcodes.h"
-#include "Basics/terminal-utils.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/application-exit.h"
+#include "Basics/exitcodes.h"
+#include "Basics/files.h"
+#include "Basics/terminal-utils.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"

@@ -28,6 +28,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;

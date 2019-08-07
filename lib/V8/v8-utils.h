@@ -24,9 +24,11 @@
 #ifndef ARANGODB_V8_V8__UTILS_H
 #define ARANGODB_V8_V8__UTILS_H 1
 
-#include "Basics/Common.h"
+#include <stddef.h>
+#include <cstdint>
+#include <string>
 
-#include "V8/v8-globals.h"
+#include <v8.h>
 
 namespace arangodb {
 class Result;

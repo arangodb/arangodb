@@ -23,6 +23,7 @@
 #ifndef ARANGODB_BASICS_FILE_RESULT_STRING_H
 #define ARANGODB_BASICS_FILE_RESULT_STRING_H 1
 
+#include "Basics/FileResult.h"
 #include "Basics/Result.h"
 
 namespace arangodb {

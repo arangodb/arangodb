@@ -23,7 +23,9 @@
 
 #include "RequestStatistics.h"
 #include "Basics/MutexLocker.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #include <iomanip>
 

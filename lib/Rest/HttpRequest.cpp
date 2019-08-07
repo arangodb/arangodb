@@ -34,6 +34,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
+#include "Basics/debugging.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 

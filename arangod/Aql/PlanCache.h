@@ -24,6 +24,8 @@
 #ifndef ARANGOD_AQL_PLAN_CACHE_H
 #define ARANGOD_AQL_PLAN_CACHE_H 1
 
+#include <unordered_map>
+
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 

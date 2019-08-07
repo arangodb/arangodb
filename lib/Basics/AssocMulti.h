@@ -27,6 +27,8 @@
 #ifndef ARANGODB_BASICS_ASSOC_MULTI_H
 #define ARANGODB_BASICS_ASSOC_MULTI_H 1
 
+#include <cstdint>
+
 // Activate for additional debugging:
 // #define TRI_CHECK_MULTI_POINTER_HASH 1
 
@@ -38,6 +40,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/PerformanceLogScope.h"
+#include "Basics/debugging.h"
 #include "Basics/prime-numbers.h"
 #include "Logger/Logger.h"
 

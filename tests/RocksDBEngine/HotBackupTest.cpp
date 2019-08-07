@@ -21,9 +21,10 @@
 
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
+#include "Basics/system-functions.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 
 #include "gtest/gtest.h"

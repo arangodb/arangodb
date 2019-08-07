@@ -31,6 +31,7 @@
 #include <s2/s2region_coverer.h>
 
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
 #include "Geo/ShapeContainer.h"
 #include "Logger/Logger.h"
 

@@ -24,6 +24,9 @@
 #ifndef ARANGOD_CLUSTER_TRAVERSER_ENGINE_H
 #define ARANGOD_CLUSTER_TRAVERSER_ENGINE_H 1
 
+#include <memory>
+#include <unordered_map>
+
 #include "Aql/Collections.h"
 #include "Basics/Common.h"
 

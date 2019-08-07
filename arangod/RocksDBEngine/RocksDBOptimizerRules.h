@@ -24,6 +24,8 @@
 #ifndef ARANGOD_ROCKSDB_ROCKSDB_OPTIMIZER_RULES_H
 #define ARANGOD_ROCKSDB_ROCKSDB_OPTIMIZER_RULES_H 1
 
+#include <memory>
+
 #include "Basics/Common.h"
 
 namespace arangodb {
