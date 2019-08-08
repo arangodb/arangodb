@@ -582,7 +582,10 @@ void ClusterInfo::loadPlan() {
         throw;
       }
 
-      newDatabases.emplace(std::move(name), database.value);
+      // Only consider databases that have been fully created
+      if (!database.value.hasKey(StaticStrings::DatabaseIsBuilding)) {
+        newDatabases.emplace(std::move(name), database.value);
+      }
     }
   }
 
