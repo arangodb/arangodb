@@ -526,7 +526,7 @@ void State::logEraseNoLock(
       for (auto it = ret.first; it != ret.second;) {
         if (it->second == lit->index) {
           it = _clientIdLookupTable.erase(it);
-          LOG_DEVEL << "Removing " << lit.cliendId << ":" << lit.index <<
+          LOG_DEVEL << "Removing " << lit.clientId << ":" << lit.index <<
             " from _clientIdLookupTable";
         } else {
           it++;
