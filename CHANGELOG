@@ -1,6 +1,10 @@
 devel
 -----
 
+* Added resign leadership job to supervision.
+
+* Keep followers in sync if the old leader resigned and stopped writes.
+
 
 v3.5.0-rc.7 (2019-08-01)
 ------------------------
