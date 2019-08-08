@@ -33,7 +33,7 @@ var db = require("@arangodb").db;
 var ERRORS = require("@arangodb").errors;
 var deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 var internal = require('internal');
-
+const isServer = typeof arango === 'undefined';
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -904,7 +904,7 @@ function IResearchAqlTestSuite(args) {
         }
       }
       // on server make full check with failures
-      if (typeof arango === 'undefined' && internal.debugCanUseFailAt()) { 
+      if (isServer && internal.debugCanUseFailAt()) { 
         let docsRemoveIds = [];
         docsRemoveIds.push(docs[2]._id);
         docsRemoveIds.push(docs[3]._id);

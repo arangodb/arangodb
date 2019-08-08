@@ -1310,7 +1310,12 @@ void reverseIdxOps(std::vector<std::shared_ptr<Index>> const& vector,
     it--;
     auto* rIdx = static_cast<RocksDBIndex*>(it->get());
     if (rIdx->needsReversal()) {
-      std::forward<F>(op)(rIdx);
+      auto res = std::forward<F>(op)(rIdx);
+      if (res.fail()) {
+        // best effort for reverse failed. Let`s trigger full rollback  
+        // or we will end up with inconsistent storage and indexes
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
     }
   }
 }
