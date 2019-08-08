@@ -303,6 +303,8 @@ void State::logEmplaceBackNoLock(log_t&& l) {
     try {
       _clientIdLookupTable.emplace(  // keep track of client or die
         std::pair<std::string, index_t>{l.clientId, l.index});
+      LOG_DEVEL << "Inserting " << l.cliendId << ":" << l.index <<
+        " into _clientIdLookupTable";
     } catch (...) {
       LOG_TOPIC("f5ade", FATAL, Logger::AGENCY)
         << "RAFT member fails to expand client lookup table!";
@@ -524,6 +526,8 @@ void State::logEraseNoLock(
       for (auto it = ret.first; it != ret.second;) {
         if (it->second == lit->index) {
           it = _clientIdLookupTable.erase(it);
+          LOG_DEVEL << "Removing " << lit.cliendId << ":" << lit.index <<
+            " from _clientIdLookupTable";
         } else {
           it++;
         }
@@ -1454,12 +1458,18 @@ std::vector<index_t> State::inquire(query_t const& query) const {
 
     auto ret = _clientIdLookupTable.equal_range(i.copyString());
     index_t index = 0;
-    for (auto it = ret.first; it != ret.second; ++it) {
-      if (it->second < _log[0].index) {
-        continue;
+    if (ret.first == ret.second) {  // nothing found
+      // Debug output here:
+      for (auto it = _clientIdLookupTable.begin();
+           it != _clientIdLookupTable.end();
+           ++it) {
+        LOG_DEVEL << "_clientIdLookupTable: " << it.first << ":" << it.second;
       }
-      if (index < _log.at(it->second - _cur).index) {
-        index = _log.at(it->second - _cur).index;
+    }
+    // Look for the maximum index:
+    for (auto it = ret.first; it != ret.second; ++it) {
+      if (it->second > index) {
+        index = it->second;
       }
     }
     result.push_back(index);
