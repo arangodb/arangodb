@@ -12,6 +12,9 @@ v3.5.1 (XXXX-XX-XX)
   This restores the same behavior as in previous versions of ArangoDB, which also
   left the connection open.
 
+* Refactor maintenance to use a TakeoverShardLeadership job. This fixes a bug
+  that a shard follower could have set the wrong leader for the shard locally.
+
 
 v3.5.0-rc.7 (2019-08-01)
 ------------------------
