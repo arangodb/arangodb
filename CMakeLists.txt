@@ -806,10 +806,18 @@ set(IPO_ENABLED False)
 
 # Determine value if IPO_ENABLED from USE_IPO and CMAKE_BUILD_TYPE
 if(USE_IPO STREQUAL "AUTO")
-  # When USE_IPO=AUTO, enable IPO for optimized / release builds
-  if (CMAKE_BUILD_TYPE STREQUAL "Release"
+  # When USE_IPO=AUTO, enable IPO for optimized / release builds.
+  # But to work around a g++ segfault triggered by using both -flto and
+  # -fno-devirtualize-functions, we disable IPO when using google tests, because
+  # this will set no-devirtualize. See
+  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91387 and
+  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91375.
+  # So this check may be removed later as soon as we use fixed gcc versions.
+  # - Tobias, 2019-08-08
+  if (NOT USE_GOOGLE_TESTS AND
+    (CMAKE_BUILD_TYPE STREQUAL "Release"
     OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
-    OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
+    OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"))
     set(IPO_ENABLED True)
   else()
     set(IPO_ENABLED False)
@@ -817,16 +825,6 @@ if(USE_IPO STREQUAL "AUTO")
 elseif(USE_IPO)
   set(IPO_ENABLED True)
 else()
-  set(IPO_ENABLED False)
-endif()
-
-if(USE_GOOGLE_TESTS)
-  # Work around a g++ segfault triggered by using both -flto and
-  # -fno-devirtualize-functions. See
-  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91387 and
-  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91375.
-  # So this may be removed later as soon as we use fixed gcc versions.
-  # - Tobias, 2019-08-08
   set(IPO_ENABLED False)
 endif()
 
