@@ -626,15 +626,22 @@ include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
 include(MMFiles/CMakeLists.txt)
 
-add_library(arangoserver STATIC 
-  ${ARANGOD_SOURCES} 
-  ${CLUSTER_ENGINE_SOURCES} 
-  ${MMFILES_SOURCES} 
-  ${ROCKSDB_SOURCES} 
+add_library(arangoserver STATIC
+  ${ARANGOD_SOURCES}
+  ${CLUSTER_ENGINE_SOURCES}
   ${LLHTTP_SOURCES}
 )
 
+add_library(arango_mmfiles STATIC
+  ${MMFILES_SOURCES}
+)
+
+add_library(arango_rocksdb STATIC
+  ${ROCKSDB_SOURCES}
+)
+
 target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
+target_include_directories(arango_mmfiles PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
 
 target_link_libraries(arangoserver
   ${LIB_ARANGO_FE}
@@ -657,6 +664,10 @@ target_link_libraries(arangoserver
 if (USE_ENTERPRISE)
   target_compile_definitions(arangoserver PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+  target_compile_definitions(arango_mmfiles PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(arango_mmfiles PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+  target_compile_definitions(arango_rocksdb PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(arango_rocksdb PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
   if (MSVC)
     target_link_libraries(arangoserver
       Wldap32.lib
@@ -675,6 +686,8 @@ add_executable(${BIN_ARANGOD}
 )
 
 target_link_libraries(${BIN_ARANGOD}
+  arango_mmfiles
+  arango_rocksdb
   arangoserver
 )
 
@@ -699,11 +712,13 @@ endif ()
 
 if(MSVC)
   target_compile_options(arangoserver PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arango_mmfiles PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arangod PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
 if (DARWIN)
   target_compile_options(arangoserver PRIVATE -Werror)
+  target_compile_options(arango_mmfiles PRIVATE -Werror)
   target_compile_options(arangod PRIVATE -Werror)
 endif()
 

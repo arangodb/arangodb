@@ -225,6 +225,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 endif()
 
 target_link_libraries(arangodbtests
+  arango_mmfiles
+  arango_rocksdb
   arangoserver
   rocksdb
   fuerte
