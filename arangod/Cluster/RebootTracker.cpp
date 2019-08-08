@@ -49,8 +49,20 @@ RebootTracker::RebootTracker(RebootTracker::SchedulerPointer scheduler)
 void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> const& state) {
   MUTEX_LOCKER(guard, _mutex);
 
-  // For all know servers, look whether they are changed or were removed
-  for (auto curIt = _rebootIds.begin(); curIt != _rebootIds.end(); ++curIt) {
+  // Call cb for each iterator.
+  auto for_each_iter = [](auto begin, auto end, auto cb) {
+    auto it = begin;
+    decltype(it) next;
+    while (it != end) {
+      // save next iterator now, in case cb invalidates it.
+      next = std::next(it);
+      cb(it);
+      it = next;
+    }
+  };
+
+  // For all known servers, look whether they are changed or were removed
+  for_each_iter(_rebootIds.begin(), _rebootIds.end(), [&](auto const curIt) {
     auto const& serverId = curIt->first;
     auto& oldRebootId = curIt->second;
     auto const& newIt = state.find(serverId);
