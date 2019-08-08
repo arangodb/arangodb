@@ -6,18 +6,6 @@
 
 cmake_minimum_required(VERSION 3.9)
 
-if (POLICY CMP0048)
-  cmake_policy(SET CMP0048 NEW)
-endif ()
-
-if (POLICY CMP0037)
-  cmake_policy(SET CMP0037 NEW)
-endif ()
-
-if (POLICY CMP0017)
-  cmake_policy(SET CMP0017 NEW)
-endif ()
-
 # TODO This might be an alternative to increasing the required cmake version.
 # TODO Otherwise, remove it.
 #if (POLICY CMP0069)
