@@ -516,7 +516,7 @@ Windows Explorer offers you its proper handler by renaming it to .cab;
 click on the now named `arangod.cab`, copy the contained arangod.pdb into your
 symbol path.
 
-##### Widnows Core Dump Analysis
+##### Windows Core Dump Analysis
 
 While Visual studio may cary a nice shiny GUI, the concept of GUI fails miserably
 e.g. in test automation. Getting an overview over all running threads is a

@@ -30,6 +30,7 @@
 #include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/mmfiles-replication-dump.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/utilities.h"
 #include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"

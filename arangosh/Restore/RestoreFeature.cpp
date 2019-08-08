@@ -39,7 +39,12 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
+#include "Basics/files.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -1380,7 +1385,7 @@ void RestoreFeature::start() {
   Result result;
 
   result = _clientManager.getConnectedClient(httpClient, _options.force,
-                                             true, !_options.createDatabase);
+                                             true, !_options.createDatabase, false);
   if (result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
     LOG_TOPIC("c23bf", FATAL, Logger::RESTORE)
         << "cannot create server connection, giving up!";
@@ -1404,7 +1409,7 @@ void RestoreFeature::start() {
       client->setDatabaseName(dbName);
 
       // re-check connection and version
-      result = _clientManager.getConnectedClient(httpClient, _options.force, true, true);
+      result = _clientManager.getConnectedClient(httpClient, _options.force, true, true, false);
     } else {
       LOG_TOPIC("ad95b", WARN, Logger::RESTORE) << "Database '" << dbName << "' does not exist on target endpoint. In order to create this database along with the restore, please use the --create-database option";
     }
@@ -1465,7 +1470,7 @@ void RestoreFeature::start() {
       _directory = std::make_unique<ManagedDirectory>(basics::FileUtils::buildFilename(_options.inputPath, db), false, false);
 
       result = _clientManager.getConnectedClient(httpClient, _options.force,
-                                                 false, !_options.createDatabase);
+                                                 false, !_options.createDatabase, false);
       if (result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
         LOG_TOPIC("3e715", FATAL, Logger::RESTORE)
             << "cannot create server connection, giving up!";
@@ -1489,7 +1494,7 @@ void RestoreFeature::start() {
           client->setDatabaseName(db);
 
           // re-check connection and version
-          result = _clientManager.getConnectedClient(httpClient, _options.force, false, true);
+          result = _clientManager.getConnectedClient(httpClient, _options.force, false, true, false);
         } else {
           LOG_TOPIC("be594", WARN, Logger::RESTORE) << "Database '" << db << "' does not exist on target endpoint. In order to create this database along with the restore, please use the --create-database option";
         }

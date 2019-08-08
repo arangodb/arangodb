@@ -109,7 +109,7 @@ std::vector<SortRegister>& SortExecutorInfos::sortRegisters() {
 bool SortExecutorInfos::stable() const { return _stable; }
 
 SortExecutor::SortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
-    : _infos(infos), _fetcher(fetcher), _input(nullptr), _returnNext(0){};
+    : _infos(infos), _fetcher(fetcher), _input(nullptr), _returnNext(0) {}
 SortExecutor::~SortExecutor() = default;
 
 std::pair<ExecutionState, NoStats> SortExecutor::produceRows(OutputAqlItemRow& output) {

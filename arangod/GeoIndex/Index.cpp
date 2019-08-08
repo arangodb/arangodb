@@ -38,6 +38,9 @@
 #include "Geo/GeoParams.h"
 #include "Geo/GeoUtils.h"
 #include "Geo/ShapeContainer.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 namespace arangodb {
 namespace geo_index {

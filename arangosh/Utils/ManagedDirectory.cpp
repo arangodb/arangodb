@@ -32,6 +32,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
+#include "Basics/voc-errors.h"
 #include "Logger/Logger.h"
 
 namespace {
@@ -178,13 +179,20 @@ inline ssize_t rawRead(int fd, char* buffer, size_t length, arangodb::Result& st
   return bytesRead;
 }
 
-void readEncryptionFile(std::string const& directory, std::string& type) {
+void readEncryptionFile(std::string const& directory, std::string& type,
+                        arangodb::EncryptionFeature* encryptionFeature) {
   using arangodb::basics::FileUtils::slurp;
   using arangodb::basics::StringUtils::trim;
   type = ::EncryptionTypeNone;
   auto filename = ::filePath(directory, ::EncryptionFilename);
   if (TRI_ExistsFile(filename.c_str())) {
     type = trim(slurp(filename));
+  } else {
+#ifdef USE_ENTERPRISE
+    if (nullptr != encryptionFeature) {
+      type = encryptionFeature->encryptionType();
+    }
+#endif
   }
 }
 
@@ -214,6 +222,8 @@ ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty, b
 #ifdef USE_ENTERPRISE
       _encryptionFeature{
           application_features::ApplicationServer::getFeature<EncryptionFeature>("Encryption")},
+#else
+      _encryptionFeature(nullptr),
 #endif
       _path{path},
       _encryptionType{::EncryptionTypeNone},
@@ -246,7 +256,7 @@ ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty, b
                       "path specified is a non-empty directory");
         return;
       }
-      ::readEncryptionFile(_path, _encryptionType);
+      ::readEncryptionFile(_path, _encryptionType, _encryptionFeature);
       return;
     }
     // fall through to write encryption file
@@ -329,6 +339,26 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(std::stri
   return file;
 }
 
+std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(int fileDescriptor) {
+
+  std::unique_ptr<File> file{nullptr};
+
+  if (_status.fail()) {  // directory is in a bad state
+    return file;
+  }
+
+  try {
+    file = std::make_unique<File>(*this, fileDescriptor, false);
+  } catch (...) {
+    _status.reset(TRI_ERROR_CANNOT_READ_FILE, "error opening console pipe"
+                                                  " for reading");
+    return {nullptr};
+  }
+
+  return file;
+}
+
+  
 std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
   std::string const& filename, bool overwrite, int flags, bool gzipOk) {
   std::unique_ptr<File> file;
@@ -430,6 +460,44 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
     _gzfd = TRI_DUP(_fd);
 
     if (O_WRONLY & flags) {
+      gzFlags = "wb";
+    } else {
+      gzFlags = "rb";
+    } // else
+    _gzFile = gzdopen(_gzfd, gzFlags);
+  } // if
+}
+
+ManagedDirectory::File::File(ManagedDirectory const& directory,
+                             int fd,
+                             bool isGzip)
+    : _directory{directory},
+      _path{"stdin"},
+      _flags{0},
+      _fd{fd},
+      _gzfd(-1),
+      _gzFile(nullptr),
+#ifdef USE_ENTERPRISE
+      _context{::getContext(_directory, _fd, _flags)},
+      _status {
+  ::initialStatus(_fd, _path, _flags, _context.get())
+      }
+#else
+      _status {
+  ::initialStatus(_fd, _path, _flags)
+      }
+#endif
+{
+  TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)
+
+  if (isGzip) {
+    const char * gzFlags(nullptr);
+
+    // gzip is going to perform a redundant close,
+    //  simpler code to give it redundant handle
+    _gzfd = TRI_DUP(_fd);
+
+    if (0 /*O_WRONLY & flags*/) {
       gzFlags = "wb";
     } else {
       gzFlags = "rb";
@@ -550,6 +618,19 @@ Result const& ManagedDirectory::File::close() {
     ::closeFile(_fd, _status);
   }
   return _status;
+}
+
+
+ssize_t ManagedDirectory::File::offset() const {
+  ssize_t fileBytesRead = -1;
+
+  if (isGzip()) {
+    fileBytesRead = gzoffset(_gzFile);
+  } else {
+    fileBytesRead = (ssize_t)TRI_LSEEK(_fd, 0L, SEEK_CUR);
+  } // else
+
+  return fileBytesRead;
 }
 
 }  // namespace arangodb

@@ -34,12 +34,18 @@
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Export/ExportFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Shell/ClientFeature.h"
 #include "Ssl/SslFeature.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -69,6 +75,10 @@ int main(int argc, char* argv[]) {
     server.addFeature(new SslFeature(server));
     server.addFeature(new TempFeature(server, "arangoexport"));
     server.addFeature(new VersionFeature(server));
+
+#ifdef USE_ENTERPRISE
+    server.addFeature(new EncryptionFeature(server));
+#endif
 
     try {
       server.run(argc, argv);

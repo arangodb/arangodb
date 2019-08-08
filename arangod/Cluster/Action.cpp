@@ -34,6 +34,7 @@
 #include "Cluster/NonAction.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "Cluster/SynchronizeShard.h"
+#include "Cluster/TakeoverShardLeadership.h"
 #include "Cluster/UpdateCollection.h"
 
 #include "Logger/Logger.h"
@@ -89,6 +90,11 @@ static factories_t const factories = factories_t{
     {UPDATE_COLLECTION,
      [](MaintenanceFeature& f, ActionDescription const& a) {
        return std::unique_ptr<ActionBase>(new UpdateCollection(f, a));
+     }},
+
+    {TAKEOVER_SHARD_LEADERSHIP,
+     [](MaintenanceFeature& f, ActionDescription const& a) {
+       return std::unique_ptr<ActionBase>(new TakeoverShardLeadership(f, a));
      }},
 
 };

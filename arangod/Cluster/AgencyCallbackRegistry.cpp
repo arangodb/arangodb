@@ -33,7 +33,9 @@
 #include "Basics/WriteLocker.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb;

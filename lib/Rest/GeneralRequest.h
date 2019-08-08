@@ -25,16 +25,25 @@
 #ifndef ARANGODB_REST_GENERAL_REQUEST_H
 #define ARANGODB_REST_GENERAL_REQUEST_H 1
 
-#include "Basics/Common.h"
-#include "Endpoint/ConnectionInfo.h"
-#include "Rest/CommonDefines.h"
-#include "Rest/RequestContext.h"
+#include <stddef.h>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include <velocypack/Builder.h>
+#include <velocypack/Options.h>
+#include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 
-namespace arangodb {
+#include "Basics/Common.h"
+#include "Endpoint/ConnectionInfo.h"
+#include "Endpoint/Endpoint.h"
+#include "Rest/CommonDefines.h"
 
+namespace arangodb {
+class RequestContext;
 namespace velocypack {
 class Builder;
 struct Options;

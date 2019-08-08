@@ -23,6 +23,7 @@
 
 #include "ClusterSelectivityEstimates.h"
 
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"

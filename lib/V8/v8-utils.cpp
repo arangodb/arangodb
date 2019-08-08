@@ -23,46 +23,81 @@
 
 #include "v8-utils.h"
 
+#include "Basics/Common.h"
+
 #ifdef _WIN32
-#include <windef.h>
-#include <io.h>
+#include <WinSock2.h>  // must be before windows.h
 #include <conio.h>
-#include <WinSock2.h>
+#include <fcntl.h>
+#include <io.h>
+#include <windef.h>
+#include <windows.h>
 #include "Basics/win-utils.h"
 #endif
 
+#include <ctype.h>
+#include <errno.h>
 #include <signal.h>
-#include <unicode/locid.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unicode/umachine.h>
+#include <unicode/unistr.h>
+#include <unicode/unorm2.h>
+#include <unicode/utypes.h>
+#include <chrono>
 #include <fstream>
-#include <fcntl.h>
+#include <functional>
 #include <iostream>
+#include <memory>
+#include <set>
+#include <thread>
+#include <type_traits>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "unicode/normalizer2.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/Exceptions.h"
+#include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
+#include "Basics/Result.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/build.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
 #include "Basics/files.h"
+#include "Basics/memory.h"
+#include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
+#include "Basics/socket-utils.h"
+#include "Basics/system-compiler.h"
+#include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
+#include "Basics/threads.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tri-zip.h"
-#include "Basics/ScopeGuard.h"
+#include "Basics/voc-errors.h"
+#include "Endpoint/Endpoint.h"
+#include "Logger/LogLevel.h"
+#include "Logger/LogMacros.h"
+#include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
-#include "Random/RandomGenerator.h"
+#include "Logger/LoggerStream.h"
 #include "Random/UniformCharacter.h"
+#include "Rest/CommonDefines.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
-#include "Rest/Version.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -73,8 +108,10 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include <velocypack/StringRef.h>
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -116,9 +153,10 @@ TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() { TRI_Free(_str); }
 static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
                               std::string const& message) noexcept {
   try {
+    TRI_GET_GLOBALS();
     if (errorNumber == TRI_ERROR_OUT_OF_MEMORY) {
       LOG_TOPIC("532c3", ERR, arangodb::Logger::FIXME)
-          << "encountered out-of-memory error";
+        << "encountered out-of-memory error in context #" << v8g->_id;
     }
 
     v8::Handle<v8::String> errorMessage = TRI_V8_STD_STRING(isolate, message);
@@ -147,7 +185,6 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
                      v8::Number::New(isolate, errorNumber));
     errorObject->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage), errorMessage);
 
-    TRI_GET_GLOBALS();
     TRI_GET_GLOBAL(ArangoErrorTempl, v8::ObjectTemplate);
 
     v8::Handle<v8::Object> ArangoError = ArangoErrorTempl->NewInstance();
@@ -1053,7 +1090,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
             validationOptions.checkAttributeUniqueness = true;
             validationOptions.disallowExternals = true;
             validationOptions.disallowCustom = true;
-            VPackValidator validator(&validationOptions);
+            velocypack::Validator validator(&validationOptions);
             validator.validate(sb.data(), sb.length());  // throws on error
             json.assign(VPackSlice(reinterpret_cast<uint8_t const*>(sb.data())).toJson());
             body = arangodb::velocypack::StringRef(json);
@@ -3035,6 +3072,107 @@ static void JS_ReadBuffer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(buffer->_handle);
   TRI_V8_TRY_CATCH_END
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JS_ReadGzip
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ReadGzip(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("readGzip(<filename>)");
+  }
+
+  TRI_Utf8ValueNFC name(isolate, args[0]);
+
+  if (*name == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
+  }
+
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   std::string("not allowed to read files in this path: ") + *name);
+  }
+
+  size_t length;
+  char* content = TRI_SlurpGzipFile(*name, &length);
+
+  if (content == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), TRI_last_error());
+  }
+
+  auto result = TRI_V8_PAIR_STRING(isolate, content, length);
+
+  TRI_FreeString(content);
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+
+}
+
+#ifdef USE_ENTERPRISE
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JS_ReadGzip
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ReadDecrypt(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("readDecrypt(<filename>,<keyfilename>)");
+  }
+
+  TRI_Utf8ValueNFC name(isolate, args[0]);
+
+  if (*name == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
+  }
+
+  TRI_Utf8ValueNFC keyfile(isolate, args[1]);
+
+  if (*keyfile == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<keyfilename> must be a UTF-8 string");
+  }
+
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   std::string("not allowed to read files in this path: ") + *name);
+  }
+
+  if (!v8security->isAllowedToAccessPath(isolate, *keyfile, FSAccessType::READ)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   std::string("not allowed to read files in this path: ") + *keyfile);
+  }
+
+  size_t length;
+  char* content = TRI_SlurpDecryptFile(*name, *keyfile, &length);
+
+  if (content == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), TRI_last_error());
+  }
+
+  auto result = TRI_V8_PAIR_STRING(isolate, content, length);
+
+  TRI_FreeString(content);
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JS_Read64
@@ -5509,6 +5647,14 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_READ_BUFFER"),
                                JS_ReadBuffer);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_READ_GZIP"),
+                               JS_ReadGzip);
+#ifdef USE_ENTERPRISE
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_READ_DECRYPT"),
+                               JS_ReadDecrypt);
+#endif
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_SHA1"), JS_Sha1);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_SHA224"), JS_Sha224);
