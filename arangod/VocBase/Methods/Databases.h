@@ -40,8 +40,8 @@ class CreateDatabaseInfo {
  public:
   CreateDatabaseInfo() = default;
   CreateDatabaseInfo(std::string const& name,
-                     VPackSlice const& users,
-                     VPackSlice const& options);
+                     VPackSlice const& options,
+                     VPackSlice const& users);
 
   Result buildSlice(VPackBuilder& builder) const;
 

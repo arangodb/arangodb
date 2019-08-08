@@ -56,8 +56,8 @@ using namespace arangodb;
 using namespace arangodb::methods;
 using namespace arangodb::velocypack;
 
-CreateDatabaseInfo::CreateDatabaseInfo(std::string const& name, VPackSlice const& users,
-                                       VPackSlice const& options)
+CreateDatabaseInfo::CreateDatabaseInfo(std::string const& name, VPackSlice const& options,
+                                       VPackSlice const& users)
     : _id(0), _name(name) {
   Result res;
 
@@ -86,7 +86,7 @@ CreateDatabaseInfo::CreateDatabaseInfo(std::string const& name, VPackSlice const
   if (ServerState::instance()->isCoordinator()) {
     _id = ClusterInfo::instance()->uniqid();
   } else {
-    if (options.hasKey("id")) {
+    if (_options.slice().hasKey("id")) {
       _id = basics::VelocyPackHelper::stringUInt64(options, "id");
     } else {
       _id = 0;
@@ -374,6 +374,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   } catch (...) {
     LOG_TOPIC("c9189", ERR, Logger::FIXME)
         << "Unhandled exception while creating database";
+    return Result(TRI_ERROR_INTERNAL);
   }
 
   if (ServerState::instance()->isCoordinator()) {
