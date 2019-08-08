@@ -56,6 +56,12 @@ using namespace irs;
 
 const byte_block_pool EMPTY_POOL;
 
+const column_info NORM_COLUMN{
+  compression::lz4::type(),
+  compression::options(),
+  false
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           helpers
 // -----------------------------------------------------------------------------
@@ -787,7 +793,7 @@ data_output& field_data::norms(columnstore_writer& writer) {
   if (!norms_) {
     // FIXME encoder for norms???
     // do not encrypt norms
-    auto handle = writer.push_column({ compression::lz4::type(), false });
+    auto handle = writer.push_column(NORM_COLUMN);
     norms_ = std::move(handle.second);
     meta_.norm = handle.first;
   }

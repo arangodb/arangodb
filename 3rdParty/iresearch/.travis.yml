@@ -695,7 +695,7 @@ install:
   - |
     ICU_DIR=${DEPS_DIR}/icu
     if [[ -z "$(ls -A ${ICU_DIR})" ]]; then
-      ICU_URL="https://kent.dl.sourceforge.net/project/icu/ICU4C/57.1/icu4c-57_1-src.tgz"
+      ICU_URL="https://netix.dl.sourceforge.net/project/icu/ICU4C/57.1/icu4c-57_1-src.tgz"
       cd ${DEPS_DIR}
       wget -P icu ${ICU_URL}
       cd ${ICU_DIR}

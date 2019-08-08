@@ -42,11 +42,11 @@ class IRESEARCH_API delta_decompressor : public decompressor, private util::nonc
                                byte_type* dst, size_t dst_size) override final;
 }; // delta_decompressor
 
-struct delta {
+struct IRESEARCH_API delta {
   DECLARE_COMPRESSION_TYPE();
 
   static void init();
-  static compression::compressor::ptr compressor();
+  static compression::compressor::ptr compressor(const options& opts);
   static compression::decompressor::ptr decompressor();
 }; // delta
 

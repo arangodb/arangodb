@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
+#include "store/store_utils.hpp"
 #include "utils/lz4compression.hpp"
 #include "utils/delta_compression.hpp"
 
@@ -33,11 +34,11 @@ TEST(compression_test, lz4) {
   std::vector<size_t> data(2047, 0);
   std::random_device rnd_device;
   std::mt19937 mersenne_engine {rnd_device()};
-  std::uniform_int_distribution<size_t> dist {1, 52};
+  std::uniform_int_distribution<size_t> dist {1, 2142152};
   auto generator = [&dist, &mersenne_engine](){ return dist(mersenne_engine); };
 
-  compression::lz4decompressor decompressor;
-  compression::lz4compressor compressor;
+  compression::lz4::lz4decompressor decompressor;
+  compression::lz4::lz4compressor compressor;
   ASSERT_EQ(0, compressor.acceleration());
 
   for (size_t i = 0; i < 10; ++i) {

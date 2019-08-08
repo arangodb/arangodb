@@ -24,28 +24,32 @@
 #define IRESEARCH_COLUMN_INFO_H
 
 #include "utils/string.hpp"
+#include "utils/compression.hpp"
 
 #include <functional>
 
 NS_ROOT
-NS_BEGIN(compression)
-class type_id;
-NS_END
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class column_info
 ////////////////////////////////////////////////////////////////////////////////
 class column_info {
  public:
-  column_info(const compression::type_id& compression, bool encryption) NOEXCEPT
-    : compression_(&compression), encryption_(encryption) {
+  column_info(const compression::type_id& compression,
+              const compression::options& options,
+              bool encryption) NOEXCEPT
+    : compression_(&compression),
+      options_(options),
+      encryption_(encryption) {
   }
 
   const compression::type_id& compression() const NOEXCEPT { return *compression_; }
+  const compression::options& options() const NOEXCEPT { return options_; }
   bool encryption() const NOEXCEPT { return encryption_; }
 
  private:
   const compression::type_id* compression_;
+  const compression::options options_;
   bool encryption_;
 }; // column_info
 

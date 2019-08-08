@@ -33,80 +33,99 @@
 NS_ROOT
 NS_BEGIN(compression)
 
-class IRESEARCH_API lz4compressor : public compressor, private util::noncopyable {
+class IRESEARCH_API lz4compressor_base : public compressor,
+                                         private util::noncopyable {
  public:
  // as stated in 'lz4.h', we have to use
  // LZ4_createStream/LZ4_freeStream in context of a DLL
 #ifdef IRESEARCH_DLL
-  explicit lz4compressor(int acceleration = 0)
-    : stream_(LZ4_createStream()),
-      acceleration_(acceleration) {
+  explicit lz4compressor_base() : stream_(LZ4_createStream()) {
     if (!stream_) {
       throw std::bad_alloc();
     }
   }
-  ~lz4compressor() { LZ4_freeStream(stream_); }
+  ~lz4compressor_base() { LZ4_freeStream(stream_); }
 #else
-  explicit lz4compressor(int acceleration = 0)
-    : acceleration_(acceleration) {
+  lz4compressor_base() {
     LZ4_resetStream(&stream_);
   }
 #endif
 
-  int acceleration() const NOEXCEPT { return acceleration_; }
-
-  virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override final;
+ protected:
+#ifdef IRESEARCH_DLL
+  LZ4_stream_t* stream() NOEXCEPT { return stream_; }
+#else
+  LZ4_stream_t* stream() NOEXCEPT { return &stream_; }
+#endif
 
  private:
 #ifdef IRESEARCH_DLL
-  LZ4_stream_t* stream() NOEXCEPT { return stream_; }
   LZ4_stream_t* stream_;
 #else
-  LZ4_stream_t* stream() NOEXCEPT { return &stream_; }
   LZ4_stream_t stream_;
 #endif
-  const int acceleration_{0}; // 0 - default acceleration
-  int dict_size_{}; // the size of the LZ4 dictionary from the previous call
-}; // lz4compressor
+}; // lz4compressor_base
 
-class IRESEARCH_API lz4decompressor : public decompressor, private util::noncopyable {
+class IRESEARCH_API lz4decompressor_base : public decompressor,
+                                           private util::noncopyable {
  public:
  // as stated in 'lz4.h', we have to use
  // LZ4_createStreamDecode/LZ4_freeStreamDecode in context of a DLL
 #ifdef IRESEARCH_DLL
-  lz4decompressor() : stream_(LZ4_createStreamDecode()) {
+  lz4decompressor_base() : stream_(LZ4_createStreamDecode()) {
     if (!stream_) {
       throw std::bad_alloc();
     }
   }
-  ~lz4decompressor() { LZ4_freeStreamDecode(stream_); }
+  ~lz4decompressor_base() { LZ4_freeStreamDecode(stream_); }
 #else
-  lz4decompressor() NOEXCEPT {
+  lz4decompressor_base() NOEXCEPT {
     std::memset(&stream_, 0, sizeof(stream_));
   }
 #endif
 
-  /// @returns bytes_ref::NIL in case of error
-  virtual bytes_ref decompress(byte_type* src, size_t src_size,
-                               byte_type* dst, size_t dst_size) override final;
+ protected:
+#ifdef IRESEARCH_DLL
+  LZ4_streamDecode_t* stream() NOEXCEPT { return stream_; }
+#else
+  LZ4_streamDecode_t* stream() NOEXCEPT { return &stream_; }
+#endif
 
  private:
 #ifdef IRESEARCH_DLL
-  LZ4_streamDecode_t* stream() NOEXCEPT { return stream_; }
   LZ4_streamDecode_t* stream_;
 #else
-  LZ4_streamDecode_t* stream() NOEXCEPT { return &stream_; }
   LZ4_streamDecode_t stream_;
 #endif
 }; // lz4decompressor
 
-struct lz4 {
+struct IRESEARCH_API lz4 {
   DECLARE_COMPRESSION_TYPE();
 
+  class IRESEARCH_API lz4compressor final : public compression::compressor {
+   public:
+    explicit lz4compressor(int acceleration = 0) NOEXCEPT
+      : acceleration_(acceleration) {
+    }
+
+    int acceleration() const NOEXCEPT { return acceleration_; }
+
+    virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override;
+
+   private:
+    const int acceleration_{0}; // 0 - default acceleration
+  };
+
+  class IRESEARCH_API lz4decompressor final : public compression::decompressor {
+   public:
+    virtual bytes_ref decompress(byte_type* src, size_t src_size,
+                                 byte_type* dst, size_t dst_size) override;
+  };
+
   static void init();
-  static compression::compressor::ptr compressor();
+  static compression::compressor::ptr compressor(const options& opts);
   static compression::decompressor::ptr decompressor();
-}; // lz4
+}; // lz4basic
 
 NS_END // compression
 NS_END // NS_ROOT

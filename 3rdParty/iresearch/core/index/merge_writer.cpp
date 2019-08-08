@@ -44,6 +44,12 @@
 
 NS_LOCAL
 
+const irs::column_info NORM_COLUMN{
+  irs::compression::lz4::type(),
+  irs::compression::options(),
+  false
+};
+
 // mapping of old doc_id to new doc_id (reader doc_ids are sequential 0 based)
 // masked doc_ids have value of MASKED_DOC_ID
 typedef std::vector<irs::doc_id_t> doc_id_map_t;
@@ -1264,7 +1270,7 @@ bool write_fields(
   };
 
   while (field_itr.next()) {
-    cs.reset({ irs::compression::lz4::type(), false }); // FIXME encoder for norms???
+    cs.reset(NORM_COLUMN); // FIXME encoder for norms???
 
     auto& field_meta = field_itr.meta();
     auto& field_features = field_meta.features;
@@ -1341,7 +1347,7 @@ bool write_fields(
   };
 
   while (field_itr.next()) {
-    cs.reset({ irs::compression::lz4::type(), false }); // FIXME encoder for norms???
+    cs.reset(NORM_COLUMN); // FIXME encoder for norms???
 
     auto& field_meta = field_itr.meta();
     auto& field_features = field_meta.features;

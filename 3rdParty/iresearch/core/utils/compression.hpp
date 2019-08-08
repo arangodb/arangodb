@@ -34,12 +34,12 @@
 // -----------------------------------------------------------------------------
 
 #define DECLARE_COMPRESSION_TYPE() DECLARE_TYPE_ID(iresearch::compression::type_id)
-#define DEFINE_COMPRESSION_TYPE_NAMED(class_type, class_name, scope) \
+#define DEFINE_COMPRESSION_TYPE_NAMED(class_type, class_name) \
   DEFINE_TYPE_ID(class_type, iresearch::compression::type_id) { \
-    static iresearch::compression::type_id type(class_name, scope); \
+    static iresearch::compression::type_id type(class_name); \
   return type; \
 }
-#define DEFINE_COMPRESSION_TYPE(class_type, scope) DEFINE_COMPRESSION_TYPE_NAMED(class_type, #class_type, scope)
+#define DEFINE_COMPRESSION_TYPE(class_type) DEFINE_COMPRESSION_TYPE_NAMED(class_type, #class_type)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          compression registration
@@ -53,7 +53,31 @@
   REGISTER_COMPRESSION_EXPANDER__(compression_name, compressor_factory, decompressor_factory, __FILE__, __LINE__)
 
 NS_ROOT
+
+struct data_output;
+struct data_input;
+
 NS_BEGIN(compression)
+
+struct options {
+  enum class Hint : byte_type {
+    /// @brief use default compressor parameters
+    DEFAULT = 0,
+
+    /// @brief prefer speed over compression ratio
+    SPEED,
+
+    /// @brief prefer compression ratio over speed
+    COMPRESSION
+  };
+
+  /// @brief
+  Hint hint{ Hint::DEFAULT };
+
+  options(Hint hint = Hint::DEFAULT)
+    : hint(hint) {
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class compressor
@@ -65,6 +89,9 @@ struct IRESEARCH_API compressor {
 
   /// @note caller is allowed to modify data pointed by 'in' up to 'size'
   virtual bytes_ref compress(byte_type* in, size_t size, bstring& buf) = 0;
+
+  /// @brief flush arbitrary payload relevant to compression
+  virtual void flush(data_output& /*out*/) { /*NOOP*/ }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,6 +106,11 @@ struct IRESEARCH_API decompressor {
   /// @note caller is allowed to modify data pointed by 'dst' up to 'dst_size'
   virtual bytes_ref decompress(byte_type* src, size_t src_size,
                                byte_type* dst, size_t dst_size) = 0;
+
+  virtual bool prepare(data_input& /*in*/) {
+    // NOOP
+    return true;
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,21 +118,17 @@ struct IRESEARCH_API decompressor {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API type_id : public irs::type_id, private util::noncopyable {
  public:
-  enum class Scope { GLOBAL, LOCAL };
-
-  type_id(const string_ref& name, Scope scope) NOEXCEPT
-    : name_(name), scope_(scope) {
+  type_id(const string_ref& name) NOEXCEPT
+    : name_(name) {
   }
   operator const type_id*() const NOEXCEPT { return this; }
   const string_ref& name() const NOEXCEPT { return name_; }
-  Scope scope() const NOEXCEPT { return scope_; }
 
  private:
   string_ref name_;
-  Scope scope_;
 };
 
-typedef irs::compression::compressor::ptr(*compressor_factory_f)();
+typedef irs::compression::compressor::ptr(*compressor_factory_f)(const options&);
 typedef irs::compression::decompressor::ptr(*decompressor_factory_f)();
 
 // -----------------------------------------------------------------------------
@@ -132,6 +160,7 @@ IRESEARCH_API bool exists(const string_ref& name, bool load_library = true);
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API compressor::ptr get_compressor(
     const string_ref& name,
+    const options& opts,
     bool load_library = true) NOEXCEPT;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,8 +168,9 @@ IRESEARCH_API compressor::ptr get_compressor(
 ////////////////////////////////////////////////////////////////////////////////
 inline compressor::ptr get_compressor(
     const type_id& type,
+    const options& opts,
     bool load_library = true) NOEXCEPT {
-  return get_compressor(type.name(), load_library);
+  return get_compressor(type.name(), opts, load_library);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,8 +214,14 @@ struct IRESEARCH_API raw {
   DECLARE_COMPRESSION_TYPE();
 
   static void init();
-  static compression::compressor::ptr compressor() { return nullptr; }
-  static compression::decompressor::ptr decompressor() { return nullptr; }
+
+  static compression::compressor::ptr compressor(const options& /*opts*/) {
+    return nullptr;
+  }
+
+  static compression::decompressor::ptr decompressor() {
+    return nullptr;
+  }
 }; // raw
 
 NS_END // compression

@@ -49,7 +49,7 @@ const size_t NON_UPDATE_RECORD = irs::integer_traits<size_t>::const_max; // non-
 
 const irs::column_info_provider_t DEFAULT_COLUMN_INFO = [](const irs::string_ref&) {
   // no compression, no encryption
-  return irs::column_info{ irs::compression::raw::type(), false };
+  return irs::column_info{ irs::compression::raw::type(), {}, false };
 };
 
 struct flush_segment_context {

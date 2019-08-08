@@ -62,6 +62,7 @@
 #include "utils/object_pool.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
+#include "utils/singleton.hpp"
 #include "utils/std.hpp"
 
 #if defined(_MSC_VER)
@@ -71,6 +72,20 @@
 #if (!defined(IRESEARCH_FORMAT10_CODEC) || (IRESEARCH_FORMAT10_CODEC == 0))
 
 NS_LOCAL
+
+struct noop_compressor final : irs::compression::compressor, irs::singleton<noop_compressor> {
+  static irs::compression::compressor::ptr make() {
+    typedef irs::compression::compressor::ptr ptr;
+    return ptr(ptr(), &instance());
+  }
+
+  virtual irs::bytes_ref compress(
+      irs::byte_type* in, size_t size, irs::bstring& /*buf*/) {
+    return { in, size };
+  }
+
+  virtual void flush(data_output& /*out*/) { /*NOOP*/ }
+};
 
 struct format_traits {
   static const uint32_t BLOCK_SIZE = 128;
@@ -2856,11 +2871,16 @@ enum ColumnProperty : uint32_t {
 
 ENABLE_BITMASK_ENUM(ColumnProperty);
 
+bool is_good_compression_ratio(size_t raw_size, size_t compressed_size) NOEXCEPT {
+  // check if compressed is less than 12.5%
+  return compressed_size < raw_size - (raw_size / 8U);
+}
+
 ColumnProperty write_compact(
     index_output& out,
     bstring& encode_buf,
     encryption::stream* cipher,
-    compression::compressor* compressor,
+    compression::compressor& compressor,
     bstring& data) {
   if (data.empty()) {
     out.write_byte(0); // zig_zag_encode32(0) == 0
@@ -2868,11 +2888,9 @@ ColumnProperty write_compact(
   }
 
   // compressor can only handle size of int32_t, so can use the negative flag as a compression flag
-  const bytes_ref compressed = compressor
-     ? compressor->compress(&data[0], data.size(), encode_buf)
-     : static_cast<bytes_ref>(data);
+  const bytes_ref compressed = compressor.compress(&data[0], data.size(), encode_buf);
 
-  if (compressed.size() < data.size()) {
+  if (is_good_compression_ratio(data.size(), compressed.size())) {
     assert(compressed.size() <= irs::integer_traits<int32_t>::const_max);
     irs::write_zvint(out, int32_t(compressed.size())); // compressed size
     if (cipher) {
@@ -3127,6 +3145,7 @@ class writer final : public irs::columnstore_writer {
         cipher_(cipher),
         blocks_index_(*ctx.alloc_),
         block_buf_(2*MAX_DATA_BLOCK_SIZE, 0) {
+      assert(comp_); // ensured by `push_column'
       block_buf_.clear(); // reset size to '0'
     }
 
@@ -3162,6 +3181,7 @@ class writer final : public irs::columnstore_writer {
       write_enum(out, column_props);
       if (ctx_->version_ > FORMAT_MIN) {
         write_string(out, comp_type_->name());
+        comp_->flush(out); // flush compression dependent data
       }
       out.write_vint(block_index_.total()); // total number of items
       out.write_vint(max_); // max column key
@@ -3249,11 +3269,7 @@ class writer final : public irs::columnstore_writer {
       //   const auto res = expr0() | expr1();
       // otherwise it would violate format layout
       auto block_props = block_index_.flush(out, buf);
-      block_props |= write_compact(out,
-                                   ctx_->buf_,
-                                   cipher_,
-                                   comp_.get(),
-                                   block_buf_);
+      block_props |= write_compact(out, ctx_->buf_, cipher_, *comp_, block_buf_);
 
       length_ += block_buf_.size();
 
@@ -3285,19 +3301,7 @@ class writer final : public irs::columnstore_writer {
     uint32_t avg_block_size_{}; // average size of the block (tail block is not taken into account since it may skew distribution)
   }; // column
 
-  // helper for deduplication
-  struct compressor_wrapper {
-    compressor_wrapper(const compression::type_id& compression)
-      : compressor(compression::get_compressor(compression)) {
-    }
-
-    operator compression::compressor::ptr() const NOEXCEPT { return compressor; }
-
-    compression::compressor::ptr compressor;
-  }; // compressor_wrapper
-
   memory_allocator* alloc_{ &memory_allocator::global() };
-  std::map<const compression::type_id*, compressor_wrapper> compressors_; // list of global compressors
   std::deque<column> columns_; // pointers remain valid
   bstring buf_; // reusable temporary buffer for packing/compression
   index_output::ptr data_out_;
@@ -3354,22 +3358,27 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
 }
 
 columnstore_writer::column_t writer::push_column(const column_info& info) {
-  compression::compressor::ptr compressor;
+  encryption::stream* cipher;
+  const compression::type_id* compression;
 
-  auto& compression = info.compression();
-  if (compression::type_id::Scope::GLOBAL == compression.scope()) {
-    // deduplicate global compressors
-    compressor = compressors_.emplace(std::piecewise_construct,
-                                      std::forward_as_tuple(compression),
-                                      std::forward_as_tuple(compression)).first->second;
+  if (version_ > FORMAT_MIN) {
+    compression = info.compression();
+    cipher = info.encryption() ? data_out_cipher_.get() : nullptr;
   } else {
-    compressor = compression::get_compressor(compression);
+    // we don't support encryption and custom
+    // compression for 'FORMAT_MIN' version
+    compression = compression::lz4::type();
+    cipher = nullptr;
   }
 
-  auto* cipher = info.encryption() ? data_out_cipher_.get() : nullptr;
+  auto compressor = compression::get_compressor(*compression, info.options());
+
+  if (!compressor) {
+    compressor = noop_compressor::make();
+  }
 
   const auto id = columns_.size();
-  columns_.emplace_back(*this, compression, compressor, cipher);
+  columns_.emplace_back(*this, info.compression(), compressor, cipher);
   auto& column = columns_.back();
 
   return std::make_pair(id, [&column] (doc_id_t doc) -> column_output& {
@@ -5203,14 +5212,21 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
 
       if (!decomp && !compression::exists(compression_id)) {
         throw index_error(string_utils::to_string(
-          "Factory failed to load compression '%s' for column id=" IR_SIZE_T_SPECIFIER,
-          i, compression_id));
+          "Failed to load compression '%s' for column id=" IR_SIZE_T_SPECIFIER,
+          compression_id.c_str(), i));
+      }
+
+      if (decomp && !decomp->prepare(*stream)) {
+        throw index_error(string_utils::to_string(
+          "Failed to prepare compression '%s' for column id=" IR_SIZE_T_SPECIFIER,
+          compression_id.c_str(), i));
       }
     } else {
+      // we don't support encryption and custom
+      // compression for 'FORMAT_MIN' version
       decomp = compression::get_decompressor(compression::lz4::type());
+      assert(decomp);
     }
-
-    assert(decomp);
 
     try {
       column->read(*stream, buf, decomp);

@@ -132,7 +132,7 @@ TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
   } less;
 
   irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-    return irs::column_info( irs::compression::lz4::type(), true );
+    return irs::column_info( irs::compression::lz4::type(), {}, true );
   };
 
   irs::memory_directory dir;
@@ -191,7 +191,7 @@ TEST_F(segment_writer_tests, insert_sorted_without_comparator) {
   } field;
 
   irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-    return irs::column_info( irs::compression::lz4::type(), true );
+    return irs::column_info( irs::compression::lz4::type(), irs::compression::options(irs::compression::options::Hint::SPEED), true );
   };
 
   irs::memory_directory dir;
@@ -241,7 +241,7 @@ TEST_F(segment_writer_tests, memory_store_sorted_field) {
   } less;
 
   irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-    return irs::column_info( irs::compression::lz4::type(), true );
+    return irs::column_info(irs::compression::lz4::type(), irs::compression::options{}, true);
   };
 
   irs::memory_directory dir;
@@ -291,7 +291,7 @@ TEST_F(segment_writer_tests, memory_store_field_sorted) {
   } less;
 
   irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-    return irs::column_info( irs::compression::lz4::type(), true );
+    return irs::column_info( irs::compression::lz4::type(), irs::compression::options{}, true );
   };
 
   irs::memory_directory dir;
@@ -335,7 +335,7 @@ TEST_F(segment_writer_tests, memory_store_field_unsorted) {
   } field;
 
   irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-    return irs::column_info( irs::compression::lz4::type(), true );
+    return irs::column_info( irs::compression::lz4::type(), irs::compression::options{}, true );
   };
 
   irs::memory_directory dir;
@@ -386,7 +386,7 @@ TEST_F(segment_writer_tests, memory_index_field) {
   field_t field(stream);
 
   irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-    return irs::column_info( irs::compression::lz4::type(), true );
+    return irs::column_info( irs::compression::lz4::type(), irs::compression::options{}, true );
   };
 
   irs::memory_directory dir;
@@ -429,7 +429,7 @@ TEST_F(segment_writer_tests, index_field) {
   // test missing token_stream attributes (increment)
   {
     irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-      return irs::column_info( irs::compression::lz4::type(), true );
+      return irs::column_info( irs::compression::lz4::type(), irs::compression::options{}, true );
     };
 
     irs::memory_directory dir;
@@ -452,7 +452,7 @@ TEST_F(segment_writer_tests, index_field) {
   // test missing token_stream attributes (term_attribute)
   {
     irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-      return irs::column_info( irs::compression::lz4::type(), true );
+      return irs::column_info( irs::compression::lz4::type(), irs::compression::options{}, true );
     };
 
     irs::memory_directory dir;

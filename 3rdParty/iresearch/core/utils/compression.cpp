@@ -27,6 +27,7 @@
 // list of statically loaded scorers via init()
 #ifndef IRESEARCH_DLL
   #include "lz4compression.hpp"
+  #include "delta_compression.hpp"
 #endif
 
 NS_LOCAL
@@ -138,11 +139,14 @@ bool exists(const string_ref& name, bool load_library /*= true*/ ) {
   return !compression_register::instance().get(name, load_library).empty();
 }
 
-compressor::ptr get_compressor(const string_ref& name, bool load_library /*= true*/) NOEXCEPT {
+compressor::ptr get_compressor(
+    const string_ref& name,
+    const options& opts,
+    bool load_library /*= true*/) NOEXCEPT {
   try {
     auto* factory = compression_register::instance().get(name, load_library).compressor_factory_;
 
-    return factory ? factory() : nullptr;
+    return factory ? factory(opts) : nullptr;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting an analyzer instance");
     IR_LOG_EXCEPTION();
@@ -167,6 +171,7 @@ decompressor::ptr get_decompressor(const string_ref& name, bool load_library /*=
 void init() {
 #ifndef IRESEARCH_DLL
   lz4::init();
+  delta::init();
   raw::init();
 #endif
 }
@@ -194,8 +199,7 @@ bool visit(const std::function<bool(const string_ref&)>& visitor) {
 #endif
 }
 
-DEFINE_COMPRESSION_TYPE(iresearch::compression::raw,
-                        iresearch::compression::type_id::Scope::LOCAL);
+DEFINE_COMPRESSION_TYPE(iresearch::compression::raw);
 
 REGISTER_COMPRESSION(raw, &raw::compressor, &raw::decompressor);
 

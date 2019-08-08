@@ -1424,7 +1424,7 @@ class index_test_case : public tests::index_test_base {
   void read_empty_doc_attributes() {
     irs::index_writer::init_options options;
     options.column_info = [](const irs::string_ref&) {
-      return irs::column_info{ irs::compression::lz4::type(), true };
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
     };
 
     tests::json_doc_generator gen(
@@ -1460,7 +1460,7 @@ class index_test_case : public tests::index_test_base {
     // sparse_column<sparse_mask_block>
     irs::index_writer::init_options options;
     options.column_info = [](const irs::string_ref&) {
-      return irs::column_info{ irs::compression::lz4::type(), true };
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
     };
 
     static const irs::doc_id_t MAX_DOCS = 1500;
@@ -2297,7 +2297,7 @@ class index_test_case : public tests::index_test_base {
 
     irs::index_writer::init_options options;
     options.column_info = [](const irs::string_ref&) {
-      return irs::column_info{ irs::compression::lz4::type(), true };
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
     };
 
     static const irs::doc_id_t MAX_DOCS
@@ -2942,7 +2942,7 @@ class index_test_case : public tests::index_test_base {
     // dense_fixed_length_column<dense_fixed_length_block>
     irs::index_writer::init_options options;
     options.column_info = [](const irs::string_ref&) {
-      return irs::column_info{ irs::compression::lz4::type(), true };
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
     };
 
     static const irs::doc_id_t MAX_DOCS = 1500;
@@ -3725,7 +3725,7 @@ class index_test_case : public tests::index_test_base {
     // sparse_column<dense_block>
     irs::index_writer::init_options options;
     options.column_info = [](const irs::string_ref&) {
-      return irs::column_info{ irs::compression::lz4::type(), true };
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
     };
 
     static const irs::doc_id_t MAX_DOCS = 1500;
@@ -4669,7 +4669,7 @@ class index_test_case : public tests::index_test_base {
     // sparse_column<dense_block>
     irs::index_writer::init_options options;
     options.column_info = [](const irs::string_ref&) {
-      return irs::column_info{ irs::compression::raw::type(), true };
+      return irs::column_info{ irs::compression::raw::type(), irs::compression::options{}, true };
     };
 
     static const irs::doc_id_t BLOCK_SIZE = 1024;
@@ -5818,7 +5818,7 @@ class index_test_case : public tests::index_test_base {
 
     irs::index_writer::init_options options;
     options.column_info = [](const irs::string_ref&) {
-      return irs::column_info{ irs::compression::raw::type(), false };
+      return irs::column_info{ irs::compression::raw::type(), irs::compression::options{}, false };
     };
 
     // border case for sparse fixed offset columns, e.g.
@@ -6084,7 +6084,7 @@ class index_test_case : public tests::index_test_base {
 
     irs::index_writer::init_options options;
     options.column_info = [](const irs::string_ref&) {
-      return irs::column_info{ irs::compression::lz4::type(), true };
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
     };
 
     // border case for dense fixed offset columns, e.g.
@@ -6298,7 +6298,7 @@ class index_test_case : public tests::index_test_base {
     // sparse_column<dense_fixed_length_block>
     irs::index_writer::init_options options;
     options.column_info = [](const irs::string_ref&) {
-      return irs::column_info{ irs::compression::lz4::type(), false };
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, false };
     };
 
     static const irs::doc_id_t BLOCK_SIZE = 1024;
@@ -7303,7 +7303,7 @@ class index_test_case : public tests::index_test_base {
     // sparse_column<dense_mask_block>
     irs::index_writer::init_options options;
     options.column_info = [](const irs::string_ref&) {
-      return irs::column_info{ irs::compression::lz4::type(), true };
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
     };
 
     static const irs::doc_id_t BLOCK_SIZE = 1024;
@@ -8165,7 +8165,7 @@ class index_test_case : public tests::index_test_base {
     // sparse_column<sparse_block>
     irs::index_writer::init_options options;
     options.column_info = [](const irs::string_ref&) {
-      return irs::column_info{ irs::compression::lz4::type(), true };
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
     };
 
     static const irs::doc_id_t MAX_DOCS = 1500;
@@ -9650,7 +9650,7 @@ class index_test_case : public tests::index_test_base {
   void read_write_doc_attributes() {
     irs::index_writer::init_options options;
     options.column_info = [](const irs::string_ref&) {
-      return irs::column_info{ irs::compression::lz4::type(), true };
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
     };
 
     tests::json_doc_generator gen(
@@ -9974,7 +9974,7 @@ class index_test_case : public tests::index_test_base {
   void read_write_doc_attributes_big() {
     irs::index_writer::init_options options;
     options.column_info = [](const irs::string_ref&) {
-      return irs::column_info{ irs::compression::lz4::type(), true };
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
     };
 
     struct csv_doc_template_t: public tests::csv_doc_generator::doc_template {

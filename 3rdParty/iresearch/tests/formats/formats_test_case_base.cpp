@@ -801,6 +801,7 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
     writer->prepare(dir(), seg);
     auto column = writer->push_column({
       irs::compression::lz4::type(),
+      irs::compression::options(),
       irs::get_encryption(dir().attributes())
     });
     column_id = column.first;
@@ -864,6 +865,7 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
     writer->prepare(dir(), seg);
     auto column = writer->push_column({
       irs::compression::lz4::type(),
+      irs::compression::options(),
       irs::get_encryption(dir().attributes())
     });
     column_id = column.first;
@@ -910,6 +912,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
 
     auto column = writer->push_column({
       irs::compression::lz4::type(),
+      irs::compression::options(),
       irs::get_encryption(dir().attributes())
     });
 
@@ -1135,9 +1138,9 @@ TEST_P(format_test_case, columns_rw_empty) {
     auto writer = codec()->get_columnstore_writer();
     writer->prepare(dir(), meta0);
 
-    column0_id = writer->push_column({ irs::compression::lz4::type(), irs::get_encryption(dir().attributes()) }).first;
+    column0_id = writer->push_column({ irs::compression::lz4::type(), {}, irs::get_encryption(dir().attributes()) }).first;
     ASSERT_EQ(0, column0_id);
-    column1_id = writer->push_column({ irs::compression::lz4::type(), irs::get_encryption(dir().attributes()) }).first;
+    column1_id = writer->push_column({ irs::compression::lz4::type(), {}, irs::get_encryption(dir().attributes()) }).first;
     ASSERT_EQ(1, column1_id);
     ASSERT_FALSE(writer->commit()); // flush empty columns
   }
@@ -1204,6 +1207,7 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
         if (res.second) {
           res.first->second = writer->push_column({
             irs::compression::lz4::type(),
+            irs::compression::options(),
             irs::get_encryption(dir().attributes())
           });
         }
@@ -1283,6 +1287,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
 
     auto column = writer->push_column({
       irs::compression::lz4::type(),
+      irs::compression::options(),
       irs::get_encryption(dir().attributes())
     });
     id = column.first;
@@ -1448,7 +1453,7 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::compression::lz4::type(), irs::get_encryption(dir().attributes()) });
+          res.first->second = writer->push_column({ irs::compression::lz4::type(), {}, irs::get_encryption(dir().attributes()) });
         }
 
         auto& column = res.first->second.second;
@@ -1477,7 +1482,7 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::compression::lz4::type(), irs::get_encryption(dir().attributes()) });
+          res.first->second = writer->push_column({ irs::compression::lz4::type(), {}, irs::get_encryption(dir().attributes()) });
         }
 
         auto& column = res.first->second.second;
@@ -1504,7 +1509,7 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::compression::lz4::type(), irs::get_encryption(dir().attributes()) });
+          res.first->second = writer->push_column({ irs::compression::lz4::type(), {}, irs::get_encryption(dir().attributes()) });
         }
 
         auto& column = res.first->second.second;
@@ -1693,7 +1698,7 @@ TEST_P(format_test_case, columns_rw_typed) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::compression::lz4::type(), irs::get_encryption(dir().attributes()) });
+          res.first->second = writer->push_column({ irs::compression::lz4::type(), {}, irs::get_encryption(dir().attributes()) });
         }
 
         auto& column = res.first->second.second;
@@ -1939,8 +1944,8 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     auto writer = codec()->get_columnstore_writer();
     writer->prepare(dir(), meta0);
 
-    dense_fixed_offset_column = writer->push_column({ irs::compression::lz4::type(), irs::get_encryption(dir().attributes()) });
-    sparse_fixed_offset_column = writer->push_column({ irs::compression::lz4::type(), irs::get_encryption(dir().attributes()) });
+    dense_fixed_offset_column = writer->push_column({ irs::compression::lz4::type(), {}, irs::get_encryption(dir().attributes()) });
+    sparse_fixed_offset_column = writer->push_column({ irs::compression::lz4::type(), {}, irs::get_encryption(dir().attributes()) });
 
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
 
@@ -2136,26 +2141,26 @@ TEST_P(format_test_case, columns_rw) {
   {
     writer->prepare(dir(), meta0);
 
-    auto field0 = writer->push_column({ irs::compression::lz4::type(), irs::get_encryption(dir().attributes()) });
+    auto field0 = writer->push_column({ irs::compression::lz4::type(), {}, irs::get_encryption(dir().attributes()) });
     segment0_field0_id = field0.first;
     auto& field0_writer = field0.second;
     ASSERT_EQ(0, segment0_field0_id);
-    auto field1 = writer->push_column({ irs::compression::lz4::type(), irs::get_encryption(dir().attributes()) });
+    auto field1 = writer->push_column({ irs::compression::lz4::type(), {}, irs::get_encryption(dir().attributes()) });
     segment0_field1_id = field1.first;
     auto& field1_writer = field1.second;
     ASSERT_EQ(1, segment0_field1_id);
-    auto empty_field = writer->push_column({ irs::compression::lz4::type(), irs::get_encryption(dir().attributes()) }); // gap between filled columns
+    auto empty_field = writer->push_column({ irs::compression::lz4::type(), {}, irs::get_encryption(dir().attributes()) }); // gap between filled columns
     segment0_empty_column_id = empty_field.first;
     ASSERT_EQ(2, segment0_empty_column_id);
-    auto field2 = writer->push_column({ irs::compression::lz4::type(), irs::get_encryption(dir().attributes()) });
+    auto field2 = writer->push_column({ irs::compression::lz4::type(), {}, irs::get_encryption(dir().attributes()) });
     segment0_field2_id = field2.first;
     auto& field2_writer = field2.second;
     ASSERT_EQ(3, segment0_field2_id);
-    auto field3 = writer->push_column({ irs::compression::lz4::type(), irs::get_encryption(dir().attributes()) });
+    auto field3 = writer->push_column({ irs::compression::lz4::type(), {}, irs::get_encryption(dir().attributes()) });
     segment0_field3_id = field3.first;
     auto& field3_writer = field3.second;
     ASSERT_EQ(4, segment0_field3_id);
-    auto field4 = writer->push_column({ irs::compression::lz4::type(), irs::get_encryption(dir().attributes()) });
+    auto field4 = writer->push_column({ irs::compression::lz4::type(), {}, irs::get_encryption(dir().attributes()) });
     segment0_field4_id = field4.first;
     auto& field4_writer = field4.second;
     ASSERT_EQ(5, segment0_field4_id);
@@ -2235,15 +2240,15 @@ TEST_P(format_test_case, columns_rw) {
   {
     writer->prepare(dir(), meta1);
 
-    auto field0 = writer->push_column({ irs::compression::lz4::type(), irs::get_encryption(dir().attributes()) });
+    auto field0 = writer->push_column({ irs::compression::lz4::type(), {}, irs::get_encryption(dir().attributes()) });
     segment1_field0_id = field0.first;
     auto& field0_writer = field0.second;
     ASSERT_EQ(0, segment1_field0_id);
-    auto field1 = writer->push_column({ irs::compression::lz4::type(), irs::get_encryption(dir().attributes()) });
+    auto field1 = writer->push_column({ irs::compression::lz4::type(), {}, irs::get_encryption(dir().attributes()) });
     segment1_field1_id = field1.first;
     auto& field1_writer = field1.second;
     ASSERT_EQ(1, segment1_field1_id);
-    auto field2 = writer->push_column({ irs::compression::lz4::type(), irs::get_encryption(dir().attributes()) });
+    auto field2 = writer->push_column({ irs::compression::lz4::type(), {}, irs::get_encryption(dir().attributes()) });
     segment1_field2_id = field2.first;
     auto& field2_writer = field2.second;
     ASSERT_EQ(2, segment1_field2_id);

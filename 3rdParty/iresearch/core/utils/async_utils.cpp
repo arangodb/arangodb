@@ -29,7 +29,7 @@
 
 NS_LOCAL
 
-const auto RW_MUTEX_WAIT_TIMEOUT = std::chrono::milliseconds(100);
+const auto RW_MUTEX_WAIT_TIMEOUT = std::chrono::milliseconds(1000);
 
 NS_END
 
