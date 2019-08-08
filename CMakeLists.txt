@@ -298,15 +298,10 @@ set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test program")
 set(ARANGO_BACKUP_FRIENDLY_STRING  "arangobackup - hot backup tool")
 set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - export")
 set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - importer")
-set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - datae xporter")
+set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - data exporter")
 set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - TSV/CSV/JSON importer")
 set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
 set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - vpack printer")
-
-# libraries
-set(LIB_ARANGO        arango)
-set(LIB_ARANGO_GEO    arango_geo)
-set(LIB_ARANGO_V8     arango_v8)
 
 # binaries
 set(BIN_ARANGOBENCH   arangobench)
@@ -1017,8 +1012,6 @@ endif ()
 # ------------------------------------------------------------------------------
 # IResearch
 # ------------------------------------------------------------------------------
-
-set(LIB_ARANGO_IRESEARCH arango_iresearch)
 
 # 3rdParty exports:
 #

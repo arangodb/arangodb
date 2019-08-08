@@ -47,7 +47,7 @@ endif ()
 
 find_package(IResearch REQUIRED)
 
-add_library(${LIB_ARANGO_IRESEARCH}
+add_library(arango_iresearch
   STATIC
   IResearch/ApplicationServerHelper.h IResearch/ApplicationServerHelper.cpp
   IResearch/Containers.cpp IResearch/Containers.h
@@ -80,16 +80,16 @@ add_library(${LIB_ARANGO_IRESEARCH}
   V8Server/v8-analyzers.cpp V8Server/v8-analyzers.h
 )
 
-target_compile_definitions(${LIB_ARANGO_IRESEARCH}
+target_compile_definitions(arango_iresearch
   PUBLIC "$<$<CONFIG:Debug>:IRESEARCH_DEBUG=1>"
 )
 
-target_include_directories(${LIB_ARANGO_IRESEARCH}
+target_include_directories(arango_iresearch
   PUBLIC ${IRESEARCH_INCLUDE}
 )
 
 if (USE_ENTERPRISE)
-  target_include_directories(${LIB_ARANGO_IRESEARCH}
+  target_include_directories(arango_iresearch
     PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}"
   )
 endif()
@@ -100,13 +100,13 @@ else()
   set(IRESEARCH_TARGET_DEPENDENCY iresearch-static) # use static to match ArangoDB
 endif()
 
-target_link_libraries(${LIB_ARANGO_IRESEARCH}
+target_link_libraries(arango_iresearch
   ${IRESEARCH_TARGET_DEPENDENCY}
   s2 # needed for some includes
   boost_locale # required by iResearch
 )
 
-add_dependencies(${LIB_ARANGO_IRESEARCH}
+add_dependencies(arango_iresearch
   ${IRESEARCH_TARGET_DEPENDENCY}
   v8_build # for ICU required by iResearch
 )
@@ -644,15 +644,14 @@ target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/l
 target_include_directories(arango_mmfiles PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
 
 target_link_libraries(arangoserver
-  ${LIB_ARANGO_FE}
-  ${LIB_ARANGO_GEO}
+  arango_geo
   ${LIB_ARANGO_V8}
   ${LIB_ARANGO}
   ${LINENOISE_LIBS}
   ${MSVC_LIBS}
   ${V8_LIBS}
   ${ROCKSDB_LIBS}
-  ${LIB_ARANGO_IRESEARCH}
+  arango_iresearch
   s2
   fuerte
   boost_boost
@@ -701,9 +700,9 @@ install(
 install_config(arangod)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangod zlibstatic v8_build ${LIB_ARANGO_IRESEARCH})
+  add_dependencies(arangod zlibstatic v8_build arango_iresearch)
 else ()
-  add_dependencies(arangod zlibstatic ${LIB_ARANGO_IRESEARCH})
+  add_dependencies(arangod zlibstatic arango_iresearch)
 endif ()
 
 if (USE_JEMALLOC)
