@@ -207,10 +207,19 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
   std::vector<std::string> systemCollections;
 
   if (vocbase.isSystem()) {
-    systemCollections.push_back(StaticStrings::UsersCollection);
+    // we will use UsersCollection for distributeShardsLike
+    auto const res = methods::Collections::createSystem(vocbase, StaticStrings::UsersCollection);
+    if (!res.ok()) {
+      return false;
+    }
+    systemCollections.push_back(StaticStrings::GraphsCollection);
+  } else {
+    // we will use GraphsCollection for distributeShardsLike
+    auto const res = methods::Collections::createSystem(vocbase, StaticStrings::GraphsCollection);
+    if (!res.ok()) {
+      return false;
+    }
   }
-
-  systemCollections.push_back(StaticStrings::GraphsCollection);
   systemCollections.push_back(StaticStrings::AqlFunctionsCollection);
   systemCollections.push_back(StaticStrings::QueuesCollection);
   systemCollections.push_back(StaticStrings::JobsCollection);
