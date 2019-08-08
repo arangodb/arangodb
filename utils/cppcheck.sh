@@ -1,13 +1,16 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 rm -f cppcheck.log cppcheck.tmp
 trap "rm -rf cppcheck.tmp" EXIT
 touch cppcheck.tmp
 
 cppcheck $* \
-  -I lib \
-  -I enterprise \
   -I arangod \
   -I arangosh \
+  -I build/arangod \
+  -I build/arangosh \
+  -I build/lib \
+  -I enterprise \
+  -I lib \
   -D USE_PLAN_CACHE \
   --std=c++17 \
   --enable=warning,style,performance,portability,missingInclude \
@@ -47,6 +50,7 @@ cat cppcheck.tmp \
   | fgrep -v "Syntax Error: AST broken, binary operator '=' doesn't have two operands" \
   | fgrep -v "Found suspicious operator ','" \
   | fgrep -v "SymbolDatabase bailout; unhandled code" \
+  | fgrep -v "Cppcheck cannot find all the include files" \
   | sort \
   | uniq > cppcheck.log
 cat cppcheck.log

@@ -78,10 +78,6 @@ def genCHeaderFile(types):
            + "#ifndef LIB_BASICS_VOC_MIMETYPES_H\n"\
            + "#define LIB_BASICS_VOC_MIMETYPES_H 1\n"\
            + "\n"\
-           + "////////////////////////////////////////////////////////////////////////////////\n"\
-           + "/// @brief initialize mimetypes\n"\
-           + "////////////////////////////////////////////////////////////////////////////////\n"\
-           + "\n"\
            + "void TRI_InitializeEntriesMimetypes();\n"\
            + "\n"\
            + "#endif\n"
@@ -92,16 +88,9 @@ def genCHeaderFile(types):
 # generate C implementation file from mimetypes
 def genCFile(types, filename):
 
-  headerfile = os.path.splitext(filename)[0] + ".h"
-
   impl = prologue\
          + "#include \"Basics/Common.h\"\n\n"\
          + "#include \"Basics/mimetypes.h\"\n"\
-         + "#include \"" + headerfile + "\"\n"\
-         + "\n"\
-         + "////////////////////////////////////////////////////////////////////////////////\n"\
-         + "/// @brief initialize mimetypes\n"\
-         + "////////////////////////////////////////////////////////////////////////////////\n"\
          + "\n"\
          + "void TRI_InitializeEntriesMimetypes() {\n"
 
@@ -139,7 +128,7 @@ prologue = "////////////////////////////////////////////////////////////////////
          + "/// limitations under the License.\n"\
          + "///\n"\
          + "/// Copyright holder is ArangoDB GmbH, Cologne, Germany\n"\
-         + "////////////////////////////////////////////////////////////////////////////////\n"\
+         + "////////////////////////////////////////////////////////////////////////////////\n\n"\
  
 if len(sys.argv) < 3:
   print >> sys.stderr, "usage: %s <sourcefile> <outfile>" % sys.argv[0]
