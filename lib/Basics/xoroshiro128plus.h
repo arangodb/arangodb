@@ -64,6 +64,8 @@ struct xoroshiro128plus {
      a 64-bit seed, we suggest to seed a splitmix64 generator and use its
      output to fill s. */
 
+  xoroshiro128plus() : _s{0, 0} {}
+
   void seed(uint64_t seed1, uint64_t seed2) {
     _s[0] = seed1;
     _s[1] = seed2;

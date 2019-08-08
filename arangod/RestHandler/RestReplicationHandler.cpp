@@ -122,19 +122,15 @@ static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& co
 
   std::string shardAgencyPathString = StringUtils::join(agencyPath, '/');
 
-  LOG_DEVEL << shardAgencyPathString;
-
   AgencyComm ac;
   AgencyCommResult res = ac.getValues(shardAgencyPathString);
 
   if (res.successful()) {
 
-  LOG_DEVEL << "Agency Transaction: " << res.slice().toJson();
     // This is bullshit. Why does the *fancy* AgencyComm Manager
     // prepend the agency url with `arango` but in the end returns an object
     // that is prepended by `arango`! WTF!?
     VPackSlice plan = res.slice().at(0).get(AgencyCommManager::path()).get(agencyPath);
-    LOG_DEVEL << plan.toJson();
     TRI_ASSERT(plan.isArray() && plan.length() > 0);
 
     VPackSlice leaderSlice = plan.at(0);
@@ -2528,24 +2524,27 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
     return;
   }
 
-  Result res = checkPlanLeaderDirect(col, leaderId);
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
   std::string currentLeader = col->followers()->getLeader();
   if (currentLeader == arangodb::maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
     // We have resigned, check that we are the old leader
     currentLeader = ServerState::instance()->getId();
   }
 
-  if (!oldLeaderIdSlice.isEqualString(currentLeader)) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN, "old leader not as expected");
-    return;
+  if (leaderId != currentLeader) {
+
+    Result res = checkPlanLeaderDirect(col, leaderId);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    if (!oldLeaderIdSlice.isEqualString(currentLeader)) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN, "old leader not as expected");
+      return;
+    }
+
+    col->followers()->setTheLeader(leaderId);
   }
 
-  col->followers()->setTheLeader(leaderId);
-  LOG_DEVEL << "Set leader for " << shard.copyString() << " to " << leaderId;
 
   VPackBuilder b;
   {
