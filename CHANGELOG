@@ -1,4 +1,4 @@
-v3.3.24 (XXXX-XX-XX)
+v3.3.24 (2019-08-08)
 --------------------
 
 * re-added warning for kernel setting "overcommit_memory=2" if jemalloc is also enabled.
