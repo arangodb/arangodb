@@ -259,11 +259,21 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
 
   if (ExecContext::CURRENT != nullptr && um != nullptr) {
-    return um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
-      entry.grantDatabase(info.getName(), auth::Level::RW);
-      entry.grantCollection(info.getName(), "*", auth::Level::RW);
-      return TRI_ERROR_NO_ERROR;
-    });
+    // If the current user is empty (which happens if a Maintenance job
+    // called us, or when authentication is off), granting rights
+    // will fail. We hence ignore it here, but issue a warning below
+    if (ExecContext::CURRENT->user() != "") {
+      return um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
+        entry.grantDatabase(info.getName(), auth::Level::RW);
+        entry.grantCollection(info.getName(), "*", auth::Level::RW);
+        return TRI_ERROR_NO_ERROR;
+      });
+    } else {
+      LOG_TOPIC("2a4dd", WARN, Logger::FIXME)
+        << "ExecContext::CURRENT->user() is empty."
+        << "Database will be created without any user having permissions";
+     return Result();
+    }
   }
 
   // TODO: what happens if ExecContext::CURRENT or um are nullptr?
