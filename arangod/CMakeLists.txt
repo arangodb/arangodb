@@ -626,7 +626,7 @@ include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
 include(MMFiles/CMakeLists.txt)
 
-add_library(${LIB_ARANGOSERVER} STATIC
+add_library(arangoserver STATIC 
   ${ARANGOD_SOURCES} 
   ${CLUSTER_ENGINE_SOURCES} 
   ${MMFILES_SOURCES} 
@@ -634,9 +634,9 @@ add_library(${LIB_ARANGOSERVER} STATIC
   ${LLHTTP_SOURCES}
 )
 
-target_include_directories(${LIB_ARANGOSERVER} PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
+target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
 
-target_link_libraries(${LIB_ARANGOSERVER}
+target_link_libraries(arangoserver
   ${LIB_ARANGO_FE}
   ${LIB_ARANGO_GEO}
   ${LIB_ARANGO_V8}
@@ -655,14 +655,14 @@ target_link_libraries(${LIB_ARANGOSERVER}
 )
 
 if (USE_ENTERPRISE)
-  target_compile_definitions(${LIB_ARANGOSERVER} PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(${LIB_ARANGOSERVER} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+  target_compile_definitions(arangoserver PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
   if (MSVC)
-    target_link_libraries(${LIB_ARANGOSERVER}
+    target_link_libraries(arangoserver
       Wldap32.lib
     )
   else()
-    target_link_libraries(${LIB_ARANGOSERVER}
+    target_link_libraries(arangoserver
       ldap
       lber
       ${OPENSSL_LIBRARIES}
@@ -675,7 +675,7 @@ add_executable(${BIN_ARANGOD}
 )
 
 target_link_libraries(${BIN_ARANGOD}
-  ${LIB_ARANGOSERVER}
+  arangoserver
 )
 
 target_compile_features(${BIN_ARANGOD} PRIVATE cxx_constexpr)
@@ -688,23 +688,23 @@ install(
 install_config(arangod)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(${BIN_ARANGOD} zlibstatic v8_build ${LIB_ARANGO_IRESEARCH})
+  add_dependencies(arangod zlibstatic v8_build ${LIB_ARANGO_IRESEARCH})
 else ()
-  add_dependencies(${BIN_ARANGOD} zlibstatic ${LIB_ARANGO_IRESEARCH})
+  add_dependencies(arangod zlibstatic ${LIB_ARANGO_IRESEARCH})
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(${BIN_ARANGOD} jemalloc)
+  add_dependencies(arangod jemalloc)
 endif ()
 
 if(MSVC)
-  target_compile_options(${LIB_ARANGOSERVER} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  target_compile_options(${BIN_ARANGOD} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arangoserver PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arangod PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
 if (DARWIN)
-  target_compile_options(${LIB_ARANGOSERVER} PRIVATE -Werror)
-  target_compile_options(${BIN_ARANGOD} PRIVATE -Werror)
+  target_compile_options(arangoserver PRIVATE -Werror)
+  target_compile_options(arangod PRIVATE -Werror)
 endif()
 
 ################################################################################
