@@ -98,7 +98,8 @@ class HashSet {
 
     const_iterator() { }
 
-    explicit const_iterator(iterator proto) : _set(proto._set), _bucket(proto._bucket) {}
+    // cppcheck-suppress noExplicitConstructor
+    /* implicit */ const_iterator(iterator proto) : _set(proto._set), _bucket(proto._bucket) {}
 
     const_iterator(const MyType* hash_set, size_t bucket) : _set(hash_set), _bucket(bucket) {}
 

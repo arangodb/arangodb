@@ -1639,7 +1639,7 @@ Result IResearchLink::remove(
   try {
     ctx->remove(documentId);
 
-    return TRI_ERROR_NO_ERROR;
+    return {TRI_ERROR_NO_ERROR};
   } catch (basics::Exception const& e) {
     return {
       e.code(),

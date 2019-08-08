@@ -115,36 +115,36 @@ class ClusterEngine final : public StorageEngine {
                                                          int& status) override;
   velocypack::Builder getReplicationApplierConfiguration(int& status) override;
   int removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
+    return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   int removeReplicationApplierConfiguration() override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
+    return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   int saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                           velocypack::Slice slice, bool doSync) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
+    return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice, bool doSync) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
+    return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
                         std::string const& keysId) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
+    return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   Result createLoggerState(TRI_vocbase_t* vocbase, velocypack::Builder& builder) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
+    return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   Result createTickRanges(velocypack::Builder& builder) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
+    return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   Result firstTick(uint64_t& tick) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
+    return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   Result lastLogger(TRI_vocbase_t& vocbase,
                     std::shared_ptr<transaction::Context> transactionContext,
                     uint64_t tickStart, uint64_t tickEnd,
                     std::shared_ptr<velocypack::Builder>& builderSPtr) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
+    return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   WalAccess const* walAccess() const override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -163,7 +163,7 @@ class ClusterEngine final : public StorageEngine {
   }
 
   Result flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) override {
-    return TRI_ERROR_NO_ERROR;
+    return {TRI_ERROR_NO_ERROR};
   }
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 

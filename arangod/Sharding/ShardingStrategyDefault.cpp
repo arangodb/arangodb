@@ -253,7 +253,7 @@ int ShardingStrategyHashBase::getResponsibleShard(arangodb::velocypack::Slice sl
 
   uint64_t hashval = hashByAttributes(slice, _sharding->shardKeys(), docComplete, res, key);
   // To improve our hash function result:
-  hashval = TRI_FnvHashBlock(hash, magicPhrase, magicLength);
+  hashval = TRI_FnvHashBlock(hashval, magicPhrase, magicLength);
   shardID = _shards[hashval % _shards.size()];
   return res;
 }
