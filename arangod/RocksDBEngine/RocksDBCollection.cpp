@@ -1358,7 +1358,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
       } 
       if (needReversal && !trx->isSingleOperationTransaction()) {
         ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex* rid) {
-          rid->remove(trx,  documentId, doc, Index::OperationMode::rollback);
+          return rid->remove(trx,  documentId, doc, Index::OperationMode::rollback);
         });
       }
       break; // no point to continue index operations, insert is failed anyway
@@ -1409,7 +1409,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
       }
       if (needReversal && !trx->isSingleOperationTransaction()) {
         ::reverseIdxOps(_indexes, it, [mthd, trx, &documentId, &doc](RocksDBIndex* rid) {
-          rid->insertInternal(trx, mthd, documentId, doc, Index::OperationMode::rollback);
+          return rid->insertInternal(trx, mthd, documentId, doc, Index::OperationMode::rollback);
         });
       }
       break;
@@ -1471,7 +1471,7 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
       }
       if (needReversal && !trx->isSingleOperationTransaction()) {
         ::reverseIdxOps(_indexes, it, [mthd, trx, &newDocumentId, &newDoc, &oldDocumentId, &oldDoc](RocksDBIndex* rid) {
-          rid->updateInternal(trx, mthd, newDocumentId, newDoc, oldDocumentId,
+          return rid->updateInternal(trx, mthd, newDocumentId, newDoc, oldDocumentId,
                                          oldDoc,  Index::OperationMode::rollback);
         });
       }
