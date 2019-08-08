@@ -526,7 +526,7 @@ void State::logEraseNoLock(
       for (auto it = ret.first; it != ret.second;) {
         if (it->second == lit->index) {
           it = _clientIdLookupTable.erase(it);
-          LOG_DEVEL << "Removing " << lit.clientId << ":" << lit.index <<
+          LOG_DEVEL << "Removing " << lit->clientId << ":" << lit->index <<
             " from _clientIdLookupTable";
         } else {
           it++;
@@ -1463,7 +1463,7 @@ std::vector<index_t> State::inquire(query_t const& query) const {
       for (auto it = _clientIdLookupTable.begin();
            it != _clientIdLookupTable.end();
            ++it) {
-        LOG_DEVEL << "_clientIdLookupTable: " << it.first << ":" << it.second;
+        LOG_DEVEL << "_clientIdLookupTable: " << it->first << ":" << it->second;
       }
     }
     // Look for the maximum index:
