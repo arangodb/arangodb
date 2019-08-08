@@ -362,6 +362,9 @@ class AgencyCommResult {
 
   ~AgencyCommResult() = default;
 
+  AgencyCommResult(AgencyCommResult&& other) noexcept;
+  AgencyCommResult& operator=(AgencyCommResult&& other) noexcept;
+
  public:
   void set(int code, std::string const& message);
 
