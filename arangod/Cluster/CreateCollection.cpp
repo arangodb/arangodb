@@ -160,7 +160,7 @@ bool CreateCollection::first() {
 
                               if (leader.empty()) {
                                 std::vector<std::string> noFollowers;
-                                col->followers()->takeOverLeadership(noFollowers);
+                                col->followers()->takeOverLeadership(noFollowers, nullptr);
                               } else {
                                 col->followers()->setTheLeader(leader);
                               }
