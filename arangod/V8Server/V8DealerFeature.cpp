@@ -657,7 +657,9 @@ void V8DealerFeature::collectGarbage() {
             context->assertLocked();
 
             TRI_GET_GLOBALS();
+            v8g->_inForcedCollect = true;
             TRI_RunGarbageCollectionV8(isolate, 1.0);
+            v8g->_inForcedCollect = false;
             hasActiveExternals = v8g->hasActiveExternals();
           }
           localContext->Exit();
@@ -1056,6 +1058,7 @@ void V8DealerFeature::cleanupLockedContext(V8Context* context) {
 
   auto isolate = context->_isolate;
   TRI_ASSERT(isolate != nullptr);
+  TRI_GET_GLOBALS();
   context->assertLocked();
 
   bool canceled = false;
@@ -1070,7 +1073,9 @@ void V8DealerFeature::cleanupLockedContext(V8Context* context) {
 
       {
         v8::Context::Scope contextScope(localContext);
+        v8g->_inForcedCollect = true;
         TRI_RunGarbageCollectionV8(isolate, availableTime);
+        v8g->_inForcedCollect = false;
       }
 
       // needs to be reset after the garbage collection
@@ -1416,7 +1421,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
     {
       v8::Context::Scope contextScope(localContext);
 
-      TRI_CreateV8Globals(isolate);
+      TRI_CreateV8Globals(isolate, id);
       context->_context.Reset(context->_isolate, localContext);
 
       if (context->_context.IsEmpty()) {
@@ -1510,6 +1515,27 @@ V8DealerFeature::Statistics V8DealerFeature::getCurrentContextNumbers() {
           _idleContexts.size(), _nrMaxContexts};
 }
 
+std::vector<V8DealerFeature::MemoryStatistics> V8DealerFeature::getCurrentMemoryNumbers() {
+  std::vector<V8DealerFeature::MemoryStatistics> result;
+  {
+    CONDITION_LOCKER(guard, _contextCondition);
+    result.reserve(_contexts.size());
+    for (auto oneCtx : _contexts) {
+      auto isolate = oneCtx->_isolate;
+      TRI_GET_GLOBALS();
+      result.push_back(MemoryStatistics
+                       {
+                        v8g->_id,
+                        v8g->_lastMaxTime,
+                        v8g->_countOfTimes,
+                        v8g->_heapMax,
+                        v8g->_heapLow
+                       });
+    }
+  }
+  return result;
+}
+
 bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
                                                   std::string const& file, V8Context* context,
                                                   VPackBuilder* builder) {
@@ -1584,6 +1610,7 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
     V8ContextEntryGuard contextGuard(context);
 
     v8::HandleScope scope(isolate);
+    TRI_GET_GLOBALS();
 
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
     localContext->Enter();
@@ -1595,6 +1622,7 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
           [&isolate](TRI_action_t* action) { action->visit(isolate); });
 
       double availableTime = 30.0;
+      v8g->_inForcedCollect = true;
 
       if (RUNNING_ON_VALGRIND) {
         // running under Valgrind
@@ -1610,6 +1638,7 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
       } else {
         TRI_RunGarbageCollectionV8(isolate, availableTime);
       }
+      v8g->_inForcedCollect = false;
 
       TRI_GET_GLOBALS();
 
