@@ -59,6 +59,6 @@ if test "$NODE_NAME" != ""; then
     | sed -e "s:file=\":file=\"/home/jenkins/$NODE_NAME/oskar/work/ArangoDB/:g"
     > cppcheck.xml.tmp
   mv cppcheck.xml.tmp cppcheck.xml
-end
+fi
 
 exit $status
