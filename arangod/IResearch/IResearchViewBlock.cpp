@@ -602,7 +602,7 @@ bool IResearchViewUnorderedBlock::next(ReadContext& ctx, size_t limit) {
     }
 
     // If some documents wasn`t found in collection (index is eventually consistent!),
-    // we could yeld less than <limit> documents from <limit> keys read.
+    // we could yield less than <limit> documents from <limit> keys read.
     // We should check if iterator is exhausted, if not - iterate more
     if (!irs::type_limits<irs::type_t::doc_id_t>::eof(_itr->value())) {
       continue;
