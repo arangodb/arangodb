@@ -402,6 +402,7 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
 // Insert a GraphNode that needs to generate TraverserEngines on
 // the DBServers. The GraphNode itself will retain on the coordinator.
 void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node) {
+  node->prepareOptions();
   _shardLocking.addNode(node);
   auto const& vCols = node->vertexColls();
   if (vCols.empty()) {

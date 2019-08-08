@@ -240,6 +240,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
     // Create an internal GatherNode, that will connect to all execution
     // steams of the query
     auto plan = lastNode->plan();
+    TRI_ASSERT(plan == _sinkNode->plan());
     // Clone the sink node, we do not need dependencies (second bool)
     // And we do not need variables
     GatherNode* internalGather =
@@ -250,6 +251,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
     ScatterNode* internalScatter = nullptr;
     if (lastIsRemote) {
       TRI_ASSERT(_globalScatter != nullptr);
+      TRI_ASSERT(plan == _globalScatter->plan());
       internalScatter =
           ExecutionNode::castTo<ScatterNode*>(_globalScatter->clone(plan, false, false));
       internalScatter->clearClients();

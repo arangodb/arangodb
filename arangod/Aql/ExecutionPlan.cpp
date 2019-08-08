@@ -340,9 +340,8 @@ ExecutionPlan* ExecutionPlan::instantiateFromVelocyPack(Ast* ast, VPackSlice con
 /// @brief clone an existing execution plan
 ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
   auto plan = std::make_unique<ExecutionPlan>(ast);
-
-  plan->_root = _root->clone(plan.get(), true, false);
   plan->_nextId = _nextId;
+  plan->_root = _root->clone(plan.get(), true, false);
   plan->_appliedRules = _appliedRules;
   plan->_isResponsibleForInitialize = _isResponsibleForInitialize;
   plan->_nestingLevel = _nestingLevel;
@@ -357,7 +356,9 @@ ExecutionPlan* ExecutionPlan::clone() { return clone(_ast); }
 ///   keep the memory of the plan on the query object specified.
 ExecutionPlan* ExecutionPlan::clone(Query const& query) {
   auto otherPlan = std::make_unique<ExecutionPlan>(query.ast());
-
+  // Clone nextID, this is required, if we need to create Nodes after
+  // this clone;
+  otherPlan->_nextId = _nextId;
   for (auto const& it : _ids) {
     auto clonedNode = it.second->clone(otherPlan.get(), false, true);
     otherPlan->registerNode(clonedNode);
@@ -798,6 +799,7 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
 /// @brief register a node with the plan
 ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) {
   TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->plan() == this);
   TRI_ASSERT(node->id() > 0);
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
@@ -808,6 +810,7 @@ ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) 
 /// @brief register a node with the plan, will delete node if addition fails
 ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->plan() == this);
   TRI_ASSERT(node->id() > 0);
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
@@ -2301,6 +2304,11 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
     }
 
     ret = ExecutionNode::fromVPackFactory(this, it);
+    // We need to adjust nextId here, otherwise we cannot add new nodes to this
+    // plan anymore
+    if (_nextId <= ret->id()) {
+      _nextId = ret->id() + 1;
+    }
     registerNode(ret);
 
     // we have to count all nodes by their type here, because our caller
