@@ -120,6 +120,9 @@ typedef std::vector<SortElement> SortElementVector;
 class ExecutionNode {
   /// @brief node type
   friend class ExecutionBlock;
+  // We need this to replan the registers within the QuerySnippet.
+  // otherwise the local gather node might delete the sorting register...
+  friend class QuerySnippet;
 
  public:
   enum NodeType : int {
@@ -405,7 +408,7 @@ class ExecutionNode {
   }
 
   /// @brief setVarsUsedLater
-  void setVarsUsedLater(arangodb::HashSet<Variable const*>& v) {
+  void setVarsUsedLater(arangodb::HashSet<Variable const*> const& v) {
     _varsUsedLater = v;
   }
 
