@@ -239,6 +239,11 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
       return false;
     }
     systemCollections.push_back(StaticStrings::GraphsCollection);
+    if (StatisticsFeature::enabled()) {
+      systemCollections.push_back(StaticStrings::StatisticsCollection);
+      systemCollections.push_back(StaticStrings::Statistics15Collection);
+      systemCollections.push_back(StaticStrings::StatisticsRawCollection);
+    }
   } else {
     // we will use GraphsCollection for distributeShardsLike
     auto const res =
@@ -246,12 +251,6 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
     if (!res.ok()) {
       return false;
     }
-  }
-
-  if (StatisticsFeature::enabled()) {
-    systemCollections.push_back(StaticStrings::StatisticsCollection);
-    systemCollections.push_back(StaticStrings::Statistics15Collection);
-    systemCollections.push_back(StaticStrings::StatisticsRawCollection);
   }
 
   systemCollections.push_back(StaticStrings::AqlFunctionsCollection);
@@ -322,9 +321,10 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
 bool createSystemCollectionsIndices(TRI_vocbase_t& vocbase) {
   if (vocbase.isSystem()) {
     createUsersIndex(vocbase);
-  }
-  if (StatisticsFeature::enabled()) {
-    createStatisticsIndices(vocbase);
+
+    if (StatisticsFeature::enabled()) {
+      createStatisticsIndices(vocbase);
+    }
   }
   upgradeGeoIndexes(vocbase);
   createAppsIndex(vocbase);
