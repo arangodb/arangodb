@@ -90,7 +90,7 @@ void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> con
         oldRebootId = newRebootId;
       }
     }
-  }
+  });
 
   // Look whether there are servers that are still unknown
   // (note: we could shortcut this and return if the sizes are equal, as at
