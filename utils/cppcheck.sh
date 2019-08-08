@@ -1,9 +1,8 @@
 #!/usr/bin/env sh
-rm -f cppcheck.log cppcheck.tmp
-trap "rm -rf cppcheck.tmp" EXIT
-touch cppcheck.tmp
+rm -f cppcheck.xml
 
 cppcheck $* \
+  --xml --xml-version=2 \
   -I arangod \
   -I arangosh \
   -I build/arangod \
@@ -30,9 +29,12 @@ cppcheck $* \
   --suppress="*:lib/Futures/function2/function2.hpp" \
   --suppress="*:lib/V8/v8-json.ll" \
   --suppress="*:lib/Zip/*" \
+  --suppress="constStatement" \
   --suppress="duplicateCondition" \
   --suppress="duplicateConditionalAssign" \
+  --suppress="internalAstError" \
   --suppress="mismatchingContainerExpression" \
+  --suppress="missingInclude" \
   --suppress="noExplicitConstructor:lib/Futures/Future.h" \
   --suppress="passedByValue" \
   --suppress="redundantAssignInSwitch" \
@@ -44,15 +46,11 @@ cppcheck $* \
   --suppress="unreadVariable" \
   --suppress="useStlAlgorithm" \
   --suppress="variableScope" \
-  arangod/ arangosh/ lib/ enterprise/ 2>> cppcheck.tmp
+  arangod/ arangosh/ lib/ enterprise/ 2> cppcheck.xml
+status=$?
 
-cat cppcheck.tmp \
-  | fgrep -v "Syntax Error: AST broken, binary operator '=' doesn't have two operands" \
-  | fgrep -v "Found suspicious operator ','" \
-  | fgrep -v "SymbolDatabase bailout; unhandled code" \
-  | fgrep -v "Cppcheck cannot find all the include files" \
-  | sort \
-  | uniq > cppcheck.log
-cat cppcheck.log
+cat cppcheck.xml \
+  | egrep "<error |<location|</error>" cppcheck.xml \
+  | sed -e 's:^.*msg="\([^"]*\)".*:\1:' -e 's:^.*file="\([^"]*\)".*line="\([^"]*\)".*:    \1\:\2:' -e 's:&apos;:":g' -e 's:</error>::'
 
-test ! -s cppcheck.log
+exit $status
