@@ -53,11 +53,11 @@ cat cppcheck.xml \
   | egrep "<error |<location|</error>" cppcheck.xml \
   | sed -e 's:^.*msg="\([^"]*\)".*:\1:' -e 's:^.*file="\([^"]*\)".*line="\([^"]*\)".*:    \1\:\2:' -e 's:&apos;:":g' -e 's:</error>::'
 
-if test "$NODE_NAME" != ""
+if test "$NODE_NAME" != ""; then
   cat cppcheck.xml \
     | sed -e "s:file=\":file=\"/home/jenkins/$NODE_NAME/oskar/work/ArangoDB/:g"
     > cppcheck.xml.tmp
   mv cppcheck.xml.tmp cppcheck.xml
-fi
+end
 
 exit $status
