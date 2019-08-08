@@ -879,6 +879,9 @@ function iResearchAqlTestSuite () {
     },
 
     testViewWithInterruptedRemoves : function() {
+      if (isServer && internal.debugCanUseFailAt()) {
+        internal.debugClearFailAt();
+      }
       let docsCollectionName = "docs";
       let docsViewName  = "docs_view";
       try { db._drop(docsCollectionName); } catch(e) {}
