@@ -104,7 +104,7 @@ is returned if an error occurred while assembling the response.
 
 Empty collection:
 
-@EXAMPLE_ARANGOSH_RUN{RestReplicationDumpEmpty}
+@EXAMPLE_ARANGOSH_RUN{RestReplicationDumpEmpty_mmfiles}
     db._drop("testCollection");
     var c = db._create("testCollection");
     var url = "/_api/replication/dump?collection=" + c.name();
@@ -118,7 +118,7 @@ Empty collection:
 
 Non-empty collection *(One JSON document per line)*:
 
-@EXAMPLE_ARANGOSH_RUN{RestReplicationDump}
+@EXAMPLE_ARANGOSH_RUN{RestReplicationDump_mmfiles}
     db._drop("testCollection");
     var c = db._create("testCollection");
     c.save({ "test" : true, "a" : "abc", "_key" : "abcdef" });
