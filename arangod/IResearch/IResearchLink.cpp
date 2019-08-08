@@ -1103,11 +1103,11 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
   if (encrypt) {
     options.column_info = [](const irs::string_ref& name) -> irs::column_info {
       // do not waste resources to encrypt primary key column
-      return { irs::compression::lz4::type(), DocumentPrimaryKey::PK() != name };
+      return { irs::compression::lz4::type(), {}, DocumentPrimaryKey::PK() != name };
     };
   } else {
     options.column_info = [](const irs::string_ref& /*name*/) -> irs::column_info {
-      return { irs::compression::lz4::type(), false };
+      return { irs::compression::lz4::type(), {}, false };
     };
   }
 
