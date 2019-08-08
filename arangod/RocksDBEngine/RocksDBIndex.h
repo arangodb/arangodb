@@ -90,6 +90,14 @@ class RocksDBIndex : public Index {
   Result remove(transaction::Methods* trx, LocalDocumentId const& documentId,
                 arangodb::velocypack::Slice const& doc, OperationMode mode) override {
     auto mthds = RocksDBTransactionState::toMethods(trx);
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    TRI_IF_FAILURE("BreakHashIndexRemove") {
+      if (type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+        // intentionally  break index removal
+        return Result(TRI_ERROR_INTERNAL, "BreakHashIndexRemove failure point triggered");
+      }
+    }
+#endif
     return removeInternal(trx, mthds, documentId, doc, mode);
   }
 
@@ -131,6 +139,9 @@ class RocksDBIndex : public Index {
   virtual RocksDBCuckooIndexEstimator<uint64_t>* estimator();
   virtual void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>);
   virtual void recalculateEstimates() {}
+  
+  /// if index needs explicit reversal and wouldn`t be reverted by rocksdb rollback to safepoint
+  virtual bool needsReversal() const { return false; } 
 
  protected:
   RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,

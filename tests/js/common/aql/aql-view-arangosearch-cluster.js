@@ -32,6 +32,7 @@ var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var ERRORS = require("@arangodb").errors;
 var deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+var internal = require('internal');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -795,7 +796,134 @@ function IResearchAqlTestSuite(args) {
 
       db._drop(docsCollectionName);
       db._dropView(docsViewName);
-    }
+    },
+
+    testViewWithInterruptedUpdates : function() {
+      let docsCollectionName = "docs";
+      let docsViewName  = "docs_view";
+      try { db._drop(docsCollectionName); } catch(e) {}
+      try { db._dropView(docsViewName); } catch(e) {}
+      let docsCollection = db._create(docsCollectionName);
+      let docsView = db._createView(docsViewName, "arangosearch", {
+        "links": {
+            "docs": {
+              "analyzers": ["identity"],
+              "fields": {},
+              "includeAllFields": true,
+              "storeValues": "id",
+              "trackListPositions": false
+            }
+          } ,
+        consolidationIntervalMsec:0,
+        cleanupIntervalStep:0
+      });
+
+      let docs = [];
+      for (let i = 0; i < 10; i++) {
+        let docId = "TestDoc" + i;
+        docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
+      }
+      docsCollection.save(docs);
+      // sanity check. Should be in sync
+      assertEqual(docs.length, db._query("FOR u IN " + docsCollectionName + 
+                                         " COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
+      assertEqual(docs.length, db._query("FOR u IN " + docsViewName + 
+                                        " OPTIONS { waitForSync : true }  COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
+
+
+      // add another index (to make it fail after arangosearch update passed)
+      docsCollection.ensureIndex({type: "hash", unique: true, fields:["indexField"]});
+
+      let docsUpdateIds = [];
+      let docsUpdateData = [];
+      docsUpdateIds.push(docs[0]._id);
+      docsUpdateData.push({"indexField": 999}); // valid
+      docsUpdateIds.push(docs[1]._id);
+      docsUpdateData.push({"indexField": docs[2].indexField}); // will be conflict
+      docsCollection.update(docsUpdateIds, docsUpdateData);
+
+      // documents should stay consistent
+      let collectionDocs =  db._query("FOR d IN " + docsCollectionName + " SORT d._id ASC RETURN d").toArray();
+      let viewDocs = db._query("FOR  d IN " + docsViewName + " OPTIONS { waitForSync : true }  SORT d._id ASC RETURN d").toArray();
+      assertEqual(collectionDocs.length, viewDocs.length);
+      for(let i = 0; i < viewDocs.length; i++) {
+        assertEqual(viewDocs[i]._id, collectionDocs[i]._id);
+      }
+      db._drop(docsCollectionName);
+      db._dropView(docsViewName);
+    },
+
+    testViewWithInterruptedRemoves : function() {
+      let docsCollectionName = "docs";
+      let docsViewName  = "docs_view";
+      try { db._drop(docsCollectionName); } catch(e) {}
+      try { db._dropView(docsViewName); } catch(e) {}
+      let docsCollection = db._create(docsCollectionName);
+      let docsView = db._createView(docsViewName, "arangosearch", {
+        "links": {
+            "docs": {
+              "analyzers": ["identity"],
+              "fields": {},
+              "includeAllFields": true,
+              "storeValues": "id",
+              "trackListPositions": false
+            }
+          } ,
+        consolidationIntervalMsec:0,
+        cleanupIntervalStep:0
+      });
+
+      let docs = [];
+      for (let i = 0; i < 10; i++) {
+        let docId = "TestDoc" + i;
+        docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
+      }
+      docsCollection.save(docs);
+      // sanity check. Should be in sync
+      assertEqual(docs.length, db._query("FOR u IN " + docsCollectionName + 
+                                         " COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
+      assertEqual(docs.length, db._query("FOR u IN " + docsViewName + 
+                                        " OPTIONS { waitForSync : true }  COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
+
+
+      // add another index (to make it fail after arangosearch remove passed)
+      docsCollection.ensureIndex({type: "hash", unique: true, fields:["indexField"]});
+
+      // check removes are sane. Both server and client
+      { 
+        let docsRemoveIds = [];
+        docsRemoveIds.push(docs[0]._id);
+        docsRemoveIds.push(docs[1]._id);
+        docsCollection.remove(docsRemoveIds); 
+        // documents should stay consistent
+        let collectionDocs =  db._query("FOR d IN " + docsCollectionName + " SORT d._id ASC RETURN d").toArray();
+        let viewDocs = db._query("FOR  d IN " + docsViewName + " OPTIONS { waitForSync : true }  SORT d._id ASC RETURN d").toArray();
+        assertEqual(collectionDocs.length, viewDocs.length);
+        for(let i = 0; i < viewDocs.length; i++) {
+          assertEqual(viewDocs[i]._id, collectionDocs[i]._id);
+        }
+      }
+      // on server make full check with failures
+      if (typeof arango === 'undefined' && internal.debugCanUseFailAt()) { 
+        let docsRemoveIds = [];
+        docsRemoveIds.push(docs[2]._id);
+        docsRemoveIds.push(docs[3]._id);
+        internal.debugSetFailAt('BreakHashIndexRemove'); 
+        docsCollection.remove(docsRemoveIds); 
+        internal.debugRemoveFailAt('BreakHashIndexRemove');
+        // documents should stay consistent
+        let collectionDocs =  db._query("FOR d IN " + docsCollectionName + " SORT d._id ASC RETURN d").toArray();
+        let viewDocs = db._query("FOR  d IN " + docsViewName + " OPTIONS { waitForSync : true }  SORT d._id ASC RETURN d").toArray();
+        assertEqual(collectionDocs.length, docs.length - 2); // removes should not pass if failpoint worked!
+        assertEqual(collectionDocs.length, viewDocs.length);
+        for(let i = 0; i < viewDocs.length; i++) {
+          assertEqual(viewDocs[i]._id, collectionDocs[i]._id);
+        }
+      }
+     
+      db._drop(docsCollectionName);
+      db._dropView(docsViewName);
+    },
   };
 }
 
