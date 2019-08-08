@@ -47,7 +47,9 @@ class CallbackGuard {
   // Allows only move semantics and no copy semantics.
 
   CallbackGuard();
-  // The passed callback should not throw exceptions, they will not be caught!
+  // IMPORTANT NOTE:
+  // The passed callback should not throw exceptions, they will not be caught
+  // here, but thrown by the destructor!
   explicit CallbackGuard(std::function<void(void)> callback);
   ~CallbackGuard();
 
