@@ -1,3 +1,10 @@
+v3.5.1 (XXXX-XX-XX)
+-------------------
+
+* Hide MMFiles-specific information in web UI (in detail view of a collection) when the
+  storage engine is not MMFiles or when the information is not available.
+
+
 v3.5.0-rc.7 (2019-08-01)
 ------------------------
 
