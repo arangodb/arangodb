@@ -75,6 +75,7 @@ UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescriptio
     error << "followersToDrop must be specified. ";
   }
   TRI_ASSERT(desc.has(FOLLOWERS_TO_DROP));
+  TRI_ASSERT(desc.has(OLD_CURRENT_COUNTER));
 
   if (!error.str().empty()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << "UpdateCollection: " << error.str();
@@ -94,7 +95,7 @@ void sendLeaderChangeRequests(std::vector<ServerID> const& currentServers,
     return;
   }
 
-  std::string const& sid = ServerState::instance()->getId();
+  std::string const& sid = arangodb::ServerState::instance()->getId();
 
 
   VPackBuilder bodyBuilder;
@@ -116,7 +117,8 @@ void sendLeaderChangeRequests(std::vector<ServerID> const& currentServers,
     requests.emplace_back("server:" + srv, RequestType::PUT, url, body);
   }
 
-  cc->performRequests(requests, 3.0, Logger::COMMUNICATION, false);
+  size_t nrDone;
+  cc->performRequests(requests, 3.0, nrDone, Logger::COMMUNICATION, false);
 
   // This code intentionally ignores all errors
   realInsyncFollowers = std::make_shared<std::vector<ServerID>>();
@@ -131,7 +133,9 @@ void sendLeaderChangeRequests(std::vector<ServerID> const& currentServers,
 }
 
 void handleLeadership(LogicalCollection& collection, std::string const& localLeader,
-                      std::string const& plannedLeader, std::string const& followersToDrop) {
+                      std::string const& plannedLeader, std::string const& followersToDrop,
+                      std::string const& databaseName,
+                      uint64_t oldCounter, MaintenanceFeature& feature) {
   auto& followers = collection.followers();
 
   if (plannedLeader.empty()) {   // Planned to lead
@@ -208,6 +212,8 @@ bool UpdateCollection::first() {
   auto const& localLeader = _description.get(LOCAL_LEADER);
   auto const& followersToDrop = _description.get(FOLLOWERS_TO_DROP);
   auto const& props = properties();
+  auto const& oldCounterString = _description.get(OLD_CURRENT_COUNTER);
+  uint64_t oldCounter = basics::StringUtils::uint64(oldCounterString);
 
   try {
     DatabaseGuard guard(database);
@@ -223,7 +229,8 @@ bool UpdateCollection::first() {
           // resignation case is not handled here, since then
           // ourselves does not appear in shards[shard] but only
           // "_" + ourselves.
-          handleLeadership(*coll, localLeader, plannedLeader, followersToDrop);
+          handleLeadership(*coll, localLeader, plannedLeader, followersToDrop,
+            vocbase->name(), oldCounter, feature());
           _result = Collections::updateProperties(*coll, props, false);  // always a full-update
 
           if (!_result.ok()) {

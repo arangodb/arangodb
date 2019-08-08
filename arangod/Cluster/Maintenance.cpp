@@ -245,7 +245,8 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
                 {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
                 {SERVER_ID, serverId},
                 {LOCAL_LEADER, lcol.get(THE_LEADER).copyString()},
-                {FOLLOWERS_TO_DROP, followersToDropString}},
+                {FOLLOWERS_TO_DROP, followersToDropString},
+                {OLD_CURRENT_COUNTER, std::to_string(feature.getCurrentCounter())}},
             HIGHER_PRIORITY, properties));
       } else {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
@@ -624,7 +625,7 @@ arangodb::Result arangodb::maintenance::phaseOne(VPackSlice const& plan,
                                                  VPackBuilder& report) {
 
   arangodb::Result result;
-  
+
 
   report.add(VPackValue(PHASE_ONE));
   {

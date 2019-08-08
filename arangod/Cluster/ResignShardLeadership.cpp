@@ -131,3 +131,5 @@ bool ResignShardLeadership::first() {
   notify();
   return false;
 }
+
+std::string const ResignShardLeadership::LeaderNotYetKnownString = "LEADER_NOT_YET_KNOWN";
