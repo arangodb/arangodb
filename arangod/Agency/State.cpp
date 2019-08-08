@@ -303,7 +303,7 @@ void State::logEmplaceBackNoLock(log_t&& l) {
     try {
       _clientIdLookupTable.emplace(  // keep track of client or die
         std::pair<std::string, index_t>{l.clientId, l.index});
-      LOG_DEVEL << "Inserting " << l.cliendId << ":" << l.index <<
+      LOG_DEVEL << "Inserting " << l.clientId << ":" << l.index <<
         " into _clientIdLookupTable";
     } catch (...) {
       LOG_TOPIC("f5ade", FATAL, Logger::AGENCY)
@@ -526,7 +526,7 @@ void State::logEraseNoLock(
       for (auto it = ret.first; it != ret.second;) {
         if (it->second == lit->index) {
           it = _clientIdLookupTable.erase(it);
-          LOG_DEVEL << "Removing " << lit.cliendId << ":" << lit.index <<
+          LOG_DEVEL << "Removing " << lit.clientId << ":" << lit.index <<
             " from _clientIdLookupTable";
         } else {
           it++;
