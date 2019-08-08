@@ -4054,13 +4054,13 @@ ClusterInfo::ServersKnown::ServersKnown(VPackSlice const serversKnownSlice,
   TRI_ASSERT(serversKnownSlice.isNone() || serversKnownSlice.isObject());
   if (serversKnownSlice.isObject()) {
     for (auto const it : VPackObjectIterator(serversKnownSlice)) {
-      std::string serverId = it.key.copyString();
       VPackSlice const knownServerSlice = it.value;
       TRI_ASSERT(knownServerSlice.isObject());
       if (knownServerSlice.isObject()) {
         VPackSlice const rebootIdSlice = knownServerSlice.get("rebootId");
         TRI_ASSERT(rebootIdSlice.isInteger());
         if (rebootIdSlice.isInteger()) {
+          std::string serverId = it.key.copyString();
           auto const rebootId = RebootId{rebootIdSlice.getNumericValue<uint64_t>()};
           _serversKnown.emplace(std::move(serverId), rebootId);
         }
