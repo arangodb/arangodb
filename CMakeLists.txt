@@ -4,19 +4,7 @@
 # General
 # ------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 3.2)
-
-if (POLICY CMP0048)
-  cmake_policy(SET CMP0048 NEW)
-endif ()
-
-if (POLICY CMP0037)
-  cmake_policy(SET CMP0037 NEW)
-endif ()
-
-if (POLICY CMP0017)
-  cmake_policy(SET CMP0017 NEW)
-endif ()
+cmake_minimum_required(VERSION 3.9)
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release
@@ -275,6 +263,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(STATIC_EXECUTABLES "produce static executables" OFF)
 if (STATIC_EXECUTABLES)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 endif()
 
 # enable enterprise features
