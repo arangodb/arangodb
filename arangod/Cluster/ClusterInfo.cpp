@@ -1399,12 +1399,22 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
 // Build the VPackSlice that contains the `isBuilding` entry
 Result ClusterInfo::buildIsBuildingSlice(methods::CreateDatabaseInfo const& database, VPackBuilder& builder) {
   database.buildSlice(builder);
+
   builder.add(StaticStrings::DatabaseCoordinator,
               VPackValue(ServerState::instance()->getId()));
   builder.add(StaticStrings::DatabaseCoordinatorRebootId,
               VPackValue(ServerState::instance()->getRebootId()));
   builder.add(StaticStrings::DatabaseIsBuilding, VPackValue(true));
 
+  builder.close();
+
+  return Result();
+}
+
+// Build the VPackSlice that does not contain  the `isBuilding` entry
+Result ClusterInfo::buildFinalSlice(methods::CreateDatabaseInfo const& database, VPackBuilder& builder) {
+  database.buildSlice(builder);
+  builder.close();
   return Result();
 }
 
@@ -1580,7 +1590,7 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(methods::CreateDatabaseInf
   buildIsBuildingSlice(database, pcBuilder);
 
   VPackBuilder entryBuilder;
-  database.buildSlice(entryBuilder);
+  buildFinalSlice(database, entryBuilder);
 
   AgencyWriteTransaction trx(
       {AgencyOperation("Plan/Databases/" + database.getName(),
