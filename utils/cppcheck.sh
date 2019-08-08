@@ -52,7 +52,7 @@ status=$?
 
 cat cppcheck.xml \
   | egrep "<error |<location|</error>" cppcheck.xml \
-  | sed -e 's:^.*msg="\([^"]*\)".*:\1:' -e 's:^.*file="\([^"]*\)".*line="\([^"]*\)".*:    \1\:\2:' -e 's:&apos;:":g' -e 's:</error>::'
+  | sed -e 's:^.*msg="\([^"]*\)".*:\1:' -e 's:^.*file="\([^"]*\)".*line="\([^"]*\)".*:    \1\:\2:' -e 's:&apos;:":g' -e 's:&gt;:>:g' -e 's:&lt;:<:g' -e 's:</error>::'
 
 cat cppcheck.xml \
   | sed -e "s:file=\":file=\"`pwd`/:g"
