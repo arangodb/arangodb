@@ -34,6 +34,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/system-compiler.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
 #include "Scheduler/Scheduler.h"

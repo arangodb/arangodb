@@ -26,6 +26,7 @@
 #include <chrono>
 #include <thread>
 
+#include "Basics/debugging.h"
 #include "Futures/Exceptions.h"
 #include "Futures/Promise.h"
 #include "Futures/SharedState.h"

@@ -25,7 +25,9 @@
 #ifndef ARANGOD_SCHEDULER_SCHEDULER_H
 #define ARANGOD_SCHEDULER_SCHEDULER_H 1
 
+#include <atomic>
 #include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <queue>
 

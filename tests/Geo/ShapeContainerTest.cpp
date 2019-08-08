@@ -33,6 +33,7 @@
 #include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
 #include "Geo/ShapeContainer.h"
+#include "Geo/Shapes.h"
 
 #include <iostream>
 

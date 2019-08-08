@@ -23,23 +23,36 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SimpleHttpClient.h"
+#include <stddef.h>
+#include <chrono>
+#include <cstdint>
+#include <exception>
+#include <thread>
+#include <utility>
 
-#include "Basics/ScopeGuard.h"
-#include "Basics/StringUtils.h"
-#include "ApplicationFeatures/CommunicationPhase.h"
-#include "Logger/Logger.h"
-#include "Rest/HttpResponse.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
+#include <boost/algorithm/string/predicate.hpp>
 
-#include <boost/algorithm/string.hpp>
-
+#include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <chrono>
-#include <thread>
+#include "SimpleHttpClient.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationPhase.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
+#include "Basics/system-compiler.h"
+#include "Basics/system-functions.h"
+#include "Endpoint/Endpoint.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "Rest/GeneralResponse.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -591,7 +604,7 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
 
   if (method != rest::RequestType::GET) {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Content-Length: "));
-    _writeBuffer.appendInteger(bodyLength);
+    _writeBuffer.appendInteger(static_cast<uint64_t>(bodyLength));
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
   } else {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));

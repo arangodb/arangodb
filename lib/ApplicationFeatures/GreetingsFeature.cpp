@@ -20,8 +20,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <string>
+
 #include "GreetingsFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Rest/Version.h"
 
 namespace arangodb {

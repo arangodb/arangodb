@@ -24,12 +24,13 @@
 #ifndef ARANGOD_AQL_QUERY_LIST_H
 #define ARANGOD_AQL_QUERY_LIST_H 1
 
+#include <cmath>
+#include <list>
+
 #include "Aql/QueryExecutionState.h"
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"
-
-#include <list>
 
 struct TRI_vocbase_t;
 

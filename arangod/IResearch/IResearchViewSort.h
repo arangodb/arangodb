@@ -25,6 +25,7 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_VIEW_SORT_H 1
 
 #include "Basics/AttributeNameParser.h"
+#include "Basics/debugging.h"
 
 #include <velocypack/Slice.h>
 

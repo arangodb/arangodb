@@ -24,6 +24,8 @@
 #define ARANGOD_FUTURES_TRY_H 1
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
+#include "Basics/system-compiler.h"
 #include "Futures/backports.h"
 
 #include <exception>

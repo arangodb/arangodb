@@ -899,7 +899,73 @@ function IResearchFeatureDDLTestSuite () {
         assertEqual(i, r.z);
       });
     },
+    testLinkWithAnalyzerFromOtherDb: function() {
+      let databaseNameAnalyzer = "testDatabaseAnalyzer";
+      let databaseNameView = "testDatabaseView";
+      let tmpAnalyzerName = "TmpIdentity";
+      let systemAnalyzerName = "SystemIdentity";
+      db._useDatabase("_system");
+      try { db._dropDatabase(databaseNameAnalyzer);} catch(e) {}
+      try { db._dropDatabase(databaseNameView);} catch(e) {}
+      analyzers.save(systemAnalyzerName, "identity");
+      db._createDatabase(databaseNameAnalyzer);
+      db._createDatabase(databaseNameView);
+      db._useDatabase(databaseNameAnalyzer);
+      let tmpIdentity = analyzers.save(tmpAnalyzerName, "identity");
+      assertTrue(tmpIdentity != null);
+      tmpIdentity = undefined;
+      db._useDatabase(databaseNameView);
+      db._create("FOO");
+      try {
+        db._createView("FOO_view", "arangosearch", {links:{"FOO":{analyzers:[databaseNameAnalyzer + "::" + tmpAnalyzerName]}}});
+        fail();
+      } catch(e) {
+        assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                    e.errorNum);
+      }
+      // but cross-db usage of system analyzers is ok
+      db._createView("FOO_view", "arangosearch", {links:{"FOO":{analyzers:["::" + systemAnalyzerName]}}});
+      db._createView("FOO_view2", "arangosearch", {links:{"FOO":{analyzers:["_system::" + systemAnalyzerName]}}});
 
+      db._useDatabase("_system");
+      db._dropDatabase(databaseNameAnalyzer);
+      db._dropDatabase(databaseNameView);
+      analyzers.remove(systemAnalyzerName, true);
+    },
+    // Commented as this situation is not documented (user should not do this), will be adressed later
+    //testLinkWithAnalyzerFromOtherDbByAnalyzerDefinitions: function() {
+    //  let databaseNameAnalyzer = "testDatabaseAnalyzer";
+    //  let databaseNameView = "testDatabaseView";
+    //
+    //  db._useDatabase("_system");
+    //  try { db._dropDatabase(databaseNameAnalyzer);} catch(e) {}
+    //  try { db._dropDatabase(databaseNameView);} catch(e) {}
+    //  db._createDatabase(databaseNameAnalyzer);
+    //  db._createDatabase(databaseNameView);
+    //  db._useDatabase(databaseNameAnalyzer);
+    //  db._useDatabase(databaseNameView);
+    //  db._create("FOO");
+    //  try {
+    //    db._createView("FOO_view", "arangosearch", 
+    //      {
+    //        links:{
+    //          "FOO":{ 
+    //            analyzerDefinitions:[{name:databaseNameAnalyzer + "::TmpIdentity", type: "identity"}],
+    //            analyzers:[databaseNameAnalyzer + "::TmpIdentity"]
+    //          }
+    //        }
+    //      });
+    //    fail();
+    //  } catch(e) {
+    //    // analyzerDefinitions should be ignored
+    //    // analyzer should not be found
+    //    assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code, 
+    //                e.errorNum);
+    //  }
+    //  db._useDatabase("_system");
+    //  db._dropDatabase(databaseNameAnalyzer);
+    //  db._dropDatabase(databaseNameView);
+    //},
     ////////////////////////////////////////////////////////////////////////////
     /// @brief test create & drop of a view with a link.
     /// Regression test for arangodb/backlog#486.
@@ -930,7 +996,7 @@ function IResearchFeatureDDLTestSuite () {
     testLeftViewInDroppedDatabase: function () {
       const dbName = 'TestDB';
       const viewName = 'TestView';
-
+      db._useDatabase("_system");
       try { db._dropDatabase(dbName); } catch (e) {}
 
       db._createDatabase(dbName);

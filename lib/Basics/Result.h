@@ -23,8 +23,9 @@
 #ifndef ARANGODB_BASICS_RESULT_H
 #define ARANGODB_BASICS_RESULT_H 1
 
+#include <iosfwd>
 #include <string>
-#include "Basics/voc-errors.h"
+#include <utility>
 
 namespace arangodb {
 class Result final {
@@ -102,12 +103,18 @@ class Result final {
   bool isNot(int errorNumber) const;
 
   /**
+   * @brief  Reset to ok, error message is cleared.
+   * @return            Reference to ourselves
+   */
+  Result& reset();
+
+  /**
    * @brief  Reset to specific error number.
    *         If ok, error message is cleared.
    * @param errorNumber Said specific error number
    * @return            Reference to ourselves
    */
-  Result& reset(int errorNumber = TRI_ERROR_NO_ERROR);
+  Result& reset(int errorNumber);
 
   /**
    * @brief  Reset to specific error number with message.
@@ -160,7 +167,7 @@ class Result final {
 
   template <typename S>
   void appendErrorMessage(S&& msg) {
-    if (_errorMessage.empty() && _errorNumber != TRI_ERROR_NO_ERROR) {
+    if (_errorMessage.empty() && fail()) {
       _errorMessage.append(errorMessage());
     }
     _errorMessage.append(std::forward<S>(msg));

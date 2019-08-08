@@ -43,6 +43,7 @@
 #include "Basics/conversions.h"
 #include "Basics/fpconv.h"
 #include "Basics/hashes.h"
+#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"

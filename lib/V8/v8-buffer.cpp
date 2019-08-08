@@ -50,6 +50,7 @@
 
 #include <v8-profiler.h>
 
+#include "Basics/debugging.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 

@@ -25,6 +25,9 @@
 #include "Store.h"
 
 #include "Basics/StringUtils.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>

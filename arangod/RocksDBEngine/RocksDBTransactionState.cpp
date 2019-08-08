@@ -25,10 +25,13 @@
 
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
+#include "Basics/system-compiler.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Manager.h"
 #include "Cache/Transaction.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -100,7 +103,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
 
   if (nestingLevel() == 0) { // result is valid
     // register with manager
-    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr);
+    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr, isReadOnlyTransaction());
     updateStatus(transaction::Status::RUNNING);
 
     setRegistered();

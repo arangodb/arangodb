@@ -24,6 +24,9 @@
 #ifndef ARANGODB_BASICS_PROCESS__UTILS_H
 #define ARANGODB_BASICS_PROCESS__UTILS_H 1
 
+#include <string>
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Basics/threads.h"
 
