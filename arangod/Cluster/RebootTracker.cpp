@@ -162,8 +162,6 @@ CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState const& peer
   TRI_ASSERT(inserted);
   TRI_ASSERT(callbackId == iterator->first);
 
-  // TODO I'm wondering why this compiles (with clang, at least), as the copy
-  //      constructor is deleted. I don't think it should...
   return callbackGuard;
 }
 
