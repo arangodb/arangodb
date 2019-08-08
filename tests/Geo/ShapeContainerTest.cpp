@@ -28,8 +28,10 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/Common.h"
+
 #include "Geo/ShapeContainer.h"
 
+#include "Geo/Ellipsoid.h"
 #include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
 #include "Geo/ShapeContainer.h"
@@ -115,6 +117,10 @@ TEST_F(ShapeContainerTest, valid_point_as_region) {
   ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(1.0, 0.0).ToPoint(), shape.centroid()));
   ASSERT_TRUE(::distance(1.0, 0.0) ==
               shape.distanceFromCentroid(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
+  
+  geo::Ellipsoid const& e = geo::WGS84_ELLIPSOID;
+  double dist = shape.distanceFromCentroid(S2LatLng::FromDegrees(-24.993289, 151.960336).ToPoint(), e);
+  ASSERT_LE(std::fabs(dist - 16004725.0), 0.5);
 
   // equality works
   ASSERT_TRUE(shape.equals(&shape));
