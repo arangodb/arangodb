@@ -282,6 +282,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(STATIC_EXECUTABLES "produce static executables" OFF)
 if (STATIC_EXECUTABLES)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 endif()
 
 # enable enterprise features
