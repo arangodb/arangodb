@@ -22,19 +22,19 @@
 
 #include "UpgradeTasks.h"
 #include "Agency/AgencyComm.h"
-#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
-#include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesEngine.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
@@ -45,7 +45,6 @@
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/vocbase.h"
 
-#include <arangod/RestServer/SystemDatabaseFeature.h>
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -82,6 +81,16 @@ bool createIndex(TRI_vocbase_t& vocbase,           // collection vocbase
       });
 
   if (res1.fail() || res2.fail()) {
+    if (res1.fail()) {
+      LOG_TOPIC("e32fd", WARN, Logger::STATISTICS)
+          << "could not find collection '" << name
+          << "': error: " << res1.errorMessage();
+    } else if (res2.fail()) {
+      LOG_TOPIC("7356a", WARN, Logger::STATISTICS)
+          << "could not create the " << type << " index for " << name << "collection "
+          << ": error: " << res2.errorMessage()
+    }
+
     THROW_ARANGO_EXCEPTION(res1.fail() ? res1 : res2);
   }
 
@@ -179,6 +188,22 @@ bool createUsersIndex(TRI_vocbase_t& vocbase) {
                        /*sparse*/ true);
 }
 
+bool createStatisticsIndices(TRI_vocbase_t& vocbase) {
+  std::vector<std::string> statisticCollections = {StaticStrings::StatisticsCollection,
+                                                   StaticStrings::Statistics15Collection,
+                                                   StaticStrings::StatisticsRawCollection};
+  for (auto collectionName : statisticCollections) {
+    bool result = ::createIndex(vocbase, collectionName,
+                                arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                                {"time"}, false, false);
+    if (!result) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 bool createJobsIndex(TRI_vocbase_t& vocbase) {
   ::createSystemCollection(vocbase, StaticStrings::JobsCollection);
   ::createIndex(vocbase,                        // collection vocbase
@@ -208,18 +233,27 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
 
   if (vocbase.isSystem()) {
     // we will use UsersCollection for distributeShardsLike
-    auto const res = methods::Collections::createSystem(vocbase, StaticStrings::UsersCollection);
+    auto const res =
+        methods::Collections::createSystem(vocbase, StaticStrings::UsersCollection);
     if (!res.ok()) {
       return false;
     }
     systemCollections.push_back(StaticStrings::GraphsCollection);
   } else {
     // we will use GraphsCollection for distributeShardsLike
-    auto const res = methods::Collections::createSystem(vocbase, StaticStrings::GraphsCollection);
+    auto const res =
+        methods::Collections::createSystem(vocbase, StaticStrings::GraphsCollection);
     if (!res.ok()) {
       return false;
     }
   }
+
+  if (StatisticsFeature::enabled()) {
+    systemCollections.push_back(StaticStrings::StatisticsCollection);
+    systemCollections.push_back(StaticStrings::Statistics15Collection);
+    systemCollections.push_back(StaticStrings::StatisticsRawCollection);
+  }
+
   systemCollections.push_back(StaticStrings::AqlFunctionsCollection);
   systemCollections.push_back(StaticStrings::QueuesCollection);
   systemCollections.push_back(StaticStrings::JobsCollection);
@@ -288,6 +322,9 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
 bool createSystemCollectionsIndices(TRI_vocbase_t& vocbase) {
   if (vocbase.isSystem()) {
     createUsersIndex(vocbase);
+  }
+  if (StatisticsFeature::enabled()) {
+    createStatisticsIndices(vocbase);
   }
   upgradeGeoIndexes(vocbase);
   createAppsIndex(vocbase);
