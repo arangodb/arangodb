@@ -42,6 +42,7 @@ cppcheck $* \
   --suppress="shadowFunction" \
   --suppress="shadowVar" \
   --suppress="stlFindInsert" \
+  --suppress="syntaxError" \
   --suppress="uninitMemberVar" \
   --suppress="unreadVariable" \
   --suppress="useStlAlgorithm" \
