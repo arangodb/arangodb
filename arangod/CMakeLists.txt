@@ -628,7 +628,6 @@ include(MMFiles/CMakeLists.txt)
 
 add_library(arangoserver STATIC
   ${ARANGOD_SOURCES}
-  ${CLUSTER_ENGINE_SOURCES}
   ${LLHTTP_SOURCES}
 )
 
@@ -638,6 +637,10 @@ add_library(arango_mmfiles STATIC
 
 add_library(arango_rocksdb STATIC
   ${ROCKSDB_SOURCES}
+)
+
+add_library(arango_cluster_engine STATIC
+  ${CLUSTER_ENGINE_SOURCES}
 )
 
 target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
@@ -667,6 +670,8 @@ if (USE_ENTERPRISE)
   target_include_directories(arango_mmfiles PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
   target_compile_definitions(arango_rocksdb PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango_rocksdb PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+  target_compile_definitions(arango_cluster_engine PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(arango_cluster_engine PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
   if (MSVC)
     target_link_libraries(arangoserver
       Wldap32.lib
@@ -687,6 +692,7 @@ add_executable(${BIN_ARANGOD}
 target_link_libraries(${BIN_ARANGOD}
   arango_mmfiles
   arango_rocksdb
+  arango_cluster_engine
   arangoserver
 )
 

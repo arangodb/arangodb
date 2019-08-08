@@ -227,6 +227,7 @@ endif()
 target_link_libraries(arangodbtests
   arango_mmfiles
   arango_rocksdb
+  arango_cluster_engine
   arangoserver
   rocksdb
   fuerte
