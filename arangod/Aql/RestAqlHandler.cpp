@@ -276,9 +276,6 @@ bool RestAqlHandler::registerSnippets(VPackSlice const snippetsSlice,
     planBuilder->add(VPackValue("collections"));
     planBuilder->add(collectionSlice);
 
-    // hard-code initialize: false
-    planBuilder->add("initialize", VPackValue(false));
-
     planBuilder->add(VPackValue("nodes"));
     planBuilder->add(it.value.get("nodes"));
 
