@@ -225,7 +225,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 endif()
 
 target_link_libraries(arangodbtests
-  arangoserver
+  ${LIB_ARANGOSERVER}
   rocksdb
   fuerte
   gtest

@@ -43,21 +43,21 @@ install(
 install_config(arangobench)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangobench zlibstatic v8_build) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGOBENCH} zlibstatic v8_build) # v8_build includes ICU build
 else ()
-  add_dependencies(arangobench zlibstatic)
+  add_dependencies(${BIN_ARANGOBENCH} zlibstatic)
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangobench jemalloc)
+  add_dependencies(${BIN_ARANGOBENCH} jemalloc)
 endif ()
 
 if(MSVC)
-  target_compile_options(arangobench PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(${BIN_ARANGOBENCH} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
 if (DARWIN)
-  target_compile_options(arangobench PRIVATE -Werror)
+  target_compile_options(${BIN_ARANGOBENCH} PRIVATE -Werror)
 endif()
 
 ################################################################################
@@ -101,21 +101,21 @@ install(
 install_config(arangobackup)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangobackup zlibstatic v8_build) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGOBACKUP} zlibstatic v8_build) # v8_build includes ICU build
 else ()
-  add_dependencies(arangobackup zlibstatic)
+  add_dependencies(${BIN_ARANGOBACKUP} zlibstatic)
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangobackup jemalloc)
+  add_dependencies(${BIN_ARANGOBACKUP} jemalloc)
 endif ()
 
 if(MSVC)
-  target_compile_options(arangobackup PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(${BIN_ARANGOBACKUP} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
 if (DARWIN)
-  target_compile_options(arangobackup PRIVATE -Werror)
+  target_compile_options(${BIN_ARANGOBACKUP} PRIVATE -Werror)
 endif()
 
 ################################################################################
@@ -160,21 +160,21 @@ install(
 install_config(arangodump)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangodump zlibstatic v8_build) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGODUMP} zlibstatic v8_build) # v8_build includes ICU build
 else ()
-  add_dependencies(arangodump zlibstatic)
+  add_dependencies(${BIN_ARANGODUMP} zlibstatic)
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangodump jemalloc)
+  add_dependencies(${BIN_ARANGODUMP} jemalloc)
 endif ()
 
 if(MSVC)
-  target_compile_options(arangodump PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(${BIN_ARANGODUMP} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
 if (DARWIN)
-  target_compile_options(arangodump PRIVATE -Werror)
+  target_compile_options(${BIN_ARANGODUMP} PRIVATE -Werror)
 endif()
 
 ################################################################################
@@ -218,21 +218,21 @@ install(
 install_config(arangoexport)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangoexport zlibstatic v8_build) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGOEXPORT} zlibstatic v8_build) # v8_build includes ICU build
 else ()
-  add_dependencies(arangoexport zlibstatic) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGOEXPORT} zlibstatic) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangoexport jemalloc)
+  add_dependencies(${BIN_ARANGOEXPORT} jemalloc)
 endif ()
 
 if(MSVC)
-  target_compile_options(arangoexport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(${BIN_ARANGOEXPORT} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
 if (DARWIN)
-  target_compile_options(arangoexport PRIVATE -Werror)
+  target_compile_options(${BIN_ARANGOEXPORT} PRIVATE -Werror)
 endif()
 
 ################################################################################
@@ -251,7 +251,7 @@ if (MSVC AND NOT(SKIP_PACKAGING))
   )
 endif ()
 
-add_executable(arangoimport
+add_executable(${BIN_ARANGOIMPORT}
   ${ProductVersionFiles_arangoimport}
   Import/AutoTuneThread.cpp
   Import/ImportFeature.cpp
@@ -279,30 +279,30 @@ install(
 
 install_config(arangoimport)
 
-add_dependencies(arangoimport fuerte)
+add_dependencies(${BIN_ARANGOIMPORT} fuerte)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangoimport zlibstatic v8_build) # v8_build includes ICU
+  add_dependencies(${BIN_ARANGOIMPORT} zlibstatic v8_build) # v8_build includes ICU
                                                      # build
 else ()
-  add_dependencies(arangoimport zlibstatic) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGOIMPORT} zlibstatic) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangoimport jemalloc)
+  add_dependencies(${BIN_ARANGOIMPORT} jemalloc)
 endif ()
 
-install_command_alias(arangoimport
+install_command_alias(${BIN_ARANGOIMPORT}
   ${CMAKE_INSTALL_BINDIR}
   arangoimp
 )
 
 if(MSVC)
-  target_compile_options(arangoimport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(${BIN_ARANGOIMPORT} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
 if (DARWIN)
-  target_compile_options(arangoimport PRIVATE -Werror)
+  target_compile_options(${BIN_ARANGOIMPORT} PRIVATE -Werror)
 endif()
 
 ################################################################################
@@ -347,21 +347,21 @@ install(
 install_config(arangorestore)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangorestore zlibstatic v8_build) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGORESTORE} zlibstatic v8_build) # v8_build includes ICU build
 else ()
-  add_dependencies(arangorestore zlibstatic) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGORESTORE} zlibstatic) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangorestore jemalloc)
+  add_dependencies(${BIN_ARANGORESTORE} jemalloc)
 endif ()
 
 if(MSVC)
-  target_compile_options(arangorestore PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(${BIN_ARANGORESTORE} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
 if (DARWIN)
-  target_compile_options(arangorestore PRIVATE -Werror)
+  target_compile_options(${BIN_ARANGORESTORE} PRIVATE -Werror)
 endif()
 
 ################################################################################
@@ -414,21 +414,21 @@ install(
 install_config(arangosh)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangosh zlibstatic v8_build)
+  add_dependencies(${BIN_ARANGOSH} zlibstatic v8_build)
 else ()
-  add_dependencies(arangosh zlibstatic)
+  add_dependencies(${BIN_ARANGOSH} zlibstatic)
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangosh jemalloc)
+  add_dependencies(${BIN_ARANGOSH} jemalloc)
 endif ()
 
 if(MSVC)
-  target_compile_options(arangosh PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(${BIN_ARANGOSH} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
 if (DARWIN)
-  target_compile_options(arangosh PRIVATE -Werror)
+  target_compile_options(${BIN_ARANGOSH} PRIVATE -Werror)
 endif()
 
 ################################################################################
@@ -470,21 +470,21 @@ install(
 install_config(arangovpack)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangovpack zlibstatic v8_build) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGOVPACK} zlibstatic v8_build) # v8_build includes ICU build
 else ()
-  add_dependencies(arangovpack zlibstatic) # v8_build includes ICU build
+  add_dependencies(${BIN_ARANGOVPACK} zlibstatic) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangovpack jemalloc)
+  add_dependencies(${BIN_ARANGOVPACK} jemalloc)
 endif ()
 
 if(MSVC)
-  target_compile_options(arangovpack PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(${BIN_ARANGOVPACK} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
 if (DARWIN)
-  target_compile_options(arangovpack PRIVATE -Werror)
+  target_compile_options(${BIN_ARANGOVPACK} PRIVATE -Werror)
 endif()
 
 ################################################################################

@@ -303,6 +303,7 @@ set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - vpack printer")
 set(LIB_ARANGO        arango)
 set(LIB_ARANGO_GEO    arango_geo)
 set(LIB_ARANGO_V8     arango_v8)
+set(LIB_ARANGOSERVER  arangoserver)
 
 # binaries
 set(BIN_ARANGOBENCH   arangobench)
