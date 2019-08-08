@@ -231,7 +231,7 @@ function agencyTestSuite () {
     let trxs = [];
     for (i = start; i < start + count; ++i) {
       let key = "/key"+i;
-      let trx = [{},{},"clientid" + counter++];
+      let trx = [{},{},"clientid" + start + counter++];
       trx[0][key] = "value" + i;
       trxs.push(trx);
       if (trxs.length >= 200 || i === start + count - 1) {
