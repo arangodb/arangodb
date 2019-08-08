@@ -366,6 +366,38 @@ AgencyCommResult::AgencyCommResult(int code, std::string const& message,
       _statusCode(code),
       _connected(false),
       _sent(false) {}
+  
+AgencyCommResult::AgencyCommResult(AgencyCommResult&& other) noexcept
+    : _location(std::move(other._location)),
+      _message(std::move(other._message)),
+      _body(std::move(other._body)),
+      _values(std::move(other._values)),
+      _statusCode(other._statusCode),
+      _connected(other._connected),
+      _sent(other._sent),
+      _vpack(std::move(other._vpack)) {
+  other._statusCode = 0;
+  other._connected = false;
+  other._sent = false;
+}
+
+AgencyCommResult& AgencyCommResult::operator=(AgencyCommResult&& other) noexcept {
+  if (this != &other) {
+    _location = std::move(other._location);
+    _message = std::move(other._message);
+    _body = std::move(other._body);
+    _values = std::move(other._values);
+    _statusCode = other._statusCode;
+    _connected = other._connected;
+    _sent = other._sent;
+    _vpack = std::move(other._vpack);
+    
+    other._statusCode = 0;
+    other._connected = false;
+    other._sent = false;
+  }
+  return *this;
+}
 
 void AgencyCommResult::set(int code, std::string const& message) {
   _message = message;

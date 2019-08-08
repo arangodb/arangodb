@@ -3,6 +3,8 @@ v3.4.8 (XXXX-XX-XX)
 
 * Keep followers in sync if the old leader resigned and stopped writes.
 
+* Re-added warning for kernel setting "overcommit_memory=2" if jemalloc is also enabled.
+
 * Significantly reduced "random" 1 second delays in some arangosearch DDL operations.
 
 * Decreased unnecessary wait times for agency callbacks in case they were
