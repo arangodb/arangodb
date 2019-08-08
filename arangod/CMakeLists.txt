@@ -628,7 +628,6 @@ include(MMFiles/CMakeLists.txt)
 
 add_library(arangoserver STATIC
   ${ARANGOD_SOURCES}
-  ${LLHTTP_SOURCES}
 )
 
 add_library(arango_mmfiles STATIC
@@ -643,8 +642,13 @@ add_library(arango_cluster_engine STATIC
   ${CLUSTER_ENGINE_SOURCES}
 )
 
+add_library(llhttp STATIC
+  ${LLHTTP_SOURCES}
+)
+
 target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
 target_include_directories(arango_mmfiles PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
+target_include_directories(llhttp PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
 
 target_link_libraries(arangoserver
   arango_geo
@@ -660,6 +664,7 @@ target_link_libraries(arangoserver
   boost_boost
   boost_system
   snappy
+  llhttp
   ${SYSTEM_LIBRARIES}
 )
 

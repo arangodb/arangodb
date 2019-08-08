@@ -229,10 +229,10 @@ target_link_libraries(arangodbtests
   arango_rocksdb
   arango_cluster_engine
   arangoserver
-  rocksdb
   fuerte
-  gtest
+  rocksdb
   snappy
+  gtest
 )
 
 target_include_directories(arangodbtests PRIVATE
