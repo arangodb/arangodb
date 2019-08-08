@@ -90,7 +90,10 @@ class StaticStrings {
   static std::string const AppsCollection;
   static std::string const AppBundlesCollection;
   static std::string const FishbowlCollection;
-  
+  static std::string const StatisticsCollection;
+  static std::string const Statistics15Collection;
+  static std::string const StatisticsRawCollection;
+
   // database definition fields
   static std::string const DatabaseId;
   static std::string const DatabaseName;
