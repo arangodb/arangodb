@@ -820,6 +820,16 @@ else()
   set(IPO_ENABLED False)
 endif()
 
+if(USE_GOOGLE_TESTS)
+  # Work around a g++ segfault triggered by using both -flto and
+  # -fno-devirtualize-functions. See
+  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91387 and
+  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91375.
+  # So this may be removed later as soon as we use fixed gcc versions.
+  # - Tobias, 2019-08-08
+  set(IPO_ENABLED False)
+endif()
+
 message(STATUS "IPO_ENABLED: ${IPO_ENABLED}")
 
 ################################################################################
