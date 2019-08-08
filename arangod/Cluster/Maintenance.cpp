@@ -302,7 +302,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
   } else {  // Create the sucker, if not a previous error stops us
     if (errors.shards.find(dbname + "/" + colname + "/" + shname) ==
         errors.shards.end()) {
-      auto props = createProps(cprops);  // Only once might need often!
+      auto props = createProps(cprops);
       actions.emplace_back(
           ActionDescription({{NAME, CREATE_COLLECTION},
                              {COLLECTION, colname},
