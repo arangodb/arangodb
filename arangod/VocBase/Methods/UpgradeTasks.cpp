@@ -88,7 +88,7 @@ bool createIndex(TRI_vocbase_t& vocbase,           // collection vocbase
     } else if (res2.fail()) {
       LOG_TOPIC("7356a", WARN, Logger::STATISTICS)
           << "could not create the " << type << " index for " << name << "collection "
-          << ": error: " << res2.errorMessage()
+          << ": error: " << res2.errorMessage();
     }
 
     THROW_ARANGO_EXCEPTION(res1.fail() ? res1 : res2);
