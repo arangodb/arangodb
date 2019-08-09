@@ -191,9 +191,6 @@ int fuerteToArangoErrorCode(network::Response const& res) {
     case fuerte::Error::Canceled:
     case fuerte::Error::ProtocolError:
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-
-    case fuerte::Error::ErrorCastError:
-      return TRI_ERROR_INTERNAL;
   }
 
   return TRI_ERROR_INTERNAL;

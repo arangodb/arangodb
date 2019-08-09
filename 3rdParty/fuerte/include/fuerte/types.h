@@ -61,8 +61,6 @@ StatusCode constexpr StatusUnavailable = 505;
 enum class Error : uint16_t {
   NoError = 0,
 
-  ErrorCastError = 1,
-
   CouldNotConnect = 1000,
   CloseRequested = 1001,
   ConnectionClosed = 1002,

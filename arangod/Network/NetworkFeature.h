@@ -49,7 +49,7 @@ class NetworkFeature final : public application_features::ApplicationFeature {
     return _poolPtr.load(std::memory_order_acquire);
   }
 
-#ifdef ARANGODB_USE_CATCH_TESTS
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   static void setPoolTesting(arangodb::network::ConnectionPool* pool) {
     _poolPtr.store(pool, std::memory_order_release);
   }

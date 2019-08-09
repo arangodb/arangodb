@@ -43,7 +43,7 @@ class ConnectionBuilder;
 namespace network {
 
 /// @brief simple connection pool managing fuerte connections
-#ifdef ARANGODB_USE_CATCH_TESTS
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 class ConnectionPool {
 #else
 class ConnectionPool final {
