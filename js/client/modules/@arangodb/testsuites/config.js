@@ -140,7 +140,7 @@ function config (options) {
   print('relative config tests');
   print('--------------------------------------------------------------------------------');
 
-  let startTime = time();
+  startTime = time();
 
   for (let i = 0; i < ts.length; i++) {
     const test = ts[i];

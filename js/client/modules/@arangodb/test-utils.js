@@ -164,8 +164,8 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
   let testrunStart = time();
   let results = {
-    shutdown: true
-    startupTime: testrunStart - beforeStart;
+    shutdown: true,
+    startupTime: testrunStart - beforeStart
   };
   let continueTesting = true;
   let serverDead = false;
