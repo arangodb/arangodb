@@ -103,7 +103,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   let env = {};
   let customInstanceInfos = {};
   let healthCheck = function () {return true;};
-
+  let beforeStart = time();
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('healthCheck')) {
     healthCheck = startStopHandlers.healthCheck;
   }
@@ -162,7 +162,11 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
     _.defaults(env, customInstanceInfos.postStart.env);
   }
 
-  let results = { shutdown: true };
+  let testrunStart = time();
+  let results = {
+    shutdown: true
+    startupTime: testrunStart - beforeStart;
+  };
   let continueTesting = true;
   let serverDead = false;
   let count = 0;
@@ -381,7 +385,8 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
     results.status = true;
     print(RED + 'No testcase matched the filter.' + RESET);
   }
-
+  let shutDownStart = time();
+  results['testDuration'] = shutDownStart - testrunStart;
   print(Date() + ' Shutting down...');
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('preStop')) {
     customInstanceInfos['preStop'] = startStopHandlers.preStop(options,
@@ -421,6 +426,8 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
       results.setup.message = 'custom postStop failed!';
     }
   }
+  results['shutdownTime'] = time() - shutDownStart;
+
   print('done.');
 
   return results;
