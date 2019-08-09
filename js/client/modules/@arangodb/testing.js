@@ -265,7 +265,9 @@ function findTestCases(options) {
   let allTestFiles = {};
   for (let testSuiteName in allTestPaths) {
     var myList = [];
-    let files = tu.scanTestPaths(allTestPaths[testSuiteName], options);
+    var _opts = _.clone(options);
+    _opts.extremeVerbosity = 'silence';
+    let files = tu.scanTestPaths(allTestPaths[testSuiteName], _opts);
     if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
       for (let j = 0; j < files.length; j++) {
         let foo = {};
@@ -471,8 +473,8 @@ function iterateTests(cases, options) {
       delete result.shutdown;
     }
 
-    status = Object.values(result).every(testCase => testCase.status === true);
-    let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
+    status = rp.gatherStatus(result);
+    let failed = rp.gatherFailed(result);
     if (!status) {
       globalStatus = false;
     }
@@ -538,9 +540,11 @@ function unitTest (cases, options) {
     };
   }
 
-  let results = iterateTests(cases, options);
-
-  return results;
+  if ((cases.length === 1) && cases[0] === 'auto') {
+    return autoTest(options);
+  } else {
+    return iterateTests(cases, options);
+  }
 }
 
 // /////////////////////////////////////////////////////////////////////////////

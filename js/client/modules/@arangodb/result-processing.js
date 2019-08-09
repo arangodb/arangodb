@@ -64,6 +64,28 @@ const internalMembers = [
 let failedRuns = {
 };
 
+function gatherFailed(result) {
+  return Object.values(result).reduce(function(prev, testCase) {
+    if (testCase instanceof Object) {
+      return prev + !testCase.status
+    } else {
+      return prev;
+    }
+  }, 0
+  );
+}
+
+function gatherStatus(result) {
+  return Object.values(result).reduce(function(prev, testCase) {
+    if (testCase instanceof Object) {
+      return prev && testCase.status
+    } else {
+      return prev;
+    }
+  }, true
+  );
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief pretty prints the result
 // //////////////////////////////////////////////////////////////////////////////
@@ -109,6 +131,7 @@ function unitTestPrettyPrintResults (res, options) {
   let SuccessMessages = '';
   let bucketName = "";
   let sortedByDuration = [];
+  let testRunStatistics = "";
   if (options.testBuckets) {
     let n = options.testBuckets.split('/');
     bucketName = "_" + n[1];
@@ -121,6 +144,8 @@ function unitTestPrettyPrintResults (res, options) {
       }
 
       let testrun = res[testrunName];
+      testRunStatistics += `${testrunName} - startup [${testrun['startupTime']}] => run [${testrun['testDuration']}] => shutdown [${testrun['shutdownTime']}]
+`
 
       let successCases = {};
       let failedCases = {};
@@ -290,6 +315,7 @@ function unitTestPrettyPrintResults (res, options) {
       crashedText += "\nMarking crashy!";
       crashText = RED + crashedText + RESET;
     }
+    print(testRunStatistics);
     print('\n' + color + '* Overall state: ' + ((res.status === true) ? 'Success' : 'Fail') + RESET + crashText);
 
     let failText = '';
@@ -527,6 +553,8 @@ function yamlDumpResults(options, results) {
   }
 }
 
+exports.gatherStatus = gatherStatus;
+exports.gatherFailed = gatherFailed;
 exports.yamlDumpResults = yamlDumpResults;
 exports.addFailRunsMessage = addFailRunsMessage;
 exports.dumpAllResults = dumpAllResults;

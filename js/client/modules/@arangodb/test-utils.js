@@ -607,7 +607,7 @@ function scanTestPaths (paths, options) {
                                      }
                                      return rc;
                                    });
-  if (filteredTestCases.length === 0) {
+  if ((filteredTestCases.length === 0) && (options.extremeVerbosity !== 'silence')) {
     print("No testcase matched the filter: " + JSON.stringify(allFiltered));
     return [];
   }
