@@ -2892,7 +2892,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollection
 std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectionsInAgency(
     std::vector<std::shared_ptr<LogicalCollection>>& collections,
     bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-    bool enforceReplicationFactor) {
+    bool enforceReplicationFactor, bool isNewDatabase) {
   TRI_ASSERT(!collections.empty());
   if (collections.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -3012,8 +3012,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     }
 
     // pass in the *endTime* here, not a timeout!
-    // TODO check isNewDatanbase flag
-    Result res = ci->createCollectionsCoordinator(dbName, infos, endTime, false);
+    Result res = ci->createCollectionsCoordinator(dbName, infos, endTime, isNewDatabase);
 
     if (res.ok()) {
       // success! exit the loop and go on

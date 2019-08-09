@@ -357,7 +357,7 @@ class ClusterMethods {
 
   static std::vector<std::shared_ptr<LogicalCollection>> persistCollectionsInAgency(
       std::vector<std::shared_ptr<LogicalCollection>>& col, bool ignoreDistributeShardsLikeErrors,
-      bool waitForSyncReplication, bool enforceReplicationFactor);
+      bool waitForSyncReplication, bool enforceReplicationFactor, bool isNewDatabase);
 };
 
 }  // namespace arangodb

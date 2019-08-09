@@ -336,8 +336,9 @@ bool createSystemCollectionsIndices(TRI_vocbase_t& vocbase) {
 
 bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
                                                      arangodb::velocypack::Slice const& slice) {
-  ::createSystemCollections(vocbase);
-  ::createSystemCollectionsIndices(vocbase);
+  if (::createSystemCollections(vocbase)) {
+    ::createSystemCollectionsIndices(vocbase);
+  }
 
   return true;
 }
