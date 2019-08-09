@@ -2228,6 +2228,10 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf("fulltext", RocksDBColumnFamily::fulltext());
   builder.close();
 
+  if (_listener) {
+    builder.add("rocksdbengine.throttle.bps", VPackValue(_listener->GetThrottle()));
+  } // if
+
   builder.close();
 }
 
