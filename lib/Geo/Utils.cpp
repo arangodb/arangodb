@@ -30,6 +30,7 @@
 #include <s2/s2latlng.h>
 #include <s2/s2region_coverer.h>
 
+#include "Basics/HashSet.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 #include "Geo/Ellipsoid.h"
@@ -101,7 +102,7 @@ void scanIntervals(QueryParams const& params, std::vector<S2CellId> const& cover
         // not need
         // to look at [47|1|40] or [47|11|60] because these cells don't intersect,
         // but polygons indexed with exact cell id [47|11] still might.
-        std::set<S2CellId> parentSet;
+        arangodb::HashSet<uint64_t> parentSet;
         for (const S2CellId& interval : cover) {
             S2CellId cell = interval;
             
@@ -109,12 +110,12 @@ void scanIntervals(QueryParams const& params, std::vector<S2CellId> const& cover
             while (params.cover.worstIndexedLevel < cell.level()) {  // don't use
                 // level < 0
                 cell = cell.parent();
-                parentSet.insert(cell);
+                parentSet.insert(cell.id());
             }
         }
         // just add them, sort them later
-        for (S2CellId const& exact : parentSet) {
-            sortedIntervals.emplace_back(exact, exact);
+        for (uint64_t exact : parentSet) {
+            sortedIntervals.emplace_back(S2CellId(exact), S2CellId(exact));
         }
     }
     
