@@ -57,6 +57,7 @@ using basics::VelocyPackHelper;
 
 namespace {
 
+/* TODO REMOVE ME
 /// create a collection if it does not exists.
 void createSystemCollection(TRI_vocbase_t& vocbase, std::string const& name) {
   auto const res = methods::Collections::createSystem(vocbase, name);
@@ -64,7 +65,7 @@ void createSystemCollection(TRI_vocbase_t& vocbase, std::string const& name) {
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-}
+}*/
 
 /// create an index if it does not exist
 bool createIndex(TRI_vocbase_t& vocbase,           // collection vocbase
@@ -82,16 +83,15 @@ bool createIndex(TRI_vocbase_t& vocbase,           // collection vocbase
 
   if (res1.fail() || res2.fail()) {
     if (res1.fail()) {
-      LOG_TOPIC("e32fd", WARN, Logger::STATISTICS)
+      LOG_TOPIC("e32fd", WARN, Logger::MAINTENANCE)
           << "could not find collection '" << name
           << "': error: " << res1.errorMessage();
     } else if (res2.fail()) {
-      LOG_TOPIC("7356a", WARN, Logger::STATISTICS)
+      LOG_TOPIC("7356a", WARN, Logger::MAINTENANCE)
           << "could not create the " << type << " index for " << name << "collection "
           << ": error: " << res2.errorMessage();
     }
-
-    THROW_ARANGO_EXCEPTION(res1.fail() ? res1 : res2);
+    // THROW_ARANGO_EXCEPTION(res1.fail() ? res1 : res2);
   }
 
   return true;
@@ -205,7 +205,6 @@ bool createStatisticsIndices(TRI_vocbase_t& vocbase) {
 }
 
 bool createJobsIndex(TRI_vocbase_t& vocbase) {
-  ::createSystemCollection(vocbase, StaticStrings::JobsCollection);
   ::createIndex(vocbase,                        // collection vocbase
                 StaticStrings::JobsCollection,  // collection name
                 arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,  // index type
@@ -234,7 +233,7 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
   if (vocbase.isSystem()) {
     // we will use UsersCollection for distributeShardsLike
     auto const res =
-        methods::Collections::createSystem(vocbase, StaticStrings::UsersCollection);
+        methods::Collections::createSystem(vocbase, StaticStrings::UsersCollection, true);
     if (!res.ok()) {
       return false;
     }
@@ -247,12 +246,13 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
   } else {
     // we will use GraphsCollection for distributeShardsLike
     auto const res =
-        methods::Collections::createSystem(vocbase, StaticStrings::GraphsCollection);
+        methods::Collections::createSystem(vocbase, StaticStrings::GraphsCollection, true);
     if (!res.ok()) {
       return false;
     }
   }
 
+  systemCollections.push_back(StaticStrings::AnalyzersCollection);
   systemCollections.push_back(StaticStrings::AqlFunctionsCollection);
   systemCollections.push_back(StaticStrings::QueuesCollection);
   systemCollections.push_back(StaticStrings::JobsCollection);
@@ -277,7 +277,7 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
     }
 
     methods::Collections::create(
-        vocbase, testSystemCollectionsToCreate, true, true,
+        vocbase, testSystemCollectionsToCreate, true, true, true,
         [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
   }
 
@@ -307,7 +307,7 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
 
   if (systemCollectionsToCreate.size() > 0) {
     auto const res = methods::Collections::create(
-        vocbase, systemCollectionsToCreate, true, true,
+        vocbase, systemCollectionsToCreate, true, true, true,
         [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
 
     if (res.fail()) {
@@ -340,15 +340,6 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
   ::createSystemCollectionsIndices(vocbase);
 
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates '_analyzers' collection
-////////////////////////////////////////////////////////////////////////////////
-bool UpgradeTasks::setupAnalyzersCollection(TRI_vocbase_t& vocbase,
-                                            arangodb::velocypack::Slice const& /*upgradeParams*/) {
-  return arangodb::methods::Collections::createSystem(vocbase, StaticStrings::AnalyzersCollection)
-      .ok();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -3012,7 +3012,8 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     }
 
     // pass in the *endTime* here, not a timeout!
-    Result res = ci->createCollectionsCoordinator(dbName, infos, endTime);
+    // TODO check isNewDatanbase flag
+    Result res = ci->createCollectionsCoordinator(dbName, infos, endTime, false);
 
     if (res.ok()) {
       // success! exit the loop and go on

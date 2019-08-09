@@ -474,7 +474,8 @@ class ClusterInfo final {
       std::string const& collectionID, uint64_t numberOfShards,
       uint64_t replicationFactor, uint64_t minReplicationFactor,
       bool waitForReplication, arangodb::velocypack::Slice const& json,
-      double timeout  // request timeout
+      double timeout,  // request timeout
+      bool isNewDatabase
   );
 
   /// @brief this method does an atomic check of the preconditions for the
@@ -491,7 +492,7 @@ class ClusterInfo final {
   /// get a timeout parameter, but an endTime parameter!!!
   Result createCollectionsCoordinator(std::string const& databaseName,
                                       std::vector<ClusterCollectionCreationInfo>&,
-                                      double endTime);
+                                      double endTime, bool isNewDatabase);
 
   /// @brief drop collection in coordinator
   //////////////////////////////////////////////////////////////////////////////

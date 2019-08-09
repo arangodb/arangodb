@@ -136,21 +136,21 @@ class IResearchLinkHelperTest : public ::testing::Test {
       auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);  
       arangodb::methods::Collections::createSystem(
         *vocbase,
-        arangodb::tests::AnalyzerCollectionName);
+        arangodb::tests::AnalyzerCollectionName, false);
     }
     {
       TRI_vocbase_t* vocbase;
       dbFeature->createDatabase(1, "testVocbaseWithAnalyzer", vocbase);  
       arangodb::methods::Collections::createSystem(
         *vocbase,
-        arangodb::tests::AnalyzerCollectionName);
+        arangodb::tests::AnalyzerCollectionName, false);
     }
     {
       TRI_vocbase_t* vocbase;
       dbFeature->createDatabase(2, "testVocbaseWithView", vocbase);  
       arangodb::methods::Collections::createSystem(
         *vocbase,
-        arangodb::tests::AnalyzerCollectionName);
+        arangodb::tests::AnalyzerCollectionName, false);
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
           "{ \"id\":102, \"name\": \"foo\" }");
       EXPECT_NE(nullptr, vocbase->createCollection(collectionJson->slice()));
@@ -537,13 +537,13 @@ TEST_F(IResearchLinkHelperTest, test_updateLinks) {
     ASSERT_TRUE((nullptr != vocbase));
     arangodb::methods::Collections::createSystem(
         *vocbase, 
-        arangodb::tests::AnalyzerCollectionName);
+        arangodb::tests::AnalyzerCollectionName, false);
   
     {
       auto* sysDb = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
       arangodb::methods::Collections::createSystem(
           *sysDb, 
-          arangodb::tests::AnalyzerCollectionName);
+          arangodb::tests::AnalyzerCollectionName, false);
     }
     auto dropDB = irs::make_finally([dbFeature]() -> void {
       dbFeature->dropDatabase("testVocbase", true, true);

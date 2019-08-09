@@ -332,6 +332,7 @@ void RestCollectionHandler::handleCommandPost() {
       parameters,                // collection properties
       waitForSyncReplication,    // replication wait flag
       enforceReplicationFactor,  // replication factor flag
+      false,       // new Database?, here always false
       [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
         TRI_ASSERT(coll);
         collectionRepresentation(builder, coll->name(),

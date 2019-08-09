@@ -348,7 +348,7 @@ class ClusterMethods {
   static std::vector<std::shared_ptr<LogicalCollection>> createCollectionOnCoordinator(
       TRI_vocbase_t& vocbase, arangodb::velocypack::Slice parameters,
       bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-      bool enforceReplicationFactor);
+      bool enforceReplicationFactor, bool isNewDatabase);
 
  private:
   ////////////////////////////////////////////////////////////////////////////////

@@ -215,8 +215,8 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
     arangodb::velocypack::Slice const& properties,  // collection properties
     bool createWaitsForSyncReplication,             // replication wait flag
     bool enforceReplicationFactor,                  // replication factor flag
-    FuncCallback func  // invoke on collection creation
-) {
+    bool isNewDatabase,
+    FuncCallback func) {  // invoke on collection creation
   if (name.empty()) {
     events::CreateCollection(vocbase.name(), name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return TRI_ERROR_ARANGO_ILLEGAL_NAME;
@@ -226,7 +226,8 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
     return TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
   }
   std::vector<CollectionCreationInfo> infos{{name, collectionType, properties}};
-  return create(vocbase, infos, createWaitsForSyncReplication, enforceReplicationFactor,
+  return create(vocbase, infos, createWaitsForSyncReplication,
+                enforceReplicationFactor, isNewDatabase,
                 [&func](std::vector<std::shared_ptr<LogicalCollection>> const& cols) {
                   TRI_ASSERT(cols.size() == 1);
                   func(cols[0]);
@@ -236,7 +237,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
 Result Collections::create(TRI_vocbase_t& vocbase,
                            std::vector<CollectionCreationInfo> const& infos,
                            bool createWaitsForSyncReplication, bool enforceReplicationFactor,
-                           MultiFuncCallback const& func) {
+                           bool isNewDatabase, MultiFuncCallback const& func) {
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec && !exec->canUseDatabase(vocbase.name(), auth::Level::RW)) {
     for (auto const& info : infos) {
@@ -305,7 +306,8 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       collections =
           ClusterMethods::createCollectionOnCoordinator(vocbase, infoSlice, false,
                                                         createWaitsForSyncReplication,
-                                                        enforceReplicationFactor);
+                                                        enforceReplicationFactor,
+                                                        isNewDatabase);
 
       if (collections.empty()) {
         for (auto const& info : infos) {
@@ -423,7 +425,8 @@ void Collections::createSystemCollectionProperties(std::string collectionName,
   }
 }
 
-/*static*/ Result Collections::createSystem(TRI_vocbase_t& vocbase, std::string const& name) {
+/*static*/ Result Collections::createSystem(TRI_vocbase_t& vocbase,
+                                            std::string const& name, bool isNewDatabase) {
   FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
   auto res = methods::Collections::lookup(vocbase, name, noop);
 
@@ -437,7 +440,8 @@ void Collections::createSystemCollectionProperties(std::string collectionName,
                               bb.slice(),  // collection definition to create
                               true,        // waitsForSyncReplication
                               true,        // enforceReplicationFactor
-                              noop);       // callback
+                              isNewDatabase,
+                              noop);  // callback
   }
 
   return res;
