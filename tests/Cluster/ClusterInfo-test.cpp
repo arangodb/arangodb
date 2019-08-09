@@ -238,13 +238,19 @@ SECTION("test_drop_databse") {
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE((nullptr != ci));
 
+
+
   // test LogicalView dropped when database dropped
   {
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"testViewType\" }");
     std::string error;
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
-    REQUIRE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase)));
-    REQUIRE((nullptr != vocbase));
+    // create database
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    REQUIRE(nullptr != vocbase);
+
+    // simulate heartbeat thread
+    CHECK(arangodb::AgencyComm().setValue("Current/Databases/testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.0)));
 
     // initial view creation
@@ -255,6 +261,8 @@ SECTION("test_drop_databse") {
     }
 
     CHECK((TRI_ERROR_NO_ERROR == ci->dropDatabaseCoordinator(vocbase->name(), error, 0.0)));
+
+    CHECK(arangodb::AgencyComm().setValue("Current/Databases/testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     CHECK((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.0)));
 
     arangodb::LogicalView::ptr logicalView;
