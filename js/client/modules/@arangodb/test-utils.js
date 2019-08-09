@@ -725,7 +725,7 @@ function runThere (options, instanceInfo, file) {
     };
   }
 }
-runThere.info = 'runThere';
+runThere.info = 'runInArangod';
 
 function readTestResult(path, rc, testCase) {
   const jsonFN = fs.join(path, 'testresult.json');
@@ -812,7 +812,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir, false, options.coreCheck);
   return readTestResult(instanceInfo.rootDir, rc, args['javascript.unit-tests']);
 }
-runInArangosh.info = 'arangosh';
+runInArangosh.info = 'runInExternalArangosh';
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a local unittest file in the current arangosh
@@ -855,7 +855,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
     };
   }
 }
-runInLocalArangosh.info = 'localarangosh';
+runInLocalArangosh.info = 'runInLocalArangosh';
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a unittest file using rspec
@@ -998,7 +998,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
   fs.remove(tmpname);
   return result;
 }
-runInRSpec.info = 'runInRSpec';
+runInRSpec.info = 'runInLocalRSpec';
 
 exports.runThere = runThere;
 exports.runInArangosh = runInArangosh;
