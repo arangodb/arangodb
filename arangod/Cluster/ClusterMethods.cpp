@@ -3710,8 +3710,6 @@ arangodb::Result lockDBServerTransactions(
 
   std::string const url = apiStr + "lock";
 
-  std::unordered_map<std::string, std::string> headers;
-
   VPackBuilder lock;
   {
     VPackObjectBuilder o(&lock);
@@ -4253,7 +4251,6 @@ arangodb::Result listHotBackupsOnCoordinator(
 arangodb::Result deleteHotBackupsOnCoordinator(
   VPackSlice const payload, VPackBuilder& report) {
 
-  std::unordered_map<std::string, BackupMeta> listIds;
   std::vector<std::string> deleted;
   VPackBuilder dummy;
   arangodb::Result result;
