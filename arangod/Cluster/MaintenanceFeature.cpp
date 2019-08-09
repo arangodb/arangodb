@@ -369,7 +369,7 @@ std::shared_ptr<Action> MaintenanceFeature::findFirstActionHash(size_t hash,
   READ_LOCKER(rLock, _actionRegistryLock);
 
   return findFirstActionHashNoLock(hash, predicate);
-}  
+}
 
 std::shared_ptr<Action> MaintenanceFeature::findFirstActionHashNoLock(size_t hash,
     std::function<bool(std::shared_ptr<maintenance::Action> const&)> const& predicate) {
@@ -387,7 +387,7 @@ std::shared_ptr<Action> MaintenanceFeature::findActionId(uint64_t id) {
   READ_LOCKER(rLock, _actionRegistryLock);
 
   return findActionIdNoLock(id);
-} 
+}
 
 std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
   // assert to test lock held?
@@ -426,7 +426,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
         // contain any fast track, so we can idle.
         break;
       }
- 
+
       // When we get here, there is currently nothing to do, so we might
       // as well clean up those jobs in the _actionRegistry, which are
       // in state DONE:
@@ -451,7 +451,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
 
   return ret_ptr;
 
-} 
+}
 
 VPackBuilder MaintenanceFeature::toVelocyPack() const {
   VPackBuilder vb;
@@ -733,4 +733,46 @@ void MaintenanceFeature::delShardVersion(std::string const& shname) {
   if (it != _shardVersion.end()) {
     _shardVersion.erase(it);
   }
+}
+
+uint64_t MaintenanceFeature::getCurrentCounter() const {
+  // It is guaranteed that getCurrentCounter is not executed
+  // concurrent to increase / wait.
+  // This guarantee is created by the following:
+  // 1) There is one inifinite loop that will call
+  //    PhaseOne and PhaseTwo in exactly this ordering.
+  //    It is guaranteed that only one thread at a time is
+  //    in this loop.
+  //    Between PhaseOne and PhaseTwo the increaseCurrentCounter is called
+  //    Within PhaseOne this getCurrentCounter is called, but never after.
+  //    so getCurrentCounter and increaseCurrentCounter are strictily serialized.
+  // 2) waitForLargerCurrentCounter can be called in concurrent threads at any time.
+  //    It is read-only, so it is save to have it concurrent to getCurrentCounter
+  //    without any locking.
+  //    However we need locking for increase and waitFor in order to guarantee
+  //    it's functionallity.
+  // For now we actually do not need this guard, but as this is NOT performance
+  // critical we can simply get it, just to be save for later use.
+  std::unique_lock<std::mutex> guard(_currentCounterLock);
+  return _currentCounter;
+}
+
+void MaintenanceFeature::increaseCurrentCounter() {
+  std::unique_lock<std::mutex> guard(_currentCounterLock);
+  _currentCounter++;
+  _currentCounterCondition.notify_all();
+}
+
+void MaintenanceFeature::waitForLargerCurrentCounter(uint64_t old) {
+  std::unique_lock<std::mutex> guard(_currentCounterLock);
+  // Just to be sure we get not woken up for other reasons.
+  while (_currentCounter <= old) {
+    // We might miss a shutdown check here.
+    // This is ok, as we will not be able to do much anyways.
+    if (_isShuttingDown) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+    _currentCounterCondition.wait(guard);
+  }
+  TRI_ASSERT(_currentCounter > old);
 }

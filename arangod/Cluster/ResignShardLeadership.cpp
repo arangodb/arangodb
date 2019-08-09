@@ -118,7 +118,7 @@ bool ResignShardLeadership::first() {
     // for now but we will not accept any replication operation from any
     // leader, until we have negotiated a deal with it. Then the actual
     // name of the leader will be set.
-    col->followers()->setTheLeader("LEADER_NOT_YET_KNOWN");  // resign
+    col->followers()->setTheLeader(LeaderNotYetKnownString);  // resign
 
   } catch (std::exception const& e) {
     std::stringstream error;
@@ -131,3 +131,5 @@ bool ResignShardLeadership::first() {
   notify();
   return false;
 }
+
+std::string const ResignShardLeadership::LeaderNotYetKnownString = "LEADER_NOT_YET_KNOWN";
