@@ -109,6 +109,7 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
                             std::underlying_type<arangodb::Index::Serialize>::type flags) const override;
 
   virtual IndexType type() const override { return IResearchLink::type(); }
+  virtual bool needsReversal() const override { return true; } 
 
   virtual char const* typeName() const override {
     return IResearchLink::typeName();
