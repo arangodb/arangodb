@@ -468,14 +468,12 @@ Result MMFilesHashIndex::insert(transaction::Methods* trx, LocalDocumentId const
 /// @brief removes an entry from the hash array part of the hash index
 Result MMFilesHashIndex::remove(transaction::Methods* trx, LocalDocumentId const& documentId,
                                 VPackSlice const& doc, OperationMode mode) {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   TRI_IF_FAILURE("BreakHashIndexRemove") {
     if (type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
       // intentionally  break index removal
       return Result(TRI_ERROR_INTERNAL, "BreakHashIndexRemove failure point triggered");
     }
   }
-#endif
   std::vector<MMFilesHashIndexElement*> elements;
   int res = fillElement<MMFilesHashIndexElement>(elements, documentId, doc);
 

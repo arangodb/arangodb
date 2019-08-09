@@ -1352,10 +1352,6 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     res = rIdx->insertInternal(trx, mthds, documentId, doc, options.indexOperationMode);
     needReversal = needReversal || rIdx->needsReversal();
     if (!res.ok()) {
-      if (res.is(TRI_ERROR_OUT_OF_MEMORY)) {
-        // in case of OOM return immediately
-        return res;
-      } 
       if (needReversal && !trx->isSingleOperationTransaction()) {
         ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex* rid) {
           return rid->remove(trx,  documentId, doc, Index::OperationMode::rollback);
@@ -1403,10 +1399,6 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
     res = rIdx->remove(trx, documentId, doc, options.indexOperationMode);
     needReversal = needReversal || rIdx->needsReversal();
     if (!res.ok()) {
-      if (res.is(TRI_ERROR_OUT_OF_MEMORY)) {
-        // in case of OOM return immediately
-        return res;
-      }
       if (needReversal && !trx->isSingleOperationTransaction()) {
         ::reverseIdxOps(_indexes, it, [mthd, trx, &documentId, &doc](RocksDBIndex* rid) {
           return rid->insertInternal(trx, mthd, documentId, doc, Index::OperationMode::rollback);
@@ -1465,10 +1457,6 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
                                          newDoc, options.indexOperationMode);
     needReversal = needReversal || rIdx->needsReversal();
     if (!res.ok()) {
-      if (res.is(TRI_ERROR_OUT_OF_MEMORY)) {
-        // in case of OOM return immediately
-        return res;
-      }
       if (needReversal && !trx->isSingleOperationTransaction()) {
         ::reverseIdxOps(_indexes, it, [mthd, trx, &newDocumentId, &newDoc, &oldDocumentId, &oldDoc](RocksDBIndex* rid) {
           return rid->updateInternal(trx, mthd, newDocumentId, newDoc, oldDocumentId,
