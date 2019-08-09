@@ -1761,10 +1761,6 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
 Result ClusterInfo::checkCollectionPreconditions(std::string const& databaseName,
                                                  std::vector<ClusterCollectionCreationInfo> const& infos,
                                                  uint64_t& planVersion) {
-  READ_LOCKER(readLocker, _planProt.lock);
-
-  planVersion = _planVersion;
-
   for (auto const& info : infos) {
     // Check if name exists.
     if (info.name.empty() || !info.json.isObject() || !info.json.get("shards").isObject()) {
@@ -2026,10 +2022,14 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
   // load the plan, so we are up-to-date
   loadPlan();
   uint64_t planVersion = 0;  // will be populated by following function call
-  if (!isNewDatabase) {
-    Result res = checkCollectionPreconditions(databaseName, infos, planVersion);
-    if (res.fail()) {
-      return res;
+  {
+    READ_LOCKER(readLocker, _planProt.lock);
+    planVersion = _planVersion;
+    if (!isNewDatabase) {
+      Result res = checkCollectionPreconditions(databaseName, infos, planVersion);
+      if (res.fail()) {
+        return res;
+      }
     }
   }
 
