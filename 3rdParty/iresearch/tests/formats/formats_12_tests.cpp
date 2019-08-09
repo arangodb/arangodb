@@ -28,13 +28,13 @@
 NS_LOCAL
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                          format 11 specific tests
+// --SECTION--                                          format 12 specific tests
 // -----------------------------------------------------------------------------
 
-class format_11_test_case : public tests::directory_test_case_base {
+class format_12_test_case : public tests::directory_test_case_base {
 };
 
-TEST_P(format_11_test_case, read_zero_block_encryption) {
+TEST_P(format_12_test_case, read_zero_block_encryption) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     &tests::generic_json_field_factory
@@ -47,7 +47,7 @@ TEST_P(format_11_test_case, read_zero_block_encryption) {
 
   // write segment with format10
   {
-    auto codec = irs::formats::get("1_1");
+    auto codec = irs::formats::get("1_2");
     ASSERT_NE(nullptr, codec);
     auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
@@ -68,7 +68,7 @@ TEST_P(format_11_test_case, read_zero_block_encryption) {
   ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
 }
 
-TEST_P(format_11_test_case, write_zero_block_encryption) {
+TEST_P(format_12_test_case, write_zero_block_encryption) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     &tests::generic_json_field_factory
@@ -81,20 +81,18 @@ TEST_P(format_11_test_case, write_zero_block_encryption) {
   dir().attributes().emplace<tests::rot13_encryption>(0);
 
   // write segment with format10
-  auto codec = irs::formats::get("1_1");
+  auto codec = irs::formats::get("1_2");
   ASSERT_NE(nullptr, codec);
   auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
   ASSERT_NE(nullptr, writer);
 
-  ASSERT_TRUE(insert(*writer,
+  ASSERT_THROW(insert(*writer,
     doc1->indexed.begin(), doc1->indexed.end(),
     doc1->stored.begin(), doc1->stored.end()
-  ));
-
-  ASSERT_THROW(writer->commit(), irs::index_error);
+  ), irs::index_error);
 }
 
-TEST_P(format_11_test_case, fields_read_write_wrong_encryption) {
+TEST_P(format_12_test_case, fields_read_write_wrong_encryption) {
   // create sorted && unsorted terms
   typedef std::set<irs::bytes_ref> sorted_terms_t;
   typedef std::vector<irs::bytes_ref> unsorted_terms_t;
@@ -119,7 +117,7 @@ TEST_P(format_11_test_case, fields_read_write_wrong_encryption) {
   field.name = "field";
   field.norm = 5;
 
-  auto codec = irs::formats::get("1_1");
+  auto codec = irs::formats::get("1_2");
   ASSERT_NE(nullptr, codec);
   ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
 
@@ -159,8 +157,8 @@ TEST_P(format_11_test_case, fields_read_write_wrong_encryption) {
   ASSERT_THROW(reader->prepare(dir(), meta, docs_mask), irs::index_error);
 }
 
-TEST_P(format_11_test_case, column_meta_read_write_wrong_encryption) {
-  auto codec = irs::formats::get("1_1");
+TEST_P(format_12_test_case, column_meta_read_write_wrong_encryption) {
+  auto codec = irs::formats::get("1_2");
   ASSERT_NE(nullptr, codec);
 
   ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
@@ -196,7 +194,7 @@ TEST_P(format_11_test_case, column_meta_read_write_wrong_encryption) {
   ASSERT_THROW(reader->prepare(dir(), meta, count, max_id), irs::index_error);
 }
 
-TEST_P(format_11_test_case, open_ecnrypted_with_wrong_encryption) {
+TEST_P(format_12_test_case, open_ecnrypted_with_wrong_encryption) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     &tests::generic_json_field_factory
@@ -208,7 +206,7 @@ TEST_P(format_11_test_case, open_ecnrypted_with_wrong_encryption) {
 
   // write segment with format10
   {
-    auto codec = irs::formats::get("1_1");
+    auto codec = irs::formats::get("1_2");
     ASSERT_NE(nullptr, codec);
     auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
@@ -227,7 +225,7 @@ TEST_P(format_11_test_case, open_ecnrypted_with_wrong_encryption) {
   ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
 }
 
-TEST_P(format_11_test_case, open_ecnrypted_with_non_encrypted) {
+TEST_P(format_12_test_case, open_ecnrypted_with_non_encrypted) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     &tests::generic_json_field_factory
@@ -239,7 +237,7 @@ TEST_P(format_11_test_case, open_ecnrypted_with_non_encrypted) {
 
   // write segment with format11
   {
-    auto codec = irs::formats::get("1_1");
+    auto codec = irs::formats::get("1_2");
     ASSERT_NE(nullptr, codec);
     auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
@@ -259,7 +257,7 @@ TEST_P(format_11_test_case, open_ecnrypted_with_non_encrypted) {
   ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
 }
 
-TEST_P(format_11_test_case, open_non_ecnrypted_with_encrypted) {
+TEST_P(format_12_test_case, open_non_ecnrypted_with_encrypted) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     &tests::generic_json_field_factory
@@ -271,7 +269,7 @@ TEST_P(format_11_test_case, open_non_ecnrypted_with_encrypted) {
 
   // write segment with format11
   {
-    auto codec = irs::formats::get("1_1");
+    auto codec = irs::formats::get("1_2");
     ASSERT_NE(nullptr, codec);
     auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
@@ -321,7 +319,7 @@ TEST_P(format_11_test_case, open_non_ecnrypted_with_encrypted) {
   }
 }
 
-TEST_P(format_11_test_case, open_10_with_11) {
+TEST_P(format_12_test_case, open_10_with_12) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     &tests::generic_json_field_factory
@@ -345,7 +343,7 @@ TEST_P(format_11_test_case, open_10_with_11) {
   }
 
   // check index
-  auto codec = irs::formats::get("1_1");
+  auto codec = irs::formats::get("1_2");
   ASSERT_NE(nullptr, codec);
   auto index = irs::directory_reader::open(dir(), codec);
   ASSERT_TRUE(index);
@@ -380,7 +378,7 @@ TEST_P(format_11_test_case, open_10_with_11) {
   }
 }
 
-TEST_P(format_11_test_case, formats_10_11) {
+TEST_P(format_12_test_case, formats_10_12) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     &tests::generic_json_field_factory
@@ -406,7 +404,7 @@ TEST_P(format_11_test_case, formats_10_11) {
 
   // write segment with format11
   {
-    auto codec = irs::formats::get("1_1");
+    auto codec = irs::formats::get("1_2");
     ASSERT_NE(nullptr, codec);
     auto writer = irs::index_writer::make(dir(), codec, irs::OM_APPEND);
     ASSERT_NE(nullptr, writer);
@@ -480,8 +478,8 @@ TEST_P(format_11_test_case, formats_10_11) {
 }
 
 INSTANTIATE_TEST_CASE_P(
-  format_11_test,
-  format_11_test_case,
+  format_12_test,
+  format_12_test_case,
   ::testing::Values(
     &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
     &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
@@ -497,7 +495,7 @@ INSTANTIATE_TEST_CASE_P(
 using tests::format_test_case;
 
 INSTANTIATE_TEST_CASE_P(
-  format_11_test,
+  format_12_test,
   format_test_case,
   ::testing::Combine(
     ::testing::Values(
@@ -507,11 +505,8 @@ INSTANTIATE_TEST_CASE_P(
       &tests::rot13_cipher_directory<&tests::memory_directory, 7>,
       &tests::rot13_cipher_directory<&tests::fs_directory, 7>,
       &tests::rot13_cipher_directory<&tests::mmap_directory, 7>
-//      &tests::rot13_cipher_directory<&tests::memory_directory, 0>,
-//      &tests::rot13_cipher_directory<&tests::fs_directory, 0>,
-//      &tests::rot13_cipher_directory<&tests::mmap_directory, 0>
     ),
-    ::testing::Values("1_1")
+    ::testing::Values("1_2")
   ),
   tests::to_string
 );
