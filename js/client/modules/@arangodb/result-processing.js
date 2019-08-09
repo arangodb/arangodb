@@ -55,7 +55,10 @@ const internalMembers = [
   'ok',
   'message',
   'suiteName',
-  'processStats'
+  'processStats',
+  'startupTime',
+  'testDuration',
+  'shutdownTime'
 ];
 
 let failedRuns = {
