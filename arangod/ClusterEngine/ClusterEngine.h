@@ -119,17 +119,17 @@ class ClusterEngine final : public StorageEngine {
                                                          int& status) override;
   velocypack::Builder getReplicationApplierConfiguration(int& status) override;
   int removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override {
-    return {TRI_ERROR_NOT_IMPLEMENTED};
+    return TRI_ERROR_NOT_IMPLEMENTED;
   }
   int removeReplicationApplierConfiguration() override {
-    return {TRI_ERROR_NOT_IMPLEMENTED};
+    return TRI_ERROR_NOT_IMPLEMENTED;
   }
   int saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                           velocypack::Slice slice, bool doSync) override {
-    return {TRI_ERROR_NOT_IMPLEMENTED};
+    return TRI_ERROR_NOT_IMPLEMENTED;
   }
   int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice, bool doSync) override {
-    return {TRI_ERROR_NOT_IMPLEMENTED};
+    return TRI_ERROR_NOT_IMPLEMENTED;
   }
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
                         std::string const& keysId) override {

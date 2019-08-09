@@ -935,7 +935,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
 };
 
 struct CollectionCreationTest : public BenchmarkOperation {
-  CollectionCreationTest() : BenchmarkOperation(), _url(_url = "/_api/collection") {}
+  CollectionCreationTest() : BenchmarkOperation(), _url("/_api/collection") {}
 
   bool setUp(SimpleHttpClient* client) override { return true; }
 
