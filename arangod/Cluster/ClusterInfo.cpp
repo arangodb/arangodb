@@ -581,7 +581,8 @@ void ClusterInfo::loadPlan() {
       }
 
       // Only consider databases that have been fully created
-      if (!database.value.hasKey(StaticStrings::DatabaseIsBuilding)) {
+      if (!(ServerState::instance()->isCoordinator() and
+            database.value.hasKey(StaticStrings::DatabaseIsBuilding))) {
         newDatabases.emplace(std::move(name), database.value);
       }
     }
