@@ -1861,9 +1861,21 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
       // This is possible in Enterprise / Smart Collection situation
       (*nrDone)++;
     }
+
+    std::map<ShardID, std::vector<ServerID>> shardServers;
+    for (auto const& pair : VPackObjectIterator(info.json.get("shards"))) {
+      ShardID shardID = pair.key.copyString();
+      std::vector<ServerID> serverIds;
+
+      for (auto const& serv : VPackArrayIterator(pair.value)) {
+        serverIds.emplace_back(serv.copyString());
+      }
+      shardServers.emplace(shardID, serverIds);
+    }
+
     // The AgencyCallback will copy the closure will take responsibilty of it.
     auto closure = [cacheMutex, cacheMutexOwner, &info, dbServerResult, errMsg,
-                    nrDone, isCleaned, this](VPackSlice const& result) {
+                    nrDone, isCleaned, shardServers, this](VPackSlice const& result) {
       // NOTE: This ordering here is important to cover against a race in cleanup.
       // a) The Guard get's the Mutex, sets isCleaned == true, then removes the callback
       // b) If the callback is aquired it is saved in a shared_ptr, the Mutex will be aquired first, then it will check if it isCleaned
@@ -1879,6 +1891,7 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
         return true;
       }
 
+      // result is the object at thge path?
       if (result.isObject() && result.length() == (size_t)info.numberOfShards) {
         std::string tmpError = "";
 
@@ -1904,8 +1917,8 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
             std::vector<ServerID> plannedServers;
             {
               READ_LOCKER(readLocker, _planProt.lock);
-              auto it = _shardServers.find(p.key.copyString());
-              if (it != _shardServers.end()) {
+              auto it = shardServers.find(p.key.copyString());
+              if (it != shardServers.end()) {
                 plannedServers = (*it).second;
               } else {
                 LOG_TOPIC("9ed54", ERR, Logger::CLUSTER)
