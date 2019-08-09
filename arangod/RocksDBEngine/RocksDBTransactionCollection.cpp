@@ -23,6 +23,7 @@
 
 #include "RocksDBTransactionCollection.h"
 #include "Basics/Exceptions.h"
+#include "Basics/system-compiler.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBIndex.h"

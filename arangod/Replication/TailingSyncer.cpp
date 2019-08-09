@@ -31,6 +31,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/system-functions.h"
 #include "Logger/Logger.h"
 #include "Replication/InitialSyncer.h"
 #include "Replication/ReplicationApplier.h"
@@ -1478,16 +1479,14 @@ Result TailingSyncer::runContinuousSync() {
       // saveApplierState();
     } else {
       // if we already transferred some data, we'll use the last applied tick
-      if (_applier->_state._lastAppliedContinuousTick >= fromTick) {
-        fromTick = _applier->_state._lastAppliedContinuousTick;
-      } else {
-        LOG_TOPIC("7045d", WARN, Logger::REPLICATION)
-            << "restarting continuous synchronization from previous state"
-            << ", lastAppliedContinuousTick in state: " << _applier->_state._lastAppliedContinuousTick
-            << ", lastProcessedContinuousTick in state: " << _applier->_state._lastProcessedContinuousTick
-            << ", safeResumeTick in state: " << _applier->_state._safeResumeTick
-            << ", fromTick: 0";
-      }
+      LOG_TOPIC("7045d", DEBUG, Logger::REPLICATION)
+          << "restarting continuous synchronization from previous state"
+          << ", lastAppliedContinuousTick in state: " << _applier->_state._lastAppliedContinuousTick
+          << ", lastProcessedContinuousTick in state: " << _applier->_state._lastProcessedContinuousTick
+          << ", safeResumeTick in state: " << _applier->_state._safeResumeTick
+          << ", fromTick: 0";
+      
+      fromTick = _applier->_state._lastAppliedContinuousTick;
       safeResumeTick = _applier->_state._safeResumeTick;
     }
   }
@@ -1507,7 +1506,7 @@ Result TailingSyncer::runContinuousSync() {
   // open transactions from the master
   TRI_voc_tick_t fetchTick = safeResumeTick;
   TRI_voc_tick_t lastScannedTick = safeResumeTick;  // hint where server MAY scan from
-  if (safeResumeTick <= 0 || safeResumeTick != fromTick) {
+  if (safeResumeTick == 0 || safeResumeTick != fromTick) {
     // adjust fetchTick so we can tail starting from the tick containing
     // the open transactions we did not commit locally
     Result res = fetchOpenTransactions(safeResumeTick, fromTick, fetchTick);

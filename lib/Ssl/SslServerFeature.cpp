@@ -20,13 +20,39 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <exception>
+#include <stdexcept>
+#include <unordered_set>
+#include <vector>
+
+#include <boost/asio/ssl/context_base.hpp>
+#include <boost/asio/ssl/impl/context.ipp>
+
+#include <openssl/asn1.h>
+#include <openssl/bio.h>
+#include <openssl/ec.h>
+#include <openssl/objects.h>
+#include <openssl/opensslv.h>
+#include <openssl/ossl_typ.h>
+#include <openssl/safestack.h>
+#include <openssl/ssl3.h>
+#include <openssl/x509.h>
+
 #include "SslServerFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/application-exit.h"
+#include "Logger/LogLevel.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/UniformCharacter.h"
+#include "Ssl/ssl-helper.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

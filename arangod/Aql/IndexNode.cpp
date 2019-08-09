@@ -31,6 +31,7 @@
 #include "Aql/IndexExecutor.h"
 #include "Aql/Query.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"

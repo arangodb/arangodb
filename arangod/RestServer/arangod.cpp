@@ -109,6 +109,7 @@
 
 #ifdef _WIN32
 #include "ApplicationFeatures/WindowsServiceFeature.h"
+#include "Basics/win-utils.h"
 #endif
 
 #ifdef USE_ENTERPRISE
@@ -373,7 +374,7 @@ int main(int argc, char* argv[]) {
   delete arangodb::restartAction;
   if (res != 0) {
     std::cerr << "FATAL: RestartAction returned non-zero exit status: "
-      << res << ", giving up.";
+      << res << ", giving up." << std::endl;
     return res;
   }
   // It is not clear if we want to do the following under Linux and OSX,
@@ -382,7 +383,10 @@ int main(int argc, char* argv[]) {
   // to do this because the solution below is not possible. In these
   // cases, we need outside help to get the process restarted.
 #if defined(__linux__) || defined(__APPLE__)
-  chdir(workdir.c_str());
+  res = chdir(workdir.c_str());
+  if (res != 0) {
+    std::cerr << "WARNING: could not change into directory '" << workdir << "'" << std::endl;
+  }
   execv(argv[0], argv);
 #endif
 }

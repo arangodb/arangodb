@@ -25,11 +25,12 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Cache/Rebalancer.h"
 #include "Basics/Common.h"
+#include "Basics/voc-errors.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainCache.h"
-#include "Cache/Rebalancer.h"
 #include "Cache/Transaction.h"
 #include "Cache/TransactionalCache.h"
 #include "Random/RandomGenerator.h"

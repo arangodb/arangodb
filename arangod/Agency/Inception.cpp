@@ -26,6 +26,7 @@
 #include "Agency/Agent.h"
 #include "Agency/GossipCallback.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
 

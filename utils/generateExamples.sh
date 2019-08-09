@@ -10,6 +10,8 @@ else
     PS='/'
 fi;
 
+export PORT=`expr 1024 + $RANDOM`
+
 SCRIPT="utils${PS}generateExamples.js"
 LOGFILE="out${PS}log-$PID"
 DBDIR="out${PS}data-$PID"
@@ -61,7 +63,7 @@ fi
 
 "${ARANGOSH}" \
     --configuration none \
-    --server.endpoint none \
+    --server.endpoint tcp://127.0.0.1:${PORT} \
     --log.file ${LOGFILE} \
     --javascript.startup-directory js \
     --javascript.module-directory enterprise/js \

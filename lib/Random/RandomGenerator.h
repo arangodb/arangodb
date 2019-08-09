@@ -24,11 +24,8 @@
 #ifndef ARANGODB_RANDOM_RANDOM_GENERATOR_H
 #define ARANGODB_RANDOM_RANDOM_GENERATOR_H 1
 
-#include "Basics/Common.h"
-
-#include "Basics/Exceptions.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
+#include <cstdint>
+#include <memory>
 
 namespace arangodb {
 

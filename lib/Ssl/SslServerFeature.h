@@ -23,6 +23,9 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_SSL_SERVER_FEATURE_H
 #define ARANGODB_APPLICATION_FEATURES_SSL_SERVER_FEATURE_H 1
 
+#include <memory>
+#include <string>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 // needs to come first
@@ -32,6 +35,12 @@
 #include "Basics/asio_ns.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
+namespace options {
+class ProgramOptions;
+}
 
 class SslServerFeature : public application_features::ApplicationFeature {
  public:

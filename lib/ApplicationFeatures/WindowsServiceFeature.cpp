@@ -24,9 +24,11 @@
 
 #include <Winsvc.h>
 #include <signal.h>
+#include <windows.h>
 #include <iostream>
 
 #include "Basics/Common.h"
+#include "Basics/win-utils.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Rest/Version.h"

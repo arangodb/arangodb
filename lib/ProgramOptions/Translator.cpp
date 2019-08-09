@@ -20,6 +20,8 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <unordered_map>
+
 #include "Translator.h"
 
 #include "Basics/StringUtils.h"

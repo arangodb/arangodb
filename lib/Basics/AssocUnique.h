@@ -27,6 +27,8 @@
 #ifndef ARANGODB_BASICS_ASSOC_UNIQUE_H
 #define ARANGODB_BASICS_ASSOC_UNIQUE_H 1
 
+#include <cstdint>
+
 #include "Basics/AssocUniqueHelpers.h"
 #include "Basics/Common.h"
 
@@ -39,6 +41,7 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/PerformanceLogScope.h"
+#include "Basics/debugging.h"
 #include "Basics/gcd.h"
 #include "Basics/prime-numbers.h"
 #include "Logger/Logger.h"
