@@ -55,7 +55,7 @@ cat cppcheck.xml \
   | sed -e 's:^.*msg="\([^"]*\)".*:\1:' -e 's:^.*file="\([^"]*\)".*line="\([^"]*\)".*:    \1\:\2:' -e 's:&apos;:":g' -e 's:&gt;:>:g' -e 's:&lt;:<:g' -e 's:</error>::'
 
 cat cppcheck.xml \
-  | sed -e "s:file=\":file=\"`pwd`/:g"
+  | sed -e "s:file=\":file=\"`pwd`/:g" \
   > cppcheck.xml.tmp
 mv cppcheck.xml.tmp cppcheck.xml
 
