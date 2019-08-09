@@ -114,6 +114,16 @@ class FollowerInfo {
     READ_LOCKER(readLocker, _dataLock);
     return _theLeaderTouched;
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Take over leadership for this shard.
+  ///        Also inject information of a insync followers that we knew about
+  ///        before a failover to this server has happened
+  ///        The second parameter may be nullptr. It is an additional list
+  ///        of declared to be insync followers. If it is nullptr the follower
+  ///        list is initialised empty.
+  ////////////////////////////////////////////////////////////////////////////////
+  void takeOverLeadership(std::shared_ptr<std::vector<ServerID>> realInsyncFollowers);
 };
 }  // end namespace arangodb
 
