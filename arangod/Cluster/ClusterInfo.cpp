@@ -522,8 +522,7 @@ void ClusterInfo::loadPlan() {
   if (result.successful()) {
     VPackSlice slice = result.slice()[0].get(
         std::vector<std::string>({AgencyCommManager::path(), "Plan"}));
-    auto planBuilder = std::make_shared<VPackBuilder>();
-    planBuilder->add(slice);
+    auto planBuilder = std::make_shared<VPackBuilder>(slice);
 
     VPackSlice planSlice = planBuilder->slice();
 
@@ -868,13 +867,13 @@ void ClusterInfo::loadPlan() {
               // inside the IF
               if (!isBuilding) {
                 // register with name as well as with id:
-                databaseCollections.emplace(std::make_pair(collectionName, newCollection));
-                databaseCollections.emplace(std::make_pair(collectionId, newCollection));
+                databaseCollections.emplace(collectionName, newCollection);
+                databaseCollections.emplace(collectionId, newCollection);
               }
 
               auto shardKeys =
                   std::make_shared<std::vector<std::string>>(newCollection->shardKeys());
-              newShardKeys.insert(make_pair(collectionId, shardKeys));
+              newShardKeys.emplace(collectionId, std::move(shardKeys));
 
               auto shardIDs = newCollection->shardIds();
               auto shards = std::make_shared<std::vector<std::string>>();
@@ -888,7 +887,7 @@ void ClusterInfo::loadPlan() {
                           return std::strtol(a.c_str() + 1, nullptr, 10) <
                                  std::strtol(b.c_str() + 1, nullptr, 10);
                         });
-              newShards.emplace(std::make_pair(collectionId, shards));
+              newShards.emplace(collectionId, std::move(shards));
 
             } catch (std::exception const& ex) {
               // The plan contains invalid collection information.
@@ -923,12 +922,12 @@ void ClusterInfo::loadPlan() {
             }
           }
 
-          newCollections.emplace(std::make_pair(databaseName, databaseCollections));
+          newCollections.emplace(databaseName, std::move(databaseCollections));
         }
       }
 
       WRITE_LOCKER(writeLocker, _planProt.lock);
-      _plan = planBuilder;
+      _plan = std::move(planBuilder);
       _planVersion = newPlanVersion;
       if (swapDatabases) {
         _plannedDatabases.swap(newDatabases);
