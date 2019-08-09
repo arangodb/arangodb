@@ -83,7 +83,7 @@ function agencyTestSuite () {
         try {
           res.bodyParsed = JSON.parse(res.body);
         } catch(e) {
-          require("console").error("Exception in body parse:", res.body, JSON.stringify(e),  JSON.stringify(res));
+          require("console").error("Exception in body parse of '" + agencyLeader + "/_api/agency/config' : ", res.body, JSON.stringify(e),  JSON.stringify(res));
           throw e;
         }
         return {
@@ -120,15 +120,27 @@ function agencyTestSuite () {
       
       let compactionReply = request(compaction);
       let stateReply = request(state);
+      let compactionParsed;
+      let stateParsed;
       try {
-        ret.push({compactions: JSON.parse(compactionReply.body),
-                  state: JSON.parse(stateReply.body), url: url});
+        compactionParsed = JSON.parse(compactionReply.body);
       }
       catch (e) {
-        require("console").error("Exception in body parse:", compactionReply.body, JSON.stringify(e),  JSON.stringify(compactionReply));
-        require("console").error("Exception in body parse:", stateReply.body, JSON.stringify(e),  JSON.stringify(stateReply));
+        require("console").error("Exception in body parse of '" + url + "/_api/cursor' : ", compactionReply.body, JSON.stringify(e),  JSON.stringify(compactionReply));
         throw e;
       }
+      try {
+        stateParsed = JSON.parse(stateReply.body);
+      }
+      catch (e) {
+        require("console").error("Exception in body parse of '" + url + "/_api/agency/state' : ", stateReply.body, JSON.stringify(e),  JSON.stringify(stateReply));
+        throw e;
+      }
+      ret.push({
+        compactions: compactionParsed,
+        state: stateParsed,
+        url: url
+      });
     });
     return ret;
   }
@@ -137,6 +149,7 @@ function agencyTestSuite () {
     // We simply try all agency servers in turn until one gives us an HTTP
     // response:
     var res;
+    let requestUrl;
     var inquire = false;
 
     var clientIds = [];
@@ -150,14 +163,16 @@ function agencyTestSuite () {
     while (true) {
 
       if (!inquire) {
-        res = request({url: agencyLeader + "/_api/agency/" + api,
+        requestUrl = agencyLeader + "/_api/agency/" + api;
+        res = request({url: requestUrl,
                        method: "POST", followRedirect: false,
                        body: JSON.stringify(list),
                        headers: {"Content-Type": "application/json"},
                        timeout: timeout  /* essentially for the huge trx package
                                             running under ASAN in the CI */ });
       } else { // inquire. Remove successful commits. For later retries
-        res = request({url: agencyLeader + "/_api/agency/inquire",
+        requestUrl = agencyLeader + "/_api/agency/inquire";
+        res = request({url: requestUrl,
                        method: "POST", followRedirect: false,
                        body: JSON.stringify(clientIds),
                        headers: {"Content-Type": "application/json"},
@@ -193,7 +208,7 @@ function agencyTestSuite () {
       try {
         res.bodyParsed = JSON.parse(res.body);
       } catch(e) {
-        require("console").error("Exception in body parse:", res.body, JSON.stringify(e), api, list, JSON.stringify(res));
+        require("console").error("Exception in body parse of '" + requestUrl + "' : ", res.body, JSON.stringify(e), api, list, JSON.stringify(res));
         throw e;
       }
       res.bodyParsed.results.forEach(function (index) {
@@ -211,7 +226,7 @@ function agencyTestSuite () {
     try {
       res.bodyParsed = JSON.parse(res.body);
     } catch(e) {
-      require("console").error("Exception in body parse:", res.body, JSON.stringify(e), api, list, JSON.stringify(res));
+      require("console").error("Exception in body parse of '" + requestUrl + "' : ", res.body, JSON.stringify(e), api, list, JSON.stringify(res));
     }
     return res;
   }
@@ -768,7 +783,7 @@ function agencyTestSuite () {
         try {
           res.bodyParsed = JSON.parse(res.body);
         } catch(e) {
-          require("console").error("Exception in body parse:", res.body, JSON.stringify(e), JSON.stringify(res));
+          require("console").error("Exception in body parse of " + agencyLeader + "/_api/agency/stores' : ", res.body, JSON.stringify(e), JSON.stringify(res));
           throw e;
         }
         if (res.bodyParsed.read_db[0].a !== undefined) {
@@ -795,7 +810,7 @@ function agencyTestSuite () {
             try {
               res.bodyParsed = JSON.parse(res.body);
             } catch(e) {
-              require("console").error("Exception in body parse:", res.body, JSON.stringify(e), JSON.stringify(res));
+              require("console").error("Exception in body parse of '" + agencyLeader + "/_api/agency/stores' : ", res.body, JSON.stringify(e), JSON.stringify(res));
               throw e;
             }
             console.warn(res.bodyParsed.read_db[0]);
