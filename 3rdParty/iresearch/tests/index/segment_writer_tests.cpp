@@ -76,7 +76,7 @@ TEST_F(segment_writer_tests, invalid_actions) {
   field_t field(stream);
 
   irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-    return irs::column_info( irs::compression::lz4::type(), true );
+    return irs::column_info( irs::compression::lz4::type(), {}, true );
   };
 
   irs::memory_directory dir;

@@ -62,7 +62,6 @@
 #include "utils/object_pool.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
-#include "utils/singleton.hpp"
 #include "utils/std.hpp"
 
 #if defined(_MSC_VER)
@@ -72,20 +71,6 @@
 #if (!defined(IRESEARCH_FORMAT10_CODEC) || (IRESEARCH_FORMAT10_CODEC == 0))
 
 NS_LOCAL
-
-struct noop_compressor final : irs::compression::compressor, irs::singleton<noop_compressor> {
-  static irs::compression::compressor::ptr make() {
-    typedef irs::compression::compressor::ptr ptr;
-    return ptr(ptr(), &instance());
-  }
-
-  virtual irs::bytes_ref compress(
-      irs::byte_type* in, size_t size, irs::bstring& /*buf*/) {
-    return { in, size };
-  }
-
-  virtual void flush(data_output& /*out*/) { /*NOOP*/ }
-};
 
 struct format_traits {
   static const uint32_t BLOCK_SIZE = 128;
@@ -157,9 +142,27 @@ NS_END
 
 NS_LOCAL
 
-irs::bytes_ref DUMMY; // placeholder for visiting logic in columnstore
+using namespace irs;
 
-using namespace iresearch;
+bytes_ref DUMMY; // placeholder for visiting logic in columnstore
+
+class noop_compressor final : compression::compressor {
+ public:
+  static compression::compressor::ptr make() {
+    typedef compression::compressor::ptr ptr;
+    static noop_compressor INSTANCE;
+    return ptr(ptr(), &INSTANCE);
+  }
+
+  virtual bytes_ref compress(byte_type* in, size_t size, bstring& /*buf*/) {
+    return bytes_ref(in, size);
+  }
+
+  virtual void flush(data_output& /*out*/) { }
+
+ private:
+  noop_compressor() = default;
+}; // noop_compressor
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                         features

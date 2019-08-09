@@ -28,6 +28,86 @@
 #include <numeric>
 #include <random>
 
+NS_LOCAL
+
+struct dummy_compressor final : irs::compression::compressor {
+  virtual irs::bytes_ref compress(irs::byte_type* in, size_t size, irs::bstring& /*buf*/) {
+    return irs::bytes_ref::NIL;
+  }
+
+  virtual void flush(data_output&) { }
+};
+
+struct dummy_decompressor final : irs::compression::decompressor {
+  virtual irs::bytes_ref decompress(
+      irs::byte_type* src, size_t src_size,
+      irs::byte_type* dst, size_t dst_size) {
+    return irs::bytes_ref::NIL;
+  }
+
+  virtual bool prepare(data_input&) { return true; }
+};
+
+NS_END
+
+TEST(compression_test, registration) {
+  const irs::compression::type_id type("dummy_compression");
+
+  // check absent
+  {
+    ASSERT_FALSE(irs::compression::exists(type.name()));
+    ASSERT_EQ(nullptr, irs::compression::get_compressor(type.name(), {}));
+    ASSERT_EQ(nullptr, irs::compression::get_decompressor(type.name(), {}));
+    auto visitor = [&type](const irs::string_ref& name) { return name != type.name(); };
+    ASSERT_TRUE(irs::compression::visit(visitor));
+  }
+
+  static size_t calls_count;
+  irs::compression::compression_registrar initial(
+     type,
+     [](const irs::compression::options&) -> irs::compression::compressor::ptr {
+       ++calls_count;
+       return std::make_shared<dummy_compressor>();
+     },
+     []() -> irs::compression::decompressor::ptr {
+       ++calls_count;
+       return std::make_shared<dummy_decompressor>();
+     }
+  );
+  ASSERT_TRUE(initial); // registered
+
+  // check registered
+  {
+    ASSERT_TRUE(irs::compression::exists(type.name()));
+    ASSERT_EQ(0, calls_count);
+    ASSERT_NE(nullptr, irs::compression::get_compressor(type.name(), {}));
+    ASSERT_EQ(1, calls_count);
+    ASSERT_NE(nullptr, irs::compression::get_decompressor(type.name(), {}));
+    ASSERT_EQ(2, calls_count);
+    auto visitor = [&type](const irs::string_ref& name) { return name != type.name(); };
+    ASSERT_FALSE(irs::compression::visit(visitor));
+  }
+
+  irs::compression::compression_registrar duplicate(
+     type,
+     [](const irs::compression::options&) -> irs::compression::compressor::ptr {  return nullptr;  },
+     []() -> irs::compression::decompressor::ptr { return nullptr; }
+  );
+  ASSERT_FALSE(duplicate); // not registered
+
+  // check registered
+  {
+    ASSERT_TRUE(irs::compression::exists(type.name()));
+    ASSERT_EQ(2, calls_count);
+    ASSERT_NE(nullptr, irs::compression::get_compressor(type.name(), {}));
+    ASSERT_EQ(3, calls_count);
+    ASSERT_NE(nullptr, irs::compression::get_decompressor(type.name(), {}));
+    ASSERT_EQ(4, calls_count);
+    auto visitor = [&type](const irs::string_ref& name) { return name != type.name(); };
+    ASSERT_FALSE(irs::compression::visit(visitor));
+  }
+}
+
 TEST(compression_test, lz4) {
   using namespace iresearch;
 

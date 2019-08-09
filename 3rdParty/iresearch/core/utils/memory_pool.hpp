@@ -38,8 +38,13 @@ NS_ROOT
 NS_BEGIN(memory)
 
 inline CONSTEXPR size_t align_up(size_t size, size_t alignment) NOEXCEPT {
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+  assert(math::is_power2(alignment));
+  return (size + alignment - 1) & (0 - alignment);
+#else
   return IRS_ASSERT(math::is_power2(alignment)),
          (size + alignment - 1) & (0 - alignment);
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////

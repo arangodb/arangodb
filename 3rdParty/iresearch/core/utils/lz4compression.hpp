@@ -28,76 +28,23 @@
 #include "noncopyable.hpp"
 
 #include <memory>
-#include <lz4.h>
 
 NS_ROOT
 NS_BEGIN(compression)
 
-class IRESEARCH_API lz4compressor_base : public compressor,
-                                         private util::noncopyable {
- public:
- // as stated in 'lz4.h', we have to use
- // LZ4_createStream/LZ4_freeStream in context of a DLL
-#ifdef IRESEARCH_DLL
-  explicit lz4compressor_base() : stream_(LZ4_createStream()) {
-    if (!stream_) {
-      throw std::bad_alloc();
-    }
-  }
-  ~lz4compressor_base() { LZ4_freeStream(stream_); }
-#else
-  lz4compressor_base() {
-    LZ4_resetStream(&stream_);
-  }
-#endif
+struct LZ4_stream_deleter {
+  void operator()(void* p) NOEXCEPT;
+};
 
- protected:
-#ifdef IRESEARCH_DLL
-  LZ4_stream_t* stream() NOEXCEPT { return stream_; }
-#else
-  LZ4_stream_t* stream() NOEXCEPT { return &stream_; }
-#endif
+struct LZ4_streamDecode_deleter {
+  void operator()(void* p) NOEXCEPT;
+};
 
- private:
-#ifdef IRESEARCH_DLL
-  LZ4_stream_t* stream_;
-#else
-  LZ4_stream_t stream_;
-#endif
-}; // lz4compressor_base
+typedef std::unique_ptr<void, LZ4_stream_deleter> lz4stream;
+typedef std::unique_ptr<void, LZ4_streamDecode_deleter> lz4stream_decode;
 
-class IRESEARCH_API lz4decompressor_base : public decompressor,
-                                           private util::noncopyable {
- public:
- // as stated in 'lz4.h', we have to use
- // LZ4_createStreamDecode/LZ4_freeStreamDecode in context of a DLL
-#ifdef IRESEARCH_DLL
-  lz4decompressor_base() : stream_(LZ4_createStreamDecode()) {
-    if (!stream_) {
-      throw std::bad_alloc();
-    }
-  }
-  ~lz4decompressor_base() { LZ4_freeStreamDecode(stream_); }
-#else
-  lz4decompressor_base() NOEXCEPT {
-    std::memset(&stream_, 0, sizeof(stream_));
-  }
-#endif
-
- protected:
-#ifdef IRESEARCH_DLL
-  LZ4_streamDecode_t* stream() NOEXCEPT { return stream_; }
-#else
-  LZ4_streamDecode_t* stream() NOEXCEPT { return &stream_; }
-#endif
-
- private:
-#ifdef IRESEARCH_DLL
-  LZ4_streamDecode_t* stream_;
-#else
-  LZ4_streamDecode_t stream_;
-#endif
-}; // lz4decompressor
+lz4stream lz4_make_stream();
+lz4stream_decode lz4_make_stream_decode();
 
 struct IRESEARCH_API lz4 {
   DECLARE_COMPRESSION_TYPE();

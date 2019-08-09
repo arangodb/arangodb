@@ -28,6 +28,8 @@
 #include "utils/misc.hpp"
 #include "utils/type_limits.hpp"
 
+#include <lz4.h>
+
 NS_LOCAL
 
 // can reuse stateless instances
@@ -51,6 +53,26 @@ static_assert(
 );
 
 NS_BEGIN(compression)
+
+void LZ4_streamDecode_deleter::operator()(void *p) NOEXCEPT {
+  if (p) {
+    LZ4_freeStreamDecode(reinterpret_cast<LZ4_streamDecode_t*>(p));
+  }
+}
+
+void LZ4_stream_deleter::operator()(void *p) NOEXCEPT {
+  if (p) {
+    LZ4_freeStream(reinterpret_cast<LZ4_stream_t*>(p));
+  }
+}
+
+lz4stream lz4_make_stream() {
+  return lz4stream(LZ4_createStream());
+}
+
+lz4stream_decode lz4_make_stream_decode() {
+  return lz4stream_decode(LZ4_createStreamDecode());
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   lz4 compression
