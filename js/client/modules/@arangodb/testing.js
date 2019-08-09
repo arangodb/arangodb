@@ -449,7 +449,7 @@ function iterateTests(cases, options) {
     if (options.testBuckets) {
       printTestName += " - " + options.testBuckets;
     }
-    print(BLUE + '================================================================================');
+    print(YELLOW + '================================================================================');
     print('Executing test', printTestName);
     print('================================================================================\n' + RESET);
 

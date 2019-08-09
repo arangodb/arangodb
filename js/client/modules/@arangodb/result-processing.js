@@ -94,7 +94,7 @@ function unitTestPrettyPrintResults (res, options) {
   function skipInternalMember (r, a) {
     return !r.hasOwnProperty(a) || internalMembers.indexOf(a) !== -1;
   }
-  print(BLUE + '================================================================================');
+  print(YELLOW + '================================================================================');
   print('TEST RESULTS');
   print('================================================================================\n' + RESET);
 

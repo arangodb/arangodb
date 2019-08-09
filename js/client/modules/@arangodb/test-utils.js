@@ -41,10 +41,10 @@ const platform = require('internal').platform;
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
-// const GREEN = require('internal').COLORS.COLOR_GREEN;
+const GREEN = require('internal').COLORS.COLOR_GREEN;
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
-// const YELLOW = require('internal').COLORS.COLOR_YELLOW;
+const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 let didSplitBuckets = false;
 
@@ -225,7 +225,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           break;
         }
 
-        print('\n' + Date() + ' ' + runFn.info + ': Trying', te, '...');
+        print('\n' + (new Date()).toISOString() + GREEN + " [============] " + runFn.info + ': Trying', te, '...', RESET);
         let reply = runFn(options, instanceInfo, te, env);
 
         if (reply.hasOwnProperty('forceTerminate')) {
