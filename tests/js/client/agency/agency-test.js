@@ -80,7 +80,12 @@ function agencyTestSuite () {
       let res = request({url: agencyLeader + "/_api/agency/config",
                          method: "GET", followRedirect: true});
       if (res.statusCode === 200) {
-        res.bodyParsed = JSON.parse(res.body);
+        try {
+          res.bodyParsed = JSON.parse(res.body);
+        } catch(e) {
+          require("console").error("Exception in body parse:", res.body, JSON.stringify(e),  JSON.stringify(res));
+          throw e;
+        }
         return {
           compactionStepSize: res.bodyParsed.configuration["compaction step size"],
           compactionKeepSize: res.bodyParsed.configuration["compaction keep size"]
@@ -113,8 +118,17 @@ function agencyTestSuite () {
         timeout: 240
       };
       
-      ret.push({compactions: JSON.parse(request(compaction).body),
-                state: JSON.parse(request(state).body), url: url});
+      let compactionReply = request(compaction);
+      let stateReply = request(state);
+      try {
+        ret.push({compactions: JSON.parse(compactionReply.body),
+                  state: JSON.parse(stateReply.body), url: url});
+      }
+      catch (e) {
+        require("console").error("Exception in body parse:", compactionReply.body, JSON.stringify(e),  JSON.stringify(compactionReply));
+        require("console").error("Exception in body parse:", stateReply.body, JSON.stringify(e),  JSON.stringify(stateReply));
+        throw e;
+      }
     });
     return ret;
   }
@@ -176,7 +190,12 @@ function agencyTestSuite () {
       }
       // In case of inquiry, we probably have done some of the transactions:
       var done = 0;
-      res.bodyParsed = JSON.parse(res.body);
+      try {
+        res.bodyParsed = JSON.parse(res.body);
+      } catch(e) {
+        require("console").error("Exception in body parse:", res.body, JSON.stringify(e), api, list, JSON.stringify(res));
+        throw e;
+      }
       res.bodyParsed.results.forEach(function (index) {
         if (index > 0) {
           done++;
@@ -746,7 +765,12 @@ function agencyTestSuite () {
       let res = request({url: agencyLeader + "/_api/agency/stores",
                          method: "GET", followRedirect: true});
       if (res.statusCode === 200) {
-        res.bodyParsed = JSON.parse(res.body);
+        try {
+          res.bodyParsed = JSON.parse(res.body);
+        } catch(e) {
+          require("console").error("Exception in body parse:", res.body, JSON.stringify(e), JSON.stringify(res));
+          throw e;
+        }
         if (res.bodyParsed.read_db[0].a !== undefined) {
           assertTrue(res.bodyParsed.read_db[1]["/a/u"] >= 0);
         } else {
@@ -768,7 +792,12 @@ function agencyTestSuite () {
         // only, if agency is still led by same guy/girl
         if (agencyLeader === tmp) {
           if (res.statusCode === 200) {
-            res.bodyParsed = JSON.parse(res.body);
+            try {
+              res.bodyParsed = JSON.parse(res.body);
+            } catch(e) {
+              require("console").error("Exception in body parse:", res.body, JSON.stringify(e), JSON.stringify(res));
+              throw e;
+            }
             console.warn(res.bodyParsed.read_db[0]);
             if (res.bodyParsed.read_db[0].a !== undefined) {
               assertTrue(res.bodyParsed.read_db[1]["/a/u"] === undefined);
