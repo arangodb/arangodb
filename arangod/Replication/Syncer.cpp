@@ -269,6 +269,11 @@ Syncer::JobSynchronizer::~JobSynchronizer() {
   }
 }
 
+bool Syncer::JobSynchronizer::gotResponse() const noexcept {
+  CONDITION_LOCKER(guard, _condition);
+  return _gotResponse;
+}
+
 /// @brief will be called whenever a response for the job comes in
 void Syncer::JobSynchronizer::gotResponse(
     std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response, double time) noexcept {
