@@ -183,7 +183,7 @@ class IResearchViewExecutorBase {
     friend class IndexReadBuffer;
 
     IndexReadBufferEntry() = delete;
-    inline IndexReadBufferEntry(std::size_t keyIdx) noexcept
+    explicit inline IndexReadBufferEntry(std::size_t keyIdx) noexcept
       : _keyIdx(keyIdx) {
     }
 

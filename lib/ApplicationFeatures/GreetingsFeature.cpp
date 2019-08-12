@@ -46,16 +46,17 @@ void GreetingsFeature::prepare() {
   // so warn users about this
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // maintainer mode
-  bool warn = true;
+  constexpr bool warn = true;
 #else
   // catch-tests on (enables TEST_VIRTUAL)
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  bool warn = true;
+  constexpr bool warn = true;
 #else
   // neither maintainer mode nor catch tests
-  bool warn = false;
+  constexpr bool warn = false;
 #endif
 #endif
+  // cppcheck-suppress knownConditionTrueFalse
   if (warn) {
     LOG_TOPIC("0458b", WARN, arangodb::Logger::FIXME)
       << "This is a maintainer version intended for debugging. DO NOT USE IN PRODUCTION!";

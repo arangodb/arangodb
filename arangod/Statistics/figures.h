@@ -64,7 +64,7 @@ struct StatisticsDistribution {
     _counts.resize(_cuts.size() + 1);
   }
 
-  StatisticsDistribution const& operator=(StatisticsDistribution& other) {
+  StatisticsDistribution& operator=(StatisticsDistribution& other) {
     MUTEX_LOCKER(l1, _mutex);
     MUTEX_LOCKER(l2, other._mutex);
 

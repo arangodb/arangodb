@@ -44,7 +44,7 @@ enum ScopeType {
 class Scope {
  public:
   /// @brief create a scope
-  Scope(ScopeType);
+  explicit Scope(ScopeType);
 
   /// @brief destroy the scope
   ~Scope();

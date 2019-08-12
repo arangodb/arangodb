@@ -730,12 +730,15 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   if (_shouldKeepAlive && secs > 0) {
     int64_t millis = static_cast<int64_t>(secs * 1000);
     this->_protocol->timer.expires_after(std::chrono::milliseconds(millis));
-    this->_protocol->timer.async_wait([this](asio_ns::error_code ec) {
-      if (!ec) {
-        LOG_TOPIC("5c1e0", DEBUG, Logger::REQUESTS)
-        << "keep alive timeout, closing stream!";
-        this->close();
+    std::weak_ptr<CommTask> self = CommTask::shared_from_this();
+    this->_protocol->timer.async_wait([self = std::move(self)] (asio_ns::error_code ec) {
+      std::shared_ptr<CommTask> s;
+      if (ec || !(s = self.lock())) {  // was canceled / deallocated
+        return;
       }
+      LOG_TOPIC("5c1e0", DEBUG, Logger::REQUESTS)
+      << "keep alive timeout, closing stream!";
+      s->close();
     });
     
     header->append(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));

@@ -72,7 +72,7 @@ struct IAlgorithm {
   std::string const& name() const { return _name; }
 
  protected:
-  IAlgorithm(std::string const& name) : _name(name) {}
+  explicit IAlgorithm(std::string const& name) : _name(name) {}
 
  private:
   std::string _name;

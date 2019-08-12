@@ -289,7 +289,7 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
   function skipInternalMember (r, a) {
     return !r.hasOwnProperty(a) || internalMembers.indexOf(a) !== -1;
   }
-  print(BLUE + '================================================================================');
+  print(YELLOW + '================================================================================');
   print('TEST RESULTS');
   print('================================================================================\n' + RESET);
 
@@ -685,7 +685,7 @@ function iterateTests(cases, options, jsonReply) {
     if (options.testBuckets) {
       printTestName += " - " + options.testBuckets;
     }
-    print(BLUE + '================================================================================');
+    print(YELLOW + '================================================================================');
     print('Executing test', printTestName);
     print('================================================================================\n' + RESET);
 

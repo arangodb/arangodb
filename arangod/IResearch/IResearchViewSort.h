@@ -26,7 +26,8 @@
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/debugging.h"
-#include "velocypack/Slice.h"
+
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 

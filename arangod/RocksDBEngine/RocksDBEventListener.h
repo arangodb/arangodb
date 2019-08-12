@@ -37,7 +37,7 @@ namespace arangodb {
 class RocksDBEventListenerThread : public arangodb::Thread {
 public:
 
-  RocksDBEventListenerThread(std::string const& name) : Thread(name) {}
+  explicit RocksDBEventListenerThread(std::string const& name) : Thread(name) {}
   ~RocksDBEventListenerThread();
 
   void queueShaCalcFile(std::string const& pathName);
