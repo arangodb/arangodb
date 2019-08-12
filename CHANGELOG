@@ -1,3 +1,8 @@
+v3.3.25 (2019-XX-XX)
+--------------------
+
+* disabled enforce-block-cache-size-limit because of bugs in RocksDB 5.6
+
 v3.3.24 (2019-08-09)
 --------------------
 

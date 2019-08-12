@@ -255,7 +255,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       new Int64Parameter(&_blockCacheShardBits));
 
   options->addOption("--rocksdb.enforce-block-cache-size-limit",
-                     "if true, strictly enforces the block cache size limit",
+                     "if true, strictly enforces the block cache size limit (not supported)",
                      new BooleanParameter(&_enforceBlockCacheSizeLimit));
 
   options->addOption(
@@ -331,6 +331,9 @@ void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
         << "invalid value for '--rocksdb.block-cache-shard-bits'";
     FATAL_ERROR_EXIT();
   }
+
+  // currently disable because this can cause an error in RocksDB 5.6
+  _enforceBlockCacheSizeLimit = false;
 }
 
 void RocksDBOptionFeature::start() {
