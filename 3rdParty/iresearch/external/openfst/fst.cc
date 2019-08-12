@@ -31,10 +31,10 @@ DEFINE_string(fst_read_mode, "read",
 
 namespace fst {
 
-// FST type definitions for lookahead FSTs.
-const char arc_lookahead_fst_type[] = "arc_lookahead";
-const char ilabel_lookahead_fst_type[] = "ilabel_lookahead";
-const char olabel_lookahead_fst_type[] = "olabel_lookahead";
+// // FST type definitions for lookahead FSTs.
+// const char arc_lookahead_fst_type[] = "arc_lookahead";
+// const char ilabel_lookahead_fst_type[] = "ilabel_lookahead";
+// const char olabel_lookahead_fst_type[] = "olabel_lookahead";
 
 // Identifies stream data as an FST (and its endianity).
 FST_CONSTEXPR const int32 kFstMagicNumber = 2125659606;
