@@ -33,7 +33,7 @@
 #include <s2/s2region_coverer.h>
 
 #include "Geo/GeoParams.h"
-#include "Geo/GeoUtils.h"
+#include "Geo/Utils.h"
 #include "VocBase/LocalDocumentId.h"
 
 namespace arangodb {
