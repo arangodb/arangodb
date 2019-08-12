@@ -435,7 +435,7 @@ void RestAnalyzerHandler::removeAnalyzer(
     arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
   auto normalizedName = sysVocbase ?
-    IResearchAnalyzerFeature::normalize(name, _vocbase, *sysVocbase) : name;
+    IResearchAnalyzerFeature::normalize(name, _vocbase, *sysVocbase) : std::string(name);
   if (!IResearchAnalyzerFeature::canUse(normalizedName, auth::Level::RW)) {
     generateError(arangodb::Result( // generate error
       TRI_ERROR_FORBIDDEN, // code
