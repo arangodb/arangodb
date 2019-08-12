@@ -157,8 +157,7 @@ class EngineInfoContainerDBServerServerBased {
   void addVariablesPart(arangodb::velocypack::Builder& builder) const;
 
   // Insert the Snippets information into the message to be send to DBServers
-  void addSnippetPart(arangodb::velocypack::Builder& builder,
-                      std::unordered_map<ShardID, ServerID> const& shardMapping,
+  void addSnippetPart(arangodb::velocypack::Builder& builder, ShardLocking& shardLocking,
                       std::unordered_map<size_t, size_t>& nodeAliases,
                       ServerID const& server) const;
 
@@ -184,6 +183,10 @@ class EngineInfoContainerDBServerServerBased {
   std::vector<GraphNode*> _graphNodes;
 
   ShardLocking _shardLocking;
+
+  // @brief A local counter for snippet IDs within this Engine.
+  // used to make collection locking clear.
+  size_t _lastSnippetId;
 };
 
 }  // namespace aql

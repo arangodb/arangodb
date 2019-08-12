@@ -43,18 +43,22 @@ class Query;
 class ShardLocking {
  private:
   static std::set<ShardID> const EmptyShardList;
+  static std::unordered_set<ShardID> const EmptyShardListUnordered;
 
   struct CollectionLockingInformation {
-    void mergeShards(std::shared_ptr<std::vector<ShardID>> const& shards);
-
+    // Lock type used for this collection
     AccessMode::Type lockType{AccessMode::Type::NONE};
-    std::unordered_set<ShardID> usedShards;
+    // The list of All shards of this query respecting query limits,
+    // it is possible that not all shards are used.
+    std::unordered_set<ShardID> allShards;
+    // The list of specific shard restriction(s) of snippets.
+    std::unordered_map<size_t, std::pair<bool, std::unordered_set<ShardID>>> restrictedSnippets;
   };
 
  public:
   ShardLocking(Query* query) : _query(query) { TRI_ASSERT(_query != nullptr); }
 
-  void addNode(ExecutionNode const* node);
+  void addNode(ExecutionNode const* node, size_t snippetId);
 
   void serializeIntoBuilder(ServerID const& server,
                             arangodb::velocypack::Builder& builder) const;
@@ -79,9 +83,12 @@ class ShardLocking {
 
   std::unordered_map<ShardID, ServerID> const& getShardMapping();
 
+  std::unordered_set<ShardID> const& shardsForSnippet(size_t snippetId,
+                                                      Collection const* col);
+
  private:
   // Adjust locking level of a single collection
-  void updateLocking(Collection const* col, AccessMode::Type const& accessType,
+  void updateLocking(Collection const* col, AccessMode::Type const& accessType, size_t snippetId,
                      std::unordered_set<std::string> const& restrictedShards);
 
  private:

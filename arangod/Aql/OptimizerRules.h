@@ -39,9 +39,6 @@ struct Collection;
 /// Helper
 Collection* addCollectionToQuery(Query* query, std::string const& cname, bool assert = true);
 
-/// @brief an optimizer rule that does nothing - use for testing/debugging/development!
-void doNothingRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
-
 /// @brief adds a SORT operation for IN right-hand side operands
 void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
@@ -157,8 +154,7 @@ ExecutionNode* distributeInClusterRuleSmartEdgeCollection(ExecutionPlan*, Subque
 void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                               OptimizerRule const&);
 
-void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                    OptimizerRule const&);
+void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 #endif
 
 /// @brief try to restrict fragments to a single shard if possible

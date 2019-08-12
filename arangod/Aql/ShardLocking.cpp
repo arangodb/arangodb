@@ -36,15 +36,9 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 std::set<ShardID> const ShardLocking::EmptyShardList{};
+std::unordered_set<ShardID> const ShardLocking::EmptyShardListUnordered{};
 
-void ShardLocking::CollectionLockingInformation::mergeShards(
-    std::shared_ptr<std::vector<ShardID>> const& shards) {
-  for (auto const& s : *shards) {
-    usedShards.emplace(s);
-  }
-}
-
-void ShardLocking::addNode(ExecutionNode const* baseNode) {
+void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId) {
   TRI_ASSERT(baseNode != nullptr);
   // If we have ever accessed the server lists,
   // we cannot insert Nodes anymore.
@@ -65,7 +59,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode) {
       }
       // Add all Edge Collections to the Transactions, Traversals do never write
       for (auto const& col : node->edgeColls()) {
-        updateLocking(col.get(), AccessMode::Type::READ, {});
+        updateLocking(col.get(), AccessMode::Type::READ, snippetId, {});
       }
 
       // Add all Vertex Collections to the Transactions, Traversals do never write
@@ -83,11 +77,11 @@ void ShardLocking::addNode(ExecutionNode const* baseNode) {
             // not a collection, filter out
             continue;
           }
-          updateLocking(col.second, AccessMode::Type::READ, {});
+          updateLocking(col.second, AccessMode::Type::READ, snippetId, {});
         }
       } else {
         for (auto const& col : node->vertexColls()) {
-          updateLocking(col.get(), AccessMode::Type::READ, {});
+          updateLocking(col.get(), AccessMode::Type::READ, snippetId, {});
         }
       }
       break;
@@ -106,7 +100,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode) {
       }
 
       auto* col = colNode->collection();
-      updateLocking(col, AccessMode::Type::READ, restrictedShard);
+      updateLocking(col, AccessMode::Type::READ, snippetId, restrictedShard);
       break;
     }
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
@@ -116,7 +110,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode) {
                                        "unable to cast node to ViewNode");
       }
       for (aql::Collection const& col : viewNode->collections()) {
-        updateLocking(&col, AccessMode::Type::READ, {});
+        updateLocking(&col, AccessMode::Type::READ, snippetId, {});
       }
 
       break;
@@ -141,7 +135,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode) {
       updateLocking(col,
                     modNode->getOptions().exclusive ? AccessMode::Type::EXCLUSIVE
                                                     : AccessMode::Type::WRITE,
-                    restrictedShard);
+                    snippetId, restrictedShard);
       break;
     }
     default:
@@ -150,22 +144,59 @@ void ShardLocking::addNode(ExecutionNode const* baseNode) {
   }
 }
 
-void ShardLocking::updateLocking(Collection const* col, AccessMode::Type const& accessType,
+void ShardLocking::updateLocking(Collection const* col,
+                                 AccessMode::Type const& accessType, size_t snippetId,
                                  std::unordered_set<std::string> const& restrictedShards) {
-  auto const shards = col->shardIds(
-      restrictedShards.empty() ? _query->queryOptions().shardIds : restrictedShards);
-
-  // What if we have an empty shard list here?
-  if (shards->empty()) {
-    LOG_TOPIC("0997e", WARN, arangodb::Logger::AQL)
-        << "TEMPORARY: A collection access of a query has no result in any "
-           "shard";
-  }
-
   auto& info = _collectionLocking[col];
   // We need to upgrade the lock
   info.lockType = (std::max)(info.lockType, accessType);
-  info.mergeShards(shards);
+  if (info.allShards.empty()) {
+    // Load shards only once per collection!
+    auto const shards = col->shardIds(_query->queryOptions().shardIds);
+    // What if we have an empty shard list here?
+    if (shards->empty()) {
+      LOG_TOPIC("0997e", WARN, arangodb::Logger::AQL)
+          << "TEMPORARY: A collection access of a query has no result in any "
+             "shard";
+      TRI_ASSERT(false);
+      return;
+    }
+    for (auto const& s : *shards) {
+      info.allShards.emplace(s);
+    }
+  }
+  auto snippetPart = info.restrictedSnippets.find(snippetId);
+  if (snippetPart == info.restrictedSnippets.end()) {
+    std::tie(snippetPart, std::ignore) = info.restrictedSnippets.emplace(
+        snippetId, std::make_pair(false, std::unordered_set<ShardID>{}));
+  }
+  TRI_ASSERT(snippetPart != info.restrictedSnippets.end());
+
+  if (!restrictedShards.empty()) {
+    // Restricted case, store the restriction for the snippet.
+    bool& isRestricted = snippetPart->second.first;
+    std::unordered_set<ShardID>& shards = snippetPart->second.second;
+    if (isRestricted) {
+      // We are already restricted, only possible if the restriction is identical
+      TRI_ASSERT(shards == restrictedShards);
+      if (shards != restrictedShards) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            "Restricted a snippet to two distinct shards of a collection.");
+      }
+    } else {
+      isRestricted = true;
+      for (auto const& s : restrictedShards) {
+        if (info.allShards.find(s) == info.allShards.end()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+              "Restricting: " + col->name() + " to shard " + s +
+                  " which it does not have, or is excluded in the query");
+        }
+        shards.emplace(s);
+      }
+    }
+  }
 }
 
 std::vector<Collection const*> ShardLocking::getUsedCollections() const {
@@ -188,8 +219,19 @@ std::vector<ServerID> ShardLocking::getRelevantServers() {
     // Now we need to create the mappings
     // server => locktype => [shards]
     // server => collection => [shards](sorted)
-    for (auto const& lockInfo : _collectionLocking) {
-      for (auto const& sid : lockInfo.second.usedShards) {
+    for (auto& lockInfo : _collectionLocking) {
+      std::unordered_set<ShardID> shardsToLock;
+      for (auto const& rest : lockInfo.second.restrictedSnippets) {
+        if (!rest.second.first) {
+          // we have an unrestricted access. Lock all shards
+          shardsToLock = lockInfo.second.allShards;
+          break;
+        }
+        for (auto const& sId : rest.second.second) {
+          shardsToLock.emplace(sId);
+        }
+      }
+      for (auto const& sid : shardsToLock) {
         auto server = shardMapping.find(sid);
         // If shard has no leader the above call should have thrown!
         TRI_ASSERT(server != shardMapping.end());
@@ -200,9 +242,11 @@ std::vector<ServerID> ShardLocking::getRelevantServers() {
     }
   }
   std::vector<ServerID> result;
-  std::transform(_serverToCollectionToShard.begin(),
-                 _serverToCollectionToShard.end(), std::back_inserter(result),
-                 [](auto const& item) { return item.first; });
+  std::transform(_serverToCollectionToShard.begin(), _serverToCollectionToShard.end(),
+                 std::back_inserter(result), [](auto const& item) {
+                   TRI_ASSERT(!item.first.empty());
+                   return item.first;
+                 });
   return result;
 }
 
@@ -230,22 +274,63 @@ void ShardLocking::serializeIntoBuilder(ServerID const& server,
 std::unordered_map<ShardID, ServerID> const& ShardLocking::getShardMapping() {
   if (_shardMapping.empty() && !_collectionLocking.empty()) {
     std::unordered_set<ShardID> shardIds;
-    for (auto const& lockInfo : _collectionLocking) {
-      for (auto const& sid : lockInfo.second.usedShards) {
-        shardIds.emplace(sid);
+    for (auto& lockInfo : _collectionLocking) {
+      auto& allShards = lockInfo.second.allShards;
+      TRI_ASSERT(!allShards.empty());
+      for (auto const& rest : lockInfo.second.restrictedSnippets) {
+        if (!rest.second.first) {
+          // We have an unrestricted snippet for this collection
+          // Use all shards for locking
+          for (auto const& s : allShards) {
+            shardIds.emplace(s);
+          }
+          // No need to search further
+          break;
+        }
+        for (auto const& s : rest.second.second) {
+          shardIds.emplace(s);
+        }
       }
     }
     auto ci = ClusterInfo::instance();
     if (ci == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
+    // We have at least one shard, otherwise we would not have snippets!
+    TRI_ASSERT(!shardIds.empty());
     _shardMapping = ci->getResponsibleServers(shardIds);
     TRI_ASSERT(_shardMapping.size() == shardIds.size());
     for (auto const& lockInfo : _collectionLocking) {
-      for (auto const& sid : lockInfo.second.usedShards) {
+      for (auto const& sid : lockInfo.second.allShards) {
         lockInfo.first->addShardToServer(sid, _shardMapping[sid]);
       }
     }
   }
   return _shardMapping;
+}
+
+std::unordered_set<ShardID> const& ShardLocking::shardsForSnippet(size_t snippetId,
+                                                                  Collection const* col) {
+  auto const& lockInfo = _collectionLocking.find(col);
+
+  TRI_ASSERT(lockInfo != _collectionLocking.end());
+  if (lockInfo == _collectionLocking.end()) {
+    // We ask for a collection we did not lock!
+    return EmptyShardListUnordered;
+  }
+
+  if (snippetId == 0) {
+    // Special case, Engines for Coordinator code (e.g. GraphEngines) cannot be restricted.
+    return lockInfo->second.allShards;
+  }
+  auto restricted = lockInfo->second.restrictedSnippets.find(snippetId);
+  // We are asking for shards of a collection that are not registered with this
+  TRI_ASSERT(restricted != lockInfo->second.restrictedSnippets.end());
+  if (restricted == lockInfo->second.restrictedSnippets.end()) {
+    return EmptyShardListUnordered;
+  }
+  if (restricted->second.first /* isRestricted */) {
+    return restricted->second.second;
+  }
+  return lockInfo->second.allShards;
 }

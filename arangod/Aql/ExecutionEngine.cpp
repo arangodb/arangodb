@@ -696,9 +696,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegist
 #endif
 
   if (arangodb::ServerState::isCoordinator(role)) {
-    bool const hundTest =
-        plan->hasAppliedRule(static_cast<int>(OptimizerRule::RuleLevel::doNothingRule));
-    if (!hundTest) {
+    if (true) {
       // distributed query
       DistributedQueryInstanciatorHund inst(query, pushToSingleServer);
       plan->root()->walk(inst);

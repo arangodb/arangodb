@@ -36,42 +36,41 @@ namespace aql {
 class ExecutionNode;
 class GatherNode;
 class ScatterNode;
+class ShardLocking;
 
 class QuerySnippet {
  private:
   struct ExpansionInformation {
     ExecutionNode* node;
     bool doExpand;
-    std::shared_ptr<std::vector<ShardID>> shards;
     bool isSatellite;
 
     ExpansionInformation() = delete;
-    ExpansionInformation(ExecutionNode* n, bool exp,
-                         std::shared_ptr<std::vector<ShardID>> s, bool sat)
-        : node(n), doExpand(exp), shards(s), isSatellite(sat) {
-      TRI_ASSERT(shards != nullptr);
-    }
+    ExpansionInformation(ExecutionNode* n, bool exp, bool sat)
+        : node(n), doExpand(exp), isSatellite(sat) {}
   };
 
  public:
-  QuerySnippet(GatherNode const* sinkNode, size_t idOfSinkRemoteNode)
+  QuerySnippet(GatherNode const* sinkNode, size_t idOfSinkRemoteNode, size_t id)
       : _sinkNode(sinkNode),
         _idOfSinkRemoteNode(idOfSinkRemoteNode),
         _madeResponsibleForShutdown(false),
         _inputSnippet(0),
-        _globalScatter(nullptr) {
+        _globalScatter(nullptr),
+        _id(id) {
     TRI_ASSERT(_sinkNode != nullptr);
     TRI_ASSERT(_idOfSinkRemoteNode != 0);
   }
 
   void addNode(ExecutionNode* node);
 
-  void serializeIntoBuilder(ServerID const& server,
-                            std::unordered_map<ShardID, ServerID> const& shardMapping,
+  void serializeIntoBuilder(ServerID const& server, ShardLocking& shardMapping,
                             std::unordered_map<size_t, size_t>& nodeAliases,
                             velocypack::Builder& infoBuilder);
 
   void useQueryIdAsInput(QueryId inputSnippet) { _inputSnippet = inputSnippet; }
+
+  size_t id() const { return _id; }
 
  private:
   GatherNode const* _sinkNode;
@@ -87,6 +86,8 @@ class QuerySnippet {
   QueryId _inputSnippet;
 
   ScatterNode* _globalScatter;
+
+  size_t const _id;
 };
 }  // namespace aql
 }  // namespace arangodb

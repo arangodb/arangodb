@@ -344,7 +344,6 @@ size_t ExecutionBlockImpl<DistributeExecutor>::sendToClient(SharedAqlItemBlockPt
   }
 
   std::string shardId;
-
   int res = _logCol->getResponsibleShard(value, true, shardId);
 
   if (res != TRI_ERROR_NO_ERROR) {

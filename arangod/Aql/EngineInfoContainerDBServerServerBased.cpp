@@ -177,7 +177,9 @@ void EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::serializ
 }
 
 EngineInfoContainerDBServerServerBased::EngineInfoContainerDBServerServerBased(Query* query) noexcept
-    : _query(query), _shardLocking(query) {}
+    : _query(query), _shardLocking(query), _lastSnippetId(1) {
+  // NOTE: We need to start with _lastSnippetID > 0. 0 is reserved for GraphNodes
+}
 
 // Insert a new node into the last engine on the stack
 // If this Node contains Collections, they will be added into the map
@@ -188,13 +190,14 @@ void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node) {
   // Add the node to the open Snippet
   _snippetStack.top()->addNode(node);
   // Upgrade CollectionLocks if necessary
-  _shardLocking.addNode(node);
+  _shardLocking.addNode(node, _snippetStack.top()->id());
 }
 
 // Open a new snippet, which provides data for the given sink node (for now only RemoteNode allowed)
 void EngineInfoContainerDBServerServerBased::openSnippet(GatherNode const* sinkGatherNode,
                                                          size_t sinkRemoteId) {
-  _snippetStack.emplace(std::make_shared<QuerySnippet>(sinkGatherNode, sinkRemoteId));
+  _snippetStack.emplace(std::make_shared<QuerySnippet>(sinkGatherNode, sinkRemoteId,
+                                                       _lastSnippetId++));
 }
 
 // Closes the given snippet and connects it
@@ -228,6 +231,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     // No snippets to be placed on dbservers
     return TRI_ERROR_NO_ERROR;
   }
+  // We at least have one Snippet, or one graph node.
+  // Otherwise the locking needs to be empty.
+  TRI_ASSERT(!_closedSnippets.empty() || !_graphNodes.empty());
 
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
@@ -264,10 +270,10 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
     addVariablesPart(infoBuilder);
     TRI_ASSERT(infoBuilder.isOpenObject());
-    auto shardMapping = _shardLocking.getShardMapping();
-    addSnippetPart(infoBuilder, shardMapping, nodeAliases, server);
-    TRI_ASSERT(infoBuilder.isOpenObject());
 
+    addSnippetPart(infoBuilder, _shardLocking, nodeAliases, server);
+    TRI_ASSERT(infoBuilder.isOpenObject());
+    auto shardMapping = _shardLocking.getShardMapping();
     std::vector<bool> didCreateEngine =
         addTraversalEnginesPart(infoBuilder, shardMapping, server);
     TRI_ASSERT(didCreateEngine.size() == _graphNodes.size());
@@ -280,7 +286,6 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     TRI_ASSERT(infoBuilder.slice().hasKey("options"));
     TRI_ASSERT(infoBuilder.slice().hasKey("variables"));
     // We need to have at least one: snippets (non empty) or traverserEngines
-
     TRI_ASSERT((infoBuilder.slice().hasKey("snippets") &&
                 infoBuilder.slice().get("snippets").isObject() &&
                 !infoBuilder.slice().get("snippets").isEmptyObject()) ||
@@ -403,7 +408,7 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
 // the DBServers. The GraphNode itself will retain on the coordinator.
 void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node) {
   node->prepareOptions();
-  _shardLocking.addNode(node);
+
   auto const& vCols = node->vertexColls();
   if (vCols.empty()) {
     std::map<std::string, Collection*> const* allCollections =
@@ -413,7 +418,8 @@ void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node) {
       node->injectVertexCollection(it.second);
     }
   }
-
+  // SnippetID does not matter on GraphNodes
+  _shardLocking.addNode(node, 0);
   _graphNodes.emplace_back(node);
 }
 
@@ -466,14 +472,13 @@ void EngineInfoContainerDBServerServerBased::addVariablesPart(arangodb::velocypa
 
 // Insert the Snippets information into the message to be send to DBServers
 void EngineInfoContainerDBServerServerBased::addSnippetPart(
-    arangodb::velocypack::Builder& builder,
-    std::unordered_map<ShardID, ServerID> const& shardMapping,
+    arangodb::velocypack::Builder& builder, ShardLocking& shardLocking,
     std::unordered_map<size_t, size_t>& nodeAliases, ServerID const& server) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("snippets"));
   builder.openObject();
   for (auto const& snippet : _closedSnippets) {
-    snippet->serializeIntoBuilder(server, shardMapping, nodeAliases, builder);
+    snippet->serializeIntoBuilder(server, shardLocking, nodeAliases, builder);
   }
   builder.close();  // snippets
 }

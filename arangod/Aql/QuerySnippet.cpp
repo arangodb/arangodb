@@ -28,6 +28,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IResearchViewNode.h"
+#include "Aql/ShardLocking.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 
@@ -56,29 +57,12 @@ void QuerySnippet::addNode(ExecutionNode* node) {
           ExecutionNode::castTo<CollectionAccessingNode*>(node);
       TRI_ASSERT(collectionAccessingNode != nullptr);
       auto col = collectionAccessingNode->collection();
-      auto shards = col->shardIds();
       // Satellites can only be used on ReadNodes
       bool isSatellite = col->isSatellite() &&
                          (node->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
                           node->getType() == ExecutionNode::INDEX);
-      if (collectionAccessingNode->isRestricted()) {
-        std::string const& onlyShard = collectionAccessingNode->restrictedShard();
-        bool found =
-            std::find(shards->begin(), shards->end(), onlyShard) != shards->end();
-        if (!found) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_CLUSTER_SHARD_GONE,
-              "Collection could not be restricted to the given shard: " + onlyShard +
-                  " it is not part of collection " + col->name());
-        }
-        auto restrictedShards = std::make_shared<std::vector<ShardID>>();
-        restrictedShards->emplace_back(onlyShard);
-        _expansions.emplace_back(node, false, restrictedShards, isSatellite);
-      } else {
-        // Satellite can only have a single shard, and we have a modification node here.
-        TRI_ASSERT(!isSatellite || shards->size() == 1);
-        _expansions.emplace_back(node, shards->size() > 1, shards, isSatellite);
-      }
+
+      _expansions.emplace_back(node, true, isSatellite);
       break;
     }
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
@@ -87,13 +71,7 @@ void QuerySnippet::addNode(ExecutionNode* node) {
       // evaluate node volatility before the distribution
       // can't do it on DB servers since only parts of the plan will be sent
       viewNode->volatility(true);
-      auto collections = viewNode->collections();
-      auto shardList = std::make_shared<std::vector<ShardID>>();
-      for (aql::Collection const& c : collections) {
-        auto shards = c.shardIds();
-        shardList->insert(shardList->end(), shards->begin(), shards->end());
-      }
-      _expansions.emplace_back(node, false, shardList, false);
+      _expansions.emplace_back(node, false, false);
       break;
     }
     default:
@@ -102,10 +80,11 @@ void QuerySnippet::addNode(ExecutionNode* node) {
   }
 }
 
-void QuerySnippet::serializeIntoBuilder(ServerID const& server,
-                                        std::unordered_map<ShardID, ServerID> const& shardMapping,
+void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& shardLocking,
                                         std::unordered_map<size_t, size_t>& nodeAliases,
                                         VPackBuilder& infoBuilder) {
+  std::unordered_map<ShardID, ServerID> const& shardMapping =
+      shardLocking.getShardMapping();
   TRI_ASSERT(!_nodes.empty());
   TRI_ASSERT(!_expansions.empty());
   size_t numberOfShardsToPermutate = 0;
@@ -118,19 +97,31 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
       auto* viewNode = ExecutionNode::castTo<iresearch::IResearchViewNode*>(exp.node);
       auto& viewShardList = viewNode->shards();
       viewShardList.clear();
-      for (auto const& s : *exp.shards) {
-        auto check = shardMapping.find(s);
-        // If we find a shard here that is not in this mapping,
-        // we have 1) a problem with locking before that should have thrown
-        // 2) a problem with shardMapping lookup that should have thrown before
-        TRI_ASSERT(check != shardMapping.end());
-        if (check->second == server) {
-          viewShardList.emplace_back(s);
+
+      auto collections = viewNode->collections();
+      for (aql::Collection const& c : collections) {
+        auto const& shards = shardLocking.shardsForSnippet(id(), &c);
+        for (auto const& s : shards) {
+          auto check = shardMapping.find(s);
+          // If we find a shard here that is not in this mapping,
+          // we have 1) a problem with locking before that should have thrown
+          // 2) a problem with shardMapping lookup that should have thrown before
+          TRI_ASSERT(check != shardMapping.end());
+          if (check->second == server) {
+            viewShardList.emplace_back(s);
+          }
         }
       }
       continue;
     }
-    for (auto const& s : *exp.shards) {
+    auto modNode = ExecutionNode::castTo<CollectionAccessingNode const*>(exp.node);
+    // Only accessing nodes can endup here.
+    TRI_ASSERT(modNode != nullptr);
+    auto col = modNode->collection();
+    // Should be hit earlier, a modification node here is required to have a collection
+    TRI_ASSERT(col != nullptr);
+    auto const& shards = shardLocking.shardsForSnippet(id(), col);
+    for (auto const& s : shards) {
       auto check = shardMapping.find(s);
       // If we find a shard here that is not in this mapping,
       // we have 1) a problem with locking before that should have thrown
@@ -142,15 +133,11 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
         // Satellite collection is used for local join.
         // If we only have one expansion we have a snippet only
         // based on the satellite, that needs to be only executed once
+        // So this part is not allowed to be executed
         myExp.emplace(s);
       }
     }
     if (myExp.empty()) {
-      // There are no shards in this snippet for this server.
-      // By definition all nodes need to have at LEAST one Shard
-      // on this server for this snippet to work.
-      // Skip it.
-      // We have not modified infoBuilder up until now.
       return;
     }
     // For all other Nodes we can inject a single shard at a time.
@@ -264,11 +251,19 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server,
       // Let the local Scatter node distribute data by SHARD
       internalScatter->setScatterType(ScatterNode::ScatterType::SHARD);
       if (_globalScatter->getType() == ExecutionNode::DISTRIBUTE) {
+        {
+          // We are not allwoed to genreate new keys on the DBServer.
+          // We need to take the ones generated by the node above.
+          DistributeNode* internalDist =
+              ExecutionNode::castTo<DistributeNode*>(internalScatter);
+          internalDist->setCreateKeys(false);
+        }
         DistributeNode const* dist =
             ExecutionNode::castTo<DistributeNode const*>(_globalScatter);
         TRI_ASSERT(dist != nullptr);
         auto distCollection = dist->collection();
         TRI_ASSERT(distCollection != nullptr);
+
         // Now find the node that provides the distribute information
         for (auto const& exp : localExpansions) {
           auto colAcc = ExecutionNode::castTo<CollectionAccessingNode*>(exp.first);
