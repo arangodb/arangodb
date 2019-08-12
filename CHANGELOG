@@ -1,7 +1,9 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
-* added resign leadership job to supervision.
+* Fixed issue #9679: improved error message for FULLTEXT function invocation failures.
+
+* Added resign leadership job to supervision.
 
 * Fixed issue #9612: Concurrent Writes leads to data loss in ArangoSearch/Views.
 
