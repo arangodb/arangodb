@@ -631,22 +631,22 @@ bool equalAnalyzer(
   }
 
   // first check non-normalizeable portion of analyzer definition
+  // to rule out need to check normalization of properties
   if (type != pool.type() || features != pool.features()) {
     return false;
   }
-
+  
+  // this check is not final as old-normalized definition may be present in database!
   if (arangodb::basics::VelocyPackHelper::equal(arangodb::iresearch::slice(normalizedProperties),
                                                 pool.properties(), false)) {
     return true;
-  }
-  
+  } 
+ 
   // Here could be analyzer definition with old-normalized properties (see Issue #9652)
   // To make sure properties really differ, let`s re-normalize and re-check
-  // This code could be removed once it is proven there is no analyzer definition
-  // in database, created on 3.5.0 version.
   std::string reNormalizedProperties;
   if (ADB_UNLIKELY(!::normalize(reNormalizedProperties, pool.type(), pool.properties()))) {
-    // failed to re-normalize definition - strange. I was already normalized once.
+    // failed to re-normalize definition - strange. It was already normalized once.
     // Some bug in load/store?
     TRI_ASSERT(FALSE);
     LOG_TOPIC("a4073", WARN, arangodb::iresearch::TOPIC)
