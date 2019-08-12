@@ -1704,7 +1704,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
   uint64_t totalArchiveSize = 0;
   for (size_t current = 0; current < files.size(); current++) {
     auto const& f = files[current].get();
-    
+
     if (f->Type() != rocksdb::WalFileType::kArchivedLogFile) {
       // we are only interested in files of the archive
       continue;
@@ -1716,16 +1716,25 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       totalArchiveSize += f->SizeFileBytes();
     }
 
-    if (f->StartSequence() < minTickToKeep) {
-      // this file will be removed because it does not contain any data we 
-      // still need
-      if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
-        LOG_TOPIC(DEBUG, Logger::ENGINES)
+    // check if there is another WAL file coming after the currently-looked-at
+    // There should be at least one live WAL file after it, however, let's be
+    // paranoid and do a proper check. If there is at least one WAL file following,
+    // we need to take its start tick into account as well, because the following
+    // file's start tick can be assumed to be the end tick of the current file!
+    if (f->StartSequence() < minTickToKeep &&
+        current < files.size() - 1) {      
+      auto const& n = files[current + 1].get();
+      if (n->StartSequence() < minTickToKeep) {
+        // this file will be removed because it does not contain any data we
+        // still need
+        if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
+          LOG_TOPIC(DEBUG, Logger::ENGINES)
             << "RocksDB WAL file '" << f->PathName() << "' with start sequence "
             << f->StartSequence() << " added to prunable list because it is not needed anymore";
-        _prunableWalFiles.emplace(f->PathName(), TRI_microtime() + _pruneWaitTime);
+          _prunableWalFiles.emplace(f->PathName(), TRI_microtime() + _pruneWaitTime);
+        }
       }
-    } 
+    }
   }
 
   if (_maxWalArchiveSizeLimit == 0) {
