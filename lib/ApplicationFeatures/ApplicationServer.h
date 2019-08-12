@@ -145,7 +145,7 @@ class ApplicationServer {
 
   static bool isPrepared() {
     if (server != nullptr) {
-      ServerState tmp = server->_state.load(std::memory_order_relaxed);
+      ServerState tmp = server->state();
       return tmp == ServerState::IN_START || tmp == ServerState::IN_WAIT ||
              tmp == ServerState::IN_STOP;
     }
