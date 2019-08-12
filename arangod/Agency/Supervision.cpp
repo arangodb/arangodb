@@ -166,6 +166,7 @@ Supervision::Supervision()
       _transient("Transient"),
       _frequency(1.),
       _gracePeriod(10.),
+      _graceShutdownPeriod(113.4),
       _okThreshold(5.),
       _jobId(0),
       _jobIdMax(0),
@@ -521,6 +522,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
           _transient.has(syncPrefix + serverID)
               ? _transient.hasAsString(syncPrefix + serverID + "/status").first
               : "UNKNOWN";
+      bool isShutdown = syncStatus == "SHUTDOWN";
 
       // Last change registered in sync (transient != sync)
       // Either now or value in transient
@@ -544,7 +546,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
       if (elapsed.count() <= _okThreshold) {
         transist.status = Supervision::HEALTH_STATUS_GOOD;
-      } else if (elapsed.count() <= _gracePeriod) {
+      } else if ((!isShutdown && elapsed.count() <= _gracePeriod) || (elapsed.count() <= _graceShutdownPeriod)) {
         transist.status = Supervision::HEALTH_STATUS_BAD;
       } else {
         transist.status = Supervision::HEALTH_STATUS_FAILED;

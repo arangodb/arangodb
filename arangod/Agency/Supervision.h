@@ -154,7 +154,7 @@ class Supervision : public arangodb::CriticalThread {
   // @brief Check shards in agency
   std::vector<check_t> checkShards();
 
-  // @brief 
+  // @brief
   void cleanupFinishedAndFailedJobs();
 
   void workJobs();
@@ -199,6 +199,7 @@ class Supervision : public arangodb::CriticalThread {
 
   double _frequency;
   double _gracePeriod;
+  double _graceShutdownPeriod;
   double _okThreshold;
   uint64_t _jobId;
   uint64_t _jobIdMax;
