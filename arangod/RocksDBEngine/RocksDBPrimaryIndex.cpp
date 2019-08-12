@@ -589,7 +589,7 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
   rocksdb::Status s = mthd->GetForUpdate(_cf, key->string(), &ps);
 
   Result res;
-  if (s.ok() || s.IsBusy()) {  // detected conflicting primary key
+  if (s.ok()) {  // detected conflicting primary key
     std::string existingId = keySlice.copyString();
 
     if (mode == OperationMode::internal) {
@@ -599,7 +599,11 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
     res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
 
     return addErrorMsg(res, existingId);
+  } else if (!s.IsNotFound()) {
+    // IsBusy(), IsTimedOut() etc... this indicates a conflict
+    return addErrorMsg(res.reset(rocksutils::convertStatus(s)));
   }
+
   ps.Reset();  // clear used memory
 
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {

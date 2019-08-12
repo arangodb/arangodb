@@ -1,3 +1,11 @@
+v3.5.1 (XXXX-XX-XX)
+-------------------
+
+* Fixed error message "Invalid argument: assume_tracked is set but it is not tracked yet" when
+  trying to write to the same keys in concurrent RocksDB transactions. This error will now be
+  reported as a "Lock timeout" error, with error code 1200.
+
+
 v3.5.0-rc.7 (2019-08-01)
 ------------------------
 
