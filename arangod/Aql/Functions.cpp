@@ -219,7 +219,8 @@ void registerWarning(ExpressionContext* expressionContext,
 /// @brief register warning
 void registerWarning(ExpressionContext* expressionContext,
                      char const* functionName, int code) {
-  if (code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
+  if (code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH &&
+      code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH) {
     registerWarning(expressionContext, functionName, Result(code));
     return;
   }
