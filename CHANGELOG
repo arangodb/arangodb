@@ -1,3 +1,9 @@
+v3.5.1 (XXXX-XX-XX)
+-------------------
+
++* Fixed issue #9679: improved error message for FULLTEXT function invocation failures.
+
+
 v3.5.0-rc.7 (2019-08-01)
 ------------------------
 
