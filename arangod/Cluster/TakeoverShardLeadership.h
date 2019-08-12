@@ -20,10 +20,11 @@
 ///
 /// @author Kaveh Vahedipour
 /// @author Matthew Von-Maszewski
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_RESIGN_SHARD_LEADERSHIP_H
-#define ARANGODB_MAINTENANCE_RESIGN_SHARD_LEADERSHIP_H
+#ifndef ARANGODB_MAINTENANCE_TAKEOVER_SHARD_LEADERSHIP_H
+#define ARANGODB_MAINTENANCE_TAKEOVER_SHARD_LEADERSHIP_H
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
@@ -33,15 +34,13 @@
 namespace arangodb {
 namespace maintenance {
 
-class ResignShardLeadership : public ActionBase {
+class TakeoverShardLeadership : public ActionBase {
  public:
-  ResignShardLeadership(MaintenanceFeature&, ActionDescription const& d);
+  TakeoverShardLeadership(MaintenanceFeature&, ActionDescription const& d);
 
-  virtual ~ResignShardLeadership();
+  virtual ~TakeoverShardLeadership();
 
   virtual bool first() override final;
-
-  static std::string const LeaderNotYetKnownString;
 };
 
 }  // namespace maintenance
