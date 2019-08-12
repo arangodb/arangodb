@@ -127,6 +127,7 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/ClusterCommTest.cpp
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterRepairsTest.cpp
+  Cluster/RebootTrackerTest.cpp
   Geo/GeoConstructorTest.cpp
   Geo/GeoJsonTest.cpp
   Geo/GeoFunctionsTest.cpp

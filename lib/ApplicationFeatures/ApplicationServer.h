@@ -186,7 +186,7 @@ class ApplicationServer {
  public:
   ApplicationServer(std::shared_ptr<options::ProgramOptions>, char const* binaryPath);
 
-  ~ApplicationServer();
+  TEST_VIRTUAL ~ApplicationServer();
 
   std::string helpSection() const { return _helpSection; }
   bool helpShown() const { return !_helpSection.empty(); }
@@ -231,7 +231,7 @@ class ApplicationServer {
   VPackBuilder options(std::unordered_set<std::string> const& excludes) const;
 
   // return the server state
-  ServerState state() const { return _state; }
+  TEST_VIRTUAL ServerState state() const { return _state; }
 
   void addReporter(ProgressHandler reporter) {
     _progressReports.emplace_back(reporter);

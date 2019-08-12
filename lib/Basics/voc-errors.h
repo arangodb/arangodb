@@ -675,6 +675,12 @@ constexpr int TRI_ERROR_REPLICATION_WRONG_CHECKSUM                              
 /// Will be raised when a shard is not empty and the follower tries a shortcut
 constexpr int TRI_ERROR_REPLICATION_SHARD_NONEMPTY                              = 1417;
 
+/// 1449: ERROR_CLUSTER_SERVER_UNKNOWN
+/// "got a request from an unkown server"
+/// Will be raised on some occasions when one server gets a request from
+/// another, which has not (yet?) been made known via the agency.
+constexpr int TRI_ERROR_CLUSTER_SERVER_UNKNOWN                                  = 1452;
+
 /// 1450: ERROR_CLUSTER_NO_AGENCY
 /// "could not connect to agency"
 /// Will be raised when none of the agency servers can be connected to.

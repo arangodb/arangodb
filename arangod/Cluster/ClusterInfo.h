@@ -39,6 +39,8 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCallbackRegistry.h"
+#include "Cluster/ClusterTypes.h"
+#include "Cluster/RebootTracker.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -48,15 +50,6 @@ class Slice;
 }
 class ClusterInfo;
 class LogicalCollection;
-
-typedef std::string ServerID;         // ID of a server
-typedef std::string DatabaseID;       // ID/name of a database
-typedef std::string CollectionID;     // ID of a collection
-typedef std::string ViewID;           // ID of a view
-typedef std::string ShardID;          // ID of a shard
-typedef uint32_t ServerShortID;       // Short ID of a server
-typedef std::string ServerShortName;  // Short name of a server
-
 struct ClusterCollectionCreationInfo;
 
 class CollectionInfoCurrent {
@@ -243,6 +236,30 @@ class ClusterInfo {
   ClusterInfo& operator=(ClusterInfo const&) = delete;  // not implemented
 
  public:
+  class ServersKnown {
+   public:
+    ServersKnown() = default;
+    ServersKnown(VPackSlice serversKnownSlice, std::unordered_set<ServerID> const& servers);
+
+    class KnownServer {
+     public:
+      explicit constexpr KnownServer(RebootId rebootId) : _rebootId(rebootId) {}
+
+      RebootId rebootId() const noexcept { return _rebootId; }
+
+     private:
+      RebootId _rebootId;
+    };
+
+    std::unordered_map<ServerID, KnownServer> const& serversKnown() const noexcept;
+
+    std::unordered_map<ServerID, RebootId> rebootIds() const noexcept;
+
+   private:
+    std::unordered_map<ServerID, KnownServer> _serversKnown;
+  };
+
+ public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
@@ -367,6 +384,13 @@ class ClusterInfo {
 
   virtual std::shared_ptr<CollectionInfoCurrent> getCollectionCurrent(DatabaseID const&,
                                                                       CollectionID const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Get the RebootTracker
+  //////////////////////////////////////////////////////////////////////////////
+
+  cluster::RebootTracker& rebootTracker() noexcept;
+  cluster::RebootTracker const& rebootTracker() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create database in coordinator
@@ -689,11 +713,16 @@ class ClusterInfo {
     ProtectionData() : isValid(false), wantedVersion(0), doneVersion(0) {}
   };
 
+  cluster::RebootTracker _rebootTracker;
+
   // The servers, first all, we only need Current here:
   std::unordered_map<ServerID, std::string> _servers;  // from Current/ServersRegistered
   std::unordered_map<ServerID, std::string> _serverAliases;  // from Current/ServersRegistered
   std::unordered_map<ServerID, std::string> _serverAdvertisedEndpoints;  // from Current/ServersRegistered
   ProtectionData _serversProt;
+
+  // Current/ServersKnown:
+  ServersKnown _serversKnown;
 
   // The DBServers, also from Current:
   std::unordered_map<ServerID, ServerID> _DBServers;  // from Current/DBServers
