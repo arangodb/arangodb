@@ -271,12 +271,14 @@ class SharedState {
     TRI_ASSERT(_state == State::Done);
     TRI_ASSERT(_callback);
     
+    _attached.fetch_add(1);
+    // SharedStateScope makes this exception safe
+    SharedStateScope scope(this); // will call detachOne()
     _callback(std::move(_result));
     
     // TRI_ASSERT(SchedulerFeature::SCHEDULER);
-    // SharedStateScope makes this exception safe
     /*_attached.fetch_add(1);
-    SharedStateScope scope(this);  // will call detachOne()
+    SharedStateScope scope(this);
     SchedulerFeature::SCHEDULER->postContinuation([ref(std::move(scope))]() {
       SharedState* state = ref._state;
       state->_callback(std::move(state->_result));
