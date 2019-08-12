@@ -57,7 +57,7 @@ class NetworkFeature final : public application_features::ApplicationFeature {
 
  private:
   
-  uint64_t _numIOThreads;
+  uint32_t _numIOThreads;
   uint64_t _maxOpenConnections;
   uint64_t _connectionTtlMilli;
   bool _verifyHosts;

@@ -50,7 +50,7 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addSection("--network", "Networking ");
 
   options->addOption("--network.io-threads", "number of network IO threads",
-                     new UInt64Parameter(&_numIOThreads));
+                     new UInt32Parameter(&_numIOThreads));
   options->addOption("--network.max-open-connections",
                      "max open network connections",
                      new UInt64Parameter(&_maxOpenConnections));
@@ -95,7 +95,7 @@ void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
 
 void NetworkFeature::prepare() {
   network::ConnectionPool::Config config;
-  config.numIOThreads = _numIOThreads;
+  config.numIOThreads = static_cast<unsigned>(_numIOThreads);
   config.maxOpenConnections = _maxOpenConnections;
   config.connectionTtlMilli = _connectionTtlMilli;
   config.verifyHosts = _verifyHosts;
