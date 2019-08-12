@@ -92,6 +92,8 @@ class RocksDBTransactionState final : public TransactionState {
   bool hasFailedOperations() const override {
     return (_status == transaction::Status::ABORTED) && hasOperations();
   }
+  
+  bool mustUpgradeWritesToExclusiveAccess() const override;
 
   void prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t rid,
                         TRI_voc_document_operation_e operationType);

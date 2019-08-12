@@ -430,6 +430,10 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
   unuseCollections(nestingLevel());
   return result;
 }
+  
+bool RocksDBTransactionState::mustUpgradeWritesToExclusiveAccess() const {
+  return static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->serializeWrites();
+}
 
 void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t rid,
                                                TRI_voc_document_operation_e operationType) {

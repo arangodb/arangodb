@@ -104,7 +104,13 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
                                        AccessMode::Type accessType,
                                        int nestingLevel, bool force) {
   LOG_TRX("ad6d0", TRACE, this, nestingLevel) << "adding collection " << cid;
-  
+
+  if (accessType == AccessMode::Type::WRITE && 
+      mustUpgradeWritesToExclusiveAccess()) {
+    // upgrade from WRITE to EXCLUSIVE, automatically
+    accessType = AccessMode::Type::EXCLUSIVE;
+  }
+
   Result res;
 
   // upgrade transaction type if required
@@ -117,7 +123,7 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
         !AccessMode::isWriteOrExclusive(_type)) {
       // if one collection is written to, the whole transaction becomes a
       // write-transaction
-      _type = AccessMode::Type::WRITE;
+      _type = accessType;
     }
   }
 

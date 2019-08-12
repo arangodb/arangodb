@@ -179,11 +179,6 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(RocksDBFilePurgeEnabler&& other
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
     : StorageEngine(server, EngineName, FeatureName,
                     std::unique_ptr<IndexFactory>(new RocksDBIndexFactory())),
-#ifdef USE_ENTERPRISE
-      _createShaFiles(true),
-#else
-      _createShaFiles(false),
-#endif
       _db(nullptr),
       _vpackCmp(new RocksDBVPackComparator()),
       _walAccess(new RocksDBWalAccess()),
@@ -202,7 +197,13 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
 #endif
       _useThrottle(true),
       _useReleasedTick(false),
-      _debugLogging(false) {
+      _debugLogging(false),
+#ifdef USE_ENTERPRISE
+      _createShaFiles(true),
+#else
+      _createShaFiles(false),
+#endif
+      _serializeWrites(false) {
 
   startsAfter("BasicsPhase");
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
@@ -295,6 +296,11 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",
                      new DoubleParameter(&_pruneWaitTime));
+  
+  options->addOption("--rocksdb.serialize-writes",
+                     "serializes write operations on collections so that they do not cause conflicts"
+                     " (note that enabling this option may degrade write performance)",
+                     new BooleanParameter(&_serializeWrites)).setIntroducedIn(30600);
 
   options->addOption(
       "--rocksdb.wal-file-timeout-initial",

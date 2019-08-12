@@ -184,6 +184,11 @@ class TransactionState {
 
   virtual bool hasFailedOperations() const = 0;
 
+  /// @brief whether or not write operations shall be exclusive by default
+  /// (this serializes writes to the underlying collection, which avoids conflicts
+  /// but severly impairs write performance)
+  virtual bool mustUpgradeWritesToExclusiveAccess() const { return false; }
+
   TransactionCollection* findCollection(TRI_voc_cid_t cid) const;
 
   /// @brief make a exclusive transaction, only valid before begin

@@ -26,8 +26,10 @@
 #include "Basics/system-compiler.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
@@ -277,6 +279,8 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
     // never lock
     return TRI_ERROR_NO_ERROR;
   }
+  
+  TRI_ASSERT(!AccessMode::isWrite(type) || !_transaction->mustUpgradeWritesToExclusiveAccess());
 
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(!isLocked());
@@ -299,6 +303,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   } else {
     // write locking means we'll be acquiring the collection's RW lock in read
     // mode
+    TRI_ASSERT(!_transaction->mustUpgradeWritesToExclusiveAccess());
     res = physical->lockRead(timeout);
   }
 
@@ -330,6 +335,8 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
     // never unlock
     return TRI_ERROR_NO_ERROR;
   }
+    
+  TRI_ASSERT(!AccessMode::isWrite(type) || !_transaction->mustUpgradeWritesToExclusiveAccess());
 
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(isLocked());
@@ -364,6 +371,7 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   } else {
     // write locking means we'll be releasing the collection's RW lock in read
     // mode
+    TRI_ASSERT(!_transaction->mustUpgradeWritesToExclusiveAccess());
     physical->unlockRead();
   }
 

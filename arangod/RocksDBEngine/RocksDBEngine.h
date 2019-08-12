@@ -127,6 +127,9 @@ class RocksDBEngine final : public StorageEngine {
   // create the storage engine
   explicit RocksDBEngine(application_features::ApplicationServer& server);
   ~RocksDBEngine();
+ 
+  static std::string const EngineName;
+  static std::string const FeatureName;
 
   // inherited from ApplicationFeature
   // ---------------------------------
@@ -243,7 +246,6 @@ class RocksDBEngine final : public StorageEngine {
   // start compactor thread and delete files form collections marked as deleted
   void recoveryDone(TRI_vocbase_t& vocbase) override;
 
- public:
   /// @brief disallow purging of WAL files even if the archive gets too big
   /// removing WAL files does not seem to be thread-safe, so we have to track
   /// usage of WAL files ourselves
@@ -331,6 +333,46 @@ class RocksDBEngine final : public StorageEngine {
   virtual TRI_voc_tick_t releasedTick() const override;
   virtual void releaseTick(TRI_voc_tick_t) override;
 
+  bool serializeWrites() const { return _serializeWrites; }
+  
+  // returns whether sha files are created or not
+  bool getCreateShaFiles() const { return _createShaFiles; }
+  // enabled or disable sha file creation. Requires feature not be started.
+  void setCreateShaFiles(bool create) { _createShaFiles = create; }
+  
+  rocksdb::EncryptionProvider* encryptionProvider() const noexcept {
+#ifdef USE_ENTERPRISE
+    return _eeData._encryptionProvider;
+#else
+    return nullptr;
+#endif
+  }
+
+#ifdef USE_ENTERPRISE
+  std::string const& getEncryptionKey();
+#endif
+
+  rocksdb::Options const& rocksDBOptions() const { return _options; }
+
+  /// @brief recovery manager
+  RocksDBSettingsManager* settingsManager() const {
+    TRI_ASSERT(_settingsManager);
+    return _settingsManager.get();
+  }
+
+  /// @brief manages the ongoing dump clients
+  RocksDBReplicationManager* replicationManager() const {
+    TRI_ASSERT(_replicationManager);
+    return _replicationManager.get();
+  }
+
+  /// @brief returns a pointer to the sync thread
+  /// note: returns a nullptr if automatic syncing is turned off!
+  RocksDBSyncThread* syncThread() const { return _syncThread.get(); }
+
+  static arangodb::Result registerRecoveryHelper(std::shared_ptr<RocksDBRecoveryHelper> helper);
+  static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const& recoveryHelpers();
+
  private:
   void shutdownRocksDBInstance() noexcept;
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key, int& status);
@@ -356,52 +398,7 @@ class RocksDBEngine final : public StorageEngine {
   void validateJournalFiles() const;
 
   enterprise::RocksDBEngineEEData _eeData;
-
-public:
-  std::string const& getEncryptionKey();
 #endif
-private:
-  // activate generation of SHA256 files to parallel .sst files
-  bool _createShaFiles;
-
-public:
-  // returns whether sha files are created or not
-  bool getCreateShaFiles() { return _createShaFiles; }
-  // enabled or disable sha file creation. Requires feature not be started.
-  void setCreateShaFiles(bool create) { _createShaFiles = create; }
-
- public:
-  static std::string const EngineName;
-  static std::string const FeatureName;
-
-  rocksdb::EncryptionProvider* encryptionProvider() const noexcept {
-#ifdef USE_ENTERPRISE
-    return _eeData._encryptionProvider;
-#else
-    return nullptr;
-#endif
-  }
-
-  rocksdb::Options const& rocksDBOptions() const { return _options; }
-
-  /// @brief recovery manager
-  RocksDBSettingsManager* settingsManager() const {
-    TRI_ASSERT(_settingsManager);
-    return _settingsManager.get();
-  }
-
-  /// @brief manages the ongoing dump clients
-  RocksDBReplicationManager* replicationManager() const {
-    TRI_ASSERT(_replicationManager);
-    return _replicationManager.get();
-  }
-
-  /// @brief returns a pointer to the sync thread
-  /// note: returns a nullptr if automatic syncing is turned off!
-  RocksDBSyncThread* syncThread() const { return _syncThread.get(); }
-
-  static arangodb::Result registerRecoveryHelper(std::shared_ptr<RocksDBRecoveryHelper> helper);
-  static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const& recoveryHelpers();
 
  private:
   /// single rocksdb database used in this storage engine
@@ -476,6 +473,13 @@ public:
 
   // activate rocksdb's debug logging
   bool _debugLogging;
+
+  /// @brief activate generation of SHA256 files to parallel .sst files
+  bool _createShaFiles;
+
+  /// @brief serialize writes to underlying collections. this avoids conflicts, but will
+  /// make write operations on the same collection wait for each other 
+  bool _serializeWrites;
 
   // code to pace ingest rate of writes to reduce chances of compactions getting
   // too far behind and blocking incoming writes
