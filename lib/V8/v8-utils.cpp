@@ -4320,9 +4320,9 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
   v8::HandleScope scope(isolate);
 
   // extract the arguments
-  if (3 < args.Length() || args.Length() < 1) {
+  if (4 < args.Length() || args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "executeExternal(<filename>[, <arguments> [,<usePipes>] ])");
+        "executeExternal(<filename>[, <arguments> [,<usePipes> [,<env>] ] ])");
   }
 
   V8SecurityFeature* v8security =
@@ -4376,13 +4376,37 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
       }
     }
   }
+
+  std::vector<std::string> additionalEnv;
+
+  if (4 <= args.Length()) {
+    v8::Handle<v8::Value> a = args[3];
+
+    if (a->IsArray()) {
+      v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(a);
+
+      uint32_t n = arr->Length();
+
+      for (uint32_t i = 0; i < n; ++i) {
+        TRI_Utf8ValueNFC arg(isolate, arr->Get(i));
+
+        if (*arg == nullptr) {
+          additionalEnv.push_back("");
+        } else {
+          additionalEnv.push_back(*arg);
+        }
+      }
+    }
+  }
+
   bool usePipes = false;
+
   if (3 <= args.Length()) {
     usePipes = TRI_ObjectToBoolean(isolate, args[2]);
   }
 
   ExternalId external;
-  TRI_CreateExternalProcess(*name, arguments, usePipes, &external);
+  TRI_CreateExternalProcess(*name, arguments, additionalEnv, usePipes, &external);
 
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");
@@ -4458,6 +4482,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a external program
 ////////////////////////////////////////////////////////////////////////////////
@@ -4467,7 +4492,7 @@ static void JS_ExecuteAndWaitExternal(v8::FunctionCallbackInfo<v8::Value> const&
   v8::HandleScope scope(isolate);
 
   // extract the arguments
-  if (4 < args.Length() || args.Length() < 1) {
+  if (5 < args.Length() || args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "executeAndWaitExternal(<filename>[, <arguments> [,<usePipes>, [, <timoutms>]] ])");
   }
@@ -4523,17 +4548,41 @@ static void JS_ExecuteAndWaitExternal(v8::FunctionCallbackInfo<v8::Value> const&
       }
     }
   }
+
+  std::vector<std::string> additionalEnv;
+
+  if (5 <= args.Length()) {
+    v8::Handle<v8::Value> a = args[4];
+
+    if (a->IsArray()) {
+      v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(a);
+
+      uint32_t n = arr->Length();
+
+      for (uint32_t i = 0; i < n; ++i) {
+        TRI_Utf8ValueNFC arg(isolate, arr->Get(i));
+
+        if (*arg == nullptr) {
+          additionalEnv.push_back("");
+        } else {
+          additionalEnv.push_back(*arg);
+        }
+      }
+    }
+  }
+
   bool usePipes = false;
   if (args.Length() >= 3) {
     usePipes = TRI_ObjectToBoolean(isolate, args[2]);
   }
+
   uint32_t timeoutms = 0;
   if (args.Length() >= 4) {
     timeoutms = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[3], true));
   }
 
   ExternalId external;
-  TRI_CreateExternalProcess(*name, arguments, usePipes, &external);
+  TRI_CreateExternalProcess(*name, arguments, additionalEnv, usePipes, &external);
 
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");
