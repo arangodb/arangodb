@@ -802,34 +802,6 @@ void registerUpgradeTasks() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief split the analyzer name into the vocbase part and analyzer part
-/// @param name analyzer name
-/// @return pair of first == vocbase name, second == analyzer name
-///         EMPTY == system vocbase
-///         NIL == unprefixed analyzer name, i.e. active vocbase
-////////////////////////////////////////////////////////////////////////////////
-std::pair<irs::string_ref, irs::string_ref> splitAnalyzerName( // split name
-    irs::string_ref const& analyzer // analyzer name
-) noexcept {
-  // search for vocbase prefix ending with '::'
-  for (size_t i = 1, count = analyzer.size(); i < count; ++i) {
-    if (analyzer[i] == ANALYZER_PREFIX_DELIM // current is delim
-        && analyzer[i - 1] == ANALYZER_PREFIX_DELIM) { // previous is also delim
-      auto vocbase = i > 1 // non-empty prefix, +1 for first delimiter char
-        ? irs::string_ref(analyzer.c_str(), i - 1) // -1 for the first ':' delimiter
-        : irs::string_ref::EMPTY;
-      auto name = i < count - 1 // have suffix
-        ? irs::string_ref(analyzer.c_str() + i + 1, count - i - 1) // +-1 for the suffix after '::'
-        : irs::string_ref::EMPTY; // do not point after end of buffer
-
-      return std::make_pair(vocbase, name); // prefixed analyzer name
-    }
-  }
-
-  return std::make_pair(irs::string_ref::NIL, analyzer); // unprefixed analyzer name
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief read analyzers from vocbase
 /// @return visitation completed fully
 ////////////////////////////////////////////////////////////////////////////////
@@ -2103,11 +2075,30 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
 }
 
 /*static*/ irs::string_ref IResearchAnalyzerFeature::extractVocbaseName(
-    irs::string_ref const& name) {// analyzer name (normalized)
+    irs::string_ref const& name) noexcept {// analyzer name (normalized)
   auto split = splitAnalyzerName(name);
   return split.first.empty() ? irs::string_ref::EMPTY : split.first;
 }
 
+/*static*/ std::pair<irs::string_ref, irs::string_ref> IResearchAnalyzerFeature::splitAnalyzerName( 
+    irs::string_ref const& analyzer) noexcept {
+  // search for vocbase prefix ending with '::'
+  for (size_t i = 1, count = analyzer.size(); i < count; ++i) {
+    if (analyzer[i] == ANALYZER_PREFIX_DELIM // current is delim
+        && analyzer[i - 1] == ANALYZER_PREFIX_DELIM) { // previous is also delim
+      auto vocbase = i > 1 // non-empty prefix, +1 for first delimiter char
+        ? irs::string_ref(analyzer.c_str(), i - 1) // -1 for the first ':' delimiter
+        : irs::string_ref::EMPTY;
+      auto name = i < count - 1 // have suffix
+        ? irs::string_ref(analyzer.c_str() + i + 1, count - i - 1) // +-1 for the suffix after '::'
+        : irs::string_ref::EMPTY; // do not point after end of buffer
+
+      return std::make_pair(vocbase, name); // prefixed analyzer name
+    }
+  }
+
+  return std::make_pair(irs::string_ref::NIL, analyzer); // unprefixed analyzer name
+}
 
 /*static*/ std::string IResearchAnalyzerFeature::normalize( // normalize name
   irs::string_ref const& name, // analyzer name
@@ -2193,7 +2184,6 @@ arangodb::Result IResearchAnalyzerFeature::remove( // remove analyzer
     // will make the state consistent again
     if (!pool) {
       _analyzers.erase(itr);
-
       return arangodb::Result( // result
         TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, // code
         std::string("failure to find a valid analyzer while removing arangosearch analyzer '") + std::string(name)+ "'"
