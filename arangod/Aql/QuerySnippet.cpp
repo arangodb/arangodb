@@ -53,8 +53,7 @@ void QuerySnippet::addNode(ExecutionNode* node) {
     case ExecutionNode::UPSERT: {
       // We do not actually need to know the details here.
       // We just wanna know the shards!
-      auto collectionAccessingNode =
-          ExecutionNode::castTo<CollectionAccessingNode*>(node);
+      auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(node);
       TRI_ASSERT(collectionAccessingNode != nullptr);
       auto col = collectionAccessingNode->collection();
       // Satellites can only be used on ReadNodes
