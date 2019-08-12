@@ -221,7 +221,7 @@ bool createJobsIndex(TRI_vocbase_t& vocbase) {
   return true;
 }
 
-bool createSystemCollections(TRI_vocbase_t& vocbase) {
+Result createSystemCollections(TRI_vocbase_t& vocbase) {
   typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> FuncCallback;
   FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
 
@@ -230,12 +230,14 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
   // UsersCollection needs to be first, otherwise, the GraphsCollection must be first.
   std::vector<std::string> systemCollections;
 
+  Result res;
+  std::shared_ptr<LogicalCollection> col;
   if (vocbase.isSystem()) {
     // we will use UsersCollection for distributeShardsLike
-    auto const res =
+    std::tie(res, col) =
         methods::Collections::createSystem(vocbase, StaticStrings::UsersCollection, true);
     if (!res.ok()) {
-      return false;
+      return res;
     }
     systemCollections.push_back(StaticStrings::GraphsCollection);
     if (StatisticsFeature::enabled()) {
@@ -245,10 +247,10 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
     }
   } else {
     // we will use GraphsCollection for distributeShardsLike
-    auto const res =
+    std::tie(res, col) =
         methods::Collections::createSystem(vocbase, StaticStrings::GraphsCollection, true);
     if (!res.ok()) {
-      return false;
+      return res;
     }
   }
 
@@ -277,7 +279,7 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
     }
 
     methods::Collections::create(
-        vocbase, testSystemCollectionsToCreate, true, true, true,
+        vocbase, testSystemCollectionsToCreate, true, true, true, col,
         [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
   }
 
@@ -306,19 +308,19 @@ bool createSystemCollections(TRI_vocbase_t& vocbase) {
   }
 
   if (systemCollectionsToCreate.size() > 0) {
-    auto const res = methods::Collections::create(
-        vocbase, systemCollectionsToCreate, true, true, true,
+    res = methods::Collections::create(
+        vocbase, systemCollectionsToCreate, true, true, true, col,
         [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
 
     if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
+      return res;
     }
   }
 
-  return true;
+  return {TRI_ERROR_NO_ERROR};
 }
 
-bool createSystemCollectionsIndices(TRI_vocbase_t& vocbase) {
+Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase) {
   if (vocbase.isSystem()) {
     createUsersIndex(vocbase);
 
@@ -329,20 +331,32 @@ bool createSystemCollectionsIndices(TRI_vocbase_t& vocbase) {
   upgradeGeoIndexes(vocbase);
   createAppsIndex(vocbase);
   createJobsIndex(vocbase);
-  return true;
+  return {TRI_ERROR_NO_ERROR};
 }
 
 }  // namespace
 
 bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
                                                      arangodb::velocypack::Slice const& slice) {
-  if (::createSystemCollections(vocbase)) {
-    if (::createSystemCollectionsIndices(vocbase)) {
-      return true;
-    }
+  Result res;
+  res = ::createSystemCollections(vocbase);
+
+  if (res.fail()) {
+    LOG_TOPIC("e32fi", ERR, Logger::MAINTENANCE)
+        << "could not create system collections"
+        << ": error: " << res.errorMessage();
+    return false;
   }
 
-  return false;
+  res = ::createSystemCollectionsIndices(vocbase);
+  if (res.fail()) {
+    LOG_TOPIC("e32fx", ERR, Logger::MAINTENANCE)
+        << "could not create indices for system collections"
+        << ": error: " << res.errorMessage();
+    return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -566,8 +566,9 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
     // NOTE: Empty graph is allowed.
     return TRI_ERROR_NO_ERROR;
   }
+
   return methods::Collections::create(
-      vocbase, collectionsToCreate, waitForSync, true, false,
+      vocbase, collectionsToCreate, waitForSync, true, false, nullptr, // TODO check nullptr
       [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
 };
 

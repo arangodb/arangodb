@@ -227,7 +227,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
   }
   std::vector<CollectionCreationInfo> infos{{name, collectionType, properties}};
   return create(vocbase, infos, createWaitsForSyncReplication,
-                enforceReplicationFactor, isNewDatabase,
+                enforceReplicationFactor, isNewDatabase, nullptr,
                 [&func](std::vector<std::shared_ptr<LogicalCollection>> const& cols) {
                   TRI_ASSERT(cols.size() == 1);
                   func(cols[0]);
@@ -236,8 +236,10 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
 
 Result Collections::create(TRI_vocbase_t& vocbase,
                            std::vector<CollectionCreationInfo> const& infos,
-                           bool createWaitsForSyncReplication, bool enforceReplicationFactor,
-                           bool isNewDatabase, MultiFuncCallback const& func) {
+                           bool createWaitsForSyncReplication,
+                           bool enforceReplicationFactor, bool isNewDatabase,
+                           std::shared_ptr<LogicalCollection> const& colPtr,
+                           MultiFuncCallback const& func) {
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec && !exec->canUseDatabase(vocbase.name(), auth::Level::RW)) {
     for (auto const& info : infos) {
@@ -307,7 +309,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
           ClusterMethods::createCollectionOnCoordinator(vocbase, infoSlice, false,
                                                         createWaitsForSyncReplication,
                                                         enforceReplicationFactor,
-                                                        isNewDatabase);
+                                                        isNewDatabase, colPtr);
 
       if (collections.empty()) {
         for (auto const& info : infos) {
@@ -425,9 +427,16 @@ void Collections::createSystemCollectionProperties(std::string collectionName,
   }
 }
 
-/*static*/ Result Collections::createSystem(TRI_vocbase_t& vocbase,
-                                            std::string const& name, bool isNewDatabase) {
-  FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
+/*static*/ std::pair<Result, std::shared_ptr<LogicalCollection>> Collections::createSystem(
+    TRI_vocbase_t& vocbase, std::string const& name, bool isNewDatabase) {
+  FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const& col) -> void {};
+
+  std::shared_ptr<LogicalCollection> colPtr;
+  FuncCallback const returnColPtr =
+      [&colPtr](std::shared_ptr<LogicalCollection> const& col) -> void {
+    colPtr = col;
+  };
+
   auto res = methods::Collections::lookup(vocbase, name, noop);
 
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
@@ -441,10 +450,10 @@ void Collections::createSystemCollectionProperties(std::string collectionName,
                               true,        // waitsForSyncReplication
                               true,        // enforceReplicationFactor
                               isNewDatabase,
-                              noop);  // callback
+                              returnColPtr);  // callback
   }
 
-  return res;
+  return {res, colPtr};
 }
 
 Result Collections::load(TRI_vocbase_t& vocbase, LogicalCollection* coll) {

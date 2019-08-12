@@ -94,9 +94,13 @@ struct Collections {
   /// Create many collections, ownership of collections in callback is
   /// transferred to callee
   static Result create(TRI_vocbase_t&, std::vector<CollectionCreationInfo> const& infos,
-                       bool createWaitsForSyncReplication, bool enforceReplicationFactor,
-                       bool isNewDatabase, MultiFuncCallback const&);
-  static Result createSystem(TRI_vocbase_t& vocbase, std::string const& name, bool isNewDatabase);
+                       bool createWaitsForSyncReplication,
+                       bool enforceReplicationFactor, bool isNewDatabase,
+                       std::shared_ptr<LogicalCollection> const& colPtr,
+                       MultiFuncCallback const&);
+
+  static std::pair<Result, std::shared_ptr<LogicalCollection>> createSystem(
+      TRI_vocbase_t& vocbase, std::string const& name, bool isNewDatabase);
   static void createSystemCollectionProperties(std::string collectionName,
                                                VPackBuilder& builder, bool isSystem);
 

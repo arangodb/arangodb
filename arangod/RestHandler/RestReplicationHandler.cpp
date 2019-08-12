@@ -1299,7 +1299,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     // not desired, so it is hardcoded to false
     auto cols = ClusterMethods::createCollectionOnCoordinator(_vocbase, merged, ignoreDistributeShardsLikeErrors,
                                                               createWaitsForSyncReplication,
-                                                              false, false);
+                                                              false, false, nullptr);
     ExecContext const* exe = ExecContext::CURRENT;
     TRI_ASSERT(cols.size() == 1);
     if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {

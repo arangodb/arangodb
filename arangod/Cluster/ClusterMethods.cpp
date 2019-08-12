@@ -619,16 +619,25 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> CloneShardDistribution(
-    ClusterInfo* ci, LogicalCollection* col, TRI_voc_cid_t cid) {
+    ClusterInfo* ci, LogicalCollection* col, TRI_voc_cid_t cid, std::shared_ptr<LogicalCollection> const& colPtr) {
   auto result =
       std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
   TRI_ASSERT(cid != 0);
   std::string cidString = arangodb::basics::StringUtils::itoa(cid);
   TRI_ASSERT(col);
-  auto other = ci->getCollection(col->vocbase().name(), cidString);
+  //
+
+  std::shared_ptr<LogicalCollection> other;
+  if (colPtr != nullptr) {
+    LOG_DEVEL << "collection is available, using directly";
+    other = colPtr;
+  } else {
+    LOG_DEVEL << "collection is not available, using resolver";
+    other = ci->getCollection(col->vocbase().name(), cidString);
+  }
 
   // The function guarantees that no nullptr is returned
-  TRI_ASSERT(other != nullptr);
+  TRI_ASSERT(colPtr != nullptr);
 
   if (!other->distributeShardsLike().empty()) {
     std::string const errorMessage = "Cannot distribute shards like '" + other->name() +
@@ -638,6 +647,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
   }
 
   // We need to replace the distribute with the cid.
+  colPtr.get()->distributeShardsLike();
   col->distributeShardsLike(cidString, other->shardingInfo());
 
   if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
@@ -2892,7 +2902,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollection
 std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectionsInAgency(
     std::vector<std::shared_ptr<LogicalCollection>>& collections,
     bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-    bool enforceReplicationFactor, bool isNewDatabase) {
+    bool enforceReplicationFactor, bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colPtr) {
   TRI_ASSERT(!collections.empty());
   if (collections.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -2931,11 +2941,17 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> shards = nullptr;
 
       if (!distributeShardsLike.empty()) {
-        CollectionNameResolver resolver(col->vocbase());
-        TRI_voc_cid_t otherCid = resolver.getCollectionIdCluster(distributeShardsLike);
+        TRI_voc_cid_t otherCid = 0;
+
+        if (colPtr != nullptr) {
+          otherCid = colPtr.get()->id();
+        } else {
+          CollectionNameResolver resolver(col->vocbase());
+          otherCid = resolver.getCollectionIdCluster(distributeShardsLike);
+        }
 
         if (otherCid != 0) {
-          shards = CloneShardDistribution(ci, col.get(), otherCid);
+          shards = CloneShardDistribution(ci, col.get(), otherCid, colPtr);
         } else {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
                                          "Could not find collection " + distributeShardsLike +
