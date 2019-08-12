@@ -1,19 +1,40 @@
-v3.3.24 (XXXX-XX-XX)
+v3.3.25 (2019-XX-XX)
 --------------------
 
 * disabled enforce-block-cache-size-limit because of bugs in RocksDB 5.6
+
+v3.3.24 (2019-08-09)
+--------------------
+
+* re-added warning for kernel setting "overcommit_memory=2" if jemalloc is also enabled.
+
+* Decreased unnecessary wait times for agency callbacks in case they were
+  called earlier than expected by main thread.
+
+* upgraded arangodb starter version to 0.14.12
+
+* upgrade arangosync version to 0.6.5
+
+* arangoimport would not stop, much less report, communications errors.  Add CSV reporting
+  of line numbers that are impacted during such errors
+
+* changed several internal VelocyPack comparisons in the cluster to not check for bytewise identity,
+  but for logical intentity of objects
+
+* fix handling 0 byte-WAL files in RocksDB engine when encryption is turned on. From now
+  on, any 0 byte-WAL files will be ignored when found at startup and not trigger a "Corruption" error.
 
 * fix timeout-response in case of simultaneous index create/drop in cluster
 
 * Fixed parsing of ArangoDB config files with inlined comments. Previous versions didn't handle
   line comments properly if they were appended to an otherwise valid option value.
-  
+
   For example, the comment in the line
-  
+
       max-total-wal-size = 1024000 # 1M
 
   was not ignored and made part of the value. In the end, the value was interpreted as if
-      
+
       max-total-wal-size = 10240001000000
 
   was specified.
@@ -22,17 +43,19 @@ v3.3.24 (XXXX-XX-XX)
 * fixed a crash when posting an async request to the server using the "x-arango-async"
   request header and the server's request queue was full
 
-* upgraded arangodb starter version to 0.14.4
-
 * fix client id lookup table in agency
 
 * fix agency issue in abort of cleanOutServer job
 
 * fix agency issue with TTL discovered in 3.4.6
 
+* fix agency issue with election timeout
+
 
 v3.3.23 (2019-04-14)
 --------------------
+
+* Added coordinator route for agency dump
 
 * upgraded arangosync version to 0.6.3
 
@@ -94,7 +117,7 @@ v3.3.22 (2019-02-01)
 * data masking: better documentation, fixed default phone number,
   changed default range to -100 and 100 for integer masking function
 
-* added configurable masking of dumped data via `arangodump` tool to 
+* added configurable masking of dumped data via `arangodump` tool to
   obfuscate exported sensible data
 
 * updated velocypack library

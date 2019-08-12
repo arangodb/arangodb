@@ -5,9 +5,10 @@ version
 upgrade_data_3.4.*
 dump_multiple
 permissions
-permissions_server
+server_permissions
 audit_client
 audit_server
 resilience_transactions
 paths_server
 wal_cleanup
+hot_backup

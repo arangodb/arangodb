@@ -452,21 +452,24 @@ void ImportFeature::start() {
 
     std::cout << std::endl;
 
-    // give information about import
-    if (ok) {
-      std::cout << "created:          " << ih.getNumberCreated() << std::endl;
-      std::cout << "warnings/errors:  " << ih.getNumberErrors() << std::endl;
-      std::cout << "updated/replaced: " << ih.getNumberUpdated() << std::endl;
-      std::cout << "ignored:          " << ih.getNumberIgnored() << std::endl;
+    // give information about import (even if errors occur)
+    std::cout << "created:          " << ih.getNumberCreated() << std::endl;
+    std::cout << "warnings/errors:  " << ih.getNumberErrors() << std::endl;
+    std::cout << "updated/replaced: " << ih.getNumberUpdated() << std::endl;
+    std::cout << "ignored:          " << ih.getNumberIgnored() << std::endl;
 
-      if (_typeImport == "csv" || _typeImport == "tsv") {
-        std::cout << "lines read:       " << ih.getReadLines() << std::endl;
-      }
+    if (_typeImport == "csv" || _typeImport == "tsv") {
+      std::cout << "lines read:       " << ih.getReadLines() << std::endl;
+    }
 
-    } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error message(s):";
-      for (std::string const& msg : ih.getErrorMessages()) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+
+    if (!ok) {
+      auto const& msgs = ih.getErrorMessages();
+      if (!msgs.empty()) {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error message(s):";
+        for (std::string const& msg : msgs) {
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+        }
       }
     }
   } catch (std::exception const& ex) {

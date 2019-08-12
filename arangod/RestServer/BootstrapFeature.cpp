@@ -250,7 +250,7 @@ void BootstrapFeature::start() {
 
           if (leader.isString() && leader.getStringLength() > 0) {
             ss->setFoxxmaster(leader.copyString());
-            if (leader == myIdBuilder.slice()) {
+            if (basics::VelocyPackHelper::compare(leader, myIdBuilder.slice(), false) == 0) {
               LOG_TOPIC(INFO, Logger::STARTUP)
                   << "Became leader in automatic failover setup";
             } else {

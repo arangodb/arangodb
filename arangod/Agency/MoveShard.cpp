@@ -417,7 +417,7 @@ JOB_STATUS MoveShard::status() {
   std::string planPath = planColPrefix + _database + "/" + _collection;
   if (!_snapshot.has(planPath)) {
     // Oops, collection is gone, simple finish job:
-    finish("", _shard, true, "collection was dropped");
+    finish(_to, _shard, true, "collection was dropped");
     return FINISHED;
   }
 
@@ -661,7 +661,7 @@ JOB_STATUS MoveShard::pendingLeader() {
     finishedAfterTransaction = true;
   } else {
     // something seriously wrong here, fail job:
-    finish("", _shard, false, "something seriously wrong");
+    finish(_to, _shard, false, "something seriously wrong");
     return FAILED;
   }
 

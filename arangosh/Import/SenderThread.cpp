@@ -47,6 +47,8 @@ SenderThread::SenderThread(std::unique_ptr<httpclient::SimpleHttpClient>&& clien
       _hasError(false),
       _idle(true),
       _ready(false),
+      _lowLineNumber(0),
+      _highLineNumber(0),
       _stats(stats) {}
 
 SenderThread::~SenderThread() {
@@ -62,7 +64,8 @@ void SenderThread::beginShutdown() {
   guard.broadcast();
 }
 
-void SenderThread::sendData(std::string const& url, arangodb::basics::StringBuffer* data) {
+void SenderThread::sendData(std::string const& url, arangodb::basics::StringBuffer* data,
+                            size_t lowLine, size_t highLine) {
   TRI_ASSERT(_idle && !_hasError);
   _url = url;
   _data.swap(data);
@@ -70,12 +73,25 @@ void SenderThread::sendData(std::string const& url, arangodb::basics::StringBuff
   // wake up the thread that may be waiting in run()
   CONDITION_LOCKER(guard, _condition);
   _idle = false;
+  _lowLineNumber = lowLine;
+  _highLineNumber = highLine;
   guard.broadcast();
 }
 
 bool SenderThread::hasError() {
-  CONDITION_LOCKER(guard, _condition);
-  return _hasError;
+  bool retFlag = false;
+  {
+    // flag reset after read to prevent multiple reporting
+    //  of errors in ImportHelper
+    CONDITION_LOCKER(guard, _condition);
+    retFlag = _hasError;
+    _hasError = false;
+  }
+
+  if (retFlag) {
+    beginShutdown();
+  }
+  return retFlag;
 }
 
 bool SenderThread::isReady() {
@@ -134,6 +150,8 @@ void SenderThread::run() {
 }
 
 void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
+  bool haveBody = false;
+
   if (result == nullptr) {
     return;
   }
@@ -141,56 +159,70 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
   std::shared_ptr<VPackBuilder> parsedBody;
   try {
     parsedBody = result->getBodyVelocyPack();
+    haveBody = true;
   } catch (...) {
-    // No action required
-    return;
+    // no body, likely error situation
   }
-  VPackSlice const body = parsedBody->slice();
 
-  // error details
-  VPackSlice const details = body.get("details");
+  if (haveBody) {
+    VPackSlice const body = parsedBody->slice();
 
-  if (details.isArray()) {
-    for (VPackSlice const& detail : VPackArrayIterator(details)) {
-      if (detail.isString()) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "" << detail.copyString();
+    // error details
+    VPackSlice const details = body.get("details");
+
+    if (details.isArray()) {
+      for (VPackSlice const& detail : VPackArrayIterator(details)) {
+        if (detail.isString()) {
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "" << detail.copyString();
+        }
       }
     }
-  }
 
-  {
-    // first update all the statistics
-    MUTEX_LOCKER(guard, _stats->_mutex);
-    // look up the "created" flag
-    _stats->_numberCreated +=
+    {
+      // first update all the statistics
+      MUTEX_LOCKER(guard, _stats->_mutex);
+      // look up the "created" flag
+      _stats->_numberCreated +=
         arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
                                                                     "created", 0);
 
-    // look up the "errors" flag
-    _stats->_numberErrors +=
+      // look up the "errors" flag
+      _stats->_numberErrors +=
         arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
                                                                     "errors", 0);
 
-    // look up the "updated" flag
-    _stats->_numberUpdated +=
+      // look up the "updated" flag
+      _stats->_numberUpdated +=
         arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
                                                                     "updated", 0);
 
-    // look up the "ignored" flag
-    _stats->_numberIgnored +=
+      // look up the "ignored" flag
+      _stats->_numberIgnored +=
         arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
                                                                     "ignored", 0);
-  }
-
-  // get the "error" flag. This returns a pointer, not a copy
-  if (arangodb::basics::VelocyPackHelper::getBooleanValue(body, "error", false)) {
-    // get the error message
-    VPackSlice const errorMessage = body.get("errorMessage");
-    if (errorMessage.isString()) {
-      _errorMessage = errorMessage.copyString();
     }
 
-    // will trigger the waiting ImportHelper thread to cancel the import
+    // get the "error" flag. This returns a pointer, not a copy
+    if (arangodb::basics::VelocyPackHelper::getBooleanValue(body, "error", false)) {
+      // get the error message
+      VPackSlice const errorMessage = body.get("errorMessage");
+      if (errorMessage.isString()) {
+        _errorMessage = errorMessage.copyString();
+      }
+
+      // will trigger the waiting ImportHelper thread to cancel the import
+      _hasError = true;
+    }
+  } // if
+
+  if (!_hasError && !result->getHttpReturnMessage().empty() && !result->isComplete()) {
+    _errorMessage = result->getHttpReturnMessage();
+    if (0 != _lowLineNumber || 0 != _highLineNumber) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Error left import lines "
+                                                        << _lowLineNumber << " through "
+                                                        << _highLineNumber
+                                                        << " in unknown state";
+    } // if
     _hasError = true;
-  }
+  } // if
 }

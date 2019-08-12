@@ -33,6 +33,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -40,7 +41,11 @@ using namespace arangodb;
 AgencyCallback::AgencyCallback(AgencyComm& agency, std::string const& key,
                                std::function<bool(VPackSlice const&)> const& cb,
                                bool needsValue, bool needsInitialValue)
-    : key(key), _agency(agency), _cb(cb), _needsValue(needsValue) {
+    : key(key), 
+      _agency(agency), 
+      _cb(cb), 
+      _needsValue(needsValue),
+      _wasSignaled(false) {
   if (_needsValue && needsInitialValue) {
     refetchAndUpdate(true, false);
   }
@@ -85,7 +90,7 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
 void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData, bool forceCheck) {
   // Only called from refetchAndUpdate, we always have the mutex when
   // we get here!
-  if (!_lastData || !_lastData->slice().equals(newData->slice()) || forceCheck) {
+  if (!_lastData || arangodb::basics::VelocyPackHelper::compare(_lastData->slice(), newData->slice(), false) != 0 || forceCheck) {
     LOG_TOPIC(DEBUG, Logger::CLUSTER)
         << "AgencyCallback: Got new value " << newData->slice().typeName()
         << " " << newData->toJson() << " forceCheck=" << forceCheck;
@@ -104,6 +109,7 @@ bool AgencyCallback::executeEmpty() {
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Executing (empty)";
   bool result = _cb(VPackSlice::noneSlice());
   if (result) {
+    _wasSignaled = true;
     _cv.signal();
   }
   return result;
@@ -115,6 +121,7 @@ bool AgencyCallback::execute(std::shared_ptr<VPackBuilder> newData) {
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Executing";
   bool result = _cb(newData->slice());
   if (result) {
+    _wasSignaled = true;
     _cv.signal();
   }
   return result;
@@ -123,11 +130,18 @@ bool AgencyCallback::execute(std::shared_ptr<VPackBuilder> newData) {
 void AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
   // One needs to acquire the mutex of the condition variable
   // before entering this function!
-  if (!_cv.wait(static_cast<uint64_t>(maxTimeout * 1000000.0)) &&
-      application_features::ApplicationServer::isRetryOK()) {
-    LOG_TOPIC(DEBUG, Logger::CLUSTER)
-        << "Waiting done and nothing happended. Refetching to be sure";
-    // mop: watches have not triggered during our sleep...recheck to be sure
-    refetchAndUpdate(false, true);  // Force a check
+  if (!application_features::ApplicationServer::isStopping()) {
+    if (_wasSignaled) {
+      // ok, we have been signaled already, so there is no need to wait at all
+      // directly refetch the values
+      _wasSignaled = false;
+      LOG_TOPIC(DEBUG, Logger::CLUSTER) << "We were signaled already";
+    } else if (!_cv.wait(static_cast<uint64_t>(maxTimeout * 1000000.0)) &&
+               application_features::ApplicationServer::isRetryOK()) {
+      LOG_TOPIC(DEBUG, Logger::CLUSTER)
+          << "Waiting done and nothing happended. Refetching to be sure";
+      // mop: watches have not triggered during our sleep...recheck to be sure
+      refetchAndUpdate(false, true);  // Force a check
+    }
   }
 }
