@@ -658,11 +658,11 @@ constexpr int TRI_ERROR_REPLICATION_WRONG_CHECKSUM                              
 /// Will be raised when a shard is not empty and the follower tries a shortcut
 constexpr int TRI_ERROR_REPLICATION_SHARD_NONEMPTY                              = 1417;
 
-/// 1452: ERROR_CLUSTER_SERVER_UNKNOWN
+/// 1449: ERROR_CLUSTER_SERVER_UNKNOWN
 /// "got a request from an unkown server"
 /// Will be raised on some occasions when one server gets a request from
 /// another, which has not (yet?) been made known via the agency.
-constexpr int TRI_ERROR_CLUSTER_SERVER_UNKNOWN                                  = 1452;
+constexpr int TRI_ERROR_CLUSTER_SERVER_UNKNOWN                                  = 1449;
 
 /// 1453: ERROR_CLUSTER_COLLECTION_ID_EXISTS
 /// "collection ID already exists"
