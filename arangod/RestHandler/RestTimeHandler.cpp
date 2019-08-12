@@ -24,6 +24,7 @@
 #include "RestTimeHandler.h"
 
 #include "Basics/StaticStrings.h"
+#include "Basics/system-functions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>

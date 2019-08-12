@@ -21,11 +21,23 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Job.h"
-#include "Basics/StringUtils.h"
-#include "Random/RandomGenerator.h"
-
+#include <chrono>
+#include <cstdint>
+#include <iterator>
 #include <numeric>
+#include <tuple>
+#include <unordered_map>
+#include <utility>
+
+#include "Job.h"
+
+#include "Agency/Node.h"
+#include "Agency/Supervision.h"
+#include "Agency/TimeString.h"
+#include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
+#include "Basics/voc-errors.h"
+#include "Random/RandomGenerator.h"
 
 static std::string const DBServer = "DBServer";
 
@@ -156,7 +168,7 @@ bool Job::finish(std::string const& server, std::string const& shard,
         for (auto const& prec : VPackObjectIterator(preconditions)) {
           finished.add(prec.key.copyString(), prec.value);
         }
-      }  // -- preconditions
+      } // -- preconditions
     }
 
     write_ret_t res = singleWriteTransaction(_agent, finished, false);
@@ -561,7 +573,7 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
       type == "activeFailover") {
     return false;
   } else if (type == "addFollower" || type == "moveShard" ||
-             type == "cleanOutServer") {
+             type == "cleanOutServer" || type == "resignLeadership") {
     return true;
   }
 

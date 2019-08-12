@@ -26,6 +26,8 @@
 
 #include "WriteLocker.h"
 
+#include "Basics/debugging.h"
+
 namespace arangodb {
 
 // identical code to RecursiveWriteLocker except for type

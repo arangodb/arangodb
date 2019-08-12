@@ -23,7 +23,7 @@
 #ifndef ARANGODB_BASICS_STATIC_STRINGS_H
 #define ARANGODB_BASICS_STATIC_STRINGS_H 1
 
-#include "Basics/Common.h"
+#include <string>
 
 namespace arangodb {
 class StaticStrings {

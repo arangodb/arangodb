@@ -61,7 +61,7 @@ class DatabaseManagerThread final : public Thread {
 
  private:
   // how long will the thread pause between iterations
-  static constexpr unsigned long waitTime() { return 500U * 1000U; }
+  static constexpr unsigned long waitTime() { return static_cast<unsigned long>(500U * 1000U); }
 };
 
 class DatabaseFeature : public application_features::ApplicationFeature {
@@ -111,7 +111,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
 
   //options can contain id, replicationFactor, sharding (oneShardDB only)
-  int createDatabase(TRI_voc_tick_t id, std::string const& name, VPackSlice options, TRI_vocbase_t*& result);
+  int createDatabase(TRI_voc_tick_t id, std::string const& name, velocypack::Slice options, TRI_vocbase_t*& result);
 
   int dropDatabase(std::string const& name, bool waitForDeletion, bool removeAppsDirectory);
   int dropDatabase(TRI_voc_tick_t id, bool waitForDeletion, bool removeAppsDirectory);

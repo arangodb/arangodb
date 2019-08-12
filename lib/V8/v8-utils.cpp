@@ -23,46 +23,81 @@
 
 #include "v8-utils.h"
 
+#include "Basics/Common.h"
+
 #ifdef _WIN32
-#include <windef.h>
-#include <io.h>
+#include <WinSock2.h>  // must be before windows.h
 #include <conio.h>
-#include <WinSock2.h>
+#include <fcntl.h>
+#include <io.h>
+#include <windef.h>
+#include <windows.h>
 #include "Basics/win-utils.h"
 #endif
 
+#include <ctype.h>
+#include <errno.h>
 #include <signal.h>
-#include <unicode/locid.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unicode/umachine.h>
+#include <unicode/unistr.h>
+#include <unicode/unorm2.h>
+#include <unicode/utypes.h>
+#include <chrono>
 #include <fstream>
-#include <fcntl.h>
+#include <functional>
 #include <iostream>
+#include <memory>
+#include <set>
+#include <thread>
+#include <type_traits>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "unicode/normalizer2.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/Exceptions.h"
+#include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
+#include "Basics/Result.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/build.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
 #include "Basics/files.h"
+#include "Basics/memory.h"
+#include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
+#include "Basics/socket-utils.h"
+#include "Basics/system-compiler.h"
+#include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
+#include "Basics/threads.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tri-zip.h"
-#include "Basics/ScopeGuard.h"
+#include "Basics/voc-errors.h"
+#include "Endpoint/Endpoint.h"
+#include "Logger/LogLevel.h"
+#include "Logger/LogMacros.h"
+#include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
-#include "Random/RandomGenerator.h"
+#include "Logger/LoggerStream.h"
 #include "Random/UniformCharacter.h"
+#include "Rest/CommonDefines.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
-#include "Rest/Version.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -73,8 +108,10 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include <velocypack/StringRef.h>
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -1053,7 +1090,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
             validationOptions.checkAttributeUniqueness = true;
             validationOptions.disallowExternals = true;
             validationOptions.disallowCustom = true;
-            VPackValidator validator(&validationOptions);
+            velocypack::Validator validator(&validationOptions);
             validator.validate(sb.data(), sb.length());  // throws on error
             json.assign(VPackSlice(reinterpret_cast<uint8_t const*>(sb.data())).toJson());
             body = arangodb::velocypack::StringRef(json);

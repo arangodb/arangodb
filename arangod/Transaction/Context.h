@@ -24,6 +24,8 @@
 #ifndef ARANGOD_TRANSACTION_CONTEXT_H
 #define ARANGOD_TRANSACTION_CONTEXT_H 1
 
+#include <memory>
+
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
 #include "VocBase/voc-types.h"
@@ -102,9 +104,10 @@ class Context {
   /// @brief get velocypack options for dumping
   arangodb::velocypack::Options* getVPackOptionsForDump();
 
-  /// @brief save the transaction's id and status locally
+  /// @brief unregister the transaction
+  /// this will save the transaction's id and status locally
   void storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations,
-                              bool wasRegistered) noexcept;
+                              bool wasRegistered, bool isReadOnlyTransaction) noexcept;
 
  public:
   /// @brief get a custom type handler
@@ -156,6 +159,7 @@ class Context {
   struct {
     TRI_voc_tid_t id;
     bool hasFailedOperations;
+    bool isReadOnlyTransaction;
   } _transaction;
 
   bool _ownsResolver;

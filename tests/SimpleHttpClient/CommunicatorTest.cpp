@@ -27,9 +27,10 @@
 
 #include "gtest/gtest.h"
 
+#include "Rest/GeneralResponse.h"
 #include "Rest/HttpRequest.h"
-#include "SimpleHttpClient/Communicator.h"
 #include "SimpleHttpClient/Callbacks.h"
+#include "SimpleHttpClient/Communicator.h"
 
 #include <thread>
 #include <chrono>

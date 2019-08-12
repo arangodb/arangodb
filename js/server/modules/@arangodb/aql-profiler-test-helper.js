@@ -30,12 +30,9 @@ const expect = require('chai').expect;
 const jsunity = require("jsunity");
 const assert = jsunity.jsUnity.assertions;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @file common variables and functions for aql-profiler* tests
 ////////////////////////////////////////////////////////////////////////////////
-
 
 const colName = 'UnitTestProfilerCol';
 const edgeColName = 'UnitTestProfilerEdgeCol';
@@ -320,7 +317,6 @@ function assertIsProfilePlanObject (plan) {
     'variables',
     'estimatedCost',
     'estimatedNrItems',
-    'initialize',
     'isModificationQuery',
   ]);
 
@@ -330,7 +326,6 @@ function assertIsProfilePlanObject (plan) {
   expect(plan.variables).to.be.an('array');
   expect(plan.estimatedCost).to.be.a('number');
   expect(plan.estimatedNrItems).to.be.a('number');
-  expect(plan.initialize).to.be.a('boolean');
 
   for (let node of plan.nodes) {
     expect(node).to.include.all.keys([

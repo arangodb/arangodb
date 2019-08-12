@@ -184,10 +184,17 @@ function ViewSuite () {
       var def = db._createView("def", "arangosearch", {});
       assertEqual(def.name(), "def");
       var views = db._views();
+
+      let expectedViews = new Set();
+      expectedViews.add(abc.name());
+      expectedViews.add(def.name());
+
       assertTrue(Array.isArray(views));
-      assertEqual(views.length, 2);
-      assertEqual(abc.name(), views[0].name());
-      assertEqual(def.name(), views[1].name());
+      assertEqual(views.length, expectedViews.size);
+      for (var i = 0; i < views.length; i++) {
+        expectedViews.delete(views[i].name());
+      }
+      assertEqual(0, expectedViews.size);
       abc.drop();
       def.drop();
     },

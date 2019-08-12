@@ -34,15 +34,21 @@
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
 #include "Basics/build.h"
+#include "Basics/files.h"
+#include "Basics/system-functions.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Manager.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Replication/ReplicationClients.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -54,6 +60,7 @@
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBEventListener.h"
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
@@ -172,7 +179,12 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(RocksDBFilePurgeEnabler&& other
 // create the storage engine
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
     : StorageEngine(server, EngineName, FeatureName,
-                    std::make_unique<RocksDBIndexFactory>()),
+                    std::unique_ptr<IndexFactory>(new RocksDBIndexFactory())),
+#ifdef USE_ENTERPRISE
+      _createShaFiles(true),
+#else
+      _createShaFiles(false),
+#endif
       _db(nullptr),
       _vpackCmp(new RocksDBVPackComparator()),
       _walAccess(new RocksDBWalAccess()),
@@ -294,6 +306,10 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
 
   options->addOption("--rocksdb.throttle", "enable write-throttling",
                      new BooleanParameter(&_useThrottle));
+
+  options->addOption("--rocksdb.create-sha-files", "enable generation of sha256 files for each .sst file",
+                     new BooleanParameter(&_createShaFiles),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Enterprise));
 
   options->addOption("--rocksdb.debug-logging",
                      "true to enable rocksdb debug logging",
@@ -553,7 +569,12 @@ void RocksDBEngine::start() {
   if (_useThrottle) {
     _listener.reset(new RocksDBThrottle);
     _options.listeners.push_back(_listener);
-  }
+  } // if
+
+  if (_createShaFiles) {
+    _shaListener.reset(new RocksDBEventListener);
+    _options.listeners.push_back(_shaListener);
+  } // if
 
   _options.listeners.push_back(std::make_shared<RocksDBBackgroundErrorListener>());
 
@@ -770,6 +791,11 @@ void RocksDBEngine::beginShutdown() {
   if (_replicationManager != nullptr) {
     _replicationManager->beginShutdown();
   }
+
+  //signal the event listener that we are going to shut down soon
+  if (_shaListener != nullptr) {
+     _shaListener->beginShutdown();
+  } // if
 }
 
 void RocksDBEngine::stop() {

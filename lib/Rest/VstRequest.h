@@ -25,14 +25,19 @@
 #ifndef ARANGODB_REST_VST_REQUEST_H
 #define ARANGODB_REST_VST_REQUEST_H 1
 
-#include "Rest/GeneralRequest.h"
+#include <stddef.h>
+#include <cstdint>
+#include <memory>
 
 #include <velocypack/Buffer.h>
-#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
+
+#include "Endpoint/Endpoint.h"
+#include "Rest/GeneralRequest.h"
 
 namespace arangodb {
-
+struct ConnectionInfo;
 namespace velocypack {
 class Builder;
 struct Options;

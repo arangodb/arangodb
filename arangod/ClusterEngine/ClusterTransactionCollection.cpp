@@ -20,10 +20,12 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ClusterTransactionCollection.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterInfo.h"
-#include "ClusterTransactionCollection.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"

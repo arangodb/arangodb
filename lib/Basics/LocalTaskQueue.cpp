@@ -27,6 +27,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/debugging.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb::basics;

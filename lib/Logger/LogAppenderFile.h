@@ -24,7 +24,14 @@
 #ifndef ARANGODB_LOGGER_LOG_APPENDER_FILE_H
 #define ARANGODB_LOGGER_LOG_APPENDER_FILE_H 1
 
+#include <stddef.h>
+#include <memory>
+#include <string>
+#include <tuple>
+#include <vector>
+
 #include "Logger/LogAppender.h"
+#include "Logger/LogLevel.h"
 
 namespace arangodb {
 class LogAppenderStream : public LogAppender {

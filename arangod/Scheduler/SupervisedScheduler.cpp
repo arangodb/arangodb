@@ -22,6 +22,9 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "SupervisedScheduler.h"
 #include "Scheduler.h"
 
@@ -32,7 +35,9 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/RestHandler.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
@@ -322,9 +327,9 @@ void SupervisedScheduler::runWorker() {
     state->_sleepTimeout_ms = 1000;
   }
 
-  if (id < 32) {
+  if (id < 32U) {
     // 512 >> 32 => undefined behavior
-    state->_queueRetryCount = (512 >> id) + 3;
+    state->_queueRetryCount = (uint64_t(512) >> id) + 3;
   } else {
     // we want at least 3 retries
     state->_queueRetryCount = 3;
