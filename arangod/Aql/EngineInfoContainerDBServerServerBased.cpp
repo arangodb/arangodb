@@ -34,6 +34,7 @@
 #include "Cluster/ClusterTrxMethods.h"
 #include "Graph/BaseOptions.h"
 #include "StorageEngine/TransactionState.h"
+#include "Utils/CollectionNameResolver.h"
 
 #include <set>
 
@@ -413,7 +414,14 @@ void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node) {
   if (vCols.empty()) {
     std::map<std::string, Collection*> const* allCollections =
         _query->collections()->collections();
+    TRI_ASSERT(_query);
+    auto& resolver = _query->resolver();
     for (auto const& it : *allCollections) {
+      // If resolver cannot resolve this collection
+      // it has to be a view.
+      if (!resolver.getCollection(it.first)) {
+        continue;
+      }
       // All known edge collections will be ignored by this call!
       node->injectVertexCollection(it.second);
     }

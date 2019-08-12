@@ -28,7 +28,6 @@
 #include "Aql/IResearchViewNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
-#include "Utils/CollectionNameResolver.h"
 
 #include <algorithm>
 
@@ -62,27 +61,10 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId) {
         updateLocking(col.get(), AccessMode::Type::READ, snippetId, {});
       }
 
-      // Add all Vertex Collections to the Transactions, Traversals do never write
-      auto& vCols = node->vertexColls();
-      if (vCols.empty()) {
-        TRI_ASSERT(_query);
-        auto& resolver = _query->resolver();
-
-        // This case indicates we do not have a named graph. We simply use
-        // ALL collections known to this query.
-        std::map<std::string, Collection*> const* cs =
-            _query->collections()->collections();
-        for (auto const& col : *cs) {
-          if (!resolver.getCollection(col.first)) {
-            // not a collection, filter out
-            continue;
-          }
-          updateLocking(col.second, AccessMode::Type::READ, snippetId, {});
-        }
-      } else {
-        for (auto const& col : node->vertexColls()) {
-          updateLocking(col.get(), AccessMode::Type::READ, snippetId, {});
-        }
+      // Add all Vertex Collections to the Transactions, Traversals do never
+      // write, the collections have been adjusted already
+      for (auto const& col : node->vertexColls()) {
+        updateLocking(col.get(), AccessMode::Type::READ, snippetId, {});
       }
       break;
     }
