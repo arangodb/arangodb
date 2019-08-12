@@ -3867,7 +3867,7 @@ ClusterInfo::ServersKnown::ServersKnown(VPackSlice const serversKnownSlice,
   // We should be able to remove this in 3.6.
   for (auto const& serverId : serverIds) {
     auto const rv = _serversKnown.emplace(serverId, RebootId{0});
-    LOG_TOPIC_IF("0acbd", INFO, Logger::CLUSTER, rv.second)
+    LOG_TOPIC_IF(INFO, Logger::CLUSTER, rv.second)
         << "Server "
         << serverId << " is in Current/ServersRegistered, but not in "
                        "Current/ServersKnown. This is expected to happen "

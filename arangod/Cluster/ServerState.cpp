@@ -340,7 +340,7 @@ ResultT<uint64_t> ServerState::readRebootIdFromAgency(AgencyComm& comm)
   AgencyCommResult result = comm.getValues(rebootIdPath);
 
   if (!result.successful()) {
-    LOG_TOPIC("762ed", WARN, Logger::CLUSTER)
+    LOG_TOPIC(WARN, Logger::CLUSTER)
       << "Could not read back " << rebootIdPath;
 
     ResultT<uint64_t>::error(TRI_ERROR_INTERNAL, "could not read rebootId from agency");
@@ -350,7 +350,7 @@ ResultT<uint64_t> ServerState::readRebootIdFromAgency(AgencyComm& comm)
   auto valueSlice = result.slice()[0].get(slicePath);
 
   if (!valueSlice.isInteger()) {
-    LOG_TOPIC("38a4a", WARN, Logger::CLUSTER)
+    LOG_TOPIC(WARN, Logger::CLUSTER)
       << "rebootId is not an integer";
 
     return ResultT<uint64_t>::error(TRI_ERROR_INTERNAL, "rebootId is not an integer");

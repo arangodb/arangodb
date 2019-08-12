@@ -78,13 +78,13 @@ class CallbackGuard {
 // scheduler is destroyed.
 class RebootTracker {
  public:
-  using Callback = std::function<void(void)>;
+  using Callback = std::function<void()>;
   using SchedulerPointer = decltype(SchedulerFeature::SCHEDULER);
   static_assert(std::is_pointer<SchedulerPointer>::value,
                 "If SCHEDULER is changed to a non-pointer type, this class "
                 "might have to be adapted");
   static_assert(
-      std::is_base_of<Scheduler, std::remove_pointer<SchedulerPointer>::type>::value,
+      std::is_base_of<rest::Scheduler, std::remove_pointer<SchedulerPointer>::type>::value,
       "SchedulerPointer is expected to point to an instance of Scheduler");
 
   class PeerState {
@@ -124,7 +124,7 @@ class RebootTracker {
   void scheduleAllCallbacksFor(ServerID const& serverId);
   void scheduleCallbacksFor(ServerID const& serverId, RebootId rebootId);
 
-  static Callback createSchedulerCallback(
+  static std::function<void(bool)> createSchedulerCallback(
       std::vector<std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>> callbacks);
 
   void queueCallbacks(std::vector<std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>> callbacks);
