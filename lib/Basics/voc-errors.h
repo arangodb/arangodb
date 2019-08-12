@@ -679,7 +679,7 @@ constexpr int TRI_ERROR_REPLICATION_SHARD_NONEMPTY                              
 /// "got a request from an unkown server"
 /// Will be raised on some occasions when one server gets a request from
 /// another, which has not (yet?) been made known via the agency.
-constexpr int TRI_ERROR_CLUSTER_SERVER_UNKNOWN                                  = 1452;
+constexpr int TRI_ERROR_CLUSTER_SERVER_UNKNOWN                                  = 1449;
 
 /// 1450: ERROR_CLUSTER_NO_AGENCY
 /// "could not connect to agency"
