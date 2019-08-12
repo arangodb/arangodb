@@ -61,10 +61,10 @@ static uint32_t hashPregelId(PregelID const& pregelId) {
 }
 
 void HLLCounter::addNode(PregelID const& pregelId) {
-  uint32_t hash = hashPregelId(pregelId);
+  uint32_t hashid = hashPregelId(pregelId);
   // last 6 bits as bucket index
-  uint32_t index = hash >> (32 - 6);
-  uint8_t rank = _GET_CLZ((hash << 6), 32 - 6);
+  uint32_t index = hashid >> (32 - 6);
+  uint8_t rank = _GET_CLZ((hashid << 6), 32 - 6);
   if (rank > _buckets[index]) {
     _buckets[index] = rank;
   }

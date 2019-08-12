@@ -24,6 +24,9 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "utils/hash_utils.hpp"
@@ -32,8 +35,6 @@
 #include "Cluster/ServerState.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VelocyPackHelper.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Iterator.h"
 #include "IResearchLinkMeta.h"
 #include "Misc.h"
 

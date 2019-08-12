@@ -172,7 +172,7 @@ bool RocksDBEventListenerThread::deleteFile(std::string const& filename) {
   } // else
 
   if (!found) {
-    std::string dirname = TRI_Dirname(filename.c_str());
+    std::string dirname = TRI_Dirname(filename);
     std::vector<std::string> filelist = TRI_FilesDirectory(dirname.c_str());
 
     // future thought: are there faster ways to find matching .sha. file?

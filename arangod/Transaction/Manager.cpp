@@ -575,7 +575,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
       } else {
         std::string msg("transaction was already ");
         msg.append(statusString(mtrx.finalStatus));
-        return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION, msg);
+        return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION, std::move(msg));
       }
     }
 

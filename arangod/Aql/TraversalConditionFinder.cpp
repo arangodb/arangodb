@@ -243,6 +243,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent, size_t te
   unsigned char patternStep = 0;
 
   auto supportedGuard = [&notSupported, pathVar](AstNode const* n) -> bool {
+    // cppcheck-suppress knownConditionTrueFalse
     if (notSupported) {
       return false;
     }

@@ -136,6 +136,7 @@ class v8_action_t final : public TRI_action_t {
 
       // and execute it
       {
+	// cppcheck-suppress redundantPointerOp
         MUTEX_LOCKER(mutexLocker, *dataLock);
 
         if (*data != nullptr) {
@@ -160,6 +161,7 @@ class v8_action_t final : public TRI_action_t {
       }
 
       {
+	// cppcheck-suppress redundantPointerOp
         MUTEX_LOCKER(mutexLocker, *dataLock);
         *data = nullptr;
       }
@@ -170,6 +172,7 @@ class v8_action_t final : public TRI_action_t {
 
   bool cancel(Mutex* dataLock, void** data) override {
     {
+      // cppcheck-suppress redundantPointerOp
       MUTEX_LOCKER(mutexLocker, *dataLock);
 
       // either we have not yet reached the execute above or we are already done
