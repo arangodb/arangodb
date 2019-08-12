@@ -330,6 +330,7 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTraverser.cpp
   Cluster/ClusterTrxMethods.cpp
+  Cluster/ClusterTypes.cpp
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
   Cluster/CriticalThread.cpp
@@ -346,6 +347,7 @@ SET(ARANGOD_SOURCES
   Cluster/MaintenanceRestHandler.cpp
   Cluster/MaintenanceWorker.cpp
   Cluster/NonAction.cpp
+  Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
   Cluster/ResignShardLeadership.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
