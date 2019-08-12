@@ -300,7 +300,7 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--rocksdb.serialize-writes",
                      "serializes write operations on collections so that they do not cause conflicts"
                      " (note that enabling this option may degrade write performance)",
-                     new BooleanParameter(&_serializeWrites)).setIntroducedIn(30600);
+                     new BooleanParameter(&_serializeWrites)).setIntroducedIn(30501);
 
   options->addOption(
       "--rocksdb.wal-file-timeout-initial",
@@ -361,6 +361,13 @@ void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> opt
            "--rocksdb.wal-file-timeout-initial. "
         << "Replication clients might have trouble to get in sync";
   }
+
+  if (_serializeWrites &&
+      ServerState::instance()->isRunningInCluster()) {
+    LOG_TOPIC("6c75a", FATAL, arangodb::Logger::ENGINES)
+        << "option --rocksdb.serialize-writes is not supported for cluster setups";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 // preparation phase for storage engine. can be used for internal setup.
@@ -382,6 +389,13 @@ void RocksDBEngine::prepare() {
 void RocksDBEngine::start() {
   // it is already decided that rocksdb is used
   TRI_ASSERT(isEnabled());
+  
+  if (_serializeWrites) {
+    LOG_TOPIC("c3ba0", INFO, arangodb::Logger::ENGINES) 
+      << "write operations for collections are serialized. "
+      << "this avoids write-write conflicts, but can have a negative impact on write performance. "
+      << "use `--rocksdb.serialize-writes false` to turn this off and improve throughput for concurrent write operations";
+  }
   
   if (ServerState::instance()->isAgent() &&
       !application_features::ApplicationServer::server->options()->processingResult().touched("rocksdb.wal-file-timeout-initial")) {
