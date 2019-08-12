@@ -45,8 +45,8 @@
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
 #include "Geo/GeoJson.h"
-#include "Geo/GeoParams.h"
-#include "Geo/GeoUtils.h"
+#include "Geo/Ellipsoid.h"
+#include "Geo/Utils.h"
 #include "Geo/ShapeContainer.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
@@ -4699,8 +4699,14 @@ AqlValue Functions::GeoDistance(ExpressionContext* expressionContext,
     ::registerWarning(expressionContext, "GEO_DISTANCE", res);
     return AqlValue(AqlValueHintNull());
   }
-
-  return ::numberValue(shape1.distanceFrom(shape2.centroid()), true);
+  
+  if (parameters.size() > 2 && parameters[2].isString()) {
+    VPackValueLength len;
+    const char* ptr = parameters[2].slice().getStringUnchecked(len);
+    geo::Ellipsoid const& e = geo::utils::ellipsoidFromString(ptr, len);
+    return ::numberValue(shape1.distanceFromCentroid(shape2.centroid(), e), true);
+  }
+  return ::numberValue(shape1.distanceFromCentroid(shape2.centroid()), true);
 }
 
 /// @brief function GEO_CONTAINS

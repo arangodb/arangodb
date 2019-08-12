@@ -17,6 +17,9 @@ v3.5.1 (XXXX-XX-XX)
   transactions. This error will now be reported as a "Lock timeout" error,
   with error code 1200.
 
+* Added initial support for wgs84 reference ellipsoid in GEO_DISTANCE through third
+  optional parameter to AQL function
+
 * Added resign leadership job to supervision.
 
 * Hide MMFiles-specific information in web UI (in detail view of a collection)
