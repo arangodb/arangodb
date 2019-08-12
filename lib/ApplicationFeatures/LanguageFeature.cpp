@@ -20,16 +20,25 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/LanguageFeature.h"
-#include "Basics/ArangoGlobalContext.h"
+#include <stdlib.h>
 
+#include "LanguageFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/application-exit.h"
 #include "Basics/directories.h"
+#include "Basics/error.h"
 #include "Basics/files.h"
+#include "Basics/memory.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 namespace {
 void setCollator(std::string const& language, void* icuDataPtr) {

@@ -27,6 +27,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
+#include "Basics/files.h"
 
 #include "gtest/gtest.h"
 

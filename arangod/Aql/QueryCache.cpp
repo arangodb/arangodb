@@ -29,6 +29,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Basics/fasthash.h"
+#include "Basics/system-functions.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/vocbase.h"
 

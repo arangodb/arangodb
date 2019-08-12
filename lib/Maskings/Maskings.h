@@ -23,19 +23,25 @@
 #ifndef ARANGODB_MASKINGS_MASKINGS_H
 #define ARANGODB_MASKINGS_MASKINGS_H 1
 
+#include <cstdint>
 #include <map>
-
-#include "Basics/Common.h"
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/StringBuffer.h"
+#include "Basics/Common.h"
 #include "Maskings/Collection.h"
 #include "Maskings/ParseResult.h"
 
 namespace arangodb {
+namespace basics {
+class StringBuffer;
+}
 namespace maskings {
 class Maskings;
 

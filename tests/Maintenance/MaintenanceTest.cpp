@@ -719,7 +719,7 @@ TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
       }
       ASSERT_TRUE(actions.size() == 1);
       for (auto const& action : actions) {
-        ASSERT_TRUE(action.name() == "UpdateCollection");
+        ASSERT_TRUE(action.name() == "TakeoverShardLeadership");
         ASSERT_TRUE(action.has("shard"));
         ASSERT_TRUE(action.get("shard") == collection("name").getString());
         ASSERT_TRUE(action.get("localLeader").empty());
@@ -790,14 +790,10 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership) {
     if (actions.size() != 2) {
       std::cout << actions << std::endl;
     }
-    ASSERT_TRUE(actions.size() == 2);
-    ASSERT_TRUE(actions.front().name() == "UpdateCollection");
-    ASSERT_TRUE(actions.front().get(DATABASE) == dbname);
-    ASSERT_TRUE(actions.front().get(SHARD) == shname);
-    ASSERT_TRUE(actions.front().get("localLeader") == std::string(""));
-    ASSERT_TRUE(actions[1].name() == "ResignShardLeadership");
-    ASSERT_TRUE(actions[1].get(DATABASE) == dbname);
-    ASSERT_TRUE(actions[1].get(SHARD) == shname);
+    ASSERT_TRUE(actions.size() == 1);
+    ASSERT_TRUE(actions[0].name() == "ResignShardLeadership");
+    ASSERT_TRUE(actions[0].get(DATABASE) == dbname);
+    ASSERT_TRUE(actions[0].get(SHARD) == shname);
   }
 }
 

@@ -28,6 +28,8 @@
 #include <utility>
 #endif
 
+#include <functional>
+
 namespace arangodb {
 namespace futures {
 

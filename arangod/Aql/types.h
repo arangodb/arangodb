@@ -24,6 +24,9 @@
 #ifndef ARANGOD_AQL_TYPES_H
 #define ARANGOD_AQL_TYPES_H 1
 
+#include <unordered_map>
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Basics/HashSet.h"
 

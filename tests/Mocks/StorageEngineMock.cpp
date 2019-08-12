@@ -1088,6 +1088,11 @@ TRI_voc_tick_t StorageEngineMock::currentTick() const {
   return TRI_CurrentTickServer();
 }
 
+std::string StorageEngineMock::dataPath() const {
+  before();
+  return "";  // no valid path filesystem persisted, return empty string
+}
+
 std::string StorageEngineMock::databasePath(TRI_vocbase_t const* vocbase) const {
   before();
   return "";  // no valid path filesystem persisted, return empty string

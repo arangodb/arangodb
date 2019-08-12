@@ -356,44 +356,23 @@ FORCE_INLINE bool shift_unpack_32(uint32_t in, uint32_t& out) NOEXCEPT {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API bytes_output final : public data_output {
  public:
-  bytes_output() = default;
-  explicit bytes_output(size_t capacity);
-  bytes_output(bytes_output&& rhs) NOEXCEPT;
-  bytes_output& operator=(bytes_output&& rhs) NOEXCEPT;
-
-  void reset(size_t size = 0) { 
-    buf_.resize(size);
+  explicit bytes_output(bstring& buf) NOEXCEPT
+    : buf_(&buf) {
   }
 
   virtual void write_byte(byte_type b) override {
-    buf_ += b;
+    (*buf_) += b;
   }
 
   virtual void write_bytes(const byte_type* b, size_t size) override {
-    buf_.append(b, size);
-  }
-
-  const byte_type* c_str() const NOEXCEPT {
-    return buf_.c_str();
-  }
-
-  size_t size() const NOEXCEPT {
-    return buf_.size();
-  }
-
-  size_t capacity() const NOEXCEPT {
-    return buf_.capacity();
-  }
-
-  operator bytes_ref() const NOEXCEPT {
-    return buf_;
+    buf_->append(b, size);
   }
 
   virtual void close() override { }
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  bstring buf_;
+  bstring* buf_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // bytes_output
 
@@ -641,13 +620,11 @@ inline void decode(Iterator begin, Iterator end) {
   const auto second = begin+1;
 
   std::transform(second, end, begin, second, std::plus<value_type>());
-
-  assert(std::is_sorted(begin, end));
 }
 
 template<typename Iterator>
 inline void encode(Iterator begin, Iterator end) {
-  assert(std::distance(begin, end) > 0 && std::is_sorted(begin, end));
+  assert(std::distance(begin, end) > 0);
 
   typedef typename std::iterator_traits<Iterator>::value_type value_type;
   const auto rend = irstd::make_reverse_iterator(begin);

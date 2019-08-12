@@ -52,6 +52,7 @@
 #include "Logger/LogMacros.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -342,7 +343,7 @@ bool upgradeSingleServerArangoSearchView0_1(
                                                                builder.slice());
 
     if (!res.ok()) {
-      LOG_TOPIC("f8d19", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("f8d20", WARN, arangodb::iresearch::TOPIC)
           << "failure to recreate view while upgrading IResearchView from "
              "version 0 to version 1, error: "
           << res.errorNumber() << " " << res.errorMessage()

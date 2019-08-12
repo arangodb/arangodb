@@ -21,12 +21,14 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-// LoggerStream is just a helper, the LoggerStream.h cannot be included
-// standalone
-#include "Logger.h"
-
+#include <cstdint>
 #include <iomanip>
 #include <iostream>
+#include <string>
+
+#include "LoggerStream.h"
+
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 
