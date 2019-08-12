@@ -20,11 +20,11 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
+#include "catch.hpp"
 
 #include "Cluster/RebootTracker.h"
+#include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Scheduler/SupervisedScheduler.h"
 
 #include "Mocks/Servers.h"
 
@@ -38,96 +38,143 @@ using namespace arangodb::cluster;
 using namespace arangodb::tests;
 using namespace arangodb::tests::mocks;
 
-class CallbackGuardTest : public ::testing::Test {
- protected:
-  uint64_t counterA{0};
-  uint64_t counterB{0};
-  std::function<void(void)> incrCounterA;
-  std::function<void(void)> incrCounterB;
+using rest::Scheduler;
 
-  void SetUp() {
-    counterA = 0;
-    counterB = 0;
-    incrCounterA = [& counterA = this->counterA]() { ++counterA; };
-    incrCounterB = [& counterB = this->counterB]() { ++counterB; };
+TEST_CASE("CallbackGuardTest") {
+  auto counterA = uint64_t{0};
+  auto counterB = uint64_t{0};
+  auto incrCounterA = [&counterA]() { ++counterA; };
+  auto incrCounterB = [&counterB]() { ++counterB; };
+
+  SECTION("test_default_constructor") {
+    // should do nothing, especially not cause an error during destruction
+    CallbackGuard guard{};
   }
-};
 
-TEST_F(CallbackGuardTest, test_default_constructor) {
-  // should do nothing, especially not cause an error during destruction
-  CallbackGuard guard{};
-}
-
-TEST_F(CallbackGuardTest, test_deleted_copy_semantics) {
-  EXPECT_FALSE(std::is_copy_constructible<CallbackGuard>::value)
-      << "CallbackGuard should not be copy constructible";
-  EXPECT_FALSE(std::is_copy_assignable<CallbackGuard>::value)
-      << "CallbackGuard should not be copy assignable";
-}
-
-TEST_F(CallbackGuardTest, test_constructor) {
-  {
-    CallbackGuard guard{incrCounterA};
-    EXPECT_EQ(0, counterA) << "construction should not invoke the callback";
-  }
-  EXPECT_EQ(1, counterA) << "destruction should invoke the callback";
-}
-
-TEST_F(CallbackGuardTest, test_move_constructor_inline) {
-  {
-    CallbackGuard guard{CallbackGuard(incrCounterA)};
-    EXPECT_EQ(0, counterA)
-        << "move construction should not invoke the callback";
-  }
-  EXPECT_EQ(1, counterA) << "destruction should invoke the callback";
-}
-
-TEST_F(CallbackGuardTest, test_move_constructor_explicit) {
-  {
-    CallbackGuard guardA1{incrCounterA};
-    EXPECT_EQ(0, counterA) << "construction should not invoke the callback";
+  SECTION("test_deleted_copy_semantics") {
     {
-      CallbackGuard guardA2{std::move(guardA1)};
-      EXPECT_EQ(0, counterA)
-          << "move construction should not invoke the callback";
+      INFO("CallbackGuard should not be copy constructible");
+      CHECK_FALSE(std::is_copy_constructible<CallbackGuard>::value);
     }
-    EXPECT_EQ(1, counterA)
-        << "destroying a move constructed guard should invoke the callback";
-  }
-
-  EXPECT_EQ(1, counterA)
-      << "destroying a moved guard should not invoke the callback";
-}
-
-TEST_F(CallbackGuardTest, test_move_operator_eq_construction) {
-  {
-    auto guard = CallbackGuard{incrCounterA};
-    EXPECT_EQ(0, counterA)
-        << "initialization with operator= should not invoke the callback";
-  }
-  EXPECT_EQ(1, counterA) << "destruction should invoke the callback";
-}
-
-TEST_F(CallbackGuardTest, test_move_operator_eq_explicit) {
-  {
-    CallbackGuard guardA{incrCounterA};
-    EXPECT_EQ(0, counterA) << "construction should not invoke the callback";
     {
-      CallbackGuard guardB{incrCounterB};
-      EXPECT_EQ(0, counterB) << "construction should not invoke the callback";
-      guardA = std::move(guardB);
-      EXPECT_EQ(0, counterB) << "being moved should not invoke the callback";
-      EXPECT_EQ(1, counterA) << "being overwritten should invoke the callback";
+      INFO("CallbackGuard should not be copy assignable");
+      CHECK_FALSE(std::is_copy_assignable<CallbackGuard>::value);
     }
-    EXPECT_EQ(0, counterB)
-        << "destroying a moved guard should not invoke the callback";
-    EXPECT_EQ(1, counterA) << "destroying a moved guard should not invoke the "
-                              "overwritten callback again";
   }
-  EXPECT_EQ(1, counterB)
-      << "destroying an overwritten guard should invoke its new callback";
-  EXPECT_EQ(1, counterA) << "destroying an overwritten guard should not invoke "
-                            "its old callback again";
+
+  SECTION("test_constructor") {
+    {
+      CallbackGuard guard{incrCounterA};
+      {
+        INFO("construction should not invoke the callback");
+        CHECK(0 == counterA);
+      }
+    }
+    {
+      INFO("destruction should invoke the callback");
+      CHECK(1 == counterA);
+    }
+  }
+
+  SECTION("test_move_constructor_inline") {
+    {
+      CallbackGuard guard{CallbackGuard(incrCounterA)};
+      {
+        INFO("move construction should not invoke the callback");
+        CHECK(0 == counterA);
+      }
+    }
+    {
+      INFO("destruction should invoke the callback");
+      CHECK(1 == counterA);
+    }
+  }
+
+  SECTION("test_move_constructor_explicit") {
+    {
+      CallbackGuard guardA1{incrCounterA};
+      {
+        INFO("construction should not invoke the callback");
+        CHECK(0 == counterA);
+      }
+      {
+        CallbackGuard guardA2{std::move(guardA1)};
+        {
+          INFO("move construction should not invoke the callback");
+          CHECK(0 == counterA);
+        }
+      }
+      {
+        INFO("destroying a move constructed guard should invoke the callback");
+        CHECK(1 == counterA);
+      }
+    }
+
+    {
+      INFO("destroying a moved guard should not invoke the callback");
+      CHECK(1 == counterA);
+    }
+  }
+
+  SECTION("test_move_operator_eq_construction") {
+    {
+      auto guard = CallbackGuard{incrCounterA};
+      {
+        INFO("initialization with operator= should not invoke the callback");
+        CHECK(0 == counterA);
+      }
+    }
+    {
+      INFO("destruction should invoke the callback");
+      CHECK(1 == counterA);
+    }
+  }
+
+  SECTION("test_move_operator_eq_explicit") {
+    {
+      CallbackGuard guardA{incrCounterA};
+      {
+        INFO("construction should not invoke the callback");
+        CHECK(0 == counterA);
+      }
+      {
+        CallbackGuard guardB{incrCounterB};
+        {
+          INFO("construction should not invoke the callback");
+          CHECK(0 == counterB);
+        }
+        guardA = std::move(guardB);
+        {
+          INFO("being moved should not invoke the callback");
+          CHECK(0 == counterB);
+        }
+        {
+          INFO("being overwritten should invoke the callback");
+          CHECK(1 == counterA);
+        }
+      }
+      {
+        INFO("destroying a moved guard should not invoke the callback");
+        CHECK(0 == counterB);
+      }
+      {
+        INFO(
+            "destroying a moved guard should not invoke the "
+            "overwritten callback again");
+        CHECK(1 == counterA);
+      }
+    }
+    {
+      INFO("destroying an overwritten guard should invoke its new callback");
+      CHECK(1 == counterB);
+    }
+    {
+      INFO(
+          "destroying an overwritten guard should not invoke "
+          "its old callback again");
+      CHECK(1 == counterA);
+    }
+  }
 }
 
 class RebootTrackerTest : public ::testing::Test {
