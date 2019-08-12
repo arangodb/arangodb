@@ -630,11 +630,34 @@ bool equalAnalyzer(
     return false;
   }
 
-  return type == pool.type() // same type
-         && arangodb::basics::VelocyPackHelper::equal(
-                     arangodb::iresearch::slice(normalizedProperties),
-                     pool.properties(), false) // same properties
-         && features == pool.features(); // same features
+  // first check non-normalizeable portion of analyzer definition
+  if (type != pool.type() || features != pool.features()) {
+    return false;
+  }
+
+  if (arangodb::basics::VelocyPackHelper::equal(arangodb::iresearch::slice(normalizedProperties),
+                                                pool.properties(), false)) {
+    return true;
+  }
+  
+  // Here could be analyzer definition with old-normalized properties (see Issue #9652)
+  // To make sure properties really differ, let`s re-normalize and re-check
+  // This code could be removed once it is proven there is no analyzer definition
+  // in database, created on 3.5.0 version.
+  std::string reNormalizedProperties;
+  if (ADB_UNLIKELY(!::normalize(reNormalizedProperties, pool.type(), pool.properties()))) {
+    // failed to re-normalize definition - strange. I was already normalized once.
+    // Some bug in load/store?
+    TRI_ASSERT(FALSE);
+    LOG_TOPIC("a4073", WARN, arangodb::iresearch::TOPIC)
+        << "failed to re-normalize properties for analyzer type '"
+        << pool.type()
+        << "' properties '" << pool.properties().toString() << "'";
+    return false;
+  }
+  return arangodb::basics::VelocyPackHelper::equal(
+      arangodb::iresearch::slice(normalizedProperties),
+      arangodb::iresearch::slice(reNormalizedProperties), false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
