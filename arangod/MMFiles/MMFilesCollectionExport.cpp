@@ -135,6 +135,7 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     }
     if (mmColl->readDocumentConditional(&trx, token, 0, mmdr)) {
       _vpack.emplace_back(mmdr.vpack());
+      // cppcheck-suppress uselessAssignmentArg
       --limit;
     }
     return true;
