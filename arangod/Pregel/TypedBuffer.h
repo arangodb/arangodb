@@ -111,7 +111,7 @@ struct TypedBuffer {
 template <typename T>
 class VectorTypedBuffer : public TypedBuffer<T> {
  public:
-  VectorTypedBuffer(size_t capacity) : TypedBuffer<T>() {
+  explicit VectorTypedBuffer(size_t capacity) : TypedBuffer<T>() {
     TRI_ASSERT(capacity > 0);
     this->_begin = static_cast<T*>(malloc(sizeof(T) * capacity));
     this->_end = this->_begin;
