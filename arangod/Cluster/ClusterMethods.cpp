@@ -619,24 +619,12 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> CloneShardDistribution(
-    ClusterInfo* ci, LogicalCollection* col, TRI_voc_cid_t cid,
-    std::shared_ptr<LogicalCollection> const& colPtr) {
+  ClusterInfo* ci, std::shared_ptr<LogicalCollection> col, std::shared_ptr<LogicalCollection> const& other) {
   auto result =
       std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
-  TRI_ASSERT(cid != 0);
-  std::string cidString = arangodb::basics::StringUtils::itoa(cid);
+
   TRI_ASSERT(col);
-  //
-
-  std::shared_ptr<LogicalCollection> other;
-  if (colPtr != nullptr) {
-    other = colPtr;
-  } else {
-    other = ci->getCollection(col->vocbase().name(), cidString);
-  }
-
-  // The function guarantees that no nullptr is returned
-  // TRI_ASSERT(colPtr != nullptr);
+  TRI_ASSERT(other);
 
   if (!other->distributeShardsLike().empty()) {
     std::string const errorMessage = "Cannot distribute shards like '" + other->name() +
@@ -646,37 +634,41 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
   }
 
   // We need to replace the distribute with the cid.
+  // TODO: assert, also fix, wtf?
+  auto cidString = arangodb::basics::StringUtils::itoa(other.get()->id());
   col->distributeShardsLike(cidString, other->shardingInfo());
 
   if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
     return result;
   }
 
-  auto shards = other->shardIds();
+  auto numberOfShards = static_cast<uint64_t>(col->numberOfShards());
 
+  // Here we need to make sure that we put the shards and
+  // shard distribution in the correct order: shards need
+  // to be sorted alphabetically by ID
+  //
+  // shardIds() returns an unordered_map<ShardID, std::vector<ServerID>>
+  // so the method is a bit mis-named.
+  auto otherShardsMap = other->shardIds();
 
-  std::shared_ptr<std::vector<ShardID>> shardList;
-  if (colPtr != nullptr) {
-    shardList = colPtr.get()->shardListAsShardID();
-  } else {
-    shardList = ci->getShardList(cidString);
+  // TODO: This should really be a utility function, possibly in ShardingInfo?
+  std::vector<ShardID> otherShards;
+  for (auto& it : *otherShardsMap) {
+    otherShards.push_back(it.first);
+  }
+  std::sort(otherShards.begin(), otherShards.end());
+
+  if (numberOfShards != otherShards.size()) {
+    TRI_ASSERT(false);
   }
 
-  auto numberOfShards = static_cast<uint64_t>(col->numberOfShards());
   // fetch a unique id for each shard to create
   uint64_t const id = ci->uniqid(numberOfShards);
   for (uint64_t i = 0; i < numberOfShards; ++i) {
     // determine responsible server(s)
     std::string shardId = "s" + StringUtils::itoa(id + i);
-    auto it = shards->find(shardList->at(i));
-    if (it == shards->end()) {
-      TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL,
-          "Inconsistency in shard distribution detected. Is in the process of "
-          "self-healing. Please retry the operation again after some seconds.");
-    }
-    result->emplace(shardId, it->second);
+    result->emplace(shardId, otherShardsMap->at(otherShards.at(i)));
   }
   return result;
 }
@@ -2894,6 +2886,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollection
   // Persist collection will return the real object.
   auto usableCollectionPointers =
       persistCollectionsInAgency(cols, ignoreDistributeShardsLikeErrors,
+
                                  waitForSyncReplication, enforceReplicationFactor);
   TRI_ASSERT(usableCollectionPointers.size() == cols.size());
   return usableCollectionPointers;
@@ -2908,7 +2901,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     std::vector<std::shared_ptr<LogicalCollection>>& collections,
     bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
     bool enforceReplicationFactor, bool isNewDatabase,
-    std::shared_ptr<LogicalCollection> const& colPtr) {
+    std::shared_ptr<LogicalCollection> const& colToDistributeLike) {
   TRI_ASSERT(!collections.empty());
   if (collections.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -2947,22 +2940,17 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> shards = nullptr;
 
       if (!distributeShardsLike.empty()) {
-        TRI_voc_cid_t otherCid = 0;
 
-        if (colPtr != nullptr) {
-          otherCid = colPtr.get()->id();
+        std::shared_ptr<LogicalCollection> myColToDistributeLike;
+
+        if (colToDistributeLike != nullptr) {
+          myColToDistributeLike = colToDistributeLike;
         } else {
           CollectionNameResolver resolver(col->vocbase());
-          otherCid = resolver.getCollectionIdCluster(distributeShardsLike);
+          myColToDistributeLike = resolver.getCollection(distributeShardsLike);
         }
 
-        if (otherCid != 0) {
-          shards = CloneShardDistribution(ci, col.get(), otherCid, colPtr);
-        } else {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                                         "Could not find collection " + distributeShardsLike +
-                                             " to distribute shards like it.");
-        }
+        shards = CloneShardDistribution(ci, col, myColToDistributeLike);
       } else {
         // system collections should never enforce replicationfactor
         // to allow them to come up with 1 dbserver
@@ -3013,6 +3001,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
                                         dbServers, !col->system());
       }
 
+
       if (shards->empty() && !col->isSmart()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "no database servers found in cluster");
@@ -3034,11 +3023,9 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     }
 
     // pass in the *endTime* here, not a timeout!
-    LOG_DEVEL << "Trying to create - next failure here";
     Result res = ci->createCollectionsCoordinator(dbName, infos, endTime, isNewDatabase);
 
     if (res.ok()) {
-      LOG_DEVEL << "failed to create";
       // success! exit the loop and go on
       break;
     }
@@ -3071,6 +3058,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
   ci->loadPlan();
 
   // Produce list of shared_ptr wrappers
+
   std::vector<std::shared_ptr<LogicalCollection>> usableCollectionPointers;
   usableCollectionPointers.reserve(infos.size());
 
@@ -3089,7 +3077,6 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       usableCollectionPointers.emplace_back(std::move(c));
     }
   }
-
   return usableCollectionPointers;
 }  // namespace arangodb
 
