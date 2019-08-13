@@ -121,6 +121,7 @@ class SupervisedScheduler final : public Scheduler {
     explicit WorkerState(SupervisedScheduler& scheduler);
     WorkerState(WorkerState&& that) noexcept;
 
+    // cppcheck-suppress missingOverride
     bool start();
   };
   size_t _maxNumWorker;
