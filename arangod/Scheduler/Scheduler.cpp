@@ -151,7 +151,9 @@ Scheduler::WorkHandle Scheduler::queueDelay(RequestLane lane, clock::duration de
 
   if (delay < std::chrono::milliseconds(1)) {
     // execute directly
-    queue(lane, [handler = std::move(handler)]() { handler(false); });
+    bool queued =
+        queue(lane, [handler = std::move(handler)]() { handler(false); });
+    TRI_ASSERT(queued);
     return nullptr;
   }
 
