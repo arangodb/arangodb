@@ -195,13 +195,14 @@ TEST_CASE("RebootTrackerTest") {
   // When trying to register callback '': The server PRMR-srv-A is not known. If this server joined the cluster in the last seconds, this can happen.
   arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::WARN);
 
-  TRI_DEFER(scheduler->shutdown());
+  TRI_DEFER(scheduler->beginShutdown(); scheduler->shutdown());
   scheduler->start();
 
   auto schedulerEmpty = [&]() -> bool {
     auto stats = scheduler->queueStatistics();
 
-    return stats._running == 0 && stats._queued == 0 && stats._working == 0;
+    return stats._queued == 0 && stats._working == 0 && stats._fifo1 == 0 &&
+           stats._fifo2 == 0 && stats._fifo3 == 0;
   };
 
   auto waitForSchedulerEmpty = [&]() {
