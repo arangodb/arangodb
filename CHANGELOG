@@ -1,6 +1,9 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Correct rocksdb statistics to report sums from column families instead of
+  single value from default column family
+
 * Fixed error message "Invalid argument: assume_tracked is set but it is not tracked yet" when
   trying to write to the same keys in concurrent RocksDB transactions. This error will now be
   reported as a "Lock timeout" error, with error code 1200.
