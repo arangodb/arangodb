@@ -2122,7 +2122,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   };
 
   // get string property from each column family and return sum;
-  auto addStrAllCf = [&](std::string const& s) {
+  auto addIntAllCf = [&](std::string const& s) {
     int64_t sum = 0;
     for (auto cfh : RocksDBColumnFamily::_allHandles) {
       std::string v;
@@ -2165,43 +2165,43 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
 
   builder.openObject();
   for (int i = 0; i < _options.num_levels; ++i) {
-    addStrAllCf(rocksdb::DB::Properties::kNumFilesAtLevelPrefix + std::to_string(i));
+    addIntAllCf(rocksdb::DB::Properties::kNumFilesAtLevelPrefix + std::to_string(i));
     // ratio needs new calculation with all cf, not a simple add operation
-    addStrAllCf(rocksdb::DB::Properties::kCompressionRatioAtLevelPrefix + std::to_string(i));
+    addIntAllCf(rocksdb::DB::Properties::kCompressionRatioAtLevelPrefix + std::to_string(i));
   }
   // caution:  you must read rocksdb/db/interal_stats.cc carefully to
   //           determine if a property is for whole database or one column family
-  addStrAllCf(rocksdb::DB::Properties::kNumImmutableMemTable);
-  addStrAllCf(rocksdb::DB::Properties::kNumImmutableMemTableFlushed);
-  addStrAllCf(rocksdb::DB::Properties::kMemTableFlushPending);
-  addStrAllCf(rocksdb::DB::Properties::kCompactionPending);
+  addIntAllCf(rocksdb::DB::Properties::kNumImmutableMemTable);
+  addIntAllCf(rocksdb::DB::Properties::kNumImmutableMemTableFlushed);
+  addIntAllCf(rocksdb::DB::Properties::kMemTableFlushPending);
+  addIntAllCf(rocksdb::DB::Properties::kCompactionPending);
   addInt(rocksdb::DB::Properties::kBackgroundErrors);
-  addStrAllCf(rocksdb::DB::Properties::kCurSizeActiveMemTable);
-  addStrAllCf(rocksdb::DB::Properties::kCurSizeAllMemTables);
-  addStrAllCf(rocksdb::DB::Properties::kSizeAllMemTables);
-  addStrAllCf(rocksdb::DB::Properties::kNumEntriesActiveMemTable);
-  addStrAllCf(rocksdb::DB::Properties::kNumEntriesImmMemTables);
-  addStrAllCf(rocksdb::DB::Properties::kNumDeletesActiveMemTable);
-  addStrAllCf(rocksdb::DB::Properties::kNumDeletesImmMemTables);
-  addStrAllCf(rocksdb::DB::Properties::kEstimateNumKeys);
-  addStrAllCf(rocksdb::DB::Properties::kEstimateTableReadersMem);
+  addIntAllCf(rocksdb::DB::Properties::kCurSizeActiveMemTable);
+  addIntAllCf(rocksdb::DB::Properties::kCurSizeAllMemTables);
+  addIntAllCf(rocksdb::DB::Properties::kSizeAllMemTables);
+  addIntAllCf(rocksdb::DB::Properties::kNumEntriesActiveMemTable);
+  addIntAllCf(rocksdb::DB::Properties::kNumEntriesImmMemTables);
+  addIntAllCf(rocksdb::DB::Properties::kNumDeletesActiveMemTable);
+  addIntAllCf(rocksdb::DB::Properties::kNumDeletesImmMemTables);
+  addIntAllCf(rocksdb::DB::Properties::kEstimateNumKeys);
+  addIntAllCf(rocksdb::DB::Properties::kEstimateTableReadersMem);
   addInt(rocksdb::DB::Properties::kNumSnapshots);
   addInt(rocksdb::DB::Properties::kOldestSnapshotTime);
-  addStrAllCf(rocksdb::DB::Properties::kNumLiveVersions);
+  addIntAllCf(rocksdb::DB::Properties::kNumLiveVersions);
   addInt(rocksdb::DB::Properties::kMinLogNumberToKeep);
-  addStrAllCf(rocksdb::DB::Properties::kEstimateLiveDataSize);
-  addStrAllCf(rocksdb::DB::Properties::kLiveSstFilesSize);
+  addIntAllCf(rocksdb::DB::Properties::kEstimateLiveDataSize);
+  addIntAllCf(rocksdb::DB::Properties::kLiveSstFilesSize);
   addStr(rocksdb::DB::Properties::kDBStats);
   addStr(rocksdb::DB::Properties::kSSTables);
   addInt(rocksdb::DB::Properties::kNumRunningCompactions);
   addInt(rocksdb::DB::Properties::kNumRunningFlushes);
   addInt(rocksdb::DB::Properties::kIsFileDeletionsEnabled);
-  addStrAllCf(rocksdb::DB::Properties::kEstimatePendingCompactionBytes);
+  addIntAllCf(rocksdb::DB::Properties::kEstimatePendingCompactionBytes);
   addInt(rocksdb::DB::Properties::kBaseLevel);
   addInt(rocksdb::DB::Properties::kBlockCacheCapacity);
   addInt(rocksdb::DB::Properties::kBlockCacheUsage);
   addInt(rocksdb::DB::Properties::kBlockCachePinnedUsage);
-  addStrAllCf(rocksdb::DB::Properties::kTotalSstFilesSize);
+  addIntAllCf(rocksdb::DB::Properties::kTotalSstFilesSize);
   addInt(rocksdb::DB::Properties::kActualDelayedWriteRate);
   addInt(rocksdb::DB::Properties::kIsWriteStopped);
 
