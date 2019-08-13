@@ -21,8 +21,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_FAILED_LEADER_H
-#define ARANGOD_CONSENSUS_FAILED_LEADER_H 1
+#ifndef ARANGOD_CONSENSUS_RESIGN_LEADERSHIP_H
+#define ARANGOD_CONSENSUS_RESIGN_LEADERSHIP_H 1
 
 #include "Job.h"
 #include "Supervision.h"
@@ -30,31 +30,27 @@
 namespace arangodb {
 namespace consensus {
 
-struct FailedLeader : public Job {
-  FailedLeader(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
-               std::string const& creator = std::string(),
-               std::string const& database = std::string(),
-               std::string const& collection = std::string(),
-               std::string const& shard = std::string(),
-               std::string const& from = std::string());
+struct ResignLeadership : public Job {
+  ResignLeadership(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
+                 std::string const& creator = std::string(),
+                 std::string const& server = std::string());
 
-  FailedLeader(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
-               std::string const& jobId);
+  ResignLeadership(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
+                 std::string const& jobId);
 
-  virtual ~FailedLeader();
+  virtual ~ResignLeadership();
 
-  virtual bool create(std::shared_ptr<VPackBuilder> b = nullptr) override final;
-  virtual bool start(bool&) override final;
   virtual JOB_STATUS status() override final;
+  virtual bool create(std::shared_ptr<VPackBuilder> envelope = nullptr) override final;
   virtual void run(bool&) override final;
+  virtual bool start(bool&) override final;
   virtual Result abort(std::string const& reason) override final;
 
-  std::string _database;
-  std::string _collection;
-  std::string _shard;
-  std::string _from;
-  std::string _to;
-  std::chrono::time_point<std::chrono::system_clock> _created;
+  // Check if all shards' have a follower
+  bool checkFeasibility();
+  bool scheduleMoveShards(std::shared_ptr<Builder>& trx);
+
+  std::string _server;
 };
 }  // namespace consensus
 }  // namespace arangodb

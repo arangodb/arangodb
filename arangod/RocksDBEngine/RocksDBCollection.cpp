@@ -1301,6 +1301,26 @@ arangodb::Result RocksDBCollection::fillIndexes(transaction::Methods* trx,
   return Result();
 }
 
+namespace {
+template<typename F>
+void reverseIdxOps(std::vector<std::shared_ptr<Index>> const& vector,
+                   std::vector<std::shared_ptr<Index>>::const_iterator& it,
+                   F&& op) {
+  while (it != vector.begin()) {
+    it--;
+    auto* rIdx = static_cast<RocksDBIndex*>(it->get());
+    if (rIdx->needsReversal()) {
+      auto res = std::forward<F>(op)(rIdx);
+      if (res.fail()) {
+        // best effort for reverse failed. Let`s trigger full rollback  
+        // or we will end up with inconsistent storage and indexes
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+    }
+  }
+}
+}
+
 Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
                                          LocalDocumentId const& documentId,
                                          VPackSlice const& doc,
@@ -1326,20 +1346,20 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   }
 
   READ_LOCKER(guard, _indexesLock);
-  for (std::shared_ptr<Index> const& idx : _indexes) {
-    RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-    Result tmpres = rIdx->insertInternal(trx, mthds, documentId, doc, options.indexOperationMode);
-    if (!tmpres.ok()) {
-      if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
-        // in case of OOM return immediately
-        return tmpres;
-      } else if (tmpres.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) || res.ok()) {
-        // "prefer" unique constraint violated over other errors
-        res.reset(tmpres);
+  bool needReversal = false;
+  for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
+    auto rIdx = static_cast<RocksDBIndex*>(it->get());
+    res = rIdx->insertInternal(trx, mthds, documentId, doc, options.indexOperationMode);
+    needReversal = needReversal || rIdx->needsReversal();
+    if (!res.ok()) {
+      if (needReversal && !trx->isSingleOperationTransaction()) {
+        ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex* rid) {
+          return rid->remove(trx,  documentId, doc, Index::OperationMode::rollback);
+        });
       }
+      break; // no point to continue index operations, insert is failed anyway
     }
   }
-
   return res;
 }
 
@@ -1372,17 +1392,19 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
       << " seq: " << mthd->sequenceNumber()
       << " objectID " << _objectId << " name: " << _logicalCollection->name();*/
 
-  Result resInner;
   READ_LOCKER(guard, _indexesLock);
-  for (std::shared_ptr<Index> const& idx : _indexes) {
-    Result tmpres = idx->remove(trx, documentId, doc, options.indexOperationMode);
-    if (!tmpres.ok()) {
-      if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
-        // in case of OOM return immediately
-        return tmpres;
+  bool needReversal = false;
+  for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
+    auto rIdx = static_cast<RocksDBIndex*>(it->get());
+    res = rIdx->remove(trx, documentId, doc, options.indexOperationMode);
+    needReversal = needReversal || rIdx->needsReversal();
+    if (!res.ok()) {
+      if (needReversal && !trx->isSingleOperationTransaction()) {
+        ::reverseIdxOps(_indexes, it, [mthd, trx, &documentId, &doc](RocksDBIndex* rid) {
+          return rid->insertInternal(trx, mthd, documentId, doc, Index::OperationMode::rollback);
+        });
       }
-      // for other errors, set result
-      res.reset(tmpres);
+      break;
     }
   }
 
@@ -1428,16 +1450,20 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   }
 
   READ_LOCKER(guard, _indexesLock);
-  for (std::shared_ptr<Index> const& idx : _indexes) {
-    RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-    Result tmpres = rIdx->updateInternal(trx, mthd, oldDocumentId, oldDoc, newDocumentId,
+  bool needReversal = false;
+  for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
+    auto rIdx = static_cast<RocksDBIndex*>(it->get());
+    res = rIdx->updateInternal(trx, mthd, oldDocumentId, oldDoc, newDocumentId,
                                          newDoc, options.indexOperationMode);
-    if (!tmpres.ok()) {
-      if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
-        // in case of OOM return immediately
-        return tmpres;
+    needReversal = needReversal || rIdx->needsReversal();
+    if (!res.ok()) {
+      if (needReversal && !trx->isSingleOperationTransaction()) {
+        ::reverseIdxOps(_indexes, it, [mthd, trx, &newDocumentId, &newDoc, &oldDocumentId, &oldDoc](RocksDBIndex* rid) {
+          return rid->updateInternal(trx, mthd, newDocumentId, newDoc, oldDocumentId,
+                                         oldDoc,  Index::OperationMode::rollback);
+        });
       }
-      res.reset(tmpres);
+      break;
     }
   }
 
