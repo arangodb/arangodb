@@ -145,7 +145,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
               << "No thread available to queue vertex loading";
         }
       } catch (basics::Exception const& ex) {
-        LOG_TOPIC("3f282", WARN, Logger::PREGEL)
+        LOG_TOPIC("3f283", WARN, Logger::PREGEL)
             << "unhandled exception while "
             << "loading pregel graph: " << ex.what();
       } catch (...) {
