@@ -320,7 +320,9 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     }
   });
   if (!queued) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
+    LOG_TOPIC("038db", ERR, Logger::PREGEL)
+        << "No thread available to queue response, canceling execution";
+    cancel();
   }
   return VPackBuilder();
 }
@@ -701,8 +703,9 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
         }
       });
       if (!queued) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
-                                       "No thread available to queue cleanup.");
+        LOG_TOPIC("038da", ERR, Logger::PREGEL)
+            << "No thread available to queue cleanup, canceling execution";
+        cancel();
       }
     }
   }

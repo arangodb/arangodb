@@ -147,8 +147,8 @@ void RecoveryManager::updatedFailedServers(std::vector<ServerID> const& failed) 
         _renewPrimaryServer(shard);
       });
       if (!queued) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
-                                       "No thread available to queue worker.");
+        LOG_TOPIC("038de", ERR, Logger::PREGEL)
+            << "No thread available to queue pregel recovery manager request";
       }
     }
   }

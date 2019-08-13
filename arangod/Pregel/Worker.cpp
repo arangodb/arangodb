@@ -172,7 +172,7 @@ void Worker<V, E, M>::setupWorker() {
     });
     if (!queued) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
-                                     "No available thread to queue worker");
+                                     "No available thread to load shards");
     }
   }
 }
@@ -351,7 +351,7 @@ void Worker<V, E, M>::_startProcessing() {
     });
     if (!queued) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
-                                     "No thread available to queue worker.");
+                                     "No thread available to start processing");
     }
   }
   
@@ -750,8 +750,8 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     _callConductor(Utils::finishedRecoveryPath, package);
   });
   if (!queued) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
-                                   "No thread available to queue worker.");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUEUE_FULL, "No thread available to queue compensation.");
   }
 }
 
@@ -787,7 +787,7 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
     });
     if (!queued) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
-                                     "No thread available to queue worker.");
+                                     "No thread available to call conductor");
     }
   } else {
     std::shared_ptr<ClusterComm> cc = ClusterComm::instance();

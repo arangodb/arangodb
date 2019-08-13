@@ -141,8 +141,8 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
               }
             });
         if (!queued) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_QUEUE_FULL, "No thread available to queue worker.");
+          LOG_TOPIC("38da2", WARN, Logger::PREGEL)
+              << "No thread available to queue vertex loading";
         }
       } catch (basics::Exception const& ex) {
         LOG_TOPIC("3f282", WARN, Logger::PREGEL)
@@ -163,7 +163,8 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
   bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, cb);
   if (!queued) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
-                                   "No thread available to queue worker.");
+                                   "No thread available to queue callback, "
+                                   "canceling execution");
   }
 }
 
@@ -599,7 +600,8 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
     });
     if (!queued) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
-                                     "No thread available to queue worker.");
+                                     "No thread available to queue vertex "
+                                     "storage, canceling execution");
     }
   }
 }
