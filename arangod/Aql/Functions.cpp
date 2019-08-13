@@ -4771,7 +4771,7 @@ AqlValue Functions::GeoEquals(ExpressionContext* expressionContext,
   return AqlValue(AqlValueHintBool(result));
 }
 
-/// @brief function GEO_EQUALS
+/// @brief function GEO_AREA
 AqlValue Functions::GeoArea(ExpressionContext* expressionContext,
                               transaction::Methods* trx,
                               VPackFunctionParameters const& parameters) {
