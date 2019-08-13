@@ -854,7 +854,8 @@
 
       testScorersWithDistinct : function() {
         var result = db._query(
-          "LET x = FIRST(FOR y IN UnitTestsCollection FILTER y.c == 0 RETURN DISTINCT y.a) " +
+          "LET values = (FOR y IN UnitTestsCollection FILTER y.c == 0 RETURN DISTINCT y.a) " +
+          "LET x = FIRST(FOR x IN values FILTER x == 'foo' RETURN x) " +
           "FOR doc IN UnitTestsView SEARCH doc.a == x && doc.c == 0 OPTIONS { waitForSync: true } " +
           "LET score = BM25(doc, 20.01, 0.01)*0.0001 + 1.0 " + 
           "COLLECT a = doc.a AGGREGATE maxScore = MAX(score) " +
