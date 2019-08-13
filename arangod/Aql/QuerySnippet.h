@@ -26,14 +26,18 @@
 
 #include "Aql/Query.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ResultT.h"
 
 #include <map>
+#include <set>
 #include <vector>
 
 namespace arangodb {
 namespace aql {
 
+class DistributeConsumerNode;
 class ExecutionNode;
+class ExecutionPlan;
 class GatherNode;
 class ScatterNode;
 class ShardLocking;
@@ -71,6 +75,13 @@ class QuerySnippet {
   void useQueryIdAsInput(QueryId inputSnippet) { _inputSnippet = inputSnippet; }
 
   size_t id() const { return _id; }
+
+ private:
+  ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> prepareFirstBranch(
+      ServerID const& server, ShardLocking& shardLocking);
+
+  DistributeConsumerNode* createConsumerNode(ExecutionPlan* plan, ScatterNode* internalScatter,
+                                             std::string const& distributeId);
 
  private:
   GatherNode const* _sinkNode;

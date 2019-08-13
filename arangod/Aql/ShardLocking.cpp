@@ -203,23 +203,13 @@ std::vector<ServerID> ShardLocking::getRelevantServers() {
     // server => collection => [shards](sorted)
     for (auto& lockInfo : _collectionLocking) {
       std::unordered_set<ShardID> shardsToLock;
-      for (auto const& rest : lockInfo.second.restrictedSnippets) {
-        if (!rest.second.first) {
-          // we have an unrestricted access. Lock all shards
-          shardsToLock = lockInfo.second.allShards;
-          break;
-        }
-        for (auto const& sId : rest.second.second) {
-          shardsToLock.emplace(sId);
-        }
-      }
-      for (auto const& sid : shardsToLock) {
+      for (auto const& sid : lockInfo.second.allShards) {
         auto server = shardMapping.find(sid);
-        // If shard has no leader the above call should have thrown!
-        TRI_ASSERT(server != shardMapping.end());
-        // We will create all maps as empty default constructions on the way
-        _serverToCollectionToShard[server->second][lockInfo.first].emplace(sid);
-        _serverToLockTypeToShard[server->second][lockInfo.second.lockType].emplace(sid);
+        if (server != shardMapping.end()) {
+          // We will create all maps as empty default constructions on the way
+          _serverToCollectionToShard[server->second][lockInfo.first].emplace(sid);
+          _serverToLockTypeToShard[server->second][lockInfo.second.lockType].emplace(sid);
+        }
       }
     }
   }
@@ -284,7 +274,10 @@ std::unordered_map<ShardID, ServerID> const& ShardLocking::getShardMapping() {
     TRI_ASSERT(_shardMapping.size() == shardIds.size());
     for (auto const& lockInfo : _collectionLocking) {
       for (auto const& sid : lockInfo.second.allShards) {
-        lockInfo.first->addShardToServer(sid, _shardMapping[sid]);
+        auto mapped = _shardMapping.find(sid);
+        if (mapped != _shardMapping.end()) {
+          lockInfo.first->addShardToServer(sid, mapped->second);
+        }
       }
     }
   }
@@ -299,11 +292,6 @@ std::unordered_set<ShardID> const& ShardLocking::shardsForSnippet(size_t snippet
   if (lockInfo == _collectionLocking.end()) {
     // We ask for a collection we did not lock!
     return EmptyShardListUnordered;
-  }
-
-  if (snippetId == 0) {
-    // Special case, Engines for Coordinator code (e.g. GraphEngines) cannot be restricted.
-    return lockInfo->second.allShards;
   }
   auto restricted = lockInfo->second.restrictedSnippets.find(snippetId);
   // We are asking for shards of a collection that are not registered with this
