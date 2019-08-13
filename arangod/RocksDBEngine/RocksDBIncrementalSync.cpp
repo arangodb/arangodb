@@ -680,7 +680,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       }
 
       syncer.setProgress(std::string("processing keys chunk ") + std::to_string(currentChunkId) +
-                         " for collection '" + col->name() + "'");
+          " of " + std::to_string(numChunks) + " for collection '" + col->name() + "'");
 
       // read remote chunk
       TRI_ASSERT(chunkSlice.isArray());

@@ -187,9 +187,9 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
                      MaintenanceFeature::errors_t& errors, MaintenanceFeature& feature,
                      std::vector<ActionDescription>& actions) {
   bool shouldBeLeading = serverId == leaderId;
+  bool shouldResign = UNDERSCORE + serverId == leaderId;
 
   commonShrds.emplace(shname);
-  auto props = createProps(cprops);  // Only once might need often!
 
   if (ldb.hasKey(shname)) {  // Have local collection with that name
     auto const lcol = ldb.get(shname);
@@ -234,7 +234,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
 
     // If comparison has brought any updates
     if (!properties->slice().isObject() || properties->slice().length() > 0 ||
-        leading != shouldBeLeading || !followersToDropString.empty()) {
+        !followersToDropString.empty()) {
       if (errors.shards.find(fullShardLabel) == errors.shards.end()) {
         actions.emplace_back(ActionDescription(
             std::map<std::string, std::string>{
@@ -242,17 +242,38 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
                 {DATABASE, dbname},
                 {COLLECTION, colname},
                 {SHARD, shname},
-                {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
                 {SERVER_ID, serverId},
-                {LOCAL_LEADER, lcol.get(THE_LEADER).copyString()},
-                {FOLLOWERS_TO_DROP, followersToDropString},
-                {OLD_CURRENT_COUNTER, std::to_string(feature.getCurrentCounter())}},
+                {FOLLOWERS_TO_DROP, followersToDropString}},
             HIGHER_PRIORITY, properties));
       } else {
         LOG_TOPIC("0285b", DEBUG, Logger::MAINTENANCE)
             << "Previous failure exists for local shard " << dbname << "/" << shname
             << "for central " << dbname << "/" << colname << "- skipping";
       }
+    }
+
+    // Handle leadership change, this is mostly about taking over leadership,
+    // but it also handles the case that in a failover scenario we used to
+    // be the leader and now somebody else is the leader. However, it does
+    // not handle the case of a controlled leadership resignation, see below
+    // in handleLocalShard for this.
+    if (leading != shouldBeLeading && !shouldResign) {
+      LOG_TOPIC("52412", DEBUG, Logger::MAINTENANCE)
+        << "Triggering TakeoverShardLeadership job for shard "
+        << dbname << "/" << colname << "/" << shname
+        << ", local leader: " << lcol.get(THE_LEADER).copyString()
+        << ", should be leader: "
+        << (shouldBeLeading ? std::string() : leaderId);
+      actions.emplace_back(ActionDescription(
+            std::map<std::string, std::string>{
+                {NAME, TAKEOVER_SHARD_LEADERSHIP},
+                {DATABASE, dbname},
+                {COLLECTION, colname},
+                {SHARD, shname},
+                {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
+                {LOCAL_LEADER, lcol.get(THE_LEADER).copyString()},
+                {OLD_CURRENT_COUNTER, std::to_string(feature.getCurrentCounter())}},
+                LEADER_PRIORITY));
     }
 
     // Indexes
@@ -281,6 +302,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
   } else {  // Create the sucker, if not a previous error stops us
     if (errors.shards.find(dbname + "/" + colname + "/" + shname) ==
         errors.shards.end()) {
+      auto props = createProps(cprops);
       actions.emplace_back(
           ActionDescription({{NAME, CREATE_COLLECTION},
                              {COLLECTION, colname},
@@ -311,7 +333,8 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
   bool localLeader = cprops.get(THE_LEADER).copyString().empty();
   if (plannedLeader == UNDERSCORE + serverId && localLeader) {
     actions.emplace_back(
-        ActionDescription({{NAME, "ResignShardLeadership"}, {DATABASE, dbname}, {SHARD, colname}},
+        ActionDescription({{NAME, RESIGN_SHARD_LEADERSHIP},
+                           {DATABASE, dbname}, {SHARD, colname}},
                           RESIGN_PRIORITY));
   } else {
     bool drop = false;

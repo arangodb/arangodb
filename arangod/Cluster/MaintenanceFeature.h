@@ -434,6 +434,8 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief Condition variable where Actions can wait on until _currentCounter increased
   std::condition_variable _currentCounterCondition;
 
+  bool _resignLeadershipOnShutdown;
+
   /// @brief  counter for load_current requests.
   uint64_t _currentCounter;
 };

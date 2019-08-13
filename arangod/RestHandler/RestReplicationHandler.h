@@ -101,6 +101,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const ClusterInventory;
   static std::string const AddFollower;
   static std::string const RemoveFollower;
+  static std::string const SetTheLeader;
   static std::string const HoldReadLockCollection;
 
  protected:
@@ -217,6 +218,12 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandRemoveFollower();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief update the leader of a shard
+  //////////////////////////////////////////////////////////////////////////////
+
+  void handleCommandSetTheLeader();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief hold a read lock on a collection to stop writes temporarily
