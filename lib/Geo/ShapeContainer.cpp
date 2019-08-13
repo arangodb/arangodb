@@ -696,12 +696,11 @@ double ShapeContainer::area(geo::Ellipsoid const& e) {
 
   // TODO: perhaps remove in favor of one code-path below ?
   if (e.flattening() == 0.0) {
-    constexpr double rad2 = kEarthRadiusInMeters * kEarthRadiusInMeters;
     switch (_type) {
       case Type::S2_LATLNGRECT:
-        return static_cast<S2LatLngRect*>(_data)->Area() * rad2;
+        return static_cast<S2LatLngRect*>(_data)->Area() * kEarthRadiusInMeters * kEarthRadiusInMeters;
       case Type::S2_POLYGON:
-        return static_cast<S2Polygon*>(_data)->GetArea() * rad2;
+        return static_cast<S2Polygon*>(_data)->GetArea() * kEarthRadiusInMeters * kEarthRadiusInMeters;
       default:
         TRI_ASSERT(false);
         return 0.0;
