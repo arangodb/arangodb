@@ -902,7 +902,7 @@ function iResearchAqlTestSuite () {
 
       assertEqual(result.length, 1);
       result.forEach(function (res) {
-        assertTrue(res.a === "foo");
+        assertEqual(res.a, "foo");
         assertTrue(res.score > 1 && res.score < 2);
       });
     }
