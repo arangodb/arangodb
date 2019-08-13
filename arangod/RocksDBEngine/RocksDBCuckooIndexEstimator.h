@@ -165,7 +165,7 @@ class RocksDBCuckooIndexEstimator {
     return false;
   }
 
-  RocksDBCuckooIndexEstimator(uint64_t size)
+  explicit RocksDBCuckooIndexEstimator(uint64_t size)
       : _randState(0x2636283625154737ULL),
         _logSize(0),
         _size(0),
@@ -193,7 +193,7 @@ class RocksDBCuckooIndexEstimator {
     initializeDefault();
   }
 
-  RocksDBCuckooIndexEstimator(arangodb::velocypack::StringRef const serialized)
+  explicit RocksDBCuckooIndexEstimator(arangodb::velocypack::StringRef const serialized)
       : _randState(0x2636283625154737ULL),
         _logSize(0),
         _size(0),
@@ -776,9 +776,9 @@ class RocksDBCuckooIndexEstimator {
   }
 
   uint16_t keyToFingerprint(Key const& k) const {
-    uint64_t hash = _fingerprint(k);
+    uint64_t hashfp = _fingerprint(k);
     uint16_t fingerprint =
-        (uint16_t)((hash ^ (hash >> 16) ^ (hash >> 32) ^ (hash >> 48)) & 0xFFFF);
+        (uint16_t)((hashfp ^ (hashfp >> 16) ^ (hashfp >> 32) ^ (hashfp >> 48)) & 0xFFFF);
     return (fingerprint ? fingerprint : 1);
   }
 

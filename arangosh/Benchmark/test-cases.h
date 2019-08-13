@@ -35,7 +35,7 @@ static bool CreateIndex(SimpleHttpClient*, std::string const&,
                         std::string const&, std::string const&);
 
 struct VersionTest : public BenchmarkOperation {
-  VersionTest() : BenchmarkOperation() { _url = "/_api/version"; }
+  VersionTest() : BenchmarkOperation(), _url("/_api/version") {}
 
   bool setUp(SimpleHttpClient* client) override { return true; }
 
@@ -826,9 +826,9 @@ struct HashTest : public BenchmarkOperation {
 };
 
 struct DocumentImportTest : public BenchmarkOperation {
-  DocumentImportTest() : BenchmarkOperation(), _url(), _buffer(nullptr) {
-    _url = "/_api/import?collection=" + ARANGOBENCH->collection() +
-           "&type=documents";
+  DocumentImportTest() : BenchmarkOperation(),
+     _url("/_api/import?collection=" + ARANGOBENCH->collection() + "&type=documents"), 
+     _buffer(nullptr) {
 
     uint64_t const n = ARANGOBENCH->complexity();
 
@@ -878,8 +878,9 @@ struct DocumentImportTest : public BenchmarkOperation {
 };
 
 struct DocumentCreationTest : public BenchmarkOperation {
-  DocumentCreationTest() : BenchmarkOperation(), _url(), _buffer(nullptr) {
-    _url = "/_api/document?collection=" + ARANGOBENCH->collection();
+  DocumentCreationTest() : BenchmarkOperation(),
+       _url("/_api/document?collection=" + ARANGOBENCH->collection()),
+       _buffer(nullptr) {
 
     uint64_t const n = ARANGOBENCH->complexity();
 
@@ -934,9 +935,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
 };
 
 struct CollectionCreationTest : public BenchmarkOperation {
-  CollectionCreationTest() : BenchmarkOperation(), _url() {
-    _url = "/_api/collection";
-  }
+  CollectionCreationTest() : BenchmarkOperation(), _url("/_api/collection") {}
 
   bool setUp(SimpleHttpClient* client) override { return true; }
 

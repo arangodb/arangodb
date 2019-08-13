@@ -263,10 +263,10 @@ void Worker<V, E, M>::receivedMessages(VPackSlice const& data) {
     MY_READ_LOCKER(guard, _cacheRWLock);
     _writeCacheNextGSS->parseMessages(data);
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "Superstep out of sync");
     LOG_TOPIC("ecd34", ERR, Logger::PREGEL)
         << "Expected: " << _config._globalSuperstep << "Got: " << gss;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "Superstep out of sync");
   }
 }
 

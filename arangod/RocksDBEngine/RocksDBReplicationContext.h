@@ -142,7 +142,7 @@ class RocksDBReplicationContext {
   // ========================= Dump API =============================
 
   struct DumpResult {
-    DumpResult(int res) : hasMore(false), includedTick(0), _result(res) {}
+    explicit DumpResult(int res) : hasMore(false), includedTick(0), _result(res) {}
     DumpResult(int res, bool hm, uint64_t tick)
         : hasMore(hm), includedTick(tick), _result(res) {}
     bool hasMore;

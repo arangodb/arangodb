@@ -254,6 +254,7 @@ class IResearchFlushSubscription final : public arangodb::FlushSubscription {
 
 bool readTick(irs::bytes_ref const& payload, TRI_voc_tick_t& tick) noexcept {
   static_assert(
+    // cppcheck-suppress duplicateExpression
     sizeof(uint64_t) == sizeof(TRI_voc_tick_t),
     "sizeof(uint64_t) != sizeof(TRI_voc_tick_t)"
   );
@@ -1655,7 +1656,7 @@ Result IResearchLink::remove(
   try {
     ctx->remove(documentId);
 
-    return TRI_ERROR_NO_ERROR;
+    return {TRI_ERROR_NO_ERROR};
   } catch (basics::Exception const& e) {
     return {
       e.code(),

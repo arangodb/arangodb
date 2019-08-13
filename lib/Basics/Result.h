@@ -34,7 +34,8 @@ class Result final {
 
   Result(bool /*avoidCastingErrors*/) = delete;
 
-  Result(int errorNumber);
+  // cppcheck-suppress noExplicitConstructor
+  /* implicit */ Result(int errorNumber);
 
   Result(int errorNumber, std::string const& errorMessage);
 

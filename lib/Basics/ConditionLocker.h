@@ -34,11 +34,12 @@
 #ifdef TRI_SHOW_LOCK_TIME
 
 #define CONDITION_LOCKER(a, b) \
-  arangodb::basics::ConditionLocker a(&b, __FILE__, __LINE__)
+  arangodb::basics::ConditionLocker a(&(b), __FILE__, __LINE__)
 
 #else
 
-#define CONDITION_LOCKER(a, b) ::arangodb::basics::ConditionLocker a(&b)
+#define CONDITION_LOCKER(a, b) \
+  ::arangodb::basics::ConditionLocker a(&(b))
 
 #endif
 

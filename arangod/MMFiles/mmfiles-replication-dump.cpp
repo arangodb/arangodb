@@ -393,6 +393,7 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
     bool hasMore = static_cast<MMFilesCollection*>(collection->getPhysical())
                        ->applyForTickRange(dataMin, dataMax, callback);
 
+    // cppcheck-suppress knownConditionTrueFalse
     if (lastFoundTick > 0) {
       // data available for requested range
       dump->_lastFoundTick = lastFoundTick;

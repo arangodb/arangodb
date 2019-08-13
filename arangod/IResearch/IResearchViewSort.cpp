@@ -22,10 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchViewSort.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+
 #include "VelocyPackHelper.h"
 #include "Basics/StringUtils.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Iterator.h"
 
 #include "utils/math_utils.hpp"
 

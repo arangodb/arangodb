@@ -153,6 +153,7 @@ void SslServerFeature::verifySslOptions() {
   }
 
   // validate protocol
+  // cppcheck-suppress unsignedLessThanZero
   if (_sslProtocol <= SSL_UNKNOWN || _sslProtocol >= SSL_LAST) {
     LOG_TOPIC("1f48b", FATAL, arangodb::Logger::SSL)
         << "invalid SSL protocol version specified. Please use a valid "

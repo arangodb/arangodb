@@ -28,6 +28,8 @@ build
 *.lnk
 Thumbs.db
 
+cppcheck.xml
+
 enterprise
 upgrade-data-tests
 compile_commands.json

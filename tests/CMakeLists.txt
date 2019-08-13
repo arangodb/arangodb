@@ -100,6 +100,7 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterInfo-test.cpp
   Cluster/ClusterRepairsTest.cpp
+  Cluster/RebootTrackerTest.cpp
   Futures/Future-test.cpp
   Futures/Promise-test.cpp
   Futures/Try-test.cpp

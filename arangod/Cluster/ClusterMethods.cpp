@@ -3826,7 +3826,6 @@ arangodb::Result unlockDBServerTransactions(
     lock.add("id", VPackValue(backupId));
   }
 
-  std::unordered_map<std::string, std::string> headers;
   auto body = std::make_shared<std::string const>(lock.toJson());
   std::vector<ClusterCommRequest> requests;
   for (auto const& dbServer : lockedServers) {
