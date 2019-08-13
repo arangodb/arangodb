@@ -31,6 +31,7 @@
 #include <mutex>
 #include <queue>
 
+#include "Basics/Exceptions.h"
 #include "GeneralServer/RequestLane.h"
 
 namespace arangodb {
@@ -98,9 +99,11 @@ class Scheduler {
         // The following code moves the _handler into the Scheduler.
         // Thus any reference to class to self in the _handler will be released
         // as soon as the scheduler executed the _handler lambda.
-        _scheduler->queue(_lane, [handler = std::move(_handler), arg]() {
-          handler(arg);
-        });
+        bool queued = _scheduler->queue(_lane, [handler = std::move(_handler),
+                                                arg]() { handler(arg); });
+        if (!queued) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
+        }
       }
     }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

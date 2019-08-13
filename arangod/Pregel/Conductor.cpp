@@ -305,7 +305,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  scheduler->queue(RequestLane::INTERNAL_LOW, [this] {
+  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this] {
     MUTEX_LOCKER(guard, _callbackMutex);
 
     if (_state == ExecutionState::RUNNING) {
@@ -319,6 +319,9 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
           << "No further action taken after receiving all responses";
     }
   });
+  if (!queued) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
+  }
   return VPackBuilder();
 }
 
@@ -691,12 +694,16 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
     auto* scheduler = SchedulerFeature::SCHEDULER;
     if (scheduler) {
       uint64_t exe = _executionNumber;
-      scheduler->queue(RequestLane::CLUSTER_AQL, [exe] {
+      bool queued = scheduler->queue(RequestLane::CLUSTER_AQL, [exe] {
         auto pf = PregelFeature::instance();
         if (pf) {
           pf->cleanupConductor(exe);
         }
       });
+      if (!queued) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
+                                       "No thread available to queue cleanup.");
+      }
     }
   }
 }
@@ -766,7 +773,7 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       uint64_t exe = _executionNumber;
       Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->queue(RequestLane::INTERNAL_LOW, [path, message, exe] {
+      bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [path, message, exe] {
         auto pf = PregelFeature::instance();
         if (!pf) {
           return;
@@ -778,6 +785,9 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
           PregelFeature::handleWorkerRequest(vocbase, path, message.slice(), response);
         }
       });
+      if (!queued) {
+        return TRI_ERROR_QUEUE_FULL;
+      }
     }
     return TRI_ERROR_NO_ERROR;
   }

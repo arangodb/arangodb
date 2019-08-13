@@ -143,8 +143,13 @@ void RecoveryManager::updatedFailedServers(std::vector<ServerID> const& failed) 
 
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->queue(RequestLane::INTERNAL_LOW,
-                       [this, shard] { _renewPrimaryServer(shard); });
+      bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, shard] {
+        _renewPrimaryServer(shard);
+      });
+      if (!queued) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
+                                       "No thread available to queue worker.");
+      }
     }
   }
 }
