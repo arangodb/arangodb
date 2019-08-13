@@ -254,13 +254,5 @@ analyzer_registrar::analyzer_registrar(
   }
 }
 
-analyzer_registrar::operator bool() const NOEXCEPT {
-  return registered_;
-}
-
-NS_END // NS_BEGIN(analysis)
+NS_END // analysis
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

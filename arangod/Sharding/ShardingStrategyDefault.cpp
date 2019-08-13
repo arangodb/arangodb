@@ -120,7 +120,7 @@ VPackSlice buildTemporarySlice(VPackSlice const& sub, Part const& part,
 template <bool returnNullSlice>
 uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& attributes,
                               bool docComplete, int& error, std::string const& key) {
-  uint64_t hash = TRI_FnvHashBlockInitial();
+  uint64_t hashval = TRI_FnvHashBlockInitial();
   error = TRI_ERROR_NO_ERROR;
   slice = slice.resolveExternal();
   if (slice.isObject()) {
@@ -149,7 +149,7 @@ uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& 
       // the original "sub" value. however, "sub" is reassigned immediately with
       // a new value, so it does not matter in reality
       sub = ::buildTemporarySlice<returnNullSlice>(sub, part, temporaryBuilder, false);
-      hash = sub.normalizedHash(hash);
+      hashval = sub.normalizedHash(hashval);
     }
   } else if (slice.isString() && attributes.size() == 1) {
     arangodb::velocypack::StringRef realAttr;
@@ -161,10 +161,10 @@ uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& 
       VPackBuilder temporaryBuilder;
       VPackSlice sub =
           ::buildTemporarySlice<returnNullSlice>(slice, part, temporaryBuilder, true);
-      hash = sub.normalizedHash(hash);
+      hashval = sub.normalizedHash(hashval);
     }
   }
-  return hash;
+  return hashval;
 }
 
 }  // namespace
@@ -251,10 +251,10 @@ int ShardingStrategyHashBase::getResponsibleShard(arangodb::velocypack::Slice sl
   usesDefaultShardKeys = _usesDefaultShardKeys;
   // calls virtual "hashByAttributes" function
 
-  uint64_t hash = hashByAttributes(slice, _sharding->shardKeys(), docComplete, res, key);
+  uint64_t hashval = hashByAttributes(slice, _sharding->shardKeys(), docComplete, res, key);
   // To improve our hash function result:
-  hash = TRI_FnvHashBlock(hash, magicPhrase, magicLength);
-  shardID = _shards[hash % _shards.size()];
+  hashval = TRI_FnvHashBlock(hashval, magicPhrase, magicLength);
+  shardID = _shards[hashval % _shards.size()];
   return res;
 }
 

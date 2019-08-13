@@ -144,6 +144,8 @@ set(IResearch_core_sources
   ./utils/encryption.cpp
   ./utils/ctr_encryption.cpp
   ./utils/compression.cpp
+  ./utils/delta_compression.cpp
+  ./utils/lz4compression.cpp
   ./utils/directory_utils.cpp
   ./utils/file_utils.cpp 
   ./utils/mmap_utils.cpp 
@@ -220,6 +222,7 @@ set(IResearch_core_headers
   ./utils/bit_utils.hpp
   ./utils/block_pool.hpp
   ./utils/compression.hpp
+  ./utils/lz4compression.hpp
   ./utils/file_utils.hpp
   ./utils/fst.hpp
   ./utils/fst_decl.hpp

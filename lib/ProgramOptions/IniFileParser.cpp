@@ -176,7 +176,7 @@ bool IniFileParser::parseContent(std::string const& filename, std::string const&
     }
   }
 
-  isCommunity ^= isEnterprise;
+  // isCommunity ^= isEnterprise;
 
   // all is well
   if (endPassAfterwards) {

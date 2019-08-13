@@ -1,8 +1,8 @@
 /// auto-generated file generated from errors.dat
 
-#include "Basics/voc-errors.h"
 #include "Basics/Common.h"
 #include "Basics/error.h"
+#include "Basics/voc-errors.h"
 
 /// helper macro to define an error string
 #define REG_ERROR(id, label) TRI_set_errno_string(TRI_ ## id, label);
@@ -131,6 +131,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_REPLICATION_START_TICK_NOT_PRESENT, "start tick not present");
   REG_ERROR(ERROR_REPLICATION_WRONG_CHECKSUM, "wrong checksum");
   REG_ERROR(ERROR_REPLICATION_SHARD_NONEMPTY, "shard not empty");
+  REG_ERROR(ERROR_CLUSTER_SERVER_UNKNOWN, "got a request from an unkown server");
   REG_ERROR(ERROR_CLUSTER_COLLECTION_ID_EXISTS, "collection ID already exists");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN, "could not create collection in plan");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION, "could not create collection");

@@ -44,12 +44,11 @@
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 #include "Geo/GeoParams.h"
+#include "Geo/Utils.h"
 #include "Geo/S2/S2MultiPointRegion.h"
 #include "Geo/S2/S2MultiPolyline.h"
 #include "Geo/Shapes.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::geo;
@@ -183,8 +182,12 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer* coverer) const n
   return cover;
 }
 
-double ShapeContainer::distanceFrom(S2Point const& other) const noexcept {
+double ShapeContainer::distanceFromCentroid(S2Point const& other) const noexcept {
   return centroid().Angle(other) * geo::kEarthRadiusInMeters;
+}
+
+double ShapeContainer::distanceFromCentroid(S2Point const& other, Ellipsoid const& e) const noexcept {
+  return geo::utils::geodesicDistance(S2LatLng(centroid()), S2LatLng(other), e);
 }
 
 /// @brief may intersect cell
