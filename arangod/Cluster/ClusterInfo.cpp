@@ -1916,7 +1916,6 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
           if (tmpError.empty() && info.waitForReplication) {
             std::vector<ServerID> plannedServers;
             {
-              READ_LOCKER(readLocker, _planProt.lock);
               auto it = shardServers.find(p.key.copyString());
               if (it != shardServers.end()) {
                 plannedServers = (*it).second;
