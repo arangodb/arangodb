@@ -97,7 +97,7 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
     // which is not really well parallizable. Additionally I figure
     // since a speaker only speaks to neighbours and the speaker order is random
     // we can get away with letting some nodes listen in turn
-    SLPAWorkerContext const* ctx = (SLPAWorkerContext const*)(context());
+    SLPAWorkerContext const* ctx = reinterpret_cast<SLPAWorkerContext const*>(context());
     bool shouldListen = (ctx->mod + val->nodeId) % 2 == globalSuperstep() % 2;
     if (messages.size() > 0 && shouldListen) {
       // listen to our neighbours

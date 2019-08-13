@@ -1740,14 +1740,23 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       totalArchiveSize += f->SizeFileBytes();
     }
 
-    if (f->StartSequence() < minTickToKeep) {
-      // this file will be removed because it does not contain any data we
-      // still need
-      if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
-        LOG_TOPIC("9f7a4", DEBUG, Logger::ENGINES)
-            << "RocksDB WAL file '" << f->PathName() << "' with start sequence "
-            << f->StartSequence() << " added to prunable list because it is not needed anymore";
-        _prunableWalFiles.emplace(f->PathName(), TRI_microtime() + _pruneWaitTime);
+    // check if there is another WAL file coming after the currently-looked-at
+    // There should be at least one live WAL file after it, however, let's be
+    // paranoid and do a proper check. If there is at least one WAL file following,
+    // we need to take its start tick into account as well, because the following
+    // file's start tick can be assumed to be the end tick of the current file!
+    if (f->StartSequence() < minTickToKeep &&
+        current < files.size() - 1) {      
+      auto const& n = files[current + 1].get();
+      if (n->StartSequence() < minTickToKeep) {
+        // this file will be removed because it does not contain any data we
+        // still need
+        if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
+          LOG_TOPIC("9f7a4", DEBUG, Logger::ENGINES)
+              << "RocksDB WAL file '" << f->PathName() << "' with start sequence "
+              << f->StartSequence() << " added to prunable list because it is not needed anymore";
+          _prunableWalFiles.emplace(f->PathName(), TRI_microtime() + _pruneWaitTime);
+        }
       }
     }
   }

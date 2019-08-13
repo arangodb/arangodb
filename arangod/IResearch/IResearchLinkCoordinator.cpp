@@ -22,6 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchLinkCoordinator.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "ClusterEngine/ClusterEngine.h"
@@ -36,8 +40,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VelocyPackHelper.h"
 #include "VocBase/LogicalCollection.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Slice.h"
 
 namespace arangodb {
 namespace iresearch {

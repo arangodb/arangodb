@@ -31,11 +31,11 @@ const fs = require('fs');
 const rp = require('@arangodb/result-processing');
 const yaml = require('js-yaml');
 const internal = require('internal');
-const toArgv = internal.toArgv;
 const crashUtils = require('@arangodb/crash-utils');
 const crypto = require('@arangodb/crypto');
 
 /* Functions: */
+const toArgv = internal.toArgv;
 const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const killExternal = internal.killExternal;
@@ -192,6 +192,23 @@ const TOP_DIR = (function findTopDir () {
 
   return topDir;
 }());
+
+// create additional system environment variables for coverage
+function coverageEnvironment () {
+  let result = [];
+  let name = 'GCOV_PREFIX';
+
+  if (process.env.hasOwnProperty(name)) {
+    result.push(
+      name +
+      "=" +
+      process.env[name] + 
+      "/" + 
+      crypto.md5(String(internal.time() + Math.random())));
+  }
+
+  return result;
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief calculates all the path locations
@@ -709,7 +726,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
 
   let res = {};
   if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
-    res = executeExternal(cmd, args);
+    res = executeExternal(cmd, args, false, coverageEnvironment());
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
     if (runProcdump(options, instanceInfo, rootDir, res.pid)) {
@@ -737,7 +754,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
       instanceInfo.exitStatus = res;
     }
   } else {
-    res = executeExternalAndWait(cmd, args, false, timeout);
+    res = executeExternalAndWait(cmd, args, false, timeout, coverageEnvironment());
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
   }
@@ -1203,7 +1220,8 @@ function executeArangod (cmd, args, options) {
   if (options.extremeVerbosity) {
     print(Date() + ' starting process ' + cmd + ' with arguments: ' + JSON.stringify(args));
   }
-  return executeExternal(cmd, args);
+
+  return executeExternal(cmd, args, coverageEnvironment());
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2074,6 +2092,7 @@ exports.arangod = {
 };
 
 exports.findFreePort = findFreePort;
+exports.coverageEnvironment = coverageEnvironment;
 
 exports.executeArangod = executeArangod;
 exports.executeAndWait = executeAndWait;
