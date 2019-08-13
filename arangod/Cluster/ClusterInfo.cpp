@@ -1746,13 +1746,14 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
     uint64_t replicationFactor, uint64_t minReplicationFactor, bool waitForReplication,
     velocypack::Slice const& json,  // collection definition
     double timeout,                 // request timeout,
-    bool isNewDatabase) {
+    bool isNewDatabase,
+    std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
   std::vector<ClusterCollectionCreationInfo> infos{
       ClusterCollectionCreationInfo{collectionID, numberOfShards, replicationFactor,
                                     minReplicationFactor, waitForReplication, json}};
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
-  return createCollectionsCoordinator(databaseName, infos, endTime, isNewDatabase);
+  return createCollectionsCoordinator(databaseName, infos, endTime, isNewDatabase, colToDistributeShardsLike);
 }
 
 /// @brief this method does an atomic check of the preconditions for the
@@ -1811,7 +1812,8 @@ Result ClusterInfo::checkCollectionPreconditions(std::string const& databaseName
 
 Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName,
                                                  std::vector<ClusterCollectionCreationInfo>& infos,
-                                                 double endTime, bool isNewDatabase) {
+                                                 double endTime, bool isNewDatabase,
+                                                 std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
   using arangodb::velocypack::Slice;
 
   double const interval = getPollInterval();
@@ -2006,6 +2008,9 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
         basics::VelocyPackHelper::getStringValue(info.json, StaticStrings::DistributeShardsLike,
                                                  StaticStrings::Empty);
     if (!otherCidString.empty() && conditions.find(otherCidString) == conditions.end()) {
+
+      LOG_DEVEL << "distributing shards like " << otherCidString << " and " << colToDistributeShardsLike->id(); 
+
       // Distribute shards like case.
       // Precondition: Master collection is not moving while we create this
       // collection We only need to add these once for every Master, we cannot
@@ -2014,7 +2019,12 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
       // In callbacks if they are moved during creation.
       // If they are moved after creation was reported success they are under protection by Supervision.
       conditions.emplace(otherCidString);
-      otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
+      if (colToDistributeShardsLike != nullptr) {
+        LOG_DEVEL << "override override";
+        otherCidShardMap = colToDistributeShardsLike->shardIds();
+      } else {
+        otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
+      }
       // Any of the shards locked?
       for (auto const& shard : *otherCidShardMap) {
         precs.emplace_back(AgencyPrecondition("Supervision/Shards/" + shard.first,

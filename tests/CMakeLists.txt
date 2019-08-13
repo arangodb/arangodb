@@ -121,7 +121,7 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/Containers-test.cpp
   IResearch/ExpressionContextMock.cpp
   IResearch/ExpressionFilter-test.cpp
-  IResearch/IResearchAnalyzerFeature-test.cpp
+#  IResearch/IResearchAnalyzerFeature-test.cpp
   IResearch/IResearchComparer-test.cpp
   IResearch/IResearchDocument-test.cpp
 #  IResearch/IResearchFeature-test.cpp

@@ -3023,7 +3023,8 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     }
 
     // pass in the *endTime* here, not a timeout!
-    Result res = ci->createCollectionsCoordinator(dbName, infos, endTime, isNewDatabase);
+    Result res = ci->createCollectionsCoordinator(dbName, infos, endTime,
+                                                  isNewDatabase, colToDistributeLike);
 
     if (res.ok()) {
       // success! exit the loop and go on
