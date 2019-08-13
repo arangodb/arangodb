@@ -217,6 +217,7 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
 
   virtual void after(ExecutionNode* en) override final {
     ExecutionBlock* block = nullptr;
+    bool doEmplace = true;
     {
       if (en->getType() == ExecutionNode::TRAVERSAL ||
           en->getType() == ExecutionNode::SHORTEST_PATH ||
@@ -234,9 +235,22 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
               TRI_ERROR_INTERNAL,
               "logic error, got cluster node in local query");
         }
+        block = engine.addBlock(en->createBlock(engine, cache));
+      } else {
+        auto const& cached = cache.find(en);
+        if (cached != cache.end()) {
+          // We allow to have SCATTER, REMOTE and DISTRIBUTE multiple times.
+          // But only these.
+          // Chances are if you hit a different node here, that you created a loop.
+          TRI_ASSERT(en->getType() == ExecutionNode::REMOTE ||
+                     en->getType() == ExecutionNode::SCATTER ||
+                     en->getType() == ExecutionNode::DISTRIBUTE);
+          block = cached->second;
+          doEmplace = false;
+        } else {
+          block = engine.addBlock(en->createBlock(engine, cache));
+        }
       }
-
-      block = engine.addBlock(en->createBlock(engine, cache));
 
       if (!en->hasParent()) {
         // yes. found a new root!
@@ -253,9 +267,13 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
       TRI_ASSERT(it2->second != nullptr);
       block->addDependency(it2->second);
     }
-
-    cache.emplace(en, block);
+    if (doEmplace) {
+      cache.emplace(en, block);
+    }
   }
+
+  // Override this method for DBServers, there it is now possible to visit the same block twice
+  bool done(ExecutionNode* en) override { return false; }
 };
 
 // Here is a description of how the instantiation of an execution plan

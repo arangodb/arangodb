@@ -80,6 +80,15 @@ struct NodeCounter final : public WalkerWorker<ExecutionNode> {
       seen.emplace(en);
     }
   }
+
+  bool done(ExecutionNode* en) override final {
+    if (!arangodb::ServerState::instance()->isDBServer() ||
+        (en->getType() != ExecutionNode::REMOTE || en->getType() != ExecutionNode::SCATTER ||
+         en->getType() != ExecutionNode::DISTRIBUTE)) {
+      return WalkerWorker<ExecutionNode>::done(en);
+    }
+    return false;
+  }
 };
 #endif
 
