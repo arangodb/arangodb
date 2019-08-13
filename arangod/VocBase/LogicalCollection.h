@@ -185,6 +185,7 @@ class LogicalCollection : public LogicalDataSource {
   bool usesDefaultShardKeys() const;
   std::vector<std::string> const& shardKeys() const;
   TEST_VIRTUAL std::shared_ptr<ShardMap> shardIds() const;
+  TEST_VIRTUAL std::shared_ptr<std::vector<ShardID>> shardListAsShardID() const;
 
   // mutation options for sharding
   void setShardMap(std::shared_ptr<ShardMap> const& map);
