@@ -62,11 +62,6 @@ TransactionState::~TransactionState() {
   TRI_ASSERT(_status != transaction::Status::RUNNING);
 
   releaseCollections();
-
-  // free all collections
-  for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
-    delete (*it);
-  }
 }
 
 /// @brief return the collection from a transaction
@@ -106,12 +101,10 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
   LOG_TRX("ad6d0", TRACE, this, nestingLevel) << "adding collection " << cid;
 
   if (accessType == AccessMode::Type::WRITE && 
-      mustUpgradeWritesToExclusiveAccess()) {
+      upgradeWritesToExclusiveAccess()) {
     // upgrade from WRITE to EXCLUSIVE, automatically
     accessType = AccessMode::Type::EXCLUSIVE;
   }
-
-  Result res;
 
   // upgrade transaction type if required
   if (nestingLevel == 0) {
@@ -119,10 +112,9 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
       TRI_ASSERT(_status == transaction::Status::CREATED);
     }
 
-    if (AccessMode::isWriteOrExclusive(accessType) &&
-        !AccessMode::isWriteOrExclusive(_type)) {
+    if (accessType > _type) {
       // if one collection is written to, the whole transaction becomes a
-      // write-transaction
+      // write transaction/exclusive transaction
       _type = accessType;
     }
   }
@@ -131,6 +123,7 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
   size_t position = 0;
   TransactionCollection* trxCollection = findCollection(cid, position);
 
+  Result res;
   if (trxCollection != nullptr) {
     static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
                       AccessMode::Type::READ < AccessMode::Type::WRITE &&
@@ -176,19 +169,12 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
-  trxCollection =
-      engine->createTransactionCollection(*this, cid, accessType, nestingLevel).release();
+  auto uptr = engine->createTransactionCollection(*this, cid, accessType, nestingLevel);
 
-  TRI_ASSERT(trxCollection != nullptr);
+  TRI_ASSERT(uptr != nullptr);
 
   // insert collection at the correct position
-  try {
-    _collections.insert(_collections.begin() + position, trxCollection);
-  } catch (...) {
-    delete trxCollection;
-
-    return res.reset(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  _collections.insert(_collections.begin() + position, std::move(uptr));
 
   return res;
 }
@@ -247,10 +233,10 @@ int TransactionState::lockCollections() {
 
 /// @brief find a collection in the transaction's list of collections
 TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid) const {
-  for (auto* trxCollection : _collections) {
+  for (auto const& trxCollection : _collections) {
     if (cid == trxCollection->id()) {
       // found
-      return trxCollection;
+      return trxCollection.get();
     }
     if (cid < trxCollection->id()) {
       // collection not found
@@ -275,11 +261,11 @@ TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid,
   size_t i;
 
   for (i = 0; i < n; ++i) {
-    auto trxCollection = _collections[i];
+    auto const& trxCollection = _collections[i];
 
     if (cid == trxCollection->id()) {
       // found
-      return trxCollection;
+      return trxCollection.get();
     }
 
     if (cid < trxCollection->id()) {
@@ -308,7 +294,7 @@ bool TransactionState::isOnlyExclusiveTransaction() const {
   if (!AccessMode::isWriteOrExclusive(_type)) {
     return false;
   }
-  for (TransactionCollection* coll : _collections) {
+  for (auto const& coll : _collections) {
     if (AccessMode::isWrite(coll->accessType())) {
       return false;
     }
@@ -371,9 +357,8 @@ void TransactionState::clearQueryCache() {
     std::vector<std::string> collections;
 
     for (auto& trxCollection : _collections) {
-      if (trxCollection                      // valid instance
-          && trxCollection->collection()     // has a valid collection
-          && trxCollection->hasOperations()  // may have been modified
+      if (trxCollection->collection() &&    // has a valid collection
+          trxCollection->hasOperations()  // may have been modified
       ) {
         // we're only interested in collections that may have been modified
         collections.emplace_back(trxCollection->collection()->guid());

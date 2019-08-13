@@ -285,7 +285,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     rocksdb::SequenceNumber preCommitSeq =
         rocksutils::globalRocksDB()->GetLatestSequenceNumber();
     for (auto& trxColl : _collections) {
-      auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
+      auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl.get());
       coll->prepareCommit(id(), preCommitSeq);
     }
     bool committed = false;
@@ -294,7 +294,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       // cppcheck-suppress knownConditionTrueFalse
       if (!committed) {
         for (auto& trxColl : _collections) {
-          auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
+          auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl.get());
           coll->abortCommit(id());
         }
       }
@@ -329,7 +329,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       _lastWrittenOperationTick = postCommitSeq;
 
       for (auto& trxColl : _collections) {
-        auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
+        auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl.get());
         // we need this in case of an intermediate commit. The number of
         // initial documents is adjusted and numInserts / removes is set to 0
         // index estimator updates are buffered
@@ -367,7 +367,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto& trxColl : _collections) {
       TRI_IF_FAILURE("RocksDBCommitCounts") { continue; }
-      auto* rcoll = static_cast<RocksDBTransactionCollection*>(trxColl);
+      auto* rcoll = static_cast<RocksDBTransactionCollection*>(trxColl.get());
       TRI_ASSERT(!rcoll->hasOperations());
       TRI_ASSERT(rcoll->stealTrackedOperations().empty());
     }
@@ -431,7 +431,7 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
   return result;
 }
   
-bool RocksDBTransactionState::mustUpgradeWritesToExclusiveAccess() const {
+bool RocksDBTransactionState::upgradeWritesToExclusiveAccess() const {
   return static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->serializeWrites();
 }
 

@@ -691,9 +691,11 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   // normal transactional truncate
   RocksDBKeyBounds documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
   rocksdb::Comparator const* cmp = RocksDBColumnFamily::documents()->GetComparator();
+  // take a copy of the options here, so we can modify them
   rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
   rocksdb::Slice const end = documentBounds.end();
   ro.iterate_upper_bound = &end;
+  ro.fill_cache = false;
 
   TRI_ASSERT(ro.snapshot);
 

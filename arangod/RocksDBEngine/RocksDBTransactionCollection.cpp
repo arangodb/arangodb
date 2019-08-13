@@ -280,7 +280,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
     return TRI_ERROR_NO_ERROR;
   }
   
-  TRI_ASSERT(!AccessMode::isWrite(type) || !_transaction->mustUpgradeWritesToExclusiveAccess());
+  TRI_ASSERT(!AccessMode::isWrite(type) || !_transaction->upgradeWritesToExclusiveAccess());
 
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(!isLocked());
@@ -303,7 +303,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   } else {
     // write locking means we'll be acquiring the collection's RW lock in read
     // mode
-    TRI_ASSERT(!_transaction->mustUpgradeWritesToExclusiveAccess());
+    TRI_ASSERT(!_transaction->upgradeWritesToExclusiveAccess());
     res = physical->lockRead(timeout);
   }
 
@@ -336,7 +336,7 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
     return TRI_ERROR_NO_ERROR;
   }
     
-  TRI_ASSERT(!AccessMode::isWrite(type) || !_transaction->mustUpgradeWritesToExclusiveAccess());
+  TRI_ASSERT(!AccessMode::isWrite(type) || !_transaction->upgradeWritesToExclusiveAccess());
 
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(isLocked());
@@ -371,7 +371,7 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   } else {
     // write locking means we'll be releasing the collection's RW lock in read
     // mode
-    TRI_ASSERT(!_transaction->mustUpgradeWritesToExclusiveAccess());
+    TRI_ASSERT(!_transaction->upgradeWritesToExclusiveAccess());
     physical->unlockRead();
   }
 

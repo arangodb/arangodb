@@ -36,6 +36,7 @@
 #include "VocBase/voc-types.h"
 
 #include <map>
+#include <memory>
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
@@ -187,7 +188,7 @@ class TransactionState {
   /// @brief whether or not write operations shall be exclusive by default
   /// (this serializes writes to the underlying collection, which avoids conflicts
   /// but severly impairs write performance)
-  virtual bool mustUpgradeWritesToExclusiveAccess() const { return false; }
+  virtual bool upgradeWritesToExclusiveAccess() const { return false; }
 
   TransactionCollection* findCollection(TRI_voc_cid_t cid) const;
 
@@ -260,8 +261,8 @@ class TransactionState {
   /// @brief current status
   transaction::Status _status;
 
-  SmallVector<TransactionCollection*>::allocator_type::arena_type _arena;  // memory for collections
-  SmallVector<TransactionCollection*> _collections;  // list of participating collections
+  SmallVector<std::unique_ptr<TransactionCollection>>::allocator_type::arena_type _arena;  // memory for collections
+  SmallVector<std::unique_ptr<TransactionCollection>> _collections;  // list of participating collections
 
   ServerState::RoleEnum const _serverRole;  /// role of the server
 
