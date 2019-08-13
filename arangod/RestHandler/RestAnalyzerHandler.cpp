@@ -81,18 +81,14 @@ void RestAnalyzerHandler::createAnalyzer( // create
     return;
   }
   auto splittedAnalyzerName = IResearchAnalyzerFeature::splitAnalyzerName(getStringRef(nameSlice));
-  if (!splittedAnalyzerName.first.null() ) { 
-    // database name present - check if it is current database
-    if ((splittedAnalyzerName.first.empty() && 
-          _vocbase.name() != arangodb::StaticStrings::SystemDatabase) ||
-        (!splittedAnalyzerName.first.empty() && 
-          _vocbase.name() != splittedAnalyzerName.first)) {
+  if (!IResearchAnalyzerFeature::analyzerReachableFromDb(splittedAnalyzerName.first, 
+                                                           _vocbase.name())) { 
       generateError(arangodb::Result(
         TRI_ERROR_FORBIDDEN,
         "Database in analyzer name does not match current database"));
       return;
-    }
   }
+
   name = splittedAnalyzerName.second;
   if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(name.c_str(), name.size()))) {
     generateError(arangodb::Result(
@@ -304,8 +300,7 @@ void RestAnalyzerHandler::getAnalyzer(
 
   // need to check if analyzer is from current database or from system database
   const auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(normalizedName);
-  if (!analyzerVocbase.empty() && analyzerVocbase != _vocbase.name() && 
-    analyzerVocbase != arangodb::StaticStrings::SystemDatabase) {
+  if (!IResearchAnalyzerFeature::analyzerReachableFromDb(analyzerVocbase, _vocbase.name(), true)) {
     std::string errorMessage("Analyzer '");
     errorMessage.append(normalizedName)
       .append("' is not accessible. Only analyzers from current database ('")
@@ -412,17 +407,12 @@ void RestAnalyzerHandler::removeAnalyzer(
     return;
   }
 
-  if (!splittedAnalyzerName.first.null() ) { 
-    // database name present - check if it is current database
-   if ((splittedAnalyzerName.first.empty() && 
-         _vocbase.name() != arangodb::StaticStrings::SystemDatabase) ||
-       (!splittedAnalyzerName.first.empty() && 
-         _vocbase.name() != splittedAnalyzerName.first)) {
-      generateError(arangodb::Result(
-        TRI_ERROR_FORBIDDEN,
-        "Database in analyzer name does not match current database"));
-      return;
-    }
+  if (!IResearchAnalyzerFeature::analyzerReachableFromDb(splittedAnalyzerName.first,
+                                                          _vocbase.name())) { 
+    generateError(arangodb::Result(
+      TRI_ERROR_FORBIDDEN,
+      "Database in analyzer name does not match current database"));
+    return;
   }
 
   auto* sysDatabase = 

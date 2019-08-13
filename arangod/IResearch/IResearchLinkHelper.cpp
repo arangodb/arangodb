@@ -795,14 +795,7 @@ namespace iresearch {
             continue; 
           }
           auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(analyzer._pool->name());
-          if (ADB_UNLIKELY(analyzerVocbase.empty())) { 
-            // in case of absent system database analyzer name will not be normalized
-            // and may not contain database prefix. But in that case analyzer will be
-            // considered local for current database and this is perefectly fine.
-            continue;
-          }
-          if (analyzerVocbase != arangodb::StaticStrings::SystemDatabase &&
-              analyzerVocbase != currentVocbase) {
+          if (!IResearchAnalyzerFeature::analyzerReachableFromDb(analyzerVocbase, currentVocbase, true)) {
             return arangodb::Result(
                 TRI_ERROR_BAD_PARAMETER,
                 std::string("Analyzer '").append(analyzer._pool->name())

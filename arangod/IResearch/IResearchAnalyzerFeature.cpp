@@ -2077,7 +2077,24 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
 /*static*/ irs::string_ref IResearchAnalyzerFeature::extractVocbaseName(
     irs::string_ref const& name) noexcept {// analyzer name (normalized)
   auto split = splitAnalyzerName(name);
-  return split.first.empty() ? irs::string_ref::EMPTY : split.first;
+  return split.first;
+}
+
+/*static*/ bool IResearchAnalyzerFeature::analyzerReachableFromDb(
+    irs::string_ref const& dbNameFromAnalyzer, 
+    irs::string_ref const& currentDbName, bool forGetters) noexcept {
+  TRI_ASSERT(!currentDbName.empty());
+  if (dbNameFromAnalyzer.null()) { // NULL means local db name = always reachable
+    return true;
+  }
+  if (dbNameFromAnalyzer.empty()) { // empty name with :: means always system
+    if (forGetters) {
+      return true; // system database is always accessible for reading analyzer from any other db
+    }
+    return currentDbName == arangodb::StaticStrings::SystemDatabase;
+  }
+  return currentDbName == dbNameFromAnalyzer || 
+         (forGetters && dbNameFromAnalyzer == arangodb::StaticStrings::SystemDatabase);
 }
 
 /*static*/ std::pair<irs::string_ref, irs::string_ref> IResearchAnalyzerFeature::splitAnalyzerName( 
