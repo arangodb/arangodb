@@ -202,7 +202,7 @@ Node::Node(Node const& other)
 /// 1. remove any existing time to live entry
 /// 2. clear children map
 /// 3. copy from rhs buffer to my buffer
-/// @brief Must not copy _parent, _ttl
+/// @brief Must not copy _parent, _store, _ttl
 Node& Node::operator=(VPackSlice const& slice) {
   removeTimeToLive();
   _children.clear();
@@ -228,7 +228,7 @@ Node& Node::operator=(Node&& rhs) {
   // 1. remove any existing time to live entry
   // 2. move children map over
   // 3. move value over
-  // Must not move over rhs's _parent
+  // Must not move over rhs's _parent, _store
   _nodeName = std::move(rhs._nodeName);
   _children = std::move(rhs._children);
   // The _children map has been moved here, therefore we must
@@ -249,7 +249,7 @@ Node& Node::operator=(Node const& rhs) {
   // 1. remove any existing time to live entry
   // 2. clear children map
   // 3. move from rhs to buffer pointer
-  // Must not move rhs's _parent
+  // Must not move rhs's _parent, _store
   removeTimeToLive();
   _nodeName = rhs._nodeName;
   _children.clear();
