@@ -218,13 +218,13 @@ struct IResearchLinkCoordinatorSetup {
     arangodb::application_features::ApplicationServer::server = nullptr;
 
     // destroy application features
-    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) {
       if (features.at((*f)->name()).second) {
         (*f)->stop();
       }
     }
 
-    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) {
       (*f)->unprepare();
     }
 
@@ -265,6 +265,7 @@ SECTION("test_create_drop") {
     CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     CHECK(1 == vocbase->id());
 
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
       vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
     ));
