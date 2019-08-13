@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -639,7 +638,7 @@ void Store::dumpToBuilder(Builder& builder) const {
       clean[i.second] = ts;
     } else if (ts < it->second) {
       it->second = ts;
-    }      
+    }
   }
   {
     VPackObjectBuilder guard(&builder);
@@ -690,7 +689,51 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
     Slice value = transaction.get(key);
 
     if (value.isObject() && value.hasKey("op")) {
-      _node.hasAsWritableNode(abskeys.at(i)).first.applieOp(value);
+      if (value.get("op").isEqualString("delete") ||
+          value.get("op").isEqualString("replace") ||
+          value.get("op").isEqualString("erase")) {
+        if (!_node.has(abskeys.at(i))) {
+          continue;
+        }
+      }
+      auto uri = Node::normalize(abskeys.at(i));
+      if (value.get("op").isEqualString("observe")) {
+        bool found = false;
+        if (value.hasKey("url") && value.get("url").isString()) {
+          auto url = value.get("url").copyString();
+          auto ret = _observerTable.equal_range(url);
+          for (auto it = ret.first; it != ret.second; ++it) {
+            if (it->second == uri) {
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            _observerTable.emplace(std::pair<std::string, std::string>(url, uri));
+            _observedTable.emplace(std::pair<std::string, std::string>(uri, url));
+          }
+        }
+      } else if (value.get("op").isEqualString("unobserve")) {
+        if (value.hasKey("url") && value.get("url").isString()) {
+          auto url = value.get("url").copyString();
+          auto ret = _observerTable.equal_range(url);
+          for (auto it = ret.first; it != ret.second; ++it) {
+            if (it->second == uri) {
+              _observerTable.erase(it);
+              break;
+            }
+          }
+          ret = _observedTable.equal_range(uri);
+          for (auto it = ret.first; it != ret.second; ++it) {
+            if (it->second == url) {
+              _observedTable.erase(it);
+              break;
+            }
+          }
+        }
+      } else {
+        _node.hasAsWritableNode(abskeys.at(i)).first.applieOp(value);
+      }
     } else {
       _node.hasAsWritableNode(abskeys.at(i)).first.applies(value);
     }
@@ -731,7 +774,7 @@ Store& Store::operator=(VPackSlice const& s) {
       }
     }
   }
-  
+
   TRI_ASSERT(slice[2].isArray());
   for (auto const& entry : VPackArrayIterator(slice[2])) {
     TRI_ASSERT(entry.isObject());
