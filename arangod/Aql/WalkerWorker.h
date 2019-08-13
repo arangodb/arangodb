@@ -51,9 +51,9 @@ class WalkerWorker {
                              T*   // sub
   ) {}
 
-  bool done(T* en) {
-    // this is a no-op in non-failure mode
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  virtual bool done(T* en) {
+    // this is a no-op in non-maintainer mode
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // make sure a node is only processed once
     if (_done.emplace(en).second) {
       return false;
@@ -68,15 +68,15 @@ class WalkerWorker {
 #endif
   }
 
-  void reset() { 
+  void reset() {
     // this is a no-op in non-failure mode
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-    _done.clear(); 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _done.clear();
 #endif
   }
 
  private:
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   arangodb::HashSet<T*> _done;
 #endif
 };
