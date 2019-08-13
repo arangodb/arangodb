@@ -40,7 +40,7 @@ struct RocksDBColumnFamily {
   friend class RocksDBEngine;
 
   static constexpr size_t minNumberOfColumnFamilies = 7;
-  static constexpr size_t numberOfColumnFamilies = 8;
+  static constexpr size_t numberOfColumnFamilies = 7;
 
   static rocksdb::ColumnFamilyHandle* definitions() { return _definitions; }
 

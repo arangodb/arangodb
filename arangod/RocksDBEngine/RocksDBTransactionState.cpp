@@ -241,9 +241,9 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
 arangodb::Result RocksDBTransactionState::internalCommit() {
   if (!hasOperations()) { // bail out early
     TRI_ASSERT(_rocksTransaction == nullptr ||
-               _rocksTransaction->GetNumKeys() == 0 &&
-               _rocksTransaction->GetNumPuts() == 0 &&
-               _rocksTransaction->GetNumDeletes() == 0);
+               (_rocksTransaction->GetNumKeys() == 0 &&
+                _rocksTransaction->GetNumPuts() == 0 &&
+                _rocksTransaction->GetNumDeletes() == 0));
     // this is most likely the fill index case
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto& trxColl : _collections) {

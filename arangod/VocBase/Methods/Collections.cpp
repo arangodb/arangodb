@@ -217,6 +217,14 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
     bool enforceReplicationFactor,                  // replication factor flag
     FuncCallback func  // invoke on collection creation
 ) {
+  if (name.empty()) {
+    events::CreateCollection(vocbase.name(), name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    return TRI_ERROR_ARANGO_ILLEGAL_NAME;
+  } else if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
+             collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+    events::CreateCollection(vocbase.name(), name, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+    return TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
+  }
   std::vector<CollectionCreationInfo> infos{{name, collectionType, properties}};
   return create(vocbase, infos, createWaitsForSyncReplication, enforceReplicationFactor,
                 [&func](std::vector<std::shared_ptr<LogicalCollection>> const& cols) {

@@ -310,10 +310,9 @@ TRI_voc_cid_t RocksDBKey::viewId(rocksdb::Slice const& slice) {
 }
 
 LocalDocumentId RocksDBKey::documentId(rocksdb::Slice const& slice) {
-  TRI_ASSERT(slice.size() >= 2 * sizeof(uint64_t));
+  TRI_ASSERT(slice.size() == 2 * sizeof(uint64_t));
   // last 8 bytes should be the LocalDocumentId
-  const char* ptr = slice.data() + slice.size() - sizeof(uint64_t);
-  return LocalDocumentId(uint64FromPersistent(ptr));
+  return LocalDocumentId(uint64FromPersistent(slice.data() + sizeof(uint64_t)));
 }
 
 LocalDocumentId RocksDBKey::indexDocumentId(RocksDBEntryType type,
