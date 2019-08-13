@@ -408,7 +408,7 @@ function translateTestList(cases) {
       if (testFuncs.hasOwnProperty(which)) {
         caselist.push(which);
       } else {
-        print('Unknown test "' + which + '"\nKnown tests are: ' + Object.keys(testFuncs).join(', '));
+        print('Unknown test "' + which + '"\nKnown tests are: ' + Object.keys(testFuncs).sort().join(', '));
         throw new Error("USAGE ERROR");
       }
     }
