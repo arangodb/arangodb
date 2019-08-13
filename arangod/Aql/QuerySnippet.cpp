@@ -113,7 +113,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
       }
       continue;
     }
-    auto modNode = ExecutionNode::castTo<CollectionAccessingNode const*>(exp.node);
+    auto modNode = dynamic_cast<CollectionAccessingNode const*>(exp.node);
     // Only accessing nodes can endup here.
     TRI_ASSERT(modNode != nullptr);
     auto col = modNode->collection();
