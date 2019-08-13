@@ -215,7 +215,6 @@ SET(ARANGOD_SOURCES
   Aql/DistributeExecutor.cpp
   Aql/DocumentProducingNode.cpp
   Aql/EngineInfoContainerCoordinator.cpp
-  Aql/EngineInfoContainerDBServer.cpp
   Aql/EngineInfoContainerDBServerServerBased.cpp
   Aql/EnumerateCollectionExecutor.cpp
   Aql/EnumerateListExecutor.cpp

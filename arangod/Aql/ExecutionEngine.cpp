@@ -28,7 +28,6 @@
 #include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
-#include "Aql/EngineInfoContainerDBServer.h"
 #include "Aql/EngineInfoContainerDBServerServerBased.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
@@ -364,131 +363,6 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
 struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
  private:
   EngineInfoContainerCoordinator _coordinatorParts;
-  EngineInfoContainerDBServer _dbserverParts;
-  bool _isCoordinator;
-  bool const _pushToSingleServer;
-  QueryId _lastClosed;
-  Query* _query;
-
- public:
-  explicit DistributedQueryInstanciator(Query* query, bool pushToSingleServer)
-      : _dbserverParts(query),
-        _isCoordinator(true),
-        _pushToSingleServer(pushToSingleServer),
-        _lastClosed(0),
-        _query(query) {
-    TRI_ASSERT(_query);
-  }
-
-  /// @brief before method for collection of pieces phase
-  ///        Collects all nodes on the path and divides them
-  ///        into coordinator and dbserver parts
-  bool before(ExecutionNode* en) override final {
-    auto const nodeType = en->getType();
-    if (_isCoordinator) {
-      _coordinatorParts.addNode(en);
-
-      switch (nodeType) {
-        case ExecutionNode::REMOTE:
-          // Flip over to DBServer
-          _isCoordinator = false;
-          _dbserverParts.openSnippet(en->id());
-          break;
-        case ExecutionNode::TRAVERSAL:
-        case ExecutionNode::SHORTEST_PATH:
-        case ExecutionNode::K_SHORTEST_PATHS:
-          if (!_pushToSingleServer) {
-            _dbserverParts.addGraphNode(ExecutionNode::castTo<GraphNode*>(en));
-          }
-          break;
-        default:
-          // Do nothing
-          break;
-      }
-    } else {
-      // on dbserver
-      _dbserverParts.addNode(en);
-      // switch back from DB server to coordinator, if we are not pushing the
-      // entire plan to the DB server
-      if (ExecutionNode::REMOTE == nodeType) {
-        TRI_ASSERT(!_pushToSingleServer);
-        _isCoordinator = true;
-        _coordinatorParts.openSnippet(en->id());
-      }
-    }
-
-    // Always return false to not abort searching
-    return false;
-  }
-
-  bool enterSubquery(ExecutionNode* super, ExecutionNode* sub) override {
-    if (_pushToSingleServer) {
-      _dbserverParts.addSubquery(sub, super);
-    }
-    return true;
-  }
-
-  void after(ExecutionNode* en) override final {
-    if (en->getType() == ExecutionNode::REMOTE) {
-      if (_isCoordinator) {
-        _lastClosed = _coordinatorParts.closeSnippet();
-        _isCoordinator = false;
-      } else {
-        _dbserverParts.closeSnippet(_lastClosed);
-        _isCoordinator = true;
-      }
-    }
-  }
-
-  /// @brief Builds the Engines necessary for the query execution
-  ///        For Coordinator Parts:
-  ///        * Creates the ExecutionBlocks
-  ///        * Injects all Parts but the First one into QueryRegistery
-  ///        For DBServer Parts
-  ///        * Creates one Query-Entry for each Snippet per Shard (multiple on
-  ///        the same DB) Each Snippet knows all details about locking.
-  ///        * Only the first snippet does lock the collections.
-  ///        other snippets are not responsible for any locking.
-  ///        * After this step DBServer-Collections are locked!
-  ///
-  ///        Error Case:
-  ///        * It is guaranteed that all DBServers will be send a request
-  ///        to remove query snippets / locks they have locally created.
-  ///        * No Engines for this query will remain in the Coordinator
-  ///        Registry.
-  ///        * In case the Network is broken, all non-reachable DBServers will
-  ///        clean out their snippets after a TTL.
-  ///        Returns the First Coordinator Engine, the one not in the registry.
-  ExecutionEngineResult buildEngines(QueryRegistry* registry) {
-    // QueryIds are filled by responses of DBServer parts.
-    MapRemoteToSnippet queryIds{};
-
-    auto cleanupGuard = scopeGuard([this, &queryIds]() {
-      _dbserverParts.cleanupEngines(ClusterComm::instance(), TRI_ERROR_INTERNAL,
-                                    _query->vocbase().name(), queryIds);
-    });
-
-    ExecutionEngineResult res = _dbserverParts.buildEngines(queryIds);
-    if (res.fail()) {
-      return res;
-    }
-
-    // The coordinator engines cannot decide on lock issues later on,
-    // however every engine gets injected the list of locked shards.
-    res = _coordinatorParts.buildEngines(_query, registry, _query->vocbase().name(),
-                                         _query->queryOptions().shardIds, queryIds);
-
-    if (res.ok()) {
-      cleanupGuard.cancel();
-    }
-
-    return res;
-  }
-};
-
-struct DistributedQueryInstanciatorHund final : public WalkerWorker<ExecutionNode> {
- private:
-  EngineInfoContainerCoordinator _coordinatorParts;
   EngineInfoContainerDBServerServerBased _dbserverParts;
   bool _isCoordinator;
   bool const _pushToSingleServer;
@@ -501,7 +375,7 @@ struct DistributedQueryInstanciatorHund final : public WalkerWorker<ExecutionNod
   GatherNode const* _lastGatherNode;
 
  public:
-  explicit DistributedQueryInstanciatorHund(Query* query, bool pushToSingleServer)
+  explicit DistributedQueryInstanciator(Query* query, bool pushToSingleServer)
       : _dbserverParts(query),
         _isCoordinator(true),
         _pushToSingleServer(pushToSingleServer),
@@ -714,38 +588,20 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegist
 #endif
 
   if (arangodb::ServerState::isCoordinator(role)) {
-    if (true) {
-      // distributed query
-      DistributedQueryInstanciatorHund inst(query, pushToSingleServer);
-      plan->root()->walk(inst);
+    // distributed query
+    DistributedQueryInstanciator inst(query, pushToSingleServer);
+    plan->root()->walk(inst);
 
-      auto result = inst.buildEngines(queryRegistry);
-      if (!result.ok()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
-      }
-
-      engine.reset(result.engine());
-      TRI_ASSERT(engine != nullptr);
-
-      root = engine->root();
-      TRI_ASSERT(root != nullptr);
-    } else {
-      // distributed query
-      DistributedQueryInstanciator inst(query, pushToSingleServer);
-      plan->root()->walk(inst);
-
-      auto result = inst.buildEngines(queryRegistry);
-      if (!result.ok()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
-      }
-
-      engine.reset(result.engine());
-      TRI_ASSERT(engine != nullptr);
-
-      root = engine->root();
-      TRI_ASSERT(root != nullptr);
+    auto result = inst.buildEngines(queryRegistry);
+    if (!result.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
     }
 
+    engine.reset(result.engine());
+    TRI_ASSERT(engine != nullptr);
+
+    root = engine->root();
+    TRI_ASSERT(root != nullptr);
   } else {
     // instantiate the engine on a local server
     engine.reset(new ExecutionEngine(query));
