@@ -298,6 +298,21 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     return res;
   }
 
+  auto failureGuard = scopeGuard([ci, info]() {
+    Result res;
+    LOG_TOPIC("8cc61", ERR, Logger::FIXME)
+      << "Failed to create database " << info.getName() << " rolling back.";
+    res = ci->cancelCreateDatabaseCoordinator(info);
+    if (!res.ok()) {
+      // this is a double fault: we failed to create the database, but
+      // also failed to clean up. Supervision should be cleaning up any
+      // leftovers (if the cluster is still able to function otherwise).
+      LOG_TOPIC("92157", ERR, Logger::FIXME)
+        << "Failed to rollback creation of database " << info.getName() <<
+        ". Cleanup should happen through a supervision job.";
+    }
+  });
+
   res = grantCurrentUser(info);
   if (!res.ok()) {
     return res;
@@ -314,9 +329,13 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   // If the creation of system collections was successful,
   // make the database visible, otherwise clean up what we can.
   if (upgradeRes.ok()) {
+    failureGuard.cancel();
     res = ci->createFinalizeDatabaseCoordinator(info);
     return res;
   } else {
+    // We leave this handling here to be able to capture
+    // error messages and return
+    failureGuard.cancel();
     // Cleanup entries in agency.
     res = ci->cancelCreateDatabaseCoordinator(info);
     if (!res.ok()) {
