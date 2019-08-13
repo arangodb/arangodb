@@ -26,7 +26,9 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/files.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RestServer/DatabasePathFeature.h"
 
 namespace arangodb {
@@ -170,7 +172,7 @@ bool RocksDBEventListenerThread::deleteFile(std::string const& filename) {
   } // else
 
   if (!found) {
-    std::string dirname = TRI_Dirname(filename.c_str());
+    std::string dirname = TRI_Dirname(filename);
     std::vector<std::string> filelist = TRI_FilesDirectory(dirname.c_str());
 
     // future thought: are there faster ways to find matching .sha. file?

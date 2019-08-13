@@ -29,15 +29,16 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 
+#include "Basics/FileUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/FileUtils.h"
+#include "Basics/application-exit.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "Shell/ClientFeature.h"
 #include "StorageEngine/HotBackupCommon.h"
 
 namespace {

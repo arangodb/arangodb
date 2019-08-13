@@ -23,10 +23,13 @@
 #include "ServerFeature.h"
 
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationFeature.h"

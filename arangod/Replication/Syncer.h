@@ -66,6 +66,9 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     explicit JobSynchronizer(std::shared_ptr<Syncer const> const& syncer);
     ~JobSynchronizer();
 
+    /// @brief whether or not a response has arrived
+    bool gotResponse() const noexcept;
+
     /// @brief will be called whenever a response for the job comes in
     void gotResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response, double time) noexcept;
 

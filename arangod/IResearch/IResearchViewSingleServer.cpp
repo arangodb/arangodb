@@ -27,6 +27,8 @@
 #include "IResearchLink.h"
 #include "IResearchLinkHelper.h"
 
+#include <velocypack/Iterator.h>
+
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -39,7 +41,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
-#include "velocypack/Iterator.h"
 
 #include "IResearchView.h"
 #include "IResearchViewSingleServer.h"

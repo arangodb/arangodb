@@ -24,11 +24,15 @@
 #ifndef ARANGODB_BASICS_FILE_UTILS_H
 #define ARANGODB_BASICS_FILE_UTILS_H 1
 
-#include "Basics/Common.h"
+#include <stddef.h>
+#include <functional>
+#include <string>
+#include <vector>
 
+#include "Basics/Common.h"
 #include "Basics/FileResult.h"
 #include "Basics/FileResultString.h"
-#include "Basics/files.h"
+#include "Basics/Result.h"
 
 namespace arangodb {
 namespace basics {

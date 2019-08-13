@@ -25,8 +25,8 @@
 
 #include "Aql/ModificationExecutor.h"
 
-#include "velocypack/Iterator.h"
-#include "velocypack/velocypack-aliases.h"
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace aql {

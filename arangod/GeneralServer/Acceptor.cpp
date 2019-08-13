@@ -24,7 +24,9 @@
 
 #include "Basics/operating-system.h"
 #include "GeneralServer/AcceptorTcp.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
 #include "GeneralServer/AcceptorUnixDomain.h"

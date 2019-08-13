@@ -43,10 +43,11 @@
 #include "Basics/conversions.h"
 #include "Basics/fpconv.h"
 #include "Basics/hashes.h"
+#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Geo/GeoJson.h"
-#include "Geo/GeoParams.h"
-#include "Geo/GeoUtils.h"
+#include "Geo/Ellipsoid.h"
+#include "Geo/Utils.h"
 #include "Geo/ShapeContainer.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
@@ -218,7 +219,8 @@ void registerWarning(ExpressionContext* expressionContext,
 /// @brief register warning
 void registerWarning(ExpressionContext* expressionContext,
                      char const* functionName, int code) {
-  if (code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
+  if (code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH &&
+      code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH) {
     registerWarning(expressionContext, functionName, Result(code));
     return;
   }
@@ -1749,6 +1751,7 @@ AqlValue Functions::Reverse(ExpressionContext* expressionContext, transaction::M
 AqlValue Functions::First(ExpressionContext* expressionContext,
                           transaction::Methods*,
                           VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "FIRST";
 
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -1771,6 +1774,7 @@ AqlValue Functions::First(ExpressionContext* expressionContext,
 AqlValue Functions::Last(ExpressionContext* expressionContext,
                          transaction::Methods*,
                          VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "LAST";
 
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -1795,6 +1799,7 @@ AqlValue Functions::Last(ExpressionContext* expressionContext,
 AqlValue Functions::Nth(ExpressionContext* expressionContext,
                         transaction::Methods*,
                         VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "NTH";
 
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -2441,6 +2446,7 @@ void rtrimInternal(int32_t& startOffset, int32_t& endOffset, icu::UnicodeString&
 /// @brief function TRIM
 AqlValue Functions::Trim(ExpressionContext* expressionContext, transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "TRIM";
 
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -2498,6 +2504,7 @@ AqlValue Functions::Trim(ExpressionContext* expressionContext, transaction::Meth
 /// @brief function LTRIM
 AqlValue Functions::LTrim(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "LTRIM";
 
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -2538,6 +2545,7 @@ AqlValue Functions::LTrim(ExpressionContext* expressionContext, transaction::Met
 /// @brief function RTRIM
 AqlValue Functions::RTrim(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "RTRIM";
 
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -3709,6 +3717,7 @@ AqlValue Functions::Keep(ExpressionContext* expressionContext, transaction::Meth
 AqlValue Functions::Translate(ExpressionContext* expressionContext,
                               transaction::Methods* trx,
                               VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "TRANSLATE";
 
   AqlValue const& key = extractFunctionParameterValue(parameters, 0);
@@ -4215,9 +4224,9 @@ AqlValue Functions::Fnv64(ExpressionContext*, transaction::Methods* trx,
 
   ::appendAsString(trx, adapter, value);
 
-  uint64_t hash = TRI_FnvHashPointer(buffer->c_str(), buffer->length());
+  uint64_t hashval = TRI_FnvHashPointer(buffer->c_str(), buffer->length());
   char out[17];
-  size_t length = TRI_StringUInt64HexInPlace(hash, &out[0]);
+  size_t length = TRI_StringUInt64HexInPlace(hashval, &out[0]);
   return AqlValue(&out[0], length);
 }
 
@@ -4251,6 +4260,7 @@ AqlValue Functions::IsKey(ExpressionContext*, transaction::Methods* trx,
 AqlValue Functions::CountDistinct(ExpressionContext* expressionContext,
                                   transaction::Methods* trx,
                                   VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "COUNT_DISTINCT";
 
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -4281,6 +4291,7 @@ AqlValue Functions::CountDistinct(ExpressionContext* expressionContext,
 /// @brief function UNIQUE
 AqlValue Functions::Unique(ExpressionContext* expressionContext, transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "UNIQUE";
 
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -4322,6 +4333,7 @@ AqlValue Functions::Unique(ExpressionContext* expressionContext, transaction::Me
 AqlValue Functions::SortedUnique(ExpressionContext* expressionContext,
                                  transaction::Methods* trx,
                                  VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "SORTED_UNIQUE";
 
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -4356,6 +4368,7 @@ AqlValue Functions::SortedUnique(ExpressionContext* expressionContext,
 /// @brief function SORTED
 AqlValue Functions::Sorted(ExpressionContext* expressionContext, transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "SORTED";
 
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -4698,8 +4711,14 @@ AqlValue Functions::GeoDistance(ExpressionContext* expressionContext,
     ::registerWarning(expressionContext, "GEO_DISTANCE", res);
     return AqlValue(AqlValueHintNull());
   }
-
-  return ::numberValue(shape1.distanceFrom(shape2.centroid()), true);
+  
+  if (parameters.size() > 2 && parameters[2].isString()) {
+    VPackValueLength len;
+    const char* ptr = parameters[2].slice().getStringUnchecked(len);
+    geo::Ellipsoid const& e = geo::utils::ellipsoidFromString(ptr, len);
+    return ::numberValue(shape1.distanceFromCentroid(shape2.centroid(), e), true);
+  }
+  return ::numberValue(shape1.distanceFromCentroid(shape2.centroid()), true);
 }
 
 /// @brief function GEO_CONTAINS
@@ -5168,6 +5187,7 @@ AqlValue Functions::GeoMultiLinestring(ExpressionContext* expressionContext,
 /// @brief function FLATTEN
 AqlValue Functions::Flatten(ExpressionContext* expressionContext, transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "FLATTEN";
 
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
@@ -5201,6 +5221,7 @@ AqlValue Functions::Flatten(ExpressionContext* expressionContext, transaction::M
 /// @brief function ZIP
 AqlValue Functions::Zip(ExpressionContext* expressionContext, transaction::Methods* trx,
                         VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "ZIP";
 
   AqlValue const& keys = extractFunctionParameterValue(parameters, 0);
@@ -5341,6 +5362,7 @@ AqlValue Functions::ParseIdentifier(ExpressionContext* expressionContext,
 /// @brief function Slice
 AqlValue Functions::Slice(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "SLICE";
 
   AqlValue const& baseArray = extractFunctionParameterValue(parameters, 0);
@@ -5464,6 +5486,7 @@ AqlValue Functions::Minus(ExpressionContext* expressionContext, transaction::Met
 /// @brief function Document
 AqlValue Functions::Document(ExpressionContext* expressionContext, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "DOCUMENT";
 
   if (parameters.size() == 1) {
@@ -5854,6 +5877,7 @@ AqlValue Functions::FirstList(ExpressionContext*, transaction::Methods* trx,
 /// @brief function PUSH
 AqlValue Functions::Push(ExpressionContext* expressionContext, transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "PUSH";
 
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
@@ -5899,6 +5923,7 @@ AqlValue Functions::Push(ExpressionContext* expressionContext, transaction::Meth
 /// @brief function POP
 AqlValue Functions::Pop(ExpressionContext* expressionContext, transaction::Methods* trx,
                         VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "POP";
 
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
@@ -5929,6 +5954,7 @@ AqlValue Functions::Pop(ExpressionContext* expressionContext, transaction::Metho
 /// @brief function APPEND
 AqlValue Functions::Append(ExpressionContext* expressionContext, transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "APPEND";
 
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
@@ -5996,6 +6022,7 @@ AqlValue Functions::Append(ExpressionContext* expressionContext, transaction::Me
 /// @brief function UNSHIFT
 AqlValue Functions::Unshift(ExpressionContext* expressionContext, transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "UNSHIFT";
 
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
@@ -6041,6 +6068,7 @@ AqlValue Functions::Unshift(ExpressionContext* expressionContext, transaction::M
 /// @brief function SHIFT
 AqlValue Functions::Shift(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "SHIFT";
 
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
@@ -6077,6 +6105,7 @@ AqlValue Functions::Shift(ExpressionContext* expressionContext, transaction::Met
 AqlValue Functions::RemoveValue(ExpressionContext* expressionContext,
                                 transaction::Methods* trx,
                                 VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "REMOVE_VALUE";
 
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
@@ -6132,6 +6161,7 @@ AqlValue Functions::RemoveValue(ExpressionContext* expressionContext,
 AqlValue Functions::RemoveValues(ExpressionContext* expressionContext,
                                  transaction::Methods* trx,
                                  VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "REMOVE_VALUES";
 
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
@@ -6172,6 +6202,7 @@ AqlValue Functions::RemoveValues(ExpressionContext* expressionContext,
 AqlValue Functions::RemoveNth(ExpressionContext* expressionContext,
                               transaction::Methods* trx,
                               VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "REMOVE_NTH";
 
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
@@ -6253,6 +6284,7 @@ AqlValue Functions::CurrentUser(ExpressionContext*, transaction::Methods* trx,
 /// @brief function COLLECTION_COUNT
 AqlValue Functions::CollectionCount(ExpressionContext*, transaction::Methods* trx,
                                     VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "COLLECTION_COUNT";
 
   AqlValue const& element = extractFunctionParameterValue(parameters, 0);
@@ -6522,6 +6554,7 @@ AqlValue Functions::Percentile(ExpressionContext* expressionContext,
 /// @brief function RANGE
 AqlValue Functions::Range(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "RANGE";
 
   AqlValue const& left = extractFunctionParameterValue(parameters, 0);
@@ -6565,6 +6598,7 @@ AqlValue Functions::Range(ExpressionContext* expressionContext, transaction::Met
 /// @brief function POSITION
 AqlValue Functions::Position(ExpressionContext* expressionContext, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "POSITION";
 
   AqlValue const& list = extractFunctionParameterValue(parameters, 0);
@@ -6761,6 +6795,7 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
 
 AqlValue Functions::Assert(ExpressionContext* expressionContext, transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "ASSERT";
 
   auto const expr = extractFunctionParameterValue(parameters, 0);
@@ -6779,6 +6814,7 @@ AqlValue Functions::Assert(ExpressionContext* expressionContext, transaction::Me
 
 AqlValue Functions::Warn(ExpressionContext* expressionContext, transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
   static char const* AFN = "WARN";
 
   auto const expr = extractFunctionParameterValue(parameters, 0);

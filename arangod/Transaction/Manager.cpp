@@ -25,11 +25,14 @@
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -572,7 +575,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
       } else {
         std::string msg("transaction was already ");
         msg.append(statusString(mtrx.finalStatus));
-        return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION, msg);
+        return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION, std::move(msg));
       }
     }
 

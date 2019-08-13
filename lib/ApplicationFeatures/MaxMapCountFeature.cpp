@@ -26,6 +26,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/process-utils.h"
+#include "Basics/system-functions.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 

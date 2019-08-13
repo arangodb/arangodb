@@ -21,14 +21,25 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClientConnection.h"
+#include <errno.h>
+#include <string>
+
+#include "Basics/Common.h"
+#include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_WINSOCK2_H
 #include <WS2tcpip.h>
 #include <WinSock2.h>
 #endif
 
-#include <sys/types.h>
+#include "ClientConnection.h"
+
+#include "Basics/StringBuffer.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Basics/socket-utils.h"
+#include "Basics/voc-errors.h"
+#include "Endpoint/Endpoint.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

@@ -28,7 +28,9 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Basics/system-functions.h"
 #include "Logger/Logger.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
@@ -369,7 +371,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
   while (cIter->hasMore()) {
     // needs to be a strings because rocksdb::Slice gets invalidated
     std::string lowKey, highKey;
-    uint64_t hash = 0x012345678;
+    uint64_t hashval = 0x012345678;
 
     uint64_t k = chunkSize;
     while (k-- > 0 && cIter->hasMore()) {
@@ -407,10 +409,10 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
       // restricted to strings
       tmpHashBuilder.clear();
       tmpHashBuilder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
-      hash ^= tmpHashBuilder.slice().hashString();
+      hashval ^= tmpHashBuilder.slice().hashString();
       tmpHashBuilder.clear();
       tmpHashBuilder.add(TRI_RidToValuePair(docRev, &ridBuffer[0]));
-      hash ^= tmpHashBuilder.slice().hashString();
+      hashval ^= tmpHashBuilder.slice().hashString();
 
       cIter->iter->Next();
     };
@@ -423,7 +425,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
     b.add(VPackValue(VPackValueType::Object));
     b.add("low", VPackValue(lowKey));
     b.add("high", VPackValue(highKey));
-    b.add("hash", VPackValue(std::to_string(hash)));
+    b.add("hash", VPackValue(std::to_string(hashval)));
     b.close();
   }
   b.close();

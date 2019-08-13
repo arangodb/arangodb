@@ -36,6 +36,7 @@
 #include <s2/s2polyline.h>
 
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
 #include "Geo/GeoParams.h"
 #include "Geo/S2/S2MultiPointRegion.h"
 #include "Geo/S2/S2MultiPolyline.h"

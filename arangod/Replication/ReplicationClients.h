@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/debugging.h"
 #include "Replication/SyncerId.h"
 
 namespace arangodb {

@@ -31,6 +31,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
+#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterComm.h"
@@ -3709,8 +3710,6 @@ arangodb::Result lockDBServerTransactions(
 
   std::string const url = apiStr + "lock";
 
-  std::unordered_map<std::string, std::string> headers;
-
   VPackBuilder lock;
   {
     VPackObjectBuilder o(&lock);
@@ -3821,7 +3820,6 @@ arangodb::Result unlockDBServerTransactions(
     lock.add("id", VPackValue(backupId));
   }
 
-  std::unordered_map<std::string, std::string> headers;
   auto body = std::make_shared<std::string const>(lock.toJson());
   std::vector<ClusterCommRequest> requests;
   for (auto const& dbServer : lockedServers) {
@@ -4252,7 +4250,6 @@ arangodb::Result listHotBackupsOnCoordinator(
 arangodb::Result deleteHotBackupsOnCoordinator(
   VPackSlice const payload, VPackBuilder& report) {
 
-  std::unordered_map<std::string, BackupMeta> listIds;
   std::vector<std::string> deleted;
   VPackBuilder dummy;
   arangodb::Result result;

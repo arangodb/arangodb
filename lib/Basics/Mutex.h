@@ -25,12 +25,12 @@
 #ifndef ARANGODB_BASICS_MUTEX_H
 #define ARANGODB_BASICS_MUTEX_H 1
 
-#include "Basics/Common.h"
+#include "Basics/operating-system.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #define ARANGO_ENABLE_DEADLOCK_DETECTION
 #if defined(__SANITIZE_THREAD__)
-// Avoid fals positives with ThreadSanitizer
+// Avoid false positives with ThreadSanitizer
 #undef ARANGO_ENABLE_DEADLOCK_DETECTION
 #elif defined(__has_feature)
 #if __has_feature(thread_sanitizer)

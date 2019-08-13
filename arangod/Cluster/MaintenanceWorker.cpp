@@ -21,10 +21,14 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <thread>
+
 #include "MaintenanceWorker.h"
 
 #include "Cluster/MaintenanceFeature.h"
-#include "lib/Logger/Logger.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 namespace arangodb {
 

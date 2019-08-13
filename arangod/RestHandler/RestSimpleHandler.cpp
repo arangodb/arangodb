@@ -167,7 +167,7 @@ RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 RestStatus RestSimpleHandler::handleQueryResult() {
   if (_queryResult.result.fail()) {
     if (_queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
-        (_queryResult.result.is(TRI_ERROR_QUERY_KILLED && wasCanceled()))) {
+        (_queryResult.result.is(TRI_ERROR_QUERY_KILLED) && wasCanceled())) {
       generateError(GeneralResponse::responseCode(TRI_ERROR_REQUEST_CANCELED),
                     TRI_ERROR_REQUEST_CANCELED);
     } else {

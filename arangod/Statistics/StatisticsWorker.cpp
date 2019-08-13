@@ -34,7 +34,9 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TtlFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -926,11 +928,11 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   // export v8 statistics
   builder.add("v8Context", VPackValue(VPackValueType::Object));
   V8DealerFeature::Statistics v8Counters{};
-  std::vector<V8DealerFeature::MemoryStatistics> memoryStatistics;
+  // std::vector<V8DealerFeature::MemoryStatistics> memoryStatistics;
   // V8 may be turned off on a server
   if (dealer && dealer->isEnabled()) {
     v8Counters = dealer->getCurrentContextNumbers();
-    memoryStatistics = dealer->getCurrentMemoryNumbers();
+    // see below: memoryStatistics = dealer->getCurrentMemoryNumbers();
   }
   builder.add("available", VPackValue(v8Counters.available));
   builder.add("busy", VPackValue(v8Counters.busy));

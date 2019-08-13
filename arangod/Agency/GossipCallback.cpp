@@ -24,6 +24,7 @@
 #include "GossipCallback.h"
 
 #include "Agency/Agent.h"
+#include "Basics/application-exit.h"
 
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
@@ -50,7 +51,6 @@ bool GossipCallback::operator()(arangodb::ClusterCommResult* res) {
         newLocation = res->result->getHeaderField("location", found);
 
         if (found) {
-          std::string ep;
           if (newLocation.compare(0, 5, "https") == 0) {
             newLocation = newLocation.replace(0, 5, "ssl");
           } else if (newLocation.compare(0, 4, "http") == 0) {

@@ -29,6 +29,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/StringRef.h>
 
+#include "Basics/voc-errors.h"
+
 namespace arangodb {
 namespace rocksutils {
 

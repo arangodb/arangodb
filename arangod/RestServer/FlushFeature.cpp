@@ -27,10 +27,11 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
-#include "Basics/encoding.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RocksDBUtils.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
+#include "Basics/encoding.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesDatafile.h"
