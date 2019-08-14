@@ -623,42 +623,133 @@ endif ()
 #endif()
 
 set(ARANGOD_SOURCES_PART1
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Aql/TraversalNodeEE.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Encryption/EncryptionFeature.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Ldap/LdapAuthenticationHandler.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Ldap/LdapFeature.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/RClone/RClone.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/RocksDBEngine/RocksDBEngineEE.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/VocBase/LogicalCollectionEE.cpp
   Actions/actions.cpp
   Agency/AgentConfiguration.cpp
   Agency/ResignLeadership.cpp
   Agency/StoreCallback.cpp
+  Aql/Aggregator.cpp
+  Aql/AllRowsFetcher.cpp
+  Aql/AqlFunctionFeature.cpp
+  Aql/AqlItemBlock.cpp
+  Aql/AqlItemBlockManager.cpp
+  Aql/AqlItemBlockUtils.cpp
   Aql/AqlResult.cpp
+  Aql/AqlTransaction.cpp
+  Aql/AqlValue.cpp
   Aql/Arithmetic.cpp
+  Aql/Ast.cpp
+  Aql/AstNode.cpp
+  Aql/AttributeAccessor.cpp
+  Aql/BaseExpressionContext.cpp
   Aql/BindParameters.cpp
+  Aql/BlockCollector.cpp
+  Aql/BlocksWithClients.cpp
+  Aql/CalculationExecutor.cpp
+  Aql/ClusterNodes.cpp
+  Aql/CollectNode.cpp
   Aql/CollectOptions.cpp
+  Aql/Collection.cpp
+  Aql/CollectionAccessingNode.cpp
+  Aql/Collections.cpp
+  Aql/Condition.cpp
+  Aql/ConditionFinder.cpp
   Aql/ConstFetcher.cpp
+  Aql/ConstrainedSortExecutor.cpp
   Aql/CountCollectExecutor.cpp
+  Aql/DependencyProxy.cpp
+  Aql/DistinctCollectExecutor.cpp
+  Aql/DistributeExecutor.cpp
   Aql/DocumentProducingNode.cpp
+  Aql/EngineInfoContainerCoordinator.cpp
+  Aql/EngineInfoContainerDBServer.cpp
+  Aql/EnumerateCollectionExecutor.cpp
+  Aql/EnumerateListExecutor.cpp
+  Aql/ExecutionBlock.cpp
+  Aql/ExecutionBlockImpl.cpp
+  Aql/ExecutionEngine.cpp
+  Aql/ExecutionNode.cpp
+  Aql/ExecutionPlan.cpp
+  Aql/ExecutionState.cpp
   Aql/ExecutionStats.cpp
+  Aql/ExecutorExpressionContext.cpp
   Aql/ExecutorInfos.cpp
+  Aql/Expression.cpp
+  Aql/FilterExecutor.cpp
+  Aql/FixedVarExpressionContext.cpp
   Aql/Function.cpp
+  Aql/Functions.cpp
+  Aql/GraphNode.cpp
+  Aql/Graphs.cpp
+  Aql/HashedCollectExecutor.cpp
+  Aql/IResearchViewExecutor.cpp
+  Aql/IResearchViewNode.cpp
+  Aql/IResearchViewOptimizerRules.cpp
+  Aql/IdExecutor.cpp
+  Aql/InAndOutRowExpressionContext.cpp
+  Aql/IndexExecutor.cpp
   Aql/IndexHint.cpp
+  Aql/IndexNode.cpp
+  Aql/InputAqlItemRow.cpp
+  Aql/KShortestPathsExecutor.cpp
+  Aql/KShortestPathsNode.cpp
+  Aql/LimitExecutor.cpp
+  Aql/ModificationExecutor.cpp
+  Aql/ModificationExecutorTraits.cpp
+  Aql/ModificationNodes.cpp
   Aql/ModificationOptions.cpp
   Aql/MultiDependencySingleRowFetcher.cpp
+  Aql/NoResultsExecutor.cpp
   Aql/NodeFinder.cpp
+  Aql/Optimizer.cpp
+  Aql/OptimizerRules.cpp
+  Aql/OptimizerRulesCluster.cpp
+  Aql/OptimizerRulesFeature.cpp
+  Aql/OptimizerRulesReplaceFunctions.cpp
+  Aql/OutputAqlItemRow.cpp
+  Aql/Parser.cpp
+  Aql/PlanCache.cpp
+  Aql/PruneExpressionEvaluator.cpp
   Aql/Quantifier.cpp
+  Aql/Query.cpp
+  Aql/QueryCache.cpp
+  Aql/QueryCursor.cpp
   Aql/QueryExecutionState.cpp
+  Aql/QueryExpressionContext.cpp
+  Aql/QueryList.cpp
+  Aql/QueryOptions.cpp
+  Aql/QueryProfile.cpp
+  Aql/QueryRegistry.cpp
+  Aql/QueryResources.cpp
   Aql/QueryString.cpp
   Aql/Range.cpp
+  Aql/RegexCache.cpp
+  Aql/RemoteExecutor.cpp
+  Aql/RestAqlHandler.cpp
   Aql/ReturnExecutor.cpp
+  Aql/ScatterExecutor.cpp
   Aql/Scopes.cpp
   Aql/SharedAqlItemBlockPtr.cpp
+  Aql/SharedQueryState.cpp
   Aql/ShortStringStorage.cpp
+  Aql/ShortestPathExecutor.cpp
+  Aql/ShortestPathNode.cpp
+  Aql/SingleRemoteModificationExecutor.cpp
+  Aql/SingleRowFetcher.cpp
+  Aql/SortCondition.cpp
+  Aql/SortExecutor.cpp
+  Aql/SortNode.cpp
   Aql/SortRegister.cpp
+  Aql/SortedCollectExecutor.cpp
+  Aql/SortingGatherExecutor.cpp
+  Aql/SubqueryExecutor.cpp
+  Aql/TraversalConditionFinder.cpp
+  Aql/TraversalExecutor.cpp
+  Aql/TraversalNode.cpp
   Aql/V8Executor.cpp
   Aql/Variable.cpp Aql/VariableGenerator.cpp
+  Aql/WakeupQueryCallback.cpp
+  Aql/grammar.cpp
+  Aql/tokens.cpp
   Auth/Common.cpp
   Cache/BucketState.cpp
   Cache/CachedValue.cpp
@@ -671,11 +762,27 @@ set(ARANGOD_SOURCES_PART1
   Cluster/ActionDescription.cpp
   Cluster/ClusterCollectionCreationInfo.cpp
   Cluster/ClusterHelpers.cpp
+  Cluster/ClusterTraverser.cpp
   Cluster/TakeoverShardLeadership.cpp
   GeneralServer/AcceptorTcp.cpp GeneralServer/Acceptor.cpp GeneralServer/GeneralServer.cpp
+  GeneralServer/AcceptorUnixDomain.cpp
+  GeneralServer/CommTask.cpp
+  GeneralServer/GeneralCommTask.cpp
+  GeneralServer/HttpCommTask.cpp
   GeneralServer/IoContext.cpp
   GeneralServer/RestHandlerFactory.cpp
+  GeneralServer/VstCommTask.cpp
+  Graph/AttributeWeightShortestPathFinder.cpp
+  Graph/BreadthFirstEnumerator.cpp
+  Graph/ConstantWeightShortestPathFinder.cpp
+  Graph/KShortestPathsFinder.cpp
+  Graph/NeighborsEnumerator.cpp
+  Graph/PathEnumerator.cpp
+  Graph/ShortestPathFinder.cpp
+  Graph/ShortestPathOptions.cpp
   Graph/ShortestPathResult.cpp
+  Graph/SingleServerTraverser.cpp
+  Graph/Traverser.cpp
   MMFiles/MMFilesCompactionFeature.cpp
   MMFiles/MMFilesDatafileStatistics.cpp
   MMFiles/MMFilesDatafileStatisticsContainer.cpp
@@ -695,15 +802,7 @@ set(ARANGOD_SOURCES_PART1
   RestServer/EndpointFeature.cpp
   RestServer/ServerIdFeature.cpp
   RestServer/TraverserEngineRegistryFeature.cpp
-  RocksDBEngine/RocksDBComparator.cpp
-  RocksDBEngine/RocksDBEventListener.cpp
-  RocksDBEngine/RocksDBFormat.cpp
-  RocksDBEngine/RocksDBKey.cpp
-  RocksDBEngine/RocksDBLogValue.cpp
-  RocksDBEngine/RocksDBReplicationCommon.cpp
-  RocksDBEngine/RocksDBSyncThread.cpp
-  RocksDBEngine/RocksDBThrottle.cpp
-  RocksDBEngine/RocksDBTypes.cpp
+  RestServer/VocbaseContext.cpp
   Scheduler/Scheduler.cpp
   Statistics/ServerStatistics.cpp
   StorageEngine/TransactionCollection.cpp
@@ -715,155 +814,9 @@ set(ARANGOD_SOURCES_PART1
   Utils/UrlHelper.cpp
   V8Server/v8-user-structures.cpp
   VocBase/KeyLockInfo.cpp
-
-
-  Aql/Aggregator.cpp
-  Aql/AqlFunctionFeature.cpp
-  Aql/AqlItemBlock.cpp
-  Aql/AqlItemBlockManager.cpp
-  Aql/AqlItemBlockUtils.cpp
-  Aql/AqlTransaction.cpp
-  Aql/AqlValue.cpp
-  Aql/Ast.cpp
-  Aql/AstNode.cpp
-  Aql/AttributeAccessor.cpp
-  Aql/BlockCollector.cpp
-  Aql/BlocksWithClients.cpp
-  Aql/CalculationExecutor.cpp
-  Aql/ClusterNodes.cpp
-  Aql/CollectNode.cpp
-  Aql/Collection.cpp
-  Aql/CollectionAccessingNode.cpp
-  Aql/Collections.cpp
-  Aql/Condition.cpp
-  Aql/DistinctCollectExecutor.cpp
-  Aql/DistributeExecutor.cpp
-  Aql/EngineInfoContainerCoordinator.cpp
-  Aql/EngineInfoContainerDBServer.cpp
-  Aql/EnumerateCollectionExecutor.cpp
-  Aql/EnumerateListExecutor.cpp
-  Aql/ExecutionBlock.cpp
-  Aql/ExecutionEngine.cpp
-  Aql/ExecutionNode.cpp
-  Aql/ExecutionPlan.cpp
-  Aql/Expression.cpp
-  Aql/FilterExecutor.cpp
-  Aql/FixedVarExpressionContext.cpp
-  Aql/Functions.cpp
-  Aql/GraphNode.cpp
-  Aql/Graphs.cpp
-  Aql/HashedCollectExecutor.cpp
-  Aql/IResearchViewExecutor.cpp
-  Aql/IResearchViewNode.cpp
-  Aql/IResearchViewOptimizerRules.cpp
-  Aql/IdExecutor.cpp
-  Aql/InAndOutRowExpressionContext.cpp
-  Aql/IndexExecutor.cpp
-  Aql/IndexNode.cpp
-  Aql/InputAqlItemRow.cpp
-  Aql/KShortestPathsExecutor.cpp
-  Aql/KShortestPathsNode.cpp
-  Aql/LimitExecutor.cpp
-  Aql/ModificationNodes.cpp
-  Aql/Optimizer.cpp
-  Aql/OptimizerRules.cpp
-  Aql/OptimizerRulesCluster.cpp
-  Aql/OptimizerRulesFeature.cpp
-  Aql/OptimizerRulesReplaceFunctions.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Aql/OptimizerRulesEE.cpp
-  Aql/Parser.cpp
-  Aql/PlanCache.cpp
-  Aql/PruneExpressionEvaluator.cpp
-  Aql/Query.cpp
-  Aql/QueryCache.cpp
-  Aql/QueryCursor.cpp
-  Aql/QueryExpressionContext.cpp
-  Aql/QueryList.cpp
-  Aql/QueryOptions.cpp
-  Aql/QueryProfile.cpp
-  Aql/QueryRegistry.cpp
-  Aql/QueryResources.cpp
-  Aql/RegexCache.cpp
-  Aql/RemoteExecutor.cpp
-  Aql/RestAqlHandler.cpp
-  Aql/ScatterExecutor.cpp
-  Aql/SharedQueryState.cpp
-  Aql/ShortestPathExecutor.cpp
-  Aql/ShortestPathNode.cpp
-  Aql/SortCondition.cpp
-  Aql/SortExecutor.cpp
-  Aql/SortNode.cpp
-  Aql/SortedCollectExecutor.cpp
-  Aql/SortingGatherExecutor.cpp
-  Aql/SubqueryExecutor.cpp
-  Aql/TraversalConditionFinder.cpp
-  Aql/TraversalExecutor.cpp
-  Aql/TraversalNode.cpp
-  Aql/WakeupQueryCallback.cpp
-  Aql/grammar.cpp
-  Aql/tokens.cpp
-  Graph/KShortestPathsFinder.cpp
-  Graph/AttributeWeightShortestPathFinder.cpp
-  Graph/ConstantWeightShortestPathFinder.cpp
-  Graph/ShortestPathFinder.cpp
-  Graph/ShortestPathOptions.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Cluster/SmartGraphTraverser.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Graph/SmartGraphTraverserOptions.cpp
-  Cluster/ClusterTraverser.cpp
-  Graph/SingleServerTraverser.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Aql/EngineInfoContainerDBServerEE.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Aql/EnumerateCollectionExecutorEE.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Aql/SmartGraph.cpp
-  Graph/Traverser.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Transaction/IgnoreNoAccessAqlTransaction.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Cluster/SmartBreadthFirstPathEnumerator.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Cluster/SmartDepthFirstPathEnumerator.cpp
-  Graph/NeighborsEnumerator.cpp
-  Graph/PathEnumerator.cpp
-  Graph/BreadthFirstEnumerator.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Indexes/InaccessibleIndex.cpp
-
-  Aql/AllRowsFetcher.cpp
-  Aql/BaseExpressionContext.cpp
-  Aql/ConditionFinder.cpp
-  Aql/ConstrainedSortExecutor.cpp
-  Aql/DependencyProxy.cpp
-  Aql/ExecutionBlockImpl.cpp
-  Aql/ExecutionState.cpp
-  Aql/ExecutorExpressionContext.cpp
-  Aql/ModificationExecutor.cpp
-  Aql/ModificationExecutorTraits.cpp
-  Aql/NoResultsExecutor.cpp
-  Aql/OutputAqlItemRow.cpp
-  Aql/SingleRemoteModificationExecutor.cpp
-  Aql/SingleRowFetcher.cpp
-  GeneralServer/AcceptorUnixDomain.cpp
-  GeneralServer/HttpCommTask.cpp
-  GeneralServer/GeneralCommTask.cpp
-  GeneralServer/CommTask.cpp
-  GeneralServer/VstCommTask.cpp
-  RestServer/VocbaseContext.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/RClone/RCloneFeature.cpp
 )
 
 set(ARANGOD_SOURCES_PART2
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Audit/AuditFeature.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Audit/EventsEE.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Auth/UserManagerEE.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Cluster/ClusterMethodsEE.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Cluster/SmartGraphEngine.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Cluster/TraverserEngineRegistryEE.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Graph/GraphManagerEE.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/RestHandler/RestHotBackupHandler.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/RocksDBEngine/RocksDBHotBackup.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/RocksDBEngine/RocksDBHotBackupEE.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Sharding/ShardingStrategyEE.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/StorageEngine/HotBackupFeature.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Transaction/MethodsEE.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/VocBase/Methods/CollectionsEE.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/VocBase/Methods/IndexesEE.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/VocBase/SmartVertexCollection.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/VocBase/VirtualCollection.cpp
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
   Agency/ActiveFailoverJob.cpp
@@ -1100,40 +1053,6 @@ set(ARANGOD_SOURCES_PART2
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/ViewTypesFeature.cpp
-  RocksDBEngine/RocksDBBackgroundThread.cpp
-  RocksDBEngine/RocksDBBuilderIndex.cpp
-  RocksDBEngine/RocksDBCollection.cpp
-  RocksDBEngine/RocksDBCollectionMeta.cpp
-  RocksDBEngine/RocksDBCommon.cpp
-  RocksDBEngine/RocksDBEdgeIndex.cpp
-  RocksDBEngine/RocksDBEngine.cpp
-  RocksDBEngine/RocksDBFulltextIndex.cpp
-  RocksDBEngine/RocksDBGeoIndex.cpp
-  RocksDBEngine/RocksDBIncrementalSync.cpp
-  RocksDBEngine/RocksDBIndex.cpp
-  RocksDBEngine/RocksDBIndexFactory.cpp
-  RocksDBEngine/RocksDBIterators.cpp
-  RocksDBEngine/RocksDBKeyBounds.cpp
-  RocksDBEngine/RocksDBMethods.cpp
-  RocksDBEngine/RocksDBOptimizerRules.cpp
-  RocksDBEngine/RocksDBPrimaryIndex.cpp
-  RocksDBEngine/RocksDBRecoveryManager.cpp
-  RocksDBEngine/RocksDBReplicationContext.cpp
-  RocksDBEngine/RocksDBReplicationManager.cpp
-  RocksDBEngine/RocksDBReplicationTailing.cpp
-  RocksDBEngine/RocksDBRestCollectionHandler.cpp
-  RocksDBEngine/RocksDBRestExportHandler.cpp
-  RocksDBEngine/RocksDBRestHandlers.cpp
-  RocksDBEngine/RocksDBRestReplicationHandler.cpp
-  RocksDBEngine/RocksDBRestWalHandler.cpp
-  RocksDBEngine/RocksDBSettingsManager.cpp
-  RocksDBEngine/RocksDBTransactionCollection.cpp
-  RocksDBEngine/RocksDBTransactionState.cpp
-  RocksDBEngine/RocksDBTtlIndex.cpp
-  RocksDBEngine/RocksDBUpgrade.cpp
-  RocksDBEngine/RocksDBV8Functions.cpp
-  RocksDBEngine/RocksDBVPackIndex.cpp
-  RocksDBEngine/RocksDBValue.cpp
   Scheduler/SchedulerFeature.cpp
   Scheduler/SupervisedScheduler.cpp
   Sharding/ShardDistributionReporter.cpp
@@ -1206,9 +1125,6 @@ set(ARANGOD_SOURCES_PART2
 )
 
 set(ARANGOD_SOURCES_PART3
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/RestServer/arangodEE.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Ssl/SslServerFeatureEE.cpp
-  ${PROJECT_SOURCE_DIR}/enterprise/Enterprise/Transaction/IgnoreNoAccessMethods.cpp
   GeneralServer/Task.cpp
   GeoIndex/Near.cpp
   MMFiles/MMFilesWalAccess.cpp
@@ -1240,8 +1156,6 @@ set(ARANGOD_SOURCES_PART3
   RestServer/LanguageCheckFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/ScriptFeature.cpp
-  RocksDBEngine/RocksDBBackgroundErrorListener.cpp
-  RocksDBEngine/RocksDBWalAccess.cpp
   StorageEngine/WalAccess.cpp
   V8Server/FoxxQueuesFeature.cpp
 )
@@ -1255,8 +1169,16 @@ include(MMFiles/CMakeLists.txt)
 #  ${ARANGOD_SOURCES_PART2}
 #  ${ARANGOD_SOURCES_PART3}
 #)
-add_library(arangoserver_part1 STATIC ${ARANGOD_SOURCES_PART1})
-add_library(arangoserver_part2 STATIC ${ARANGOD_SOURCES_PART2} ${ARANGOD_SOURCES_PART3})
+add_library(arangoserver_part1 STATIC
+  ${ARANGOD_SOURCES_PART1}
+  ${ADDITIONAL_LIB_ARANGOSERVER_PART1_SOURCES}
+)
+add_library(arangoserver_part2 STATIC
+  ${ARANGOD_SOURCES_PART2}
+  ${ADDITIONAL_LIB_ARANGOSERVER_PART2_SOURCES}
+  ${ARANGOD_SOURCES_PART3}
+  ${ADDITIONAL_LIB_ARANGOSERVER_PART3_SOURCES}
+)
 #add_library(arangoserver_part3 STATIC ${ARANGOD_SOURCES_PART3})
 
 add_library(arangoserver STATIC
@@ -1297,10 +1219,11 @@ add_library(llhttp STATIC
   ${LLHTTP_SOURCES}
 )
 
-target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
-target_include_directories(arango_mmfiles PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
-#target_link_libraries(arango_mmfiles llhttp)
+#target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
 target_include_directories(llhttp PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
+
+target_link_libraries(arango_mmfiles llhttp)
+target_link_libraries(arango_rocksdb arangoserver_part1)
 
 
 target_link_libraries(arangoserver
@@ -1323,9 +1246,11 @@ target_link_libraries(arangoserver
 
 if (USE_ENTERPRISE)
   target_compile_definitions(arangoserver PUBLIC "-DUSE_ENTERPRISE=1")
-  target_compile_definitions(arangoserver_part1 PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+  target_compile_definitions(arangoserver_part1 PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arangoserver_part1 PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+  target_compile_definitions(arangoserver_part2 PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(arangoserver_part2 PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
   target_compile_definitions(arango_mmfiles PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango_mmfiles PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
   target_compile_definitions(arango_rocksdb PUBLIC "-DUSE_ENTERPRISE=1")
@@ -1379,7 +1304,7 @@ if(MSVC)
   target_compile_options(arangoserver PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arangoserver_part1 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arangoserver_part2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  target_compile_options(arangoserver_part3 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+#  target_compile_options(arangoserver_part3 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arango_mmfiles PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arangod PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
@@ -1388,7 +1313,7 @@ if (DARWIN)
   target_compile_options(arangoserver PRIVATE -Werror)
   target_compile_options(arangoserver_part1 PRIVATE -Werror)
   target_compile_options(arangoserver_part2 PRIVATE -Werror)
-  target_compile_options(arangoserver_part3 PRIVATE -Werror)
+#  target_compile_options(arangoserver_part3 PRIVATE -Werror)
   target_compile_options(arango_mmfiles PRIVATE -Werror)
   target_compile_options(arangod PRIVATE -Werror)
 endif()
