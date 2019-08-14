@@ -3,6 +3,11 @@ v3.5.1 (XXXX-XX-XX)
 
 * Fixed agency nodes to not create bogus keys on delete / observe / unobserve.
 
+* Fixed issue #9660: fix multiple plans processing during optimization of AQL query which uses
+  ArangoSearch scorers.
+  
+* Fixed issue #9679: improved error message for FULLTEXT function invocation failures.
+
 * Fixed error message "Invalid argument: assume_tracked is set but it is not tracked yet" when
   trying to write to the same keys in concurrent RocksDB transactions. This error will now be
   reported as a "Lock timeout" error, with error code 1200.
