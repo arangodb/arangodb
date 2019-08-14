@@ -1515,7 +1515,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
     if ((arangod.role !== "agent") && (arangod.role !== "single")) {
       const reply = download(arangod.url + '/_db/_system/_admin/server/id', '', makeAuthorizationHeaders(instanceInfo.authOpts));
       if (reply.error || reply.code !== 200) {
-        throw new Error("Server has no detecteable ID! " + JSON.stringify(reply) + "\n" + JSON.stringify(arangod));
+        throw new Error("Server has no detectable ID! " + JSON.stringify(reply) + "\n" + JSON.stringify(arangod));
       }
       let res = JSON.parse(reply.body);
       arangod.id = res['id'];
