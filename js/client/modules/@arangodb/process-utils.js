@@ -1059,7 +1059,7 @@ function checkInstanceAlive (instanceInfo, options) {
         return health.hasOwnProperty(arangod.id) && health[arangod.id].Status === "GOOD";
       }, true);
     } catch (x) {
-      print(Date() + "ClusterHealthCheck failed: " + x);
+      print(Date() + " ClusterHealthCheck failed: " + x);
     }
   }
   if (!rc) {
