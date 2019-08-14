@@ -1,21 +1,27 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Correct RocksDB statistics to report sums from column families instead of
+  single value from default column family.
+
 * Fixed agency nodes to not create bogus keys on delete / observe / unobserve.
 
-* Fixed issue #9660: fix multiple plans processing during optimization of AQL query which uses
-  ArangoSearch scorers.
-  
-* Fixed issue #9679: improved error message for FULLTEXT function invocation failures.
+* Fixed issue #9660: fix multiple plans processing during optimization of AQL
+  query which uses ArangoSearch scorers.
 
-* Fixed error message "Invalid argument: assume_tracked is set but it is not tracked yet" when
-  trying to write to the same keys in concurrent RocksDB transactions. This error will now be
-  reported as a "Lock timeout" error, with error code 1200.
+* Fixed issue #9679: improved error message for FULLTEXT function invocation
+  failures.
+
+* Fixed error message "Invalid argument: assume_tracked is set but it is not
+  tracked yet" when trying to write to the same keys in concurrent RocksDB
+  transactions. This error will now be reported as a "Lock timeout" error,
+  with error code 1200.
 
 * Added resign leadership job to supervision.
 
-* Hide MMFiles-specific information in web UI (in detail view of a collection) when the
-  storage engine is not MMFiles or when the information is not available.
+* Hide MMFiles-specific information in web UI (in detail view of a collection)
+  when the storage engine is not MMFiles or when the information is not
+  available.
 
 * Keep followers in sync if the old leader resigned and stopped writes.
 
@@ -25,8 +31,8 @@ v3.5.1 (XXXX-XX-XX)
   called earlier than expected by main thread.
 
 * Make arangosh not close the connection after the user aborts an operation.
-  This restores the same behavior as in previous versions of ArangoDB, which also
-  left the connection open.
+  This restores the same behavior as in previous versions of ArangoDB, which
+  also left the connection open.
 
 * Refactor maintenance to use a TakeoverShardLeadership job. This fixes a bug
   that a shard follower could have set the wrong leader for the shard locally.
