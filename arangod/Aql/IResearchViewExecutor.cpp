@@ -288,13 +288,15 @@ bool IResearchViewExecutorBase<Impl, Traits>::next(ReadContext& ctx) {
 
   IndexReadBufferEntry bufferEntry = _indexReadBuffer.pop_front();
 
-  if (impl.writeRow(ctx, bufferEntry)) {
-    // we read and wrote a document, return true. we don't know if there are more.
-    return true;  // do not change iterator if already reached limit
+  if (!impl.writeRow(ctx, bufferEntry)) {
+     LOG_TOPIC("550cd", WARN, arangodb::iresearch::TOPIC)
+            << "failed to read document primary key while reading document "
+               "from arangosearch view, doc_id '"
+            << _doc->value << "'";
   }
-
-  // no documents found, we're exhausted.
-  return false;
+  // return true anyway (maybe we failed to find document,
+  // but there may be more other alive docs)
+  return true;
 }
 
 template<typename Impl, typename Traits>
