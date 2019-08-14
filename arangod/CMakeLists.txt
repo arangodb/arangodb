@@ -613,14 +613,6 @@ endif ()
 #  VocBase/vocbase.cpp
 #  ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 #)
-#
-#if (USE_MAINTAINER_MODE)
-#  set(ARANGOD_SOURCES ${ARANGOD_SOURCES} RestHandler/RestTestHandler.cpp)
-#endif()
-#
-#if (NOT MSVC)
-#  set(ARANGOD_SOURCES ${ARANGOD_SOURCES} GeneralServer/AcceptorUnixDomain.cpp)
-#endif()
 
 set(ARANGOD_SOURCES_PART1
   Actions/actions.cpp
@@ -765,7 +757,6 @@ set(ARANGOD_SOURCES_PART1
   Cluster/ClusterTraverser.cpp
   Cluster/TakeoverShardLeadership.cpp
   GeneralServer/AcceptorTcp.cpp GeneralServer/Acceptor.cpp GeneralServer/GeneralServer.cpp
-  GeneralServer/AcceptorUnixDomain.cpp
   GeneralServer/CommTask.cpp
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/HttpCommTask.cpp
@@ -1033,7 +1024,6 @@ set(ARANGOD_SOURCES_PART2
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestStatusHandler.cpp
   RestHandler/RestTasksHandler.cpp
-  RestHandler/RestTestHandler.cpp
   RestHandler/RestTimeHandler.cpp
   RestHandler/RestTransactionHandler.cpp
   RestHandler/RestTtlHandler.cpp
@@ -1160,31 +1150,37 @@ set(ARANGOD_SOURCES_PART3
   V8Server/FoxxQueuesFeature.cpp
 )
 
+if (USE_MAINTAINER_MODE)
+  set(ARANGOD_SOURCES_PART2 ${ARANGOD_SOURCES_PART2} RestHandler/RestTestHandler.cpp)
+endif()
+
+if (NOT MSVC)
+  set(ARANGOD_SOURCES_PART1 ${ARANGOD_SOURCES_PART1} GeneralServer/AcceptorUnixDomain.cpp)
+endif()
+
 include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
 include(MMFiles/CMakeLists.txt)
 
-#add_library(arangoserver STATIC
-#  ${ARANGOD_SOURCES_PART1}
-#  ${ARANGOD_SOURCES_PART2}
-#  ${ARANGOD_SOURCES_PART3}
-#)
+
+add_library(arangoserver STATIC
+  # Just so it isn't empty, and we can still use "arangoserver" for now
+  empty.cpp
+)
+
 add_library(arangoserver_part1 STATIC
   ${ARANGOD_SOURCES_PART1}
   ${ADDITIONAL_LIB_ARANGOSERVER_PART1_SOURCES}
 )
+
 add_library(arangoserver_part2 STATIC
   ${ARANGOD_SOURCES_PART2}
   ${ADDITIONAL_LIB_ARANGOSERVER_PART2_SOURCES}
   ${ARANGOD_SOURCES_PART3}
   ${ADDITIONAL_LIB_ARANGOSERVER_PART3_SOURCES}
 )
-#add_library(arangoserver_part3 STATIC ${ARANGOD_SOURCES_PART3})
 
-add_library(arangoserver STATIC
-  # Just so it isn't empty, and we can still use "arangoserver" for now
-  empty.cpp
-)
+#add_library(arangoserver_part3 STATIC ${ARANGOD_SOURCES_PART3})
 
 target_link_libraries(arangoserver
   arangoserver_part1
