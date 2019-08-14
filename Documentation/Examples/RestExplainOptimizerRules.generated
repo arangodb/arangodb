@@ -30,7 +30,10 @@ x-content-type-options: nosniff
           <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"p"</span> 
         }, 
-        <span class="hljs-string">"projections"</span> : [ ], 
+        <span class="hljs-string">"projections"</span> : [ 
+          <span class="hljs-string">"name"</span>, 
+          <span class="hljs-string">"id"</span> 
+        ], 
         <span class="hljs-string">"producesResult"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
         <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
@@ -39,12 +42,13 @@ x-content-type-options: nosniff
         <span class="hljs-string">"indexCoversProjections"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"indexes"</span> : [ 
           { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"104659"</span>, 
+            <span class="hljs-string">"id"</span> : <span class="hljs-string">"69409"</span>, 
             <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
-            <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1636256398236975106"</span>, 
+            <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1641835673325404160"</span>, 
             <span class="hljs-string">"fields"</span> : [ 
               <span class="hljs-string">"id"</span> 
             ], 
+            <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
             <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
             <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
             <span class="hljs-string">"deduplicate"</span> : <span class="hljs-literal">true</span> 
@@ -213,7 +217,8 @@ x-content-type-options: nosniff
       <span class="hljs-string">"use-indexes"</span>, 
       <span class="hljs-string">"use-index-for-sort"</span>, 
       <span class="hljs-string">"remove-unnecessary-calculations-2"</span>, 
-      <span class="hljs-string">"move-calculations-down"</span> 
+      <span class="hljs-string">"move-calculations-down"</span>, 
+      <span class="hljs-string">"reduce-extraction-to-projection"</span> 
     ], 
     <span class="hljs-string">"collections"</span> : [ 
       { 
@@ -251,7 +256,7 @@ x-content-type-options: nosniff
   <span class="hljs-string">"cacheable"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"warnings"</span> : [ ], 
   <span class="hljs-string">"stats"</span> : { 
-    <span class="hljs-string">"rulesExecuted"</span> : <span class="hljs-number">35</span>, 
+    <span class="hljs-string">"rulesExecuted"</span> : <span class="hljs-number">36</span>, 
     <span class="hljs-string">"rulesSkipped"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"plansCreated"</span> : <span class="hljs-number">1</span> 
   }, 

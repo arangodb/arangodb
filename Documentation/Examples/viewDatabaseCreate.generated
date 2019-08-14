@@ -1,5 +1,5 @@
 arangosh&gt; v = db._createView(<span class="hljs-string">"example"</span>, <span class="hljs-string">"arangosearch"</span>);
-[ArangoView <span class="hljs-number">132473</span>, <span class="hljs-string">"example"</span> (type arangosearch)]
+[ArangoView <span class="hljs-number">87907</span>, <span class="hljs-string">"example"</span> (type arangosearch)]
 arangosh&gt; v.properties()
 { 
   <span class="hljs-string">"writebufferIdle"</span> : <span class="hljs-number">64</span>, 
@@ -15,9 +15,9 @@ arangosh&gt; v.properties()
     <span class="hljs-string">"segmentsMin"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"minScore"</span> : <span class="hljs-number">0</span> 
   }, 
-  <span class="hljs-string">"cleanupIntervalStep"</span> : <span class="hljs-number">10</span>, 
+  <span class="hljs-string">"cleanupIntervalStep"</span> : <span class="hljs-number">2</span>, 
   <span class="hljs-string">"links"</span> : { 
   }, 
-  <span class="hljs-string">"consolidationIntervalMsec"</span> : <span class="hljs-number">60000</span> 
+  <span class="hljs-string">"consolidationIntervalMsec"</span> : <span class="hljs-number">10000</span> 
 }
 arangosh&gt; db._dropView(<span class="hljs-string">"example"</span>)

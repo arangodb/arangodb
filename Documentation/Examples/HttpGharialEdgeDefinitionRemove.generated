@@ -2,7 +2,7 @@
 
 HTTP/<span class="hljs-number">1.1</span> Accepted
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _YzHmRPi--_
+etag: _ZG8Lc76--B
 x-content-type-options: nosniff
 
 { 
@@ -12,13 +12,14 @@ x-content-type-options: nosniff
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"social"</span>, 
     <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"minReplicationFactor"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"edgeDefinitions"</span> : [ ], 
     <span class="hljs-string">"orphanCollections"</span> : [ 
       <span class="hljs-string">"female"</span>, 
       <span class="hljs-string">"male"</span> 
     ], 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YzHmRPi--_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_ZG8Lc76--B"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/social"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"social"</span> 
   } 
