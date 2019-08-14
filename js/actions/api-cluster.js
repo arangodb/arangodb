@@ -114,6 +114,7 @@ actions.defineHttp({
         operations['/arango/Current/DBServers/' + serverId] = {'op': 'delete'};
         operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
         operations['/arango/Target/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
+        operations['/arango/Current/ServersKnown/' + serverId] = {'op': 'delete'};
         operations['/arango/Target/RemovedServers/' + serverId] = {'op': 'set', 'new': (new Date()).toISOString()};
 
         try {
@@ -904,6 +905,105 @@ actions.defineHttp({
       id = ArangoClusterInfo.uniqid();
       var todo = {
         'type': 'cleanOutServer',
+        'server': server,
+        'jobId': id,
+        'timeCreated': (new Date()).toISOString(),
+        'creator': ArangoServerState.id()
+      };
+      ArangoAgency.set('Target/ToDo/' + id, todo);
+    } catch (e1) {
+      ok = false;
+    }
+    if (!ok) {
+      actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
+        {error: true, errorMsg: 'Cannot write to agency.'});
+      return;
+    }
+    actions.resultOk(req, res, actions.HTTP_ACCEPTED, {error: false, id: id});
+  }
+});
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @start Docu Block JSF_postResignLeadership
+// / (intentionally not in manual)
+// / @brief triggers a resignation of the dbserver for all shards
+// /
+// / @ RESTHEADER{POST /_admin/cluster/resignLeadership, Triggers a resignation of the dbserver for all shards.}
+// /
+// / @ RESTQUERYPARAMETERS
+// /
+// / @ RESTDESCRIPTION Triggers a resignation of the dbserver for all shards.
+// / The body must be a JSON object with attribute "server" that is a string
+// / with the ID of the server to be cleaned out.
+// /
+// / @ RESTRETURNCODES
+// /
+// / @ RESTRETURNCODE{202} is returned when everything went well and the
+// / job is scheduled.
+// /
+// / @ RESTRETURNCODE{400} body is not valid JSON.
+// /
+// / @ RESTRETURNCODE{403} server is not a coordinator or method was not POST.
+// /
+// / @ RESTRETURNCODE{503} the agency operation did not work.
+// /
+// / @end Docu Block
+// //////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: '_admin/cluster/resignLeadership',
+  allowUseDatabase: false,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (!require('@arangodb/cluster').isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only coordinators can serve this request');
+      return;
+    }
+    if (req.requestType !== actions.POST) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only the POST method is allowed');
+      return;
+    }
+
+    if (!req.isAdminUser) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only allowed for admin users');
+      return;
+    }
+
+    // Now get to work:
+    var body = actions.getJsonBody(req, res);
+    if (body === undefined) {
+      return;
+    }
+    if (typeof body !== 'object' ||
+      !body.hasOwnProperty('server') ||
+      typeof body.server !== 'string') {
+      actions.resultError(req, res, actions.HTTP_BAD,
+        "body must be an object with a string attribute 'server'");
+      return;
+    }
+
+    // First translate the server name from short name to long name:
+    var server = body.server;
+    var servers = global.ArangoClusterInfo.getDBServers();
+    for (let i = 0; i < servers.length; i++) {
+      if (servers[i].serverId !== server) {
+        if (servers[i].serverName === server) {
+          server = servers[i].serverId;
+          break;
+        }
+      }
+    }
+
+    var ok = true;
+    var id;
+    try {
+      id = ArangoClusterInfo.uniqid();
+      var todo = {
+        'type': 'resignLeadership',
         'server': server,
         'jobId': id,
         'timeCreated': (new Date()).toISOString(),
