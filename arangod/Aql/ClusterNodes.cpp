@@ -34,12 +34,14 @@
 #include "Aql/GraphNode.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
+#include "Aql/LocalGatherExecutor.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
 #include "Aql/RemoteExecutor.h"
 #include "Aql/ScatterExecutor.h"
 #include "Aql/SingleRemoteModificationExecutor.h"
 #include "Aql/SortingGatherExecutor.h"
+#include "Cluster/ServerState.h"
 
 #include "Transaction/Methods.h"
 
@@ -446,8 +448,18 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
                getRegisterPlan()->nrRegs[getDepth()]);
     IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
                           calcRegsToKeep(), getRegsToClear());
-    return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<true>>>>(
-        &engine, this, std::move(infos));
+    if (ServerState::instance()->isCoordinator()) {
+      // In the coordinator case the GatherBlock will fetch frmo RemoteBlocks.
+      // We want to immedeatly move the block on and not wait for additional requests here (hence passthrough)
+      return std::make_unique<ExecutionBlockImpl<IdExecutor<true, SingleRowFetcher<true>>>>(
+          &engine, this, std::move(infos));
+    } else {
+      // In the DBServer case the GatherBlock will merge local results and then expose them (directly or indirectly)
+      // To the RemoteBlock on coordinator. We want to trigger as few requests as possible, so we invest the little
+      // memory ineffeciency that we have here in favor of a better grouping of requests.
+      return std::make_unique<ExecutionBlockImpl<IdExecutor<false, SingleRowFetcher<false>>>>(
+          &engine, this, std::move(infos));
+    }
   }
   std::vector<SortRegister> sortRegister;
   SortRegister::fill(*plan(), *getRegisterPlan(), _elements, sortRegister);

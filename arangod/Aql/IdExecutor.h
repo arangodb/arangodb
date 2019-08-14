@@ -62,16 +62,16 @@ class IdExecutorInfos : public ExecutorInfos {
 };
 
 // forward declaration
-template <class T>
+template <bool usePassThrough, class T>
 class IdExecutor;
 
 // (empty) implementation of IdExecutor<void>
 template <>
-class IdExecutor<void> {};
+class IdExecutor<true, void> {};
 
 // implementation of ExecutionBlockImpl<IdExecutor<void>>
 template <>
-class ExecutionBlockImpl<IdExecutor<void>> : public ExecutionBlock {
+class ExecutionBlockImpl<IdExecutor<true, void>> : public ExecutionBlock {
  public:
   ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
                      RegisterId outputRegister, bool doCount)
@@ -157,12 +157,12 @@ class ExecutionBlockImpl<IdExecutor<void>> : public ExecutionBlock {
   bool const _doCount;
 };
 
-template <class UsedFetcher>
+template <bool usePassThrough, class UsedFetcher>
 class IdExecutor {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = true;
+    static const bool allowsBlockPassthrough = usePassThrough;
     static const bool inputSizeRestrictsOutputSize = false;
   };
   // Only Supports SingleRowFetcher and ConstFetcher
@@ -181,6 +181,7 @@ class IdExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
+  template <bool allowPass = usePassThrough, typename = std::enable_if_t<allowPass>>
   inline std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost) {
     auto rv = _fetcher.fetchBlockForPassthrough(atMost);
     return {rv.first, {}, std::move(rv.second)};

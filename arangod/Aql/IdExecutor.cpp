@@ -43,19 +43,19 @@ IdExecutorInfos::IdExecutorInfos(RegisterId nrInOutRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _distributeId(distributeId) {}
 
-template <class UsedFetcher>
-IdExecutor<UsedFetcher>::IdExecutor(Fetcher& fetcher, IdExecutorInfos& infos)
+template <bool usePassThrough, class UsedFetcher>
+IdExecutor<usePassThrough, UsedFetcher>::IdExecutor(Fetcher& fetcher, IdExecutorInfos& infos)
     : _fetcher(fetcher) {
   if (!infos.distributeId().empty()) {
     _fetcher.setDistributeId(infos.distributeId());
   }
 }
 
-template <class UsedFetcher>
-IdExecutor<UsedFetcher>::~IdExecutor() = default;
+template <bool usePassThrough, class UsedFetcher>
+IdExecutor<usePassThrough, UsedFetcher>::~IdExecutor() = default;
 
-template <class UsedFetcher>
-std::pair<ExecutionState, NoStats> IdExecutor<UsedFetcher>::produceRows(OutputAqlItemRow& output) {
+template <bool usePassThrough, class UsedFetcher>
+std::pair<ExecutionState, NoStats> IdExecutor<usePassThrough, UsedFetcher>::produceRows(OutputAqlItemRow& output) {
   ExecutionState state;
   NoStats stats;
 
@@ -88,6 +88,8 @@ std::pair<ExecutionState, NoStats> IdExecutor<UsedFetcher>::produceRows(OutputAq
   return {state, std::move(stats)};
 }
 
-template class ::arangodb::aql::IdExecutor<ConstFetcher>;
+template class ::arangodb::aql::IdExecutor<true, ConstFetcher>;
 // ID can always pass through
-template class ::arangodb::aql::IdExecutor<SingleRowFetcher<true>>;
+template class ::arangodb::aql::IdExecutor<true, SingleRowFetcher<true>>;
+// Local gather does NOT want to passThrough
+template class ::arangodb::aql::IdExecutor<false, SingleRowFetcher<false>>;

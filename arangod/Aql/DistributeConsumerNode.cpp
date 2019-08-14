@@ -63,7 +63,7 @@ std::unique_ptr<ExecutionBlock> DistributeConsumerNode::createBlock(
              getRegisterPlan()->nrRegs[getDepth()]);
   IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()], calcRegsToKeep(),
                         getRegsToClear(), _distributeId);
-  return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<true>>>>(
+  return std::make_unique<ExecutionBlockImpl<IdExecutor<true, SingleRowFetcher<true>>>>(
       &engine, this, std::move(infos));
 }
 
