@@ -1397,7 +1397,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index) {
     ASSERT_NE(nullptr, ci);
 
     ASSERT_TRUE((ci->createCollectionCoordinator(system()->name(), collectionId, 0, 1, 1, false,
-                                                 createCollectionJson->slice(), 0.0, false)
+                                                 createCollectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
     auto logicalCollection = ci->getCollection(system()->name(), collectionId);
     ASSERT_NE(nullptr, logicalCollection);

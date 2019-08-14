@@ -251,8 +251,10 @@ TEST_F(ClusterInfoTest, test_drop_database) {
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
                  database->createDatabase(1, "testDatabase", vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
-    ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
-                                               arangodb::velocypack::Slice::emptyObjectSlice(), 0.0)
+
+    ASSERT_TRUE((arangodb::methods::Databases::create(
+                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
 
     // initial view creation
@@ -264,8 +266,9 @@ TEST_F(ClusterInfoTest, test_drop_database) {
     }
 
     EXPECT_TRUE((ci->dropDatabaseCoordinator(vocbase->name(), 0.0).ok()));
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
-                                               arangodb::velocypack::Slice::emptyObjectSlice(), 0.0)
+    ASSERT_TRUE((arangodb::methods::Databases::create(
+                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
 
     arangodb::LogicalView::ptr logicalView;
