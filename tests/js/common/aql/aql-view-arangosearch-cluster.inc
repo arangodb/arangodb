@@ -850,7 +850,25 @@
         result.forEach(function(res) {
           assertTrue(res.c >= 1 && res.c <= 3);
         });
+      },
+
+      testScorersWithDistinct : function() {
+        var result = db._query(
+          "LET values = (FOR y IN UnitTestsCollection FILTER y.c == 0 RETURN DISTINCT y.a) " +
+          "LET x = FIRST(FOR x IN values FILTER x == 'foo' RETURN x) " +
+          "FOR doc IN UnitTestsView SEARCH doc.a == x && doc.c == 0 OPTIONS { waitForSync: true } " +
+          "LET score = BM25(doc, 20.01, 0.01)*0.0001 + 1.0 " + 
+          "COLLECT a = doc.a AGGREGATE maxScore = MAX(score) " +
+          "RETURN { a: a, score: maxScore }"
+        ).toArray();
+
+        assertEqual(result.length, 1);
+        result.forEach(function (res) {
+          assertEqual(res.a, "foo");
+          assertTrue(res.score > 1 && res.score < 2);
+        });
       }
+
     };
   }
 }());
