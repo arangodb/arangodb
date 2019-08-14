@@ -1,6 +1,11 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Added initial support for wgs84 reference ellipsoid in GEO_DISTANCE through
+  third optional parameter to AQL function.
+
+* Added support for area calculations with GEO_AREA AQL function.
+
 * Correct RocksDB statistics to report sums from column families instead of
   single value from default column family.
 
@@ -16,11 +21,6 @@ v3.5.1 (XXXX-XX-XX)
   tracked yet" when trying to write to the same keys in concurrent RocksDB
   transactions. This error will now be reported as a "Lock timeout" error,
   with error code 1200.
-
-* Added initial support for wgs84 reference ellipsoid in GEO_DISTANCE through third
-  optional parameter to AQL function
-
-* Added support for area calculations with GEO_AREA AQL function
 
 * Added resign leadership job to supervision.
 
