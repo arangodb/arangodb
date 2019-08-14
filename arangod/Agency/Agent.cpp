@@ -1267,6 +1267,9 @@ void Agent::run() {
       // Check whether we can advance _commitIndex
       advanceCommitIndex();
 
+      // Empty store callback trash bin
+      emptyCbTrashBin();
+
       bool commenceService = false;
       {
         READ_LOCKER(oLocker, _outputLock);
@@ -1881,6 +1884,64 @@ bool Agent::ready() const {
 
   return _ready;
 }
+
+
+
+void Agent::trashStoreCallback(std::string const& url, query_t const& body) {
+
+  auto const& slice = body->slice();
+  TRI_ASSERT(slice.isObject());
+
+  // body consists of object holding keys index, term and the observed keys
+  // we'll remove observation on every key and according observer url 
+  for (auto const& i : VPackObjectIterator(slice)) {
+    if (!i.key.isEqualString("term") && !i.key.isEqualString("index")) {
+      MUTEX_LOCKER(lock, _cbtLock);
+      _callbackTrashBin[i.key.copyString()].emplace(url);
+    }
+  }
+}
+
+
+void Agent::emptyCbTrashBin() {
+
+  using clock = std::chrono::steady_clock;
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  {
+    _cbtLock.assertNotLockedByCurrentThread();
+    MUTEX_LOCKER(lock, _cbtLock);
+
+    auto early =
+      std::chrono::duration_cast<std::chrono::seconds>(
+        clock::now() - _callbackLastPurged).count() < 10;
+
+    if (early || _callbackTrashBin.empty()) {
+      return;
+    }
+
+    { VPackArrayBuilder trxs(envelope.get());
+      for (auto const& i : _callbackTrashBin) {
+        { VPackArrayBuilder trx(envelope.get());
+          { VPackObjectBuilder ak(envelope.get());
+            envelope->add(VPackValue(i.first));
+            for (auto const& j : i.second) {
+              { VPackObjectBuilder oper(envelope.get());
+                envelope->add("op", VPackValue("unobserve"));
+                envelope->add("url", VPackValue(j));}}}
+        }
+      }}
+    _callbackTrashBin.clear(); 
+    _callbackLastPurged = std::chrono::steady_clock::now();
+  }
+
+  LOG_DEVEL << envelope->toJson();
+
+  // Best effort. Will be retried anyway
+  auto wres = write(envelope);
+
+}
+
 
 query_t Agent::buildDB(arangodb::consensus::index_t index) {
   Store store(this);
