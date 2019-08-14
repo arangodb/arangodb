@@ -5,8 +5,6 @@ devel
 
 * Foxx routes now always have a Swagger `operationId`. If the route is unnamed, a distinct operationId will be generated based on the HTTP method and URL.
 
-* coordinator code was reporting rocksdb error codes, but not the associated detail message.
-
 * Added initial support for wgs84 reference ellipsoid in GEO_DISTANCE through third
   optional parameter to AQL function
 
