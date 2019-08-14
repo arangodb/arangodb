@@ -23,7 +23,9 @@
 #include "GeneralCommTask.h"
 
 #include "GeneralServer/GeneralServer.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -68,6 +70,7 @@ void GeneralCommTask<T>::close() {
 
 template <SocketType T>
 void GeneralCommTask<T>::asyncReadSome() {
+
   asio_ns::error_code ec;
   // first try a sync read for performance
   if (_protocol->supportsMixedIO()) {
@@ -96,13 +99,14 @@ void GeneralCommTask<T>::asyncReadSome() {
   
   auto cb = [self = shared_from_this()](asio_ns::error_code const& ec,
                                         size_t transferred) {
+
     auto* thisPtr = static_cast<GeneralCommTask<T>*>(self.get());
     thisPtr->_protocol->buffer.commit(transferred);
     if (thisPtr->readCallback(ec)) {
       thisPtr->asyncReadSome();
     }
   };
-  auto mutableBuff = _protocol->buffer.prepare(READ_BLOCK_SIZE);
+  auto mutableBuff = _protocol->buffer.prepare(ReadBlockSize);
   _protocol->socket.async_read_some(mutableBuff, std::move(cb));
 }
 

@@ -39,7 +39,8 @@ var jsunity = require('jsunity');
 function testSuite() {
   const arangodb = require("@arangodb");
   const internal = require('internal');
-  const processStatistics = internal.processStatistics;
+  // want the statistics of this process, not the server remoting:
+  const processStatistics = internal.thisProcessStatistics;
   const getPid = internal.getPid;
   const logLevel = internal.logLevel;
 

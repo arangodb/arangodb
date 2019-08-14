@@ -33,9 +33,9 @@ namespace arangodb { namespace fuerte {
 
 // HttpConnection implements a client->server connection using
 // the node http-parser
-template<SocketType ST>
+template <SocketType ST>
 class GeneralConnection : public fuerte::Connection {
-public:
+ public:
   explicit GeneralConnection(EventLoopService& loop,
                              detail::ConnectionConfiguration const&);
   virtual ~GeneralConnection() {}
@@ -44,39 +44,37 @@ public:
   Connection::State state() const override final {
     return _state.load(std::memory_order_acquire);
   }
-  
+
   /// @brief cancel the connection, unusable afterwards
   void cancel() override;
-  
+
   // Activate this connection
   void startConnection() override;
-  
+
  protected:
-  
   // shutdown connection, cancel async operations
   void shutdownConnection(const fuerte::Error);
-  
+
   // Connect with a given number of retries
   void tryConnect(unsigned retries);
-  
+
   void restartConnection(const Error error);
-  
+
   // Call on IO-Thread: read from socket
   void asyncReadSome();
-  
+
  protected:
-  
   virtual void finishConnect() = 0;
-  
+
   /// begin writing
   virtual void startWriting() = 0;
-  
+
   // called by the async_read handler (called from IO thread)
   virtual void asyncReadCallback(asio_ns::error_code const&) = 0;
-  
+
   /// abort ongoing / unfinished requests
   virtual void abortOngoingRequests(const fuerte::Error) = 0;
-  
+
   /// abort all requests lingering in the queue
   virtual void drainQueue(const fuerte::Error) = 0;
 
@@ -87,7 +85,7 @@ public:
   Socket<ST> _protocol;
   /// @brief timer to handle connection / request timeouts
   asio_ns::steady_timer _timeout;
-  
+
   /// default max chunksize is 30kb in arangodb
   static constexpr size_t READ_BLOCK_SIZE = 1024 * 32;
   ::asio_ns::streambuf _receiveBuffer;

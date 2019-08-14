@@ -26,6 +26,7 @@
 #include <chrono>
 #include <thread>
 
+#include "Basics/debugging.h"
 #include "Futures/Exceptions.h"
 #include "Futures/Promise.h"
 #include "Futures/SharedState.h"
@@ -152,18 +153,19 @@ class Future {
   /// @brief Constructs a Future with no shared state.
   static Future<T> makeEmpty() { return Future<T>(detail::EmptyConstructor{}); }
 
-  /// Construct a Future from a value (perfect forwarding)
+  // Construct a Future from a value (perfect forwarding)
   template <class T2 = T, typename = typename std::enable_if<!std::is_same<T2, void>::value &&
                                                              !isFuture<typename std::decay<T2>::type>::value>::type>
   /* implicit */ Future(T2&& val)
       : _state(detail::SharedState<T>::make(Try<T>(std::forward<T2>(val)))) {}
 
-  /// Construct a (logical) Future-of-void.
+  // Construct a (logical) Future-of-void.
+  // cppcheck-ignore noExplicitConstructor
   template <class T2 = T>
   /* implicit */ Future(typename std::enable_if<std::is_same<Unit, T2>::value>::type* p = nullptr)
       : _state(detail::SharedState<T2>::make(Try<Unit>())) {}
 
-  /// Construct a Future from a `T` constructed from `args`
+  // Construct a Future from a `T` constructed from `args`
   template <class... Args, typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::type = 0>
   explicit Future(in_place_t, Args&&... args)
       : _state(detail::SharedState<T>::make(in_place, std::forward<Args>(args)...)) {}

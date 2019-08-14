@@ -36,12 +36,15 @@
 #include "Aql/QueryProfile.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -1293,21 +1296,21 @@ uint64_t Query::calculateHash() const {
   }
 
   // hash the query string first
-  uint64_t hash = _queryString.hash();
+  uint64_t hashval = _queryString.hash();
 
   // handle "fullCount" option. if this option is set, the query result will
   // be different to when it is not set!
   if (_queryOptions.fullCount) {
-    hash = fasthash64(TRI_CHAR_LENGTH_PAIR("fullcount:true"), hash);
+    hashval = fasthash64(TRI_CHAR_LENGTH_PAIR("fullcount:true"), hashval);
   } else {
-    hash = fasthash64(TRI_CHAR_LENGTH_PAIR("fullcount:false"), hash);
+    hashval = fasthash64(TRI_CHAR_LENGTH_PAIR("fullcount:false"), hashval);
   }
 
   // handle "count" option
   if (_queryOptions.count) {
-    hash = fasthash64(TRI_CHAR_LENGTH_PAIR("count:true"), hash);
+    hashval = fasthash64(TRI_CHAR_LENGTH_PAIR("count:true"), hashval);
   } else {
-    hash = fasthash64(TRI_CHAR_LENGTH_PAIR("count:false"), hash);
+    hashval = fasthash64(TRI_CHAR_LENGTH_PAIR("count:false"), hashval);
   }
 
   // also hash "optimizer" options
@@ -1316,10 +1319,10 @@ uint64_t Query::calculateHash() const {
   if (_options != nullptr && _options->slice().isObject()) {
     options = _options->slice().get("optimizer");
   }
-  hash ^= options.hash();
+  hashval ^= options.hash();
 
   // blend query hash with bind parameters
-  return hash ^ _bindParameters.hash();
+  return hashval ^ _bindParameters.hash();
 }
 
 /// @brief whether or not the query cache can be used for the query

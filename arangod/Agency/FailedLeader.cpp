@@ -401,11 +401,18 @@ JOB_STATUS FailedLeader::status() {
 
   // Timedout after 77 minutes
   if (std::chrono::system_clock::now() - _created > std::chrono::seconds(4620)) {
-    rollback();
+    finish("", (_status != PENDING) ? "" : _shard, false, "Timed out.");
+    return FAILED;
   }
 
   if (_status != PENDING) {
     return _status;
+  }
+
+  std::string toServerHealth = checkServerHealth(_snapshot, _to);
+  if (toServerHealth == "FAILED" || toServerHealth == "UNCLEAR") {
+    finish("", _shard, false, "_to server not health");
+    return FAILED;
   }
 
   std::string database, shard;
@@ -431,7 +438,7 @@ JOB_STATUS FailedLeader::status() {
     auto cur_slice = _snapshot.hasAsSlice(curColPrefix + sub + "/" +
                                           clone.shard + "/servers");
     if (plan_slice.second && cur_slice.second &&
-        basics::VelocyPackHelper::compare(plan_slice.first[0], cur_slice.first[0], false) != 0) {
+        !basics::VelocyPackHelper::equal(plan_slice.first[0], cur_slice.first[0], false)) {
       LOG_TOPIC("0d8ca", DEBUG, Logger::SUPERVISION)
           << "FailedLeader waiting for " << sub + "/" + shard;
       break;

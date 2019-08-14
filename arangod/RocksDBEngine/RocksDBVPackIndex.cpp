@@ -179,7 +179,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       : IndexIterator(collection, trx),
         _index(index),
         _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
-        _fullEnumerationObjectId(0),
         _reverse(reverse),
         _bounds(std::move(bounds)) {
     TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
@@ -191,21 +190,9 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     if (reverse) {
       _rangeBound = _bounds.start();
       options.iterate_lower_bound = &_rangeBound;
-      VPackSlice s = VPackSlice(reinterpret_cast<uint8_t const*>(_rangeBound.data() + sizeof(uint64_t)));
-      if (s.isArray() && s.length() == 1 && s.at(0).isMinKey()) {
-        // lower bound is the min key. that means we can get away with a
-        // cheap outOfBounds comparator
-        _fullEnumerationObjectId = _index->objectId();
-      }
     } else {
       _rangeBound = _bounds.end();
       options.iterate_upper_bound = &_rangeBound;
-      VPackSlice s = VPackSlice(reinterpret_cast<uint8_t const*>(_rangeBound.data() + sizeof(uint64_t)));
-      if (s.isArray() && s.length() == 1 && s.at(0).isMaxKey()) {
-        // upper bound is the max key. that means we can get away with a
-        // cheap outOfBounds comparator
-        _fullEnumerationObjectId = _index->objectId();
-      }
     }
 
     TRI_ASSERT(options.prefix_same_as_start);
@@ -326,12 +313,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
  private:
   inline bool outOfRange() const {
-    if (_fullEnumerationObjectId) {
-      // we are enumerating the entire index
-      // so we can use a cheap comparator that only checks the objectId
-      return (arangodb::rocksutils::uint64FromPersistent(_iterator->key().data()) != _fullEnumerationObjectId);
-    }
-
     // we are enumerating a subset of the index
     // so we really need to run the full-featured (read: expensive)
     // comparator
@@ -356,7 +337,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   arangodb::RocksDBVPackIndex const* _index;
   RocksDBVPackComparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
-  uint64_t _fullEnumerationObjectId;
   bool const _reverse;
   RocksDBKeyBounds _bounds;
   // used for iterate_upper_bound iterate_lower_bound
@@ -704,8 +684,11 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
     rocksdb::PinnableSlice existing(leased.get());
     for (RocksDBKey& key : elements) {
       s = mthds->GetForUpdate(_cf, key.string(), &existing);
-      if (s.ok() || s.IsBusy()) {  // detected conflicting index entry
+      if (s.ok()) {  // detected conflicting index entry
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+        break;
+      } else if (!s.IsNotFound()) {
+        res.reset(rocksutils::convertStatus(s));
         break;
       }
       s = mthds->Put(_cf, key, value.string(), /*assume_tracked*/true);

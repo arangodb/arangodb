@@ -33,6 +33,7 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Thread.h"
+#include "Basics/error.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/LogTopic.h"
 #include "Rest/GeneralRequest.h"
@@ -487,6 +488,7 @@ class ClusterComm {
 
   void startBackgroundThreads();
   void stopBackgroundThreads();
+  void deleteBackgroundThreads();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief submit an HTTP request to a shard asynchronously.
@@ -688,7 +690,6 @@ class ClusterCommThread : public Thread {
  public:
   ClusterCommThread();
   ~ClusterCommThread();
-
  public:
   void beginShutdown() override;
   bool isSystem() override final { return true; }

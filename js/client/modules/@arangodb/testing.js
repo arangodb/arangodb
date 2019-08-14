@@ -156,7 +156,6 @@ const optionsDefaults = {
   'loopSleepWhen': 1,
   'minPort': 1024,
   'maxPort': 32768,
-  'mochaGrep': undefined,
   'onlyNightly': false,
   'password': '',
   'protocol': 'tcp',
@@ -290,7 +289,7 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
   function skipInternalMember (r, a) {
     return !r.hasOwnProperty(a) || internalMembers.indexOf(a) !== -1;
   }
-  print(BLUE + '================================================================================');
+  print(YELLOW + '================================================================================');
   print('TEST RESULTS');
   print('================================================================================\n' + RESET);
 
@@ -502,7 +501,7 @@ function findTestCases(options) {
   let allTestFiles = {};
   for (let testSuiteName in allTestPaths) {
     var myList = [];
-    let files = tu.scanTestPaths(allTestPaths[testSuiteName]);
+    let files = tu.scanTestPaths(allTestPaths[testSuiteName], options);
     if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
       for (let j = 0; j < files.length; j++) {
         let foo = {};
@@ -650,7 +649,7 @@ function iterateTests(cases, options, jsonReply) {
       } else if (testFuncs.hasOwnProperty(which)) {
         caselist.push(which);
       } else {
-        print('Unknown test "' + which + '"\nKnown tests are: ' + Object.keys(testFuncs).join(', '));
+        print('Unknown test "' + which + '"\nKnown tests are: ' + Object.keys(testFuncs).sort().join(', '));
 
         return {
           status: false
@@ -686,7 +685,7 @@ function iterateTests(cases, options, jsonReply) {
     if (options.testBuckets) {
       printTestName += " - " + options.testBuckets;
     }
-    print(BLUE + '================================================================================');
+    print(YELLOW + '================================================================================');
     print('Executing test', printTestName);
     print('================================================================================\n' + RESET);
 

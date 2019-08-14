@@ -35,14 +35,18 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Cluster/v8-cluster.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -174,7 +178,11 @@ void DatabaseManagerThread::run() {
           }
 
           try {
-            engine->dropDatabase(*database);
+            Result res = engine->dropDatabase(*database);
+            if (res.fail()) {
+              LOG_TOPIC("fb244", ERR, Logger::FIXME)
+                << "dropping database '" << database->name() << "' failed: " << res.errorMessage();
+            }
           } catch (std::exception const& ex) {
             LOG_TOPIC("d30a2", ERR, Logger::FIXME) << "dropping database '" << database->name()
                                           << "' failed: " << ex.what();
@@ -486,7 +494,7 @@ void DatabaseFeature::unprepare() {
     _databaseManager->beginShutdown();
 
     while (_databaseManager->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(5000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
   }
 
@@ -605,10 +613,9 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
   // create database in storage engine
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
-
+        
   // the create lock makes sure no one else is creating a database while we're
-  // inside
-  // this function
+  // inside this function
   MUTEX_LOCKER(mutexLocker, _databaseCreateLock);
   {
     {

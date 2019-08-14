@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_COST_ESTIMATE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 namespace aql {

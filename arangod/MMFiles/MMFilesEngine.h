@@ -153,6 +153,11 @@ class MMFilesEngine final : public StorageEngine {
   // database, collection and index management
   // -----------------------------------------
 
+  // return the path for all databases
+  std::string dataPath() const override {
+    return _databasePath;
+  }
+
   // return the path for a database
   std::string databasePath(TRI_vocbase_t const* vocbase) const override {
     return databaseDirectory(vocbase->id());
@@ -183,8 +188,11 @@ class MMFilesEngine final : public StorageEngine {
   Result dropDatabase(TRI_vocbase_t& database) override;
   void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
 
-  // wal in recovery
-  bool inRecovery() override;
+  // current recovery state
+  RecoveryState recoveryState() noexcept override;
+
+  // current recovery tick
+  TRI_voc_tick_t recoveryTick() noexcept override;
 
   // start compactor thread and delete files form collections marked as deleted
   void recoveryDone(TRI_vocbase_t& vocbase) override;

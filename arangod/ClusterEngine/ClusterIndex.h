@@ -28,6 +28,7 @@
 #include "ClusterEngine/Common.h"
 #include "Indexes/Index.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/StringRef.h>
 
 namespace arangodb {

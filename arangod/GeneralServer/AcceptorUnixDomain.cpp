@@ -28,7 +28,9 @@
 #include "Endpoint/EndpointUnixDomain.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/HttpCommTask.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -90,6 +92,7 @@ void AcceptorUnixDomain::asyncAccept() {
     this->asyncAccept();
   };
 
+  // cppcheck-suppress accessMoved
   _acceptor.async_accept(_asioSocket->socket, _asioSocket->peer, handler);
 }
 

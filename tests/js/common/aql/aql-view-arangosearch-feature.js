@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertTrue, assertFalse, fail, db._query */
+/*global assertUndefined, assertEqual, assertTrue, assertFalse, assertNotNull, fail, db._query */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -55,42 +55,98 @@ function iResearchFeatureAqlTestSuite () {
 
     testAnalyzersInvalidPropertiesDiscarded : function() {
       {
-        try {analyzers.remove(db._name() + "::normPropAnalyzer"); } catch (e) {}
+        try {analyzers.remove("normPropAnalyzer"); } catch (e) {}
         let analyzer = analyzers.save("normPropAnalyzer", "norm", { "locale":"en", "invalid_param":true});
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
-        analyzers.remove(db._name() + "::normPropAnalyzer", true);
+        analyzers.remove("normPropAnalyzer", true);
       }
       {
-        try {analyzers.remove(db._name() + "::textPropAnalyzer"); } catch (e) {}
+        try {analyzers.remove("textPropAnalyzer"); } catch (e) {}
         let analyzer = analyzers.save("textPropAnalyzer", "text", {"stopwords" : [], "locale":"en", "invalid_param":true});
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
-        analyzers.remove(db._name() + "::textPropAnalyzer", true);
+        analyzers.remove("textPropAnalyzer", true);
       }
       {
-        try {analyzers.remove(db._name() + "::delimiterPropAnalyzer"); } catch (e) {}
+        try {analyzers.remove("delimiterPropAnalyzer"); } catch (e) {}
         let analyzer = analyzers.save("delimiterPropAnalyzer", "delimiter", { "delimiter":"|", "invalid_param":true});
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
-        analyzers.remove(db._name() + "::delimiterPropAnalyzer", true);
+        analyzers.remove("delimiterPropAnalyzer", true);
       }
       {
-        try {analyzers.remove(db._name() + "::stemPropAnalyzer"); } catch (e) {}
+        try {analyzers.remove("stemPropAnalyzer"); } catch (e) {}
         let analyzer = analyzers.save("stemPropAnalyzer", "stem", { "locale":"en", "invalid_param":true});
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
-        analyzers.remove(db._name() + "::stemPropAnalyzer", true);
+        analyzers.remove("stemPropAnalyzer", true);
       }
       {
-        try {analyzers.remove(db._name() + "::ngramPropAnalyzer"); } catch (e) {}
+        try {analyzers.remove("ngramPropAnalyzer"); } catch (e) {}
         let analyzer = analyzers.save("ngramPropAnalyzer", "ngram", { "min":1, "max":5, "preserveOriginal":true, "invalid_param":true});
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
-        analyzers.remove(db._name() + "::ngramPropAnalyzer", true);
+        analyzers.remove("ngramPropAnalyzer", true);
       }
     },
-
+    testAnalyzerRemovalWithDatabaseName_InSystem: function() {
+      let dbName = "analyzerWrongDbName";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      analyzers.save("MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+      db._useDatabase("_system");
+      try {
+        analyzers.remove(dbName + "::MyTrigram");
+        fail(); // removal with db name in wrong current used db should also fail
+      } catch(e) {
+        assertEqual(require("internal").errors.ERROR_BAD_PARAMETER .code,
+                       e.errorNum);
+      }
+      db._dropDatabase(dbName);
+    },
+    testAnalyzerRemovalWithDatabaseName_InDbName: function() {
+      let dbName = "analyzerWrongDbName";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      analyzers.save("MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+      try {
+        analyzers.remove(dbName + "::MyTrigram");
+        fail(); // removal with db name should  fail
+      } catch(e) {
+        assertEqual(require("internal").errors.ERROR_BAD_PARAMETER .code,
+                       e.errorNum);
+      }
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    },
+    testAnalyzerGetFromOtherDatabase: function() {
+      let dbName = "analyzerDbName";
+      let anotherDbName = "anotherDbName";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      try { db._dropDatabase(anotherDbName); } catch (e) {}
+      db._createDatabase(dbName);
+      db._createDatabase(anotherDbName);
+      db._useDatabase(dbName);
+      let analyzer = analyzers.save("MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+      assertNotNull(analyzer);
+      db._useDatabase(anotherDbName);
+      try {
+        analyzers.analyzer(dbName + "::MyTrigram");
+        fail();
+      } catch(e) {
+        assertEqual(require("internal").errors.ERROR_FORBIDDEN .code,
+                       e.errorNum);
+      }
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+      db._dropDatabase(anotherDbName);
+    },
     testAnalyzers: function() {
       let oldList = analyzers.toArray();
       let oldListInCollection = db._analyzers.toArray();
@@ -146,7 +202,7 @@ function iResearchFeatureAqlTestSuite () {
       }
 
       // removal
-      analyzers.remove(db._name() + "::testAnalyzer");
+      analyzers.remove("testAnalyzer");
       assertTrue(null === analyzers.analyzer(db._name() + "::testAnalyzer"));
       assertEqual(oldList.length, analyzers.toArray().length);
       // check the analyzers collection in database
@@ -173,7 +229,7 @@ function iResearchFeatureAqlTestSuite () {
 
     testAnalyzersPrefix: function() {
       let dbName = "TestDB";
-
+      db._useDatabase("_system");
       try { db._dropDatabase(dbName); } catch (e) {}
       db._createDatabase(dbName);
       db._useDatabase(dbName);
@@ -186,31 +242,6 @@ function iResearchFeatureAqlTestSuite () {
       analyzers.save("testAnalyzer", "identity", {}, [ "frequency" ]);
       db._useDatabase(dbName);
       analyzers.save("testAnalyzer", "identity", {}, [ "norm" ]);
-
-      // retrieval (system)
-      db._useDatabase("_system");
-
-      {
-        let analyzer = analyzers.analyzer("testAnalyzer");
-        assertTrue(null !== analyzer);
-        assertEqual(db._name() + "::testAnalyzer", analyzer.name());
-        assertEqual("identity", analyzer.type());
-        assertEqual(0, Object.keys(analyzer.properties()).length);
-        assertTrue(Array === analyzer.features().constructor);
-        assertEqual(1, analyzer.features().length);
-        assertEqual([ "frequency" ], analyzer.features());
-      }
-
-      {
-        let analyzer = analyzers.analyzer(dbName + "::testAnalyzer");
-        assertTrue(null !== analyzer);
-        assertEqual(dbName + "::testAnalyzer", analyzer.name());
-        assertEqual("identity", analyzer.type());
-        assertEqual(0, Object.keys(analyzer.properties()).length);
-        assertTrue(Array === analyzer.features().constructor);
-        assertEqual(1, analyzer.features().length);
-        assertEqual([ "norm" ], analyzer.features());
-      }
 
       // retrieval (dbName)
       db._useDatabase(dbName);
@@ -245,7 +276,9 @@ function iResearchFeatureAqlTestSuite () {
       // removal
       analyzers.remove("testAnalyzer", true);
       assertTrue(null === analyzers.analyzer("testAnalyzer"));
-      analyzers.remove("::testAnalyzer", true);
+      db._useDatabase("_system");
+      analyzers.remove("testAnalyzer", true);
+      db._useDatabase(dbName); // switch back to check analyzer with global name
       assertTrue(null === analyzers.analyzer("::testAnalyzer"));
       assertEqual(oldList.length, analyzers.toArray().length);
 
@@ -256,6 +289,296 @@ function iResearchFeatureAqlTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchFeature tests
 ////////////////////////////////////////////////////////////////////////////////
+    testTokensFunctions : function() {
+      // null argument
+      {
+        let result = db._query(
+          "RETURN TOKENS(null)",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(1, result[0].length);
+        assertEqual([""], result[0]);
+      } 
+      // array of strings 
+      {
+        let result = db._query(
+          "RETURN TOKENS(['a quick brown fox jumps', 'jumps over lazy dog'], 'text_en')",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(2, result[0].length);
+        assertTrue(Array === result[0][0].constructor);
+        assertTrue(Array === result[0][1].constructor);
+        assertEqual(5, result[0][0].length);
+        assertEqual([ "a", "quick", "brown", "fox", "jump" ], result[0][0]);
+        assertEqual(4, result[0][1].length);
+        assertEqual([ "jump", "over", "lazi", "dog" ], result[0][1]);
+      }
+      // array of arrays of strings 
+      {
+        let result = db._query(
+          "RETURN TOKENS([['a quick brown fox jumps', 'jumps over lazy dog'], " + 
+          "['may the force be with you', 'yet another brick'] ], 'text_en')",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(2, result[0].length);
+
+        assertTrue(Array === result[0][0].constructor);
+        assertEqual(2, result[0][0].length);
+        assertTrue(Array === result[0][0][0].constructor);
+        assertEqual(5, result[0][0][0].length);
+        assertEqual([ "a", "quick", "brown", "fox", "jump" ], result[0][0][0]);
+        assertEqual(4, result[0][0][1].length);
+        assertEqual([ "jump", "over", "lazi", "dog" ], result[0][0][1]);
+        assertEqual(2, result[0][1].length);
+        assertEqual(6, result[0][1][0].length);
+        assertEqual([ "may", "the", "forc", "be", "with", "you" ], result[0][1][0]);
+        assertEqual(3, result[0][1][1].length);
+        assertEqual([ "yet", "anoth", "brick" ], result[0][1][1]);
+      }
+      // deep array
+      {
+        let result = db._query(
+          "RETURN TOKENS([[[[[['a quick brown fox jumps', 'jumps over lazy dog']]]]]], 'text_en')",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(1, result[0].length);
+        assertEqual(1, result[0][0].length);
+        assertEqual(1, result[0][0][0].length);
+        assertEqual(1, result[0][0][0][0].length);
+        assertEqual(1, result[0][0][0][0][0].length);
+        assertEqual(2, result[0][0][0][0][0][0].length);
+        assertTrue(Array === result[0][0][0][0][0][0][0].constructor);
+        assertTrue(Array === result[0][0][0][0][0][0][1].constructor);
+        assertEqual(5, result[0][0][0][0][0][0][0].length);
+        assertEqual([ "a", "quick", "brown", "fox", "jump" ], result[0][0][0][0][0][0][0]);
+        assertEqual(4, result[0][0][0][0][0][0][1].length);
+        assertEqual([ "jump", "over", "lazi", "dog" ], result[0][0][0][0][0][0][1]);
+      }
+      // number
+      {
+         let result = db._query(
+          "RETURN TOKENS(3.14)",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(["oMAJHrhR64Uf", "sMAJHrhR6w==", "wMAJHrg=", "0MAJ"], result[0]);
+      }
+      // array of numbers
+      {
+         let result = db._query(
+          "RETURN TOKENS([1, 2, 3.14])",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(3, result[0].length);
+        assertEqual([
+          ["oL/wAAAAAAAA", "sL/wAAAAAA==", "wL/wAAA=", "0L/w"],
+          ["oMAAAAAAAAAA", "sMAAAAAAAA==", "wMAAAAA=", "0MAA"],
+          ["oMAJHrhR64Uf", "sMAJHrhR6w==", "wMAJHrg=", "0MAJ"]], result[0]);
+      }
+      // bool
+      {
+         let result = db._query(
+          "RETURN TOKENS(true)",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(["/w=="], result[0]);
+      }
+      // array of bools
+      {
+         let result = db._query(
+          "RETURN TOKENS([true, false, true])",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(3, result[0].length);
+        assertEqual(["/w=="], result[0][0]);
+        assertEqual(["AA=="], result[0][1]);
+        assertEqual(["/w=="], result[0][2]);
+      }
+      // mix of different types
+      {
+        let result = db._query(
+          "RETURN TOKENS(['quick fox', null, true, 3.14, 'string array', 5, [true, 4, 'one two'], true], 'text_en')",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(8, result[0].length);
+        assertEqual(['quick', 'fox'], result[0][0]);
+        assertEqual([""], result[0][1]);
+        assertEqual(["/w=="], result[0][2]);
+        assertEqual(["oMAJHrhR64Uf", "sMAJHrhR6w==", "wMAJHrg=", "0MAJ"], result[0][3]);
+        assertEqual(['string', 'array'], result[0][4]);
+        assertEqual(["oMAUAAAAAAAA", "sMAUAAAAAA==", "wMAUAAA=", "0MAU"], result[0][5]);
+        assertTrue(Array === result[0][6].constructor);
+        assertEqual(3, result[0][6].length);
+        assertEqual(["/w=="], result[0][6][0]);
+        assertEqual(["oMAQAAAAAAAA", "sMAQAAAAAA==", "wMAQAAA=", "0MAQ"], result[0][6][1]);
+        assertEqual(['one', 'two'], result[0][6][2]);
+        assertEqual(["/w=="], result[0][7]);
+      }
+       // mix of different types without text analyzer (identity will be used)
+      {
+        let result = db._query(
+          "RETURN TOKENS(['quick fox', null, true, 3.14, 'string array', 5, [true, 4, 'one two'], true])",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(8, result[0].length);
+        assertEqual(['quick fox'], result[0][0]);
+        assertEqual([""], result[0][1]);
+        assertEqual(["/w=="], result[0][2]);
+        assertEqual(["oMAJHrhR64Uf", "sMAJHrhR6w==", "wMAJHrg=", "0MAJ"], result[0][3]);
+        assertEqual(['string array'], result[0][4]);
+        assertEqual(["oMAUAAAAAAAA", "sMAUAAAAAA==", "wMAUAAA=", "0MAU"], result[0][5]);
+        assertTrue(Array === result[0][6].constructor);
+        assertEqual(3, result[0][6].length);
+        assertEqual(["/w=="], result[0][6][0]);
+        assertEqual(["oMAQAAAAAAAA", "sMAQAAAAAA==", "wMAQAAA=", "0MAQ"], result[0][6][1]);
+        assertEqual(['one two'], result[0][6][2]);
+        assertEqual(["/w=="], result[0][7]);
+      }
+      // mix of different types (but without text)
+      {
+        let result = db._query(
+          "RETURN TOKENS([null, true, 3.14, 5, [true, 4], true])",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(6, result[0].length);
+        assertEqual([""], result[0][0]);
+        assertEqual(["/w=="], result[0][1]);
+        assertEqual(["oMAJHrhR64Uf", "sMAJHrhR6w==", "wMAJHrg=", "0MAJ"], result[0][2]);
+        assertEqual(["oMAUAAAAAAAA", "sMAUAAAAAA==", "wMAUAAA=", "0MAU"], result[0][3]);
+        assertTrue(Array === result[0][4].constructor);
+        assertEqual(2, result[0][4].length);
+        assertEqual(["/w=="], result[0][4][0]);
+        assertEqual(["oMAQAAAAAAAA", "sMAQAAAAAA==", "wMAQAAA=", "0MAQ"], result[0][4][1]);
+        assertEqual(["/w=="], result[0][5]);
+      }
+
+      // empty array
+      {
+        let result = db._query(
+          "RETURN TOKENS([])",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(1, result[0].length);
+        assertEqual([], result[0][0]);
+      }
+       // array of empty arrays
+      {
+        let result = db._query(
+          "RETURN TOKENS([[],[]])",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(2, result[0].length);
+        assertEqual([[]], result[0][0]);
+        assertEqual([[]], result[0][1]);
+      }
+       // empty nested array
+      {
+        let result = db._query(
+          "RETURN TOKENS([[]])",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(1, result[0].length);
+        assertEqual([[]], result[0][0]);
+      }
+      //// failures
+      //no parameters
+      {
+        try {
+          let result = db._query(
+            "RETURN TOKENS()",
+            null,
+            { }
+          );
+          fail();
+        } catch(err) {
+           assertEqual(require("internal").errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code,
+                       err.errorNum);
+        }
+      }
+      //too many parameters
+      {
+        try {
+          let result = db._query(
+            "RETURN TOKENS('test', 'identity', 'unexpected parameter')",
+            null,
+            { }
+          );
+          fail();
+        } catch(err) {
+           assertEqual(require("internal").errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code,
+                       err.errorNum);
+        }
+      }
+      //invalid first parameter type
+      {
+        try {
+          let result = db._query(
+            "RETURN TOKENS({'test': true}, 'identity')",
+            null,
+            { }
+          );
+          fail();
+        } catch(err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        }
+      }
+      //invalid second parameter type
+      {
+        try {
+          let result = db._query(
+            "RETURN TOKENS('test', 123)",
+            null,
+            { }
+          );
+          fail();
+        } catch(err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        }
+      }
+
+    },
 
     testDefaultAnalyzers : function() {
       // invalid
@@ -264,7 +587,8 @@ function iResearchFeatureAqlTestSuite () {
           db._query("RETURN TOKENS('a quick brown fox jumps', 'invalid')").toArray();
           fail();
         } catch (err) {
-          assertEqual(err.errorNum, require("internal").errors.ERROR_BAD_PARAMETER.code);
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
         }
       }
 
@@ -531,7 +855,8 @@ function iResearchFeatureAqlTestSuite () {
           analyzers.remove(analyzerName, true); // cleanup (should not get there)
           created = true;
         } catch (err) {
-          assertEqual(err.errorNum, require("internal").errors.ERROR_BAD_PARAMETER.code);
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
         }
         assertFalse(created);
       }
@@ -557,7 +882,8 @@ function iResearchFeatureAqlTestSuite () {
           analyzers.remove(analyzerName, true); // cleanup (should not get there)
           fail();
         } catch (err) {
-          assertEqual(err.errorNum, require("internal").errors.ERROR_BAD_PARAMETER.code);
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
         }
       }
     },
@@ -662,7 +988,8 @@ function iResearchFeatureAqlTestSuite () {
           analyzers.remove(analyzerName, true); // cleanup (should not get there)
           fail();
         } catch (err) {
-          assertEqual(err.errorNum, require("internal").errors.ERROR_BAD_PARAMETER.code);
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
         }
       }
     },
@@ -673,7 +1000,8 @@ function iResearchFeatureAqlTestSuite () {
           analyzers.remove(analyzerName, true); // cleanup (should not get there)
           fail();
       } catch (err) {
-          assertEqual(err.errorNum, require("internal").errors.ERROR_NOT_IMPLEMENTED.code);
+          assertEqual(require("internal").errors.ERROR_NOT_IMPLEMENTED.code,
+                      err.errorNum);
       }
     }
   };

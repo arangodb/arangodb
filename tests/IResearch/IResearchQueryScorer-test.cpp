@@ -53,6 +53,7 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -108,6 +109,7 @@ class IResearchQueryScorerTest : public ::testing::Test {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
+    features.emplace_back(new arangodb::FlushFeature(server), false);
     features.emplace_back(new arangodb::V8DealerFeature(server),
                           false);  // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::ViewTypesFeature(server), true);
@@ -631,6 +633,44 @@ TEST_F(IResearchQueryScorerTest, test) {
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.is(TRI_ERROR_INTERNAL));
+  }
+
+  // test case covers:
+  // https://github.com/arangodb/arangodb/issues/9660
+  {
+    std::map<size_t, irs::string_ref> expectedDocs{
+      { 2, "A" }
+    };
+
+    std::string const query =
+        "LET x = FIRST(FOR y IN collection_1 FILTER y.seq == 0 RETURN DISTINCT y.name) "
+        "FOR d IN testView SEARCH d.name == x "
+        "LET score = customscorer(d, 1) + 1.0 "
+        "COLLECT name = d.name AGGREGATE maxScore = MAX(score) "
+        "RETURN { name: name, score: maxScore }";
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    ASSERT_EQ(1, resultIt.size());
+
+    for (; resultIt.valid(); resultIt.next()) {
+      auto const actualValue = resultIt.value();
+      ASSERT_TRUE(actualValue.isObject());
+
+      auto actualScoreSlice = actualValue.get("score");
+      ASSERT_TRUE(actualScoreSlice.isNumber());
+      auto const actualScore = actualScoreSlice.getNumber<size_t>();
+      auto expectedValue = expectedDocs.find(actualScore);
+      ASSERT_TRUE(expectedValue != expectedDocs.end());
+
+      auto const actualName = actualValue.get("name");
+      ASSERT_EQ(expectedValue->second, actualName.copyString());
+    }
   }
 
   // ensure scorers are deduplicated

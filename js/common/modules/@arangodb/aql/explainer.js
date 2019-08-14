@@ -303,7 +303,7 @@ function printIndexes(indexes) {
       if (l > maxIdLen) {
         maxIdLen = l;
       }
-      l = index.name.length;
+      l = index.name ? index.name.length : 0;
       if (l > maxNameLen) {
         maxNameLen = l;
       }

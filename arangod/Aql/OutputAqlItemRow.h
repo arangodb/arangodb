@@ -29,6 +29,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/system-compiler.h"
 
 namespace arangodb {
 namespace aql {
@@ -229,7 +230,8 @@ class OutputAqlItemRow {
 #endif
     _baseIndex = index;
   }
-  // Use this function with caution! We need it only for the SortedCollectExecutor
+  // Use this function with caution! We need it for the SortedCollectExecutor
+  // and CountCollectExecutor.
   void setAllowSourceRowUninitialized() {
     _allowSourceRowUninitialized = true;
   }
@@ -305,7 +307,8 @@ class OutputAqlItemRow {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _setBaseIndexNotUsed;
 #endif
-  // need this special bool for allowing an empty AqlValue inside the SortedCollectExecutor
+  // Need this special bool for allowing an empty AqlValue inside the
+  // SortedCollectExecutor and CountCollectExecutor.
   bool _allowSourceRowUninitialized;
 
  private:

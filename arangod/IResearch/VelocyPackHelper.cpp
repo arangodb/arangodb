@@ -23,25 +23,10 @@
 
 #include "VelocyPackHelper.h"
 
-#include "velocypack/Builder.h"
-#include "velocypack/Iterator.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 
 namespace {
-
-inline arangodb::velocypack::ValuePair toValuePair(irs::bytes_ref const& ref) {
-  TRI_ASSERT(!ref.null()); // consumers of ValuePair usually use memcpy(...) which cannot handle nullptr
-  return arangodb::velocypack::ValuePair( // value pair
-    ref.c_str(), ref.size(), arangodb::velocypack::ValueType::Binary // args
-  );
-}
-
-inline arangodb::velocypack::ValuePair toValuePair(irs::string_ref const& ref) {
-  TRI_ASSERT(!ref.null()); // consumers of ValuePair usually use memcpy(...) which cannot handle nullptr
-  return arangodb::velocypack::ValuePair( // value pair
-    ref.c_str(), ref.size(), arangodb::velocypack::ValueType::String // args
-  );
-}
-
 template<typename T>
 arangodb::velocypack::Builder& addRef( // add a value
   arangodb::velocypack::Builder& builder, // builder
@@ -53,7 +38,7 @@ arangodb::velocypack::Builder& addRef( // add a value
       arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null) // value
     );
   } else {
-    builder.add(toValuePair(value));
+    builder.add(arangodb::iresearch::toValuePair(value));
   }
 
   return builder;
@@ -75,12 +60,11 @@ arangodb::velocypack::Builder& addRef( // add a value
       arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null) // value
     );
   } else {
-    builder.add(key.c_str(), key.size(), toValuePair(value));
+    builder.add(key.c_str(), key.size(), arangodb::iresearch::toValuePair(value));
   }
 
   return builder;
 }
-
 }
 
 namespace arangodb {

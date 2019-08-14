@@ -59,12 +59,14 @@ void LogThread::flush() {
       break;
     }
 
+    // cppcheck-suppress redundantPointerOp
     CONDITION_LOCKER(guard, *CONDITION);
     guard.signal();
   }
 }
 
 void LogThread::wakeup() {
+  // cppcheck-suppress redundantPointerOp
   CONDITION_LOCKER(guard, *CONDITION);
   guard.signal();
 }
@@ -84,6 +86,7 @@ void LogThread::run() {
       delete msg;
     }
 
+    // cppcheck-suppress redundantPointerOp
     CONDITION_LOCKER(guard, *CONDITION);
     guard.wait(25 * 1000);
   }

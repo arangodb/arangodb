@@ -55,6 +55,7 @@
 #include "MMFiles/MMFilesWalRecoveryFeature.h"
 #include "MMFiles/mmfiles-replication-dump.h"
 #include "Random/RandomGenerator.h"
+#include "Replication/ReplicationClients.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerIdFeature.h"
@@ -192,14 +193,14 @@ Result MMFilesEngine::dropDatabase(TRI_vocbase_t& database) {
   // queued operations, a service which it offers:
   auto callback = [&database]() {
     database.shutdown();
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   };
 
   while (!MMFilesLogfileManager::instance()->executeWhileNothingQueued(callback)) {
     LOG_TOPIC("86acb", TRACE, Logger::ENGINES)
         << "Trying to shutdown dropped database, waiting for phase in which "
         << "the collector thread does not have queued operations.";
-    std::this_thread::sleep_for(std::chrono::microseconds(500000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
   // stop compactor thread
   shutdownDatabase(database);
@@ -888,7 +889,7 @@ void MMFilesEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status
     }
 
     ++iterations;
-    std::this_thread::sleep_for(std::chrono::microseconds(50000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
 
   status = TRI_ERROR_NO_ERROR;
@@ -2637,7 +2638,7 @@ int MMFilesEngine::stopCleanup(TRI_vocbase_t* vocbase) {
   thread->signal();
 
   while (thread->isRunning()) {
-    std::this_thread::sleep_for(std::chrono::microseconds(5000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -2719,7 +2720,7 @@ int MMFilesEngine::stopCompactor(TRI_vocbase_t* vocbase) {
   thread->signal();
 
   while (thread->isRunning()) {
-    std::this_thread::sleep_for(std::chrono::microseconds(5000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -3285,8 +3286,12 @@ int MMFilesEngine::writeDropMarker(TRI_voc_tick_t id, std::string const& name) {
   return res;
 }
 
-bool MMFilesEngine::inRecovery() {
-  return MMFilesLogfileManager::instance(true)->isInRecovery();
+RecoveryState MMFilesEngine::recoveryState() noexcept {
+  return MMFilesLogfileManager::instance(true)->recoveryState();
+}
+
+TRI_voc_tick_t MMFilesEngine::recoveryTick() noexcept {
+  return MMFilesLogfileManager::instance(true)->recoveryTick();
 }
 
 /// @brief writes a create-database marker into the log

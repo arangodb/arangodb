@@ -23,7 +23,9 @@
 
 #include "CollectionKeysRepository.h"
 #include "Basics/MutexLocker.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -64,7 +66,7 @@ CollectionKeysRepository::~CollectionKeysRepository() {
           << "giving up waiting for unused keys";
     }
 
-    std::this_thread::sleep_for(std::chrono::microseconds(500000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     ++tries;
   }
 

@@ -41,10 +41,10 @@ const platform = require('internal').platform;
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
-// const GREEN = require('internal').COLORS.COLOR_GREEN;
+const GREEN = require('internal').COLORS.COLOR_GREEN;
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
-// const YELLOW = require('internal').COLORS.COLOR_YELLOW;
+const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 let didSplitBuckets = false;
 
@@ -221,7 +221,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           break;
         }
 
-        print('\n' + Date() + ' ' + runFn.info + ': Trying', te, '...');
+        print('\n' + (new Date()).toISOString() + GREEN + " [============] " + runFn.info + ': Trying', te, '...', RESET);
         let reply = runFn(options, instanceInfo, te, env);
 
         if (reply.hasOwnProperty('forceTerminate')) {
@@ -617,7 +617,6 @@ function scanTestPaths (paths, options) {
 function runThere (options, instanceInfo, file) {
   try {
     let testCode;
-    let mochaGrep = options.mochaGrep ? ', ' + JSON.stringify(options.mochaGrep) : '';
     if (file.indexOf('-spec') === -1) {
       let testCase = JSON.stringify(options.testCase);
       if (options.testCase === undefined) {
@@ -626,6 +625,7 @@ function runThere (options, instanceInfo, file) {
       testCode = 'const runTest = require("jsunity").runTest; ' +
         'return runTest(' + JSON.stringify(file) + ', true, ' + testCase + ');';
     } else {
+      let mochaGrep = options.testCase ? ', ' + JSON.stringify(options.testCase) : '';
       testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
         'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');';
     }
@@ -687,7 +687,7 @@ function runThere (options, instanceInfo, file) {
 }
 runThere.info = 'runThere';
 
-function readTestResult(path, rc) {
+function readTestResult(path, rc, testCase) {
   const jsonFN = fs.join(path, 'testresult.json');
   let buf;
   try {
@@ -732,7 +732,11 @@ function readTestResult(path, rc) {
       return rc;
     }
   } else if (_.isObject(result)) {
-    return result;
+    if ((testCase !== undefined) && result.hasOwnProperty(testCase)) {
+      return result[testCase];
+    } else {
+      return result;
+    }
   } else {
     rc.failed = rc.status ? 0 : 1;
     rc.message = "don't know howto handle '" + buf + "'";
@@ -755,7 +759,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
 
   args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);
 
-  args['javascript.unit-test-filter'] = options.testFilter;
+  args['javascript.unit-test-filter'] = options.testCase;
 
   if (!options.verbose) {
     args['log.level'] = 'warning';
@@ -766,7 +770,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   }
   require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
   let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir, false, options.coreCheck);
-  return readTestResult(instanceInfo.rootDir, rc);
+  return readTestResult(instanceInfo.rootDir, rc, args['javascript.unit-tests']);
 }
 runInArangosh.info = 'arangosh';
 
@@ -791,7 +795,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
     testCode = 'const runTest = require("jsunity").runTest;\n ' +
       'return runTest(' + JSON.stringify(file) + ', true, ' + testCase + ');\n';
   } else {
-    let mochaGrep = options.mochaGrep ? ', ' + JSON.stringify(options.mochaGrep) : '';
+    let mochaGrep = options.testCase ? ', ' + JSON.stringify(options.testCase) : '';
     testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
       'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');\n';
   }

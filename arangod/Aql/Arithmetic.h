@@ -24,6 +24,10 @@
 #ifndef ARANGOD_AQL_ARITHMETIC_H
 #define ARANGOD_AQL_ARITHMETIC_H 1
 
+#include <algorithm>
+#include <limits>
+#include <string>
+
 #include "Basics/Common.h"
 
 namespace arangodb {

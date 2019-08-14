@@ -25,6 +25,8 @@
 
 #include "LogicalDataSource.h"
 
+#include <velocypack/StringRef.h>
+
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
@@ -33,7 +35,6 @@
 #include "RestServer/ServerIdFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-#include "velocypack/StringRef.h"
 
 #include "Logger/Logger.h"
 

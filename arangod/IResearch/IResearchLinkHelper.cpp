@@ -24,6 +24,9 @@
 #include "Basics/Common.h"
 
 #include "IResearchLinkHelper.h"
+
+#include <velocypack/Iterator.h>
+
 #include "IResearchCommon.h"
 #include "IResearchFeature.h"
 #include "IResearchLink.h"
@@ -43,7 +46,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
-#include "velocypack/Iterator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 
@@ -563,6 +565,7 @@ namespace iresearch {
     }
   } emptySlice;
 
+  // cppcheck-suppress returnReference
   return emptySlice._slice;
 }
 
@@ -776,14 +779,40 @@ namespace iresearch {
     IResearchLinkMeta meta;
     std::string errorField;
 
-    if (!linkDefinition.isNull() // have link definition
-        && !meta.init(linkDefinition, false, errorField, &vocbase)) { // for db-server analyzer validation should have already applied on coordinator
-      return arangodb::Result( // result
-        TRI_ERROR_BAD_PARAMETER, // code
-        errorField.empty()
-         ? (std::string("while validating arangosearch link definition, error: invalid link definition for collection '") + collectionName.copyString() + "': " + linkDefinition.toString())
-         : (std::string("while validating arangosearch link definition, error: invalid link definition for collection '") + collectionName.copyString() + "' error in attribute: " + errorField)
-      );
+    if (!linkDefinition.isNull()) { // have link definition
+      if (!meta.init(linkDefinition, false, errorField, &vocbase)) { // for db-server analyzer validation should have already applied on coordinator
+        return arangodb::Result( // result
+          TRI_ERROR_BAD_PARAMETER, // code
+          errorField.empty()
+          ? (std::string("while validating arangosearch link definition, error: invalid link definition for collection '") + collectionName.copyString() + "': " + linkDefinition.toString())
+          : (std::string("while validating arangosearch link definition, error: invalid link definition for collection '") + collectionName.copyString() + "' error in attribute: " + errorField)
+        );
+      }
+      // validate analyzers origin
+      // analyzer should be either from same database as view (and collection) or from system database
+      {
+        const auto& currentVocbase = vocbase.name();
+        for (const auto& analyzer : meta._analyzers) {
+          TRI_ASSERT(analyzer._pool); // should be checked in meta init
+          if (ADB_UNLIKELY(!analyzer._pool)) { 
+            continue; 
+          }
+          auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(analyzer._pool->name());
+          if (ADB_UNLIKELY(analyzerVocbase.empty())) { 
+            // in case of absent system database analyzer name will not be normalized
+            // and may not contain database prefix. But in that case analyzer will be
+            // considered local for current database and this is perefectly fine.
+            continue;
+          }
+          if (analyzerVocbase != arangodb::StaticStrings::SystemDatabase &&
+              analyzerVocbase != currentVocbase) {
+            return arangodb::Result(
+                TRI_ERROR_BAD_PARAMETER,
+                std::string("Analyzer '").append(analyzer._pool->name())
+                .append("' is not accessible from database '").append(currentVocbase).append("'"));
+          }
+        }
+      }
     }
   }
 

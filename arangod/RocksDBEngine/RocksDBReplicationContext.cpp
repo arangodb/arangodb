@@ -28,7 +28,9 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Basics/system-functions.h"
 #include "Logger/Logger.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
@@ -69,20 +71,17 @@ TRI_voc_cid_t normalizeIdentifier(TRI_vocbase_t& vocbase, std::string const& ide
 }  // namespace
 
 RocksDBReplicationContext::RocksDBReplicationContext(double ttl, SyncerId syncerId,
-                                                     std::string clientId)
-    : _syncerId{syncerId},
-      _clientId{std::move(clientId)},
-      _id{TRI_NewTickServer()},
+                                                    TRI_server_id_t clientId)
+    : _id{TRI_NewTickServer()},
+      _syncerId{syncerId},
+    // buggy clients may not send the serverId
+      _clientId{clientId != 0 ? clientId : _id},
       _snapshotTick{0},
       _snapshot{nullptr},
       _ttl{ttl > 0.0 ? ttl : replutils::BatchInfo::DefaultTimeout},
       _expires{TRI_microtime() + _ttl},
       _isDeleted{false},
       _users{1} {
-  // buggy clients may not send the serverId
-  if (_clientId.empty() || _clientId == "none") {
-    _clientId = std::to_string(_id);
-  }
   TRI_ASSERT(_ttl > 0.0);
 }
 
@@ -237,7 +236,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
     // database-specific inventory
     vocbase.inventory(result, tick, nameFilter);
   }
-  vocbase.replicationClients().track(syncerId(), replicationClientServerId(), _snapshotTick, _ttl);
+  vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
 
   return Result();
 }
@@ -372,7 +371,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
   while (cIter->hasMore()) {
     // needs to be a strings because rocksdb::Slice gets invalidated
     std::string lowKey, highKey;
-    uint64_t hash = 0x012345678;
+    uint64_t hashval = 0x012345678;
 
     uint64_t k = chunkSize;
     while (k-- > 0 && cIter->hasMore()) {
@@ -410,10 +409,10 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
       // restricted to strings
       tmpHashBuilder.clear();
       tmpHashBuilder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
-      hash ^= tmpHashBuilder.slice().hashString();
+      hashval ^= tmpHashBuilder.slice().hashString();
       tmpHashBuilder.clear();
       tmpHashBuilder.add(TRI_RidToValuePair(docRev, &ridBuffer[0]));
-      hash ^= tmpHashBuilder.slice().hashString();
+      hashval ^= tmpHashBuilder.slice().hashString();
 
       cIter->iter->Next();
     };
@@ -426,7 +425,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
     b.add(VPackValue(VPackValueType::Object));
     b.add("low", VPackValue(lowKey));
     b.add("high", VPackValue(highKey));
-    b.add("hash", VPackValue(std::to_string(hash)));
+    b.add("hash", VPackValue(std::to_string(hashval)));
     b.close();
   }
   b.close();
@@ -746,7 +745,7 @@ void RocksDBReplicationContext::use(double ttl) {
     dbs.emplace(&pair.second->vocbase);
   }
   for (TRI_vocbase_t* vocbase : dbs) {
-    vocbase->replicationClients().track(syncerId(), replicationClientServerId(), _snapshotTick, ttl);
+    vocbase->replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, ttl);
   }
 }
 
@@ -763,7 +762,7 @@ void RocksDBReplicationContext::release() {
     dbs.emplace(&pair.second->vocbase);
   }
   for (TRI_vocbase_t* vocbase : dbs) {
-    vocbase->replicationClients().track(syncerId(), replicationClientServerId(), _snapshotTick, _ttl);
+    vocbase->replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
   }
 }
 
@@ -932,7 +931,7 @@ RocksDBReplicationContext::CollectionIterator* RocksDBReplicationContext::getCol
     // for initial synchronization. the inventory request and collection
     // dump requests will all happen after the batch creation, so the
     // current tick value here is good
-    cIter->vocbase.replicationClients().track(syncerId(), replicationClientServerId(), _snapshotTick, _ttl);
+    cIter->vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
   }
 
   return cIter;
@@ -943,7 +942,7 @@ void RocksDBReplicationContext::releaseDumpIterator(CollectionIterator* it) {
     TRI_ASSERT(it->isUsed());
     if (!it->hasMore()) {
       MUTEX_LOCKER(locker, _contextLock);
-      it->vocbase.replicationClients().track(syncerId(), replicationClientServerId(), _snapshotTick, _ttl);
+      it->vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
       _iterators.erase(it->logical->id());
     } else {  // Context::release() will update the replication client
       it->release();

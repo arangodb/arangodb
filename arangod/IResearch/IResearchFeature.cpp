@@ -52,6 +52,7 @@
 #include "Logger/LogMacros.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -88,7 +89,7 @@ static const std::string FLUSH_VALUE_FIELD("value");
 
 class IResearchLogTopic final : public arangodb::LogTopic {
  public:
-  IResearchLogTopic(std::string const& name)
+  explicit IResearchLogTopic(std::string const& name)
       : arangodb::LogTopic(name, DEFAULT_LEVEL) {
     setIResearchLogLevel(DEFAULT_LEVEL);
   }
@@ -342,7 +343,7 @@ bool upgradeSingleServerArangoSearchView0_1(
                                                                builder.slice());
 
     if (!res.ok()) {
-      LOG_TOPIC("f8d19", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("f8d20", WARN, arangodb::iresearch::TOPIC)
           << "failure to recreate view while upgrading IResearchView from "
              "version 0 to version 1, error: "
           << res.errorNumber() << " " << res.errorMessage()
@@ -403,107 +404,6 @@ void registerIndexFactory() {
               entry.first + "': " + res.errorMessage());
     }
   }
-}
-
-void registerRecoveryMarkerHandler() {
-  static const arangodb::FlushFeature::FlushRecoveryCallback callback = []( // callback
-    TRI_vocbase_t const& vocbase, // marker vocbase
-    arangodb::velocypack::Slice const& slice // marker data
-  )->arangodb::Result {
-    if (!slice.isObject()) {
-      return arangodb::Result( // result
-        TRI_ERROR_BAD_PARAMETER, // code
-        "non-object recovery marker body recieved by the arangosearch handler" // message
-      );
-    }
-
-    if (!slice.hasKey(FLUSH_COLLECTION_FIELD) // missing field
-        || !slice.get(FLUSH_COLLECTION_FIELD).isNumber<TRI_voc_cid_t>()) {
-      return arangodb::Result( // result
-        TRI_ERROR_BAD_PARAMETER, // code
-        "arangosearch handler failed to get collection indentifier from the recovery marker" // message
-      );
-    }
-
-    if (!slice.hasKey(FLUSH_INDEX_FIELD) // missing field
-        || !slice.get(FLUSH_INDEX_FIELD).isNumber<TRI_idx_iid_t>()) {
-      return arangodb::Result( // result
-        TRI_ERROR_BAD_PARAMETER, // code
-        "arangosearch handler failed to get link indentifier from the recovery marker" // message
-      );
-    }
-
-    auto collection = vocbase.lookupCollection( // collection of the recovery marker
-      slice.get(FLUSH_COLLECTION_FIELD).getNumber<TRI_voc_cid_t>() // args
-    );
-
-    // arangosearch handler failed to find collection from the recovery marker, possibly already removed
-    if (!collection) {
-      return arangodb::Result();
-    }
-
-    auto link = arangodb::iresearch::IResearchLinkHelper::find( // link of the recovery marker
-      *collection, slice.get(FLUSH_INDEX_FIELD).getNumber<TRI_idx_iid_t>() // args
-    );
-
-    // arangosearch handler failed to find link from the recovery marker, possibly already removed
-    if (!link) {
-      return arangodb::Result();
-    }
-
-    return link->walFlushMarker(slice.get(FLUSH_VALUE_FIELD));
-  };
-  auto& type = arangodb::iresearch::DATA_SOURCE_TYPE.name();
-
-  arangodb::FlushFeature::registerFlushRecoveryCallback(type, callback);
-}
-
-/// @note must match registerRecoveryMarkerHandler() above
-/// @note implemented separately to be closer to registerRecoveryMarkerHandler()
-arangodb::iresearch::IResearchFeature::WalFlushCallback registerRecoveryMarkerSubscription(
-    arangodb::iresearch::IResearchLink const& link // wal source
-) {
-  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature< // lookup
-    arangodb::FlushFeature // type
-  >("Flush"); // name
-
-  if (!feature) {
-    LOG_TOPIC("7007e", WARN, arangodb::iresearch::TOPIC)
-      << "failed to find feature 'Flush' while registering recovery subscription";
-
-    return {}; // it's an std::function so don't use a constructor or ASAN complains
-  }
-
-  auto& type = arangodb::iresearch::DATA_SOURCE_TYPE.name();
-  auto& vocbase = link.collection().vocbase();
-  auto subscription = feature->registerFlushSubscription(type, vocbase);
-
-  if (!subscription) {
-    LOG_TOPIC("df64a", WARN, arangodb::iresearch::TOPIC)
-      << "failed to find register subscription with  feature 'Flush' while  registering recovery subscription";
-
-    return {}; // it's an std::function so don't use a constructor or ASAN complains
-  }
-
-  auto cid = link.collection().id();
-  auto iid = link.id();
-
-  return [cid, iid, subscription](
-    arangodb::velocypack::Slice const& value, TRI_voc_tick_t tick)->arangodb::Result {
-    if (value.isNone()) {
-      return subscription->commit(value, tick);
-    }
-
-    arangodb::velocypack::Builder builder;
-
-    builder.openObject();
-    builder.add(FLUSH_COLLECTION_FIELD, arangodb::velocypack::Value(cid));
-    builder.add(FLUSH_INDEX_FIELD, arangodb::velocypack::Value(iid));
-    builder.add(FLUSH_VALUE_FIELD, value);
-    builder.close();
-
-    return subscription->commit(builder.slice(), tick);
-  };
 }
 
 void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
@@ -682,7 +582,7 @@ class IResearchFeature::Async {
   struct Task : public Pending {
     std::unique_lock<ReadMutex> _lock;  // prevent resource deallocation
 
-    Task(Pending&& pending) : Pending(std::move(pending)) {}
+    explicit Task(Pending&& pending) : Pending(std::move(pending)) {}
   };
 
   struct Thread : public arangodb::Thread {
@@ -697,7 +597,7 @@ class IResearchFeature::Async {
                                     // to store pointer for move-assignment)
     mutable bool _wasNotified;  // a notification was raised from another thread
 
-    Thread(std::string const& name)
+    explicit Thread(std::string const& name)
         : arangodb::Thread(name), _next(nullptr), _terminate(nullptr), _wasNotified(false) {}
     Thread(Thread&& other)  // used in constructor before tasks are started
         : arangodb::Thread(other.name()),
@@ -1013,9 +913,6 @@ void IResearchFeature::prepare() {
 
   registerRecoveryHelper();
 
-  // register 'arangosearch' flush marker recovery handler
-  registerRecoveryMarkerHandler();
-
   // start the async task thread pool
   if (!ServerState::instance()->isCoordinator() // not a coordinator
       && !ServerState::instance()->isAgent()) {
@@ -1070,12 +967,6 @@ void IResearchFeature::unprepare() {
 void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) {
   _running.store(false);
   ApplicationFeature::validateOptions(options);
-}
-
-/*static*/ IResearchFeature::WalFlushCallback IResearchFeature::walFlushCallback( // callback
-    IResearchLink const& link // subscription target
-) {
-  return registerRecoveryMarkerSubscription(link);
 }
 
 }  // namespace iresearch

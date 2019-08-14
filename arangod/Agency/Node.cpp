@@ -25,6 +25,9 @@
 #include "Store.h"
 
 #include "Basics/StringUtils.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
@@ -198,12 +201,13 @@ Node& Node::operator=(VPackSlice const& slice) {
   return *this;
 }
 
-/// @brief Move operator
+// Move operator
+// cppcheck-suppress operatorEqVarError
 Node& Node::operator=(Node&& rhs) {
   // 1. remove any existing time to live entry
   // 2. move children map over
   // 3. move value over
-  // Must not move over rhs's _parent, _observers
+  // Must not move over rhs's _parent, _store, _observers
   _nodeName = std::move(rhs._nodeName);
   _children = std::move(rhs._children);
   // The _children map has been moved here, therefore we must
@@ -219,12 +223,13 @@ Node& Node::operator=(Node&& rhs) {
   return *this;
 }
 
-/// Assignment operator
+// Assignment operator
+// cppcheck-suppress operatorEqVarError
 Node& Node::operator=(Node const& rhs) {
   // 1. remove any existing time to live entry
   // 2. clear children map
   // 3. move from rhs to buffer pointer
-  // Must not move rhs's _parent, _observers
+  // Must not move rhs's _parent, _store, _observers
   removeTimeToLive();
   _nodeName = rhs._nodeName;
   _children.clear();

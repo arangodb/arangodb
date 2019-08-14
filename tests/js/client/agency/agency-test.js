@@ -80,7 +80,12 @@ function agencyTestSuite () {
       let res = request({url: agencyLeader + "/_api/agency/config",
                          method: "GET", followRedirect: true});
       if (res.statusCode === 200) {
-        res.bodyParsed = JSON.parse(res.body);
+        try {
+          res.bodyParsed = JSON.parse(res.body);
+        } catch(e) {
+          require("console").error("Exception in body parse of '" + agencyLeader + "/_api/agency/config' : ", res.body, JSON.stringify(e),  JSON.stringify(res));
+          throw e;
+        }
         return {
           compactionStepSize: res.bodyParsed.configuration["compaction step size"],
           compactionKeepSize: res.bodyParsed.configuration["compaction keep size"]
@@ -113,8 +118,29 @@ function agencyTestSuite () {
         timeout: 240
       };
       
-      ret.push({compactions: JSON.parse(request(compaction).body),
-                state: JSON.parse(request(state).body), url: url});
+      let compactionReply = request(compaction);
+      let stateReply = request(state);
+      let compactionParsed;
+      let stateParsed;
+      try {
+        compactionParsed = JSON.parse(compactionReply.body);
+      }
+      catch (e) {
+        require("console").error("Exception in body parse of '" + url + "/_api/cursor' : ", compactionReply.body, JSON.stringify(e),  JSON.stringify(compactionReply));
+        throw e;
+      }
+      try {
+        stateParsed = JSON.parse(stateReply.body);
+      }
+      catch (e) {
+        require("console").error("Exception in body parse of '" + url + "/_api/agency/state' : ", stateReply.body, JSON.stringify(e),  JSON.stringify(stateReply));
+        throw e;
+      }
+      ret.push({
+        compactions: compactionParsed,
+        state: stateParsed,
+        url: url
+      });
     });
     return ret;
   }
@@ -123,6 +149,7 @@ function agencyTestSuite () {
     // We simply try all agency servers in turn until one gives us an HTTP
     // response:
     var res;
+    let requestUrl;
     var inquire = false;
 
     var clientIds = [];
@@ -136,14 +163,16 @@ function agencyTestSuite () {
     while (true) {
 
       if (!inquire) {
-        res = request({url: agencyLeader + "/_api/agency/" + api,
+        requestUrl = agencyLeader + "/_api/agency/" + api;
+        res = request({url: requestUrl,
                        method: "POST", followRedirect: false,
                        body: JSON.stringify(list),
                        headers: {"Content-Type": "application/json"},
                        timeout: timeout  /* essentially for the huge trx package
                                             running under ASAN in the CI */ });
       } else { // inquire. Remove successful commits. For later retries
-        res = request({url: agencyLeader + "/_api/agency/inquire",
+        requestUrl = agencyLeader + "/_api/agency/inquire";
+        res = request({url: requestUrl,
                        method: "POST", followRedirect: false,
                        body: JSON.stringify(clientIds),
                        headers: {"Content-Type": "application/json"},
@@ -155,7 +184,7 @@ function agencyTestSuite () {
         agencyLeader = res.headers.location;
         var l = 0;
         for (var i = 0; i < 3; ++i) {
-          l = agencyLeader.indexOf('/', l+1);
+          l = agencyLeader.indexOf('/', l + 1);
         }
         agencyLeader = agencyLeader.substring(0,l);
         if (clientIds.length > 0 && api === 'write') {
@@ -176,7 +205,12 @@ function agencyTestSuite () {
       }
       // In case of inquiry, we probably have done some of the transactions:
       var done = 0;
-      res.bodyParsed = JSON.parse(res.body);
+      try {
+        res.bodyParsed = JSON.parse(res.body);
+      } catch(e) {
+        require("console").error("Exception in body parse of '" + requestUrl + "' : ", res.body, JSON.stringify(e), api, list, JSON.stringify(res));
+        throw e;
+      }
       res.bodyParsed.results.forEach(function (index) {
         if (index > 0) {
           done++;
@@ -192,7 +226,7 @@ function agencyTestSuite () {
     try {
       res.bodyParsed = JSON.parse(res.body);
     } catch(e) {
-      require("console").error("Exception in body parse:", res.body, JSON.stringify(e), api, list, JSON.stringify(res));
+      require("console").error("Exception in body parse of '" + requestUrl + "' : ", res.body, JSON.stringify(e), api, list, JSON.stringify(res));
     }
     return res;
   }
@@ -237,10 +271,10 @@ function agencyTestSuite () {
     res = accessAgency("read", trxs);
     assertEqual(200, res.statusCode);
     for (i = 0; i < start + count; ++i) {
-      let key = "key"+i;
+      let key = "key" + i;
       let correct = {};
       correct[key] = "value" + i;
-      assertEqual(correct, res.bodyParsed[i]);
+      assertEqual(correct, res.bodyParsed[i], JSON.stringify(res.bodyParsed));
     }
   }
 
@@ -253,8 +287,8 @@ function agencyTestSuite () {
       var agents = getCompactions(servers), i, old;
       var ready = true;
       for (i = 1; i < agents.length; ++i) {
-        if (agents[0].state.log[agents[0].state.log.length-1].index !==
-            agents[i].state.log[agents[i].state.log.length-1].index) {
+        if (agents[0].state.log[agents[0].state.log.length - 1].index !==
+            agents[i].state.log[agents[i].state.log.length - 1].index) {
           ready = false;
           break;
         } 
@@ -265,9 +299,9 @@ function agencyTestSuite () {
       agents.forEach( function (agent) {
 
         var results = agent.compactions.result;         // All compactions 
-        var llog = agent.state.log[agent.state.log.length-1];   // Last log entry
+        var llog = agent.state.log[agent.state.log.length - 1];   // Last log entry
         llogi = llog.index;                         // Last log index
-        var lcomp = results[results.length-1];          // Last compaction entry
+        var lcomp = results[results.length - 1];          // Last compaction entry
         var lcompi = parseInt(lcomp._key);              // Last compaction index
         var stepsize = compactionConfig.compactionStepSize;
 
@@ -746,7 +780,12 @@ function agencyTestSuite () {
       let res = request({url: agencyLeader + "/_api/agency/stores",
                          method: "GET", followRedirect: true});
       if (res.statusCode === 200) {
-        res.bodyParsed = JSON.parse(res.body);
+        try {
+          res.bodyParsed = JSON.parse(res.body);
+        } catch(e) {
+          require("console").error("Exception in body parse of " + agencyLeader + "/_api/agency/stores' : ", res.body, JSON.stringify(e), JSON.stringify(res));
+          throw e;
+        }
         if (res.bodyParsed.read_db[0].a !== undefined) {
           assertTrue(res.bodyParsed.read_db[1]["/a/u"] >= 0);
         } else {
@@ -768,7 +807,12 @@ function agencyTestSuite () {
         // only, if agency is still led by same guy/girl
         if (agencyLeader === tmp) {
           if (res.statusCode === 200) {
-            res.bodyParsed = JSON.parse(res.body);
+            try {
+              res.bodyParsed = JSON.parse(res.body);
+            } catch(e) {
+              require("console").error("Exception in body parse of '" + agencyLeader + "/_api/agency/stores' : ", res.body, JSON.stringify(e), JSON.stringify(res));
+              throw e;
+            }
             console.warn(res.bodyParsed.read_db[0]);
             if (res.bodyParsed.read_db[0].a !== undefined) {
               assertTrue(res.bodyParsed.read_db[1]["/a/u"] === undefined);

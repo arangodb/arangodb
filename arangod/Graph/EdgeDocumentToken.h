@@ -67,7 +67,7 @@ struct EdgeDocumentToken {
 #endif
   }
 
-  EdgeDocumentToken(arangodb::velocypack::Slice const& edge) noexcept
+  explicit EdgeDocumentToken(arangodb::velocypack::Slice const& edge) noexcept
       : _data(edge) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _type = EdgeDocumentToken::TokenType::COORDINATOR;

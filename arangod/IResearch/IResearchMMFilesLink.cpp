@@ -21,10 +21,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IResearchMMFilesLink.h"
+
 #include "Cluster/ServerState.h"
-#include "IResearchCommon.h"
-#include "IResearchLinkHelper.h"
-#include "IResearchView.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchLinkHelper.h"
+#include "IResearch/IResearchView.h"
 #include "Indexes/IndexFactory.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -32,8 +34,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/LogicalCollection.h"
-
-#include "IResearchMMFilesLink.h"
 
 namespace arangodb {
 namespace iresearch {
@@ -145,14 +145,17 @@ void IResearchMMFilesLink::toVelocyPack( // generate definition
 bool IResearchMMFilesLink::isPersistent() const {
   auto* engine = arangodb::EngineSelectorFeature::ENGINE;
 
-  // FIXME TODO remove once MMFilesEngine will fillIndex(...) during recovery
-  // currently the index is created but fill is deferred until the end of
-  // recovery at the end of recovery only non-persistent indexes are filled
   if (engine && engine->inRecovery()) {
-    return false;
+    // FIXME
+    // Remove once MMFilesEngine will fillIndex(...) during recovery.
+    // Currently the index is created but fill is deferred until the end of
+    // recovery. At the end of recovery only non-persistent indexes are filled,
+    // that's why we pretend link to be non-persistent if it was created during
+    // recovery.
+    return !IResearchLink::createdInRecovery();
   }
 
-  return true;  // records persisted into the iResearch view
+  return true;
 }
 
 }  // namespace iresearch

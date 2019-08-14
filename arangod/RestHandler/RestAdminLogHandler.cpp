@@ -147,7 +147,7 @@ void RestAdminLogHandler::reportLogs() {
   std::vector<LogBuffer> clean;
 
   if (search) {
-    for (auto entry : entries) {
+    for (auto const& entry : entries) {
       std::string text = StringUtils::tolower(entry._message);
 
       if (text.find(searchString) == std::string::npos) {

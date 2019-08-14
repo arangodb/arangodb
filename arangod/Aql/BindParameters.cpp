@@ -23,6 +23,7 @@
 
 #include "Aql/BindParameters.h"
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>

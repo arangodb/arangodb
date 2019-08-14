@@ -173,6 +173,7 @@ SET(ARANGOD_SOURCES
   Agency/MoveShard.cpp
   Agency/Node.cpp
   Agency/RemoveFollower.cpp
+  Agency/ResignLeadership.cpp
   Agency/RestAgencyHandler.cpp
   Agency/RestAgencyPrivHandler.cpp
   Agency/State.cpp
@@ -341,6 +342,7 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTraverser.cpp
   Cluster/ClusterTrxMethods.cpp
+  Cluster/ClusterTypes.cpp
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
   Cluster/CriticalThread.cpp
@@ -357,12 +359,14 @@ SET(ARANGOD_SOURCES
   Cluster/MaintenanceRestHandler.cpp
   Cluster/MaintenanceWorker.cpp
   Cluster/NonAction.cpp
+  Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
   Cluster/ResignShardLeadership.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
   Cluster/ServerState.cpp
   Cluster/SynchronizeShard.cpp
+  Cluster/TakeoverShardLeadership.cpp
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
   Cluster/UpdateCollection.cpp
@@ -544,6 +548,7 @@ SET(ARANGOD_SOURCES
   Statistics/StatisticsFeature.cpp
   Statistics/StatisticsWorker.cpp
   StorageEngine/EngineSelectorFeature.cpp
+  StorageEngine/HotBackup.cpp
   StorageEngine/PhysicalCollection.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp
@@ -569,6 +574,7 @@ SET(ARANGOD_SOURCES
   Utils/FlushThread.cpp
   Utils/OperationCursor.cpp
   Utils/SingleCollectionTransaction.cpp
+  Utils/UrlHelper.cpp
   V8Server/FoxxQueuesFeature.cpp
   V8Server/V8Context.cpp
   V8Server/V8DealerFeature.cpp

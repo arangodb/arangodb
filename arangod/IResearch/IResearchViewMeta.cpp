@@ -29,9 +29,10 @@
 #include "IResearchCommon.h"
 #include "VelocyPackHelper.h"
 #include "VocBase/LogicalView.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Iterator.h"
-#include "velocypack/Parser.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
 
 #include "IResearchViewMeta.h"
 
@@ -219,6 +220,7 @@ IResearchViewMeta::IResearchViewMeta()
       _writebufferSizeMax(32 * (size_t(1) << 20)) {  // 32MB
   std::string errorField;
 
+  // cppcheck-suppress useInitializationList
   _consolidationPolicy =
       createConsolidationPolicy<irs::index_utils::consolidate_tier>(
           arangodb::velocypack::Parser::fromJson(
@@ -286,7 +288,7 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
   }
 
   try {
-    if (basics::VelocyPackHelper::compare(_consolidationPolicy.properties(), other._consolidationPolicy.properties(), false) != 0) {
+    if (!basics::VelocyPackHelper::equal(_consolidationPolicy.properties(), other._consolidationPolicy.properties(), false)) {
       return false; // values do not match
     }
   } catch (...) {
@@ -621,9 +623,9 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
                 arangodb::velocypack::Value(_consolidationIntervalMsec));
   }
 
-  if ((!ignoreEqual || arangodb::basics::VelocyPackHelper::compare(
+  if ((!ignoreEqual || !arangodb::basics::VelocyPackHelper::equal(
           _consolidationPolicy.properties(),
-          ignoreEqual->_consolidationPolicy.properties(), false) != 0) &&
+          ignoreEqual->_consolidationPolicy.properties(), false)) &&
       (!mask || mask->_consolidationPolicy)) {
     builder.add("consolidationPolicy", _consolidationPolicy.properties());
   }

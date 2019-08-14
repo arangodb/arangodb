@@ -38,6 +38,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
@@ -393,7 +394,6 @@ index_t State::logFollower(query_t const& transactions) {
     VPackSlice slices = transactions->slice();
     TRI_ASSERT(slices.isArray());
     size_t nqs = slices.length();
-    std::string clientId;
 
     for (size_t i = ndups; i < nqs; ++i) {
       VPackSlice const& slice = slices[i];

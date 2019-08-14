@@ -80,7 +80,7 @@ file_not_found::file_not_found(
     error_ += ".";
   } else {
     error_ += ": ";
-    error_ + filename.c_str();
+    error_.append(filename.c_str(), filename.size());
   }
 }
 

@@ -37,8 +37,10 @@
 #include "ApplicationFeatures/V8ShellPhase.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Shell/ClientFeature.h"
@@ -46,6 +48,10 @@
 #include "Shell/ShellFeature.h"
 #include "Shell/V8ShellFeature.h"
 #include "Ssl/SslFeature.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -78,12 +84,16 @@ int main(int argc, char* argv[]) {
       server.addFeature(new ShellColorsFeature(server));
       server.addFeature(new ShellFeature(server, &ret));
       server.addFeature(new ShutdownFeature(server, {"Shell"}));
-      // server.addFeature(new SslFeature(server));
+      server.addFeature(new SslFeature(server));
       server.addFeature(new TempFeature(server, name));
       server.addFeature(new V8PlatformFeature(server));
       server.addFeature(new V8SecurityFeature(server));
       server.addFeature(new V8ShellFeature(server, name));
       server.addFeature(new VersionFeature(server));
+
+#ifdef USE_ENTERPRISE
+    server.addFeature(new EncryptionFeature(server));
+#endif
 
       server.run(argc, argv);
       if (server.helpShown()) {

@@ -53,6 +53,7 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -102,6 +103,7 @@ class IResearchQueryJoinTest : public ::testing::Test {
                                     arangodb::LogLevel::ERR);
 
     // suppress log messages since tests check error conditions
+    features.emplace_back(new arangodb::FlushFeature(server), false);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::ERR);  // suppress WARNING {aql} Suboptimal AqlItemMatrix index lookup:
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),

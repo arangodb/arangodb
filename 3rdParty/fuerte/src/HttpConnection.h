@@ -40,7 +40,7 @@
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
 // Implements a client->server connection using node.js http-parser
-template<SocketType ST>
+template <SocketType ST>
 class HttpConnection final : public fuerte::GeneralConnection<ST> {
  public:
   explicit HttpConnection(EventLoopService& loop,
@@ -48,85 +48,80 @@ class HttpConnection final : public fuerte::GeneralConnection<ST> {
   ~HttpConnection();
 
  public:
-  
   /// Start an asynchronous request.
   MessageID sendRequest(std::unique_ptr<Request>, RequestCallback) override;
-  
+
   /// @brief Return the number of requests that have not yet finished.
   size_t requestsLeft() const override {
     return _numQueued.load(std::memory_order_acquire);
   }
-  
-protected:
-  
+
+ protected:
   void finishConnect() override;
-  
+
   // Thread-Safe: activate the writer loop (if off and items are queud)
   void startWriting() override;
-  
+
   // called by the async_read handler (called from IO thread)
   void asyncReadCallback(asio_ns::error_code const&) override;
-  
+
   /// abort ongoing / unfinished requests
   void abortOngoingRequests(const fuerte::Error) override;
-  
+
   /// abort all requests lingering in the queue
   void drainQueue(const fuerte::Error) override;
-  
-private:
-  
+
+ private:
   // build request body for given request
   std::string buildRequestBody(Request const& req);
-  
+
   /// set the timer accordingly
   void setTimeout(std::chrono::milliseconds);
-  
+
   ///  Call on IO-Thread: writes out one queued request
   void asyncWriteNextRequest();
-  
+
   // called by the async_write handler (called from IO thread)
-  void asyncWriteCallback(asio_ns::error_code const& error,
-                          std::unique_ptr<RequestItem>);
-  
-private:
-  
-  static int on_message_began(http_parser* parser);
+  void asyncWriteCb(asio_ns::error_code const&, std::unique_ptr<RequestItem>);
+
+ private:
+  static int on_message_begin(http_parser* parser);
   static int on_status(http_parser* parser, const char* at, size_t len);
   static int on_header_field(http_parser* parser, const char* at, size_t len);
   static int on_header_value(http_parser* parser, const char* at, size_t len);
   static int on_header_complete(http_parser* parser);
   static int on_body(http_parser* parser, const char* at, size_t len);
   static int on_message_complete(http_parser* parser);
-  
+
  private:
-  
   /// elements to send out
   boost::lockfree::queue<fuerte::v1::http::RequestItem*,
-  boost::lockfree::capacity<1024>> _queue;
-  
+                         boost::lockfree::capacity<1024>>
+      _queue;
+
   /// cached authentication header
   std::string _authHeader;
-  
+
   /// the node http-parser
   http_parser _parser;
   http_parser_settings _parserSettings;
-  
+
   /// is loop active
   std::atomic<uint32_t> _numQueued;
   std::atomic<bool> _active;
-  
+
   // parser state
   std::string _lastHeaderField;
   std::string _lastHeaderValue;
-  
+
   /// response buffer, moved after writing
   velocypack::Buffer<uint8_t> _responseBuffer;
-  
+
   /// currently in-flight request item
   std::unique_ptr<RequestItem> _item;
   /// response data, may be null before response header is received
   std::unique_ptr<arangodb::fuerte::v1::Response> _response;
-  
+
   std::chrono::milliseconds _idleTimeout;
   bool _lastHeaderWasValue = false;
   bool _shouldKeepAlive = false;

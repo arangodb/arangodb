@@ -60,14 +60,14 @@ struct MMFilesHashIndexHelper {
   }
 
   static inline uint64_t HashElement(MMFilesHashIndexElement const* element, bool byKey) {
-    uint64_t hash = element->hash();
+    uint64_t hashval = element->hash();
 
     if (byKey) {
-      return hash;
+      return hashval;
     }
 
     uint64_t documentId = element->localDocumentIdValue();
-    return fasthash64_uint64(documentId, hash);
+    return fasthash64_uint64(documentId, hashval);
   }
 
   /// @brief determines if a key corresponds to an element
@@ -304,12 +304,6 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   int removeMultiElement(transaction::Methods*, MMFilesHashIndexElement*, OperationMode mode);
 
-  bool accessFitsIndex(arangodb::aql::AstNode const* access,
-                       arangodb::aql::AstNode const* other,
-                       arangodb::aql::Variable const* reference,
-                       std::unordered_set<size_t>& found) const;
-
-  /// @brief given an element generates a hash integer
  private:
   /// @brief the actual hash index (unique type)
   typedef arangodb::basics::AssocUnique<arangodb::velocypack::Slice, MMFilesHashIndexElement*, MMFilesUniqueHashIndexHelper> TRI_HashArray_t;

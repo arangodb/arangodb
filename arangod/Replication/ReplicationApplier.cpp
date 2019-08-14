@@ -32,7 +32,9 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/files.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Replication/InitialSyncer.h"
 #include "Replication/TailingSyncer.h"
 #include "Replication/common-defines.h"
@@ -259,7 +261,7 @@ void ReplicationApplier::doStart(std::function<void()>&& cb,
   while (_state.isShuttingDown()) {
     // another instance is still around
     writeLocker.unlock();
-    std::this_thread::sleep_for(std::chrono::microseconds(50 * 1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
     writeLocker.lock();
   }
 
@@ -324,7 +326,7 @@ void ReplicationApplier::doStart(std::function<void()>&& cb,
   }
 
   while (!_thread->hasStarted()) {
-    std::this_thread::sleep_for(std::chrono::microseconds(20000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
 
   TRI_ASSERT(!_state.isActive() && !_state.isShuttingDown());

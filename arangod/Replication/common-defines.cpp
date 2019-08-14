@@ -21,9 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Replication/common-defines.h"
-#include "Basics/tri-strings.h"
 #include <time.h>
+
+#include "Basics/system-functions.h"
+#include "Basics/tri-strings.h"
+#include "Replication/common-defines.h"
 
 namespace arangodb {
 

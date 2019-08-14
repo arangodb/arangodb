@@ -24,13 +24,15 @@
 #ifndef ARANGODB_BASICS_SSL__HELPER_H
 #define ARANGODB_BASICS_SSL__HELPER_H 1
 
-#include "Basics/Common.h"
+#include <cstdint>
+#include <string>
+#include <unordered_set>
 
-#include <openssl/err.h>
-#include <openssl/ssl.h>
+#include <boost/asio/ssl/context.hpp>
+
+#include <openssl/opensslv.h>
 
 #include "Basics/asio_ns.h"
-#include <unordered_set>
 
 namespace arangodb {
 // SSL protocol methods
