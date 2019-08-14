@@ -512,7 +512,8 @@ std::unique_ptr<IndexIterator> RocksDBFulltextIndex::iteratorForCondition(
 
   aql::AstNode const* queryNode = args->getMember(2);
   if (queryNode->type != aql::NODE_TYPE_VALUE || queryNode->value.type != aql::VALUE_TYPE_STRING) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    std::string message = basics::Exception::FillExceptionString(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, message);
   }
 
   FulltextQuery parsedQuery;
