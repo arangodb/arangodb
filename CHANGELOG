@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed agency nodes to not create bogus keys on delete / observe / unobserve.
+
 * Fixed issue #9660: fix multiple plans processing during optimization of AQL query which uses
   ArangoSearch scorers.
   
