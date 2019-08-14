@@ -4,6 +4,8 @@ devel
 * Added initial support for wgs84 reference ellipsoid in GEO_DISTANCE through third
   optional parameter to AQL function
 
+* Added support for area calculations with GEO_AREA AQL function
+
 * Added resign leadership job to supervision.
 
 * Keep followers in sync if the old leader resigned and stopped writes.
