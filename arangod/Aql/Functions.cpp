@@ -4771,6 +4771,34 @@ AqlValue Functions::GeoEquals(ExpressionContext* expressionContext,
   return AqlValue(AqlValueHintBool(result));
 }
 
+/// @brief function GEO_AREA
+AqlValue Functions::GeoArea(ExpressionContext* expressionContext,
+                              transaction::Methods* trx,
+                              VPackFunctionParameters const& parameters) {
+  AqlValue p1 = extractFunctionParameterValue(parameters, 0);
+  AqlValue p2 = extractFunctionParameterValue(parameters, 1);
+  
+  AqlValueMaterializer mat(trx);
+  
+  geo::ShapeContainer shape;
+  Result res = geo::geojson::parseRegion(mat.slice(p1, true), shape);
+  
+  if (res.fail()) {
+    ::registerWarning(expressionContext, "GEO_AREA", res);
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  auto detEllipsoid = [](AqlValue const& p) {
+    if (p.isString()) {
+      VPackValueLength len;
+      const char* ptr = p.slice().getStringUnchecked(len);
+      return geo::utils::ellipsoidFromString(ptr, len);
+    }
+    return geo::SPHERE;
+  };
+  return AqlValue(AqlValueHintDouble(shape.area(detEllipsoid(p2))));
+}
+
 /// @brief function IS_IN_POLYGON
 AqlValue Functions::IsInPolygon(ExpressionContext* expressionContext,
                                 transaction::Methods* trx,
