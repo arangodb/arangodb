@@ -20,6 +20,8 @@ v3.5.1 (XXXX-XX-XX)
 * Added initial support for wgs84 reference ellipsoid in GEO_DISTANCE through third
   optional parameter to AQL function
 
+* Added support for area calculations with GEO_AREA AQL function
+
 * Added resign leadership job to supervision.
 
 * Hide MMFiles-specific information in web UI (in detail view of a collection)
