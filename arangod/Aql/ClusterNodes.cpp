@@ -34,7 +34,6 @@
 #include "Aql/GraphNode.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
-#include "Aql/LocalGatherExecutor.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
 #include "Aql/RemoteExecutor.h"

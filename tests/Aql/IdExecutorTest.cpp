@@ -44,7 +44,7 @@ namespace tests {
 namespace aql {
 
 class IdExecutorTest : public ::testing::Test {
-protected: 
+ protected:
   ExecutionState state;
 
   ResourceMonitor monitor;
@@ -67,7 +67,7 @@ protected:
 
 TEST_F(IdExecutorTest, there_are_no_rows_upstream) {
   ConstFetcherHelper fetcher(itemBlockManager, nullptr);
-  IdExecutor<ConstFetcher> testee(fetcher, infos);
+  IdExecutor<true, ConstFetcher> testee(fetcher, infos);
   NoStats stats{};
 
   std::tie(state, stats) = testee.produceRows(row);
@@ -78,7 +78,7 @@ TEST_F(IdExecutorTest, there_are_no_rows_upstream) {
 TEST_F(IdExecutorTest, there_are_rows_in_the_upstream) {
   auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
   ConstFetcherHelper fetcher(itemBlockManager, input->buffer());
-  IdExecutor<ConstFetcher> testee(fetcher, infos);
+  IdExecutor<true, ConstFetcher> testee(fetcher, infos);
   NoStats stats{};
 
   std::tie(state, stats) = testee.produceRows(row);
