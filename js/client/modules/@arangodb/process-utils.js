@@ -40,6 +40,7 @@ const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const killExternal = internal.killExternal;
 const statusExternal = internal.statusExternal;
+const statisticsExternal = internal.statisticsExternal;
 const base64Encode = internal.base64Encode;
 const testPort = internal.testPort;
 const download = internal.download;
@@ -229,10 +230,13 @@ function setupBinaries (builddir, buildType, configDir) {
       };
     }
   }
-
   BIN_DIR = fs.join(builddir, 'bin');
   if (!fs.exists(BIN_DIR)) {
     BIN_DIR = fs.join(TOP_DIR, BIN_DIR);
+  }
+
+  if (!fs.exists(BIN_DIR)) {
+    BIN_DIR = fs.join(TOP_DIR, 'bin');
   }
 
   UNITTESTS_DIR = fs.join(fs.join(builddir, 'tests'));
@@ -583,31 +587,20 @@ function killWithCoreDump (options, instanceInfo) {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief aggregates information from /proc about the SUT
 // //////////////////////////////////////////////////////////////////////////////
-
 function getProcessStats(pid) {
-  if (platform !== 'linux') {
-    return {};
-  }
-  let pidStr = "" + pid;
-  let stat = fs.read(fs.join('/', 'proc', pidStr, 'stat'));
-  let vals = stat.split(" ");
-  // https://stackoverflow.com/questions/16726779/how-do-i-get-the-total-cpu-usage-of-an-application-from-proc-pid-stat/16731413
-  let processStats = {
-    'userTime': vals[14],
-    'systemTime': vals[15],
-    'virtual': vals[23],
-    'rss': vals[24]
-  };
-  
-  let ioraw = fs.readBuffer(fs.join('/', 'proc', pidStr, 'io'));
-  let lineStart = 0;
-  let maxBuffer = ioraw.length;
-  for (let j = 0; j < maxBuffer; j++) {
-    if (ioraw[j] === 10) { // \n
-      const line = ioraw.asciiSlice(lineStart, j);
-      lineStart = j + 1;
-      let x = line.split(":");
-      processStats[x[0]] = parseInt(x[1]);
+  let processStats = statisticsExternal(pid);
+  if (platform === 'linux') {
+    let pidStr = "" + pid;
+    let ioraw = fs.readBuffer(fs.join('/', 'proc', pidStr, 'io'));
+    let lineStart = 0;
+    let maxBuffer = ioraw.length;
+    for (let j = 0; j < maxBuffer; j++) {
+      if (ioraw[j] === 10) { // \n
+        const line = ioraw.asciiSlice(lineStart, j);
+        lineStart = j + 1;
+        let x = line.split(":");
+        processStats[x[0]] = parseInt(x[1]);
+      }
     }
   }
   return processStats;

@@ -67,7 +67,7 @@ let failedRuns = {
 function gatherFailed(result) {
   return Object.values(result).reduce(function(prev, testCase) {
     if (testCase instanceof Object) {
-      return prev + !testCase.status
+      return prev + !testCase.status;
     } else {
       return prev;
     }
@@ -78,7 +78,7 @@ function gatherFailed(result) {
 function gatherStatus(result) {
   return Object.values(result).reduce(function(prev, testCase) {
     if (testCase instanceof Object) {
-      return prev && testCase.status
+      return prev && testCase.status;
     } else {
       return prev;
     }
@@ -145,7 +145,7 @@ function unitTestPrettyPrintResults (res, options) {
 
       let testrun = res[testrunName];
       testRunStatistics += `${testrunName} - startup [${testrun['startupTime']}] => run [${testrun['testDuration']}] => shutdown [${testrun['shutdownTime']}]
-`
+`;
 
       let successCases = {};
       let failedCases = {};
