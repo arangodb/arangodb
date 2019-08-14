@@ -1275,8 +1275,12 @@ void reverseIdxOps(std::vector<std::shared_ptr<Index>> const& vector,
   while (it != vector.begin()) {
     it--;
     auto* rIdx = static_cast<RocksDBIndex*>(it->get());
-    if (rIdx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
-      std::forward<F>(op)(rIdx);
+    if (rIdx->needsReversal()) {
+      if (std::forward<F>(op)(rIdx).fail()) {
+        // best effort for reverse failed. Let`s trigger full rollback  
+        // or we will end up with inconsistent storage and indexes
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
     }
   }
 }
@@ -1319,16 +1323,19 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
     res = rIdx->insert(*trx, mthds, documentId, doc, options.indexOperationMode);
-    
-    needReversal = needReversal || rIdx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK;
-    
+    needReversal = needReversal || rIdx->needsReversal();
     if (res.fail()) {
       if (needReversal && !state->isSingleOperation()) {
         ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc, &options](RocksDBIndex* rid) {
-          rid->remove(*trx, mthds, documentId, doc, options.indexOperationMode);
+          return rid->remove(*trx, mthds, documentId, doc, options.indexOperationMode);
         });
       }
       break;
+    }
+    TRI_IF_FAILURE("BreakLastIndexOperation") {
+      if (*it == _indexes.back()) {
+        return Result(TRI_ERROR_DEBUG, "BreakLastIndexOperation failure point triggered");
+      }
     }
   }
 
@@ -1366,12 +1373,23 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
       << " objectID " << _objectId << " name: " << _logicalCollection.name();*/
 
   READ_LOCKER(guard, _indexesLock);
-  for (std::shared_ptr<Index> const& idx : _indexes) {
-    RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-    res = ridx->remove(*trx, mthds, documentId, doc, options.indexOperationMode);
-
+  bool needReversal = false;
+  for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
+    RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
+    res = rIdx->remove(*trx, mthds, documentId, doc, options.indexOperationMode);
+    needReversal = needReversal || rIdx->needsReversal();
     if (res.fail()) {
+      if (needReversal && !trx->isSingleOperationTransaction()) {
+        ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex* rid) {
+          return rid->insert(*trx, mthds, documentId, doc, Index::OperationMode::rollback);
+        });
+      }
       break;
+    }
+    TRI_IF_FAILURE("BreakLastIndexOperation") {
+      if (*it == _indexes.back()) {
+        return Result(TRI_ERROR_DEBUG, "BreakLastIndexOperation failure point triggered");
+      }
     }
   }
 
@@ -1420,16 +1438,28 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   }
     
   READ_LOCKER(guard, _indexesLock);
-  for (std::shared_ptr<Index> const& idx : _indexes) {
-    RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
+  bool needReversal = false;
+  for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
+    auto rIdx = static_cast<RocksDBIndex*>(it->get());
     res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId,
                        newDoc, options.indexOperationMode);
-
-    if (res.fail()) {
+    needReversal = needReversal || rIdx->needsReversal();
+    if (!res.ok()) {
+      if (needReversal && !trx->isSingleOperationTransaction()) {
+        ::reverseIdxOps(_indexes, it,
+                        [mthds, trx, &newDocumentId, &newDoc, &oldDocumentId, &oldDoc](RocksDBIndex* rid) {
+                          return rid->update(*trx, mthds, newDocumentId, newDoc, oldDocumentId,
+                                             oldDoc, Index::OperationMode::rollback);
+                        });
+      }
       break;
     }
+    TRI_IF_FAILURE("BreakLastIndexOperation") {
+      if (*it == _indexes.back()) {
+        return Result(TRI_ERROR_DEBUG, "BreakLastIndexOperation failure point triggered");
+      }
+    }
   }
-
   return res;
 }
 

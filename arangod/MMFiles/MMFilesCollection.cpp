@@ -3288,6 +3288,11 @@ Result MMFilesCollection::insertSecondaryIndexes(arangodb::transaction::Methods&
         result = res;
       }
     }
+    TRI_IF_FAILURE("BreakLastIndexOperation") {
+      if (mode != Index::OperationMode::rollback && i == (n -1)) {
+        return Result(TRI_ERROR_DEBUG, "BreakLastIndexOperation failure point triggered");
+      }
+    }
   }
 
   return result;
@@ -3328,6 +3333,11 @@ Result MMFilesCollection::deleteSecondaryIndexes(transaction::Methods& trx,
     if (res.fail()) {
       // an error occurred
       result = res;
+    }
+    TRI_IF_FAILURE("BreakLastIndexOperation") {
+      if (mode != Index::OperationMode::rollback && i == (n -1)) {
+        return Result(TRI_ERROR_DEBUG, "BreakLastIndexOperation failure point triggered");
+      }
     }
   }
 

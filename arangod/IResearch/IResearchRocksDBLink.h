@@ -62,12 +62,19 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
                           arangodb::LocalDocumentId const& documentId,
                           arangodb::velocypack::Slice const& doc,
                           arangodb::Index::OperationMode mode) override {
+    TRI_IF_FAILURE("BreakRollbackIndexOperation") {
+      if (Index::OperationMode::rollback == mode) {
+        return Result(TRI_ERROR_DEBUG, "BreakRollbackIndexOperation failure point triggered");
+      }
+    }
     return IResearchLink::insert(trx, documentId, doc, mode);
   }
 
   bool isSorted() const override { return IResearchLink::isSorted(); }
 
   bool isHidden() const override { return IResearchLink::isHidden(); }
+
+  bool needsReversal() const override { return true; } 
   
   void load() override { IResearchLink::load(); }
 
@@ -82,6 +89,11 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
                                   arangodb::LocalDocumentId const& documentId,
                                   arangodb::velocypack::Slice const& doc,
                                   arangodb::Index::OperationMode mode) override {
+    TRI_IF_FAILURE("BreakRollbackIndexOperation") {
+      if (Index::OperationMode::rollback == mode) {
+        return Result(TRI_ERROR_DEBUG, "BreakRollbackIndexOperation failure point triggered");
+      }
+    }
     return IResearchLink::remove(trx, documentId, doc, mode);
   }
 

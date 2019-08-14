@@ -289,12 +289,11 @@ bool IResearchViewExecutorBase<Impl, Traits>::next(ReadContext& ctx) {
   IndexReadBufferEntry bufferEntry = _indexReadBuffer.pop_front();
 
   if (!impl.writeRow(ctx, bufferEntry)) {
-     LOG_TOPIC("550cd", WARN, arangodb::iresearch::TOPIC)
-            << "failed to read document primary key while reading document "
-               "from arangosearch view, doc_id '"
-            << _doc->value << "'";
+     LOG_TOPIC("550cd", TRACE, arangodb::iresearch::TOPIC)
+            << "failed to write row in node executor";
   }
-  // return true anyway (maybe we failed to find document,
+  // return true anyway as we possbly failed to find one document 
+  // in collection due to eventual index consistency
   // but there may be more other alive docs)
   return true;
 }
