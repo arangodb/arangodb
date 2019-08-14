@@ -435,16 +435,6 @@ set(ARANGOD_SOURCES_PART2
   Indexes/SimpleAttributeEqualityMatcher.cpp
   Indexes/SortedIndexAttributeMatcher.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
-  Pregel/AggregatorHandler.cpp
-  Pregel/AlgoRegistry.cpp
-  Pregel/Algos/LineRank.cpp
-  Pregel/Algos/PageRank.cpp
-  Pregel/Algos/ShortestPath.cpp
-  Pregel/Conductor.cpp
-  Pregel/PregelFeature.cpp
-  Pregel/Recovery.cpp
-  Pregel/Utils.cpp
-  Pregel/WorkerConfig.cpp
   Replication/DatabaseInitialSyncer.cpp
   Replication/DatabaseReplicationApplier.cpp
   Replication/DatabaseTailingSyncer.cpp
@@ -486,7 +476,6 @@ set(ARANGOD_SOURCES_PART2
   RestHandler/RestIndexHandler.cpp
   RestHandler/RestJobHandler.cpp
   RestHandler/RestPleaseUpgradeHandler.cpp
-  RestHandler/RestPregelHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
   RestHandler/RestRepairHandler.cpp
@@ -582,11 +571,11 @@ set(ARANGOD_SOURCES_PART2
   VocBase/Methods/Version.cpp
   VocBase/ticks.cpp
   VocBase/vocbase.cpp
-)
 
-set(ARANGOD_SOURCES_PART3
-  GeneralServer/Task.cpp
-  GeoIndex/Near.cpp
+
+
+  Pregel/AggregatorHandler.cpp
+  Pregel/AlgoRegistry.cpp
   Pregel/Algos/AsyncSCC.cpp
   Pregel/Algos/ConnectedComponents.cpp
   Pregel/Algos/DMID/DMID.cpp
@@ -594,29 +583,43 @@ set(ARANGOD_SOURCES_PART3
   Pregel/Algos/EffectiveCloseness/HLLCounter.cpp
   Pregel/Algos/HITS.cpp
   Pregel/Algos/LabelPropagation.cpp
+  Pregel/Algos/LineRank.cpp
+  Pregel/Algos/PageRank.cpp
   Pregel/Algos/RecoveringPageRank.cpp
   Pregel/Algos/SCC.cpp
   Pregel/Algos/SLPA.cpp
   Pregel/Algos/SSSP.cpp
+  Pregel/Algos/ShortestPath.cpp
+  Pregel/Conductor.cpp
   Pregel/GraphStore.cpp
   Pregel/IncomingCache.cpp
   Pregel/IndexHelpers.cpp
   Pregel/OutgoingCache.cpp
+  Pregel/PregelFeature.cpp
+  Pregel/Recovery.cpp
+  Pregel/Utils.cpp
   Pregel/Worker-templates-algorithms.cpp
   Pregel/Worker-templates-native-types.cpp
   Pregel/Worker.cpp
+  Pregel/WorkerConfig.cpp
+  RestHandler/RestPregelHandler.cpp
+  V8Server/FoxxQueuesFeature.cpp
+  RestServer/InitDatabaseFeature.cpp
+)
+
+set(ARANGOD_SOURCES_PART3
+  GeneralServer/Task.cpp
+  GeoIndex/Near.cpp
   RestServer/CheckVersionFeature.cpp
   RestServer/ConsoleFeature.cpp
   RestServer/ConsoleThread.cpp
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FortuneFeature.cpp
   RestServer/FrontendFeature.cpp
-  RestServer/InitDatabaseFeature.cpp
   RestServer/LanguageCheckFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/ScriptFeature.cpp
   StorageEngine/WalAccess.cpp
-  V8Server/FoxxQueuesFeature.cpp
 )
 
 if (USE_MAINTAINER_MODE)
@@ -645,16 +648,17 @@ add_library(arangoserver_part1 STATIC
 add_library(arangoserver_part2 STATIC
   ${ARANGOD_SOURCES_PART2}
   ${ADDITIONAL_LIB_ARANGOSERVER_PART2_SOURCES}
+)
+
+add_library(arangoserver_part3 STATIC
   ${ARANGOD_SOURCES_PART3}
   ${ADDITIONAL_LIB_ARANGOSERVER_PART3_SOURCES}
 )
 
-#add_library(arangoserver_part3 STATIC ${ARANGOD_SOURCES_PART3})
-
 target_link_libraries(arangoserver
   arangoserver_part1
   arangoserver_part2
-#  arangoserver_part3
+  arangoserver_part3
 )
 
 target_link_libraries(arangoserver_part1 boost_boost)
@@ -666,7 +670,7 @@ target_link_libraries(arangoserver_part1 ${ROCKSDB_LIBS})
 target_link_libraries(arangoserver_part2 arangoserver_part1)
 target_link_libraries(arangoserver_part2 arango_iresearch)
 target_link_libraries(arangoserver_part2 ${ROCKSDB_LIBS})
-#target_link_libraries(arangoserver_part3 arangoserver_part1 arangoserver_part2)
+target_link_libraries(arangoserver_part3 arangoserver_part1 arangoserver_part2)
 
 add_library(arango_mmfiles STATIC
   ${MMFILES_SOURCES}
