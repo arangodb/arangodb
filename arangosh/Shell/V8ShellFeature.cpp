@@ -968,7 +968,7 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
     code = TRI_ObjectToInt64(isolate, args[0]);
   }
 
-  exit((int)code);
+  _exit((int)code);
 
   TRI_V8_TRY_CATCH_END
 }
