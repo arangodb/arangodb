@@ -1624,11 +1624,16 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(methods::CreateDatabaseInfo 
   VPackBuilder builder;
   buildIsBuildingSlice(database, builder);
 
-  AgencyWriteTransaction trx(
-      {AgencyOperation("Plan/Databases/" + database.getName(), AgencySimpleOperationType::DELETE_OP),
-       AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
-      AgencyPrecondition("Plan/Databases/" + database.getName(),
-                         AgencyPrecondition::Type::VALUE, builder.slice()));
+  // delete all collections and the database itself from the agency plan
+  AgencyOperation delPlanCollections("Plan/Collections/" + database.getName(),
+                                     AgencySimpleOperationType::DELETE_OP);
+  AgencyOperation delPlanDatabase("Plan/Databases/" + database.getName(),
+                                  AgencySimpleOperationType::DELETE_OP);
+  AgencyOperation incrPlan("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
+  AgencyPrecondition preCondition("Plan/Databases/" + database.getName(),
+                                  AgencyPrecondition::Type::VALUE, builder.slice());
+
+  AgencyWriteTransaction trx({delPlanCollections, delPlanDatabase, incrPlan}, preCondition);
 
   auto res = ac.sendTransactionWithFailover(trx, 0.0);
 
@@ -1746,14 +1751,14 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
     uint64_t replicationFactor, uint64_t minReplicationFactor, bool waitForReplication,
     velocypack::Slice const& json,  // collection definition
     double timeout,                 // request timeout,
-    bool isNewDatabase,
-    std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
+    bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
   std::vector<ClusterCollectionCreationInfo> infos{
       ClusterCollectionCreationInfo{collectionID, numberOfShards, replicationFactor,
                                     minReplicationFactor, waitForReplication, json}};
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
-  return createCollectionsCoordinator(databaseName, infos, endTime, isNewDatabase, colToDistributeShardsLike);
+  return createCollectionsCoordinator(databaseName, infos, endTime,
+                                      isNewDatabase, colToDistributeShardsLike);
 }
 
 /// @brief this method does an atomic check of the preconditions for the
@@ -1810,10 +1815,10 @@ Result ClusterInfo::checkCollectionPreconditions(std::string const& databaseName
   return {};
 }
 
-Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName,
-                                                 std::vector<ClusterCollectionCreationInfo>& infos,
-                                                 double endTime, bool isNewDatabase,
-                                                 std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
+Result ClusterInfo::createCollectionsCoordinator(
+    std::string const& databaseName, std::vector<ClusterCollectionCreationInfo>& infos,
+    double endTime, bool isNewDatabase,
+    std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
   using arangodb::velocypack::Slice;
 
   double const interval = getPollInterval();
@@ -2008,8 +2013,8 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
         basics::VelocyPackHelper::getStringValue(info.json, StaticStrings::DistributeShardsLike,
                                                  StaticStrings::Empty);
     if (!otherCidString.empty() && conditions.find(otherCidString) == conditions.end()) {
-
-      LOG_DEVEL << "distributing shards like " << otherCidString << " and " << colToDistributeShardsLike->id(); 
+      LOG_DEVEL << "distributing shards like " << otherCidString << " and "
+                << colToDistributeShardsLike->id();
 
       // Distribute shards like case.
       // Precondition: Master collection is not moving while we create this
