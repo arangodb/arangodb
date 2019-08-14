@@ -52,6 +52,8 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
+#include <velocypack/StringRef.h>
+
 namespace {
 using namespace date;
 using namespace std::chrono;
@@ -531,7 +533,7 @@ std::
 std::regex dateFormatRegex;
 
 std::regex const iso8601Regex(
-    "(\\+|\\-)?\\d+(\\-\\d{1,2}(\\-\\d{1,2})?)?"  // YY[YY]-MM-DD
+    "^(\\+|\\-)?\\d+(\\-\\d{1,2}(\\-\\d{1,2})?)?"  // YY[YY]-MM-DD
     "("
     "("
     // Time is optional
@@ -545,7 +547,7 @@ std::regex const iso8601Regex(
     ")?"
     ")|"
     "(z|Z)"  // Z
-    ")?");
+    ")?", std::regex::optimize);
 
 /* REGEX GROUPS
 12:34:56.789-12:34
@@ -563,8 +565,8 @@ submatch 10: '34'
 */
 
 std::regex const timeRegex(
-    "(\\d\\d)\\:(\\d\\d)(\\:(\\d\\d)(\\.(\\d{1,}))?)?((\\+|\\-)(\\d?\\d)\\:"
-    "(\\d\\d))?");
+    "^(\\d\\d)\\:(\\d\\d)(\\:(\\d\\d)(\\.(\\d{1,}))?)?((\\+|\\-)(\\d?\\d)\\:"
+    "(\\d\\d))?", std::regex::optimize);
 
 /* REGEX GROUPS
 P1Y2M3W4DT5H6M7.891S
@@ -648,36 +650,53 @@ static DateRegexInitializer const initializer;
 
 }  // namespace
 
-bool arangodb::basics::parseDateTime(std::string const& dateTimeIn, arangodb::tp_sys_clock_ms& date_tp) {
+bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime, 
+                                     arangodb::tp_sys_clock_ms& date_tp) {
   using namespace date;
   using namespace std::chrono;
+ 
+  // trim input string
+  while (!dateTime.empty()) {
+    char c = dateTime.front();
+    if (c != ' ' && c != '\t' && c != '\r' && c != '\n') {
+      break;
+    }
+    dateTime = dateTime.substr(1);
+  }
 
-  std::string dateTime = dateTimeIn;
-  std::string strDate, strTime;
-
-  boost::algorithm::trim(dateTime);
-  
-  if (!std::regex_match(dateTime, ::iso8601Regex)) {
+  while (!dateTime.empty()) {
+    char c = dateTime.back();
+    if (c != ' ' && c != '\t' && c != '\r' && c != '\n') {
+      break;
+    }
+    dateTime.pop_back();
+  }
+      
+  if (!std::regex_match(dateTime.begin(), dateTime.end(), ::iso8601Regex)) {
     LOG_TOPIC("f19ee", DEBUG, arangodb::Logger::FIXME)
         << "regex failed for datetime '" << dateTime << "'";
     return false;
   }
 
-  strDate = dateTime;
-
-  if (strDate.back() == 'Z' || strDate.back() == 'z') {
-    strDate.pop_back();
+  if (dateTime.back() == 'Z' || dateTime.back() == 'z') {
+    dateTime.pop_back();
   }
 
-  LOG_TOPIC("c3c7a", DEBUG, arangodb::Logger::FIXME) << "parse datetime '" << strDate << "'";
+  LOG_TOPIC("c3c7a", TRACE, arangodb::Logger::FIXME) << "parse datetime '" << dateTime << "'";
 
-  if (strDate.find("T") != std::string::npos || strDate.find(" ") != std::string::npos) {  // split into ymd / time
-    std::vector<std::string> strs;
-    boost::split(strs, strDate, boost::is_any_of("T "));
+  size_t pos = dateTime.find('T');
+  if (pos == std::string::npos) {
+    pos = dateTime.find(' ');
+  }
 
-    strDate = strs[0];
-    strTime = strs[1];
-  }  // if
+  arangodb::velocypack::StringRef strDate(dateTime);
+  arangodb::velocypack::StringRef strTime;
+
+  // split into ymd / time
+  if (pos != std::string::npos) {
+    strDate = arangodb::velocypack::StringRef(dateTime.data(), pos);
+    strTime = arangodb::velocypack::StringRef(dateTime.data() + pos + 1, dateTime.size() - pos - 1);
+  }
 
   // parse date component, moves pointer "p" forward
   // returns true if "p" pointed to a valid number, and false otherwise
@@ -727,15 +746,18 @@ bool arangodb::basics::parseDateTime(std::string const& dateTimeIn, arangodb::tp
 
   // parse Time HH:MM:SS(.SSS)((+|-)HH:MM)
   if (1 < strTime.size()) {
-    std::smatch time_parts;
+    std::match_results<char const*> time_parts;
 
-    if (!std::regex_match(strTime, time_parts, ::timeRegex)) {
+    if (!std::regex_match(strTime.begin(), strTime.end(), time_parts, ::timeRegex)) {
       LOG_TOPIC("33cf9", DEBUG, arangodb::Logger::FIXME) << "regex failed for time " << strTime;
       return false;
     }
+    
+    int v;
 
     // hour
-    hours parsedHours{atoi(time_parts[1].str().c_str())};
+    v = NumberUtils::atoi_unchecked<int>(strTime.data() + time_parts.position(1), strTime.data() + time_parts.position(1) + time_parts.length(1));
+    hours parsedHours{v};
 
     if (hours{23} < parsedHours) {
       return false;
@@ -743,7 +765,8 @@ bool arangodb::basics::parseDateTime(std::string const& dateTimeIn, arangodb::tp
     date_tp += parsedHours;
 
     // minute
-    minutes parsedMinutes{atoi(time_parts[2].str().c_str())};
+    v = NumberUtils::atoi_unchecked<int>(strTime.data() + time_parts.position(2), strTime.data() + time_parts.position(2) + time_parts.length(2));
+    minutes parsedMinutes{v};
 
     if (minutes{59} < parsedMinutes) {
       return false;
@@ -751,7 +774,8 @@ bool arangodb::basics::parseDateTime(std::string const& dateTimeIn, arangodb::tp
     date_tp += parsedMinutes;
 
     // seconds
-    seconds parsedSeconds{atoi(time_parts[4].str().c_str())};
+    v = NumberUtils::atoi_unchecked<int>(strTime.data() + time_parts.position(4), strTime.data() + time_parts.position(4) + time_parts.length(4));
+    seconds parsedSeconds{v};
 
     if (seconds{59} < parsedSeconds) {
       return false;
@@ -759,25 +783,43 @@ bool arangodb::basics::parseDateTime(std::string const& dateTimeIn, arangodb::tp
     date_tp += parsedSeconds;
 
     // milliseconds .9 -> 900ms
-    date_tp += milliseconds{atoi((time_parts[6].str() + "00").substr(0, 3).c_str())};
+    std::size_t matchLength = time_parts.length(6);
+    if (matchLength > 0) {    
+      if (matchLength > 3) {
+        matchLength = 3;
+      }
+      v = NumberUtils::atoi_unchecked<int>(strTime.data() + time_parts.position(6), strTime.data() + time_parts.position(6) + matchLength);
+      if (matchLength == 2) {
+        v *= 10;
+      } else if (matchLength == 1) {
+        v *= 100;
+      }
+      date_tp += milliseconds{v};
+    }
 
-    // time offset
-    if (time_parts[8].str().size()) {
-      hours parsedHours{atoi(time_parts[9].str().c_str())};  // hours
+    // timezone offset
+    if (time_parts.length(8) > 0) {
+      // hours
+      v = NumberUtils::atoi_unchecked<int>(strTime.data() + time_parts.position(9), strTime.data() + time_parts.position(9) + time_parts.length(9));
+      hours parsedHours{v}; 
 
       if (hours{23} < parsedHours) {
         return false;
       }
       minutes offset = parsedHours;
 
-      minutes parsedMinutes{atoi(time_parts[10].str().c_str())};  // minutes
+      // minutes
+      v = NumberUtils::atoi_unchecked<int>(strTime.data() + time_parts.position(10), strTime.data() + time_parts.position(10) + time_parts.length(10));
+      minutes parsedMinutes{v}; 
 
       if (minutes{59} < parsedMinutes) {
         return false;
       }
       offset += parsedMinutes;
 
-      if (time_parts[8].str() == "-") {
+      if (time_parts.length(8) == 1 &&
+          strTime[time_parts.position(8)] == '-') {
+        // minus sign!
         offset *= -1;
       }
       date_tp -= offset;

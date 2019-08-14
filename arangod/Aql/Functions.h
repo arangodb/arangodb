@@ -199,6 +199,8 @@ struct Functions {
                                transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue DateDiff(arangodb::aql::ExpressionContext*,
                            transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue DateBucket(arangodb::aql::ExpressionContext*,
+                             transaction::Methods*, VPackFunctionParameters const&);
   /**
    * @brief Compares two dates given as the first two arguments.
    *        Third argument defines the highest signficant part,

@@ -29,13 +29,15 @@
 
 #include "Basics/Common.h"
 
+#include <velocypack/StringRef.h>
+
 namespace arangodb {
 
 using tp_sys_clock_ms =
     std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds>;
 
 namespace basics {
-bool parseDateTime(std::string const& dateTime, 
+bool parseDateTime(arangodb::velocypack::StringRef dateTime, 
                    tp_sys_clock_ms& date_tp);
 
 bool regexIsoDuration(std::string const& isoDuration, 
