@@ -27,6 +27,7 @@ cppcheck $* \
   --suppress="*:lib/Basics/short_alloc.h" \
   --suppress="*:lib/Basics/xxhash.cpp" \
   --suppress="*:lib/Futures/function2/function2.hpp" \
+  --suppress="*:lib/Geo/karney/*" \
   --suppress="*:lib/V8/v8-json.ll" \
   --suppress="*:lib/Zip/*" \
   --suppress="constStatement" \
