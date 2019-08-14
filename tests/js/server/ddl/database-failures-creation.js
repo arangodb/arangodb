@@ -32,6 +32,66 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 var internal = require("internal");
+const request = require('@arangodb/request');
+const expect = require('chai').expect;
+
+let coordinator = instanceInfo.arangods.filter(arangod => {
+  return arangod.role === 'coordinator';
+})[0];
+
+const expectedSystemCollections = [
+  "_analyzers",
+  "_appbundles",
+  "_apps",
+  "_aqlfunctions",
+  "_fishbowl",
+  "_graphs",
+  "_jobs",
+  "_queues"
+];
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief async helper
+////////////////////////////////////////////////////////////////////////////////
+
+const waitForJob = function (postJobRes) {
+  expect(postJobRes).to.have.property("status", 202);
+  expect(postJobRes).to.have.property("headers");
+  expect(postJobRes.headers).to.have.property('x-arango-async-id');
+  const jobId = postJobRes.headers['x-arango-async-id'];
+  expect(jobId).to.be.a('string');
+
+  const waitInterval = 1.0;
+  const maxWaitTime = 300;
+
+  const start = Date.now();
+
+  let jobFinished = false;
+  let timeoutExceeded = false;
+  let putJobRes;
+
+  while (!jobFinished && !timeoutExceeded) {
+    const duration = (Date.now() - start) / 1000;
+    timeoutExceeded = duration > maxWaitTime;
+
+    putJobRes = request.put(coordinator.url + `/_api/job/${jobId}`);
+
+    expect(putJobRes).to.have.property("status");
+
+    if (putJobRes.status === 204) {
+      wait(waitInterval);
+    } else {
+      jobFinished = true;
+    }
+  }
+
+  if (jobFinished) {
+    return putJobRes;
+  }
+
+  console.error(`Waiting for REST job timed out`);
+  return undefined;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -66,20 +126,48 @@ function databaseFailureSuite() {
 /// already existing
 ////////////////////////////////////////////////////////////////////////////////
 
+    testHideDatabaseUntilCreationIsFinished: function () {
+      expectedSystemCollections.sort();
+
+      // this will trigger an internal sleep of 5 seconds during db creation
+      internal.debugSetFailAt("UpgradeTasks::HideDatabaseUntilCreationIsFinished");
+
+      // create the db async, with job API
+      const postJobRes = request.post(
+        coordinator.url + '/_api/database',
+        {
+          headers: {"x-arango-async": "store"},
+          body: {"name": dn}
+        }
+      );
+
+      // this should fail now
+      try {
+        db._useDatabase(dn);
+        fail();
+      } catch (err) {
+      }
+
+      // wait until database creation is finished
+      const jobRes = waitForJob(postJobRes);
+
+      // this should not fail anymore, db must be available now
+      db._useDatabase(dn);
+
+      let availableCollections = [];
+      db._collections().forEach(function (collection) {
+        availableCollections.push(collection.name());
+      });
+      availableCollections.sort();
+
+      assertEqual(expectedSystemCollections, availableCollections);
+    },
+
     testDatabaseSomeExisting: function () {
-      let expectedSystemCollections = [
-        "_analyzers",
-        "_appbundles",
-        "_apps",
-        "_aqlfunctions",
-        "_fishbowl",
-        "_graphs",
-        "_jobs",
-        "_queues"
-      ];
       expectedSystemCollections.sort();
 
       internal.debugSetFailAt("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions");
+
       d = db._createDatabase(dn);
       db._useDatabase(dn);
 
