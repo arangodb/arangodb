@@ -89,6 +89,10 @@ void ExecutionStats::add(ExecutionStats const& summand) {
     auto const& alias = _nodeAliases.find(nid);
     if (alias != _nodeAliases.end()) {
       nid = alias->second;
+      if (nid == std::numeric_limits<size_t>::max()) {
+        // ignore this value, it is an intenral node that we do not want to expose
+        continue;
+      }
     }
     auto result = nodes.insert({nid, pair.second});
     if (!result.second) {
