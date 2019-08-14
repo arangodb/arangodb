@@ -160,7 +160,12 @@ function agencyTestSuite () {
       }
     });
 
+    var startTime = new Date();
     while (true) {
+
+      if (new Date() - startTime > 600000) {
+        assertTrue(false, "Hit global timeout of 10 minutes in accessAgency.");
+      }
 
       if (!inquire) {
         requestUrl = agencyLeader + "/_api/agency/" + api;
@@ -194,8 +199,9 @@ function agencyTestSuite () {
         }
         require('console').topic("agency=info", 'Redirected to ' + agencyLeader);
         continue;
-      } else if (res.statusCode === 503) {
-        require('console').topic("agency=info", 'Waiting for leader ... ');
+      } else if (res.statusCode === 503 || res.statusCode === 500) {
+        // 503 covers service not available and 500 covers timeout
+        require('console').topic("agency=info", 'Got status code', res.statusCode, ', waiting for leader ... ');
         if (clientIds.length > 0 && api === 'write') {
           inquire = true;
         }
