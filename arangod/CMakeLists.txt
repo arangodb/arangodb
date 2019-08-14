@@ -614,6 +614,10 @@ endif ()
 #  ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 #)
 
+# TODO: Add ${ProductVersionFiles}
+# TODO: Add ${ENTERPRISE_FILES}
+# TODO: Compile community, with/without maintainer
+
 set(ARANGOD_SOURCES_PART1
   Actions/actions.cpp
   Agency/AgentConfiguration.cpp
@@ -738,7 +742,8 @@ set(ARANGOD_SOURCES_PART1
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp
   Aql/V8Executor.cpp
-  Aql/Variable.cpp Aql/VariableGenerator.cpp
+  Aql/Variable.cpp
+  Aql/VariableGenerator.cpp
   Aql/WakeupQueryCallback.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
@@ -756,9 +761,11 @@ set(ARANGOD_SOURCES_PART1
   Cluster/ClusterHelpers.cpp
   Cluster/ClusterTraverser.cpp
   Cluster/TakeoverShardLeadership.cpp
-  GeneralServer/AcceptorTcp.cpp GeneralServer/Acceptor.cpp GeneralServer/GeneralServer.cpp
+  GeneralServer/Acceptor.cpp
+  GeneralServer/AcceptorTcp.cpp
   GeneralServer/CommTask.cpp
   GeneralServer/GeneralCommTask.cpp
+  GeneralServer/GeneralServer.cpp
   GeneralServer/HttpCommTask.cpp
   GeneralServer/IoContext.cpp
   GeneralServer/RestHandlerFactory.cpp
@@ -774,17 +781,6 @@ set(ARANGOD_SOURCES_PART1
   Graph/ShortestPathResult.cpp
   Graph/SingleServerTraverser.cpp
   Graph/Traverser.cpp
-  MMFiles/MMFilesCompactionFeature.cpp
-  MMFiles/MMFilesDatafileStatistics.cpp
-  MMFiles/MMFilesDatafileStatisticsContainer.cpp
-  MMFiles/MMFilesPersistentIndexFeature.cpp
-  MMFiles/MMFilesPersistentIndexKeyComparator.cpp
-  MMFiles/MMFilesRevisionsCache.cpp
-  MMFiles/MMFilesWalSlot.cpp
-  MMFiles/mmfiles-fulltext-index.cpp
-  MMFiles/mmfiles-fulltext-list.cpp
-  MMFiles/mmfiles-fulltext-query.cpp
-  MMFiles/mmfiles-replication-common.cpp
   Replication/ReplicationApplierState.cpp
   Replication/ReplicationClients.cpp
   Replication/SyncerId.cpp
@@ -884,21 +880,6 @@ set(ARANGOD_SOURCES_PART2
   Cluster/TraverserEngineRegistry.cpp
   Cluster/UpdateCollection.cpp
   Cluster/v8-cluster.cpp
-  ClusterEngine/ClusterCollection.cpp
-  ClusterEngine/ClusterEngine.cpp
-  ClusterEngine/ClusterIndex.cpp
-  ClusterEngine/ClusterIndexFactory.cpp
-  ClusterEngine/ClusterRestCollectionHandler.cpp
-  ClusterEngine/ClusterRestExportHandler.cpp
-  ClusterEngine/ClusterRestHandlers.cpp
-  ClusterEngine/ClusterRestReplicationHandler.cpp
-  ClusterEngine/ClusterRestWalHandler.cpp
-  ClusterEngine/ClusterSelectivityEstimates.cpp
-  ClusterEngine/ClusterTransactionCollection.cpp
-  ClusterEngine/ClusterTransactionState.cpp
-  ClusterEngine/ClusterV8Functions.cpp
-  ClusterEngine/MMFilesMethods.cpp
-  ClusterEngine/RocksDBMethods.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
   GeneralServer/GeneralServerFeature.cpp
@@ -921,49 +902,6 @@ set(ARANGOD_SOURCES_PART2
   Indexes/SimpleAttributeEqualityMatcher.cpp
   Indexes/SortedIndexAttributeMatcher.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
-  MMFiles/MMFilesAllocatorThread.cpp
-  MMFiles/MMFilesCleanupThread.cpp
-  MMFiles/MMFilesCollection.cpp
-  MMFiles/MMFilesCollectionExport.cpp
-  MMFiles/MMFilesCollectionKeys.cpp
-  MMFiles/MMFilesCollectorThread.cpp
-  MMFiles/MMFilesCompactorThread.cpp
-  MMFiles/MMFilesDatafile.cpp
-  MMFiles/MMFilesDitch.cpp
-  MMFiles/MMFilesDocumentOperation.cpp
-  MMFiles/MMFilesEdgeIndex.cpp
-  MMFiles/MMFilesEngine.cpp
-  MMFiles/MMFilesExportCursor.cpp
-  MMFiles/MMFilesFulltextIndex.cpp
-  MMFiles/MMFilesGeoIndex.cpp
-  MMFiles/MMFilesHashIndex.cpp
-  MMFiles/MMFilesIndex.cpp
-  MMFiles/MMFilesIndexElement.cpp
-  MMFiles/MMFilesIndexFactory.cpp
-  MMFiles/MMFilesIndexLookupContext.cpp
-  MMFiles/MMFilesLogfileManager.cpp
-  MMFiles/MMFilesOptimizerRules.cpp
-  MMFiles/MMFilesPathBasedIndex.cpp
-  MMFiles/MMFilesPersistentIndex.cpp
-  MMFiles/MMFilesPrimaryIndex.cpp
-  MMFiles/MMFilesRemoverThread.cpp
-  MMFiles/MMFilesRestCollectionHandler.cpp
-  MMFiles/MMFilesRestExportHandler.cpp
-  MMFiles/MMFilesRestHandlers.cpp
-  MMFiles/MMFilesRestReplicationHandler.cpp
-  MMFiles/MMFilesRestWalHandler.cpp
-  MMFiles/MMFilesSkiplistIndex.cpp
-  MMFiles/MMFilesSynchronizerThread.cpp
-  MMFiles/MMFilesTransactionCollection.cpp
-  MMFiles/MMFilesTransactionContextData.cpp
-  MMFiles/MMFilesTransactionState.cpp
-  MMFiles/MMFilesTtlIndex.cpp
-  MMFiles/MMFilesV8Functions.cpp
-  MMFiles/MMFilesWalLogfile.cpp
-  MMFiles/MMFilesWalRecoverState.cpp
-  MMFiles/MMFilesWalRecoveryFeature.cpp
-  MMFiles/MMFilesWalSlots.cpp
-  MMFiles/mmfiles-replication-dump.cpp
   Pregel/AggregatorHandler.cpp
   Pregel/AlgoRegistry.cpp
   Pregel/Algos/LineRank.cpp
@@ -1004,6 +942,7 @@ set(ARANGOD_SOURCES_PART2
   RestHandler/RestControlPregelHandler.cpp
   RestHandler/RestCursorHandler.cpp
   RestHandler/RestDatabaseHandler.cpp
+  RestHandler/RestDebugHandler.cpp
   RestHandler/RestDocumentHandler.cpp
   RestHandler/RestEdgesHandler.cpp
   RestHandler/RestEndpointHandler.cpp
@@ -1110,14 +1049,11 @@ set(ARANGOD_SOURCES_PART2
   VocBase/Methods/Version.cpp
   VocBase/ticks.cpp
   VocBase/vocbase.cpp
-
-  RestHandler/RestDebugHandler.cpp
 )
 
 set(ARANGOD_SOURCES_PART3
   GeneralServer/Task.cpp
   GeoIndex/Near.cpp
-  MMFiles/MMFilesWalAccess.cpp
   Pregel/Algos/AsyncSCC.cpp
   Pregel/Algos/ConnectedComponents.cpp
   Pregel/Algos/DMID/DMID.cpp
