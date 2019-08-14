@@ -1447,6 +1447,8 @@ std::vector<index_t> State::inquire(query_t const& query) const {
   std::vector<index_t> result;
   size_t pos = 0;
 
+  bool notFound = false;
+
   MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
   for (auto const& i : VPackArrayIterator(query->slice())) {
     if (!i.isString()) {
@@ -1458,12 +1460,8 @@ std::vector<index_t> State::inquire(query_t const& query) const {
     auto ret = _clientIdLookupTable.equal_range(i.copyString());
     index_t index = 0;
     if (ret.first == ret.second) {  // nothing found
-      // Debug output here:
-      for (auto it = _clientIdLookupTable.begin();
-           it != _clientIdLookupTable.end();
-           ++it) {
-        LOG_DEVEL << "_clientIdLookupTable: " << it->first << ":" << it->second;
-      }
+      notFound = true;
+      LOG_DEVEL << "inquire: did not find client id " << i.copyString();
     }
     // Look for the maximum index:
     for (auto it = ret.first; it != ret.second; ++it) {
@@ -1472,6 +1470,16 @@ std::vector<index_t> State::inquire(query_t const& query) const {
       }
     }
     result.push_back(index);
+  }
+
+  if (notFound) {
+    LOG_DEVEL << "inquire, debugging output, have " << _clientIdLookupTable.size() << " entries:";
+    // Debug output here:
+    for (auto it = _clientIdLookupTable.begin();
+         it != _clientIdLookupTable.end();
+         ++it) {
+      LOG_DEVEL << "_clientIdLookupTable: " << it->first << ":" << it->second;
+    }
   }
 
   return result;
