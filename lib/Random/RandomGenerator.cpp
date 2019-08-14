@@ -100,7 +100,7 @@ int32_t RandomDevice::random(int32_t left, int32_t right) {
     return static_cast<int32_t>(random());
   }
 
-  uint32_t range = static_cast<uint32_t>(right - left + 1);
+  uint32_t range = static_cast<uint32_t>(right - left) + 1;
 
   switch (range) {
     case 0x00000002:
