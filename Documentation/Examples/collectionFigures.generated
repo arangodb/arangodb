@@ -1,0 +1,11 @@
+arangosh&gt; db.demo.figures()
+{ 
+  <span class="hljs-string">"indexes"</span> : { 
+    <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"size"</span> : <span class="hljs-number">1397</span> 
+  }, 
+  <span class="hljs-string">"documentsSize"</span> : <span class="hljs-number">10126</span>, 
+  <span class="hljs-string">"cacheInUse"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"cacheSize"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"cacheUsage"</span> : <span class="hljs-number">0</span> 
+}

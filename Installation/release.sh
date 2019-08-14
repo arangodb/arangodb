@@ -47,13 +47,6 @@ else
     exit 1
 fi
 
-if gitbook --version; then
-    echo "gitbook found."
-else
-    echo "gitbook missing from your system"
-    exit 1
-fi
-
 if sha1sum --version; then
     echo "sha1sum found."
 else

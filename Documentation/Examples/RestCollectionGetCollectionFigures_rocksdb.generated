@@ -12,14 +12,14 @@ x-content-type-options: nosniff
   <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"objectId"</span> : <span class="hljs-string">"101"</span>, 
+  <span class="hljs-string">"objectId"</span> : <span class="hljs-string">"68730"</span>, 
   <span class="hljs-string">"cacheEnabled"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"figures"</span> : { 
     <span class="hljs-string">"indexes"</span> : { 
       <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
-      <span class="hljs-string">"size"</span> : <span class="hljs-number">37</span> 
+      <span class="hljs-string">"size"</span> : <span class="hljs-number">90</span> 
     }, 
-    <span class="hljs-string">"documentsSize"</span> : <span class="hljs-number">846</span>, 
+    <span class="hljs-string">"documentsSize"</span> : <span class="hljs-number">52</span>, 
     <span class="hljs-string">"cacheInUse"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"cacheSize"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"cacheUsage"</span> : <span class="hljs-number">0</span> 
@@ -27,11 +27,11 @@ x-content-type-options: nosniff
   <span class="hljs-string">"keyOptions"</span> : { 
     <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
-    <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">107</span> 
+    <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">68736</span> 
   }, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h5FFC6746B13/102"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hE3D5B8D76078/68731"</span>, 
   <span class="hljs-string">"statusString"</span> : <span class="hljs-string">"loaded"</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"102"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"68731"</span>, 
   <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span> 
 }
