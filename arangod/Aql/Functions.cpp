@@ -3707,15 +3707,15 @@ AqlValue Functions::DateBucket(ExpressionContext* expressionContext,
   velocypack::StringRef s = durationType.slice().stringRef();
   
   int64_t factor = 1;
-  if (s == "milliseconds" || s == "millisecond") {
+  if (s == "milliseconds" || s == "millisecond" || s == "f") {
     factor = 1;
-  } else if (s == "seconds" || s == "second") {
+  } else if (s == "seconds" || s == "second" || s == "s") {
     factor = 1000;
-  } else if (s == "minutes" || s == "minute") {
+  } else if (s == "minutes" || s == "minute" || s == "i") {
     factor = 60 * 1000;
-  } else if (s == "hours" || s == "hour") {
+  } else if (s == "hours" || s == "hour" || s == "h") {
     factor = 60 * 60 * 1000;
-  } else if (s == "days" || s == "day") {
+  } else if (s == "days" || s == "day" || s == "d") {
     factor = 24 * 60 * 60 * 1000;
   } else {
     ::registerInvalidArgumentWarning(expressionContext, AFN);
