@@ -11,9 +11,9 @@ x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"result"</span> : [ 
-    <span class="hljs-string">"products/104363"</span>, 
-    <span class="hljs-string">"products/104367"</span>, 
-    <span class="hljs-string">"products/104370"</span> 
+    <span class="hljs-string">"products/69228"</span>, 
+    <span class="hljs-string">"products/69230"</span>, 
+    <span class="hljs-string">"products/69232"</span> 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"cached"</span> : <span class="hljs-literal">false</span>, 
@@ -25,8 +25,8 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00023746490478515625</span>, 
-      <span class="hljs-string">"peakMemoryUsage"</span> : <span class="hljs-number">34152</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00033664703369140625</span>, 
+      <span class="hljs-string">"peakMemoryUsage"</span> : <span class="hljs-number">34209</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 
