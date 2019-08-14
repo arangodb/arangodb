@@ -79,20 +79,19 @@ function ahuacatlProfilerTestSuite () {
   const optimalNonEmptyBatches = rows => Math.ceil(rows / defaultBatchSize);
   const optimalBatches = rows => Math.max(1, optimalNonEmptyBatches(rows));
   const mmfilesBatches = (rows) => Math.max(1, optimalNonEmptyBatches(rows) + (rows % defaultBatchSize === 0 ? 1 : 0));
-  const enumCollectionBatches = db._engine().name === 'mmfiles'
-    ? mmfilesBatches
-    : optimalBatches;
 
   const totalItems = (rowsPerShard) =>
     _.sum(_.values(rowsPerShard));
-  const dbServerBatches = (rowsPerShard) =>
-    _.sum(
-      _.values(rowsPerShard)
-        .map(enumCollectionBatches)
+  const dbServerBatches = (rowsPerClient, fuzzy = false) => {
+    fuzzy = fuzzy || db._engine().name === 'mmfiles';
+    return _.sum(
+      _.values(rowsPerClient)
+        .map(fuzzy ? mmfilesBatches: optimalBatches)
     );
-  const dbServerOptimalBatches = (rowsPerShard) =>
+  };
+  const dbServerOptimalBatches = (rowsPerClient) =>
     _.sum(
-      _.values(rowsPerShard)
+      _.values(rowsPerClient)
         .map(optimalBatches)
     );
 
@@ -174,16 +173,23 @@ function ahuacatlProfilerTestSuite () {
         return [Math.max(1, batches), Math.max(1, batches+1)];
       };
 
-      const coordinatorBatches = (rowsPerShard) => addIntervals(dbServerBatches(rowsPerShard), localCalls(rowsPerShard));
 
-      const genNodeList = (rowsPerShard) => [
+      // If we figure out that we are done depends on randomness.
+      // In some cases we get the full batch on last shard, in this case the DBServer knows it is done.
+      // In other cases we get the full batch on an early shard, but 0 documents later, in chis case the DBServer does not know it is done
+      // in advance.
+      const fuzzyDBServerBatches = rowsPerServer => [dbServerBatches(rowsPerServer, false), dbServerBatches(rowsPerServer, true)];
+
+      const coordinatorBatches = (rowsPerShard) => addIntervals(fuzzyDBServerBatches(rowsPerShard), localCalls(rowsPerShard));
+
+      const genNodeList = (rowsPerShard, rowsPerServer) => [
         { type : SingletonBlock, calls : numberOfShards, items : numberOfShards },
         { type : EnumerateCollectionBlock, calls : dbServerBatches(rowsPerShard), items : totalItems(rowsPerShard) },
-        // Twice the number due to WAITING
-        { type : RemoteBlock, calls : 2 * dbServerBatches(rowsPerShard), items : totalItems(rowsPerShard) },
+        // Twice the number due to WAITING, fuzzy, because the Gather does not know
+        { type : RemoteBlock, calls : fuzzyDBServerBatches(rowsPerServer).map(i => i * 2), items : totalItems(rowsPerShard) },
         // We get dbServerBatches(rowsPerShard) times WAITING, plus the non-waiting getSome calls.
-        { type : UnsortingGatherBlock, calls : coordinatorBatches(rowsPerShard), items : totalItems(rowsPerShard) },
-        { type : ReturnBlock, calls : coordinatorBatches(rowsPerShard), items : totalItems(rowsPerShard) }
+        { type : UnsortingGatherBlock, calls : coordinatorBatches(rowsPerServer), items : totalItems(rowsPerShard) },
+        { type : ReturnBlock, calls : coordinatorBatches(rowsPerServer), items : totalItems(rowsPerShard) }
       ];
       profHelper.runClusterChecks({col, exampleDocumentsByShard, query, genNodeList});
     },
@@ -205,16 +211,16 @@ function ahuacatlProfilerTestSuite () {
 
       const coordinatorBatches = (rowsPerShard) => addIntervals(dbServerOptimalBatches(rowsPerShard), localCalls(rowsPerShard));
 
-      const genNodeList = (rowsPerShard) => [
+      const genNodeList = (rowsPerShard, rowsPerServer) => [
         { type : SingletonBlock, calls : numberOfShards, items : numberOfShards },
         { type : EnumerateCollectionBlock, calls : dbServerBatches(rowsPerShard), items : totalItems(rowsPerShard) },
         { type : CalculationBlock, calls : dbServerBatches(rowsPerShard), items : totalItems(rowsPerShard) },
         { type : SortBlock, calls : dbServerOptimalBatches(rowsPerShard), items : totalItems(rowsPerShard) },
         // Twice the number due to WAITING
-        { type : RemoteBlock, calls : 2 * dbServerOptimalBatches(rowsPerShard), items : totalItems(rowsPerShard) },
+        { type : RemoteBlock, calls : 2 * dbServerOptimalBatches(rowsPerServer), items : totalItems(rowsPerShard) },
         // We get dbServerBatches(rowsPerShard) times WAITING, plus the non-waiting getSome calls.
-        { type : SortingGatherBlock, calls : coordinatorBatches(rowsPerShard), items : totalItems(rowsPerShard) },
-        { type : ReturnBlock, calls : coordinatorBatches(rowsPerShard), items : totalItems(rowsPerShard) }
+        { type : SortingGatherBlock, calls : coordinatorBatches(rowsPerServer), items : totalItems(rowsPerShard) },
+        { type : ReturnBlock, calls : coordinatorBatches(rowsPerServer), items : totalItems(rowsPerShard) }
       ];
       profHelper.runClusterChecks({col, exampleDocumentsByShard, query, genNodeList});
     },

@@ -1,4 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
+/* global global */
 
 "use strict";
 
@@ -29,7 +30,7 @@ const db = require('@arangodb').db;
 const expect = require('chai').expect;
 const jsunity = require("jsunity");
 const assert = jsunity.jsUnity.assertions;
-
+const { getResponsibleServers } = global.ArangoClusterInfo;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -573,9 +574,9 @@ function clusterTestRowCounts({numberOfShards}) {
 /// @param exampleDocumentsByShard Object, keys are shard ids and values are
 ///        arrays of documents which the specified shard is responsible for.
 /// @param query string - is assumed to have no bind parameter
-/// @param genNodeList function: (rowsByShard) => [ { type, calls, items } ]
+/// @param genNodeList function: (rowsByShard, rowsByServer) => [ { type, calls, items } ]
 ///        must generate the list of expected nodes, gets a { shard => rows }
-///        map (string to number).
+///        map (string to number) and a { server => rows } map (string to number).
 ////////////////////////////////////////////////////////////////////////////////
 
 function runClusterChecks (
@@ -602,16 +603,30 @@ function runClusterChecks (
     assert.assertEqual(_.values(countByShard).sort(), rowCounts.slice().sort());
     return countByShard;
   };
+  const getRowsPerServer = rowsByShard => {
+    const shardIds = Object.keys(rowsByShard);
+    const shardToServerMapping = getResponsibleServers(shardIds);
+    const result = {};
+    for (const [shard, server] of Object.entries(shardToServerMapping)) {
+      // Init with 0
+      result[server] = result[server] || 0;
+      result[server] += rowsByShard[shard];
+    }
+    return result;
+  };
   for (const rowCounts of testRowCounts) {
     const rowsByShard = prepareCollection(rowCounts);
+    const rowsByServer = getRowsPerServer(rowsByShard);
+    console.log("Shard", JSON.stringify(rowsByShard, null, 2));
+    console.log("Server", JSON.stringify(rowsByServer, null, 2));
     const profile = db._query(query, {},
-      _.merge(options, {profile: 2, defaultBatchSize})
+      _.merge(options, {profile: 3, defaultBatchSize})
     ).getExtra();
 
     assertIsLevel2Profile(profile);
     assertStatsNodesMatchPlanNodes(profile);
 
-    const expected = genNodeList(rowsByShard);
+    const expected = genNodeList(rowsByShard, rowsByServer);
     const actual = getCompactStatsNodes(profile);
 
     assertNodesItemsAndCalls(expected, actual,
