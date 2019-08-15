@@ -1607,7 +1607,7 @@ arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
 
   uint64_t commitIndex = 0;
-   
+
   { READ_LOCKER(oLocker, _outputLock);
 
     commitIndex = _commitIndex;
@@ -1618,10 +1618,10 @@ arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
     // key-value store {}
     builder.add(VPackValue("agency"));
     _readDB.get().toBuilder(builder, true); }
-  
+
   // replicated log []
   _state.toVelocyPack(commitIndex, builder);
-  
+
   return commitIndex;
 }
 
@@ -1893,7 +1893,7 @@ void Agent::trashStoreCallback(std::string const& url, query_t const& body) {
   TRI_ASSERT(slice.isObject());
 
   // body consists of object holding keys index, term and the observed keys
-  // we'll remove observation on every key and according observer url 
+  // we'll remove observation on every key and according observer url
   for (auto const& i : VPackObjectIterator(slice)) {
     if (!i.key.isEqualString("term") && !i.key.isEqualString("index")) {
       MUTEX_LOCKER(lock, _cbtLock);
@@ -1931,7 +1931,7 @@ void Agent::emptyCbTrashBin() {
                 envelope->add("url", VPackValue(j));}}}
         }
       }}
-    _callbackTrashBin.clear(); 
+    _callbackTrashBin.clear();
     _callbackLastPurged = std::chrono::steady_clock::now();
   }
 

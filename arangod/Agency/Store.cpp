@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -327,7 +326,7 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
     // Callback
 
     for (auto const& url : urls) {
-      
+
       auto body = std::make_shared<VPackBuilder>();  // host
       { VPackObjectBuilder b(body.get());
         body->add("term", VPackValue(term));
@@ -435,7 +434,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
               }
               if (found) {
                 continue;
-              } 
+              }
               ret.push_back(precond.key);
             }
           }
@@ -446,7 +445,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
         } else if (oper == "notin") {  // in
           if (!found) {
             continue;
-          } 
+          }
           if (node->slice().isArray()) {
             bool found = false;
             for (auto const& i : VPackArrayIterator(node->slice())) {
@@ -621,7 +620,7 @@ void Store::dumpToBuilder(Builder& builder) const {
       clean[i.second] = ts;
     } else if (ts < it->second) {
       it->second = ts;
-    }      
+    }
   }
   {
     VPackObjectBuilder guard(&builder);
@@ -713,7 +712,7 @@ Store& Store::operator=(VPackSlice const& s) {
       }
     }
   }
-  
+
   TRI_ASSERT(slice[2].isArray());
   for (auto const& entry : VPackArrayIterator(slice[2])) {
     TRI_ASSERT(entry.isObject());
