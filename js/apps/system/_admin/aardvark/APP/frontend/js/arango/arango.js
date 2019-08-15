@@ -1273,13 +1273,7 @@
       } else {
         $('#new-app-mount').attr('disabled', 'true');
         $('#new-app-replace').attr('checked', false);
-        $('#new-app-replace').on('click', function () {
-          if ($('#new-app-replace').prop('checked')) {
-            $('#new-app-teardown').attr('disabled', true);
-          } else {
-            $('#new-app-teardown').attr('disabled', false);
-          }
-        });
+        $('#new-app-teardown').attr('disabled', true);
       }
     }
   };
