@@ -650,6 +650,8 @@ target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/l
 target_include_directories(arango_mmfiles PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
 target_include_directories(llhttp PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
 
+target_link_libraries(arango_cluster_engine boost_boost)
+
 target_link_libraries(arangoserver
   arango_geo
   ${LIB_ARANGO_V8}
