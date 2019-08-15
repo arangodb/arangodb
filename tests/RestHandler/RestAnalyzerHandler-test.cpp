@@ -1707,7 +1707,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
     EXPECT_EQ(nullptr, analyzer);
   }
 
-   //  removal with implicit db name in analyzer name
+  //  removal with db name prefix as ::
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                           arangodb::StaticStrings::SystemDatabase);
