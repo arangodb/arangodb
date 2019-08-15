@@ -394,7 +394,10 @@ void Conductor::cancel() {
 void Conductor::cancelNoLock() {
   _callbackMutex.assertLockedByCurrentThread();
   _state = ExecutionState::CANCELED;
-  _finalizeWorkers();
+  size_t attempts = 0;
+  while (_finalizeWorkers() == TRI_ERROR_QUEUE_FULL && ++attempts <= 10) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
   _workHandle.reset();
 }
 
