@@ -675,8 +675,10 @@ target_link_libraries(arangoserver_part1 ${ROCKSDB_LIBS})
 
 target_link_libraries(arangoserver_part2 arangoserver_part1)
 target_link_libraries(arangoserver_part2 arango_iresearch)
+target_link_libraries(arangoserver_part2 boost_boost)
 target_link_libraries(arangoserver_part2 ${ROCKSDB_LIBS})
 target_link_libraries(arangoserver_part3 arangoserver_part1 arangoserver_part2)
+target_link_libraries(arangoserver_part3 boost_boost)
 
 add_library(arango_mmfiles STATIC
   ${MMFILES_SOURCES}
@@ -697,7 +699,10 @@ add_library(llhttp STATIC
 target_include_directories(llhttp PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
 
 target_link_libraries(arango_mmfiles llhttp)
+target_link_libraries(arango_mmfiles boost_boost)
+target_link_libraries(arango_mmfiles boost_system)
 target_link_libraries(arango_rocksdb arangoserver_part1)
+target_link_libraries(arango_rocksdb boost_boost)
 target_link_libraries(arango_cluster_engine boost_boost)
 
 target_link_libraries(arangoserver
@@ -721,16 +726,25 @@ target_link_libraries(arangoserver
 if (USE_ENTERPRISE)
   target_compile_definitions(arangoserver PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+
   target_compile_definitions(arangoserver_part1 PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arangoserver_part1 PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+
   target_compile_definitions(arangoserver_part2 PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arangoserver_part2 PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+
+  target_compile_definitions(arangoserver_part3 PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(arangoserver_part3 PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+
   target_compile_definitions(arango_mmfiles PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango_mmfiles PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+
   target_compile_definitions(arango_rocksdb PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango_rocksdb PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+
   target_compile_definitions(arango_cluster_engine PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango_cluster_engine PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+
   if (MSVC)
     target_link_libraries(arangoserver
       Wldap32.lib
@@ -778,8 +792,10 @@ if(MSVC)
   target_compile_options(arangoserver PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arangoserver_part1 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arangoserver_part2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-#  target_compile_options(arangoserver_part3 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arangoserver_part3 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arango_mmfiles PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arango_rocksdb PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arango_cluster_engine PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arangod PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
@@ -787,8 +803,10 @@ if (DARWIN)
   target_compile_options(arangoserver PRIVATE -Werror)
   target_compile_options(arangoserver_part1 PRIVATE -Werror)
   target_compile_options(arangoserver_part2 PRIVATE -Werror)
-#  target_compile_options(arangoserver_part3 PRIVATE -Werror)
+  target_compile_options(arangoserver_part3 PRIVATE -Werror)
   target_compile_options(arango_mmfiles PRIVATE -Werror)
+  target_compile_options(arango_rocksdb PRIVATE -Werror)
+  target_compile_options(arango_cluster_engine PRIVATE -Werror)
   target_compile_options(arangod PRIVATE -Werror)
 endif()
 
