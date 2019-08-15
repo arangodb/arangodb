@@ -55,9 +55,9 @@ class ManagedDocumentResult {
     other.clear();
   }
 
-  /// @brief store pointer to a valid document
+  /// @brief store pointer to a valid document, sets revisionid
   void setUnmanaged(uint8_t const* vpack);
-  /// @brief copy in a valid document
+  /// @brief copy in a valid document, sets revisionid
   void setManaged(uint8_t const* vpack);
 
   /// @brief access the internal buffer, revisionId must be set manually

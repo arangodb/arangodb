@@ -51,6 +51,7 @@ class StaticStrings {
   static std::string const RevString;
   static std::string const FromString;
   static std::string const ToString;
+  static std::string const TimeString;
 
   // URL parameter names
   static std::string const IgnoreRevsString;
@@ -105,6 +106,7 @@ class StaticStrings {
   static std::string const IndexNameEdgeTo;
   static std::string const IndexNameInaccessible;
   static std::string const IndexNamePrimary;
+  static std::string const IndexNameTime;
 
   // index hint strings
   static std::string const IndexHintAny;
