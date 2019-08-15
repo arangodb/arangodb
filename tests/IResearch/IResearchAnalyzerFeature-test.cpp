@@ -122,6 +122,65 @@ struct TestTermAttribute : public irs::term_attribute {
   void value(irs::bytes_ref const& value) { value_ = value; }
 };
 
+class ReNormalizingAnalyzer : public irs::analysis::analyzer {
+ public:
+  DECLARE_ANALYZER_TYPE();
+  ReNormalizingAnalyzer() : irs::analysis::analyzer(ReNormalizingAnalyzer::type()) {
+    _attrs.emplace(_attr);
+  }
+  
+  virtual irs::attribute_view const& attributes() const NOEXCEPT override {
+    return _attrs;
+  }
+
+  static ptr make(irs::string_ref const& args) {
+    auto slice = arangodb::iresearch::slice(args);
+    if (slice.isNull()) throw std::exception();
+    if (slice.isNone()) return nullptr;
+    PTR_NAMED(ReNormalizingAnalyzer, ptr);
+    return ptr;
+  }
+
+  // test implementation
+  // string will be normalized as is. But object will be converted!
+  // need this to test comparsion "old-normalized"  against "new-normalized"
+  static bool normalize(irs::string_ref const& args, std::string& definition) {
+    auto slice = arangodb::iresearch::slice(args);
+    arangodb::velocypack::Builder builder;
+    if (slice.isString()) {
+      VPackObjectBuilder scope(&builder);
+      arangodb::iresearch::addStringRef(builder, "args",
+                                        arangodb::iresearch::getStringRef(slice));
+    } else if (slice.isObject() && slice.hasKey("args") && slice.get("args").isString()) {
+      VPackObjectBuilder scope(&builder);
+      auto inputDef = arangodb::iresearch::getStringRef(slice.get("args"));
+      arangodb::iresearch::addStringRef(builder, "args",
+                                        inputDef == "123" ? "321" : inputDef);
+    } else {
+      return false;
+    }
+
+    definition = builder.buffer()->toString();
+
+    return true;
+  }
+
+  virtual bool next() override {
+    return false;
+  }
+
+  virtual bool reset(irs::string_ref const& data) override {
+    return false;
+  }
+
+ private:
+  irs::attribute_view _attrs;
+  TestAttribute _attr;
+};
+
+DEFINE_ANALYZER_TYPE_NAMED(ReNormalizingAnalyzer, "ReNormalizingAnalyzer");
+REGISTER_ANALYZER_VPACK(ReNormalizingAnalyzer, ReNormalizingAnalyzer::make, ReNormalizingAnalyzer::normalize);
+
 class TestAnalyzer : public irs::analysis::analyzer {
  public:
   DECLARE_ANALYZER_TYPE();
@@ -860,6 +919,31 @@ TEST_F(IResearchAnalyzerFeatureTest, test_get_feature_mismatch) {
                           VPackParser::fromJson("\"abc\"")->slice(),
                           {irs::position::type()});
   ASSERT_EQ(read, nullptr);
+}
+
+TEST_F(IResearchAnalyzerFeatureTest, test_renormalize_for_equal) {
+  arangodb::iresearch::IResearchAnalyzerFeature feature(server);
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    EXPECT_TRUE(feature.emplace(result, analyzerName(), "ReNormalizingAnalyzer",
+                                VPackParser::fromJson("\"123\"")->slice()) //123 will be stored as is (old-normalized)
+                    .ok());
+    EXPECT_NE(result.first, nullptr);
+  }
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    EXPECT_TRUE(feature.emplace(result, analyzerName(), "ReNormalizingAnalyzer",
+                                VPackParser::fromJson("{ \"args\":\"123\"}")->slice()) //123 will be normalized to 321
+                    .ok());
+    EXPECT_NE(result.first, nullptr);
+  }
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    EXPECT_FALSE(feature.emplace(result, analyzerName(), "ReNormalizingAnalyzer",
+                                VPackParser::fromJson("{ \"args\":\"1231\"}")->slice()) //Re-normalization should not help
+                    .ok());
+    EXPECT_EQ(result.first, nullptr);
+  }
 }
 
 // -----------------------------------------------------------------------------
