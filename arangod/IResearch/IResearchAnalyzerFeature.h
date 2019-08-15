@@ -217,8 +217,32 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   //////////////////////////////////////////////////////////////////////////////
   /// @param name analyzer name (normalized)
   /// @return vocbase prefix extracted from normalized analyzer name
+  ///         EMPTY == system vocbase
+  ///         NIL == analyzer name have had no db name prefix
+  /// @see analyzerReachableFromDb
   //////////////////////////////////////////////////////////////////////////////
-  static irs::string_ref extractVocbaseName(irs::string_ref const& name); 
+  static irs::string_ref extractVocbaseName(irs::string_ref const& name) noexcept; 
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// Checks if analyzer db (identified by db name prefix extracted from analyzer 
+  /// name) could be reached from specified db.
+  /// Properly handles special cases (e.g. NIL and EMPTY)       
+  /// @param dbNameFromAnalyzer database name extracted from analyzer name
+  /// @param currentDbName database name to check against (should not be empty!)
+  /// @param forGetters check special case for getting analyzer (not creating/removing)
+  /// @return true if analyzer is reachable
+  static bool analyzerReachableFromDb(irs::string_ref const& dbNameFromAnalyzer,
+                                        irs::string_ref const& currentDbName,
+                                        bool forGetters = false) noexcept;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief split the analyzer name into the vocbase part and analyzer part
+  /// @param name analyzer name
+  /// @return pair of first == vocbase name, second == analyzer name
+  ///         EMPTY == system vocbase
+  ///         NIL == unprefixed analyzer name, i.e. active vocbase
+  ////////////////////////////////////////////////////////////////////////////////
+  static std::pair<irs::string_ref, irs::string_ref> splitAnalyzerName(irs::string_ref const& analyzer) noexcept;
 
   void prepare() override;
 

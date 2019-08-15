@@ -49,6 +49,8 @@ class Result;
 
 class PhysicalCollection {
  public:
+  constexpr static double defaultLockTimeout = 10.0 * 60.0;
+  
   virtual ~PhysicalCollection() = default;
 
   virtual PhysicalCollection* clone(LogicalCollection& logical) const = 0;
