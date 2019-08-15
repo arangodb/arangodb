@@ -1914,8 +1914,8 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
 
     VPackBuilder tmp;
 
-    res = ci->ensureIndexCoordinator(  // result
-        dbName, std::to_string(col->id()), idxDef, true, tmp,
+    res = ci->ensureIndexCoordinator(*col,
+        idxDef, true, tmp,
         cluster->indexCreationTimeout());
 
     if (res.fail()) {

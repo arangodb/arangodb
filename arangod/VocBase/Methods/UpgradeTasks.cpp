@@ -57,46 +57,6 @@ using basics::VelocyPackHelper;
 
 namespace {
 
-/* TODO REMOVE ME
-/// create a collection if it does not exists.
-void createSystemCollection(TRI_vocbase_t& vocbase, std::string const& name) {
-  auto const res = methods::Collections::createSystem(vocbase, name);
-
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-}*/
-
-/// create an index if it does not exist
-bool createIndex(TRI_vocbase_t& vocbase,           // collection vocbase
-                 std::string const& name,          // collection name
-                 arangodb::Index::IndexType type,  // index type
-                 std::vector<std::string> const& fields, bool unique, bool sparse) {
-  VPackBuilder output;
-  Result res1, res2;
-
-  res1 = methods::Collections::lookup(
-      vocbase, name, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
-        TRI_ASSERT(coll);
-        res2 = methods::Indexes::createIndex(coll.get(), type, fields, unique, sparse);
-      });
-
-  if (res1.fail() || res2.fail()) {
-    if (res1.fail()) {
-      LOG_TOPIC("e32fd", WARN, Logger::MAINTENANCE)
-          << "could not find collection '" << name
-          << "': error: " << res1.errorMessage();
-    } else if (res2.fail()) {
-      LOG_TOPIC("7356a", WARN, Logger::MAINTENANCE)
-          << "could not create the " << type << " index for " << name << "collection "
-          << ": error: " << res2.errorMessage();
-    }
-    // THROW_ARANGO_EXCEPTION(res1.fail() ? res1 : res2);
-  }
-
-  return true;
-}
-
 arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
                                   arangodb::LogicalCollection& collection,
                                   arangodb::RocksDBIndex* oldIndex) {
@@ -168,60 +128,8 @@ bool upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
   return true;
 }
 
-bool createAppsIndex(TRI_vocbase_t& vocbase) {
-  return ::createIndex(vocbase,                        // collection vocbase
-                       StaticStrings::AppsCollection,  // collection name
-                       arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,  // index type
-                       {"mount"},  // index fields
-                       /*unique*/ true,
-                       /*sparse*/ true);
-}
-
-bool createUsersIndex(TRI_vocbase_t& vocbase) {
-  TRI_ASSERT(vocbase.isSystem());
-
-  return ::createIndex(vocbase,                         // collection vocbase
-                       StaticStrings::UsersCollection,  // collection name
-                       arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,  // index type
-                       {"user"},  // index fields
-                       /*unique*/ true,
-                       /*sparse*/ true);
-}
-
-bool createStatisticsIndices(TRI_vocbase_t& vocbase) {
-  std::vector<std::string> statisticCollections = {StaticStrings::StatisticsCollection,
-                                                   StaticStrings::Statistics15Collection,
-                                                   StaticStrings::StatisticsRawCollection};
-  for (auto collectionName : statisticCollections) {
-    bool result = ::createIndex(vocbase, collectionName,
-                                arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-                                {"time"}, false, false);
-    if (!result) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-bool createJobsIndex(TRI_vocbase_t& vocbase) {
-  ::createIndex(vocbase,                        // collection vocbase
-                StaticStrings::JobsCollection,  // collection name
-                arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,  // index type
-                {"queue", "status", "delayUntil"},
-                /*unique*/ false,
-                /*sparse*/ false);
-  ::createIndex(vocbase,                        // collection vocbase
-                StaticStrings::JobsCollection,  // collection name
-                arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,  // index type
-                {"status", "queue", "delayUntil"},
-                /*unique*/ false,
-                /*sparse*/ false);
-
-  return true;
-}
-
-Result createSystemCollections(TRI_vocbase_t& vocbase) {
+Result createSystemCollections(TRI_vocbase_t& vocbase,
+                               std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
   typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> FuncCallback;
   FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
 
@@ -239,6 +147,7 @@ Result createSystemCollections(TRI_vocbase_t& vocbase) {
     if (!res.ok()) {
       return res;
     }
+    createdCollections.push_back(col);
     systemCollections.push_back(StaticStrings::GraphsCollection);
     if (StatisticsFeature::enabled()) {
       systemCollections.push_back(StaticStrings::StatisticsCollection);
@@ -249,6 +158,7 @@ Result createSystemCollections(TRI_vocbase_t& vocbase) {
     // we will use GraphsCollection for distributeShardsLike
     std::tie(res, col) =
         methods::Collections::createSystem(vocbase, StaticStrings::GraphsCollection, true);
+    createdCollections.push_back(col);
     if (!res.ok()) {
       return res;
     }
@@ -307,11 +217,16 @@ Result createSystemCollections(TRI_vocbase_t& vocbase) {
     }
   }
 
+  // We capture the vector of created LogicalCollections here
+  // to use it to create indices later.
+  // std::vector<std::shared_ptr<LogicalCollection>> createdCollections;
   if (systemCollectionsToCreate.size() > 0) {
     res = methods::Collections::create(
         vocbase, systemCollectionsToCreate, true, true, true, col,
-        [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
-
+        [&](std::vector<std::shared_ptr<LogicalCollection>> const& cols) -> void {
+          // capture created collection vector
+          createdCollections.insert(std::end(createdCollections), std::begin(cols), std::end(cols));
+        });
     if (res.fail()) {
       return res;
     }
@@ -320,17 +235,69 @@ Result createSystemCollections(TRI_vocbase_t& vocbase) {
   return {TRI_ERROR_NO_ERROR};
 }
 
-Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase) {
-  if (vocbase.isSystem()) {
-    createUsersIndex(vocbase);
+Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase, std::vector<std::shared_ptr<LogicalCollection>>& collections) {
 
-    if (StatisticsFeature::enabled()) {
-      createStatisticsIndices(vocbase);
+  // Local function that wraps creating an index and throws if the index creation fails.
+  // This makes the code below less awkward. If we fail to create an index with some indices
+  // created, we clean up by removing all collections lateron.
+  auto createIndex = [collections](std::string const name, Index::IndexType type,
+                                   std::vector<std::string> const& fields,
+                                   bool unique, bool sparse) -> void {
+    // Find the collection by name
+    auto colIt = find_if(collections.begin(), collections.end(),
+                          [name](std::shared_ptr<LogicalCollection> col) {
+                            TRI_ASSERT(col != nullptr);
+                            return col->name() == name;
+                          });
+    if (colIt == collections.end()) {
+      throw Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "Collection " + name + " not found");
     }
+    auto res = methods::Indexes::createIndex(colIt->get(), type, fields, unique, sparse);
+    if (!res.ok()) {
+      throw res;
+    }
+  };
+
+  try {
+    if (vocbase.isSystem()) {
+      createIndex(StaticStrings::UsersCollection,
+                  arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,
+                  {"user"}, true, true);
+
+      if (StatisticsFeature::enabled()) {
+        createIndex(StaticStrings::StatisticsCollection,
+                    arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                    {"time"}, false, false);
+        createIndex(StaticStrings::Statistics15Collection,
+                    arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                    {"time"}, false, false);
+        createIndex(StaticStrings::StatisticsRawCollection,
+                    arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                    {"time"}, false, false);
+      }
+    }
+
+    // TODO: check what happens here, throw on fail?
+    upgradeGeoIndexes(vocbase);
+
+    createIndex(StaticStrings::AppsCollection,
+                arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,
+                {"mount"}, true, true);
+
+    createIndex(StaticStrings::JobsCollection,
+                arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                {"queue", "status", "delayUntil"},
+                false, false);
+    createIndex(StaticStrings::JobsCollection,
+                arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                {"status", "queue", "delayUntil"},
+                false, false);
+  } catch (Result res) {
+    return res;
+  } catch (...) {
+    // TODO: Is there anything more we can do here?
+    return {TRI_ERROR_INTERNAL};
   }
-  upgradeGeoIndexes(vocbase);
-  createAppsIndex(vocbase);
-  createJobsIndex(vocbase);
   return {TRI_ERROR_NO_ERROR};
 }
 
@@ -339,7 +306,9 @@ Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase) {
 bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
                                                      arangodb::velocypack::Slice const& slice) {
   Result res;
-  res = ::createSystemCollections(vocbase);
+
+  std::vector<std::shared_ptr<LogicalCollection>> createdCollections;
+  res = ::createSystemCollections(vocbase, createdCollections);
 
   if (res.fail()) {
     LOG_TOPIC("e32fi", ERR, Logger::MAINTENANCE)
@@ -348,7 +317,7 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
     return false;
   }
 
-  res = ::createSystemCollectionsIndices(vocbase);
+  res = ::createSystemCollectionsIndices(vocbase, createdCollections);
   if (res.fail()) {
     LOG_TOPIC("e32fx", ERR, Logger::MAINTENANCE)
         << "could not create indices for system collections"

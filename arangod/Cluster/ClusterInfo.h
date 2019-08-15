@@ -547,12 +547,10 @@ class ClusterInfo final {
   /// @brief ensure an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
   Result ensureIndexCoordinator(        // create index
-      std::string const& databaseName,  // database name
-      std::string const& collectionID,  // collection identifier
+      LogicalCollection const& collection,
       arangodb::velocypack::Slice const& slice, bool create,
       arangodb::velocypack::Builder& resultBuilder,
-      double timeout  // request timeout
-  );
+      double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an index in coordinator.
@@ -787,8 +785,8 @@ class ClusterInfo final {
   /// @brief ensure an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
   Result ensureIndexCoordinatorInner(   // create index
-      std::string const& databaseName,  // database name
-      std::string const& collectionID, std::string const& idSlice,
+      LogicalCollection const& collection,
+      std::string const& idString,
       arangodb::velocypack::Slice const& slice, bool create,
       arangodb::velocypack::Builder& resultBuilder,
       double timeout  // request timeout

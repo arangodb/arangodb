@@ -92,6 +92,9 @@ class ChecksumResult {
 /// state each time! all state of a LogicalCollection in the coordinator case
 /// needs to be derived from the JSON info in the agency's plan entry for the
 /// collection...
+
+typedef std::shared_ptr<LogicalCollection> LogicalCollectionPtr;
+
 class LogicalCollection : public LogicalDataSource {
   friend struct ::TRI_vocbase_t;
 
