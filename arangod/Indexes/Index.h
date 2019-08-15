@@ -252,7 +252,7 @@ class Index {
   static IndexType type(char const* type, size_t len);
 
   static IndexType type(std::string const& type);
-  
+
  public:
 
   virtual char const* typeName() const = 0;

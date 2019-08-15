@@ -99,6 +99,43 @@ bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
   return KeyGenerator::validateId(docId, static_cast<size_t>(len));
 }
 
+bool PhysicalCollection::IndexOrder::operator()(
+    const std::shared_ptr<Index>& _Left,
+    const std::shared_ptr<Index>& _Right) const {
+
+  // Primary index always first (but two primary indexes render comparsion invalid
+  // but that`s bug itself)
+  TRI_ASSERT(
+    !(
+      (_Left->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) &&
+      (_Right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX)
+      )
+  );
+  if (_Left->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    return true;
+  }
+    if (_Right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    return false;
+  }
+    
+  // edge indexes should go right after primary
+  if (_Left->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX &&
+      _Right->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+    return true;
+  } else if (_Left->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX &&
+              _Right->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+    return false;
+  }
+
+  // Non-reversable indexes should be done first to minimize 
+  // need for reversal procedures
+  if (_Left->needsReversal() != _Right->needsReversal()) {
+    return _Right->needsReversal();
+  }
+  return _Left < _Right;
+}
+
+
 bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
   READ_LOCKER(guard, _indexesLock);
   for (auto const& idx : _indexes) {
@@ -111,7 +148,7 @@ bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
 
 /// @brief Find index by definition
 /*static*/ std::shared_ptr<Index> PhysicalCollection::findIndex(
-    VPackSlice const& info, std::vector<std::shared_ptr<Index>> const& indexes) {
+    VPackSlice const& info, IndexContainerType const& indexes) {
   TRI_ASSERT(info.isObject());
 
   auto value = info.get(arangodb::StaticStrings::IndexType);  // extract type
@@ -528,7 +565,12 @@ int PhysicalCollection::checkRevision(transaction::Methods*, TRI_voc_rid_t expec
 /// @brief hands out a list of indexes
 std::vector<std::shared_ptr<arangodb::Index>> PhysicalCollection::getIndexes() const {
   READ_LOCKER(guard, _indexesLock);
-  return _indexes;
+  std::vector<std::shared_ptr<arangodb::Index>> res;
+  res.reserve(_indexes.size());
+  for (auto const& idx : _indexes) {
+    res.push_back(idx);
+  }
+  return res;
 }
 
 void PhysicalCollection::getIndexesVPack(VPackBuilder& result, unsigned flags,

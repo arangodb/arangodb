@@ -203,7 +203,7 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
   TRI_ASSERT(_info.isClosed());
 
   READ_LOCKER(guard, _indexesLock);
-  for (std::shared_ptr<Index>& idx : _indexes) {
+  for (auto idx : _indexes) {
     static_cast<ClusterIndex*>(idx.get())->updateProperties(_info.slice());
   }
 
@@ -323,11 +323,12 @@ void ClusterCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
     addIndex(std::move(idx));
   }
 
-  if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
+  auto indexesVector = getIndexes();
+  if (indexesVector[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
       (_logicalCollection.type() == TRI_COL_TYPE_EDGE &&
-       (_indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
-        (_indexes.size() >= 3 && _engineType == ClusterEngineType::RocksDBEngine &&
-         _indexes[2]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)))) {
+       (indexesVector[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
+        (indexesVector.size() >= 3 && _engineType == ClusterEngineType::RocksDBEngine &&
+         indexesVector[2]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)))) {
     std::string msg =
         "got invalid indexes for collection '" + _logicalCollection.name() + "'";
 
@@ -384,9 +385,9 @@ bool ClusterCollection::dropIndex(TRI_idx_iid_t iid) {
 
   size_t i = 0;
   WRITE_LOCKER(guard, _indexesLock);
-  for (std::shared_ptr<Index> index : _indexes) {
-    if (iid == index->id()) {
-      _indexes.erase(_indexes.begin() + i);
+  for (auto it  : _indexes) {
+    if (iid == it->id()) {
+      _indexes.erase(it);
       events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
                         std::to_string(iid), TRI_ERROR_NO_ERROR);
       return true;
@@ -495,7 +496,7 @@ void ClusterCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
       return;
     }
   }
-  _indexes.emplace_back(idx);
+  _indexes.insert(idx);
 }
 
 }  // namespace arangodb

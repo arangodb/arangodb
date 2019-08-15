@@ -275,7 +275,7 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
 
     if (idx) {
       TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
-      _indexes.emplace_back(idx);
+      _indexes.insert(idx);
       if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
         TRI_ASSERT(idx->id() == 0);
         _primaryIndex = static_cast<RocksDBPrimaryIndex*>(idx.get());
@@ -283,11 +283,12 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
     }
   }
 
-  if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
+  auto indexVector = getIndexes();
+  if (indexVector[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
       (TRI_COL_TYPE_EDGE == _logicalCollection.type() &&
-       (_indexes.size() < 3 ||
-        (_indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
-         _indexes[2]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)))) {
+       (indexVector.size() < 3 ||
+        (indexVector[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
+         indexVector[2]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)))) {
     std::string msg =
         "got invalid indexes for collection '" + _logicalCollection.name() + "'";
     LOG_TOPIC("0ef34", ERR, arangodb::Logger::ENGINES) << msg;
@@ -429,7 +430,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     const bool inBackground =
     basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::IndexInBackground, false);
     if (inBackground) {  // allow concurrent inserts into index
-      _indexes.emplace_back(buildIdx);
+      _indexes.insert(buildIdx);
       res = buildIdx->fillIndexBackground(locker);
     } else {
       res = buildIdx->fillIndexForeground();
@@ -442,14 +443,15 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     // Step 5. register in index list
     WRITE_LOCKER(guard, _indexesLock);
     if (inBackground) {  // swap in actual index
-      for (size_t i = 0; i < _indexes.size(); i++) {
-        if (_indexes[i]->id() == buildIdx->id()) {
-          _indexes[i] = idx;
+      for (auto it : _indexes) {
+        if (it->id() == buildIdx->id()) {
+          _indexes.erase(it);
+          _indexes.insert(idx);
           break;
         }
       }
     } else {
-      _indexes.push_back(idx);
+      _indexes.insert(idx);
     }
     guard.unlock();
 #if USE_PLAN_CACHE
@@ -509,10 +511,10 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
   {
     size_t i = 0;
     WRITE_LOCKER(guard, _indexesLock);
-    for (std::shared_ptr<Index>& idx : _indexes) {
-      if (iid == idx->id()) {
-        toRemove = std::move(idx);
-        _indexes.erase(_indexes.begin() + i);
+    for (auto it : _indexes) {
+      if (iid == it->id()) {
+        toRemove = it;
+        _indexes.erase(it);
         break;
       }
       ++i;
@@ -1269,10 +1271,10 @@ void RocksDBCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Bu
 
 namespace {
 template<typename F>
-void reverseIdxOps(std::vector<std::shared_ptr<Index>> const& vector,
-                   std::vector<std::shared_ptr<Index>>::const_iterator& it,
+void reverseIdxOps(PhysicalCollection::IndexContainerType const& indexes,
+                   PhysicalCollection::IndexContainerType::const_iterator& it,
                    F&& op) {
-  while (it != vector.begin()) {
+  while (it != indexes.begin()) {
     it--;
     auto* rIdx = static_cast<RocksDBIndex*>(it->get());
     if (rIdx->needsReversal()) {
@@ -1333,7 +1335,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
       break;
     }
     TRI_IF_FAILURE("BreakLastIndexOperation") {
-      if (*it == _indexes.back()) {
+      if ((*it)->id() == (*_indexes.rbegin())->id()) {
         return Result(TRI_ERROR_DEBUG, "BreakLastIndexOperation failure point triggered");
       }
     }
@@ -1385,11 +1387,6 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
         });
       }
       break;
-    }
-    TRI_IF_FAILURE("BreakLastIndexOperation") {
-      if (*it == _indexes.back()) {
-        return Result(TRI_ERROR_DEBUG, "BreakLastIndexOperation failure point triggered");
-      }
     }
   }
 
@@ -1453,11 +1450,6 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
                         });
       }
       break;
-    }
-    TRI_IF_FAILURE("BreakLastIndexOperation") {
-      if (*it == _indexes.back()) {
-        return Result(TRI_ERROR_DEBUG, "BreakLastIndexOperation failure point triggered");
-      }
     }
   }
   return res;
