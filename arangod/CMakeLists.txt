@@ -692,7 +692,7 @@ target_include_directories(llhttp PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/
 
 target_link_libraries(arango_mmfiles llhttp)
 target_link_libraries(arango_rocksdb arangoserver_part1)
-
+target_link_libraries(arango_cluster_engine boost_boost)
 
 target_link_libraries(arangoserver
   arango_geo
