@@ -634,7 +634,6 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     );
   }
 
-==== BASE ====
   std::string nameBuf;
 
   if (sysVocbase) {
