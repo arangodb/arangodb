@@ -26,7 +26,7 @@
 
 #include "Basics/StringUtils.h"
 #include "Geo/GeoJson.h"
-#include "Geo/GeoUtils.h"
+#include "Geo/Utils.h"
 #include "GeoIndex/Near.h"
 #include "Logger/Logger.h"
 #include "VocBase/voc-types.h"

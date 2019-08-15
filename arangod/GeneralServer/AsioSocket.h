@@ -37,7 +37,7 @@ struct AsioSocket {};
 
 template<>
 struct AsioSocket<SocketType::Tcp> {
-  AsioSocket(arangodb::rest::IoContext& ctx)
+  explicit AsioSocket(arangodb::rest::IoContext& ctx)
     : context(ctx), socket(ctx.io_context), timer(ctx.io_context) {
       context.incClients();
     }

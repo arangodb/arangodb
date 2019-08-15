@@ -137,9 +137,10 @@ index_segment& index_segment::operator=(index_segment&& rhs) NOEXCEPT {
 }
 
 void index_segment::add_sorted(const ifield& f) {
-  irs::bytes_output out;
+  irs::bstring buf;
+  irs::bytes_output out(buf);
   if (f.write(out)) {
-    const irs::bytes_ref value = out;
+    const irs::bytes_ref value = buf;
     const auto doc_id = irs::doc_id_t((irs::doc_limits::min)() + count_);
     sort_.emplace_back(std::make_pair(irs::bstring(value.c_str(), value.size()), doc_id));
   }

@@ -45,6 +45,16 @@ class ApplicationFeature;
 namespace tests {
 namespace mocks {
 
+class MockApplicationServer : public arangodb::application_features::ApplicationServer {
+ public:
+  MockApplicationServer(std::shared_ptr<options::ProgramOptions> options, char const* binaryPath)
+      : ApplicationServer(std::move(options), binaryPath) {}
+  ~MockApplicationServer() override = default;
+
+  // Appear to be started
+  State state() const override { return State::IN_START; }
+};
+
 class MockServer {
  public:
   MockServer();
@@ -63,16 +73,22 @@ class MockServer {
   void stopFeatures();
 
  protected:
-  arangodb::application_features::ApplicationServer _server;
+  MockApplicationServer _server;
   StorageEngineMock _engine;
   std::unique_ptr<TRI_vocbase_t> _system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> _features;
 };
 
+class MockEmptyServer : public MockServer {
+ public:
+  MockEmptyServer();
+  ~MockEmptyServer() override;
+};
+
 class MockAqlServer : public MockServer {
  public:
   MockAqlServer();
-  ~MockAqlServer();
+  ~MockAqlServer() override;
 
   std::shared_ptr<arangodb::transaction::Methods> createFakeTransaction() const;
   std::unique_ptr<arangodb::aql::Query> createFakeQuery() const;
@@ -81,7 +97,7 @@ class MockAqlServer : public MockServer {
 class MockRestServer : public MockServer {
  public:
   MockRestServer();
-  ~MockRestServer();
+  ~MockRestServer() override;
 };
 
 }  // namespace mocks

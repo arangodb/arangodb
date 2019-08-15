@@ -342,6 +342,7 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTraverser.cpp
   Cluster/ClusterTrxMethods.cpp
+  Cluster/ClusterTypes.cpp
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
   Cluster/CriticalThread.cpp
@@ -358,6 +359,7 @@ SET(ARANGOD_SOURCES
   Cluster/MaintenanceRestHandler.cpp
   Cluster/MaintenanceWorker.cpp
   Cluster/NonAction.cpp
+  Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
   Cluster/ResignShardLeadership.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
@@ -413,6 +415,10 @@ SET(ARANGOD_SOURCES
   Indexes/SimpleAttributeEqualityMatcher.cpp
   Indexes/SortedIndexAttributeMatcher.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
+  Network/ConnectionPool.cpp
+  Network/Methods.cpp
+  Network/NetworkFeature.cpp
+  Network/Utils.cpp
   Pregel/AggregatorHandler.cpp
   Pregel/AlgoRegistry.cpp
   Pregel/Algos/AsyncSCC.cpp

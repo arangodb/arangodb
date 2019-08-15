@@ -220,7 +220,6 @@ ExecutionPlan::ExecutionPlan(Ast* ast)
       _root(nullptr),
       _planValid(true),
       _varUsageComputed(false),
-      _isResponsibleForInitialize(true),
       _nestingLevel(0),
       _nextId(0),
       _ast(ast),
@@ -332,7 +331,6 @@ ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
   plan->_root = _root->clone(plan.get(), true, false);
   plan->_nextId = _nextId;
   plan->_appliedRules = _appliedRules;
-  plan->_isResponsibleForInitialize = _isResponsibleForInitialize;
   plan->_nestingLevel = _nestingLevel;
 
   return plan.release();
@@ -403,7 +401,6 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) 
   CostEstimate estimate = _root->getCost();
   builder.add("estimatedCost", VPackValue(estimate.estimatedCost));
   builder.add("estimatedNrItems", VPackValue(estimate.estimatedNrItems));
-  builder.add("initialize", VPackValue(_isResponsibleForInitialize));
   builder.add("isModificationQuery", VPackValue(ast->query()->isModificationQuery()));
 
   builder.close();
@@ -482,6 +479,7 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out, Variable const* c
   // replace NODE_TYPE_COLLECTION function call arguments in the expression
   auto node = Ast::traverseAndModify(const_cast<AstNode*>(expression), visitor);
 
+  // cppcheck-suppress knownConditionTrueFalse
   if (containsCollection) {
     // we found at least one occurence of NODE_TYPE_COLLECTION
     // now replace them with proper (FOR doc IN collection RETURN doc)
@@ -2257,12 +2255,6 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "plan slice is not an object");
-  }
-
-  if (slice.hasKey("initialize")) {
-    // whether or not this plan (or fragment) is responsible for calling
-    // initialize
-    _isResponsibleForInitialize = slice.get("initialize").getBoolean();
   }
 
   VPackSlice nodes = slice.get("nodes");

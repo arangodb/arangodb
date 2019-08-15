@@ -237,6 +237,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
 
     if (numDocsWritten % 200 == 0) {  // commit buffered writes
       commitLambda();
+      // cppcheck-suppress identicalConditionAfterEarlyExit
       if (res.fail()) {
         break;
       }

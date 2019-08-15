@@ -2,6 +2,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Thread.h"
+#include "Rest/Version.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
@@ -64,6 +65,13 @@ int main(int argc, char* argv[]) {
   arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
   // global setup...
   for (int i = 0; i < argc; i++) {
+    if (strcmp(argv[i], "--version") == 0) {
+      arangodb::rest::Version::initialize();
+      std::cout << arangodb::rest::Version::getServerVersion() << std::endl
+                << std::endl
+                << arangodb::rest::Version::getDetailed() << std::endl;
+      exit(EXIT_SUCCESS);
+    }
     if (strcmp(argv[i], "--log.line-number") == 0) {
       if (i < argc) {
         i++;
