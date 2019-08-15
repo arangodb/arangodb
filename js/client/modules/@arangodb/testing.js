@@ -198,6 +198,7 @@ const optionsDefaults = {
   'storageEngine': 'rocksdb',
   'test': undefined,
   'testBuckets': undefined,
+  'testOutputDirectory': 'out/',
   'useReconnect': true,
   'username': 'root',
   'valgrind': false,
@@ -504,7 +505,10 @@ function iterateTests(cases, options) {
   } else {
     print("not cleaning up since we didn't start the server ourselves\n");
   }
-  rp.yamlDumpResults(options, results);
+
+  if (options.extremeVerbosity === true) {
+    rp.yamlDumpResults(options, results);
+  }
   return results;
 }
 
@@ -522,7 +526,6 @@ function unitTest (cases, options) {
     options = {};
   }
   loadTestSuites();
-  _.defaults(options, optionsDefaults);
 
   try {
     pu.setupBinaries(options.build, options.buildType, options.configDir);
@@ -550,7 +553,7 @@ function unitTest (cases, options) {
 // /////////////////////////////////////////////////////////////////////////////
 // exports
 // /////////////////////////////////////////////////////////////////////////////
-
+exports.optionsDefaults = optionsDefaults;
 exports.unitTest = unitTest;
 
 exports.testFuncs = testFuncs;

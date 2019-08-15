@@ -61,6 +61,14 @@ const internalMembers = [
   'shutdownTime'
 ];
 
+function skipInternalMember (r, a) {
+  return !r.hasOwnProperty(a) || internalMembers.indexOf(a) !== -1;
+}
+
+function makePathGeneric (path) {
+  return path.split(fs.pathSeparator);
+}
+
 let failedRuns = {
 };
 
@@ -90,13 +98,6 @@ function gatherStatus(result) {
 // / @brief pretty prints the result
 // //////////////////////////////////////////////////////////////////////////////
 
-function testCaseMessage (test) {
-  if (typeof test.message === 'object' && test.message.hasOwnProperty('body')) {
-    return test.message.body;
-  } else {
-    return test.message;
-  }
-}
 function fancyTimeFormat(time)
 {   
     // Hours, minutes and seconds
@@ -115,10 +116,394 @@ function fancyTimeFormat(time)
     ret += "" + secs;
     return ret;
 }
-function unitTestPrettyPrintResults (res, options) {
-  function skipInternalMember (r, a) {
-    return !r.hasOwnProperty(a) || internalMembers.indexOf(a) !== -1;
+
+
+function iterateTestResults(options, results, state, handlers) {
+  let bucketName = "";
+  if (options.testBuckets) {
+    let n = options.testBuckets.split('/');
+    bucketName = "_" + n[1];
   }
+  try {
+    /* jshint forin: false */
+    // i.e. shell_server_aql
+    for (let testRunName in results) {
+      if (skipInternalMember(results, testRunName)) {
+        continue;
+      }
+      let testRun = results[testRunName];
+
+      if (handlers.hasOwnProperty('testRun')) {
+        handlers.testRun(options, state, testRun, testRunName);
+      }
+
+      // i.e. tests/js/server/aql/aql-cross.js
+      for (let testSuiteName in testRun) {
+        if (skipInternalMember(testRun, testSuiteName)) {
+          continue;
+        }
+        let testSuite = testRun[testSuiteName];
+
+        if (handlers.hasOwnProperty('testSuite')) {
+          handlers.testSuite(options, state, testSuite, testSuiteName);
+        }
+
+        // i.e. testDocument1
+        for (let testName in testSuite) {
+          if (skipInternalMember(testSuite, testName)) {
+            continue;
+          }
+          let testCase = testSuite[testName];
+          
+          if (handlers.hasOwnProperty('testCase')) {
+            handlers.testCase(options, state, testCase, testName);
+          }
+        }
+        if (handlers.hasOwnProperty('endTestSuite')) {
+          handlers.endTestSuite(options, state, testSuite, testSuiteName);
+        }
+      }
+      if (handlers.hasOwnProperty('endTestRun')) {
+        handlers.endTestRun(options, state, testRun, testRunName);
+      }
+    }
+  } catch (x) {
+    print("Exception occured in running tests: " + x.message);
+  }
+}
+
+function locateFailState(options, results) {
+  let failedStates = {
+    state: true,
+    failCount: 0,
+    thisFailedTestCount: 0,
+    runFailedTestCount: 0,
+    currentSucces: true,
+    failedTests: {},
+    thisFailedTests: []
+  };
+  iterateTestResults(options, results, failedStates, {
+    testRun: function(options, state, testRun, testRunName) {
+      if (!testRun.state) {
+        state.state = false;
+        state.thisFailedTestCount = testRun.failed;
+      }
+    },
+    testCase: function(options, state, testCase, testCaseName) {
+      if (!testCase.state) {
+        state.state = false;
+        state.runFailedTestCount ++;
+        state.thisFailedTests.push(testCaseName);
+      }
+    },
+    endTestRun: function(options, state, testRun, testRunName) {
+      if (state.thisFailedTestCount !== 0) {
+        if (state.thisFailedTestCount !== state.runFailedTestCount) {
+          // todo error message
+        }
+        state.failedTests[testRunName] = state.thisFailedTests;
+        state.failCount += state.runFailedTestCount;
+
+        state.thisFailedTests = [];
+        state.thisFailedTestCount = 0;
+      }
+    }
+  });
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+//  @brief converts results to XML representation
+// //////////////////////////////////////////////////////////////////////////////
+
+function saveToJunitXML(options, results) {
+  function xmlEscape (s) {
+    return s.replace(/[<>&"]/g, function (c) {
+      return '&' + {
+        '<': 'lt',
+        '>': 'gt',
+        '&': 'amp',
+        '"': 'quot'
+      }[c] + ';';
+    });
+  }
+
+  function buildXml () {
+    let xml = ['<?xml version="1.0" encoding="UTF-8"?>\n'];
+
+    xml.text = function (s) {
+      Array.prototype.push.call(this, s);
+      return this;
+    };
+
+    xml.elem = function (tagName, attrs, close) {
+      this.text('<').text(tagName);
+      attrs = attrs || {};
+
+      for (let a in attrs) {
+        if (attrs.hasOwnProperty(a)) {
+          this.text(' ').text(a).text('="')
+            .text(xmlEscape(String(attrs[a]))).text('"');
+        }
+      }
+
+      if (close) {
+        this.text('/');
+      }
+
+      this.text('>\n');
+
+      return this;
+    };
+
+    return xml;
+  }
+  let xmlState = {
+    xml: undefined,
+    xmlName: '',
+    testRunName: '',
+    seenTestCases: false,
+  };
+  let prefix = options.cluster ? 'CL_' : '' +
+      (options.storageEngine === 'rocksdb') ? 'RX_': 'MM_';    
+  iterateTestResults(options, results, xmlState, {
+    testRun: function(options, state, testRun, testRunName) {state.testRunName = testRunName;},
+    testSuite: function(options, state, testSuite, testSuiteName) {
+      let total = 0;
+      state.seenTestCases = false;
+      state.xml = buildXml();
+      state.xmlName = prefix + state.testRunName + '_' + makePathGeneric(testSuiteName).join('_');
+      if (testSuite.hasOwnProperty('total')) {
+        total = testSuite.total;
+      }
+
+      state.xml.elem('testsuite', {
+        errors: 0,
+        failures: testSuite.failed,
+        tests: total,
+        name: state.xmlName,
+        time: 0 + testSuite.duration
+      });
+      
+    },
+    testCase: function(options, state, testCase, testCaseName) {
+      const success = (testCase.status === true);
+
+      state.xml.elem('testcase', {
+        name: prefix + testCaseName,
+        time: 0 + testCase.duration
+      }, success);      
+
+      state.seenTestCases = true;
+      if (!success) {
+        state.xml.elem('failure');
+        state.xml.text('<![CDATA[' + testCase.message + ']]>\n');
+        state.xml.elem('/failure');
+        state.xml.elem('/testcase');
+      }
+    },
+    endTestSuite: function(options, state, testSuite, testSuiteName) {
+      if (!state.seenTestCases) {
+        if (testSuite.failed === 0) {
+          state.xml.elem('testcase', {
+            name: 'all_tests_in_' + state.xmlName,
+            time: 0 + testSuite.duration
+          }, true);
+        } else {
+          state.xml.elem('testcase', {
+            name: 'all_tests_in_' + state.xmlName,
+            failures: testSuite.failuresFound,
+            time: 0 + testSuite.duration
+          }, true);
+        }
+      }
+      state.xml.elem('/testsuite');
+      fs.write(fs.join(options.testOutputDirectory,
+                       'UNITTEST_RESULT_' + state.xmlName + '.xml'),
+               state.xml.join(''));
+
+    },
+    endTestRun: function(options, state, testRun, testRunName) {}
+  });
+}
+
+function unitTestPrettyPrintResults (options, results) {
+  let onlyFailedMessages = '';
+  let failedMessages = '';
+  let SuccessMessages = '';
+  let failedSuiteCount = 0;
+  let failedTestsCount = 0;
+  let successCases = {};
+  let failedCases = {};
+  let bucketName = "";
+  let testRunStatistics = "";
+  let isSuccess = true;
+  let suiteSuccess = true;
+
+  if (options.testBuckets) {
+    let n = options.testBuckets.split('/');
+    bucketName = "_" + n[1];
+  }
+  function testCaseMessage (test) {
+    if (typeof test.message === 'object' && test.message.hasOwnProperty('body')) {
+      return test.message.body;
+    } else {
+      return test.message;
+    }
+  }
+
+  let failedStates = {
+    state: true,
+    failCount: 0,
+    thisFailedTestCount: 0,
+    runFailedTestCount: 0,
+    currentSucces: true,
+    failedTests: {},
+    thisFailedTests: []
+  };
+  iterateTestResults(options, results, failedStates, {
+    testRun: function(options, state, testRun, testRunName) {
+    },
+    testSuite: function(options, state, testSuite, testSuiteName) {
+      if (testSuite.status) {
+        successCases[testSuiteName] = testSuite;
+      } else {
+        ++failedSuiteCount;
+        isSuccess = false;
+        if (testSuite.hasOwnProperty('message')) {
+          failedCases[testSuiteName] = {
+            test: testCaseMessage(testSuite)
+          };
+        }
+      }
+    },
+    testCase: function(options, state, testCase, testCaseName) {
+      if (!testCase.status) {
+        failedTestsCount++;
+      /* TODO: this was unused!
+        fails[testCaseName] = testCaseMessage(testCase);
+      */
+      }
+    },
+    endTestSuite: function(options, state, testSuite, testSuiteName) {
+    },
+    endTestRun: function(options, state, testRun, testRunName) {
+      if (isSuccess) {
+        SuccessMessages += '* Test "' + testRunName + bucketName + '"\n';
+
+        for (let name in successCases) {
+          if (!successCases.hasOwnProperty(name)) {
+            continue;
+          }
+
+          let details = successCases[name];
+
+          if (details.skipped) {
+            SuccessMessages += YELLOW + '    [SKIPPED] ' + name + RESET + '\n';
+          } else {
+            SuccessMessages += GREEN + '    [SUCCESS] ' + name + RESET + '\n';
+          }
+        }
+      } else {
+        let m = '* Test "' + testRunName + bucketName + '"\n';
+        onlyFailedMessages += m;
+        failedMessages += m;
+
+        for (let name in successCases) {
+          if (!successCases.hasOwnProperty(name)) {
+            continue;
+          }
+
+          let details = successCases[name];
+
+          if (details.skipped) {
+            m = '    [SKIPPED] ' + name;
+            failedMessages += YELLOW + m + RESET + '\n';
+            onlyFailedMessages += m + '\n';
+          } else {
+            failedMessages += GREEN + '    [SUCCESS] ' + name + RESET + '\n';
+          }
+        }
+
+        for (let name in failedCases) {
+          if (!failedCases.hasOwnProperty(name)) {
+            continue;
+          }
+
+          m = '    [FAILED]  ' + name;
+          failedMessages += RED + m + RESET + '\n\n';
+          onlyFailedMessages += m + '\n\n';
+
+          let details = failedCases[name];
+
+          let count = 0;
+          for (let one in details) {
+            if (!details.hasOwnProperty(one)) {
+              continue;
+            }
+
+            if (count > 0) {
+              failedMessages += '\n';
+              onlyFailedMessages += '\n';
+            }
+            m = '      "' + one + '" failed: ' + details[one];
+            failedMessages += RED + m + RESET + '\n\n';
+            onlyFailedMessages += m + '\n\n';
+            count++;
+          }
+        }
+      }
+      isSuccess = true;
+      successCases = {};
+      failedCases = {};
+    }
+  });
+  let color,statusMessage;
+  let crashedText = '';
+  let crashText = '';
+  let failText = '';
+  if (results.status === true) {
+    color = GREEN;
+    statusMessage = 'Success';
+  } else {
+    color = RED;
+    statusMessage = 'Fail';
+  }
+  if (results.crashed === true) {
+    color = RED;
+    for (let failed in failedRuns) {
+      crashedText += ' [' + failed + '] : ' + failedRuns[failed].replace(/^/mg, '    ');
+    }
+    crashedText += "\nMarking crashy!";
+    crashText = color + crashedText + RESET;
+  }
+  if (results.status !== true) {
+    failText = '\n   Suites failed: ' + failedSuiteCount + ' Tests Failed: ' + failedTestsCount;
+    onlyFailedMessages += failText + '\n';
+    failText = RED + failText + RESET;
+  }
+  if (cu.GDB_OUTPUT !== '') {
+    // write more verbose failures to the testFailureText file
+    onlyFailedMessages += '\n\n' + cu.GDB_OUTPUT;
+  }
+
+
+  print(`
+${YELLOW}================================================================================'
+TEST RESULTS
+================================================================================${RESET}
+${SuccessMessages}
+${failedMessages}${color} * Overall state: ${statusMessage}${RESET}${crashText}${failText}`);
+
+  onlyFailedMessages;
+  if (crashedText !== '') {
+    onlyFailedMessages += '\n' + crashedText;
+  }
+  fs.write(options.testOutputDirectory + options.testFailureText, onlyFailedMessages);
+
+}
+/*
+
+function unitTestPrettyPrintResults (res, options) {
   print(YELLOW + '================================================================================');
   print('TEST RESULTS');
   print('================================================================================\n' + RESET);
@@ -137,7 +522,7 @@ function unitTestPrettyPrintResults (res, options) {
     bucketName = "_" + n[1];
   }
   try {
-    /* jshint forin: false */
+    /* jshint forin: false * /
     for (let testrunName in res) {
       if (skipInternalMember(res, testrunName)) {
         continue;
@@ -303,7 +688,7 @@ function unitTestPrettyPrintResults (res, options) {
       }
       print(testSummary);
     }
-    /* jshint forin: true */
+    /* jshint forin: true * /
 
     let color = (!res.crashed && res.status === true) ? GREEN : RED;
     let crashText = '';
@@ -338,171 +723,7 @@ function unitTestPrettyPrintResults (res, options) {
     print(JSON.stringify(res));
   }
 }
-
-
-
-function makePathGeneric (path) {
-  return path.split(fs.pathSeparator);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-//  @brief converts results to XML representation
-// //////////////////////////////////////////////////////////////////////////////
-
-function xmlEscape (s) {
-  return s.replace(/[<>&"]/g, function (c) {
-    return '&' + {
-      '<': 'lt',
-      '>': 'gt',
-      '&': 'amp',
-      '"': 'quot'
-    }[c] + ';';
-  });
-}
-
-function buildXml () {
-  let xml = ['<?xml version="1.0" encoding="UTF-8"?>\n'];
-
-  xml.text = function (s) {
-    Array.prototype.push.call(this, s);
-    return this;
-  };
-
-  xml.elem = function (tagName, attrs, close) {
-    this.text('<').text(tagName);
-    attrs = attrs || {};
-
-    for (let a in attrs) {
-      if (attrs.hasOwnProperty(a)) {
-        this.text(' ').text(a).text('="')
-          .text(xmlEscape(String(attrs[a]))).text('"');
-      }
-    }
-
-    if (close) {
-      this.text('/');
-    }
-
-    this.text('>\n');
-
-    return this;
-  };
-
-  return xml;
-}
-
-function resultsToXml (results, baseName, cluster, isRocksDb, options) {
-  let clprefix = '';
-
-  if (cluster) {
-    clprefix = 'CL_';
-  }
-
-  if (isRocksDb) {
-    clprefix += 'RX_';
-  } else {
-    clprefix += 'MM_';
-  }
-
-  const isSignificant = function (a, b) {
-    return (internalMembers.indexOf(b) === -1) && a.hasOwnProperty(b);
-  };
-
-  for (let resultName in results) {
-    if (isSignificant(results, resultName)) {
-      let run = results[resultName];
-
-      for (let runName in run) {
-        if (isSignificant(run, runName)) {
-          const xmlName = clprefix + resultName + '_' + runName;
-          const current = run[runName];
-
-          if (current.skipped) {
-            continue;
-          }
-
-          let xml = buildXml();
-          let total = 0;
-
-          if (current.hasOwnProperty('total')) {
-            total = current.total;
-          }
-
-          let failuresFound = current.failed;
-          xml.elem('testsuite', {
-            errors: 0,
-            failures: failuresFound,
-            tests: total,
-            name: xmlName,
-            time: 0 + current.duration
-          });
-
-          let seen = false;
-
-          for (let oneTestName in current) {
-            if (isSignificant(current, oneTestName)) {
-              const oneTest = current[oneTestName];
-              const success = (oneTest.status === true);
-
-              seen = true;
-
-              xml.elem('testcase', {
-                name: clprefix + oneTestName,
-                time: 0 + oneTest.duration
-              }, success);
-
-              if (!success) {
-                xml.elem('failure');
-                xml.text('<![CDATA[' + oneTest.message + ']]>\n');
-                xml.elem('/failure');
-                xml.elem('/testcase');
-              }
-            }
-          }
-
-          if (!seen) {
-            if (failuresFound === 0) {
-              xml.elem('testcase', {
-                name: 'all_tests_in_' + xmlName,
-                time: 0 + current.duration
-              }, true);
-            } else {
-              xml.elem('testcase', {
-                name: 'all_tests_in_' + xmlName,
-                failures: failuresFound,
-                time: 0 + current.duration
-              }, true);
-            }
-          }
-
-          xml.elem('/testsuite');
-
-          const fn = makePathGeneric(baseName + xmlName + '.xml').join('_');
-
-          fs.write(options.testOutputDirectory + fn, xml.join(''));
-        }
-      }
-    }
-  }
-}
-
-function writeXMLReports(options, results) {
-  let isCluster = false;
-  let isRocksDb = false;
-  let prefix = '';
-  if (options.hasOwnProperty('prefix')) {
-    prefix = options.prefix;
-  }
-  if (options.hasOwnProperty('cluster') && options.cluster) {
-    isCluster = true;
-  }
-  if (options.hasOwnProperty('storageEngine')) {
-    isRocksDb = (options.storageEngine === 'rocksdb');
-  }
-
-  resultsToXml(results, 'UNITTEST_RESULT_' + prefix, isCluster, isRocksDb, options);
-}
-
+*/
 // //////////////////////////////////////////////////////////////////////////////
 //  @brief simple status representations
 // //////////////////////////////////////////////////////////////////////////////
@@ -543,13 +764,11 @@ function addFailRunsMessage(testcase, message) {
 }
 
 function yamlDumpResults(options, results) {
-  if (options.extremeVerbosity === true) {
-    try {
-      print(yaml.safeDump(JSON.parse(JSON.stringify(results))));
-    } catch (err) {
-      print(RED + 'cannot dump results: ' + String(err) + RESET);
-      print(RED + require('internal').inspect(results) + RESET);
-    }
+  try {
+    print(yaml.safeDump(JSON.parse(JSON.stringify(results))));
+  } catch (err) {
+    print(RED + 'cannot dump results: ' + String(err) + RESET);
+    print(RED + require('internal').inspect(results) + RESET);
   }
 }
 
@@ -560,5 +779,9 @@ exports.addFailRunsMessage = addFailRunsMessage;
 exports.dumpAllResults = dumpAllResults;
 exports.writeDefaultReports = writeDefaultReports;
 exports.writeReports = writeReports;
-exports.unitTestPrettyPrintResults = unitTestPrettyPrintResults;
-exports.writeXMLReports = writeXMLReports;
+
+exports.analyze = {
+  unitTestPrettyPrintResults: unitTestPrettyPrintResults,
+  saveToJunitXML: saveToJunitXML,
+  yaml: yamlDumpResults
+};

@@ -2,14 +2,12 @@
 /* global print, start_pretty_print, ARGUMENTS */
 'use strict';
 
-
-
 const _ = require('lodash');
-
 const internal = require('internal');
 const rp = require('@arangodb/result-processing');
 
 const unitTest = require('@arangodb/testing').unitTest;
+const optionsDefaults = require('@arangodb/testing').optionsDefaults
 const makeDirectoryRecursive = require('fs').makeDirectoryRecursive;
 const killRemainingProcesses = require('@arangodb/process-utils').killRemainingProcesses;
 const inspect = internal.inspect;
@@ -45,9 +43,8 @@ function main (argv) {
 
   if (options.hasOwnProperty('testOutput')) {
     options.testOutputDirectory = options.testOutput + '/';
-  } else {
-    options.testOutputDirectory = 'out/';
   }
+  _.defaults(options, optionsDefaults);
 
   // create output directory
   try {
@@ -104,7 +101,7 @@ function main (argv) {
   if (options.writeXmlReport) {
     try {
       rp.dumpAllResults(options, result);
-      rp.writeXMLReports(options, result);
+      rp.analyze.saveToJunitXML(options, result);
     } catch (x) {
       print('exception while serializing status xml!');
       print(x.message);
@@ -113,7 +110,7 @@ function main (argv) {
     }
   }
 
-  rp.unitTestPrettyPrintResults(result, options);
+  rp.analyze.unitTestPrettyPrintResults(options, result);
 
   return result.status;
 }
