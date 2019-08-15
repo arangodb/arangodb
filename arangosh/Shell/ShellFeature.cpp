@@ -39,8 +39,7 @@ ShellFeature::ShellFeature(application_features::ApplicationServer& server, int*
     : ApplicationFeature(server, "Shell"),
       _jslint(),
       _result(result),
-      _runMode(RunMode::INTERACTIVE),
-      _unitTestFilter("") {
+      _runMode(RunMode::INTERACTIVE) {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter("V8ShellPhase");
@@ -130,7 +129,7 @@ void ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opti
 }
 
 void ShellFeature::start() {
-  *_result = EXIT_FAILURE;
+  *_result = EXIT_SUCCESS;
 
   V8ShellFeature* shell =
       application_features::ApplicationServer::getFeature<V8ShellFeature>(
@@ -172,7 +171,9 @@ void ShellFeature::start() {
     ok = false;
   }
 
-  *_result = ok ? EXIT_SUCCESS : EXIT_FAILURE;
+  if (*_result == EXIT_SUCCESS && !ok) {
+    *_result = EXIT_FAILURE;
+  }
 }
 
 }  // namespace arangodb
