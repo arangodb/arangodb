@@ -357,6 +357,9 @@ void AqlFunctionFeature::addGeoFunctions() {
   add({"GEO_EQUALS", ".,.",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
        &Functions::GeoEquals});
+  add({"GEO_AREA", ".|.",
+    Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
+    &Functions::GeoArea});
 }
 
 void AqlFunctionFeature::addGeometryConstructors() {
