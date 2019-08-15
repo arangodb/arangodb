@@ -23,6 +23,7 @@
 #include "ManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -34,6 +35,35 @@
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
+
+namespace {
+void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
+                            std::function<void(bool)>& gcfunc) {
+  auto off = std::chrono::seconds(1);
+  bool queued = false;
+  for (size_t attempts = 0; attempts <= 300; attempts++) {
+    {
+      std::lock_guard<std::mutex> guard(mutex);
+      std::tie(queued, workItem) =
+          arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::INTERNAL_LOW,
+                                                            off, gcfunc);
+    }
+    if (queued) {
+      break;
+    }
+    LOG_TOPIC("f8a3d", WARN, arangodb::Logger::TRANSACTIONS)
+        << "No thread available to queue transaction garbage collection, "
+        << "will retry.";
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
+  if (!queued) {
+    LOG_TOPIC("f8b3d", FATAL, arangodb::Logger::TRANSACTIONS)
+        << "No thread available to queue transaction garbage collection, "
+        << "for 5 minutes, exiting.";
+    FATAL_ERROR_EXIT();
+  }
+}
+}  // namespace
 
 namespace arangodb {
 namespace transaction {
@@ -55,11 +85,8 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
     
     MANAGER->garbageCollect(/*abortAll*/false);
     
-    auto off = std::chrono::seconds(1);
-    
-    std::lock_guard<std::mutex> guard(_workItemMutex);
     if (!ApplicationServer::isStopping()) {
-      _workItem = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
+      ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc);
     }
   };
 }
@@ -73,9 +100,7 @@ void ManagerFeature::prepare() {
 void ManagerFeature::start() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler != nullptr) {  // is nullptr in catch tests
-    auto off = std::chrono::seconds(1);
-    std::lock_guard<std::mutex> guard(_workItemMutex);
-    _workItem = scheduler->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
+    ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc);
   }
 }
   

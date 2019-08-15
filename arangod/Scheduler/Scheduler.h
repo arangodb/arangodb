@@ -58,14 +58,15 @@ class Scheduler {
   typedef std::shared_ptr<WorkItem> WorkHandle;
 
   // Enqueues a task - this is implemented on the specific scheduler
+  // May throw.
   virtual bool queue(RequestLane lane, std::function<void()>,
                      bool allowDirectHandling = false) ADB_WARN_UNUSED_RESULT = 0;
 
   // Enqueues a task after delay - this uses the queue functions above.
   // WorkHandle is a shared_ptr to a WorkItem. If all references the WorkItem
   // are dropped, the task is canceled.
-  virtual WorkHandle queueDelay(RequestLane lane, clock::duration delay,
-                                std::function<void(bool canceled)> handler);
+  virtual std::pair<bool, WorkHandle> queueDelay(RequestLane lane, clock::duration delay,
+                                                 std::function<void(bool canceled)> handler);
 
   class WorkItem final {
    public:

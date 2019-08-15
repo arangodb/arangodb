@@ -20,6 +20,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <chrono>
+#include <thread>
+
 #include "Conductor.h"
 
 #include "Pregel/Aggregator.h"
@@ -394,9 +397,21 @@ void Conductor::cancel() {
 void Conductor::cancelNoLock() {
   _callbackMutex.assertLockedByCurrentThread();
   _state = ExecutionState::CANCELED;
-  size_t attempts = 0;
-  while (_finalizeWorkers() == TRI_ERROR_QUEUE_FULL && ++attempts <= 10) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  bool queued = false;
+  for (size_t attempts = 0; attempts < 300; attempts++) {
+    if (_finalizeWorkers() == TRI_ERROR_QUEUE_FULL) {
+      LOG_TOPIC("f8a3c", WARN, Logger::PREGEL)
+          << "No thread available to cancel worker execution, will retry.";
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    } else {
+      queued = true;
+      break;
+    }
+  }
+  if (!queued) {
+    LOG_TOPIC("f8b3c", ERR, Logger::PREGEL)
+        << "No thread available to cancel worker execution for five minutes, "
+        << "giving up.";
   }
   _workHandle.reset();
 }
@@ -420,7 +435,8 @@ void Conductor::startRecovery() {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
 
   // let's wait for a final state in the cluster
-  _workHandle = SchedulerFeature::SCHEDULER->queueDelay(
+  bool queued = false;
+  std::tie(queued, _workHandle) = SchedulerFeature::SCHEDULER->queueDelay(
       RequestLane::CLUSTER_AQL, std::chrono::seconds(2), [this](bool cancelled) {
         if (cancelled || _state != ExecutionState::RECOVERING) {
           return;  // seems like we are canceled
@@ -468,6 +484,10 @@ void Conductor::startRecovery() {
           LOG_TOPIC("fefc6", ERR, Logger::PREGEL) << "Compensation failed";
         }
       });
+  if (!queued) {
+    LOG_TOPIC("92a8d", ERR, Logger::PREGEL)
+        << "No thread available to queue recovery, may be in dirty state.";
+  }
 }
 
 // resolves into an ordered list of shards for each collection on each server

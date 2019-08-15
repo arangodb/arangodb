@@ -22,6 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "InitialSyncer.h"
+
+#include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -56,19 +59,34 @@ void InitialSyncer::startRecurringBatchExtension() {
   }
         
   std::weak_ptr<Syncer> self(shared_from_this());
-  _batchPingTimer = SchedulerFeature::SCHEDULER->queueDelay(
-      RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs), [self](bool cancelled) {
-        if (!cancelled) {
-          auto syncer = self.lock();
-          if (syncer) {
-            auto* s = static_cast<InitialSyncer*>(syncer.get());
-            if (s->_batch.id != 0 && !s->isAborted()) {
-              s->_batch.extend(s->_state.connection, s->_progress, s->_state.syncerId);
-              s->startRecurringBatchExtension();
+  bool queued = false;
+  for (size_t attempts = 0; attempts < 300; attempts++) {
+    std::tie(queued, _batchPingTimer) = SchedulerFeature::SCHEDULER->queueDelay(
+        RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs), [self](bool cancelled) {
+          if (!cancelled) {
+            auto syncer = self.lock();
+            if (syncer) {
+              auto* s = static_cast<InitialSyncer*>(syncer.get());
+              if (s->_batch.id != 0 && !s->isAborted()) {
+                s->_batch.extend(s->_state.connection, s->_progress, s->_state.syncerId);
+                s->startRecurringBatchExtension();
+              }
             }
           }
-        }
-      });
+        });
+    if (queued) {
+      break;
+    }
+    LOG_TOPIC("f8a3e", WARN, Logger::REPLICATION)
+        << "No thread available to queue batch extension, will retry.";
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
+  if (!queued) {
+    LOG_TOPIC("f8b3e", FATAL, Logger::REPLICATION)
+        << "No thread available to queue batch extension for 5 minutes, "
+        << "exiting.";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 }  // namespace arangodb

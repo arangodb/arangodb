@@ -574,7 +574,8 @@ void Worker<V, E, M>::_continueAsync() {
   // wait for new messages before beginning to process
   int64_t milli = _writeCache->containedMessageCount() < _messageBatchSize ? 50 : 5;
   // start next iteration in $milli mseconds.
-  _workHandle = SchedulerFeature::SCHEDULER->queueDelay(
+  bool queued = false;
+  std::tie(queued, _workHandle) = SchedulerFeature::SCHEDULER->queueDelay(
       RequestLane::INTERNAL_LOW, std::chrono::milliseconds(milli), [this](bool cancelled) {
         if (!cancelled) {
           {  // swap these pointers atomically
@@ -592,6 +593,10 @@ void Worker<V, E, M>::_continueAsync() {
           _startProcessing();
         }
       });
+  if (!queued) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUEUE_FULL, "No thread available to continue execution.");
+  }
 }
 
 template <typename V, typename E, typename M>

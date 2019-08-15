@@ -299,20 +299,45 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     }
 
     // now do the work:
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self, this, execContext] {
-      ExecContextScope scope(_user.empty() ? ExecContext::superuser()
-                                           : execContext.get());
-      work(execContext.get());
+    bool queued = false;
+    for (size_t attempts = 0; attempts < 300; ++attempts) {
+      queued = SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self, this, execContext] {
+        ExecContextScope scope(_user.empty() ? ExecContext::superuser()
+                                             : execContext.get());
+        work(execContext.get());
 
-      if (_periodic.load() && !application_features::ApplicationServer::isStopping()) {
-        // requeue the task
-        queue(_interval);
-      } else {
-        // in case of one-off tasks or in case of a shutdown, simply
-        // remove the task from the list
-        Task::unregisterTask(_id, true);
+        if (_periodic.load() && !application_features::ApplicationServer::isStopping()) {
+          // requeue the task
+          bool queued = false;
+          for (size_t attempts = 0; attempts < 300; ++attempts) {
+            queued = queue(_interval);
+            if (queued) {
+              break;
+            }
+            LOG_TOPIC("e8a3d", WARN, Logger::TRANSACTIONS)
+                << "No thread available to queue task, will retry.";
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+          }
+          if (!queued) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
+                                           "No thread available to queue task "
+                                           "for 5 minutes, gave up.");
+          }
+        } else {
+          // in case of one-off tasks or in case of a shutdown, simply
+          // remove the task from the list
+          Task::unregisterTask(_id, true);
+        }
+      });
+      if (queued) {
+        break;
       }
-    });
+      LOG_TOPIC("e8a3d", WARN, Logger::TRANSACTIONS)
+          << "No thread available to queue task, will retry.";
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    if (!queued) {
+    }
   };
 }
 
@@ -330,13 +355,30 @@ void Task::start() {
   }
 
   // initially queue the task
-  queue(_offset);
+  bool queued = false;
+  for (size_t attempts = 0; attempts < 300; ++attempts) {
+    queued = queue(_offset);
+    if (queued) {
+      break;
+    }
+    LOG_TOPIC("e7a3d", WARN, Logger::TRANSACTIONS)
+        << "No thread available to queue task, will retry.";
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
+  if (!queued) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
+                                   "No thread available to queue task "
+                                   "for 5 minutes, gave up.");
+  }
 }
 
-void Task::queue(std::chrono::microseconds offset) {
+bool Task::queue(std::chrono::microseconds offset) {
   MUTEX_LOCKER(lock, _taskHandleMutex);
-  _taskHandle = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW,
-                                                        offset, callbackFunction());
+  bool queued = false;
+  std::tie(queued, _taskHandle) =
+      SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, offset,
+                                              callbackFunction());
+  return queued;
 }
 
 void Task::cancel() {

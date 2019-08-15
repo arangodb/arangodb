@@ -101,13 +101,9 @@ RestStatus RestShutdownHandler::execute() {
     ApplicationServer::server->beginShutdown();
   });
   if (queued) {
-    try {
-      VPackBuilder result;
-      result.add(VPackValue("OK"));
-      generateResult(rest::ResponseCode::OK, result.slice());
-    } catch (...) {
-      // Ignore the error
-    }
+    VPackBuilder result;
+    result.add(VPackValue("OK"));
+    generateResult(rest::ResponseCode::OK, result.slice());
   } else {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_QUEUE_FULL);
   }
