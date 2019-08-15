@@ -1929,7 +1929,7 @@ void Agent::emptyCbTrashBin() {
     _callbackLastPurged = std::chrono::steady_clock::now();
   }
 
-  LOG_TOPIC("12ad23", DEBUG, Logger::AGENCY) << "unobserving: " << envelope->toJson();
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "unobserving: " << envelope->toJson();
 
   // Best effort. Will be retried anyway
   auto wres = write(envelope);
