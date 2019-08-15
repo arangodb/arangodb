@@ -56,11 +56,10 @@ IdExecutor<usePassThrough, UsedFetcher>::~IdExecutor() = default;
 
 template <bool usePassThrough, class UsedFetcher>
 std::pair<ExecutionState, NoStats> IdExecutor<usePassThrough, UsedFetcher>::produceRows(OutputAqlItemRow& output) {
-  ExecutionState state;
+  ExecutionState state = ExecutionState::HASMORE;
   NoStats stats;
-  while (!output.isFull()) {
-    InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-
+  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  while (!output.isFull() && state != ExecutionState::DONE) {
     std::tie(state, inputRow) = _fetcher.fetchRow(output.numRowsLeft());
 
     if (state == ExecutionState::WAITING) {

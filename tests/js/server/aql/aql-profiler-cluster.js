@@ -31,7 +31,7 @@ const profHelper = require("@arangodb/aql-profiler-test-helper");
 const _ = require('lodash');
 const {db, aql} = require('@arangodb');
 const console = require('console');
-const clusterInfo = global.ArangoClusterInfo;
+const { getResponsibleServers } = global.ArangoClusterInfo;
 const internal = require('internal');
 const jsunity = require('jsunity');
 const assert = jsunity.jsUnity.assertions;
@@ -94,6 +94,21 @@ function ahuacatlProfilerTestSuite () {
       _.values(rowsPerClient)
         .map(optimalBatches)
     );
+  const groupedDBServerBatches = (rowsPerShard) => {
+    const shardIds = Object.keys(rowsPerShard);
+    const shardToServerMapping = getResponsibleServers(shardIds);
+    const callsPerServer = {};
+
+    for (const [shard, rows] of Object.entries(rowsPerShard)) {
+      const server = shardToServerMapping[shard];
+      const callInfo = callsPerServer[server] ||  {calls: 0, overhead: 0};
+      const testHere = rows + callInfo.overhead;
+      callInfo.calls += optimalBatches(testHere);
+      callInfo.overhead = testHere % defaultBatchSize;
+      callsPerServer[server] = callInfo;
+    }
+    return _.sum(_.values(callsPerServer).map(c => c.calls)); 
+  }
 
   return {
 
@@ -184,7 +199,7 @@ function ahuacatlProfilerTestSuite () {
 
       const genNodeList = (rowsPerShard, rowsPerServer) => [
         { type : SingletonBlock, calls : numberOfShards, items : numberOfShards },
-        { type : EnumerateCollectionBlock, calls : dbServerBatches(rowsPerShard), items : totalItems(rowsPerShard) },
+        { type : EnumerateCollectionBlock, calls : groupedDBServerBatches(rowsPerShard), items : totalItems(rowsPerShard) },
         // Twice the number due to WAITING, fuzzy, because the Gather does not know
         { type : RemoteBlock, calls : fuzzyDBServerBatches(rowsPerServer).map(i => i * 2), items : totalItems(rowsPerShard) },
         // We get dbServerBatches(rowsPerShard) times WAITING, plus the non-waiting getSome calls.
