@@ -980,7 +980,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
 
     // Check that we are actually still the leader:
     if (!leading()) {
-      return write_ret_t(false, NO_LEADER);
+      return trans_ret_t(false, NO_LEADER);
     }
 
     _tiLock.assertNotLockedByCurrentThread();
@@ -989,7 +989,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
     for (const auto& query : VPackArrayIterator(qs)) {
       // Check that we are actually still the leader:
       if (!leading()) {
-        return write_ret_t(false, NO_LEADER);
+        return trans_ret_t(false, NO_LEADER);
       }
       if (query[0].isObject()) {
         check_ret_t res = _spearhead.applyTransaction(query);
