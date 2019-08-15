@@ -401,7 +401,7 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_COMPARE", ".,.,.|.", flags, &Functions::DateCompare});
   add({"DATE_FORMAT", ".,.", flags, &Functions::DateFormat});
   add({"DATE_TRUNC", ".,.", flags, &Functions::DateTrunc});
-  add({"DATE_BUCKET", ".,.,.", flags, &Functions::DateBucket});
+  add({"DATE_ROUND", ".,.,.", flags, &Functions::DateRound});
 
   // special flags:
   add({"DATE_NOW", "", Function::makeFlags(FF::Deterministic, FF::CanRunOnDBServer),

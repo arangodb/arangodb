@@ -1,7 +1,7 @@
 devel
 -----
 
-* Added AQL function DATE_BUCKET to bin a datetime into a set of buckets
+* Added AQL function DATE_ROUND to bin a datetime into a set of buckets
 
 * Added initial support for wgs84 reference ellipsoid in GEO_DISTANCE through third
   optional parameter to AQL function

@@ -306,7 +306,7 @@ function ahuacatlDateFunctionsTestSuite () {
       ];
 
       values.forEach(function (value) {
-        let actual = getQueryResults("RETURN DATE_BUCKET(@value, @mult, @unit)", { value: value[0], mult: value[1], unit: value[2] });
+        let actual = getQueryResults("RETURN DATE_ROUND(@value, @mult, @unit)", { value: value[0], mult: value[1], unit: value[2] });
         assertEqual([ value[3] ], actual);
       });
     },

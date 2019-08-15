@@ -3675,11 +3675,11 @@ AqlValue Functions::DateCompare(ExpressionContext* expressionContext,
   return AqlValue(AqlValueHintBool(true));
 }
 
-/// @brief function DATE_BUCKET
-AqlValue Functions::DateBucket(ExpressionContext* expressionContext,
-                               transaction::Methods* trx,
-                               VPackFunctionParameters const& parameters) {
-  static char const* AFN = "DATE_BUCKET";
+/// @brief function DATE_ROUND
+AqlValue Functions::DateRound(ExpressionContext* expressionContext,
+                              transaction::Methods* trx,
+                              VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_ROUND";
   tp_sys_clock_ms tp;
 
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
