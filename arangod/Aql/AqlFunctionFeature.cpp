@@ -345,7 +345,7 @@ void AqlFunctionFeature::addGeoFunctions() {
   add({"IS_IN_POLYGON", ".,.|.",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
        &Functions::IsInPolygon});
-  add({"GEO_DISTANCE", ".,.",
+  add({"GEO_DISTANCE", ".,.|.",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
        &Functions::GeoDistance});
   add({"GEO_CONTAINS", ".,.",
@@ -357,6 +357,9 @@ void AqlFunctionFeature::addGeoFunctions() {
   add({"GEO_EQUALS", ".,.",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
        &Functions::GeoEquals});
+  add({"GEO_AREA", ".|.",
+    Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
+    &Functions::GeoArea});
 }
 
 void AqlFunctionFeature::addGeometryConstructors() {

@@ -395,8 +395,6 @@ void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder,
                                      std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
-  builder.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(_unique));
-  builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(_sparse));
   builder.add("deduplicate", VPackValue(_deduplicate));
   builder.close();
 }
@@ -684,8 +682,11 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
     rocksdb::PinnableSlice existing(leased.get());
     for (RocksDBKey& key : elements) {
       s = mthds->GetForUpdate(_cf, key.string(), &existing);
-      if (s.ok() || s.IsBusy()) {  // detected conflicting index entry
+      if (s.ok()) {  // detected conflicting index entry
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+        break;
+      } else if (!s.IsNotFound()) {
+        res.reset(rocksutils::convertStatus(s));
         break;
       }
       s = mthds->Put(_cf, key, value.string(), /*assume_tracked*/true);

@@ -72,11 +72,13 @@ struct VPackHashedSlice {
       : slice(other.slice), hash(other.hash) {}
   VPackHashedSlice(VPackHashedSlice&& other) noexcept
       : slice(other.slice), hash(other.hash) {}
+  // cppcheck-suppress operatorEqVarError
   VPackHashedSlice& operator=(VPackHashedSlice const& other) noexcept {
     slice = other.slice;
     hash = other.hash;
     return *this;
   }
+  // cppcheck-suppress operatorEqVarError
   VPackHashedSlice& operator=(VPackHashedSlice&& other) noexcept {
     slice = other.slice;
     hash = other.hash;
@@ -147,7 +149,7 @@ class VelocyPackHelper {
 
   template <bool useUtf8>
   struct VPackSorted {
-    VPackSorted(bool reverse,
+    explicit VPackSorted(bool reverse,
                 arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults,
                 arangodb::velocypack::Slice const* lhsBase = nullptr,
                 arangodb::velocypack::Slice const* rhsBase = nullptr)

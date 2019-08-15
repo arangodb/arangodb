@@ -293,6 +293,7 @@ set(ARANGOD_SOURCES_PART1
   Cluster/ClusterCollectionCreationInfo.cpp
   Cluster/ClusterHelpers.cpp
   Cluster/ClusterTraverser.cpp
+  Cluster/ClusterTypes.cpp
   Cluster/TakeoverShardLeadership.cpp
   GeneralServer/Acceptor.cpp
   GeneralServer/AcceptorTcp.cpp
@@ -314,6 +315,10 @@ set(ARANGOD_SOURCES_PART1
   Graph/ShortestPathResult.cpp
   Graph/SingleServerTraverser.cpp
   Graph/Traverser.cpp
+  Network/ConnectionPool.cpp
+  Network/Methods.cpp
+  Network/NetworkFeature.cpp
+  Network/Utils.cpp
   Replication/ReplicationApplierState.cpp
   Replication/ReplicationClients.cpp
   Replication/SyncerId.cpp
@@ -403,6 +408,7 @@ set(ARANGOD_SOURCES_PART2
   Cluster/MaintenanceRestHandler.cpp
   Cluster/MaintenanceWorker.cpp
   Cluster/NonAction.cpp
+  Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
   Cluster/ResignShardLeadership.cpp
   Cluster/RestAgencyCallbacksHandler.cpp

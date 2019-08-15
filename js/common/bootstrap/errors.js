@@ -131,6 +131,7 @@
     "ERROR_REPLICATION_START_TICK_NOT_PRESENT" : { "code" : 1414, "message" : "start tick not present" },
     "ERROR_REPLICATION_WRONG_CHECKSUM" : { "code" : 1416, "message" : "wrong checksum" },
     "ERROR_REPLICATION_SHARD_NONEMPTY" : { "code" : 1417, "message" : "shard not empty" },
+    "ERROR_CLUSTER_SERVER_UNKNOWN" : { "code" : 1449, "message" : "got a request from an unkown server" },
     "ERROR_CLUSTER_COLLECTION_ID_EXISTS" : { "code" : 1453, "message" : "collection ID already exists" },
     "ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN" : { "code" : 1454, "message" : "could not create collection in plan" },
     "ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION" : { "code" : 1456, "message" : "could not create collection" },

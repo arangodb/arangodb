@@ -22,7 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchCommon.h"
-#include "velocypack/StringRef.h"
+
+#include <velocypack/StringRef.h>
 
 namespace {
 

@@ -87,6 +87,8 @@ class RocksDBThrottle : public rocksdb::EventListener {
 
   void StopThread();
 
+  uint64_t GetThrottle() const {return _throttleBps;};
+
  protected:
   void Startup(rocksdb::DB* db);
 
@@ -139,7 +141,7 @@ class RocksDBThrottle : public rocksdb::EventListener {
   ThrottleData_t _throttleData[THROTTLE_INTERVALS];
   size_t _replaceIdx;
 
-  uint64_t _throttleBps;
+  std::atomic<uint64_t> _throttleBps;
   bool _firstThrottle;
 
   std::unique_ptr<WriteControllerToken> _delayToken;

@@ -45,7 +45,7 @@ struct SharedCounter {
 
   SharedCounter() : SharedCounter(DefaultIdFunc) {}
 
-  SharedCounter(IdFunc f) : _id(f) {
+  explicit SharedCounter(IdFunc f) : _id(f) {
     for (_mask = 1; _mask <= stripes; _mask <<= 1) {
     }
     TRI_ASSERT(_mask > stripes);
@@ -58,7 +58,7 @@ struct SharedCounter {
     }
   }
 
-  SharedCounter(SharedCounter<stripes> const& other) { copy(other); }
+  explicit SharedCounter(SharedCounter<stripes> const& other) { copy(other); }
 
   SharedCounter<stripes>& operator=(SharedCounter<stripes> const& other) {
     copy(other);
