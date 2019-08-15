@@ -21,16 +21,38 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Communicator.h"
+#include <string.h>
+#include <algorithm>
+#include <atomic>
+#include <cstdint>
+#include <functional>
+#include <iosfwd>
+#include <new>
+#include <stdexcept>
+#include <type_traits>
 
-#include "Basics/MutexLocker.h"
-#include "Basics/socket-utils.h"
-#include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
+#include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+
+#include <curl/curl.h>
+
+#include <velocypack/Buffer.h>
+
+#include "Communicator.h"
+
+#include "Basics/MutexLocker.h"
+#include "Basics/debugging.h"
+#include "Basics/socket-utils.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogLevel.h"
+#include "Logger/Logger.h"
+#include "Rest/CommonDefines.h"
+#include "Rest/GeneralResponse.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -283,7 +305,7 @@ void Communicator::createRequestInProgress(std::unique_ptr<NewRequest> newReques
         << "Request to '" << newRequest->_destination
         << "' was not even started because communication is disabled";
     callErrorFn(ticketId, newRequest->_destination,
-                newRequest->_callbacks, TRI_COMMUNICATOR_DISABLED, {nullptr});
+                newRequest->_callbacks, TRI_ERROR_COMMUNICATOR_DISABLED, {nullptr});
     return;
   }
 
@@ -424,9 +446,6 @@ void Communicator::createRequestInProgress(std::unique_ptr<NewRequest> newReques
       break;
     case RequestType::GET:
       break;
-    case RequestType::VSTREAM_CRED:
-    case RequestType::VSTREAM_REGISTER:
-    case RequestType::VSTREAM_STATUS:
     case RequestType::ILLEGAL:
       throw std::runtime_error("Invalid request type " +
                                GeneralRequest::translateMethod(request->requestType()));
@@ -520,9 +539,8 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
         curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &httpStatusCode);
 
         // take over ownership for _responseBody
-        auto response = std::make_unique<HttpResponse>(static_cast<ResponseCode>(httpStatusCode), rip->_responseBody.get());
-        rip->_responseBody.release();
-  
+        auto response = std::make_unique<HttpResponse>(static_cast<ResponseCode>(httpStatusCode),
+                                                       std::move(rip->_responseBody));  
         response->setHeaders(std::move(rip->_responseHeaders));
 
         if (httpStatusCode < 400) {
@@ -540,20 +558,20 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
       case CURLE_COULDNT_RESOLVE_HOST:
       case CURLE_URL_MALFORMAT:
       case CURLE_SEND_ERROR:
-        callErrorFn(rip, TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT, {nullptr});
+        callErrorFn(rip, TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT, {nullptr});
         break;
       case CURLE_OPERATION_TIMEDOUT:
       case CURLE_RECV_ERROR:
       case CURLE_GOT_NOTHING:
         if (rip->_aborted || (CURLE_OPERATION_TIMEDOUT == rc && 0.0 == connectTime)) {
-          callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
+          callErrorFn(rip, TRI_ERROR_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
         } else {
           callErrorFn(rip, TRI_ERROR_CLUSTER_TIMEOUT, {nullptr});
         }
         break;
       case CURLE_WRITE_ERROR:
         if (rip->_aborted) {
-          callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
+          callErrorFn(rip, TRI_ERROR_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
         } else {
           LOG_TOPIC("1d6e6", ERR, arangodb::Logger::FIXME)
               << "got a write error from curl but request was not aborted";
@@ -562,7 +580,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
         break;
       case CURLE_ABORTED_BY_CALLBACK:
         TRI_ASSERT(rip->_aborted);
-        callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
+        callErrorFn(rip, TRI_ERROR_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
         break;
       default:
         LOG_TOPIC("a1f90", ERR, arangodb::Logger::FIXME) << "curl return " << rc;

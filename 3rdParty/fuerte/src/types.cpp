@@ -23,7 +23,6 @@
 #include <fuerte/types.h>
 
 #include <algorithm>
-#include <stdexcept>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
@@ -199,11 +198,10 @@ std::string to_string(Error error) {
   switch (error) {
     case Error::NoError:
       return "No Error";
-      
     case Error::CouldNotConnect:
       return "Unable to connect";
     case Error::CloseRequested:
-      return "peer requested connection close";
+      return "Peer requested connection close";
     case Error::ConnectionClosed:
       return "Connection reset by peer";
     case Error::Timeout:

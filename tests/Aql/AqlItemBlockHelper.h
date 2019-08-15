@@ -32,6 +32,7 @@
 #include "Aql/ResourceUsage.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 
+#include "AqlHelper.h"
 #include "VelocyPackHelper.h"
 
 /* * * * * * * *
@@ -81,10 +82,6 @@ template <::arangodb::aql::RegisterId columns>
 }  // namespace tests
 }  // namespace arangodb
 
-namespace std {
-std::ostream& operator<<(std::ostream&, ::arangodb::aql::AqlItemBlock const&);
-}
-
 namespace arangodb {
 namespace tests {
 namespace aql {
@@ -104,6 +101,9 @@ class EntryToAqlValueVisitor : public boost::static_visitor<AqlValue> {
 template <RegisterId columns>
 SharedAqlItemBlockPtr buildBlock(AqlItemBlockManager& manager,
                                  MatrixBuilder<columns>&& matrix) {
+  if (matrix.size() == 0) {
+    return nullptr;
+  }
   SharedAqlItemBlockPtr block{new AqlItemBlock(manager, matrix.size(), columns)};
 
   for (size_t row = 0; row < matrix.size(); row++) {

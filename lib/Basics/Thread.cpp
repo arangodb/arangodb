@@ -22,22 +22,29 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Thread.h"
-
 #include <errno.h>
 #include <signal.h>
+#include <chrono>
+#include <thread>
+
+#include "Basics/operating-system.h"
+
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+
+#include "Thread.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/application-exit.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-
-#include <chrono>
-#include <thread>
+#include "Logger/LoggerStream.h"
 
 #ifdef TRI_HAVE_PROCESS_H
 #include <process.h>
@@ -201,7 +208,7 @@ void Thread::shutdown() {
   LOG_TOPIC("93614", TRACE, Logger::THREADS) << "shutdown(" << _name << ")";
 
   beginShutdown();
-  if (_threadStructInitialized) {
+  if (_threadStructInitialized.exchange(false, std::memory_order_acquire)) {
     if (TRI_IsSelfThread(&_thread)) {
       // we must ignore any errors here, but TRI_DetachThread will log them
       TRI_DetachThread(&_thread);
@@ -289,7 +296,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
     LOG_TOPIC("f5915", ERR, Logger::THREADS)
         << "could not start thread '" << _name << "': " << TRI_last_error();
   } else {
-    _threadStructInitialized = true;
+    _threadStructInitialized.store(true, std::memory_order_release);
   }
 
   releaseRef();
@@ -302,6 +309,7 @@ void Thread::markAsStopped() {
   _state.store(ThreadState::STOPPED);
 
   if (_finishedCondition != nullptr) {
+    // cppcheck-suppress redundantPointerOp
     CONDITION_LOCKER(locker, *_finishedCondition);
     locker.broadcast();
   }

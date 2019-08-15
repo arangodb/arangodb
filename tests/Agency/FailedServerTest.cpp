@@ -302,7 +302,6 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
                "timeCreated":"2017-04-10T11:40:09Z","type":"failedServer"})=";
         builder->add(jobId, createBuilder(todo).slice());
       }
-      builder->close();
     } else {
       builder->add(s);
     }
@@ -363,7 +362,6 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
                "timeCreated":"2017-04-10T11:40:09Z","type":"failedServer"})=";
         builder->add(jobId, createBuilder(todo).slice());
       }
-      builder->close();
     } else {
       if (path == "/arango/Supervision/Health/leader/Status") {
         builder->add("/arango/Supervision/Health/leader/Status",

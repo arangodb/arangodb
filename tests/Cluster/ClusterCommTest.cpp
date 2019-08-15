@@ -30,6 +30,7 @@
 #include "gtest/gtest.h"
 
 #include "Basics/ConditionLocker.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterComm.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/SupervisedScheduler.h"
@@ -78,7 +79,7 @@ class ClusterCommTester : public ClusterComm {
     somethingReceived.broadcast();
   }  // signalResponse
 
-  Scheduler* _oldSched;
+  decltype(SchedulerFeature::SCHEDULER) _oldSched;
   SupervisedScheduler _testerSched;
 
 };  // class ClusterCommTester

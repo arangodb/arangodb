@@ -200,7 +200,7 @@ class ValuePair {
 
   explicit ValuePair(uint64_t size, ValueType type = ValueType::Binary) noexcept
       : _start(nullptr), _size(size), _type(type) {}
-  
+
   explicit ValuePair(StringRef const& value, ValueType type = ValueType::Binary) noexcept;
 
   uint8_t const* getStart() const { return _start; }

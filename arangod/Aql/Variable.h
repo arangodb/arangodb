@@ -24,6 +24,8 @@
 #ifndef ARANGOD_AQL_VARIABLE_H
 #define ARANGOD_AQL_VARIABLE_H 1
 
+#include <string>
+
 #include "Aql/types.h"
 #include "Basics/Common.h"
 

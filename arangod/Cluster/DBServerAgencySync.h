@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 
 namespace arangodb {
+
 class HeartbeatThread;
 
 struct DBServerAgencySyncResult {
@@ -45,9 +46,6 @@ struct DBServerAgencySyncResult {
 
   DBServerAgencySyncResult(bool s, std::string const& e, uint64_t p, uint64_t c)
       : success(s), errorMessage(e), planVersion(p), currentVersion(c) {}
-
-  DBServerAgencySyncResult(DBServerAgencySyncResult const& other) = default;
-  DBServerAgencySyncResult& operator=(DBServerAgencySyncResult const& other) = default;
 };
 
 class DBServerAgencySync {

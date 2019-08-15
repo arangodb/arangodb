@@ -87,8 +87,6 @@ class MMFilesCollection final : public PhysicalCollection {
 
   static constexpr uint32_t defaultIndexBuckets = 8;
 
-  static constexpr double defaultLockTimeout = 10.0 * 60.0;
-
   std::string const& path() const override { return _path; };
 
   void setPath(std::string const& path) override { _path = path; };
@@ -242,7 +240,8 @@ class MMFilesCollection final : public PhysicalCollection {
                            std::function<bool(LocalDocumentId const&)> callback) override;
 
   std::shared_ptr<Index> createIndex(arangodb::velocypack::Slice const& info,
-                                     bool restore, bool& created) override;
+                                     bool restore,
+                                     bool& created) override;
 
   std::shared_ptr<Index> createIndex(transaction::Methods& trx,
                                      velocypack::Slice const& info,

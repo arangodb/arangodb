@@ -676,6 +676,7 @@ struct AqlValueMaterializer {
     }
   }
 
+  // cppcheck-suppress operatorEqVarError
   AqlValueMaterializer& operator=(AqlValueMaterializer const& other) {
     if (this != &other) {
       TRI_ASSERT(trx == other.trx);  // must be from same transaction
@@ -699,6 +700,7 @@ struct AqlValueMaterializer {
     other.materialized = AqlValue();
   }
 
+  // cppcheck-suppress operatorEqVarError
   AqlValueMaterializer& operator=(AqlValueMaterializer&& other) noexcept {
     if (this != &other) {
       TRI_ASSERT(trx == other.trx);  // must be from same transaction
@@ -770,7 +772,7 @@ struct equal_to<arangodb::aql::AqlValue> {
     if (type == arangodb::aql::AqlValue::VPACK_INLINE) {
       try {
         return arangodb::velocypack::Slice(&a._data.internal[0])
-            .equals(arangodb::velocypack::Slice(&b._data.internal[0]));
+            .binaryEquals(arangodb::velocypack::Slice(&b._data.internal[0]));
       } catch (...) {
         TRI_ASSERT(false);
       }

@@ -28,7 +28,6 @@
 #include "Aql/SortCondition.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Geo/GeoUtils.h"
 #include "GeoIndex/Near.h"
 #include "Indexes/IndexIterator.h"
 #include "Logger/Logger.h"
@@ -37,6 +36,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
+
 
 using namespace arangodb;
 
@@ -325,7 +325,15 @@ Result MMFilesGeoIndex::insert(transaction::Methods& trx, LocalDocumentId const&
 
   IndexValue value(documentId, std::move(centroid));
   for (S2CellId cell : cells) {
+// The bool comperator is warned about in a unused code branch (which expects an int), MSVC doesn't properly detect this.
+#if (_MSC_VER >= 1)
+#pragma warning(push)
+#pragma warning( disable : 4804)
+#endif
     _tree.insert(std::make_pair(cell, value));
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
   }
 
   return res;

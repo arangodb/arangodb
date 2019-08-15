@@ -148,13 +148,6 @@ class IResearchViewExecutorBase {
   using Infos = IResearchViewExecutorInfos;
   using Stats = IResearchViewStats;
 
-  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "Logic_error, prefetching number fo rows not supported");
-  }
-
   /**
    * @brief produce the next Row of Aql Values.
    *
@@ -190,7 +183,7 @@ class IResearchViewExecutorBase {
     friend class IndexReadBuffer;
 
     IndexReadBufferEntry() = delete;
-    inline IndexReadBufferEntry(std::size_t keyIdx) noexcept
+    explicit inline IndexReadBufferEntry(std::size_t keyIdx) noexcept
       : _keyIdx(keyIdx) {
     }
 

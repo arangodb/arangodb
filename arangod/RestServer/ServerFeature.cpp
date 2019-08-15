@@ -23,10 +23,13 @@
 #include "ServerFeature.h"
 
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationFeature.h"
@@ -47,7 +50,6 @@ namespace arangodb {
 
 ServerFeature::ServerFeature(application_features::ApplicationServer& server, int* res)
     : ApplicationFeature(server, "Server"),
-      _vstMaxSize(1024 * 30),
       _result(res),
       _operationMode(OperationMode::MODE_SERVER)
 #if _WIN32
@@ -84,9 +86,9 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addSection("vst", "Configure the VelocyStream protocol");
 
-  options->addOption("--vst.maxsize",
-                     "maximal size (in bytes) for a VelocyPack chunk",
-                     new UInt32Parameter(&_vstMaxSize));
+  options->addObsoleteOption("--vst.maxsize", "maximal size (in bytes) "
+                             "for a VelocyPack chunk", false);
+
 #if _WIN32
   options->addOption("--console.code-page",
                      "Windows code page to use; defaults to UTF8",
@@ -224,7 +226,7 @@ void ServerFeature::waitForHeartbeat() {
     if (HeartbeatThread::hasRunOnce()) {
       break;
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(100 * 1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 }
 

@@ -35,6 +35,7 @@
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
 #include "Indexes/Index.h"
 #include "OptimizerRules.h"
 #include "VocBase/Methods/Collections.h"
@@ -190,7 +191,6 @@ std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(Ast* ast, AstNode* doc
   bool indexFound = false;
 
   // figure out index to use
-  std::vector<basics::AttributeName> field;
   auto indexes = trx->indexesForCollection(params.collection);
   for (auto& idx : indexes) {
     if (::isGeoIndex(idx->type())) {
@@ -552,7 +552,7 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
 //! @brief replace legacy JS Functions with pure AQL
 void arangodb::aql::replaceNearWithinFulltext(Optimizer* opt,
                                               std::unique_ptr<ExecutionPlan> plan,
-                                              OptimizerRule const* rule) {
+                                              OptimizerRule const& rule) {
   bool modified = false;
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;

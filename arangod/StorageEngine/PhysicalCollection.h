@@ -49,6 +49,8 @@ class Result;
 
 class PhysicalCollection {
  public:
+  constexpr static double defaultLockTimeout = 10.0 * 60.0;
+  
   virtual ~PhysicalCollection() = default;
 
   virtual PhysicalCollection* clone(LogicalCollection& logical) const = 0;
@@ -197,6 +199,11 @@ class PhysicalCollection {
                         ManagedDocumentResult& previous, OperationOptions& options,
                         bool lock, KeyLockInfo* keyLockInfo,
                         std::function<void()> const& cbDuringLock) = 0;
+  
+  /// @brief new object for insert, value must have _key set correctly.
+  Result newObjectForInsert(transaction::Methods* trx, velocypack::Slice const& value,
+                            bool isEdgeCollection, velocypack::Builder& builder,
+                            bool isRestore, TRI_voc_rid_t& revisionId) const;
 
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);
@@ -209,11 +216,6 @@ class PhysicalCollection {
   TRI_voc_rid_t newRevisionId() const;
 
   bool isValidEdgeAttribute(velocypack::Slice const& slice) const;
-
-  /// @brief new object for insert, value must have _key set correctly.
-  Result newObjectForInsert(transaction::Methods* trx, velocypack::Slice const& value,
-                            bool isEdgeCollection, velocypack::Builder& builder,
-                            bool isRestore, TRI_voc_rid_t& revisionId) const;
 
   /// @brief new object for remove, must have _key set
   void newObjectForRemove(transaction::Methods* trx, velocypack::Slice const& oldValue,

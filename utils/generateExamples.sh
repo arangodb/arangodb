@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 export PID=$$
 
 if test -n "$ORIGINAL_PATH"; then
@@ -9,6 +9,8 @@ else
     export EXT=""
     PS='/'
 fi;
+
+export PORT=`expr 1024 + $RANDOM`
 
 SCRIPT="utils${PS}generateExamples.js"
 LOGFILE="out${PS}log-$PID"
@@ -61,7 +63,7 @@ fi
 
 "${ARANGOSH}" \
     --configuration none \
-    --server.endpoint none \
+    --server.endpoint tcp://127.0.0.1:${PORT} \
     --log.file ${LOGFILE} \
     --javascript.startup-directory js \
     --javascript.module-directory enterprise/js \

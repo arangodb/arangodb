@@ -30,9 +30,12 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StringUtils.h"
+#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Hints.h"
@@ -245,13 +248,13 @@ Task::Task(std::string const& id, std::string const& name, TRI_vocbase_t& vocbas
 Task::~Task() {}
 
 void Task::setOffset(double offset) {
-  _offset = std::chrono::microseconds(static_cast<long long>(offset * 1000000));
+  _offset = std::chrono::milliseconds(static_cast<long long>(offset * 1000));
   _periodic.store(false);
 }
 
 void Task::setPeriod(double offset, double period) {
-  _offset = std::chrono::microseconds(static_cast<long long>(offset * 1000000));
-  _interval = std::chrono::microseconds(static_cast<long long>(period * 1000000));
+  _offset = std::chrono::milliseconds(static_cast<long long>(offset * 1000));
+  _interval = std::chrono::milliseconds(static_cast<long long>(period * 1000));
   _periodic.store(true);
 }
 

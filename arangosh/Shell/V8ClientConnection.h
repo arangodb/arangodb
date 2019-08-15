@@ -117,7 +117,7 @@ class V8ClientConnection {
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context, ClientFeature*);
 
  private:
-  void createConnection();
+  std::shared_ptr<fuerte::Connection> createConnection();
 
   v8::Local<v8::Value> requestData(v8::Isolate* isolate, fuerte::RestVerb verb,
                                    arangodb::velocypack::StringRef const& location,
@@ -142,7 +142,7 @@ class V8ClientConnection {
   std::string _databaseName;
   std::chrono::duration<double> _requestTimeout;
 
-  std::mutex _lock;
+  mutable std::recursive_mutex _lock;
   int _lastHttpReturnCode;
   std::string _lastErrorMessage;
   std::string _version;

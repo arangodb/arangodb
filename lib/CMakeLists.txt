@@ -68,12 +68,14 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/AttributeTranslator.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Builder.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Collection.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Compare.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Dumper.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Exception.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/HexDump.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Iterator.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Options.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Parser.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Serializable.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Slice.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/SliceStaticData.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/StringRef.cpp
@@ -87,23 +89,6 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/fpconv.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/velocypack-common.cpp
   ${PROJECT_SOURCE_DIR}/lib/Basics/xxhash.cpp
-  )
-
-set(LIB_ARANGO_FUERTE
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/connection.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/ConnectionBuilder.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/helper.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/http.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/HttpConnection.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/jwt.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/loop.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/message.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/requests.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/types.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/vst.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/VstConnection.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/connection.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/http_parser/http_parser.c
   )
 
 add_definitions("-DARCHITECTURE_OPTIMIZATIONS=${ARCHITECTURE_OPTIMIZATIONS}")
@@ -131,7 +116,6 @@ add_library(${LIB_ARANGO} STATIC
   ${LIB_ARANGO_MSVC}
   ${LIB_ARANGO_POSIX}
   ${LIB_ARANGO_LINENOISE}
-  ${LIB_ARANGO_FUERTE}
   ${LIB_ARANGO_VPACK}
   ${LIB_CLOCK_GETTIME}
   ${LIB_ASM_SOURCES}
@@ -196,6 +180,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/csv.cpp
   Basics/datetime.cpp
   Basics/debugging.cpp
+  Basics/EncodingUtils.cpp
   Basics/error.cpp
   Basics/fasthash.cpp
   Basics/files.cpp
@@ -274,6 +259,7 @@ add_library(${LIB_ARANGO} STATIC
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp
+  ${ADDITIONAL_LIB_ARANGO_SOURCES}
 )
 
 target_link_libraries(${LIB_ARANGO}
@@ -293,11 +279,13 @@ endif()
 ################################################################################
 
 add_library(${LIB_ARANGO_GEO} STATIC
+  Geo/Ellipsoid.cpp
   Geo/GeoJson.cpp
   Geo/GeoParams.cpp
-  Geo/GeoUtils.cpp
   Geo/ShapeContainer.cpp
   Geo/Shapes.cpp
+  Geo/Utils.cpp
+  Geo/karney/geodesic.c
   Geo/S2/S2MultiPointRegion.cpp
   Geo/S2/S2MultiPolyline.cpp
 )
@@ -346,4 +334,17 @@ target_link_libraries(${LIB_ARANGO_V8}
 if (USE_ENTERPRISE)
   target_compile_definitions(${LIB_ARANGO_V8} PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(${LIB_ARANGO_V8} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
+
+
+if(MSVC)
+  target_compile_options(${LIB_ARANGO_V8} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(${LIB_ARANGO_GEO} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(${LIB_ARANGO} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(${LIB_ARANGO_V8} PRIVATE -Werror)
+  target_compile_options(${LIB_ARANGO_GEO} PRIVATE -Werror)
+  target_compile_options(${LIB_ARANGO} PRIVATE -Werror)
 endif()

@@ -264,9 +264,14 @@ Syncer::JobSynchronizer::~JobSynchronizer() {
 
   // wait until all posted jobs have been completed/canceled
   while (hasJobInFlight()) {
-    std::this_thread::sleep_for(std::chrono::microseconds(20000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     std::this_thread::yield();
   }
+}
+
+bool Syncer::JobSynchronizer::gotResponse() const noexcept {
+  CONDITION_LOCKER(guard, _condition);
+  return _gotResponse;
 }
 
 /// @brief will be called whenever a response for the job comes in
@@ -397,8 +402,36 @@ bool Syncer::JobSynchronizer::hasJobInFlight() const noexcept {
   return _jobsInFlight > 0;
 }
 
+/**
+ * @brief Generate a new syncer ID, used for the catchup in synchronous replication.
+ *
+ * If we're running in a cluster, we're a DBServer that's using asynchronous
+ * replication to catch up until we can switch to synchronous replication.
+ *
+ * As in this case multiple syncers can run on the same client, syncing from the
+ * same server, the server ID used to identify the client with usual asynchronous
+ * replication on the server is not sufficiently unique. For that case, we use
+ * the syncer ID with a server specific tick.
+ *
+ * Otherwise, we're doing some other kind of asynchronous replication (e.g.
+ * active failover or dc2dc). In that case, the server specific tick would not
+ * be unique among clients, and the server ID will be used instead.
+ *
+ * The server distinguishes between syncer and server IDs, which is why we don't
+ * just return ServerIdFeature::getId() here, so e.g. SyncerId{4} and server ID 4
+ * will be handled as distinct values.
+ */
+SyncerId newSyncerId() {
+  if (ServerState::instance()->isRunningInCluster()) {
+    TRI_ASSERT(ServerState::instance()->getShortId() != 0);
+    return SyncerId{TRI_NewServerSpecificTick()};
+  }
+
+  return SyncerId{0};
+}
+
 Syncer::SyncerState::SyncerState(Syncer* syncer, ReplicationApplierConfiguration const& configuration)
-    : applier{configuration}, connection{syncer, configuration}, master{configuration} {}
+    : syncerId{newSyncerId()}, applier{configuration}, connection{syncer, configuration}, master{configuration} {}
 
 Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     : _state{this, configuration} {
@@ -552,7 +585,7 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx, LogicalColle
       LOG_TOPIC("569c6", DEBUG, Logger::REPLICATION)
           << "got lock timeout while waiting for lock on collection '"
           << coll->name() << "', retrying...";
-      std::this_thread::sleep_for(std::chrono::microseconds(50000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
       // retry
     }
   } else {
@@ -969,5 +1002,7 @@ void Syncer::reloadUsers() {
     um->triggerLocalReload();
   }
 }
+
+SyncerId Syncer::syncerId() const noexcept { return _state.syncerId; }
 
 }  // namespace arangodb

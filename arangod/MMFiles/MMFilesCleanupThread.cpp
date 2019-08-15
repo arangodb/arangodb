@@ -27,6 +27,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollection.h"
@@ -119,7 +120,7 @@ void MMFilesCleanupThread::run() {
         locker.wait(cleanupInterval());
       } else {
         // prevent busy waiting
-        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
 
     } catch (...) {

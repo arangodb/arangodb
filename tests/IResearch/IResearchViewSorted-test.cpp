@@ -50,6 +50,7 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -105,6 +106,7 @@ class IResearchViewSortedTest : public ::testing::Test {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
+    features.emplace_back(new arangodb::FlushFeature(server), false);
     features.emplace_back(new arangodb::ViewTypesFeature(server), true);
     features.emplace_back(new arangodb::AuthenticationFeature(server), true);
     features.emplace_back(new arangodb::DatabasePathFeature(server), false);
@@ -266,7 +268,8 @@ TEST_F(IResearchViewSortedTest, SingleField) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, true, false);
+    view->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                  arangodb::LogicalDataSource::Serialize::Detailed));
     builder.close();
 
     auto slice = builder.slice();
@@ -293,7 +296,7 @@ TEST_F(IResearchViewSortedTest, SingleField) {
     // insert into collections
     {
       irs::utf8_path resource;
-      resource /= irs::string_ref(IResearch_test_resource_dir);
+      resource /= irs::string_ref(arangodb::tests::testResourceDir);
       resource /= irs::string_ref("simple_sequential.json");
 
       auto builder =
@@ -554,7 +557,8 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, true, false);
+    view->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                  arangodb::LogicalDataSource::Serialize::Detailed));
     builder.close();
 
     auto slice = builder.slice();
@@ -581,7 +585,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
     // insert into collections
     {
       irs::utf8_path resource;
-      resource /= irs::string_ref(IResearch_test_resource_dir);
+      resource /= irs::string_ref(arangodb::tests::testResourceDir);
       resource /= irs::string_ref("simple_sequential.json");
 
       auto builder =

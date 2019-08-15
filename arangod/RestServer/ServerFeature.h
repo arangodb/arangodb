@@ -55,7 +55,6 @@ class ServerFeature final : public application_features::ApplicationFeature {
   }
 
   std::vector<std::string> const& scripts() const { return _scripts; }
-  uint32_t const& vstMaxSize() const { return _vstMaxSize; }
 
   bool isConsoleMode() const {
     return (_operationMode == OperationMode::MODE_CONSOLE);
@@ -67,7 +66,6 @@ class ServerFeature final : public application_features::ApplicationFeature {
   bool _console = false;
   bool _restServer = true;
   std::vector<std::string> _scripts;
-  uint32_t _vstMaxSize;
   int* _result;
   OperationMode _operationMode;
   bool _isStopping = false;

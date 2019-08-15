@@ -28,6 +28,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
@@ -60,7 +63,7 @@ DropCollection::DropCollection(MaintenanceFeature& feature, ActionDescription co
   }
 }
 
-DropCollection::~DropCollection(){};
+DropCollection::~DropCollection() {}
 
 bool DropCollection::first() {
   auto const& database = _description.get(DATABASE);

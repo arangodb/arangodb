@@ -61,12 +61,12 @@ function foxxManager (options) {
 
   results.update = pu.run.arangoshCmd(options, instanceInfo, {
     'configuration': fs.join(pu.CONFIG_DIR, 'foxx-manager.conf')
-  }, ['update']);
+  }, ['update'], options.coreCheck);
 
   if (results.update.status === true || options.force) {
     results.search = pu.run.arangoshCmd(options, instanceInfo, {
       'configuration': fs.join(pu.CONFIG_DIR, 'foxx-manager.conf')
-    }, ['search', 'itzpapalotl']);
+    }, ['search', 'itzpapalotl'], options.coreCheck);
   }
 
   print('Shutting down...');

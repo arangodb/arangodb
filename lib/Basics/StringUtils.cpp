@@ -24,22 +24,23 @@
 #include "StringUtils.h"
 
 #include <ctype.h>
-#include <stdio.h>
-#include <algorithm>
-#include <limits>
-#include <vector>
-#include <cstring>
-
 #include <math.h>
-#include <time.h>
+#include <stdlib.h>
+#include <algorithm>
+#include <cstdint>
+#include <cstring>
+#include <limits>
+#include <memory>
+#include <utility>
+#include <vector>
 
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 #include "Basics/fpconv.h"
-#include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-
-#include "zconf.h"
-#include "zlib.h"
+#include "Logger/LoggerStream.h"
 
 // -----------------------------------------------------------------------------
 // helper functions
@@ -258,6 +259,7 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
     return name;
   }
 
+  // cppcheck-suppress unsignedPositive
   if (len >= (SIZE_MAX - 1) / 6) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -641,6 +643,7 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
   // the max amount of memory is:
   size_t mt = (std::max)(static_cast<size_t>(1), toLength);
 
+  // cppcheck-suppress unsignedPositive
   if ((sourceLength / fromLength) + 1 >= (SIZE_MAX - toLength) / mt) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -894,7 +897,8 @@ std::string urlEncode(char const* src, size_t const len) {
                               '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
   char const* end = src + len;
-
+  
+  // cppcheck-suppress unsignedPositive
   if (len >= (SIZE_MAX - 1) / 3) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -940,6 +944,7 @@ std::string encodeURIComponent(std::string const& str) {
 std::string encodeURIComponent(char const* src, size_t const len) {
   char const* end = src + len;
 
+  // cppcheck-suppress unsignedPositive
   if (len >= (SIZE_MAX - 1) / 3) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -2070,81 +2075,6 @@ std::string decodeHex(char const* value, size_t length) {
 
 std::string decodeHex(std::string const& value) {
   return decodeHex(value.data(), value.size());
-}
-
-bool gzipUncompress(char const* compressed, size_t compressedLength, std::string& uncompressed) {
-  uncompressed.clear();
-
-  if (compressedLength == 0) {
-    /* empty input */
-    return true;
-  }
-
-  z_stream strm;
-  memset(&strm, 0, sizeof(strm));
-  strm.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(compressed));
-  strm.avail_in = (uInt)compressedLength;
-
-  if (inflateInit2(&strm, (16 + MAX_WBITS)) != Z_OK) {
-    return false;
-  }
-
-  int ret;
-  char outbuffer[32768];
-
-  do {
-    strm.next_out = reinterpret_cast<Bytef*>(outbuffer);
-    strm.avail_out = sizeof(outbuffer);
-
-    ret = inflate(&strm, 0);
-
-    if (uncompressed.size() < strm.total_out) {
-      uncompressed.append(outbuffer, strm.total_out - uncompressed.size());
-    }
-  } while (ret == Z_OK);
-
-  inflateEnd(&strm);
-
-  return (ret == Z_STREAM_END);
-}
-
-bool gzipUncompress(std::string const& compressed, std::string& uncompressed) {
-  return gzipUncompress(compressed.c_str(), compressed.size(), uncompressed);
-}
-
-bool gzipDeflate(char const* compressed, size_t compressedLength, std::string& uncompressed) {
-  uncompressed.clear();
-
-  z_stream strm;
-  memset(&strm, 0, sizeof(strm));
-  strm.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(compressed));
-  strm.avail_in = (uInt)compressedLength;
-
-  if (inflateInit(&strm) != Z_OK) {
-    return false;
-  }
-
-  int ret;
-  char outbuffer[32768];
-
-  do {
-    strm.next_out = reinterpret_cast<Bytef*>(outbuffer);
-    strm.avail_out = sizeof(outbuffer);
-
-    ret = inflate(&strm, 0);
-
-    if (uncompressed.size() < strm.total_out) {
-      uncompressed.append(outbuffer, strm.total_out - uncompressed.size());
-    }
-  } while (ret == Z_OK);
-
-  inflateEnd(&strm);
-
-  return (ret == Z_STREAM_END);
-}
-
-bool gzipDeflate(std::string const& compressed, std::string& uncompressed) {
-  return gzipDeflate(compressed.c_str(), compressed.size(), uncompressed);
 }
 
 void escapeRegexParams(std::string& out, const char* ptr, size_t length) {

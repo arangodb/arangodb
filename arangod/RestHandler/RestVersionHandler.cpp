@@ -24,7 +24,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/ServerSecurityFeature.h"
-#include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
 #include "RestVersionHandler.h"
@@ -50,7 +49,7 @@ RestStatus RestVersionHandler::execute() {
       application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
           "ServerSecurity");
   TRI_ASSERT(security != nullptr);
-  
+
   bool const allowInfo = security->canAccessHardenedApi();
 
   result.add(VPackValue(VPackValueType::Object));
@@ -88,6 +87,8 @@ RestStatus RestVersionHandler::execute() {
     }  // found
   }    // allowInfo
   result.close();
+  response()->setAllowCompression(true);
+
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;
 }

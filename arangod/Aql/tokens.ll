@@ -15,12 +15,21 @@
 
 %top{
 #include <stdint.h>
+#if (_MSC_VER >= 1)
+// fix ret_val = EOB_ACT_LAST_MATCH later on, its generated, we can't control this.
+#pragma warning( disable : 4267)
+#endif
 }
 
 %{
 #include "Basics/Common.h"
-#include "Basics/conversions.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/conversions.h"
+#include "Basics/operating-system.h"
+
+#if _WIN32
+#include "Basics/win-utils.h"
+#endif
 
 // introduce the namespace here, otherwise following references to
 // the namespace in auto-generated headers might fail
@@ -609,5 +618,6 @@ class Parser;
   /* anything else is returned as it is */
   return (int) yytext[0];
 }
+
 
 %%

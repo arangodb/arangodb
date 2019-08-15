@@ -37,7 +37,7 @@
 
 #include "Basics/Common.h"
 #include "Geo/GeoParams.h"
-#include "Geo/GeoUtils.h"
+#include "Geo/Utils.h"
 #include "Logger/Logger.h"
 
 namespace arangodb {
@@ -234,7 +234,7 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
 
   std::vector<geo::Interval> intervals;
   if (!cover.empty()) {
-    geo::GeoUtils::scanIntervals(_params, cover, intervals);
+    geo::utils::scanIntervals(_params, cover, intervals);
     _scannedCells.insert(_scannedCells.end(), cover.begin(), cover.end());
     // needed for difference calculation, will sort the IDs replace
     // 4 child cells with one parent cell and remove duplicates

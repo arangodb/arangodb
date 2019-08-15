@@ -23,7 +23,7 @@
 #ifndef ARANGODB_BASICS_STATIC_STRINGS_H
 #define ARANGODB_BASICS_STATIC_STRINGS_H 1
 
-#include "Basics/Common.h"
+#include <string>
 
 namespace arangodb {
 class StaticStrings {
@@ -51,6 +51,7 @@ class StaticStrings {
   static std::string const RevString;
   static std::string const FromString;
   static std::string const ToString;
+  static std::string const TimeString;
 
   // URL parameter names
   static std::string const IgnoreRevsString;
@@ -105,6 +106,7 @@ class StaticStrings {
   static std::string const IndexNameEdgeTo;
   static std::string const IndexNameInaccessible;
   static std::string const IndexNamePrimary;
+  static std::string const IndexNameTime;
 
   // index hint strings
   static std::string const IndexHintAny;
@@ -160,12 +162,12 @@ class StaticStrings {
   static std::string const RequestForwardedTo;
   static std::string const ResponseCode;
   static std::string const Server;
+  static std::string const TransferEncoding;
   static std::string const TransactionBody;
   static std::string const TransactionId;
   static std::string const Unlimited;
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
-  static std::string const XArangoNoLock;
   static std::string const XArangoFrontend;
 
   // mime types
@@ -174,12 +176,21 @@ class StaticStrings {
   static std::string const MimeTypeVPack;
   static std::string const MultiPartContentType;
 
+  // encodings
+  static std::string const EncodingDeflate;
+
   // collection attributes
   static std::string const NumberOfShards;
   static std::string const IsSmart;
   static std::string const DistributeShardsLike;
+  static std::string const CacheEnabled;
+  static std::string const IndexBuckets;
+  static std::string const JournalSize;
+  static std::string const DoCompact;
   static std::string const ReplicationFactor;
+  static std::string const MinReplicationFactor;
   static std::string const ShardKeys;
+  static std::string const ShardingStrategy;
   static std::string const SmartJoinAttribute;
 
   // graph attribute names
@@ -201,6 +212,7 @@ class StaticStrings {
 
   // Replication
   static std::string const ReplicationSoftLockOnly;
+  static std::string const FailoverCandidates;
 
   // misc strings
   static std::string const LastValue;

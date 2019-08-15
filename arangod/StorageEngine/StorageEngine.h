@@ -35,10 +35,22 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
 
 namespace arangodb {
+
+enum class RecoveryState : uint32_t {
+  /// @brief recovery is not yet started
+  BEFORE = 0,
+
+  /// @brief recovery is in progress
+  IN_PROGRESS,
+
+  /// @brief recovery is done
+  DONE
+};
 
 class DatabaseInitialSyncer;
 class LogicalCollection;
@@ -137,6 +149,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   // return the absolute path for the VERSION file of a database
   virtual std::string versionFilename(TRI_voc_tick_t id) const = 0;
 
+  // return the path for the actual data
+  virtual std::string dataPath() const = 0;
+
   // return the path for a database
   virtual std::string databasePath(TRI_vocbase_t const* vocbase) const = 0;
 
@@ -214,7 +229,13 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) = 0;
 
   /// @brief is database in recovery
-  virtual bool inRecovery() { return false; }
+  bool inRecovery() { return recoveryState() < RecoveryState::DONE; }
+
+  /// @brief current recovery state
+  virtual RecoveryState recoveryState() = 0;
+
+  /// @brief current recovery tick
+  virtual TRI_voc_tick_t recoveryTick() = 0;
 
   /// @brief function to be run when recovery is done
   virtual void recoveryDone(TRI_vocbase_t& /*vocbase*/) {}

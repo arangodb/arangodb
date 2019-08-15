@@ -38,14 +38,14 @@ OutputAqlItemRow::OutputAqlItemRow(
     std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
     std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
-    CopyRowBehaviour copyRowBehaviour)
+    CopyRowBehavior copyRowBehavior)
     : _block(std::move(block)),
       _baseIndex(0),
       _lastBaseIndex(0),
       _inputRowCopied(false),
       _lastSourceRow{CreateInvalidInputRowHint{}},
       _numValuesWritten(0),
-      _doNotCopyInputRow(copyRowBehaviour == CopyRowBehaviour::DoNotCopyInputRows),
+      _doNotCopyInputRow(copyRowBehavior == CopyRowBehavior::DoNotCopyInputRows),
       _outputRegisters(std::move(outputRegisters)),
       _registersToKeep(std::move(registersToKeep)),
       _registersToClear(std::move(registersToClear)),

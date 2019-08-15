@@ -32,8 +32,9 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Utils/OperationOptions.h"
-#include "velocypack/Slice.h"
-#include "velocypack/velocypack-aliases.h"
+
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace transaction {
@@ -228,17 +229,6 @@ class ModificationExecutor : public ModificationExecutorBase<FetcherType> {
    *         if something was written output.hasValue() == true
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-
-  /**
-   * This executor immedieately  returns every actually consumed row
-   * All other rows belong to the fetcher.
-   */
-  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "Logic_error, prefetching number fo rows not supported");
-  }
 
  private:
   Modifier _modifier;

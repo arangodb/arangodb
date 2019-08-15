@@ -20,19 +20,34 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stdlib.h>
+#include <algorithm>
+#include <cstdint>
+#include <exception>
+#include <iterator>
+#include <map>
+#include <sstream>
+#include <stdexcept>
+#include <utility>
+
 #include "ApplicationFeatures/V8SecurityFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Basics/files.h"
-#include "Basics/tri-strings.h"
+#include "Basics/operating-system.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
-
-#include <stdexcept>
-#include <v8.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -136,7 +151,7 @@ bool checkBlackAndWhitelist(std::string const& value, bool hasWhitelist,
     // we have neither a whitelist nor a blacklist hit => deny
     return false;
   }
-  
+
   // longer match or blacklist wins
   return white_result[0].length() > black_result[0].length();
 }
@@ -172,8 +187,7 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
   options
       ->addOption("--javascript.harden",
                   "disables access to JavaScript functions in the internal "
-                  "module: getPid(), "
-                  "processStatistics() andl logLevel()",
+                  "module: getPid() and logLevel()",
                   new BooleanParameter(&_hardenInternalModule))
       .setIntroducedIn(30500);
 
@@ -284,15 +298,15 @@ void V8SecurityFeature::start() {
 }
 
 void V8SecurityFeature::dumpAccessLists() const {
-  LOG_TOPIC("2cafe", DEBUG, arangodb::Logger::SECURITY) 
+  LOG_TOPIC("2cafe", DEBUG, arangodb::Logger::SECURITY)
     << "files whitelisted by user:" << _filesWhitelist
     << ", internal read whitelist:" << _readWhitelist
     << ", internal write whitelist:" << _writeWhitelist
-    << ", internal startup options whitelist:" << _startupOptionsWhitelist 
+    << ", internal startup options whitelist:" << _startupOptionsWhitelist
     << ", internal startup options blacklist: " << _startupOptionsBlacklist
-    << ", internal environment variable whitelist:" << _environmentVariablesWhitelist 
+    << ", internal environment variable whitelist:" << _environmentVariablesWhitelist
     << ", internal environment variables blacklist: " << _environmentVariablesBlacklist
-    << ", internal endpoints whitelist:" << _endpointsWhitelist 
+    << ", internal endpoints whitelist:" << _endpointsWhitelist
     << ", internal endpoints blacklist: " << _endpointsBlacklist;
 }
 

@@ -60,7 +60,7 @@ class CountCollectExecutorTest : public ::testing::Test {
 TEST_F(CountCollectExecutorTest, there_are_no_rows_upstream_the_producer_doesnt_wait) {
   CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */, nrOutputReg, {}, {});
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(input.steal(), false);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
   CountCollectExecutor testee(fetcher, infos);
   NoStats stats{};
 
@@ -74,12 +74,14 @@ TEST_F(CountCollectExecutorTest, there_are_no_rows_upstream_the_producer_doesnt_
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
   ASSERT_TRUE(x.toInt64() == 0);
+
+  ASSERT_EQ(0, fetcher.totalSkipped());
 }
 
 TEST_F(CountCollectExecutorTest, there_are_now_rows_upstream_the_producer_waits) {
   CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */, nrOutputReg, {}, {});
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(input.steal(), true);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
   CountCollectExecutor testee(fetcher, infos);
   NoStats stats{};
 
@@ -97,12 +99,14 @@ TEST_F(CountCollectExecutorTest, there_are_now_rows_upstream_the_producer_waits)
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
   ASSERT_TRUE(x.toInt64() == 0);
+
+  ASSERT_EQ(0, fetcher.totalSkipped());
 }
 
 TEST_F(CountCollectExecutorTest, there_are_rows_in_the_upstream_the_producer_doesnt_wait) {
   CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */, nrOutputReg, {}, {});
   auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
-  SingleRowFetcherHelper<false> fetcher(input->steal(), false);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
   CountCollectExecutor testee(fetcher, infos);
   NoStats stats{};
 
@@ -116,12 +120,14 @@ TEST_F(CountCollectExecutorTest, there_are_rows_in_the_upstream_the_producer_doe
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
   ASSERT_TRUE(x.toInt64() == 3);
+
+  ASSERT_EQ(3, fetcher.totalSkipped());
 }
 
 TEST_F(CountCollectExecutorTest, there_are_rows_in_the_upstream_the_producer_waits) {
   CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */, nrOutputReg, {}, {});
   auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
-  SingleRowFetcherHelper<false> fetcher(input->steal(), true);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
   CountCollectExecutor testee(fetcher, infos);
   NoStats stats{};
   OutputAqlItemRow result{std::move(block), outputRegisters,
@@ -147,6 +153,8 @@ TEST_F(CountCollectExecutorTest, there_are_rows_in_the_upstream_the_producer_wai
   AqlValue x = block->getValue(0, 1);
   ASSERT_TRUE(x.isNumber());
   ASSERT_TRUE(x.toInt64() == 3);
+
+  ASSERT_EQ(3, fetcher.totalSkipped());
 }
 
 }  // namespace aql

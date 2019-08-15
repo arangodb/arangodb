@@ -32,6 +32,9 @@
 #include "Cache/Finding.h"
 #include "Cluster/ServerState.h"
 #include "Graph/EdgeDocumentToken.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>

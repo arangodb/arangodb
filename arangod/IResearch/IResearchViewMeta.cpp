@@ -25,12 +25,14 @@
 #include "utils/locale_utils.hpp"
 
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "IResearchCommon.h"
 #include "VelocyPackHelper.h"
 #include "VocBase/LogicalView.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Iterator.h"
-#include "velocypack/Parser.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
 
 #include "IResearchViewMeta.h"
 
@@ -208,9 +210,9 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
 }
 
 IResearchViewMeta::IResearchViewMeta()
-    : _cleanupIntervalStep(10),
+    : _cleanupIntervalStep(2),
       _commitIntervalMsec(1000),
-      _consolidationIntervalMsec(60 * 1000),
+      _consolidationIntervalMsec(10 * 1000),
       _locale(std::locale::classic()),
       _version(LATEST_VERSION),
       _writebufferActive(0),
@@ -218,6 +220,7 @@ IResearchViewMeta::IResearchViewMeta()
       _writebufferSizeMax(32 * (size_t(1) << 20)) {  // 32MB
   std::string errorField;
 
+  // cppcheck-suppress useInitializationList
   _consolidationPolicy =
       createConsolidationPolicy<irs::index_utils::consolidate_tier>(
           arangodb::velocypack::Parser::fromJson(
@@ -285,7 +288,7 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
   }
 
   try {
-    if (!_consolidationPolicy.properties().equals(other._consolidationPolicy.properties())) {
+    if (!basics::VelocyPackHelper::equal(_consolidationPolicy.properties(), other._consolidationPolicy.properties(), false)) {
       return false; // values do not match
     }
   } catch (...) {
@@ -620,8 +623,9 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
                 arangodb::velocypack::Value(_consolidationIntervalMsec));
   }
 
-  if ((!ignoreEqual || !_consolidationPolicy.properties().equals(
-                           ignoreEqual->_consolidationPolicy.properties())) &&
+  if ((!ignoreEqual || !arangodb::basics::VelocyPackHelper::equal(
+          _consolidationPolicy.properties(),
+          ignoreEqual->_consolidationPolicy.properties(), false)) &&
       (!mask || mask->_consolidationPolicy)) {
     builder.add("consolidationPolicy", _consolidationPolicy.properties());
   }

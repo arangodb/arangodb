@@ -24,8 +24,11 @@
 #ifndef ARANGOD_GRAPH_SINGLE_SERVER_EDGE_CURSOR_H
 #define ARANGOD_GRAPH_SINGLE_SERVER_EDGE_CURSOR_H 1
 
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Graph/EdgeCursor.h"
+
 #include <velocypack/StringRef.h>
 
 namespace arangodb {

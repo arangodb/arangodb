@@ -26,10 +26,18 @@
 /// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cmath>
+
 #include "Basics/Common.h"
+#include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
 #include "V8/v8-json.h"
 #include "V8/v8-globals.h"
+
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#endif
+
 
 #define YY_NO_INPUT
 
@@ -2926,7 +2934,7 @@ v8::Handle<v8::Value> TRI_FromJsonString (v8::Isolate* isolate,
   yylex_init(&scanner);
   struct yyguts_t* yyg = (struct yyguts_t*) scanner;
 
-  YY_BUFFER_STATE buf = yy_scan_bytes(text, len, scanner);
+  YY_BUFFER_STATE buf = yy_scan_bytes(text, static_cast<int>(len), scanner);
 
   int c = yylex(scanner);
   v8::Handle<v8::Value> value = ParseValue(isolate, scanner, c);

@@ -36,10 +36,12 @@
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/Result.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/ScopeGuard.h"
+#include "Basics/application-exit.h"
+#include "Basics/system-functions.h"
 #include "Maskings/Maskings.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
@@ -170,7 +172,6 @@ std::pair<arangodb::Result, uint64_t> startBatch(arangodb::httpclient::SimpleHtt
 
   std::string url = "/_api/replication/batch?serverId=" + clientId;
   std::string const body = "{\"ttl\":600}";
-  std::string urlExt;
   if (!DBserver.empty()) {
     url += "&DBserver=" + DBserver;
   }

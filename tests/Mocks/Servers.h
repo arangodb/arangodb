@@ -23,8 +23,8 @@
 #ifndef ARANGODB_TESTS_MOCKS_SERVERS_H
 #define ARANGODB_TESTS_MOCKS_SERVERS_H 1
 
-#include "StorageEngineMock.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "StorageEngineMock.h"
 
 struct TRI_vocbase_t;
 
@@ -45,41 +45,63 @@ class ApplicationFeature;
 namespace tests {
 namespace mocks {
 
+class MockApplicationServer : public arangodb::application_features::ApplicationServer {
+ public:
+  MockApplicationServer(std::shared_ptr<options::ProgramOptions> options, char const* binaryPath)
+      : ApplicationServer(std::move(options), binaryPath) {}
+  ~MockApplicationServer() override = default;
+
+  // Appear to be started
+  State state() const override { return State::IN_START; }
+};
+
 class MockServer {
-public:
-MockServer();
-virtual ~MockServer();
+ public:
+  MockServer();
+  virtual ~MockServer();
 
-void init();
+  void init();
 
-TRI_vocbase_t& getSystemDatabase() const;
+  TRI_vocbase_t& getSystemDatabase() const;
 
-protected:
+ protected:
   // Implementation knows the place when all features are included
   void startFeatures();
 
-  private:
-    // Will be called by destructor
-    void stopFeatures();
+ private:
+  // Will be called by destructor
+  void stopFeatures();
 
-  protected:
-    arangodb::application_features::ApplicationServer _server;
-    StorageEngineMock _engine;
-    std::unique_ptr<TRI_vocbase_t> _system;
-    std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> _features;
+ protected:
+  MockApplicationServer _server;
+  StorageEngineMock _engine;
+  std::unique_ptr<TRI_vocbase_t> _system;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> _features;
+};
+
+class MockEmptyServer : public MockServer {
+ public:
+  MockEmptyServer();
+  ~MockEmptyServer() override;
 };
 
 class MockAqlServer : public MockServer {
-  public:
-    MockAqlServer();
-    ~MockAqlServer();
+ public:
+  MockAqlServer();
+  ~MockAqlServer() override;
 
-    std::shared_ptr<arangodb::transaction::Methods> createFakeTransaction() const;
-    std::unique_ptr<arangodb::aql::Query> createFakeQuery() const;
+  std::shared_ptr<arangodb::transaction::Methods> createFakeTransaction() const;
+  std::unique_ptr<arangodb::aql::Query> createFakeQuery() const;
 };
 
-} // mocks
-} // tests
-} // arangodb
+class MockRestServer : public MockServer {
+ public:
+  MockRestServer();
+  ~MockRestServer() override;
+};
+
+}  // namespace mocks
+}  // namespace tests
+}  // namespace arangodb
 
 #endif

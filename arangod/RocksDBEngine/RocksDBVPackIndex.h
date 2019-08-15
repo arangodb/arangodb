@@ -78,7 +78,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) override;
   void recalculateEstimates() override;
 
-  void toVelocyPack(VPackBuilder&, std::underlying_type<Index::Serialize>::type) const override;
+  void toVelocyPack(velocypack::Builder&,
+                    std::underlying_type<Index::Serialize>::type) const override;
 
   bool canBeDropped() const override { return true; }
 
@@ -97,14 +98,14 @@ class RocksDBVPackIndex : public RocksDBIndex {
   std::unique_ptr<IndexIterator> lookup(transaction::Methods*,
                                         arangodb::velocypack::Slice const, bool reverse) const;
 
-  Index::UsageCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                                            arangodb::aql::AstNode const* node,
-                                            arangodb::aql::Variable const* reference, 
-                                            size_t itemsInIndex) const override;
+  Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                             arangodb::aql::AstNode const* node,
+                                             arangodb::aql::Variable const* reference, 
+                                             size_t itemsInIndex) const override;
 
-  Index::UsageCosts supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                          arangodb::aql::Variable const* reference, 
-                                          size_t itemsInIndex) const override;
+  Index::SortCosts supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                         arangodb::aql::Variable const* reference, 
+                                         size_t itemsInIndex) const override;
 
   arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
                                               arangodb::aql::Variable const* reference) const override;

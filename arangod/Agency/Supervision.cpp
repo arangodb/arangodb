@@ -458,8 +458,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
   // Do actual monitoring
   for (auto const& machine : machinesPlanned) {
-    std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,
-        lastStatus, serverID(machine.first), shortName;
+    std::string serverID(machine.first), shortName;
 
     // short name arrives asynchronous to machine registering, make sure
     //  it has arrived before trying to use it
@@ -1318,7 +1317,7 @@ void Supervision::readyOrphanedIndexCreations() {
                           currentDBs(colPath + shname + "/indexes").slice();
                       for (auto const& curIndex : VPackArrayIterator(curIndexes)) {
                         auto const& curId = curIndex.get("id");
-                        if (planId == curId) {
+                        if (basics::VelocyPackHelper::equal(planId, curId, false)) {
                           ++nIndexes;
                         }
                       }

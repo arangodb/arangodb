@@ -23,7 +23,6 @@
 
 #include "RestAqlHandler.h"
 
-#include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -36,17 +35,12 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "VocBase/ticks.h"
@@ -281,9 +275,6 @@ bool RestAqlHandler::registerSnippets(VPackSlice const snippetsSlice,
     planBuilder->openObject();
     planBuilder->add(VPackValue("collections"));
     planBuilder->add(collectionSlice);
-
-    // hard-code initialize: false
-    planBuilder->add("initialize", VPackValue(false));
 
     planBuilder->add(VPackValue("nodes"));
     planBuilder->add(it.value.get("nodes"));
@@ -610,9 +601,6 @@ RestStatus RestAqlHandler::execute() {
     case rest::RequestType::HEAD:
     case rest::RequestType::PATCH:
     case rest::RequestType::OPTIONS:
-    case rest::RequestType::VSTREAM_CRED:
-    case rest::RequestType::VSTREAM_REGISTER:
-    case rest::RequestType::VSTREAM_STATUS:
     case rest::RequestType::ILLEGAL: {
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_NOT_IMPLEMENTED, "illegal method for /_api/aql");

@@ -23,35 +23,46 @@
 
 #include "vocbase.h"
 
-#include <velocypack/Builder.h>
+#include <algorithm>
+#include <chrono>
+#include <exception>
+#include <type_traits>
+#include <utility>
+
 #include <velocypack/Collection.h>
-#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
+#include <velocypack/Value.h>
+#include <velocypack/ValueType.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
+#include "Auth/Common.h"
 #include "Basics/Exceptions.h"
-#include "Basics/FileUtils.h"
 #include "Basics/HybridLogicalClock.h"
+#include "Basics/Locking.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/conversions.h"
-#include "Basics/files.h"
-#include "Basics/memory-map.h"
-#include "Basics/threads.h"
-#include "Basics/tri-strings.h"
-#include "Cluster/ClusterInfo.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Basics/system-functions.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/Index.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Replication/DatabaseReplicationApplier.h"
-#include "Replication/utilities.h"
+#include "Replication/ReplicationClients.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -63,8 +74,8 @@
 #include "Utils/VersionTracker.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ticks.h"
 
 #include <thread>
 
@@ -645,7 +656,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
 
     // sleep for a while
     std::this_thread::yield();
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   TRI_ASSERT(writeLocker.isLocked());
@@ -928,7 +939,8 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
       });
       result.add("parameters", VPackValue(VPackValueType::Object));
       collection->toVelocyPackIgnore(
-          result, {"objectId", "path", "statusString", "indexes"}, true, false);
+          result, {"objectId", "path", "statusString", "indexes"},
+          LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed));
       result.close();
 
       result.close();
@@ -940,10 +952,10 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
   LogicalView::enumerate(*this, [&result](LogicalView::ptr const& view) -> bool {
     if (view) {
       result.openObject();
-      view->properties(result, true,
-                       false);  // details, !forPersistence because on
-                                // restore any datasource ids will differ,
-                                // so need an end-user representation
+      view->properties(result, LogicalDataSource::makeFlags(
+                                   LogicalDataSource::Serialize::Detailed));
+      // details, !forPersistence because on  restore any datasource ids will
+      // differ, so need an end-user representation
       result.close();
     }
 
@@ -1097,7 +1109,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
   engine->addParametersForNewCollection(merge, parameters);
   merge.close();
 
-  merge = VPackCollection::merge(parameters, merge.slice(), true, false);
+  merge = velocypack::Collection::merge(parameters, merge.slice(), true, false);
   parameters = merge.slice();
 
   READ_LOCKER(readLocker, _inventoryLock);
@@ -1392,7 +1404,7 @@ arangodb::Result TRI_vocbase_t::renameCollection(TRI_voc_cid_t cid,
 
     // sleep for a while
     std::this_thread::yield();
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   TRI_ASSERT(writeLocker.isLocked());
@@ -1642,7 +1654,7 @@ arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem
 
     // sleep for a while
     std::this_thread::yield();
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   TRI_ASSERT(writeLocker.isLocked());
@@ -1690,6 +1702,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
   _queries.reset(new arangodb::aql::QueryList(this));
   _cursorRepository.reset(new arangodb::CursorRepository(*this));
   _collectionKeys.reset(new arangodb::CollectionKeysRepository());
+  _replicationClients.reset(new arangodb::ReplicationClientsProgressTracker());
 
   // init collections
   _collections.reserve(32);

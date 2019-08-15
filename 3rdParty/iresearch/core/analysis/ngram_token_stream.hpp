@@ -38,6 +38,7 @@ NS_BEGIN(analysis)
 class ngram_token_stream: public analyzer, util::noncopyable {
  public:
   struct options_t {
+    options_t() : min_gram(0), max_gram(0), preserve_original(true) {}
     options_t(size_t min, size_t max, bool original) {
       min_gram = min;
       max_gram = max;
@@ -67,8 +68,7 @@ class ngram_token_stream: public analyzer, util::noncopyable {
 
   virtual bool next() NOEXCEPT override;
   virtual bool reset(const string_ref& data) NOEXCEPT override;
-  virtual bool to_string(const ::irs::text_format::type_id& format,
-                         std::string& definition) const override;
+
   size_t min_gram() const NOEXCEPT { return options_.min_gram; }
   size_t max_gram() const NOEXCEPT { return options_.max_gram; }
   bool preserve_original() const NOEXCEPT { return options_.preserve_original; }

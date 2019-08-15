@@ -325,7 +325,7 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
   // _data.capacity() might have been more accurate. Now, _data.size() stays at
   // _data.capacity(), or at least, is never reduced.
   // So I decided for now to report the memory usage based on numEntries() only,
-  // to mimic the previous behaviour. I'm not sure whether it should stay this
+  // to mimic the previous behavior. I'm not sure whether it should stay this
   // way; because currently, we are tracking the memory we need, instead of the
   // memory we have.
   if (targetSize > _data.size()) {

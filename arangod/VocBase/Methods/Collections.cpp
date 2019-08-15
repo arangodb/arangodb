@@ -35,6 +35,9 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -388,17 +391,17 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-/*static*/ Result Collections::createSystem(
-    TRI_vocbase_t& vocbase,
-    std::string const& name) {
-  FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&)->void{};
+/*static*/ Result Collections::createSystem(TRI_vocbase_t& vocbase, std::string const& name) {
+  FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
 
   auto res = methods::Collections::lookup(vocbase, name, noop);
 
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     uint32_t defaultReplFactor = 1;
+    uint32_t defaultMinReplFactor = 1;
 
-    auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>("Cluster");
+    auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>(
+        "Cluster");
 
     if (cl != nullptr) {
       defaultReplFactor = cl->systemReplicationFactor();
@@ -412,20 +415,20 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       bb.add("waitForSync", VPackSlice::falseSlice());
       bb.add("journalSize", VPackValue(1024 * 1024));
       bb.add("replicationFactor", VPackValue(defaultReplFactor));
+      bb.add("minReplicationFactor", VPackValue(defaultMinReplFactor));
       if (name != "_graphs") {
         // that forces all collections to be on the same physical DBserver
         bb.add("distributeShardsLike", VPackValue("_graphs"));
       }
     }
 
-    res = Collections::create(
-      vocbase, // vocbase to create in
-      name, // collection name top create
-      TRI_COL_TYPE_DOCUMENT, // collection type to create
-      bb.slice(), // collection definition to create
-      true,  // waitsForSyncReplication
-      true,  // enforceReplicationFactor
-      noop); // callback
+    res = Collections::create(vocbase,  // vocbase to create in
+                              name,     // collection name top create
+                              TRI_COL_TYPE_DOCUMENT,  // collection type to create
+                              bb.slice(),  // collection definition to create
+                              true,        // waitsForSyncReplication
+                              true,        // enforceReplicationFactor
+                              noop);       // callback
   }
 
   return res;
@@ -492,8 +495,10 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 
   if (!ServerState::instance()->isCoordinator()) {
     // These are only relevant for cluster
-    ignoreKeys.insert({"distributeShardsLike", "isSmart", "numberOfShards",
-                       "replicationFactor", "shardKeys", "shardingStrategy"});
+    ignoreKeys.insert({StaticStrings::DistributeShardsLike, StaticStrings::IsSmart,
+                       StaticStrings::NumberOfShards, StaticStrings::ReplicationFactor,
+                       StaticStrings::MinReplicationFactor,
+                       StaticStrings::ShardKeys, StaticStrings::ShardingStrategy});
 
     // this transaction is held longer than the following if...
     auto trx = ctxt.trx(AccessMode::Type::READ, true, false);
@@ -502,7 +507,9 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 
   // note that we have an ongoing transaction here if we are in single-server
   // case
-  VPackBuilder props = coll->toVelocyPackIgnore(ignoreKeys, true, false);
+  VPackBuilder props =
+      coll->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::makeFlags(
+                                               LogicalDataSource::Serialize::Detailed));
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackObjectIterator(props.slice()));
 
@@ -702,28 +709,11 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
 
   if (res.ok() && um != nullptr) {
-    int tries = 0;
-
-    while (true) {
-      res = um->enumerateUsers([&](auth::User& entry) -> bool {
-        return entry.removeCollection(dbname, collName);
-      });
-
-      if (res.ok() || !res.is(TRI_ERROR_ARANGO_CONFLICT)) {
-        break;
-      }
-
-      if (++tries == 10) {
-        LOG_TOPIC("678fd", WARN, Logger::FIXME)
-            << "Enumerating users failed with " << res.errorMessage() << ". giving up!";
-        break;
-      }
-
-      // try again in case of conflict
-      LOG_TOPIC("e6816", TRACE, Logger::FIXME)
-          << "Enumerating users failed with error: " << res.errorMessage()
-          << ". trying again";
-    }
+    res = um->enumerateUsers(
+        [&](auth::User& entry) -> bool {
+          return entry.removeCollection(dbname, collName);
+        },
+        /*retryOnConflict*/ true);
   }
 
   events::DropCollection(coll.vocbase().name(), coll.name(), res.errorNumber());

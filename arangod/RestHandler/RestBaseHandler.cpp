@@ -29,11 +29,10 @@
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Meta/conversion.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
 #include "Transaction/Context.h"
 
 using namespace arangodb;
@@ -177,7 +176,7 @@ void RestBaseHandler::writeResult(Payload&& payload, VPackOptions const& options
     if (_request != nullptr) {
       _response->setContentType(_request->contentTypeResponse());
     }
-    _response->setPayload(std::forward<Payload>(payload), true, options);
+    _response->setPayload(std::forward<Payload>(payload), /*generateBody*/true, options);
   } catch (basics::Exception const& ex) {
     generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::exception const& ex) {

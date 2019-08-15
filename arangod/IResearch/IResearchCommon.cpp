@@ -22,7 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchCommon.h"
-#include "velocypack/StringRef.h"
+
+#include <velocypack/StringRef.h>
 
 namespace {
 
@@ -49,9 +50,13 @@ arangodb::LogTopic& logTopic() {
 // --SECTION--                                                     StaticStrings
 // -----------------------------------------------------------------------------
 
-std::string const StaticStrings::LinksField("links");
-std::string const StaticStrings::VersionField("version");
-std::string const StaticStrings::ViewIdField("view");
+/*static*/ std::string const StaticStrings::LinksField("links");
+/*static*/ std::string const StaticStrings::VersionField("version");
+/*static*/ std::string const StaticStrings::ViewIdField("view");
+/*static*/ std::string const StaticStrings::AnalyzerFeaturesField("features");
+/*static*/ std::string const StaticStrings::AnalyzerNameField("name");
+/*static*/ std::string const StaticStrings::AnalyzerPropertiesField("properties");
+/*static*/ std::string const StaticStrings::AnalyzerTypeField("type");
 
 }  // namespace iresearch
 }  // namespace arangodb

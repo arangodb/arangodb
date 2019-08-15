@@ -23,46 +23,81 @@
 
 #include "v8-utils.h"
 
+#include "Basics/Common.h"
+
 #ifdef _WIN32
-#include <windef.h>
-#include <io.h>
+#include <WinSock2.h>  // must be before windows.h
 #include <conio.h>
-#include <WinSock2.h>
+#include <fcntl.h>
+#include <io.h>
+#include <windef.h>
+#include <windows.h>
 #include "Basics/win-utils.h"
 #endif
 
+#include <ctype.h>
+#include <errno.h>
 #include <signal.h>
-#include <unicode/locid.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unicode/umachine.h>
+#include <unicode/unistr.h>
+#include <unicode/unorm2.h>
+#include <unicode/utypes.h>
+#include <chrono>
 #include <fstream>
-#include <fcntl.h>
+#include <functional>
 #include <iostream>
+#include <memory>
+#include <set>
+#include <thread>
+#include <type_traits>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "unicode/normalizer2.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/Exceptions.h"
+#include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
+#include "Basics/Result.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/build.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
 #include "Basics/files.h"
+#include "Basics/memory.h"
+#include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
+#include "Basics/socket-utils.h"
+#include "Basics/system-compiler.h"
+#include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
+#include "Basics/threads.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tri-zip.h"
-#include "Basics/ScopeGuard.h"
+#include "Basics/voc-errors.h"
+#include "Endpoint/Endpoint.h"
+#include "Logger/LogLevel.h"
+#include "Logger/LogMacros.h"
+#include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
-#include "Random/RandomGenerator.h"
+#include "Logger/LoggerStream.h"
 #include "Random/UniformCharacter.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/CommonDefines.h"
+#include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
-#include "Rest/Version.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -73,8 +108,10 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include <velocypack/StringRef.h>
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -116,9 +153,10 @@ TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() { TRI_Free(_str); }
 static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
                               std::string const& message) noexcept {
   try {
+    TRI_GET_GLOBALS();
     if (errorNumber == TRI_ERROR_OUT_OF_MEMORY) {
       LOG_TOPIC("532c3", ERR, arangodb::Logger::FIXME)
-          << "encountered out-of-memory error";
+        << "encountered out-of-memory error in context #" << v8g->_id;
     }
 
     v8::Handle<v8::String> errorMessage = TRI_V8_STD_STRING(isolate, message);
@@ -147,7 +185,6 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
                      v8::Number::New(isolate, errorNumber));
     errorObject->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage), errorMessage);
 
-    TRI_GET_GLOBALS();
     TRI_GET_GLOBAL(ArangoErrorTempl, v8::ObjectTemplate);
 
     v8::Handle<v8::Object> ArangoError = ArangoErrorTempl->NewInstance();
@@ -769,7 +806,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
           TRI_ObjectToString(isolate, TRI_GetProperty(context, isolate, options,
                                                       "method"));
 
-      method = HttpRequest::translateMethod(methodString);
+      method = GeneralRequest::translateMethod(methodString);
     }
 
     // headers
@@ -1053,7 +1090,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
             validationOptions.checkAttributeUniqueness = true;
             validationOptions.disallowExternals = true;
             validationOptions.disallowCustom = true;
-            VPackValidator validator(&validationOptions);
+            velocypack::Validator validator(&validationOptions);
             validator.validate(sb.data(), sb.length());  // throws on error
             json.assign(VPackSlice(reinterpret_cast<uint8_t const*>(sb.data())).toJson());
             body = arangodb::velocypack::StringRef(json);
@@ -2851,16 +2888,6 @@ static void JS_ProcessStatistics(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-  TRI_ASSERT(v8security != nullptr);
-
-  if (v8security->isInternalModuleHardened(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to provide this information");
-  }
-
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   ProcessInfo info = TRI_ProcessInfoSelf();
@@ -3045,6 +3072,107 @@ static void JS_ReadBuffer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(buffer->_handle);
   TRI_V8_TRY_CATCH_END
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JS_ReadGzip
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ReadGzip(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("readGzip(<filename>)");
+  }
+
+  TRI_Utf8ValueNFC name(isolate, args[0]);
+
+  if (*name == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
+  }
+
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   std::string("not allowed to read files in this path: ") + *name);
+  }
+
+  size_t length;
+  char* content = TRI_SlurpGzipFile(*name, &length);
+
+  if (content == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), TRI_last_error());
+  }
+
+  auto result = TRI_V8_PAIR_STRING(isolate, content, length);
+
+  TRI_FreeString(content);
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+
+}
+
+#ifdef USE_ENTERPRISE
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JS_ReadGzip
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ReadDecrypt(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("readDecrypt(<filename>,<keyfilename>)");
+  }
+
+  TRI_Utf8ValueNFC name(isolate, args[0]);
+
+  if (*name == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
+  }
+
+  TRI_Utf8ValueNFC keyfile(isolate, args[1]);
+
+  if (*keyfile == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<keyfilename> must be a UTF-8 string");
+  }
+
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   std::string("not allowed to read files in this path: ") + *name);
+  }
+
+  if (!v8security->isAllowedToAccessPath(isolate, *keyfile, FSAccessType::READ)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   std::string("not allowed to read files in this path: ") + *keyfile);
+  }
+
+  size_t length;
+  char* content = TRI_SlurpDecryptFile(*name, *keyfile, &length);
+
+  if (content == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), TRI_last_error());
+  }
+
+  auto result = TRI_V8_PAIR_STRING(isolate, content, length);
+
+  TRI_FreeString(content);
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JS_Read64
@@ -3848,7 +3976,7 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // wait without gc
   double until = TRI_microtime() + n;
   while (TRI_microtime() < until) {
-    std::this_thread::sleep_for(std::chrono::microseconds(1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -4047,6 +4175,9 @@ static char const* convertProcessStatusToString(TRI_external_status_e processSta
     case TRI_EXT_STOPPED:
       status = "STOPPED";
       break;
+    case TRI_EXT_TIMEOUT:
+      status = "TIMEOUT";
+      break;
   }
   return status;
 }
@@ -4189,9 +4320,9 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
   v8::HandleScope scope(isolate);
 
   // extract the arguments
-  if (3 < args.Length() || args.Length() < 1) {
+  if (4 < args.Length() || args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "executeExternal(<filename>[, <arguments> [,<usePipes>] ])");
+        "executeExternal(<filename>[, <arguments> [,<usePipes> [,<env>] ] ])");
   }
 
   V8SecurityFeature* v8security =
@@ -4245,13 +4376,37 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
       }
     }
   }
+
+  std::vector<std::string> additionalEnv;
+
+  if (4 <= args.Length()) {
+    v8::Handle<v8::Value> a = args[3];
+
+    if (a->IsArray()) {
+      v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(a);
+
+      uint32_t n = arr->Length();
+
+      for (uint32_t i = 0; i < n; ++i) {
+        TRI_Utf8ValueNFC arg(isolate, arr->Get(i));
+
+        if (*arg == nullptr) {
+          additionalEnv.push_back("");
+        } else {
+          additionalEnv.push_back(*arg);
+        }
+      }
+    }
+  }
+
   bool usePipes = false;
+
   if (3 <= args.Length()) {
     usePipes = TRI_ObjectToBoolean(isolate, args[2]);
   }
 
   ExternalId external;
-  TRI_CreateExternalProcess(*name, arguments, usePipes, &external);
+  TRI_CreateExternalProcess(*name, arguments, additionalEnv, usePipes, &external);
 
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");
@@ -4273,9 +4428,9 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   // extract the arguments
-  if (args.Length() < 1 || args.Length() > 2) {
+  if (args.Length() < 1 || args.Length() > 3) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "statusExternal(<external-identifier>[, <wait>])");
+        "statusExternal(<external-identifier>[, <wait>[, <timeoutms>]])");
   }
 
   V8SecurityFeature* v8security =
@@ -4297,11 +4452,15 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(isolate, args[0], true));
 #endif
   bool wait = false;
-  if (args.Length() == 2) {
+  if (args.Length() >= 2) {
     wait = TRI_ObjectToBoolean(isolate, args[1]);
   }
+  uint32_t timeoutms = 0;
+  if (args.Length() >= 2) {
+    timeoutms = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[2], true));
+  }
 
-  ExternalProcessStatus external = TRI_CheckExternalProcess(pid, wait);
+  ExternalProcessStatus external = TRI_CheckExternalProcess(pid, wait, timeoutms);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
@@ -4323,6 +4482,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a external program
 ////////////////////////////////////////////////////////////////////////////////
@@ -4332,9 +4492,9 @@ static void JS_ExecuteAndWaitExternal(v8::FunctionCallbackInfo<v8::Value> const&
   v8::HandleScope scope(isolate);
 
   // extract the arguments
-  if (3 < args.Length() || args.Length() < 1) {
+  if (5 < args.Length() || args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "executeAndWaitExternal(<filename>[, <arguments> [,<usePipes>] ])");
+        "executeAndWaitExternal(<filename>[, <arguments> [,<usePipes>, [, <timoutms> [,<env>] ] ] ])");
   }
 
   TRI_Utf8ValueNFC name(isolate, args[0]);
@@ -4388,13 +4548,41 @@ static void JS_ExecuteAndWaitExternal(v8::FunctionCallbackInfo<v8::Value> const&
       }
     }
   }
+
+  std::vector<std::string> additionalEnv;
+
+  if (5 <= args.Length()) {
+    v8::Handle<v8::Value> a = args[4];
+
+    if (a->IsArray()) {
+      v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(a);
+
+      uint32_t n = arr->Length();
+
+      for (uint32_t i = 0; i < n; ++i) {
+        TRI_Utf8ValueNFC arg(isolate, arr->Get(i));
+
+        if (*arg == nullptr) {
+          additionalEnv.push_back("");
+        } else {
+          additionalEnv.push_back(*arg);
+        }
+      }
+    }
+  }
+
   bool usePipes = false;
-  if (3 <= args.Length()) {
+  if (args.Length() >= 3) {
     usePipes = TRI_ObjectToBoolean(isolate, args[2]);
   }
 
+  uint32_t timeoutms = 0;
+  if (args.Length() >= 4) {
+    timeoutms = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[3], true));
+  }
+
   ExternalId external;
-  TRI_CreateExternalProcess(*name, arguments, usePipes, &external);
+  TRI_CreateExternalProcess(*name, arguments, additionalEnv, usePipes, &external);
 
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");
@@ -4404,7 +4592,7 @@ static void JS_ExecuteAndWaitExternal(v8::FunctionCallbackInfo<v8::Value> const&
   ExternalId pid;
   pid._pid = external._pid;
 
-  auto external_status = TRI_CheckExternalProcess(pid, true);
+  auto external_status = TRI_CheckExternalProcess(pid, true, timeoutms);
 
   convertStatusToV8(args, result, external_status, external);
 
@@ -5252,7 +5440,7 @@ bool TRI_RunGarbageCollectionV8(v8::Isolate* isolate, double availableTime) {
         }
       }
 
-      std::this_thread::sleep_for(std::chrono::microseconds(1000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
     return true;
@@ -5508,6 +5696,14 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_READ_BUFFER"),
                                JS_ReadBuffer);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_READ_GZIP"),
+                               JS_ReadGzip);
+#ifdef USE_ENTERPRISE
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_READ_DECRYPT"),
+                               JS_ReadDecrypt);
+#endif
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_SHA1"), JS_Sha1);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_SHA224"), JS_Sha224);

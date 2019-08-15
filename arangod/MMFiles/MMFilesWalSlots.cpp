@@ -26,6 +26,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/encoding.h"
+#include "Basics/system-functions.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
@@ -218,7 +219,7 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId,
               return MMFilesWalSlotInfo(res);
             }
 
-            std::this_thread::sleep_for(std::chrono::microseconds(10 * 1000));
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
             // try again in next iteration
           } else {
             TRI_ASSERT(_logfile != nullptr);
@@ -572,7 +573,7 @@ int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, b
             return res;
           }
 
-          std::this_thread::sleep_for(std::chrono::microseconds(10 * 1000));
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
           // try again in next iteration
         } else {
           TRI_ASSERT(_logfile != nullptr);

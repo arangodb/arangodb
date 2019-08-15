@@ -30,7 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/CachedValue.h"
 #include "Cache/TransactionalCache.h"
-#include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "Indexes/SortedIndexAttributeMatcher.h"
 #include "RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -443,8 +443,6 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
                                     std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
-  builder.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(false));
-  builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(false));
   builder.close();
 }
 
@@ -519,12 +517,11 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
 }
 
 /// @brief checks whether the index supports the condition
-Index::UsageCosts RocksDBEdgeIndex::supportsFilterCondition(
+Index::FilterCosts RocksDBEdgeIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
-  SimpleAttributeEqualityMatcher matcher(this->_fields);
-  return matcher.matchOne(this, node, reference, itemsInIndex);
+  return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
 }
 
 /// @brief creates an IndexIterator for the given Condition
@@ -560,9 +557,7 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* RocksDBEdgeIndex::specializeCondition(
     arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference) const {
-  // SimpleAttributeEqualityMatcher matcher(IndexAttributes);
-  SimpleAttributeEqualityMatcher matcher(this->_fields);
-  return matcher.specializeOne(this, node, reference);
+  return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
 }
 
 static std::string FindMedian(rocksdb::Iterator* it, std::string const& start,
@@ -603,8 +598,8 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   auto* mthds = RocksDBTransactionState::toMethods(trx);
   auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
 
-  uint64_t expectedCount =
-      static_cast<uint64_t>(selectivityEstimate() * rocksColl->numberDocuments());
+  uint64_t expectedCount = rocksColl->meta().numberDocuments();
+  expectedCount = static_cast<uint64_t>(expectedCount * selectivityEstimate());
 
   // Prepare the cache to be resized for this amount of objects to be inserted.
   _cache->sizeHint(expectedCount);
@@ -737,7 +732,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
         while (cc->isBusy()) {
           // We should wait here, the cache will reject
           // any inserts anyways.
-          std::this_thread::sleep_for(std::chrono::microseconds(10000));
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
 
         auto entry =

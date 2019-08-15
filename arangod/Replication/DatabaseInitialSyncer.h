@@ -135,8 +135,9 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   /// @brief insert the batch id and barrier ID.
   ///        For use in globalinitialsyncer
   // TODO worker safety
-  void useAsChildSyncer(replutils::MasterInfo const& info, uint64_t barrierId,
+  void useAsChildSyncer(replutils::MasterInfo const& info, SyncerId const syncerId, uint64_t barrierId,
                         double barrierUpdateTime, uint64_t batchId, double batchUpdateTime) {
+    _state.syncerId = syncerId;
     _state.isChildSyncer = true;
     _state.master = info;
     _state.barrier.id = barrierId;
@@ -217,6 +218,18 @@ class DatabaseInitialSyncer final : public InitialSyncer {
 
   /// @brief create non-existing views locally
   Result handleViewCreation(VPackSlice const& views);
+
+  /// @brief send a "start batch" command
+  /// @param patchCount (optional)
+  ///        Try to patch count of this collection (must be a collection name).
+  ///        Only effective with the incremental sync.
+  Result batchStart(std::string const& patchCount = "");
+
+  /// @brief send an "extend batch" command
+  Result batchExtend();
+
+  /// @brief send a "finish batch" command
+  Result batchFinish();
 
   Configuration _config;
 };

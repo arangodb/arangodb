@@ -215,7 +215,7 @@ function arangobench (options) {
         args = Object.assign(args, options.benchargs);
       }
 
-      let oneResult = pu.run.arangoBenchmark(options, instanceInfo, args);
+      let oneResult = pu.run.arangoBenchmark(options, instanceInfo, args, instanceInfo.rootDir, options.coreCheck);
       print();
 
       results[name] = oneResult;

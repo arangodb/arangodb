@@ -24,6 +24,9 @@
 #ifndef ARANGOD_REPLICATION_COMMON_DEFINES_H
 #define ARANGOD_REPLICATION_COMMON_DEFINES_H 1
 
+#include <cstdlib>
+#include <string>
+
 #include "Basics/Common.h"
 
 namespace arangodb {

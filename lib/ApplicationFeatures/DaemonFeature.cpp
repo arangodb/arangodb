@@ -22,19 +22,35 @@
 
 #include "DaemonFeature.h"
 
-#include <chrono>
-#include <thread>
-#include <sys/stat.h>
-#include <sys/types.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <chrono>
+#include <stdexcept>
+#include <thread>
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
+#include "Basics/FileResult.h"
+#include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
+#include "Basics/debugging.h"
+#include "Basics/files.h"
+#include "Basics/operating-system.h"
+#include "Basics/process-utils.h"
+#include "Basics/system-functions.h"
+#include "Basics/threads.h"
 #include "Logger/LogAppender.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 #ifdef TRI_HAVE_SIGNAL_H
 #include <signal.h>
@@ -389,7 +405,7 @@ int DaemonFeature::waitForChildProcess(int pid) {
     }
 
     // sleep a while and retry
-    std::this_thread::sleep_for(std::chrono::microseconds(500 * 1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
   // enough time has elapsed... we now abort our loop

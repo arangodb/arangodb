@@ -41,7 +41,7 @@ const testPaths = {
 };
 
 function paths_server(options) {
-  let testCases = tu.scanTestPaths(testPaths.paths_server);
+  let testCases = tu.scanTestPaths(testPaths.paths_server, options);
   let weirdNames = ['some dog', 'ла́ять', '犬', 'Kläffer'];
   let tmpPath = fs.getTempPath();
   let tmp = fs.join(tmpPath, "x", weirdNames[0], weirdNames[1], weirdNames[2], weirdNames[3]);

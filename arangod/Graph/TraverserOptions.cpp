@@ -27,6 +27,7 @@
 #include "Aql/Expression.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Query.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Graph/SingleServerTraverser.h"
