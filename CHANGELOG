@@ -1,6 +1,8 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Agents to remove callback entries when responded to with code 404
+
 * Fixed issue #9679: improved error message for FULLTEXT function invocation failures.
 
 * Added resign leadership job to supervision.

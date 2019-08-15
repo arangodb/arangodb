@@ -326,31 +326,13 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
     // Callback
 
     for (auto const& url : urls) {
-      Builder body;  // host
-      {
-        VPackObjectBuilder b(&body);
-        body.add("term", VPackValue(term));
-        body.add("index", VPackValue(index));
-        auto ret = in.equal_range(url);
-        std::map<std::string,std::map<std::string, std::string>> result;
-        // key -> (modified -> op)
-        for (auto it = ret.first; it != ret.second; ++it) {
-          result[it->second->key][it->second->modified] = it->second->oper;
-        }
-        for (auto const& m : result) {
-          body.add(VPackValue(m.first));
-          {
-            VPackObjectBuilder guard(&body);
-            for (auto const& m2 : m.second) {
-              body.add(VPackValue(m2.first));
-              {
-                VPackObjectBuilder guard2(&body);
-                body.add("op", VPackValue(m2.second));
-              }
-            }
-          }
-        }
-      }
+
+       auto body = std::make_shared<VPackBuilder>();  // host
+       { VPackObjectBuilder b(body.get());
+         body->add("term", VPackValue(term));
+         body->add("index", VPackValue(index));
+         body->add(VPackValue(url));
+         { VPackObjectBuilder b(body.get()); }}
 
       std::string endpoint, path;
       if (endpointPathFromUrl(url, endpoint, path)) {
