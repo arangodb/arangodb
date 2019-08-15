@@ -282,17 +282,12 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
   auto splittedAnalyzerName = 
     arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(nameFromArgs);
-  if (!splittedAnalyzerName.first.null() ) { 
-    // database name present - check if it is current database
-    if ((splittedAnalyzerName.first.empty() && 
-          vocbase.name() != arangodb::StaticStrings::SystemDatabase) ||
-        (!splittedAnalyzerName.first.empty() && 
-          vocbase.name() != splittedAnalyzerName.first)) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN,
-        "Database in analyzer name does not match current database");
-      return;
-    }
+  if (!arangodb::iresearch::IResearchAnalyzerFeature::analyzerReachableFromDb(
+         splittedAnalyzerName.first, vocbase.name())) { 
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+      TRI_ERROR_FORBIDDEN,
+      "Database in analyzer name does not match current database");
+    return;
   }
   auto name = splittedAnalyzerName.second;
 
@@ -458,6 +453,24 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
+  const auto analyzerVocbase = arangodb::iresearch::IResearchAnalyzerFeature::extractVocbaseName(name);
+  if (!arangodb::iresearch::IResearchAnalyzerFeature::analyzerReachableFromDb(
+          analyzerVocbase, vocbase.name(), true)) {
+    std::string errorMessage("Analyzer '");
+    errorMessage.append(name)
+      .append("' is not accessible. Only analyzers from current database ('")
+      .append(vocbase.name())
+      .append("')");
+    if (vocbase.name() != arangodb::StaticStrings::SystemDatabase) {
+      errorMessage.append(" or system database");
+    }
+    errorMessage.append(" are available");
+    TRI_V8_THROW_EXCEPTION_MESSAGE( 
+      TRI_ERROR_FORBIDDEN, // code
+      errorMessage
+    );
+  }
+
   if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(name, arangodb::auth::Level::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
       TRI_ERROR_FORBIDDEN, // code
@@ -604,17 +617,12 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
   auto splittedAnalyzerName = 
     arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(nameFromArgs);
-  if (!splittedAnalyzerName.first.null() ) { 
-    // database name present - check if it is current database
-    if ((splittedAnalyzerName.first.empty() && 
-          vocbase.name() != arangodb::StaticStrings::SystemDatabase) ||
-        (!splittedAnalyzerName.first.empty() && 
-          vocbase.name() != splittedAnalyzerName.first)) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN,
-        "Database in analyzer name does not match current database");
-      return;
-    }
+  if (!arangodb::iresearch::IResearchAnalyzerFeature::analyzerReachableFromDb(
+           splittedAnalyzerName.first, vocbase.name())) { 
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+      TRI_ERROR_FORBIDDEN,
+      "Database in analyzer name does not match current database");
+    return;
   }
   auto name = splittedAnalyzerName.second;
   
