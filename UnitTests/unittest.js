@@ -335,6 +335,5 @@ let result = main(ARGUMENTS);
 if (!result) {
   // force an error in the console
   process.exit(1);
-  // throw 'peng!';
 }
 
