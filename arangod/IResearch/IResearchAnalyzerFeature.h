@@ -200,6 +200,21 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
     bool expandVocbasePrefix = true // use full vocbase name as prefix for active/system v.s. EMPTY/'::'
   );
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @param name analyzer name (normalized)
+  /// @return vocbase prefix extracted from normalized analyzer name
+  //////////////////////////////////////////////////////////////////////////////
+  static irs::string_ref extractVocbaseName(irs::string_ref const& name) noexcept; 
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief split the analyzer name into the vocbase part and analyzer part
+  /// @param name analyzer name
+  /// @return pair of first == vocbase name, second == analyzer name
+  ///         EMPTY == system vocbase
+  ///         NIL == unprefixed analyzer name, i.e. active vocbase
+  ////////////////////////////////////////////////////////////////////////////////
+  static std::pair<irs::string_ref, irs::string_ref> splitAnalyzerName(irs::string_ref const& analyzer) noexcept;
+
   void prepare() override;
 
   //////////////////////////////////////////////////////////////////////////////

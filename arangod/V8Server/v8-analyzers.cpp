@@ -279,12 +279,27 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
   >();
   auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
 
-  auto name = TRI_ObjectToString(isolate, args[0]);
+  auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
+  auto splittedAnalyzerName = 
+    arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(nameFromArgs);
+  if (!splittedAnalyzerName.first.null() ) { 
+    // database name present - check if it is current database
+    if ((splittedAnalyzerName.first.empty() && 
+          vocbase.name() != arangodb::StaticStrings::SystemDatabase) ||
+        (!splittedAnalyzerName.first.empty() && 
+          vocbase.name() != splittedAnalyzerName.first)) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "Database in analyzer name does not match current database");
+      return;
+    }
+  }
+  auto name = splittedAnalyzerName.second;
 
   if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
       TRI_ERROR_BAD_PARAMETER,
-      "invalid characters in analyzer name '" + name + "'"
+      std::string("invalid characters in analyzer name '").append(name).append("'")
     );
 
     return;
@@ -586,7 +601,32 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   >();
   auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
 
-  auto name = TRI_ObjectToString(isolate, args[0]);
+  auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
+  auto splittedAnalyzerName = 
+    arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(nameFromArgs);
+  if (!splittedAnalyzerName.first.null() ) { 
+    // database name present - check if it is current database
+    if ((splittedAnalyzerName.first.empty() && 
+          vocbase.name() != arangodb::StaticStrings::SystemDatabase) ||
+        (!splittedAnalyzerName.first.empty() && 
+          vocbase.name() != splittedAnalyzerName.first)) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "Database in analyzer name does not match current database");
+      return;
+    }
+  }
+  auto name = splittedAnalyzerName.second;
+  
+  if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string( "Invalid characters in analyzer name '").append(name)
+        .append("'. Analyzer name should be specified without database prefix.")
+    );
+  }
+
+==== BASE ====
   std::string nameBuf;
 
   if (sysVocbase) {

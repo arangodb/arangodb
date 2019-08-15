@@ -54,13 +54,14 @@ class RestAnalyzerHandler: public RestVocbaseBaseHandler {
     TRI_vocbase_t const* sysVocbase // system vocbase
   );
   void getAnalyzer(
-    IResearchAnalyzerFeature& analyzers, // analyzer feature
-    std::string const& name // analyzer name (normalized)
+    IResearchAnalyzerFeature& analyzers, 
+    std::string const& name 
   );
   void getAnalyzers(IResearchAnalyzerFeature& analyzers);
   void removeAnalyzer(
-    IResearchAnalyzerFeature& analyzers, // analyzer feature
-    std::string const& name // analyzer name (normalized)
+    IResearchAnalyzerFeature& analyzers, 
+    std::string const& requestedName, 
+    bool force
   );
 };
 

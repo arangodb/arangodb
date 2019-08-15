@@ -329,19 +329,19 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
 
     auto status = handler.execute();
     EXPECT_TRUE((arangodb::RestStatus::DONE == status));
-    EXPECT_TRUE((arangodb::rest::ResponseCode::BAD == responce.responseCode()));
+    EXPECT_TRUE((arangodb::rest::ResponseCode::FORBIDDEN == responce.responseCode()));
     auto slice = responce._payload.slice();
     EXPECT_TRUE((slice.isObject()));
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
                  slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-                 size_t(arangodb::rest::ResponseCode::BAD) ==
+                 size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
                      slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                  slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                  true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_BAD_PARAMETER ==
+                 TRI_ERROR_FORBIDDEN ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
   }
 
@@ -357,9 +357,9 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                                                      responcePtr.release());
     request.setRequestType(arangodb::rest::RequestType::POST);
     request._payload.openObject();
-    request._payload.add("name", VPackValue(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer"));
+    request._payload.add("name", VPackValue(arangodb::StaticStrings::SystemDatabase + "::testAn:alyzer"));
     request._payload.add("type", VPackValue("identity"));
-    request._payload.add("properties", VPackValue(arangodb::velocypack::ValueType::Null));
+    request._payload.add("properties", arangodb::velocypack::Value("{\"args\":\"abc\"}"));
     request._payload.close();
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -388,7 +388,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
   }
 
-  // invalid params (name contains invalid symbols)
+  // name contains :: as link to system database (this is now ok)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                           arangodb::StaticStrings::SystemDatabase);
@@ -400,9 +400,9 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                                                      responcePtr.release());
     request.setRequestType(arangodb::rest::RequestType::POST);
     request._payload.openObject();
-    request._payload.add("name", VPackValue("::testAnalyzer"));
+    request._payload.add("name", VPackValue("::testAnalyzerImplicitDbName"));
     request._payload.add("type", VPackValue("identity"));
-    request._payload.add("properties", VPackValue(arangodb::velocypack::ValueType::Null));
+    request._payload.add("properties", arangodb::velocypack::Value("{\"args\":\"abc\"}"));
     request._payload.close();
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -415,22 +415,44 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
 
     auto status = handler.execute();
     EXPECT_TRUE((arangodb::RestStatus::DONE == status));
-    EXPECT_TRUE((arangodb::rest::ResponseCode::BAD == responce.responseCode()));
-    auto slice = responce._payload.slice();
-    EXPECT_TRUE((slice.isObject()));
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-                 slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-                 size_t(arangodb::rest::ResponseCode::BAD) ==
-                     slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
-                 slice.get(arangodb::StaticStrings::Error).isBoolean() &&
-                 true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_BAD_PARAMETER ==
-                     slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+    EXPECT_TRUE((arangodb::rest::ResponseCode::CREATED == responce.responseCode()));
+    auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
+                                   "::testAnalyzerImplicitDbName");
+    EXPECT_NE(nullptr, analyzer);
   }
+  // name contains full database name
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                          arangodb::StaticStrings::SystemDatabase);
+    auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
+    auto& request = *requestPtr;
+    auto responcePtr = std::make_unique<GeneralResponseMock>();
+    auto& responce = *responcePtr;
+    arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+                                                     responcePtr.release());
+    request.setRequestType(arangodb::rest::RequestType::POST);
+    request._payload.openObject();
+    request._payload.add("name", VPackValue(arangodb::StaticStrings::SystemDatabase +
+                                            "::testAnalyzerWithDbName"));
+    request._payload.add("type", VPackValue("identity"));
+    request._payload.add("properties", arangodb::velocypack::Value("{\"args\":\"abc\"}"));
+    request._payload.close();
 
+    arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto& user =
+        userMap
+            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .first->second;
+    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
+
+    auto status = handler.execute();
+    EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+    EXPECT_TRUE((arangodb::rest::ResponseCode::CREATED == responce.responseCode()));
+    auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
+                                   "::testAnalyzerWithDbName");
+    EXPECT_NE(nullptr, analyzer);
+  }
   // name collision
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
@@ -1417,6 +1439,15 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
                              "identity", VPackSlice::noneSlice())
                    .ok()));
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer3",
+                             "identity", VPackSlice::noneSlice())
+                   .ok()));
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer4",
+                             "identity", VPackSlice::noneSlice())
+                   .ok()));
+  result.first.reset(); // to release reference!
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
@@ -1646,7 +1677,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
     EXPECT_TRUE((true == !analyzer));
   }
 
-  // success removal
+  //  removal with  db name in analyzer name
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                           arangodb::StaticStrings::SystemDatabase);
@@ -1658,7 +1689,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
                                                      responcePtr.release());
     request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
     request.addSuffix(arangodb::StaticStrings::SystemDatabase +
-                      "::testAnalyzer1");
+                      "::testAnalyzer3");
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
     auto& user =
@@ -1670,7 +1701,65 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
 
     auto status = handler.execute();
     EXPECT_TRUE((arangodb::RestStatus::DONE == status));
-    EXPECT_TRUE((arangodb::rest::ResponseCode::OK == responce.responseCode()));
+    EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
+    auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
+                                   "::testAnalyzer3");
+    EXPECT_EQ(nullptr, analyzer);
+  }
+
+   //  removal with implicit db name in analyzer name
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                          arangodb::StaticStrings::SystemDatabase);
+    auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
+    auto& request = *requestPtr;
+    auto responcePtr = std::make_unique<GeneralResponseMock>();
+    auto& responce = *responcePtr;
+    arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+                                                     responcePtr.release());
+    request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
+    request.addSuffix("::testAnalyzer4");
+
+    arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto& user =
+        userMap
+            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .first->second;
+    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
+
+    auto status = handler.execute();
+    EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+    EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
+    auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
+                                   "::testAnalyzer4");
+    EXPECT_EQ(nullptr, analyzer);
+  }
+
+  // success removal
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                          arangodb::StaticStrings::SystemDatabase);
+    auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
+    auto& request = *requestPtr;
+    auto responcePtr = std::make_unique<GeneralResponseMock>();
+    auto& responce = *responcePtr;
+    arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+                                                     responcePtr.release());
+    request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
+    request.addSuffix("testAnalyzer1");
+
+    arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto& user =
+        userMap
+            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .first->second;
+    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
+
+    auto status = handler.execute();
+    EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+    EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
     auto slice = responce._payload.slice();
     EXPECT_TRUE((slice.isObject()));
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
