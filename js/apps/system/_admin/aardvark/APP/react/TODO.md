@@ -2,6 +2,12 @@
 
 # OPEN
 
+## Important
+- hard Reload on graphs views, create new, enter something => auto drops out (important, need to fix this)
+- make react aware if we're in cluster env or not (clusterHealth)
+- check build environment
+- check starter copy js methods
+
 ## Finalizing build
 - Change "make frontend"
 
