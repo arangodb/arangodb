@@ -244,7 +244,9 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
 
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+    EXPECT_TRUE((arangodb::methods::Databases::create(
+                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }
 
@@ -361,7 +363,9 @@ TEST_F(IResearchViewDBServerTest, test_drop_cid) {
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
 
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+    EXPECT_TRUE((arangodb::methods::Databases::create(
+                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }
 
@@ -425,8 +429,9 @@ TEST_F(IResearchViewDBServerTest, test_drop_database) {
   ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
                databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
   ASSERT_TRUE((nullptr != vocbase));
-  ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
-                                             arangodb::velocypack::Slice::emptyObjectSlice(), 0.)
+  EXPECT_TRUE((arangodb::methods::Databases::create(
+                   vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                   arangodb::velocypack::Slice::emptyObjectSlice())
                    .ok()));
   auto logicalCollection = vocbase->createCollection(collectionJson->slice());
   ASSERT_TRUE((false == !logicalCollection));
@@ -464,7 +469,9 @@ TEST_F(IResearchViewDBServerTest, test_ensure) {
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
 
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+    EXPECT_TRUE((arangodb::methods::Databases::create(
+                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }
 
@@ -621,7 +628,9 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
                  database->createDatabase(1, "testDatabase0", vocbase)));
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+    EXPECT_TRUE((arangodb::methods::Databases::create(
+                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     ASSERT_TRUE(nullptr != logicalCollection);
@@ -664,7 +673,9 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
                  database->createDatabase(1, "testDatabase1", vocbase)));
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+    EXPECT_TRUE((arangodb::methods::Databases::create(
+                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     ASSERT_TRUE(nullptr != logicalCollection);
@@ -731,8 +742,9 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
                  databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
-    ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
-                                               arangodb::velocypack::Slice::emptyObjectSlice(), 0.)
+    EXPECT_TRUE((arangodb::methods::Databases::create(
+                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     std::vector<std::string> collections{logicalCollection->name()};
@@ -831,8 +843,9 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
                  databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
-    ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
-                                               arangodb::velocypack::Slice::emptyObjectSlice(), 0.)
+    EXPECT_TRUE((arangodb::methods::Databases::create(
+                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_TRUE(
@@ -1123,7 +1136,9 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
 
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+    EXPECT_TRUE((arangodb::methods::Databases::create(
+                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }
 
@@ -1265,8 +1280,9 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
                  databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
-    ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
-                                               arangodb::velocypack::Slice::emptyObjectSlice(), 0.)
+    EXPECT_TRUE((arangodb::methods::Databases::create(
+                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_TRUE((nullptr != logicalCollection));
@@ -1390,8 +1406,9 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
                  databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
-    ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
-                                               arangodb::velocypack::Slice::emptyObjectSlice(), 0.)
+    EXPECT_TRUE((arangodb::methods::Databases::create(
+                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_TRUE((nullptr != logicalCollection));
@@ -1518,8 +1535,9 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
                  databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
-    ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
-                                               arangodb::velocypack::Slice::emptyObjectSlice(), 0.)
+    EXPECT_TRUE((arangodb::methods::Databases::create(
+                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_TRUE((nullptr != logicalCollection));
@@ -1651,8 +1669,9 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
                  databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
-    ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
-                                               arangodb::velocypack::Slice::emptyObjectSlice(), 0.)
+    EXPECT_TRUE((arangodb::methods::Databases::create(
+                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
     auto logicalCollection0 = vocbase->createCollection(collection0Json->slice());
     EXPECT_TRUE((nullptr != logicalCollection0));

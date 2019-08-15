@@ -280,7 +280,9 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
 
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+    EXPECT_TRUE((arangodb::methods::Databases::create(
+                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }
 
@@ -293,8 +295,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
         "{ \"name\": \"testCollection\", \"replicationFactor\":1, "
         "\"shards\":{} }");
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1,
+                                                 false, collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
 
     logicalCollection = ci->getCollection(vocbase->name(), collectionId);
