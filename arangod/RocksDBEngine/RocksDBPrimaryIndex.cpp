@@ -466,7 +466,7 @@ void RocksDBPrimaryIndex::load() {
   if (useCache()) {
     // FIXME: make the factor configurable
     RocksDBCollection* rdb = static_cast<RocksDBCollection*>(_collection.getPhysical());
-    uint64_t numDocs = rdb->numberDocuments();
+    uint64_t numDocs = rdb->meta().numberDocuments();
 
     if (numDocs > 0) {
       _cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
@@ -479,9 +479,6 @@ void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder,
                                        std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
-  // hard-coded
-  builder.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(true));
-  builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(false));
   builder.close();
 }
 
