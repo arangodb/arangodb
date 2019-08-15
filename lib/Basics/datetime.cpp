@@ -731,10 +731,15 @@ bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
     return false;
   }
 
+  if (ADB_UNLIKELY(parsedYear < 0 || parsedYear > 9999)) {
+    // outside the allowed range
+    return false;
+  }
+
   parseDateComponent(p, e, parsedMonth);
   parseDateComponent(p, e, parsedDay);
 
-  if (parsedMonth < 1 || parsedMonth > 12 || parsedDay < 1 || parsedDay > 31) {
+  if (ADB_UNLIKELY(parsedMonth < 1 || parsedMonth > 12 || parsedDay < 1 || parsedDay > 31)) {
     // definitely invalid
     return false;
   }
@@ -825,7 +830,7 @@ bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
       date_tp -= offset;
     }
   }  // if
-
+  
   return true;
 }
 
