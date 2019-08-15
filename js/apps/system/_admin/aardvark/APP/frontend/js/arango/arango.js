@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Blob, window, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, arangoHelper, sessionStorage, localStorage, XMLHttpRequest */
+/* global Noty, Blob, window, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, arangoHelper, sessionStorage, localStorage, XMLHttpRequest */
 
 (function () {
   'use strict';
@@ -639,9 +639,7 @@
     },
 
     hideArangoNotifications: function () {
-     // TODO SEARCH FOR A NOTY ALTERNATIVE
-    //   $.noty.clearQueue();
-    //   $.noty.closeAll();
+      Noty.closeAll();
     },
 
     openDocEditor: function (id, type, callback) {

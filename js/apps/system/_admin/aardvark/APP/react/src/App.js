@@ -21,6 +21,7 @@ import jQuery from 'jquery';
 import Backbone from 'backbone';
 import _ from 'underscore';
 import Sigma from 'sigma';
+import Noty from 'noty';
 
 // highlight.js
 import hljs from 'highlight.js/lib/highlight';
@@ -45,6 +46,10 @@ import '../../frontend/css/grids-responsive-min.css';
 import '../../frontend/scss/style.scss';
 import 'highlight.js/styles/github.css';
 
+// noty css
+import "../node_modules/noty/lib/noty.css";
+import "../node_modules/noty/lib/themes/sunset.css";  
+
 window.JST = {};
 
 // import sass files
@@ -60,6 +65,8 @@ function requireAll(context) {
   });
 }
 
+
+
 // templates ejs
 requireAll(require.context(
   '../../frontend/js/templates/'
@@ -71,6 +78,8 @@ requireAll(require.context(
 
 hljs.registerLanguage('json', json);
 window.hljs = hljs;
+
+window.Noty = Noty;
 
 window.ReactDOM = ReactDOM;
 window.Joi = require('../../frontend/js/lib/joi-browser.min.js');
