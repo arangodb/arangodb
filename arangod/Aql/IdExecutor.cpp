@@ -58,31 +58,34 @@ template <bool usePassThrough, class UsedFetcher>
 std::pair<ExecutionState, NoStats> IdExecutor<usePassThrough, UsedFetcher>::produceRows(OutputAqlItemRow& output) {
   ExecutionState state;
   NoStats stats;
+  while (!output.isFull()) {
+    InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
 
-  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  std::tie(state, inputRow) = _fetcher.fetchRow();
+    std::tie(state, inputRow) = _fetcher.fetchRow(output.numRowsLeft());
 
-  if (state == ExecutionState::WAITING) {
-    TRI_ASSERT(!inputRow);
-    return {state, std::move(stats)};
-  }
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(!inputRow);
+      return {state, std::move(stats)};
+    }
 
-  if (!inputRow) {
-    TRI_ASSERT(state == ExecutionState::DONE);
-    return {state, std::move(stats)};
-  }
+    if (!inputRow) {
+      TRI_ASSERT(state == ExecutionState::DONE);
+      return {state, std::move(stats)};
+    }
 
-  TRI_IF_FAILURE("SingletonBlock::getOrSkipSome") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
+    TRI_IF_FAILURE("SingletonBlock::getOrSkipSome") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
 
-  TRI_ASSERT(state == ExecutionState::HASMORE || state == ExecutionState::DONE);
-  /*Second parameter are to ignore registers that should be kept but are missing in the input row*/
-  output.copyRow(inputRow, std::is_same<UsedFetcher, ConstFetcher>::value);
-  TRI_ASSERT(output.produced());
+    TRI_ASSERT(state == ExecutionState::HASMORE || state == ExecutionState::DONE);
+    /*Second parameter are to ignore registers that should be kept but are missing in the input row*/
+    output.copyRow(inputRow, std::is_same<UsedFetcher, ConstFetcher>::value);
+    TRI_ASSERT(output.produced());
+    output.advanceRow();
 
-  TRI_IF_FAILURE("SingletonBlock::getOrSkipSomeSet") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    TRI_IF_FAILURE("SingletonBlock::getOrSkipSomeSet") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
   }
 
   return {state, std::move(stats)};

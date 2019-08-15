@@ -72,7 +72,7 @@ class ConstFetcher {
    *           If HASMORE => The Row is guaranteed to not be a nullptr.
    *           If DONE => Row can be a nullptr (nothing received) or valid.
    */
-  TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow();
+  TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow(size_t atMost = 1);
   TEST_VIRTUAL std::pair<ExecutionState, size_t> skipRows(size_t);
   void injectBlock(SharedAqlItemBlockPtr block);
 

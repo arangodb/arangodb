@@ -283,7 +283,8 @@ static SkipVariants constexpr skipType() {
                      std::is_same<Executor, IResearchViewMergeExecutor<false>>::value ||
                      std::is_same<Executor, IResearchViewMergeExecutor<true>>::value ||
                      std::is_same<Executor, EnumerateCollectionExecutor>::value ||
-                     std::is_same<Executor, LimitExecutor>::value),
+                     std::is_same<Executor, LimitExecutor>::value ||
+                     std::is_same<Executor, IdExecutor<false, SingleRowFetcher<false>>>::value),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!

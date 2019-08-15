@@ -187,6 +187,14 @@ class IdExecutor {
     return {rv.first, {}, std::move(rv.second)};
   }
 
+  template <bool allowPass = usePassThrough, typename = std::enable_if_t<!allowPass>>
+  std::tuple<ExecutionState, NoStats, size_t> skipRows(size_t atMost) {
+    ExecutionState state;
+    size_t skipped;
+    std::tie(state, skipped) = _fetcher.skipRows(atMost);
+    return {state, NoStats{}, skipped};
+  }
+
  private:
   Fetcher& _fetcher;
 };
