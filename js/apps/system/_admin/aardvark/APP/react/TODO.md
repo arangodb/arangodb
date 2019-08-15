@@ -26,8 +26,8 @@
 
 # Libraries
 - ~~Leaflet.css (../frontend/css/leaflet.css) used to use "images" not "img", this is a custom change, rewrite that with webpack later~~ (Done)
-- removed Noty/noty library, was not working well with webpack (Search for a replacement)
-- Prettify / Pretty (e.g. documentsView) not working with webpack, search for an alternative
+- removed Noty/noty library, was not working well with webpack (Search for a replacement) (Done - could use another noty version)
+- Prettify / Pretty (e.g. documentsView) not working with webpack, search for an alternative (Done)
 
 # Additional
 - Fix the login view properly. Image loading of community or enterprise is not included nicely. Needs cleanup!
