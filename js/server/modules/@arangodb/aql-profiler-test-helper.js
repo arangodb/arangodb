@@ -617,10 +617,8 @@ function runClusterChecks (
   for (const rowCounts of testRowCounts) {
     const rowsByShard = prepareCollection(rowCounts);
     const rowsByServer = getRowsPerServer(rowsByShard);
-    console.log("Shard", JSON.stringify(rowsByShard, null, 2));
-    console.log("Server", JSON.stringify(rowsByServer, null, 2));
     const profile = db._query(query, {},
-      _.merge(options, {profile: 3, defaultBatchSize})
+      _.merge(options, {profile: 2, defaultBatchSize})
     ).getExtra();
 
     assertIsLevel2Profile(profile);
