@@ -745,6 +745,8 @@ target_link_libraries(arango_aql arango_iresearch)
 target_link_libraries(arango_aql arango_graph)
 target_link_libraries(arango_aql arango_geo)
 
+target_link_libraries(arango_vocbase boost_system)
+
 add_library(arango_mmfiles STATIC
   ${MMFILES_SOURCES}
 )
