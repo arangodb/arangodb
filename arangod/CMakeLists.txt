@@ -282,8 +282,8 @@ SET(ARANGOD_SOURCES
   Cache/TransactionalBucket.cpp
   Cache/TransactionalCache.cpp
   Cache/TransactionManager.cpp
-  Cluster/ActionBase.cpp
   Cluster/Action.cpp
+  Cluster/ActionBase.cpp
   Cluster/ActionDescription.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
@@ -300,12 +300,12 @@ SET(ARANGOD_SOURCES
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
   Cluster/CriticalThread.cpp
-  Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/DropCollection.cpp
   Cluster/DropDatabase.cpp
   Cluster/DropIndex.cpp
   Cluster/EnsureIndex.cpp
+  Cluster/FollowerInfo.cpp
   Cluster/FollowerInfo.cpp
   Cluster/HeartbeatThread.cpp
   Cluster/Maintenance.cpp
@@ -319,6 +319,7 @@ SET(ARANGOD_SOURCES
   Cluster/RestClusterHandler.cpp
   Cluster/ServerState.cpp
   Cluster/SynchronizeShard.cpp
+  Cluster/TakeoverShardLeadership.cpp
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
   Cluster/UpdateCollection.cpp
