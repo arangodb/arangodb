@@ -2845,6 +2845,48 @@ private:
   std::atomic<bool> _present;
 };
 
+// Read the collection from Plan; this is an object to have a valid VPack
+// around to read from and to not have to carry around vpack builders.
+// Might want to do the error handling with throw/catch?
+class PlanCollectionReader {
+ public:
+  PlanCollectionReader(PlanCollectionReader const&&) = delete;
+  PlanCollectionReader(PlanCollectionReader const&) = delete;
+  PlanCollectionReader(LogicalCollection const& collection) {
+    std::string databaseName = collection.vocbase().name();
+    std::string collectionID = std::to_string(collection.id());
+
+    AgencyComm ac;
+
+    std::string path =
+        "Plan/Collections/" + databaseName + "/" + collectionID;
+    AgencyCommResult read = ac.getValues(path);
+
+    if (!read.successful()) {
+      _state = Result(TRI_ERROR_CLUSTER_READING_PLAN_AGENCY,
+                      "Could not retrieve " + path + " from agency");
+      return;
+    }
+
+    _collection = read.slice()[0].get(std::vector<std::string>(
+        {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
+
+    if (!_collection.isObject()) {
+      _state = Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      return;
+    }
+    _state = Result();
+  }
+  VPackSlice indexes() { return _collection.get("indexes"); }
+  VPackSlice slice() { return _collection; }
+  Result state() { return _state; }
+
+ private:
+  AgencyCommResult _read;
+  Result _state;
+  velocypack::Slice _collection;
+};
+
 // The following function does the actual work of index creation: Create
 // in Plan, watch Current until all dbservers for all shards have done their
 // bit. If this goes wrong with a timeout, the creation operation is rolled
@@ -2881,22 +2923,26 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
   }
 
   const size_t numberOfShards = collection.numberOfShards();
-  const std::vector<std::shared_ptr<Index>> indexes = collection.getIndexes();
 
-  for (auto const& other : indexes) {
-    auto otherVPack = other->toVelocyPack(0);
-    auto otherSlice = otherVPack->slice();
+  // Get the current entry in Plan for this collection
+  PlanCollectionReader collectionFromPlan(collection);
+  if (!collectionFromPlan.state().ok()) {
+    return collectionFromPlan.state();
+  }
 
-    if (true == arangodb::Index::Compare(slice, otherSlice)) {
+  VPackSlice indexes = collectionFromPlan.indexes();
+  for (auto const& other : VPackArrayIterator(indexes)) {
+    TRI_ASSERT(other.isObject());
+    if (true == arangodb::Index::Compare(slice, other)) {
         {  // found an existing index... Copy over all elements in slice.
           VPackObjectBuilder b(&resultBuilder);
-          resultBuilder.add(VPackObjectIterator(otherSlice));
+          resultBuilder.add(VPackObjectIterator(other));
           resultBuilder.add("isNewlyCreated", VPackValue(false));
         }
         return Result(TRI_ERROR_NO_ERROR);
     }
 
-    if (true == arangodb::Index::CompareIdentifiers(slice, otherSlice)) {
+    if (true == arangodb::Index::CompareIdentifiers(slice, other)) {
       // found an existing index with a same identifier (i.e. name)
       // but different definition, throw an error
       return Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
@@ -3002,19 +3048,15 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
   auto cbGuard = scopeGuard(
       [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
 
-
-
-
   std::string const planCollKey = "Plan/Collections/" + databaseName + "/" + collectionID;
   std::string const planIndexesKey = planCollKey + "/indexes";
   AgencyOperation newValue(planIndexesKey, AgencyValueOperationType::PUSH,
                            newIndexBuilder.slice());
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
 
-  // TODO: this precondition needs to be used
-  AgencyPrecondition oldValue(planCollKey, AgencyPrecondition::Type::VALUE, collection.toVelocyPackIgnore({}, 0).slice());
-
-  AgencyWriteTransaction trx({newValue, incrementVersion}); // , oldValue);
+  LOG_DEVEL << "creating index on " + databaseName + "/" + collectionID + " " << collectionFromPlan.slice();
+  AgencyPrecondition oldValue(planCollKey, AgencyPrecondition::Type::VALUE, collectionFromPlan.slice());
+  AgencyWriteTransaction trx({newValue, incrementVersion}, oldValue);
 
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
 
@@ -3128,9 +3170,6 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
 
         loadPlan();
 
-        // TODO: for database creation this can't work or will definitely race
-        // Finally check if it has appeared, if not, we take another turn,
-        // which does not do any harm:
         if (!collectionWatcher.isPresent()) {
           return Result(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED,
                         "Collection " + collectionID +
