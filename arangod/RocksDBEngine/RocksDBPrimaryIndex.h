@@ -43,8 +43,8 @@ class Methods;
 
 class RocksDBPrimaryIndex final : public RocksDBIndex {
   friend class RocksDBPrimaryIndexEqIterator;
-  friend class RocksDBPrimaryIndexRangeIterator;
   friend class RocksDBPrimaryIndexInIterator;
+  template<bool reverse> friend class RocksDBPrimaryIndexRangeIterator;
   friend class RocksDBAllIndexIterator;
   friend class RocksDBAnyIndexIterator;
 
@@ -106,9 +106,6 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
                                               arangodb::aql::Variable const* reference) const override;
-
-  void invokeOnAllElements(transaction::Methods* trx,
-                           std::function<bool(LocalDocumentId const&)> callback) const;
 
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,

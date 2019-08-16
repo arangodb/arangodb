@@ -823,7 +823,7 @@ Collection* addCollectionToQuery(Query* query, std::string const& cname, bool as
       TRI_ASSERT(coll != nullptr);
       auto cptr = query->trx()->vocbase().lookupCollection(cname);
 
-      coll->setCollection(cptr.get());
+      coll->setCollection(cptr);
       query->trx()->addCollectionAtRuntime(cname);
     }
   }
