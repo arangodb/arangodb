@@ -108,7 +108,7 @@ function ahuacatlProfilerTestSuite () {
       callsPerServer[server] = callInfo;
     }
     return _.sum(_.values(callsPerServer).map(c => c.calls)); 
-  }
+  };
 
   return {
 
