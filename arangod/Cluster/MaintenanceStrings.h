@@ -65,6 +65,7 @@ constexpr char const* SHARD = "shard";
 constexpr char const* SHARDS = "shards";
 constexpr char const* SHARD_VERSION = "shardVersion";
 constexpr char const* SYNCHRONIZE_SHARD = "SynchronizeShard";
+constexpr char const* TAKEOVER_SHARD_LEADERSHIP = "TakeoverShardLeadership";
 constexpr char const* THE_LEADER = "theLeader";
 constexpr char const* UNDERSCORE = "_";
 constexpr char const* UPDATE_COLLECTION = "UpdateCollection";

@@ -1,6 +1,9 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Refactor maintenance to use a TakeoverShardLeadership job. This fixes a bug
+  that a shard follower could have set the wrong leader for the shard locally.
+
 * Fixed issue #9679: improved error message for FULLTEXT function invocation failures.
 
 * Added resign leadership job to supervision.
