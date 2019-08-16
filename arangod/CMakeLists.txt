@@ -673,6 +673,7 @@ target_link_libraries(arangoserver
   arangoserver_part1
   arangoserver_part2
   arangoserver_part3
+  arango_graph
 )
 
 # Note that arango_geo publicly exports the /J compile option for MSVC, because
@@ -705,6 +706,8 @@ target_link_libraries(arangoserver_part2 ${ROCKSDB_LIBS})
 target_link_libraries(arangoserver_part3 arangoserver_part1 arangoserver_part2)
 target_link_libraries(arangoserver_part3 boost_boost)
 target_link_libraries(arangoserver_part3 arango_geo)
+
+target_link_libraries(arango_graph boost_boost)
 
 add_library(arango_mmfiles STATIC
   ${MMFILES_SOURCES}
