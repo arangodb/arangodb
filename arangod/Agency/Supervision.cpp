@@ -1292,7 +1292,7 @@ bool Supervision::verifyCoordinatorRebootID(std::string coordinatorID, uint64_t 
 
   // now lookup reboot id
   std::pair<uint64_t, bool> rebootID = _snapshot.hasAsUInt(curServersKnown + coordinatorID + "/" + StaticStrings::DatabaseCoordinatorRebootId);
-  return !rebootID.second || rebootID.first != wantedRebootID;
+  return rebootID.second && rebootID.first == wantedRebootID;
 }
 
 void Supervision::deleteBrokenDatabase(std::string const& database, std::string const& coordinatorID, uint64_t rebootID) {
