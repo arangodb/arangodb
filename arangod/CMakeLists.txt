@@ -151,6 +151,20 @@ endif ()
 # TODO: Add ${ENTERPRISE_FILES} to libarangoserver sources
 # TODO: Compile community, with/without maintainer
 
+set(LIB_ARANGO_GRAPH_SOURCES
+  Graph/AttributeWeightShortestPathFinder.cpp
+  Graph/BreadthFirstEnumerator.cpp
+  Graph/ConstantWeightShortestPathFinder.cpp
+  Graph/KShortestPathsFinder.cpp
+  Graph/NeighborsEnumerator.cpp
+  Graph/PathEnumerator.cpp
+  Graph/ShortestPathFinder.cpp
+  Graph/ShortestPathOptions.cpp
+  Graph/ShortestPathResult.cpp
+  Graph/SingleServerTraverser.cpp
+  Graph/Traverser.cpp
+)
+
 set(ARANGOD_SOURCES_PART1
   Actions/actions.cpp
   Agency/AgentConfiguration.cpp
@@ -304,17 +318,6 @@ set(ARANGOD_SOURCES_PART1
   GeneralServer/IoContext.cpp
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/VstCommTask.cpp
-  Graph/AttributeWeightShortestPathFinder.cpp
-  Graph/BreadthFirstEnumerator.cpp
-  Graph/ConstantWeightShortestPathFinder.cpp
-  Graph/KShortestPathsFinder.cpp
-  Graph/NeighborsEnumerator.cpp
-  Graph/PathEnumerator.cpp
-  Graph/ShortestPathFinder.cpp
-  Graph/ShortestPathOptions.cpp
-  Graph/ShortestPathResult.cpp
-  Graph/SingleServerTraverser.cpp
-  Graph/Traverser.cpp
   Network/ConnectionPool.cpp
   Network/Methods.cpp
   Network/NetworkFeature.cpp
@@ -646,6 +649,11 @@ add_library(arangoserver STATIC
   empty.cpp
 )
 
+add_library(arango_graph STATIC
+  ${LIB_ARANGO_GRAPH_SOURCES}
+  ${ADDITIONAL_LIB_ARANGO_GRAPH_SOURCES}
+)
+
 add_library(arangoserver_part1 STATIC
   ${ARANGOD_SOURCES_PART1}
   ${ADDITIONAL_LIB_ARANGOSERVER_PART1_SOURCES}
@@ -672,6 +680,7 @@ target_link_libraries(arangoserver_part1 llhttp)
 target_link_libraries(arangoserver_part1 arango_iresearch)
 target_link_libraries(arangoserver_part1 arango_geo)
 target_link_libraries(arangoserver_part1 fuerte)
+target_link_libraries(arangoserver_part1 arango_graph)
 target_link_libraries(arangoserver_part1 ${ROCKSDB_LIBS})
 
 target_link_libraries(arangoserver_part2 arangoserver_part1)
@@ -743,6 +752,9 @@ if (USE_ENTERPRISE)
   target_compile_definitions(arango_mmfiles PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango_mmfiles PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
+  target_compile_definitions(arango_graph PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(arango_graph PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+
   target_compile_definitions(arango_rocksdb PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango_rocksdb PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
@@ -794,6 +806,7 @@ endif ()
 
 if(MSVC)
   target_compile_options(arangoserver PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arango_graph PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arangoserver_part1 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arangoserver_part2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arangoserver_part3 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
@@ -805,6 +818,7 @@ endif()
 
 if (DARWIN)
   target_compile_options(arangoserver PRIVATE -Werror)
+  target_compile_options(arango_graph PRIVATE -Werror)
   target_compile_options(arangoserver_part1 PRIVATE -Werror)
   target_compile_options(arangoserver_part2 PRIVATE -Werror)
   target_compile_options(arangoserver_part3 PRIVATE -Werror)
