@@ -297,7 +297,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/OptimizerRulesReplaceFunctions.cpp
   Aql/OutputAqlItemRow.cpp
   Aql/Parser.cpp
-  Aql/PlanCache.cpp
   Aql/Quantifier.cpp
   Aql/Query.cpp
   Aql/QueryCache.cpp
@@ -340,6 +339,29 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/WakeupQueryCallback.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
+)
+
+set(LIB_ARANGO_VOCBASE_SOURCES
+  Aql/PlanCache.cpp
+  Replication/DatabaseReplicationApplier.cpp
+  VocBase/KeyGenerator.cpp
+  VocBase/KeyLockInfo.cpp
+  VocBase/LogicalCollection.cpp
+  VocBase/LogicalDataSource.cpp
+  VocBase/LogicalView.cpp
+  VocBase/ManagedDocumentResult.cpp
+  VocBase/Methods/AqlUserFunctions.cpp
+  VocBase/Methods/Collections.cpp
+  VocBase/Methods/Databases.cpp
+  VocBase/Methods/Indexes.cpp
+  VocBase/Methods/Tasks.cpp
+  VocBase/Methods/Transactions.cpp
+  VocBase/Methods/Ttl.cpp
+  VocBase/Methods/Upgrade.cpp
+  VocBase/Methods/UpgradeTasks.cpp
+  VocBase/Methods/Version.cpp
+  VocBase/ticks.cpp
+  VocBase/vocbase.cpp
 )
 
 set(ARANGOD_SOURCES_PART1
@@ -392,7 +414,6 @@ set(ARANGOD_SOURCES_PART1
   Utils/OperationCursor.cpp
   Utils/UrlHelper.cpp
   V8Server/v8-user-structures.cpp
-  VocBase/KeyLockInfo.cpp
 )
 
 set(ARANGOD_SOURCES_PART2
@@ -482,7 +503,6 @@ set(ARANGOD_SOURCES_PART2
   Indexes/SimpleAttributeEqualityMatcher.cpp
   Indexes/SortedIndexAttributeMatcher.cpp
   Replication/DatabaseInitialSyncer.cpp
-  Replication/DatabaseReplicationApplier.cpp
   Replication/DatabaseTailingSyncer.cpp
   Replication/GlobalInitialSyncer.cpp
   Replication/GlobalReplicationApplier.cpp
@@ -600,23 +620,6 @@ set(ARANGOD_SOURCES_PART2
   V8Server/v8-vocbase.cpp
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
-  VocBase/KeyGenerator.cpp
-  VocBase/LogicalCollection.cpp
-  VocBase/LogicalDataSource.cpp
-  VocBase/LogicalView.cpp
-  VocBase/ManagedDocumentResult.cpp
-  VocBase/Methods/AqlUserFunctions.cpp
-  VocBase/Methods/Collections.cpp
-  VocBase/Methods/Databases.cpp
-  VocBase/Methods/Indexes.cpp
-  VocBase/Methods/Tasks.cpp
-  VocBase/Methods/Transactions.cpp
-  VocBase/Methods/Ttl.cpp
-  VocBase/Methods/Upgrade.cpp
-  VocBase/Methods/UpgradeTasks.cpp
-  VocBase/Methods/Version.cpp
-  VocBase/ticks.cpp
-  VocBase/vocbase.cpp
 )
 
 set(ARANGOD_SOURCES_PART3
@@ -666,6 +669,11 @@ add_library(arango_aql STATIC
   ${ADDITIONAL_LIB_ARANGO_AQL_SOURCES}
 )
 
+add_library(arango_vocbase STATIC
+  ${LIB_ARANGO_VOCBASE_SOURCES}
+  ${ADDITIONAL_LIB_ARANGO_VOCBASE_SOURCES}
+)
+
 add_library(arangoserver_part1 STATIC
   ${ARANGOD_SOURCES_PART1}
   ${ADDITIONAL_LIB_ARANGOSERVER_PART1_SOURCES}
@@ -688,6 +696,7 @@ target_link_libraries(arangoserver
   arango_graph
   arango_pregel
   arango_aql
+  arango_vocbase
 )
 
 # Note that arango_geo publicly exports the /J compile option for MSVC, because
@@ -703,6 +712,7 @@ target_link_libraries(arangoserver
 # C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\include\atldef.h(94): fatal error C1189: #error:  ATL does not support compilation with /J or _CHAR_UNSIGNED flag enabled [C:\vm04-windows\oskar\work\ArangoDB\build\lib\arango.vcxproj]
 # .
 
+target_link_libraries(arangoserver_part1 arango_vocbase)
 target_link_libraries(arangoserver_part1 boost_boost)
 target_link_libraries(arangoserver_part1 llhttp)
 target_link_libraries(arangoserver_part1 arango_iresearch)
@@ -711,6 +721,7 @@ target_link_libraries(arangoserver_part1 fuerte)
 target_link_libraries(arangoserver_part1 arango_graph)
 target_link_libraries(arangoserver_part1 ${ROCKSDB_LIBS})
 
+target_link_libraries(arangoserver_part2 arango_vocbase)
 target_link_libraries(arangoserver_part2 arangoserver_part1)
 target_link_libraries(arangoserver_part2 arango_iresearch)
 target_link_libraries(arangoserver_part2 boost_boost)
@@ -719,12 +730,17 @@ target_link_libraries(arangoserver_part2 arango_pregel)
 target_link_libraries(arangoserver_part2 arango_aql)
 target_link_libraries(arangoserver_part2 ${ROCKSDB_LIBS})
 
+target_link_libraries(arangoserver_part3 arango_vocbase)
 target_link_libraries(arangoserver_part3 arangoserver_part1 arangoserver_part2)
 target_link_libraries(arangoserver_part3 boost_boost)
 target_link_libraries(arangoserver_part3 arango_geo)
 
 target_link_libraries(arango_graph boost_boost)
+target_link_libraries(arango_graph arango_vocbase)
+
+target_link_libraries(arango_pregel boost_boost)
 target_link_libraries(arango_pregel boost_system)
+
 target_link_libraries(arango_aql arango_iresearch)
 target_link_libraries(arango_aql arango_graph)
 target_link_libraries(arango_aql arango_geo)
@@ -751,9 +767,11 @@ target_link_libraries(arango_mmfiles llhttp)
 target_link_libraries(arango_mmfiles boost_boost)
 target_link_libraries(arango_mmfiles boost_system)
 target_link_libraries(arango_mmfiles arango_geo)
+
 target_link_libraries(arango_rocksdb arangoserver_part1)
 target_link_libraries(arango_rocksdb boost_boost)
 target_link_libraries(arango_rocksdb arango_geo)
+
 target_link_libraries(arango_cluster_engine boost_boost)
 
 target_link_libraries(arangoserver
@@ -798,6 +816,9 @@ if (USE_ENTERPRISE)
 
   target_compile_definitions(arango_aql PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango_aql PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+
+  target_compile_definitions(arango_vocbase PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(arango_vocbase PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
   target_compile_definitions(arango_rocksdb PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango_rocksdb PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
@@ -848,33 +869,26 @@ if (USE_JEMALLOC)
   add_dependencies(arangod jemalloc)
 endif ()
 
-if(MSVC)
-  target_compile_options(arangoserver PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  target_compile_options(arango_graph PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  target_compile_options(arango_pregel PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  target_compile_options(arango_aql PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  target_compile_options(arangoserver_part1 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  target_compile_options(arangoserver_part2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  target_compile_options(arangoserver_part3 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  target_compile_options(arango_mmfiles PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  target_compile_options(arango_rocksdb PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  target_compile_options(arango_cluster_engine PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  target_compile_options(arangod PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
-
-if (DARWIN)
-  target_compile_options(arangoserver PRIVATE -Werror)
-  target_compile_options(arango_graph PRIVATE -Werror)
-  target_compile_options(arango_pregel PRIVATE -Werror)
-  target_compile_options(arango_aql PRIVATE -Werror)
-  target_compile_options(arangoserver_part1 PRIVATE -Werror)
-  target_compile_options(arangoserver_part2 PRIVATE -Werror)
-  target_compile_options(arangoserver_part3 PRIVATE -Werror)
-  target_compile_options(arango_mmfiles PRIVATE -Werror)
-  target_compile_options(arango_rocksdb PRIVATE -Werror)
-  target_compile_options(arango_cluster_engine PRIVATE -Werror)
-  target_compile_options(arangod PRIVATE -Werror)
-endif()
+foreach(TARGET
+  arangoserver
+  arango_graph
+  arango_pregel
+  arango_aql
+  arango_vocbase
+  arangoserver_part1
+  arangoserver_part2
+  arangoserver_part3
+  arango_mmfiles
+  arango_rocksdb
+  arango_cluster_engine
+  arangod
+)
+  if(MSVC)
+    target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  elseif(DARWIN)
+    target_compile_options(${TARGET} PRIVATE -Werror)
+  endif()
+endforeach()
 
 ################################################################################
 ## arango-dfdb
