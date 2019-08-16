@@ -109,9 +109,18 @@
       }
 
       $('.bodyWrapper').show();
-      self.checkVersion();
+      this.setVersion();
 
       return this;
+    },
+
+    setVersion: function () {
+      if (window.frontendConfig && window.frontendConfig.isEnterprise) {
+        console.log("enterprise");
+        $('#ArangoDBLogoVersion').attr('src', 'img/ArangoDB-enterprise-edition-Web-UI.png');
+      } else {
+        $('#ArangoDBLogoVersion').attr('src', 'img/ArangoDB-community-edition-Web-UI.png');
+      }
     },
 
     sortDatabases: function (obj) {
@@ -127,30 +136,6 @@
         sorted = _.sortBy(obj, function (i) { return i.toLowerCase(); });
       }
       return sorted;
-    },
-
-    checkVersion: function () {
-      var self = this;
-      window.setTimeout(function () {
-        try {
-          var a = document.getElementById('loginSVG');
-          var svgDoc = a.contentDocument;
-          var svgItem;
-
-          if (frontendConfig.isEnterprise !== undefined) {
-            if (frontendConfig.isEnterprise) {
-              svgItem = svgDoc.getElementById('logo-enterprise');
-            } else {
-              svgItem = svgDoc.getElementById('logo-community');
-            }
-            svgItem.setAttribute('visibility', 'visible');
-          } else {
-            self.checkVersion();
-          }
-        } catch (e) {
-
-        }
-      }, 150);
     },
 
     clear: function () {
