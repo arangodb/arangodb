@@ -116,7 +116,6 @@
 
     setVersion: function () {
       if (window.frontendConfig && window.frontendConfig.isEnterprise) {
-        console.log("enterprise");
         $('#ArangoDBLogoVersion').attr('src', 'img/ArangoDB-enterprise-edition-Web-UI.png');
       } else {
         $('#ArangoDBLogoVersion').attr('src', 'img/ArangoDB-community-edition-Web-UI.png');
