@@ -58,7 +58,9 @@ const internalMembers = [
   'processStats',
   'startupTime',
   'testDuration',
-  'shutdownTime'
+  'shutdownTime',
+  'totalSetUp',
+  'totalTearDown'
 ];
 
 function skipInternalMember (r, a) {
@@ -334,6 +336,7 @@ function unitTestPrettyPrintResults (options, results) {
   let failedTestsCount = 0;
   let successCases = {};
   let failedCases = {};
+  let fails = {};
   let bucketName = "";
   let testRunStatistics = "";
   let isSuccess = true;
@@ -378,13 +381,15 @@ function unitTestPrettyPrintResults (options, results) {
     },
     testCase: function(options, state, testCase, testCaseName) {
       if (!testCase.status) {
-        failedTestsCount++;
-      /* TODO: this was unused!
         fails[testCaseName] = testCaseMessage(testCase);
-      */
       }
     },
     endTestSuite: function(options, state, testSuite, testSuiteName) {
+      failedTestsCount++;
+      if (fails.length !== 0) {
+        failedCases[testSuiteName] = fails;
+        fails = {};
+      }
     },
     endTestRun: function(options, state, testRun, testRunName) {
       if (isSuccess) {
