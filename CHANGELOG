@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed an agency bug found in Windows tests.
+
 * Added initial support for wgs84 reference ellipsoid in GEO_DISTANCE through
   third optional parameter to AQL function.
 
