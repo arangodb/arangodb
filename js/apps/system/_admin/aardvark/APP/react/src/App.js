@@ -33,7 +33,6 @@ import '../../frontend/ttf/arangofont/style.css';
 import '../../frontend/css/bootstrap.css';
 import '../../frontend/css/jquery.contextmenu.css';
 import '../../frontend/css/select2.css';
-// import '../../frontend/css/select2-bootstrap.css';
 import '../../frontend/css/highlightjs.css';
 import '../../frontend/css/jsoneditor.css';
 import '../../frontend/css/tippy.css';
