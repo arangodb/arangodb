@@ -1,0 +1,30 @@
+scss_files: '*.scss'
+
+exclude: '_animate.scss'
+
+linters:
+
+  SelectorFormat:
+    enabled: false
+    convention: camel_case 
+
+  ImportantRule:
+    enabled: false
+
+  NestingDepth:
+    enabled: true
+    max_depth: 6
+    ignore_parent_selectors: false
+
+  SelectorDepth:
+    enabled: true
+    max_depth: 6
+
+  VendorPrefix: 
+    enabled: false
+
+  IdSelector:
+    enabled: false
+
+  QualifyingElement:
+    enabled: false

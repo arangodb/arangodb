@@ -1,0 +1,273 @@
+.graphContent {
+
+  margin-top: 3px;
+
+  #graph-container {
+    @extend %not-selectable;
+    background-color: $c-white;
+    z-index: 5;
+  }
+
+  #graph-container:-webkit-full-screen {
+    height: 100% !important;
+    width: 100% !important;
+  }
+
+  #graph-container:-moz-full-screen {
+    height: 100% !important;
+    width: 100% !important;
+  }
+
+  #graph-container:-ms-full-screen {
+    height: 100% !important;
+    width: 100% !important;
+  }
+
+  #graph-container:-o-full-screen {
+    height: 100% !important;
+    width: 100% !important;
+  }
+
+  #graph-container:full-screen {
+    height: 100% !important;
+    width: 100% !important;
+  }
+
+  .fa {
+    &.fa-desktop {
+      margin-top: 6px;
+      position: absolute;
+      right: 20px;
+      z-index: 10;
+    }
+  }
+}
+
+.nodeInfoDiv {
+  border-radius: 3px;
+  bottom: 4px;
+  color: $c-bluegrey-dark;
+  font-weight: 500;
+  height: 25px;
+  left: 165px;
+  overflow: hidden;
+  position: fixed;
+  right: 15px;
+  z-index: 10;
+
+  span {
+    &.title {
+      line-height: 25px;
+    }
+  }
+
+  .nodeAttribute,
+  .nodeId {
+    background-color: $c-info-blue;
+    border-radius: 3px;
+    color: $c-white;
+    font-weight: 100;
+    margin-right: 5px;
+    padding: 2px 5px;
+
+    &::selection {
+      background: rgba(64, 74, 83, .8);
+    }
+
+    &::-moz-selection {
+      background: rgba(64, 74, 83, .8);
+    }
+  }
+
+  .nodeId {
+    background-color: $c-positive;
+  }
+
+  span {
+    float: left;
+    margin-bottom: 10px;
+    margin-right: 5px;
+  }
+
+}
+
+.nodeContextMenu {
+
+  animation-duration: .15s !important;
+  position: fixed;
+
+  svg {
+    #wheelnav-nodeContextMenu-title-0 {
+      // transform: translate(24px, 14px) scale(.7) !important;
+    }
+
+    #wheelnav-nodeContextMenu-slice-0,
+    #wheelnav-nodeContextMenu-slice-1,
+    #wheelnav-nodeContextMenu-slice-2,
+    #wheelnav-nodeContextMenu-slice-3,
+    #wheelnav-nodeContextMenu-slice-4,
+    #wheelnav-nodeContextMenu-slice-5 {
+      opacity: 1;
+    }
+
+    #wheelnav-nodeContextMenu-title-0,
+    #wheelnav-nodeContextMenu-title-1,
+    #wheelnav-nodeContextMenu-title-2,
+    #wheelnav-nodeContextMenu-title-3,
+    #wheelnav-nodeContextMenu-title-4,
+    #wheelnav-nodeContextMenu-title-5 {
+      fill: $c-white;
+    }
+  }
+}
+
+#graphSettingsView {
+  background-color: rgba(64, 74, 83, .9);
+  border: 0;
+  border-radius: 0;
+  height: 100%;
+  overflow-y: scroll;
+
+  button {
+    margin-bottom: 125px;
+  }
+
+  select {
+    width: 222px;
+  }
+}
+
+#graphSettingsContent {
+  height: 100%;
+  max-width: 50%;
+  min-width: 400px;
+  position: fixed;
+  right: -1px;
+  top: 100px;
+  width: 400px;
+  z-index: 999999;
+
+  .pure-g {
+
+    font-size: 10pt;
+
+    input,
+    select {
+      color: $c-black;
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: .7;
+      }
+    }
+
+    input {
+      width: 200px;
+    }
+
+    select {
+      width: 216px;
+    }
+
+    .left {
+      color: $c-white;
+      height: 40px;
+    }
+
+    .pure-u-1-3 {
+      font-size: 9pt;
+      font-weight: 100;
+      line-height: 30px;
+    }
+
+    .pure-u-2-3 {
+      text-align: right;
+
+      .fa-info-circle {
+        float: right;
+        font-size: 14pt;
+        margin-right: 0;
+        margin-top: 7px;
+        padding-left: 10px;
+      }
+    }
+
+    .heading {
+      background: rgba(0, 0, 0, .3);
+      border-bottom: 1px solid rgba(255, 255, 255, .2);
+      border-top: 1px solid rgba(255, 255, 255, .2);
+      font-size: 12pt;
+      font-weight: 100;
+      height: 10px;
+      line-height: 9pt;
+      margin-bottom: 15px;
+      margin-left: -10px;
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+
+    .rangeLabel {
+      float: left;
+      margin-left: 0;
+      margin-top: 5px;
+      position: relative;
+    }
+
+    @-moz-document url-prefix() {
+
+      .pure-table-body {
+        overflow: hidden;
+      }
+
+      .pure-u-2-3 {
+        input {
+          width: 184px;
+        }
+
+        input[type="color"] {
+          height: 32px;
+          width: 200px;
+        }
+
+        input[type="range"] {
+          height: 26px;
+          margin-top: 0;
+          width: 196px;
+        }
+
+        input[type=range]::-moz-range-track {
+          width: 184px;
+        }
+
+        select {
+          width: 200px;
+        }
+      }
+    }
+  }
+
+  .pure-table {
+    overflow-x: hidden;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}
+
+.helpTooltip {
+  position: fixed;
+  right: 0;
+  text-align: center;
+  top: 135px;
+  width: 100%;
+
+  span {
+    background-color: $c-bluegrey-dark;
+    border-radius: 2px;
+    color: $c-white;
+    padding: 10px 20px;
+  }
+}
+
+#objectCount {
+  z-index: 9;
+}

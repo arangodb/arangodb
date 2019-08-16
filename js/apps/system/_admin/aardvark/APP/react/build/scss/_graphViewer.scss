@@ -1,0 +1,158 @@
+div.gv_zoom_widget {
+  height: 300px;
+  left: 62px;
+  opacity: .7;
+  position: absolute;
+  top: 0;
+  width: 40px;
+  z-index: 1;
+
+  div.gv_zoom_slider {
+    background: $c-lightgreen-2-bg;
+    border-radius: 3px;
+    height: 200px;
+    margin: 0 17px;
+    width: 4px;
+  }
+
+
+  a.ui-slider-handle {
+    background-color: $c-header-btn-fg;
+    border: 1px solid $c-content-border;
+    height: .5em;
+    left: -.55em;
+    outline: none;
+
+    &.ui-state-hover {
+      outline-color: $c-nav-bg;
+    }
+  }
+
+  a.ui-slider-handle:hover {
+    cursor: pointer;
+  }
+
+  .ui-state-default, {
+    background: $c-slider-bg;
+  }
+
+}
+
+#menubar {
+  margin: 0 0 10px;
+}
+
+div.gv_colour_list {
+  @extend %pull-right;
+  max-height: 680px;
+  overflow: auto;
+  position: absolute;
+  right: 26px;
+  text-align: right;
+  top: 20px;
+  z-index: 1;
+
+  li {
+    background-color: $c-transp;
+    float: none;
+    padding: 2px 6px;
+  }
+}
+
+svg.graph-viewer {
+  background-color: $c-white;
+  border: 1px solid $c-content-border;
+  border-radius: 3px;
+  left: 54px;
+  position: absolute;
+  top: -10px;
+  z-index: 0;
+
+  text {
+    max-width: 90px;
+    pointer-events: none;
+  }
+}
+
+div.gv-background {
+  position: relative;
+}
+
+.link > line {
+  @extend %clickable;
+  stroke-width: 1;
+}
+
+.node {
+  @extend %clickable;
+}
+
+div.gv-colour-list:hover {
+  opacity: 1;
+}
+
+div.gv-colour-list {
+  border-radius: 3px;
+  max-height: 350px;
+  max-width: 300px;
+  min-width: 190px;
+  opacity: .1;
+  overflow-x: hidden !important;
+  overflow-y: auto;
+  position: absolute;
+  right: 8px;
+  text-align: right;
+  top: 0;
+  z-index: 1;
+
+  li {
+    float: none;
+    overflow: hidden;
+    padding: 2px 6px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  ul {
+
+    ul {
+      border-left: 1px solid rgba(104, 103, 102, .1);
+      border-right: 1px solid rgba(104, 103, 102, .1);
+    }
+
+    ul:first-child {
+      border-left: 1px solid rgba(104, 103, 102, .1);
+      border-right: 1px solid rgba(104, 103, 102, .1);
+      border-top: 1px solid rgba(104, 103, 102, .1);
+      border-top-left-radius: 3px;
+      border-top-right-radius: 3px;
+    }
+
+    ul:last-child {
+      border-bottom: 1px solid rgba(104, 103, 102, .1);
+      border-bottom-left-radius: 3px;
+      border-bottom-right-radius: 3px;
+      border-left: 1px solid rgba(104, 103, 102, .1);
+      border-right: 1px solid rgba(104, 103, 102, .1);
+    }
+
+  }
+}
+
+#tab-content-create-graph {
+  .addAfter,
+  .addDelete,
+  .delete {
+    margin-top: -9px;
+    position: absolute;
+    right: 13px;
+  }
+
+  .tableRow {
+    &.first {
+      border-top: 10px solid $c-white;
+    }
+  }
+
+
+}

@@ -1,0 +1,44 @@
+.hotkeysList {
+
+  //width: 50%;
+
+  .hotkeysLabel {
+    clear: both;
+    color: $c-black;
+    font-size: 16px;
+    font-weight: 400;
+  }
+
+  .hotkeysContent {
+    padding-left: 10px;
+  }
+
+
+  li {
+
+    line-height: 25px;
+
+    .hotkeysDiv {
+      float: left;
+    }
+  }
+
+  .hotkeysicons {
+    background-color: $c-bar-bg;
+    border: 1px solid $c-black;
+    border-radius: 2px;
+    color: $c-white;
+    display: inline;
+    height: 19px;
+    margin-left: 10px;
+    text-align: center;
+    width: 19px;
+  }
+
+}
+
+.hotkeysContentLabel {
+  float: left;
+  width: 30%;
+}
+

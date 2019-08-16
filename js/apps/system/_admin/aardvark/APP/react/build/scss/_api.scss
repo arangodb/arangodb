@@ -1,0 +1,99 @@
+.centralContent {
+  .api-actions {
+    margin: 0 !important;
+    padding: 0;
+
+    .container {
+      margin-bottom: 0 !important;
+      margin-left: 5px !important;
+      margin-right: 5px !important;
+      margin-top: 0 !important;
+      padding-bottom: 10px !important;
+      padding-top: 13px !important;
+    }
+
+    .resource {
+      border-bottom: 0 !important;
+      padding-left: 5px !important;
+
+      .heading > .options {
+        margin: 11px 10px 0 0 !important;
+      }
+
+      .heading h2 a {
+        color: $c-black !important;
+        font-weight: 300 !important;
+      }
+    }
+
+    .active .heading h2 a {
+      color: $c-black !important;
+    }
+
+    .endpoint .operations .content {
+      margin: 0 !important;
+
+      h4 {
+        font-weight: 700 !important;
+      }
+    }
+
+    .endpoints {
+      margin-right: 5px !important;
+
+      .endpoint:last-child {
+        padding-bottom: 5px !important;
+      }
+    }
+
+    input[type="button"] {
+      background: none repeat scroll 0 0 $c-api-docs-bg-input !important;
+      border: medium none !important;
+      box-shadow: none !important;
+      color: $c-white !important;
+      float: right !important;
+      font-size: 14px !important;
+      font-weight: 300 !important;
+      margin-top: 10px !important;
+      padding: 8px 16px !important;
+    }
+
+  }
+
+  .api-actions .endpoint .operations .heading,
+  .api-actions .endpoint .operations .content {
+    border-radius: 0 !important;
+    font-weight: 300 !important;
+  }
+
+  .api-actions .toggleOperation,
+  .api-actions .http_method {
+    border-radius: 0 !important;
+  }
+
+  .api-actions .required,
+  .api-actions em,
+  .api-actions strong {
+    font-weight: 400 !important;
+  }
+}
+
+.form-actions {
+  background: none;
+  border: 0;
+}
+
+.form-actions:before,
+.form-actions:after {
+  content: '';
+  display: table;
+  line-height: 0;
+}
+
+.form-actions:after {
+  clear: both;
+}
+
+.swagger-section #swagger-ui-container {
+  margin: .3em 1em !important;
+}

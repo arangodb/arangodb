@@ -1,0 +1,22 @@
+.showHotkeyHelp {
+  cursor: pointer;
+}
+
+.shortcuts {
+  font-size: 14px;
+  font-weight: 200;
+
+  b {
+    border-left: 1px solid rgba(0, 0, 0, .34);
+    margin-left: 5px;
+    padding-left: 5px;
+  }
+
+  b:first-child,
+  .clearShortcut {
+    border-left: 0;
+    margin-left: 0;
+    padding-left: 0;
+  }
+}
+

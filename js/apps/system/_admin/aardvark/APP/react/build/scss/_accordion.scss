@@ -1,0 +1,28 @@
+.accordion-group {
+  border: 0;
+}
+
+.accordion-body {
+  height: auto !important;
+}
+
+.accordion-heading {
+
+  padding-bottom: 20px;
+  padding-top: 25px;
+
+  a {
+    border: 1px solid $c-accordion-heading;
+    color: $c-black;
+    font-weight: 400;
+    width: 397px !important;
+  }
+
+  .accordion-toggle {
+    border-radius: 3px;
+    box-sizing: border-box;
+    display: block;
+    padding: 8px 15px;
+    width: 100% !important;
+  }
+}

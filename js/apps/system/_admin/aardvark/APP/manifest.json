@@ -32,26 +32,26 @@
   },
 
   "files": {
+    "/static": "react/build/static",
+    "/img": "react/build/img",
+    "/static/css/static/media": "react/build/static/media",
+
+    "/js/arango/aqltemplates.json": "react/public/assets/aqltemplates.json",
+    "/favicon.ico": {
+      "path": "react/build/favicon.ico",
+      "gzip": false
+    },
+    "/worker-json.js": {
+      "path": "react/build/assets/src/worker-json.js",
+      "gzip": true
+    },
     "/ace.js": {
-      "path": "frontend/src/ace.min.js",
+      "path": "react/build/assets/src/ace.min.js",
       "gzip": true
     },
     "/mode-aql.js": {
-      "path": "frontend/src/mode-aql.js",
+      "path": "react/build/assets/src/mode-aql.js",
       "gzip": false
-    },
-    "/favicon.ico": {
-      "path": "favicon.ico",
-      "gzip": false
-    },
-    "/static": "react/build/static",
-    "/static/css/static/media": "react/build/static/media",
-    "/img": "frontend/img",
-    "/data": "frontend/data",
-    "/js/arango/aqltemplates.json": "frontend/aqltemplates.json",
-    "/worker-json.js": {
-      "path": "frontend/src/worker-json.js",
-      "gzip": true
     }
   }
 }

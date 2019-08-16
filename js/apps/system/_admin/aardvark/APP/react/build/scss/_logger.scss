@@ -1,0 +1,86 @@
+#loggerContent {
+  #logEntries {
+    padding-top: 15px;
+  }
+
+  #logFilters {
+    font-weight: 500 !important;
+    opacity: .7;
+    text-align: right;
+
+    i {
+      font-size: 11pt;
+      margin-right: 5px;
+      top: 0;
+    }
+  }
+
+  #noLogEntries {
+    font-weight: 500;
+    opacity: .7;
+    padding: 20px;
+    text-align: center;
+  }
+
+  .arangoToolbarTop {
+    background-color: rgba(0, 0, 0, 0);
+    border: 0;
+    height: 62px;
+    margin-top: -74px;
+
+    button {
+      margin-right: 0;
+    }
+  }
+
+  .pure-g {
+    padding-bottom: 5px;
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-top: 0;
+
+    &:last-child {
+      .logBorder {
+        opacity: 0;
+      }
+    }
+
+    .icon {
+      opacity: .6;
+    }
+
+    .msg {
+      line-height: 18px;
+    }
+
+    .labels {
+      span {
+        border: 1px solid rgba(27, 31, 35, .15);
+        border-radius: 2px;
+        display: inline-block;
+        height: 10px;
+        width: 10px;
+      }
+    }
+
+    .date {
+      opacity: .6;
+
+      .fa {
+        margin-right: 5px;
+      }
+    }
+  }
+
+  .logBorder {
+    border-bottom: 1px solid $c-black;
+    margin-bottom: 13px;
+    opacity: .2;
+    padding-top: 5px;
+  }
+
+  .actions {
+    margin-bottom: 20px;
+    text-align: center;
+  }
+}

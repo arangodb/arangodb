@@ -40,10 +40,10 @@
 
 .pure-table {
   border: 0;
-  display: inline-block;
+  display: block;
 
   &.pure-table-header {
-    min-width: 100%;
+    // min-width: 100%;
   }
 
   padding: {

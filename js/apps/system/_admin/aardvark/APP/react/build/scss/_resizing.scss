@@ -1,0 +1,632 @@
+.resizecontainer {
+  @extend %clear-float;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  padding: {
+    left: 10px;
+    right: 10px;
+  };
+}
+
+@media (max-width: 738px) {
+
+  // NAVIGATION
+  #collectionsDropdown ul {
+    width: auto !important;
+  }
+
+  .footer-center {
+    p {
+      display: none;
+    }
+  }
+
+  #queryContent {
+    .styled-select,
+    #querySize,
+    #querySizeDiv {
+      margin-right: 6px;
+      width: 90px !important;
+    }
+  }
+}
+
+@media (max-width: 970px) {
+  #documentsDiv {
+    #totalDocuments {
+      display: none;
+    }
+  }
+}
+
+
+@media (min-width: 739px) and (max-width: 1041px) {
+}
+
+@media (min-width: 1042px) and (max-width: 1284px) {
+}
+
+@for $i from 1 through 11 {
+  $white-space: 10px;
+  $min: $tile-width * $i;
+  $navbar-size: 150px;
+  $content-size: $min - $navbar-size;
+
+  $legend-width: 140px;
+  $legend-weight: 400;
+  $legend-font: 15px;
+  $legend-margin: 10px;
+
+  $axis-font: 15px;
+  $axis-weight: 400;
+
+  $tendency-name-font: 22px;
+  $tendency-name-weight: 300;
+  $tendency-figure-font: 36px;
+  $tendency-figure-weight: 400;
+  $tendency-height-corrector: 6.5px;
+
+  $subbar-font: 15px;
+  $subar-weight: 400;
+
+  $smallchart-height-corrector: 8px;
+
+  $dashboard-height: 300px;
+
+  @if $i < 4 {
+    $legend-width: 0;
+    $legend-font: 10px;
+    $legend-margin: 10px;
+
+    $axis-font: 10px;
+
+    $tendency-name-font: 14px;
+    $tendency-figure-font: 16px;
+    $tendency-height-corrector: 7.25px;
+
+    $subbar-font: 10px;
+
+    $smallchart-height-corrector: 5px;
+
+    $dashboard-height: 200px;
+  } @else if $i < 5 {
+    $legend-width: 120px;
+    $legend-font: 11px;
+    $legend-margin: 10px;
+
+    $axis-font: 11px;
+
+    $tendency-name-font: 15px;
+    $tendency-figure-font: 18px;
+
+    $subbar-font: 11px;
+
+    $dashboard-height: 235px;
+  } @else if $i < 6 {
+    $legend-width: 130px;
+    $legend-font: 12px;
+    $legend-margin: 10px;
+
+    $axis-font: 13px;
+
+    $tendency-name-font: 18px;
+    $tendency-figure-font: 22px;
+
+    $subbar-font: 13px;
+
+    $dashboard-height: 270px;
+  } @else if $i < 7 {
+    $legend-width: 140px;
+    $legend-font: 13px;
+    $legend-margin: 10px;
+
+    $axis-font: 13px;
+
+    $tendency-name-font: 20px;
+    $tendency-figure-font: 26px;
+
+    $subbar-font: 13px;
+
+    $dashboard-height: 300px;
+  } @else if $i < 8 {
+    $legend-width: 160px;
+    $legend-font: 14px;
+    $legend-margin: 10px;
+
+    $axis-font: 14px;
+
+    $tendency-name-font: 24px;
+    $tendency-figure-font: 30px;
+
+    $subbar-font: 14px;
+
+    $dashboard-height: 340px;
+  } @else if $i < 9 {
+    $legend-width: 170px;
+    $legend-font: 15px;
+    $legend-margin: 10px;
+
+    $axis-font: 14px;
+
+    $tendency-name-font: 28px;
+    $tendency-figure-font: 34px;
+
+    $subbar-font: 15px;
+
+    $dashboard-height: 400px;
+  }
+
+  @media (min-width: $min + $white-space) and (max-width: $min + $tile-width - 1 + $white-space) {
+    .resizecontainer {
+      width: 100%;
+    }
+
+    .dashboard-full-width-chart {
+      $int-width: $content-size - 3px;
+      width: 100%;
+
+      .dashboard-full-width-chart-inner {
+        width: 100%;
+
+        .dashboard-interior-chart {
+          float: left;
+          $int-height: (($dashboard-height - 29px) / 2) - $tendency-height-corrector;
+          //height: $int-height + 10px;
+        }
+      }
+
+      .dashboard-sub-bar {
+        width: 100%;
+      }
+    }
+
+    .dashboard-large-chart {
+      $int-width: ($content-size * 2 / 3) - 4px - 2px;
+      //width: $int-width;
+
+      .dashboard-sub-bar {
+        width: 100%;
+      }
+
+      .dashboard-large-chart-inner {
+        width: 100%;
+
+        .dashboard-interior-chart {
+          height: $dashboard-height - $dashboard-padding - 5px;
+          //width: $int-width - $legend-width - $legend-margin - 0;
+        }
+      }
+    }
+
+    .dashboard-sub-bar-menu {
+      font-size: $subbar-font + 2px;
+    }
+
+    .dashboard-medium-chart-outer {
+      $int-width: ($content-size / 2) - 16px - 2px + 10px;
+      float: left;
+      //width: $int-width;
+    }
+
+    .dashboard-medium-chart {
+      $int-width: ($content-size / 2) - 16px - 2px;
+      width: 100%;
+
+      .dashboard-sub-bar {
+        width: 100%;
+      }
+
+      .dashboard-interior-chart {
+        height: $dashboard-height - $dashboard-padding - 5px;
+        width: 100%;
+      }
+
+      .dashboard-medium-chart-menu {
+        font-size: $tendency-name-font - 2px;
+        left: $int-width - $tendency-name-font - 3px;
+        top: 0;
+      }
+
+      #clusterGraphs svg {
+        height: $dashboard-height - $dashboard-padding - 5px;
+        width: $int-width;
+
+        text {
+          font-size: $legend-font;
+        }
+      }
+    }
+
+    .dashboard-small-chart {
+      $int-width: ($content-size / 3) - 8px - 2px;
+      //width: auto;
+
+      .dashboard-sub-bar {
+        clear: both;
+        height: 65px;
+        margin-bottom: 0;
+        width: 100%;
+      }
+
+      .dashboard-small-chart-inner {
+        width: 100%;
+
+        .dashboard-interior-chart {
+          height: $dashboard-height - $smallchart-height-corrector + 2px;
+          width: 100%;
+
+          .nv-axis text {
+            fill: $c-darker-grey;
+            font: {
+              size: $axis-font;
+              weight: $axis-weight;
+            }
+          }
+        }
+      }
+    }
+
+    .dashboard-tendency-container {
+      $int-width: ($content-size / 3) - 22px;
+
+      .dashboard-tendency-chart {
+        $int-height: (($dashboard-height - 29px) / 2) - $tendency-height-corrector;
+        height: $int-height + 5px;
+
+        .dashboard-tendency,
+        .dashboard-subtitle-bar,
+        .dashboard-figure {
+          width: ($int-width / 2) - 19px;
+        }
+
+        $int-height2: ($int-height - 3px);
+
+        .dashboard-subtitle-bar {
+          height: ($int-height2 / 3);
+          line-height: ($int-height2 / 3);
+        }
+
+        .dashboard-figure {
+          height: ($int-height2 * 2 / 3) - ((((($int-height2 * 2 / 3) - (($int-height2 * 2 / 3 / 2) - 6px) * 2) / 2) - 1px) * 2);
+          line-height: ((($int-height - 3px) * 2 / 3 / 2) - 6px);
+          padding-top: (((($int-height2 * 2 / 3) - (($int-height2 * 2 / 3 / 2) - 6px) * 2) / 2) - 1px);
+        }
+      }
+
+      .dashboard-sub-bar {
+        width: 100%;
+      }
+    }
+
+    .dashboard-bar-chart-container {
+      $int-width: ($content-size / 3) - 18px - 2px;
+      $int-height: (($dashboard-height - 30px) / 2) - $tendency-height-corrector;
+      $int-height2: ($int-height - 20px);
+      height: $int-height + 2px;
+
+      .dashboard-bar-chart {
+        height: $int-height - 3px;
+        width: 100%;
+
+        .dashboard-bar-chart-title {
+          height: (($int-height - 2px) / 3);
+          line-height: (($int-height - 2px) / 3);
+
+          .percentage {
+            width: ((($int-width / 2) - 8px) * 1.4);
+          }
+
+          .absolut {
+            //line-height: ($int-height2 * 2 / 3) - 10px;
+            line-height: 40px;
+            padding-top: 15px;
+            width: ($int-width - (($int-width / 2) * 1.4)) - 6px;
+          }
+        }
+
+        .dashboard-bar-chart-chart {
+
+          $int-height2: ($int-height - 20px);
+          box-sizing: border-box;
+          //height: ($int-height2 * 2 / 3) - 5px;
+          height: 50px;
+          margin-top: 5px;
+          //line-height: ($int-height2 * 2 / 3) - 5px;
+          width: 100%;
+
+          #residentSizeChart {
+            //height: ($int-height2 * 2 / 3);
+          }
+        }
+      }
+
+      .dashboard-sub-bar {
+        padding-top: 13px;
+        width: 100%;
+      }
+    }
+
+    .modal-chart-detail {
+      $int-width: $content-size;
+
+      bottom: 12.1% !important;
+      left: 50%;
+      margin-left: -($int-width) / 2;
+      width: $int-width + 20px !important;
+
+      .modal-body {
+        // min-height: $dashboard-height;
+        height: 95%;
+        max-height: none;
+        padding: 5px;
+      }
+
+      .modal-dashboard-legend {
+        @if $i < 4 {
+          display: none;
+        }
+        font-size: $legend-font + 2px;
+        min-height: $dashboard-height - 10px;
+        width: $legend-width + 10px;
+      }
+
+      .modal-inner-detail {
+        width: $int-width - $legend-width - 20px;
+      }
+    }
+
+    .modal-body {
+      .dashboard-large-chart {
+        $int-width: ($content-size * 2 / 3) - 9px;
+        width: $int-width;
+
+        .dashboard-sub-bar {
+          width: 100%;
+        }
+
+        .dashboard-large-chart-inner {
+          .dashboard-interior-chart {
+            width: 100%;
+          }
+        }
+      }
+
+      .dashboard-medium-chart-outer {
+        $int-width: ($content-size / 2) - 21px - 2px;
+        float: left;
+        width: $int-width;
+      }
+
+      .dashboard-medium-chart {
+        $int-width: ($content-size / 2) - 21px - 2px;
+        width: 100%;
+
+        .dashboard-sub-bar {
+          width: 100%;
+        }
+
+        .dashboard-interior-chart {
+          width: 100%;
+        }
+
+        .dashboard-medium-chart-menu {
+          left: $int-width - $tendency-name-font - 3px;
+        }
+      }
+
+      .dashboard-small-chart {
+        $int-width: ($content-size / 3) - 13px - 2px;
+        width: auto;
+
+        .dashboard-sub-bar {
+          clear: both;
+          width: auto;
+        }
+
+        .dashboard-small-chart-inner {
+          width: auto;
+
+          .dashboard-interior-chart {
+            width: auto;
+          }
+        }
+      }
+
+      .dashboard-tendency-container {
+        $int-width: ($content-size / 3) - 25px;
+        box-sizing: border-box;
+        width: 100%;
+
+        .dashboard-tendency-chart {
+          box-sizing: border-box;
+          width: 100%;
+
+          .dashboard-tendency,
+          .dashboard-subtitle-bar,
+          .dashboard-figure {
+            box-sizing: border-box;
+            width: 100%;
+          }
+        }
+
+        .dashboard-sub-bar {
+          width: 100%;
+        }
+      }
+
+      .dashboard-bar-chart-container {
+        $int-width: ($content-size / 3) - 18px - 2px;
+
+        .dashboard-bar-chart {
+          width: auto;
+
+          .dashboard-bar-chart-title {
+            .percentage {
+              width: ((($int-width / 2) - 8px) * 1.4);
+            }
+
+            .absolut {
+              width: ($int-width - (($int-width / 2) * 1.4)) - 6px;
+            }
+          }
+        }
+
+        .dashboard-bar-chart-chart {
+          width: $int-width - 16px;
+        }
+
+        .dashboard-sub-bar {
+          width: 100%;
+        }
+      }
+    }
+
+    .percentage {
+      font-size: $tendency-name-font;
+    }
+
+    .absolut {
+      font-size: $tendency-name-font;
+      font-weight: $tendency-name-weight;
+    }
+
+    .dashboard-sub-bar {
+      font-size: $subbar-font;
+      font-weight: $subar-weight;
+    }
+
+    .dashboard-subtitle-bar {
+      font-size: $tendency-name-font;
+      font-weight: $tendency-name-weight;
+    }
+
+    .dashboard-figure {
+      font-size: $tendency-figure-font;
+      font-weight: $tendency-figure-weight;
+    }
+
+    .dashboard-figurePer {
+      font-size: $tendency-figure-font - 2px;
+      font-weight: $tendency-name-weight;
+    }
+
+    .dygraph-axis-label {
+      &.dygraph-axis-label-y,
+      &.dygraph-axis-label-x {
+        font: {
+          size: $axis-font;
+          weight: $axis-weight;
+        }
+      }
+    }
+
+    .dashboard-legend {
+      @if $i < 4 {
+        display: none;
+      }
+      font-size: $legend-font;
+      font-weight: $legend-weight;
+      height: 30px;
+      width: 100%;
+    }
+
+    .dashboard-half-height-legend {
+      @if $i < 4 {
+        display: none;
+      }
+      font-size: $legend-font;
+      height: $dashboard-height / 2;
+      width: $legend-width / 2;
+    }
+
+    .application-detail-view {
+
+      section.info {
+        @if $i < 3 {
+          width: $content-size;
+        } @else {
+          width: $content-size - 200px;
+        }
+      }
+
+      @if $i < 3 {
+        aside.meta {
+          display: none;
+        }
+      }
+    }
+  }
+}
+
+div.headerBar {
+  background-color: none;
+  border-radius: 2px;
+  float: right;
+  font-size: 16px;
+  height: 36px;
+  margin-top: -55px;
+  position: absolute;
+  right: 150px;
+}
+
+div.centralRow {
+  background: $c-bluegrey-bg;
+  height: 100%;
+  min-height: 100%;
+  overflow-y: auto;
+  position: relative;
+  right: 0;
+  //width: 100%;
+}
+
+div.centralContent {
+  @extend %pull-left;
+  background-color: rgba(0, 0, 0, 0);
+  box-sizing: border-box;
+  margin-top: 10px;
+  padding: {
+    bottom: 20px;
+    left: 5px;
+    right: 5px;
+    top: 5px;
+  }
+  width: 100%;
+}
+
+.contentDiv {
+  list-style: none;
+  padding: 0;
+
+  li {
+    @extend %pull-left;
+    background-color: $c-very-transp;
+  }
+
+  a.add {
+    display: block;
+    font-weight: 400;
+    padding: 40px 0;
+    text-align: left;
+  }
+
+  .icon {
+    @extend %clickable;
+    padding: {
+      left: 5px;
+      right: 5px;
+      top: 10px;
+    }
+  }
+
+  &:after {
+    clear: both;
+  }
+
+  &:after,
+  &:before {
+    content: '';
+    display: table;
+    line-height: 0;
+  }
+}

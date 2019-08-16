@@ -1,0 +1,17 @@
+.usermenu {
+  width: 40px;
+}
+
+.userImg {
+  margin-top: -11px;
+
+  .caret {
+    margin-top: 13px;
+  }
+}
+
+.user-menu-img {
+  @include border-radius(2px);
+  background-color: $c-white;
+  height: 25px;
+}

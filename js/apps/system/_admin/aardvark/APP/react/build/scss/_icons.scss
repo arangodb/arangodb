@@ -1,0 +1,54 @@
+.clusterInfoIcon {
+  float: left;
+  padding-left: 5px;
+  padding-top: 2px;
+}
+
+.waitModal {
+  text-align: center;
+
+  &.icon {
+    font-size: 100px;
+    height: 120px;
+  }
+
+  &.message {
+    font-size: 20px;
+  }
+}
+
+.icon-info-sign {
+  @extend %clickable;
+}
+
+.icon_arangodb_info {
+  color: $c-icon-with-opacity;
+  font-size: 23px;
+}
+
+.arangoicon {
+  @extend %clickable;
+}
+
+li a [class^="icon_arangodb"],
+li a [class*=" icon_arangodb"] {
+  font-size: 18px;
+  position: absolute;
+  right: 4px;
+  top: 2px;
+}
+
+.fa-minus-circle {
+  color: $c-negative;
+  font-size: 14pt;
+}
+
+.fa-plus-circle {
+  color: $c-positive;
+  font-size: 16pt;
+}
+
+.fa-minus-circle:hover,
+.fa-plus-circle:hover {
+  cursor: pointer;
+}

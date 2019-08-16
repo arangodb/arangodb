@@ -124,7 +124,7 @@ window.numeral = require('../../frontend/js/lib/numeral.min.js'); // TODO
 window.JSONEditor = jsoneditor;
 // ace 
 window.define = window.ace.define;
-window.aqltemplates = require('../../frontend/aqltemplates.json');
+window.aqltemplates = require('../public/assets/aqltemplates.json');
 
 window.d3 = d3;
 require('../../frontend/js/lib/leaflet.js')

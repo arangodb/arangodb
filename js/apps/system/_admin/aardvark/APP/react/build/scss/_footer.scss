@@ -1,0 +1,79 @@
+.footer {
+  background-color: rgba(239, 240, 241, .8);
+  display: none;
+  font-size: 14px;
+  left: 160px;
+  right: 10px;
+  text-align: center;
+  z-index: 1000;
+}
+
+footer.footer {
+  //@extend %fixedbar;
+  //background-color: $c-white-transp;
+  //background-color: rgba(219, 226, 230, 1);
+  //border-top: 1px solid $c-navbar-border;
+  bottom: 0;
+  height: 43px;
+  position: fixed;
+
+  p {
+    font-size: 10pt;
+    font-weight: 100;
+    margin-bottom: 0;
+    padding-bottom: 10px;
+    padding-top: 10px;
+  }
+}
+
+div.footer-left {
+  @extend %pull-left;
+  background: none repeat scroll 0 0 $c-transp;
+  color: $c-bar-bg;
+  width: 45%;
+}
+
+div.footer-center {
+  @extend %pull-left;
+  background: none repeat scroll 0 0 $c-transp;
+  color: $c-bar-bg;
+  width: 10%;
+
+
+  p {
+    padding-top: 5px;
+  }
+
+  p:hover {
+    cursor: pointer;
+  }
+}
+
+div.footer-right {
+  @extend %pull-right;
+  background: none repeat scroll 0 0 $c-transp;
+  color: $c-bar-bg;
+  width: 45%;
+
+  p {
+    @extend %pull-right;
+    color: $c-white;
+  }
+
+  i {
+    color: $c-negative;
+    font-size: 18px;
+  }
+
+  a {
+    color: $c-bar-bg;
+    margin-left: 5px;
+    position: relative;
+    top: -1px;
+  }
+
+  .isOnline {
+    color: $c-positive !important;
+  }
+
+}

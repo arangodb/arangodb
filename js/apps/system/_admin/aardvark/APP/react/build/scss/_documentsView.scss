@@ -1,0 +1,232 @@
+.new-index-view {
+  input[type='checkbox'] {
+    float: left;
+  }
+
+  table {
+    tr {
+      width: 600px !important;
+
+      th:last-child {
+        width: 50px !important;
+      }
+    }
+
+    th {
+      font-weight: 300 !important;
+      width: 200px !important;
+    }
+  }
+}
+
+#documentsDiv {
+  padding-top: 0;
+
+  .pure-table {
+    .snippet-container {
+      margin-top: 10px;
+    }
+  }
+}
+
+.edit-index-table {
+  margin-top: 5px;
+  min-width: auto !important;
+
+  th {
+    padding-bottom: 5px;
+    padding-left: 5px;
+    padding-top: 5px;
+  }
+
+  .icon_arangodb_locked {
+    color: $c-arangodb-locked;
+    cursor: default;
+    font-size: 20px;
+    margin-left: 10px;
+  }
+
+  .icon_arangodb_roundminus {
+    @extend %clickable;
+    @extend %icon-negative;
+    font-size: 20px;
+    margin-left: 10px;
+  }
+
+  tfoot {
+
+    border-top: 1px solid $c-modal-table-border-bottom;
+
+    i {
+      color: $c-positive;
+      font-size: 19px;
+      margin-left: 22px;
+      margin-top: 5px;
+    }
+
+    i:hover {
+      color: $c-positive-hover;
+      cursor: pointer;
+    }
+  }
+
+}
+
+.contentIn {
+
+  .arangoicon {
+    font-size: 25px;
+    position: relative;
+    top: -3px !important;
+  }
+}
+
+#collectionEditIndexTable {
+  thead {
+    border-bottom: 1px solid $c-grey;
+  }
+}
+
+.newIndexClass {
+  table {
+    border-top: 1px solid $c-modal-table-border-bottom;
+    margin-bottom: 60px;
+
+    input,
+    select {
+      @extend %inputs;
+    }
+
+    select {
+      margin-right: 7px;
+    }
+
+    .tooltipDiv {
+      margin-top: 5px;
+    }
+
+    .arangoicon {
+      margin-top: 5px;
+    }
+  }
+}
+
+.index-button-bar {
+
+  float: right;
+
+  i {
+    color: $c-positive;
+    font-size: 16pt;
+    margin-right: 43px;
+  }
+
+  i:hover {
+    cursor: pointer;
+  }
+
+  #cancelIndex {
+    margin-right: 13px;
+  }
+}
+
+%docs-col-no-border {
+  border: 0 !important;
+}
+
+.docsFirstCol {
+  @extend %docs-col-no-border;
+  height: 26px;
+  width: 80%;
+}
+
+.docsSecCol {
+  @extend %docs-col-no-border;
+  height: 26px;
+  min-width: 400px !important;
+  width: 10%;
+}
+
+.docsThirdCol {
+  @extend %docs-col-no-border;
+  @extend %pull-right;
+
+  height: 26px;
+}
+
+.removeFilterItem,
+.add-filter-item {
+  margin-left: 8px;
+
+  i {
+    margin-top: 5px !important;
+  }
+}
+
+.upload-indicator {
+  display: none;
+  margin-top: -3px;
+  padding-right: 10px;
+}
+
+.documentsDropdown {
+  .dropdownImport,
+  .headerDropdown {
+    clear: both;
+    margin-bottom: 10px;
+  }
+}
+
+.documents-size {
+  background-color: $c-white !important;
+  border: 1px solid $c-grey;
+  border-radius: 0;
+  box-shadow: none;
+  color: $c-black;
+  float: right;
+  font-size: 11pt;
+  font-weight: 300;
+  height: 28px;
+  line-height: 18px;
+  margin-left: 10px;
+  margin-top: 0;
+  outline: none;
+  outline-color: transparent;
+  outline-style: none;
+  width: 115px;
+}
+
+.queryline {
+  height: 37px !important;
+
+  .fa-info-circle:hover {
+    cursor: pointer;
+  }
+
+  input,
+  select {
+    float: left;
+  }
+
+  select {
+    height: 32px;
+  }
+}
+
+.headerDropdown .queryline:last-child {
+  margin-bottom: -2px;
+}
+
+.ace_error {
+  background: none !important;
+}
+
+#exportHeader .fa-exclamation-circle {
+  color: $c-nav-bg;
+  font-size: 13pt;
+  margin-right: 10px;
+}
+
+.totalDocuments:hover {
+  color: $c-black;
+}

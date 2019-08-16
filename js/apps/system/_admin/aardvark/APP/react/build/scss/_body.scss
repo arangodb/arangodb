@@ -1,0 +1,112 @@
+html {
+  height: 100%;
+}
+
+body {
+  @extend %font-family;
+  //background: $c-lightgreen-2-bg !important;
+  background: $c-bluegrey-bg;
+  color: $c-body-color;
+  display: block;
+  font-size: 14px;
+  font-weight: 400;
+  height: 100%;
+  line-height: 20px;
+  margin: 0;
+  overflow: hidden;
+
+  .bodyWrapper {
+    height: 100%;
+    left: 150px;
+    min-height: 100%;
+    position: absolute;
+    right: 0;
+  }
+
+  .centralRow {
+    position: relative;
+  }
+
+  .loadingScreen {
+    background-color: $c-white;
+    bottom: 0;
+    left: 0;
+    padding-top: 100px;
+    position: absolute;
+    right: 0;
+    top: 102px;
+    z-index: 100;
+
+    span {
+      display: inline-block;
+      margin-top: 10px;
+      text-align: center;
+      width: 100%;
+    }
+
+    i {
+      width: 100%;
+    }
+  }
+
+  #offlinePlaceholder {
+    background: $c-bluegrey-light;
+    height: 100%;
+    left: 0;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 9999;
+
+    .offline-div {
+      overflow: auto;
+      position: fixed;
+      top: 20%;
+      width: 100%;
+      z-index: 1050;
+
+      h3 {
+        font-weight: 300;
+      }
+
+      p {
+        font-weight: 300;
+      }
+
+      .pure-u {
+        width: 100%;
+      }
+
+      .offline-window {
+        background: $c-white;
+        border-radius: 3px;
+
+        .offline-header {
+          padding-top: 10px;
+          text-align: center;
+        }
+
+        .offline-body {
+          padding-bottom: 20px;
+          padding-top: 0;
+
+          .animation_state {
+            padding-top: 20px;
+          }
+
+          > p {
+            margin-bottom: 0;
+            text-align: center;
+          }
+        }
+
+        .offline-header,
+        .offline-body {
+          padding-left: 20px;
+          padding-right: 20px;
+        }
+      }
+    }
+  }
+
+}

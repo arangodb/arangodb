@@ -1,0 +1,18 @@
+.dbselection {
+  float: left;
+  margin-right: 3px;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+
+  .fa {
+    color: $c-white;
+    opacity: .3;
+  }
+
+  .fa-caret-square-o-down {
+    margin-left: 5px;
+  }
+}

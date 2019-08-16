@@ -1,0 +1,145 @@
+.arangoDataTable {
+  display: block;
+  position: relative;
+  width: 100%;
+
+  tbody {
+    display: inline-block;
+    max-height: 200px;
+    overflow-y: auto;
+    position: absolute;
+    width: 100%;
+  }
+
+  thead {
+    background-color: $c-white !important;
+    display: inline-block;
+    font-weight: 400 !important;
+    text-align: left;
+    width: 100%;
+
+    td {
+      overflow: hidden;
+    }
+
+    th {
+      border-bottom: 0;
+      cursor: default !important;
+      font-weight: 400 !important;
+      padding: 10px 14px !important;
+    }
+
+    tr {
+      border-bottom: 1px solid $c-c2grey;
+    }
+
+  }
+
+  tr {
+    cursor: pointer;
+  }
+
+  td {
+    padding: 8px 18px !important;
+  }
+
+  .key {
+    font-weight: 100;
+    margin-top: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dataTable {
+    .noPointer tr {
+      cursor: default;
+    }
+  }
+
+  .selected-row {
+    background-color: $c-positive !important;
+
+    div {
+      color: $c-white !important;
+    }
+
+    li {
+      color: $c-white !important;
+    }
+
+    span {
+      color: $c-white !important;
+    }
+
+  }
+}
+
+// Odd / Even coloring
+.api-container #resources > li.resource:nth-child(even),
+table.arangoDataTable tr.even {
+  background-color: $c-white;
+}
+
+.api-container #resources > li.resource:nth-child(odd),
+table.arangoDataTable tr.odd {
+  background-color: $c-table-odd-color;
+}
+
+// TODO Hard cleanup
+#tableDiv table.dataTable td {
+  padding: 12px 18px !important;
+}
+
+#documentsTableID_length,
+#documentsTableID_filter {
+  display: none;
+}
+
+#documentsTableID_wrapper {
+  padding-bottom: 0 !important;
+
+  .fg-toolbar {
+    visibility: hidden;
+  }
+}
+
+#documentsTableID_paginate,
+#documentsTableID_filter,
+#documentsTableID_length {
+  visibility: hidden;
+}
+
+.snippet-no-num {
+  @extend %font-family;
+  font-size: 1em;
+  font-weight: 400;
+  margin-bottom: 0;
+}
+
+.cuttedContent,
+.prettify ul li,
+.writeable a {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.totalDocuments {
+  color: $c-darker-grey;
+  float: left;
+  font-weight: 100;
+  margin-top: -37px !important;
+  padding-left: 10px;
+}
+
+.prettify {
+  border: none !important;
+  font-size: 1em !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+table .sorting {
+  background: none !important;
+}

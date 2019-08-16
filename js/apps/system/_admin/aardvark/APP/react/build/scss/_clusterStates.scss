@@ -1,0 +1,77 @@
+%cluster-state-icon {
+  color: $c-black;
+  height: 50px;
+  position: absolute;
+  top: 10px;
+  width: 50px;
+
+  h6.serverName {
+    bottom: 0;
+    font-size: 11px;
+    left: 0;
+    margin: 0;
+    position: absolute;
+    right: 0;
+  }
+
+  &.success {
+    @extend %icon-positive;
+    @extend %svg-positive;
+  }
+
+  &.danger {
+    @extend %icon-negative;
+    @extend %svg-negative;
+  }
+
+  &.warning {
+    @extend %icon-warning;
+    @extend %svg-warning;
+  }
+
+  &.inactive {
+    @extend %icon-inactive;
+    @extend %svg-inactive;
+  }
+}
+
+a.coordinator {
+  @extend %cluster-state-icon;
+
+  &.single {
+    left: 90px;
+  }
+
+  &.double {
+    left: 60px;
+  }
+}
+
+a.dbserver {
+  @extend %cluster-state-icon;
+
+  &.single {
+    right: 90px;
+  }
+
+  &.double {
+    right: 60px;
+  }
+}
+
+.cluster-connection-check-success {
+  color: $c-positive;
+  margin-left: 20px;
+}
+
+.cluster-connection-check-fail {
+  color: $c-negative;
+  margin-left: 20px;
+}
+
+.cluster-unreachable-info {
+  margin: 0 auto;
+  max-width: 320px;
+  padding-top: 17px;
+  text-align: center;
+}

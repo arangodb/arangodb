@@ -1,0 +1,231 @@
+div.headerDropdown,
+.dropdownImport {
+  background-color: $c-white;
+  border: 1px solid $c-content-border;
+  border-radius: 2px;
+  clear: both;
+  display: none;
+  margin-bottom: 15px;
+  padding: 10px;
+  position: relative;
+  width: auto;
+
+  &.smallDropdown {
+
+    .dropdownInner {
+      min-height: 20px;
+    }
+  }
+
+  &.headerDropdown input[type=checkbox].css-checkbox {
+    display: none;
+
+    label.css-label {
+      @extend %clickable;
+
+      background-position: 0 0;
+      background-repeat: no-repeat;
+      display: inline-block;
+      font-size: 15px;
+      height: 15px;
+      margin-top: 0;
+      padding-left: 20px;
+      vertical-align: middle;
+    }
+
+    &:checked + label.css-label {
+      background-position: 0 -15px;
+    }
+  }
+}
+
+div.dropdown-title {
+  margin-bottom: 10px;
+}
+
+div.dropdownInner {
+  @include box-shadow(0);
+  min-height: 125px;
+  position: relative;
+  width: auto;
+
+  .nav-header {
+    font-size: 10pt;
+  }
+
+  > .nav-header {
+    color: $c-black;
+    font-size: 10pt;
+    font-weight: 400;
+  }
+
+  > label {
+    color: $c-black;
+    font-weight: 300;
+  }
+
+  ul {
+    @extend %pull-left;
+    border-left: 1px solid $c-content-border;
+    display: inline;
+    list-style-type: none;
+    margin-left: 10px;
+    margin-top: 10px;
+    min-height: 105px;
+    width: 175px;
+
+    &:first-of-type {
+      border: 0;
+    }
+
+    label {
+      color: $c-black;
+      padding-left: 20px;
+    }
+
+    li {
+      .fa {
+        color: $c-dark-grey;
+        margin-right: 5px;
+
+        &.fa-square-o {
+          margin-left: 1px;
+          margin-right: 6px;
+        }
+
+        &.fa-check-circle-o,
+        &.fa-check-square-o,
+        &.fa-dot-circle-o {
+          color: $c-positive;
+        }
+      }
+    }
+  }
+
+}
+
+div.queryline {
+  @extend %search-icon;
+
+  color: $c-black;
+  height: 35px;
+
+  .textDiv {
+    margin-right: 10px;
+    margin-top: 4px;
+  }
+
+  select,
+  input {
+    @extend %inputs;
+    margin-bottom: 5px;
+  }
+
+  input {
+    width: 16%;
+  }
+
+  input[type='file'] {
+    border: 0;
+  }
+
+  &.querylineAdd span {
+    color: $c-white;
+    padding-left: 10px;
+    position: relative;
+    top: -21px;
+  }
+
+  .removeFilterItem i {
+    font-size: 16pt;
+  }
+
+  div.searchByAttribute {
+    margin-left: 6px;
+    margin-right: 6px;
+    position: relative;
+
+    input {
+      width: 140px;
+    }
+
+    > ul.gv-dropdown-menu {
+      @include border-radius(0);
+
+      background-color: $c-nav-bg;
+      color: $c-white;
+      display: none;
+      left: 0;
+      position: absolute;
+      top: 20px;
+      width: 247px;
+
+    }
+  }
+}
+
+div.dropdownImport {
+  background-color: $c-white;
+  border-radius: 3px;
+  display: none;
+  padding: {
+    bottom: 5px;
+    left: 10px;
+    right: 10px;
+    top: 10px;
+  }
+  position: relative;
+
+  input {
+    line-height: 0;
+    margin-bottom: -15px;
+    margin-top: 5px;
+  }
+}
+
+select.filterSelect {
+  color: $c-blue;
+  margin-left: 10px;
+  margin-right: 10px;
+  width: 80px;
+}
+
+//TODO Le fix
+#filterHeader button {
+  float: right;
+  margin-left: 10px !important;
+  margin-top: 1px;
+}
+
+div.input-append {
+
+  button.gv_example_toggle {
+    @include border-radius(0 4px 4px 0);
+    background-color: $c-neutral;
+    height: 30px;
+    margin-left: -1px;
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-top: 12px;
+    vertical-align: top;
+
+    &:hover {
+      background-color: $c-positive;
+    }
+  }
+
+}
+
+.searchEqualsLabel {
+  margin-left: 6px;
+  margin-right: 6px;
+}
+
+img.gv-throbber {
+  background-image: url('../img/swagger/throbber.gif');
+}
+
+span.gv_caret {
+  border-top: 5px solid $c-white;
+  margin-top: 2px !important;
+}

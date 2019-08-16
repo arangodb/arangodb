@@ -1,0 +1,498 @@
+// Bootstrap Buttons
+%bare-btn {
+  @include border-radius(2px);
+  @include box-shadow(0);
+  font-size: 13px;
+  font-weight: 300 !important;
+}
+
+%btn {
+  @extend %bare-btn;
+  border: 0;
+  color: $c-white;
+  margin-left: 10px;
+  padding: 4px 12px;
+
+  &:focus {
+    outline: none;
+  }
+
+  i {
+    margin-left: -5px;
+  }
+
+  .fa {
+    position: relative;
+    top: 1px;
+  }
+}
+
+.button-neutral {
+  @extend %btn;
+  @extend %neutral;
+}
+
+.button-disabled {
+  @extend %btn;
+  @extend %neutral;
+  cursor: not-allowed;
+}
+
+.button-header {
+  @extend %bare-btn;
+  @extend %header;
+  margin-top: 5px;
+}
+
+.button-primary {
+  @extend %btn;
+  @extend %primary;
+}
+
+.button-notification {
+  @extend %btn;
+  @extend %notification;
+}
+
+.button-success {
+  @extend %btn;
+  @extend %positive;
+}
+
+.button-info {
+  @extend %btn;
+  @extend %info;
+}
+
+.button-navbar {
+  margin-top: -5px;
+}
+
+[class^='button-']:disabled,
+button.disabled,
+[class*=' button-']:disabled {
+  @extend %inactive;
+
+  cursor: not-allowed;
+}
+
+.button-danger {
+  @extend %btn;
+  @extend %negative;
+}
+
+.button-warning {
+  @extend %btn;
+  @extend %warning;
+}
+
+.button-inactive {
+  @extend %btn;
+  @extend %inactive;
+}
+
+.button-close {
+  @extend %btn;
+  @extend %neutral;
+}
+
+.button-default {
+  @extend %btn;
+  @extend %default;
+  color: $c-black;
+}
+
+.addButton {
+  @extend %clickable;
+  @extend %icon-positive;
+  font-size: 16pt;
+  margin-right: 7px;
+  margin-top: 2px;
+  position: relative;
+}
+
+.deleteButton {
+
+  i {
+    @extend %clickable;
+    @extend %icon-negative;
+    float: right;
+    font-size: 16pt;
+    padding-right: 7px;
+    position: relative;
+    top: 12px;
+  }
+}
+
+#closeBtnInfoView {
+  margin-left: 0 !important;
+}
+
+
+button {
+  @extend %font-family;
+
+  &.btn-server {
+    width: 120px;
+  }
+
+  &.btn-small {
+    padding: 0 8px;
+  }
+
+  &.gv-zoom-btn {
+    background-size: 14px 14px;
+    height: 14px;
+    vertical-align: baseline;
+    width: 14px;
+
+    &.btn-zoom-right {
+      border: 0;
+      box-shadow: none;
+      right: 0;
+      top: 13px;
+    }
+
+    &.btn-zoom {
+      height: 14px;
+      margin: 0;
+      padding: 0;
+      position: absolute;
+      width: 16px;
+    }
+
+    &.btn-zoom-top {
+      border: 0;
+      box-shadow: none;
+      left: 13px;
+      top: 1;
+    }
+
+    &.btn-zoom-left {
+      border: 0;
+      box-shadow: none;
+      left: 0;
+      top: 13px;
+    }
+
+    &.btn-zoom-bottom {
+      border: 0;
+      box-shadow: none;
+      left: 13px;
+      top: 25px;
+    }
+
+  }
+
+  &.gv-icon-btn {
+    @include border-radius(0 !important);
+    background-size: 36px 36px;
+    height: 36px;
+    width: 36px;
+
+    &.active {
+      background-color: $c-positive;
+    }
+  }
+
+  &.gv_dropdown_entry {
+    height: 30px;
+    margin: 4px 4px 4px 12px;
+    width: 160px;
+  }
+
+  &.gv_context_button {
+    width: 65px;
+  }
+
+  &.large-distance {
+    margin-left: 12px;
+  }
+
+  &.short-distance {
+    margin-left: 6px;
+  }
+
+  &.shutdown {
+    margin-top: 6px;
+    padding: 3px 14px;
+  }
+
+  &.graphViewer-icon-button {
+    background-color: transparent;
+    border: 0;
+    height: 20px;
+    margin-left: 5px;
+    margin-top: -2px;
+    padding: 0;
+    width: 20px;
+
+    img {
+      height: 20px;
+      padding-bottom: 10px;
+      width: 20px;
+    }
+  }
+}
+
+ul.headerButtonList {
+  display: inline-block;
+  margin-bottom: 0;
+  margin-left: 0;
+  padding-left: 0 !important;
+
+  li {
+    @extend %pull-right;
+    display: inline;
+  }
+}
+
+
+%header-button {
+  @extend %clickable;
+  @extend %header;
+  @extend %pull-left;
+  @include border-radius(3px);
+  @include box-shadow(none);
+
+  margin: {
+    left: 5px;
+    right: 5px;
+  }
+}
+
+a.headerButton {
+  @extend %header-button;
+
+  margin-top: 2px;
+  position: relative;
+
+  .fa,
+  [class^="icon_"],
+  [class*=" icon_"] {
+    display: block;
+    height: 23px;
+    line-height: 23px;
+    position: static; // TODO fix cascading
+    right: 0; // TODO fix cascading
+    text-align: center;
+    top: 0; // TODO fix cascading
+    width: 27px;
+  }
+
+  .icon_arangodb_arrowleft,
+  .icon_arangodb_arrowright {
+    font-weight: bold;
+  }
+
+  &.activated {
+    background-color: $c-positive-hover;
+    border: 1px solid $c-positive-hover;
+    color: $c-white;
+
+    &:hover {
+      background-color: $c-white;
+      color: $c-positive-hover;
+    }
+  }
+
+  &.disabled {
+    @extend %icon-inactive;
+
+    cursor: not-allowed;
+  }
+}
+
+//Graph Viewer
+
+div.toolbox {
+  @include border-radius(2px);
+  background-color: $c-white;
+  border: 1px solid $c-content-border;
+  margin-right: 5px;
+  padding-bottom: 5px;
+  padding-top: 5px;
+  position: absolute;
+  top: -10px;
+
+  div.gv_action_button {
+    @extend %clickable;
+    @include border-radius(2px);
+    background-color: $c-white;
+    color: $c-header-btn-fg;
+    height: 30px;
+    margin: 5px;
+    position: relative;
+    text-align: center;
+    width: 30px;
+
+    &.active {
+      background-color: $c-positive;
+      color: $c-white;
+    }
+
+    &:first-child {
+      margin-top: 0;
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+%gv-button {
+  left: 0;
+  margin: 0;
+  position: absolute;
+  right: 0;
+}
+
+h6 {
+
+  &.gv_icon_icon {
+    @extend %gv-button;
+    font-size: 22px;
+    left: 1px;
+    top: 4px;
+  }
+
+  &.gv_button_title {
+    @extend %gv-button;
+    bottom: 1px;
+    display: none;
+  }
+}
+
+
+.btn-icon {
+  background-color: rgb(56, 52, 52);
+  padding: 4px;
+}
+
+.gv-icon-small {
+  background-size: 16px 16px;
+  height: 16px !important;
+  width: 16px !important;
+
+  &.delete {
+    background-image: url('../img/icon_delete.png');
+  }
+
+  &.add {
+    background-image: url('../img/plus_icon.png');
+  }
+}
+
+
+
+a.pagination-button,
+ul.arango-pagination a {
+  @include border-radius(3px);
+}
+
+.badge,
+.label,
+.btn {
+  text-shadow: none !important;
+}
+
+.thumbnail,
+.navbar-inner {
+  @include border-radius(0);
+  @include box-shadow(0);
+}
+
+.modal-body th.actionCell > button {
+  margin-top: -12px;
+}
+
+.btn-old-padding {
+  padding-bottom: 4px !important;
+  padding-top: 4px !important;
+}
+
+// Cluster View
+
+button.btn-overview,
+button.btn-server {
+  margin: 5px;
+}
+
+a.button-gui {
+  @extend %header-button;
+  height: auto;
+  margin: {
+    bottom: 0;
+    top: 0;
+  }
+  padding: {
+    bottom: 1px;
+    top: 1px;
+  }
+  position: absolute;
+  right: 2px;
+  text-decoration: none !important;
+  top: 2px;
+  width: auto;
+
+  &.button-gui-disabled {
+    display: none;
+  }
+}
+
+.clusterDownBtn {
+  padding-bottom: 10px;
+  padding-top: 10px;
+  text-align: center;
+
+  %cluster-button {
+    @extend %clickable;
+    @include border-radius(3px);
+
+    background-color: $c-cluster-button-grey;
+    border: 1px solid $c-cluster-button-grey-border;
+    color: $c-cluster-button-grey-fg;
+    font-size: 20px;
+    font-weight: 300;
+    margin: 0;
+    padding: 12px 18px;
+    text-align: center;
+    text-decoration: none !important;
+    width: 250px;
+
+    &:hover {
+      background-color: $c-cluster-button-grey-hover;
+      color: $c-cluster-button-grey-hover-fg;
+      -webkit-transition-delay: 0;
+      -webkit-transition-duration: .2s;
+      -webkit-transition-property: all;
+      -webkit-transition-timing-function: ease-in;
+    }
+  }
+
+  button {
+    @extend %cluster-button;
+
+    &.green {
+      background-color: $c-cluster-button-green;
+      color: $c-white;
+
+      &:hover {
+        background-color: $c-cluster-button-green-hover;
+      }
+    }
+  }
+}
+
+.bottomButtonBar {
+  background-color: $c-white;
+  border-top: 1px solid rgba(104, 103, 102, .1);
+  height: 30px;
+  padding: 10px;
+}
+
+.buttonBarInfo {
+  top: 5px;
+  position: relative;
+}

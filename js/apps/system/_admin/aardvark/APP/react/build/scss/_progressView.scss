@@ -1,0 +1,141 @@
+#progressPlaceholder {
+  background-color: rgba(0, 0, 0, .4);
+  bottom: 0;
+  left: 0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 9999999999;
+}
+
+.progress-view {
+  background-color: $c-progress-bg;
+  border-radius: 2px;
+  color: $c-nav-bg;
+  height: 188px;
+  left: 50%;
+  margin: -150px 0 0 -125px;
+  position: absolute;
+  top: 38%;
+  width: 250px;
+
+  .progress-content {
+    border: 5px solid $c-white;
+    border-radius: 3px;
+
+    .fa-spinner {
+      font-size: 100pt;
+    }
+  }
+
+  .progress-message {
+    background-color: $c-nav-bg;
+    border-radius: 0 0 2px 2px;
+    color: $c-white;
+    font-weight: 200;
+    height: 44px;
+    margin-top: -25px;
+    padding-top: 3px;
+    text-align: center;
+  }
+
+  .progress-text {
+    background: $c-white;
+    color: $c-black;
+    float: left;
+    font-weight: 100;
+    height: 25px;
+    left: -5px;
+    margin-left: 5px;
+    margin-top: 10px;
+    position: relative;
+    top: -10px;
+    width: 100%;
+  }
+
+  .progress-action {
+    float: right;
+    margin-right: 5px;
+    margin-top: 5px;
+  }
+
+
+
+}
+
+#progressPlaceholderIcon {
+  color: $c-positive;
+  float: left;
+  font-size: 22px;
+  margin-left: 10px;
+  margin-top: 7px;
+}
+
+.pong-spinner {
+  height: 100px;
+  margin: 50px auto;
+  position: relative;
+  width: 200px;
+
+  i {
+    animation: ball 2s infinite linear;
+    background: $c-pong-green;
+    border-radius: 10px;
+    height: 10px;
+    position: absolute;
+    width: 10px;
+  }
+}
+
+.pong-spinner:before,
+.pong-spinner:after {
+  animation: left-player 2s infinite linear;
+  background: $c-pong-green;
+  content: '';
+  height: 30px;
+  position: absolute;
+  width: 5px;
+}
+
+.pong-spinner:after {
+  animation: right-player 2s infinite linear;
+  right: 0;
+}
+
+@keyframes left-player {
+  0% { top: 0; }
+  50% { top: 70px; }
+  100% { top: 0; }
+}
+@keyframes right-player {
+  0% { top: 70px; }
+  50% { top: 0; }
+  100% { top: 70px; }
+}
+@keyframes ball {
+  0% {
+    left: 5px;
+    top: 20px;
+  }
+
+  25% {
+    left: 190px;
+    top: 50px;
+  }
+
+  50% {
+    left: 5px;
+    top: 80px;
+  }
+
+  75% {
+    left: 190px;
+    top: 50px;
+  }
+
+  100% {
+    left: 5px;
+    top: 20px;
+  }
+
+}

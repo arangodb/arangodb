@@ -94,11 +94,11 @@ js/apps/*
 !js/apps/system
 !js/apps/system/*
 js/apps/system/_admin/aardvark/APP/package-lock.json
-!js/apps/system/_admin/aardvark/APP/build
-!js/apps/system/_admin/aardvark/APP/build/*
 js/apps/system/_admin/aardvark/APP/react/node_modules/
 js/apps/system/_admin/aardvark/APP/react/node_modules/*
 js/apps/system/_admin/aardvark/APP/react/yarn.lock
+!js/apps/system/_admin/aardvark/APP/react/build/*
+!js/apps/system/_admin/aardvark/APP/react/build
 
 
 .gdb-history

@@ -1,0 +1,17 @@
+.hljs-pre {
+  background: none;
+  border: 0;
+  font-family: Monaco, Menlo, Consolas, "Courier New", monospace;
+
+  .hljs {
+    background: rgba(0,0,0,0);
+    border: 0;
+    height: .9em;
+    font-size: 10pt;
+    overflow: hidden;
+    padding: 0.5em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+

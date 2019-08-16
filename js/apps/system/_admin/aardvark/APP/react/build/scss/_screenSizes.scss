@@ -1,0 +1,465 @@
+// HEIGHTS
+@media (max-height: 490px) {
+  #navigationBar {
+    overflow: scroll;
+    overflow-x: hidden !important;
+  }
+}
+
+@media (max-height: 525px) {
+  .social-icons {
+    display: none;
+  }
+}
+
+@media (max-height: 560px) {
+  .navlogo {
+    .version {
+      display: none;
+    }
+  }
+
+  .shortcut-icons {
+    display: none;
+  }
+
+  .login-window {
+    padding: 10px 10px 30px;
+    top: 20px;
+    
+    .login-logo-round {
+      margin-bottom: 10px;
+      margin-left: 25%;
+      margin-top: 0;
+      width: 50%;
+    }
+
+    #logout {
+      margin-top: 10px !important;
+    }
+
+    form .fa {
+      left: 20px;
+    }
+
+    .login-input {
+      padding: 10px 10px 10px 30px;
+    }
+  }
+}
+
+// WIDTHS
+
+@media (max-width: 568px) {
+
+  //GRAPHVIEWER
+  .nodeInfoDiv {
+    left: 65px;
+  }
+
+  //PAGINATION
+
+  .pagination-line {
+    .pre-pagi,
+    .las-pagi {
+      display: none;
+    }
+
+    .arango-pagination {
+      li:first-child,
+      li:last-child {
+        margin-left: 0;
+        margin-right: 0;
+      }
+    }
+
+    li a {
+      padding: 2px 4px;
+    }
+  }
+
+  //LOG
+  #arangoLogTable {
+    .table-cell0 {
+      display: none;
+    }
+  }
+
+  //LOGIN
+  .login-window {
+    padding: 10px 10px 40px;
+    width: 300px;
+  }
+
+  //DOCUMENT VIEW
+  .document-info-div {
+    .search {
+      display: none;
+    }
+  }
+
+  // SINGLE NODE DASHBOARD
+  #repl-numbers,
+  #repl-progress,
+  #repl-ticks {
+    width: 100% !important;
+  }
+
+  .dashboard-large-chart,
+  .dashboard-medium-chart-outer:first-child {
+    padding-right: 0 !important;
+  }
+
+  .dashboard-medium-chart {
+    //margin-bottom: 10px;
+  }
+
+  // CONTENT DROPDOWNS
+  div.dropdownInner ul label {
+    font-size: 13px;
+  }
+
+  // NAVIGATION TOP
+
+  .breadcrumb {
+    display: none;
+  }
+
+  .subnavmenu {
+    a {
+      font-size: 8pt;
+    }
+  }
+
+  .subViewNavbar {
+    li {
+      font-size: 8pt !important;
+      padding: 0 6px !important;
+
+      &.active {
+        height: 35px;
+      }
+    }
+  }
+
+  // DASHBOARD FIX
+  .small-label-padding {
+    max-width: calc(100% - 2px);
+  }
+
+  // NAVIGATION LEFT
+
+  //NAV SOCIAL ICONS
+
+  .social-icons {
+    display: none;
+  }
+
+  .navlogo {
+    .big {
+      display: none;
+    }
+
+    .small {
+      display: block;
+      height: auto;
+      width: 28px;
+    }
+
+    .version {
+      display: none;
+    }
+
+  }
+
+  .navbar,
+  .navmenu,
+  .primary,
+  .navlist,
+  .navlist li,
+  .primary li {
+    width: 40px !important;
+  }
+
+  .primary {
+    .version {
+      display: none;
+    }
+  }
+
+  .shortcut-icons {
+    display: none;
+  }
+
+  .arango-collection-ul {
+    .tab {
+      font-size: 12pt;
+      height: 30px;
+      overflow: hidden;
+
+      .fa {
+        padding-left: 6px;
+        padding-right: 20px;
+      }
+    }
+  }
+
+  .social-icons {
+    p {
+      float: left;
+      margin-left: -3px;
+
+      .fa {
+        font-size: 16px;
+      }
+    }
+  }
+
+  //actions sub menu
+  .headerButtonBar {
+    display: none;
+  }
+
+  div.bodyWrapper,
+  .footer {
+    left: 40px;
+  }
+
+  .dashboard-bar-chart-container .dashboard-bar-chart {
+    padding-bottom: 11px;
+  }
+
+}
+
+@media (max-width: 768px) {
+  //General
+  .hide-small {
+    visibility: hidden;
+  }
+
+  //PAGINATION
+
+  .pagination-line {
+    .pre-pagi,
+    .las-pagi {
+      display: none;
+    }
+
+    .arango-pagination {
+      li:first-child,
+      li:last-child {
+        margin-left: 0;
+        margin-right: 0;
+      }
+    }
+
+    li a {
+      padding: 2px 4px;
+    }
+  }
+
+  // NAVIGATION TOP
+
+  .breadcrumb {
+    display: none;
+  }
+
+  .dashboard-large-chart,
+  .dashboard-tendency-container {
+    box-sizing: content-box;
+  }
+
+  .tendency-box-sizing {
+    .dashboard-bar-chart-container,
+    .dashboard-tendency-container {
+      margin-left: 0;
+    }
+
+    .dashboard-row:last-child {
+      .dashboard-medium-chart-outer:last-child {
+        margin-left: 0;
+      }
+    }
+
+    .dashboard-bar-chart-container {
+      height: 140px;
+
+      .dashboard-sub-bar {
+        margin-top: -3px;
+      }
+    }
+  }
+
+  // AQL EDITOR
+  .outputEditors {
+    .additional {
+      display: none;
+    }
+  }
+
+  // nodes view
+  #nodesContent {
+    .sectionHeader .title {
+      font-size: 9pt;
+      margin-left: 10px !important;
+    }
+
+    .sectionHeader .information span:first-child {
+      margin-left: 0 !important;
+    }
+
+    .sectionHeader .information span.warning {
+      margin-right: -10px;
+    }
+
+    .pure-table {
+      padding-left: 10px !important;
+      padding-right: 10px !important;
+    }
+
+    .pure-table-row {
+      div:nth-child(4) {
+        display: none;
+      }
+    }
+  }
+}
+
+@media (min-width: 569px) and (max-width: 738px) {
+
+  // SINGLE NODE DASHBOARD
+  .dashboard-large-chart,
+  .dashboard-medium-chart-outer:first-child {
+    padding-right: 0 !important;
+  }
+
+  //DOCUMENT VIEW
+  .document-info-div {
+    .search {
+      display: none;
+    }
+  }
+
+  //actions sub menu
+  .headerButtonBar {
+    span {
+      display: none;
+    }
+  }
+
+  .dashboard-bar-chart-container {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  #repl-numbers,
+  #repl-progress,
+  #repl-ticks {
+    width: 100% !important;
+  }
+
+  // NAVIGATION TOP
+  .subnavmenu a {
+    font-size: 9pt;
+  }
+
+  //NAVIGATION
+
+  .collection-dropdown {
+
+    ul {
+      width: auto !important;
+    }
+  }
+
+  .arango-collection-select {
+    display: inline-block;
+  }
+
+  .dashboard-bar-chart-container .dashboard-bar-chart {
+    padding-bottom: 11px;
+  }
+}
+
+@media (min-width: 770px) and (max-width: 972px) {
+
+  .dashboard-tendency-container {
+    .dashboard-sub-bar {
+      font-size: 11px;
+      height: 32px;
+      margin-bottom: 10px;
+      margin-top: -10px;
+    }
+  }
+
+  .dashboard-small-chart {
+    .dashboard-sub-bar {
+      font-size: 11px;
+      height: 33px;
+    }
+
+    .dashboard-sub-bar-title {
+      font-size: 11px;
+      line-height: 12px;
+      margin-top: -12px;
+    }
+  }
+
+  .dashboard-bar-chart-chart {
+    margin-top: 10px;
+  }
+
+  .dashboard-bar-chart-container {
+    .dashboard-sub-bar {
+      font-size: 11px;
+      margin-bottom: 10px;
+      margin-top: -16px;
+      padding-top: 18px;
+    }
+  }
+
+  .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+    padding-top: 3px;
+  }
+
+}
+
+@media (min-width: 973px) {
+  .dashboard-large-chart {
+    .dashboard-sub-bar {
+      padding-top: 14px;
+    }
+  }
+
+  #dataTransferDistribution,
+  #totalTimeDistribution {
+    .nvd3-svg {
+      padding-top: 20px;
+    }
+  }
+
+  #requests {
+    .small-label-padding {
+      .dashboard-small-chart {
+        .dashboard-sub-bar {
+          font-size: 12px;
+          padding-top: 30px;
+        }
+      }
+    }
+
+    .small-label-padding:last-child {
+      .dashboard-small-chart {
+        .dashboard-sub-bar {
+          margin-bottom: 1px;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 1024px) {
+  #docsSort {
+    display: none;
+  }
+}

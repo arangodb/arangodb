@@ -1,0 +1,52 @@
+.pure-table,
+.arango-table {
+  width: 100%;
+
+  thead {
+    background-color: $c-white;
+
+    th {
+      border-bottom: 1px solid $c-c2grey;
+      font-weight: 500;
+      height: 43px;
+      padding-left: 18px;
+      text-align: left;
+    }
+  }
+
+  tbody {
+
+    tr:nth-child(even) {
+      background-color: $c-white;
+    }
+
+    tr:nth-child(odd) {
+      background: $c-table-odd-color;
+    }
+
+    td {
+      padding: 10px 18px;
+
+      pre {
+        background: none;
+        border: 0;
+      }
+    }
+  }
+
+  table {
+    border: 1px solid rgb(62, 74, 82);
+    margin-left: 10px;
+    width: 100%;
+
+    tbody {
+      tr:nth-child(even) {
+        background-color: $c-white;
+      }
+
+      tr:nth-child(odd) {
+        background: rgba(0, 0, 0, 0);;
+      }
+    }
+  }
+}
