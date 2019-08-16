@@ -216,11 +216,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
   RestHandler/RestPregelHandler.cpp
 )
 
-set(ARANGOD_SOURCES_PART1
-  Actions/actions.cpp
-  Agency/AgentConfiguration.cpp
-  Agency/ResignLeadership.cpp
-  Agency/StoreCallback.cpp
+set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp
   Aql/AllRowsFetcher.cpp
   Aql/AqlFunctionFeature.cpp
@@ -344,6 +340,13 @@ set(ARANGOD_SOURCES_PART1
   Aql/WakeupQueryCallback.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
+)
+
+set(ARANGOD_SOURCES_PART1
+  Actions/actions.cpp
+  Agency/AgentConfiguration.cpp
+  Agency/ResignLeadership.cpp
+  Agency/StoreCallback.cpp
   Auth/Common.cpp
   Cache/BucketState.cpp
   Cache/CachedValue.cpp
@@ -539,6 +542,7 @@ set(ARANGOD_SOURCES_PART2
   RestServer/BootstrapFeature.cpp
   RestServer/DatabaseFeature.cpp
   RestServer/FlushFeature.cpp
+  RestServer/InitDatabaseFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/SystemDatabaseFeature.cpp
@@ -577,6 +581,7 @@ set(ARANGOD_SOURCES_PART2
   Utils/ExecContext.cpp
   Utils/FlushThread.cpp
   Utils/SingleCollectionTransaction.cpp
+  V8Server/FoxxQueuesFeature.cpp
   V8Server/V8Context.cpp
   V8Server/V8DealerFeature.cpp
   V8Server/v8-actions.cpp
@@ -612,11 +617,6 @@ set(ARANGOD_SOURCES_PART2
   VocBase/Methods/Version.cpp
   VocBase/ticks.cpp
   VocBase/vocbase.cpp
-
-
-
-  V8Server/FoxxQueuesFeature.cpp
-  RestServer/InitDatabaseFeature.cpp
 )
 
 set(ARANGOD_SOURCES_PART3
@@ -661,6 +661,11 @@ add_library(arango_pregel STATIC
   ${LIB_ARANGO_PREGEL_SOURCES}
 )
 
+add_library(arango_aql STATIC
+  ${LIB_ARANGO_AQL_SOURCES}
+  ${ADDITIONAL_LIB_ARANGO_AQL_SOURCES}
+)
+
 add_library(arangoserver_part1 STATIC
   ${ARANGOD_SOURCES_PART1}
   ${ADDITIONAL_LIB_ARANGOSERVER_PART1_SOURCES}
@@ -682,6 +687,7 @@ target_link_libraries(arangoserver
   arangoserver_part3
   arango_graph
   arango_pregel
+  arango_aql
 )
 
 # Note that arango_geo publicly exports the /J compile option for MSVC, because
@@ -710,6 +716,7 @@ target_link_libraries(arangoserver_part2 arango_iresearch)
 target_link_libraries(arangoserver_part2 boost_boost)
 target_link_libraries(arangoserver_part2 arango_geo)
 target_link_libraries(arangoserver_part2 arango_pregel)
+target_link_libraries(arangoserver_part2 arango_aql)
 target_link_libraries(arangoserver_part2 ${ROCKSDB_LIBS})
 
 target_link_libraries(arangoserver_part3 arangoserver_part1 arangoserver_part2)
@@ -717,6 +724,9 @@ target_link_libraries(arangoserver_part3 boost_boost)
 target_link_libraries(arangoserver_part3 arango_geo)
 
 target_link_libraries(arango_graph boost_boost)
+target_link_libraries(arango_aql arango_iresearch)
+target_link_libraries(arango_aql arango_graph)
+target_link_libraries(arango_aql arango_geo)
 
 add_library(arango_mmfiles STATIC
   ${MMFILES_SOURCES}
@@ -785,6 +795,9 @@ if (USE_ENTERPRISE)
   target_compile_definitions(arango_pregel PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango_pregel PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
+  target_compile_definitions(arango_aql PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(arango_aql PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+
   target_compile_definitions(arango_rocksdb PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango_rocksdb PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
@@ -838,6 +851,7 @@ if(MSVC)
   target_compile_options(arangoserver PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arango_graph PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arango_pregel PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arango_aql PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arangoserver_part1 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arangoserver_part2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arangoserver_part3 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
@@ -851,6 +865,7 @@ if (DARWIN)
   target_compile_options(arangoserver PRIVATE -Werror)
   target_compile_options(arango_graph PRIVATE -Werror)
   target_compile_options(arango_pregel PRIVATE -Werror)
+  target_compile_options(arango_aql PRIVATE -Werror)
   target_compile_options(arangoserver_part1 PRIVATE -Werror)
   target_compile_options(arangoserver_part2 PRIVATE -Werror)
   target_compile_options(arangoserver_part3 PRIVATE -Werror)
