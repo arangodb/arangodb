@@ -7,7 +7,7 @@ const internal = require('internal');
 const rp = require('@arangodb/result-processing');
 
 const unitTest = require('@arangodb/testing').unitTest;
-const optionsDefaults = require('@arangodb/testing').optionsDefaults
+const optionsDefaults = require('@arangodb/testing').optionsDefaults;
 const makeDirectoryRecursive = require('fs').makeDirectoryRecursive;
 const killRemainingProcesses = require('@arangodb/process-utils').killRemainingProcesses;
 const inspect = internal.inspect;
