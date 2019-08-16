@@ -147,9 +147,6 @@ else ()
   )
 endif ()
 
-# TODO: Add ${ProductVersionFiles} to libarangoserver sources
-# TODO: Compile community, with/without maintainer
-
 set(LIB_ARANGO_GRAPH_SOURCES
   Aql/PruneExpressionEvaluator.cpp
   Cluster/ClusterEdgeCursor.cpp
@@ -671,6 +668,7 @@ include(MMFiles/CMakeLists.txt)
 add_library(arangoserver STATIC
   # Just so it isn't empty, and we can still use "arangoserver" for now
   empty.cpp
+  ${ProductVersionFiles}
 )
 
 add_library(arango_graph STATIC
