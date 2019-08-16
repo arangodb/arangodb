@@ -525,7 +525,9 @@ function unitTest (cases, options) {
   if (typeof options !== 'object') {
     options = {};
   }
-  loadTestSuites();
+  loadTestSuites(options);
+  // testsuites may register more defaults...
+  _.defaults(options, optionsDefaults);
 
   try {
     pu.setupBinaries(options.build, options.buildType, options.configDir);
