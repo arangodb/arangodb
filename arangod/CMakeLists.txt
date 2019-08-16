@@ -152,6 +152,11 @@ endif ()
 # TODO: Compile community, with/without maintainer
 
 set(LIB_ARANGO_GRAPH_SOURCES
+  Aql/PruneExpressionEvaluator.cpp
+  Cluster/ClusterEdgeCursor.cpp
+  Cluster/ClusterTraverser.cpp
+  Cluster/TraverserEngine.cpp
+  Cluster/TraverserEngineRegistry.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
   Graph/BaseOptions.cpp
   Graph/BreadthFirstEnumerator.cpp
@@ -173,7 +178,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/TraverserCacheFactory.cpp
   Graph/TraverserDocumentCache.cpp
   Graph/TraverserOptions.cpp
-  Cluster/ClusterEdgeCursor.cpp
+  RestServer/TraverserEngineRegistryFeature.cpp
 )
 
 set(ARANGOD_SOURCES_PART1
@@ -262,7 +267,6 @@ set(ARANGOD_SOURCES_PART1
   Aql/OutputAqlItemRow.cpp
   Aql/Parser.cpp
   Aql/PlanCache.cpp
-  Aql/PruneExpressionEvaluator.cpp
   Aql/Quantifier.cpp
   Aql/Query.cpp
   Aql/QueryCache.cpp
@@ -317,7 +321,6 @@ set(ARANGOD_SOURCES_PART1
   Cluster/ActionDescription.cpp
   Cluster/ClusterCollectionCreationInfo.cpp
   Cluster/ClusterHelpers.cpp
-  Cluster/ClusterTraverser.cpp
   Cluster/ClusterTypes.cpp
   Cluster/TakeoverShardLeadership.cpp
   GeneralServer/Acceptor.cpp
@@ -340,7 +343,6 @@ set(ARANGOD_SOURCES_PART1
   RestServer/DatabasePathFeature.cpp
   RestServer/EndpointFeature.cpp
   RestServer/ServerIdFeature.cpp
-  RestServer/TraverserEngineRegistryFeature.cpp
   RestServer/VocbaseContext.cpp
   Scheduler/Scheduler.cpp
   Statistics/ServerStatistics.cpp
@@ -428,8 +430,6 @@ set(ARANGOD_SOURCES_PART2
   Cluster/RestClusterHandler.cpp
   Cluster/ServerState.cpp
   Cluster/SynchronizeShard.cpp
-  Cluster/TraverserEngine.cpp
-  Cluster/TraverserEngineRegistry.cpp
   Cluster/UpdateCollection.cpp
   Cluster/v8-cluster.cpp
   GeneralServer/AsyncJobManager.cpp
