@@ -523,25 +523,11 @@ void RandomGenerator::shutdown() {
 }
   
 int16_t RandomGenerator::interval(int16_t left, int16_t right) {
-  if (left >= right) {
-    return left;
-  }
-
-  if (left == INT16_MIN && right == INT16_MAX) {
-    return static_cast<int16_t>(random());
-  }
-  int16_t value = static_cast<int16_t>(
-      interval(static_cast<int32_t>(left), static_cast<int32_t>(right)));
-
-  TRI_ASSERT(value >= left && value <= right);
-  return value;
+  return static_cast<int16_t>(interval(static_cast<int32_t>(left), static_cast<int32_t>(right)));
 }
 
 int32_t RandomGenerator::interval(int32_t left, int32_t right) {
-  ensureDeviceIsInitialized();
-  int32_t value = _device->interval(left, right);
-  TRI_ASSERT(value >= left && value <= right);
-  return value;
+  return static_cast<int32_t>(interval(static_cast<int64_t>(left), static_cast<int64_t>(right)));
 }
 
 int64_t RandomGenerator::interval(int64_t left, int64_t right) {
@@ -561,9 +547,7 @@ int64_t RandomGenerator::interval(int64_t left, int64_t right) {
 }
 
 uint16_t RandomGenerator::interval(uint16_t right) {
-  uint16_t value = static_cast<uint16_t>(interval(static_cast<uint32_t>(right)));
-  TRI_ASSERT(value <= right);
-  return value;
+  return static_cast<uint16_t>(interval(static_cast<uint32_t>(right)));
 }
 
 uint32_t RandomGenerator::interval(uint32_t right) {

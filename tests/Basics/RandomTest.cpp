@@ -120,7 +120,7 @@ TEST(RandomGeneratorTest, test_RandomGeneratorMersenne_ranges_int16) {
   EXPECT_EQ(11992, value);
 
   value = RandomGenerator::interval(int16_t(INT16_MIN), int16_t(INT16_MAX));
-  EXPECT_EQ(17767, value);
+  EXPECT_EQ(-9106, value);
   
   value = RandomGenerator::interval(int16_t(0), int16_t(0));
   EXPECT_EQ(0, value);
@@ -132,13 +132,13 @@ TEST(RandomGeneratorTest, test_RandomGeneratorMersenne_ranges_int16) {
   EXPECT_EQ(INT16_MAX, value);
   
   value = RandomGenerator::interval(int16_t(5), int16_t(15));
-  EXPECT_EQ(12, value);
+  EXPECT_EQ(9, value);
  
   value = RandomGenerator::interval(int16_t(5), int16_t(15));
-  EXPECT_EQ(9, value);
+  EXPECT_EQ(6, value);
   
   value = RandomGenerator::interval(int16_t(5), int16_t(15));
-  EXPECT_EQ(6, value);
+  EXPECT_EQ(11, value);
 }
 
 TEST(RandomGeneratorTest, test_RandomGeneratorMersenne_interval_uint64) {
