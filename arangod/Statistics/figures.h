@@ -24,6 +24,8 @@
 #ifndef ARANGOD_STATISTICS_FIGURES_H
 #define ARANGOD_STATISTICS_FIGURES_H 1
 
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
@@ -62,7 +64,7 @@ struct StatisticsDistribution {
     _counts.resize(_cuts.size() + 1);
   }
 
-  StatisticsDistribution const& operator=(StatisticsDistribution& other) {
+  StatisticsDistribution& operator=(StatisticsDistribution& other) {
     MUTEX_LOCKER(l1, _mutex);
     MUTEX_LOCKER(l2, other._mutex);
 

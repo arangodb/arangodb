@@ -60,14 +60,14 @@ struct MMFilesHashIndexHelper {
   }
 
   static inline uint64_t HashElement(MMFilesHashIndexElement const* element, bool byKey) {
-    uint64_t hash = element->hash();
+    uint64_t hashval = element->hash();
 
     if (byKey) {
-      return hash;
+      return hashval;
     }
 
     uint64_t documentId = element->localDocumentIdValue();
-    return fasthash64_uint64(documentId, hash);
+    return fasthash64_uint64(documentId, hashval);
   }
 
   /// @brief determines if a key corresponds to an element

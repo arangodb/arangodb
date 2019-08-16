@@ -31,6 +31,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/Variable.h"
+#include "Basics/system-functions.h"
 #include "QueryOptions.h"
 
 #include <deque>

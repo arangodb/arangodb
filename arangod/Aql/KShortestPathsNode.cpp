@@ -208,9 +208,13 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan,
 
   // Filter Condition Parts
   TRI_ASSERT(base.hasKey("fromCondition"));
+  // the plan's AST takes ownership of the newly created AstNode, so this is safe
+  // cppcheck-suppress *
   _fromCondition = new AstNode(plan->getAst(), base.get("fromCondition"));
 
   TRI_ASSERT(base.hasKey("toCondition"));
+  // the plan's AST takes ownership of the newly created AstNode, so this is safe
+  // cppcheck-suppress *
   _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
 }
 

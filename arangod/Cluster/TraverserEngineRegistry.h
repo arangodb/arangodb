@@ -24,6 +24,7 @@
 #ifndef ARANGOD_CLUSTER_TRAVERSER_ENGINE_REGISTRY_H
 #define ARANGOD_CLUSTER_TRAVERSER_ENGINE_REGISTRY_H 1
 
+#include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"

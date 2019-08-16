@@ -165,6 +165,7 @@ class ExecutionBlockImpl<IdExecutor<true, void>> : public ExecutionBlock {
 };
 
 template <bool usePassThrough, class UsedFetcher>
+// cppcheck-suppress noConstructor
 class IdExecutor {
  public:
   struct Properties {

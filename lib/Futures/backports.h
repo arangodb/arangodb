@@ -23,6 +23,8 @@
 #ifndef ARANGOD_FUTURES_BACKPORTS_H
 #define ARANGOD_FUTURES_BACKPORTS_H 1
 
+#include <functional>
+
 namespace arangodb {
 namespace futures {
 

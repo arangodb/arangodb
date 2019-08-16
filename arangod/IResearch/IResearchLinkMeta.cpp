@@ -24,18 +24,17 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/locale_utils.hpp"
-
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VelocyPackHelper.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Iterator.h"
-
 #include "IResearchLinkMeta.h"
 #include "Misc.h"
 
@@ -318,7 +317,6 @@ bool IResearchLinkMeta::init( // initialize meta
             }
           }
         }
-
         // get analyzer potentially creating it (e.g. on cluster)
         // @note do not use emplace(...) since it'll trigger loadAnalyzers(...)
         if (!analyzers->get(name, type, properties, features)) {

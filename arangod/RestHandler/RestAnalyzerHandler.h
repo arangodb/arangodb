@@ -49,18 +49,16 @@ class RestAnalyzerHandler: public RestVocbaseBaseHandler {
   virtual char const* name() const override { return "RestAnalyzerHandler"; }
 
  private:
-  void createAnalyzer(
-    IResearchAnalyzerFeature& analyzers, // analyzer feature
-    TRI_vocbase_t const* sysVocbase // system vocbase
-  );
+  void createAnalyzer(IResearchAnalyzerFeature& analyzers);
   void getAnalyzer(
-    IResearchAnalyzerFeature& analyzers, // analyzer feature
-    std::string const& name // analyzer name (normalized)
+    IResearchAnalyzerFeature& analyzers, 
+    std::string const& requestedName 
   );
   void getAnalyzers(IResearchAnalyzerFeature& analyzers);
   void removeAnalyzer(
-    IResearchAnalyzerFeature& analyzers, // analyzer feature
-    std::string const& name // analyzer name (normalized)
+    IResearchAnalyzerFeature& analyzers, 
+    std::string const& requestedName, 
+    bool force
   );
 };
 

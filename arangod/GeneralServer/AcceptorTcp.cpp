@@ -28,7 +28,9 @@
 #include "Endpoint/EndpointIp.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/HttpCommTask.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -169,6 +171,7 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
     this->asyncAccept();
   };
 
+  // cppcheck-suppress accessMoved
   _acceptor.async_accept(_asioSocket->socket, _asioSocket->peer, std::move(handler));
 }
 
@@ -238,6 +241,7 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
     this->asyncAccept();
   };
 
+  // cppcheck-suppress accessMoved
   _acceptor.async_accept(_asioSocket->socket.lowest_layer(), _asioSocket->peer,
                          std::move(handler));
 }

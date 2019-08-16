@@ -419,6 +419,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<true, ConstFetch
 
   _rowFetcher.injectBlock(block);
 
+  // cppcheck-suppress unreadVariable
   constexpr bool customInit = hasInitializeCursor<decltype(_executor)>::value;
   InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
 

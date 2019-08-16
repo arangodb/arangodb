@@ -30,6 +30,7 @@
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 

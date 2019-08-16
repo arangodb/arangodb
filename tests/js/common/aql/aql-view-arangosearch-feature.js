@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertTrue, assertFalse, fail, db._query */
+/*global assertUndefined, assertEqual, assertTrue, assertFalse, assertNotNull, fail, db._query */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -55,42 +55,149 @@ function iResearchFeatureAqlTestSuite () {
 
     testAnalyzersInvalidPropertiesDiscarded : function() {
       {
-        try {analyzers.remove(db._name() + "::normPropAnalyzer"); } catch (e) {}
+        try {analyzers.remove("normPropAnalyzer"); } catch (e) {}
         let analyzer = analyzers.save("normPropAnalyzer", "norm", { "locale":"en", "invalid_param":true});
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
-        analyzers.remove(db._name() + "::normPropAnalyzer", true);
+        analyzers.remove("normPropAnalyzer", true);
       }
       {
-        try {analyzers.remove(db._name() + "::textPropAnalyzer"); } catch (e) {}
+        try {analyzers.remove("textPropAnalyzer"); } catch (e) {}
         let analyzer = analyzers.save("textPropAnalyzer", "text", {"stopwords" : [], "locale":"en", "invalid_param":true});
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
-        analyzers.remove(db._name() + "::textPropAnalyzer", true);
+        analyzers.remove("textPropAnalyzer", true);
       }
       {
-        try {analyzers.remove(db._name() + "::delimiterPropAnalyzer"); } catch (e) {}
+        try {analyzers.remove("delimiterPropAnalyzer"); } catch (e) {}
         let analyzer = analyzers.save("delimiterPropAnalyzer", "delimiter", { "delimiter":"|", "invalid_param":true});
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
-        analyzers.remove(db._name() + "::delimiterPropAnalyzer", true);
+        analyzers.remove("delimiterPropAnalyzer", true);
       }
       {
-        try {analyzers.remove(db._name() + "::stemPropAnalyzer"); } catch (e) {}
+        try {analyzers.remove("stemPropAnalyzer"); } catch (e) {}
         let analyzer = analyzers.save("stemPropAnalyzer", "stem", { "locale":"en", "invalid_param":true});
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
-        analyzers.remove(db._name() + "::stemPropAnalyzer", true);
+        analyzers.remove("stemPropAnalyzer", true);
       }
       {
-        try {analyzers.remove(db._name() + "::ngramPropAnalyzer"); } catch (e) {}
+        try {analyzers.remove("ngramPropAnalyzer"); } catch (e) {}
         let analyzer = analyzers.save("ngramPropAnalyzer", "ngram", { "min":1, "max":5, "preserveOriginal":true, "invalid_param":true});
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
-        analyzers.remove(db._name() + "::ngramPropAnalyzer", true);
+        analyzers.remove("ngramPropAnalyzer", true);
       }
     },
-
+    testAnalyzerRemovalWithDatabaseName_InSystem: function() {
+      let dbName = "analyzerWrongDbName1";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      analyzers.save("MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+      db._useDatabase("_system");
+      try {
+        analyzers.remove(dbName + "::MyTrigram");
+        fail(); // removal with db name in wrong current used db should also fail
+      } catch(e) {
+        assertEqual(require("internal").errors.ERROR_FORBIDDEN .code,
+                       e.errorNum);
+      }
+      db._useDatabase(dbName);
+      analyzers.remove(dbName + "::MyTrigram", true);
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    },
+    testAnalyzerCreateRemovalWithDatabaseName_InDb: function() {
+      let dbName = "analyzerWrongDbName2";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      db._createDatabase(dbName);
+      try {
+        analyzers.save(dbName + "::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+        fail();
+      } catch(e) {
+        assertEqual(require("internal").errors.ERROR_FORBIDDEN.code,
+                       e.errorNum);
+      }
+      db._useDatabase(dbName);
+      analyzers.save(dbName + "::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true }); 
+      analyzers.remove(dbName + "::MyTrigram", true); 
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    },
+    testAnalyzerCreateRemovalWithDatabaseName_InSystem: function() {
+      let dbName = "analyzerWrongDbName3";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      try { analyzers.remove("MyTrigram"); } catch (e) {}
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      // cross-db request should fail
+      try {
+        analyzers.save("::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+        fail();
+      } catch(e) {
+        assertEqual(require("internal").errors.ERROR_FORBIDDEN.code,
+                       e.errorNum);
+      }
+      try {
+        analyzers.save("_system::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+        fail();
+      } catch(e) {
+        assertEqual(require("internal").errors.ERROR_FORBIDDEN.code,
+                       e.errorNum);
+      }
+      // in _system db requests should be ok
+      db._useDatabase("_system");
+      analyzers.save("::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true }); 
+      analyzers.remove("::MyTrigram", true); 
+      analyzers.save("_system::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true }); 
+      analyzers.remove("_system::MyTrigram", true); 
+      db._dropDatabase(dbName);
+    },
+    testAnalyzerInvalidName: function() {
+      let dbName = "analyzerWrongDbName4";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      try {
+        // invalid ':' in name
+        analyzers.save(dbName + "::MyTr:igram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+        fail();
+      } catch(e) {
+        assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                       e.errorNum);
+      }
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    },
+    testAnalyzerGetFromOtherDatabase: function() {
+      let dbName = "analyzerDbName";
+      let anotherDbName = "anotherDbName";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      try { db._dropDatabase(anotherDbName); } catch (e) {}
+      db._createDatabase(dbName);
+      db._createDatabase(anotherDbName);
+      db._useDatabase(dbName);
+      let analyzer = analyzers.save("MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+      assertNotNull(analyzer);
+      db._useDatabase(anotherDbName);
+      try {
+        analyzers.analyzer(dbName + "::MyTrigram");
+        fail();
+      } catch(e) {
+        assertEqual(require("internal").errors.ERROR_FORBIDDEN .code,
+                       e.errorNum);
+      }
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+      db._dropDatabase(anotherDbName);
+    },
     testAnalyzers: function() {
       let oldList = analyzers.toArray();
       let oldListInCollection = db._analyzers.toArray();
@@ -146,7 +253,7 @@ function iResearchFeatureAqlTestSuite () {
       }
 
       // removal
-      analyzers.remove(db._name() + "::testAnalyzer");
+      analyzers.remove("testAnalyzer");
       assertTrue(null === analyzers.analyzer(db._name() + "::testAnalyzer"));
       assertEqual(oldList.length, analyzers.toArray().length);
       // check the analyzers collection in database
@@ -173,7 +280,7 @@ function iResearchFeatureAqlTestSuite () {
 
     testAnalyzersPrefix: function() {
       let dbName = "TestDB";
-
+      db._useDatabase("_system");
       try { db._dropDatabase(dbName); } catch (e) {}
       db._createDatabase(dbName);
       db._useDatabase(dbName);
@@ -186,31 +293,6 @@ function iResearchFeatureAqlTestSuite () {
       analyzers.save("testAnalyzer", "identity", {}, [ "frequency" ]);
       db._useDatabase(dbName);
       analyzers.save("testAnalyzer", "identity", {}, [ "norm" ]);
-
-      // retrieval (system)
-      db._useDatabase("_system");
-
-      {
-        let analyzer = analyzers.analyzer("testAnalyzer");
-        assertTrue(null !== analyzer);
-        assertEqual(db._name() + "::testAnalyzer", analyzer.name());
-        assertEqual("identity", analyzer.type());
-        assertEqual(0, Object.keys(analyzer.properties()).length);
-        assertTrue(Array === analyzer.features().constructor);
-        assertEqual(1, analyzer.features().length);
-        assertEqual([ "frequency" ], analyzer.features());
-      }
-
-      {
-        let analyzer = analyzers.analyzer(dbName + "::testAnalyzer");
-        assertTrue(null !== analyzer);
-        assertEqual(dbName + "::testAnalyzer", analyzer.name());
-        assertEqual("identity", analyzer.type());
-        assertEqual(0, Object.keys(analyzer.properties()).length);
-        assertTrue(Array === analyzer.features().constructor);
-        assertEqual(1, analyzer.features().length);
-        assertEqual([ "norm" ], analyzer.features());
-      }
 
       // retrieval (dbName)
       db._useDatabase(dbName);
@@ -245,7 +327,9 @@ function iResearchFeatureAqlTestSuite () {
       // removal
       analyzers.remove("testAnalyzer", true);
       assertTrue(null === analyzers.analyzer("testAnalyzer"));
-      analyzers.remove("::testAnalyzer", true);
+      db._useDatabase("_system");
+      analyzers.remove("testAnalyzer", true);
+      db._useDatabase(dbName); // switch back to check analyzer with global name
       assertTrue(null === analyzers.analyzer("::testAnalyzer"));
       assertEqual(oldList.length, analyzers.toArray().length);
 

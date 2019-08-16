@@ -168,6 +168,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 };
 
 /// @brief Iterator structure for RocksDB. We require a start and stop node
+template<bool reverse>
 class RocksDBVPackIndexIterator final : public IndexIterator {
  private:
   friend class RocksDBVPackIndex;
@@ -175,11 +176,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
  public:
   RocksDBVPackIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                             arangodb::RocksDBVPackIndex const* index,
-                            bool reverse, RocksDBKeyBounds&& bounds)
+                            RocksDBKeyBounds&& bounds)
       : IndexIterator(collection, trx),
         _index(index),
         _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
-        _reverse(reverse),
         _bounds(std::move(bounds)) {
     TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
 
@@ -295,7 +295,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   void reset() override {
     TRI_ASSERT(_trx->state()->isRunning());
 
-    if (_reverse) {
+    if (reverse) {
       _iterator->SeekForPrev(_bounds.end());
     } else {
       _iterator->Seek(_bounds.start());
@@ -317,7 +317,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     // so we really need to run the full-featured (read: expensive)
     // comparator
 
-    if (_reverse) {
+    if (reverse) {
       return (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
     } else {
       return (_cmp->Compare(_iterator->key(), _rangeBound) > 0);
@@ -325,7 +325,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   }
 
   inline bool advance() {
-    if (_reverse) {
+    if (reverse) {
       _iterator->Prev();
     } else {
       _iterator->Next();
@@ -337,7 +337,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   arangodb::RocksDBVPackIndex const* _index;
   RocksDBVPackComparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
-  bool const _reverse;
   RocksDBKeyBounds _bounds;
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;
@@ -395,8 +394,6 @@ void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder,
                                      std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
-  builder.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(_unique));
-  builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(_sparse));
   builder.add("deduplicate", VPackValue(_deduplicate));
   builder.close();
 }
@@ -684,8 +681,11 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
     rocksdb::PinnableSlice existing(leased.get());
     for (RocksDBKey& key : elements) {
       s = mthds->GetForUpdate(_cf, key.string(), &existing);
-      if (s.ok() || s.IsBusy()) {  // detected conflicting index entry
+      if (s.ok()) {  // detected conflicting index entry
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+        break;
+      } else if (!s.IsNotFound()) {
+        res.reset(rocksutils::convertStatus(s));
         break;
       }
       s = mthds->Put(_cf, key, value.string(), /*assume_tracked*/true);
@@ -1007,7 +1007,12 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::lookup(transaction::Methods* t
       _unique ? RocksDBKeyBounds::UniqueVPackIndex(_objectId, leftBorder, rightBorder)
               : RocksDBKeyBounds::VPackIndex(_objectId, leftBorder, rightBorder);
 
-  return std::make_unique<RocksDBVPackIndexIterator>(&_collection, trx, this, reverse, std::move(bounds));
+  if (reverse) {
+    // reverse version
+    return std::make_unique<RocksDBVPackIndexIterator<true>>(&_collection, trx, this, std::move(bounds));
+  }
+  // forward version
+  return std::make_unique<RocksDBVPackIndexIterator<false>>(&_collection, trx, this, std::move(bounds));
 }
 
 Index::FilterCosts RocksDBVPackIndex::supportsFilterCondition(

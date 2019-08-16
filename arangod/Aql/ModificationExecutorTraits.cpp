@@ -31,10 +31,10 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <algorithm>
+#include <velocypack/Collection.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "AqlItemBlockUtils.h"
-#include "velocypack/Collection.h"
-#include "velocypack/velocypack-aliases.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

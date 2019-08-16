@@ -127,7 +127,7 @@ class Methods {
 
  protected:
   /// @brief create the transaction
-  Methods(std::shared_ptr<transaction::Context> const& transactionContext,
+  explicit Methods(std::shared_ptr<transaction::Context> const& transactionContext,
           transaction::Options const& options = transaction::Options());
 
  public:
@@ -422,7 +422,7 @@ class Methods {
 
   // SHOULD THE OPTIONS BE CONST?
   void buildDocumentIdentity(arangodb::LogicalCollection* collection,
-                             VPackBuilder& builder, TRI_voc_cid_t cid,
+                             velocypack::Builder& builder, TRI_voc_cid_t cid,
                              arangodb::velocypack::StringRef const& key, TRI_voc_rid_t rid,
                              TRI_voc_rid_t oldRid, ManagedDocumentResult const* oldDoc,
                              ManagedDocumentResult const* newDoc);
@@ -570,7 +570,7 @@ class Methods {
                              std::shared_ptr<const std::vector<std::string>> const& followers,
                              OperationOptions const& options, VPackSlice value,
                              TRI_voc_document_operation_e operation,
-                             VPackBuilder const& resultBuilder);
+                             velocypack::Builder const& resultBuilder);
 };
 
 }  // namespace transaction

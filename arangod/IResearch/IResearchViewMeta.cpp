@@ -29,9 +29,10 @@
 #include "IResearchCommon.h"
 #include "VelocyPackHelper.h"
 #include "VocBase/LogicalView.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Iterator.h"
-#include "velocypack/Parser.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
 
 #include "IResearchViewMeta.h"
 
@@ -219,6 +220,7 @@ IResearchViewMeta::IResearchViewMeta()
       _writebufferSizeMax(32 * (size_t(1) << 20)) {  // 32MB
   std::string errorField;
 
+  // cppcheck-suppress useInitializationList
   _consolidationPolicy =
       createConsolidationPolicy<irs::index_utils::consolidate_tier>(
           arangodb::velocypack::Parser::fromJson(

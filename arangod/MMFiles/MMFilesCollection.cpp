@@ -4096,6 +4096,6 @@ void MMFilesCollection::unlockKey(KeyLockInfo& keyLockInfo) noexcept {
 }
 
 MMFilesCollection::KeyLockShard& MMFilesCollection::getShardForKey(std::string const& key) noexcept {
-  size_t hash = std::hash<std::string>()(key);
-  return _keyLockShards[hash % numKeyLockShards];
+  size_t hashval = std::hash<std::string>()(key);
+  return _keyLockShards[hashval % numKeyLockShards];
 }

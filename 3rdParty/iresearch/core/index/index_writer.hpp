@@ -21,10 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_INDEXWRITER_H
-#define IRESEARCH_INDEXWRITER_H
+#ifndef IRESEARCH_INDEX_WRITER_H
+#define IRESEARCH_INDEX_WRITER_H
 
 #include "field_meta.hpp"
+#include "column_info.hpp"
 #include "index_meta.hpp"
 #include "merge_writer.hpp"
 #include "segment_reader.hpp"
@@ -53,17 +54,21 @@ class directory_reader;
 class readers_cache final : util::noncopyable {
  public:
   struct key_t {
-    std::string name;
-    uint64_t version;
     key_t(const segment_meta& meta); // implicit constructor
+
     bool operator<(const key_t& other) const NOEXCEPT {
       return name < other.name
         || (name == other.name && version < other.version);
     }
+
     bool operator==(const key_t& other) const NOEXCEPT {
       return name == other.name && version == other.version;
     }
+
+    std::string name;
+    uint64_t version;
   };
+
   struct key_hash_t {
     size_t operator()(const key_t& key) const NOEXCEPT {
       return std::hash<std::string>()(key.name);
@@ -108,11 +113,12 @@ ENABLE_BITMASK_ENUM(OpenMode);
 ///        the same directory simultaneously.
 ///        Thread safe.
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API index_writer:
-    private atomic_shared_ptr_helper<std::pair<
-      std::shared_ptr<index_meta>, std::vector<index_file_refs::ref_t>
-    >>,
-    private util::noncopyable {
+class IRESEARCH_API index_writer
+    : private atomic_shared_ptr_helper<
+        std::pair<
+          std::shared_ptr<index_meta>, std::vector<index_file_refs::ref_t>
+      >>,
+      private util::noncopyable {
  private:
   struct flush_context; // forward declaration
   struct segment_context; // forward declaration
@@ -122,9 +128,7 @@ class IRESEARCH_API index_writer:
     void(*)(flush_context*) // sizeof(std::function<void(flush_context*)>) > sizeof(void(*)(flush_context*))
   > flush_context_ptr; // unique pointer required since need ponter declaration before class declaration e.g. for 'documents_context'
 
-  typedef std::shared_ptr<
-    segment_context
-  > segment_context_ptr; // declaration from segment_context::ptr below
+  typedef std::shared_ptr<segment_context> segment_context_ptr; // declaration from segment_context::ptr below
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief segment references given out by flush_context to allow tracking
@@ -427,7 +431,12 @@ class IRESEARCH_API index_writer:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief options the the writer should use after creation
   //////////////////////////////////////////////////////////////////////////////
-  struct init_options: public segment_options {
+  struct init_options : public segment_options {
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief returns column info the writer should use for columnstore
+    ////////////////////////////////////////////////////////////////////////////
+    column_info_provider_t column_info;
+
     ////////////////////////////////////////////////////////////////////////////
     /// @brief comparator defines physical order of documents in each segment
     ///        produced by an index_writer.
@@ -457,18 +466,14 @@ class IRESEARCH_API index_writer:
   };
 
   struct segment_hash {
-    size_t operator()(
-        const segment_meta* segment
-    ) const NOEXCEPT {
+    size_t operator()(const segment_meta* segment) const NOEXCEPT {
       return hash_utils::hash(segment->name);
     }
   }; // segment_hash
 
   struct segment_equal {
-    size_t operator()(
-        const segment_meta* lhs,
-        const segment_meta* rhs
-    ) const NOEXCEPT {
+    size_t operator()(const segment_meta* lhs,
+                      const segment_meta* rhs) const NOEXCEPT {
       return lhs->name == rhs->name;
     }
   }; // segment_equal
@@ -517,6 +522,7 @@ class IRESEARCH_API index_writer:
   ////////////////////////////////////////////////////////////////////////////
   /// @brief Clears the existing index repository by staring an empty index.
   ///        Previously opened readers still remain valid.
+  /// @note call will rollback any opened transaction
   ////////////////////////////////////////////////////////////////////////////
   void clear();
 
@@ -801,8 +807,8 @@ class IRESEARCH_API index_writer:
     segment_writer::ptr writer_;
     index_meta::index_segment_t writer_meta_; // the segment_meta this writer was initialized with
 
-    DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator, const comparer* comparator);
-    segment_context(directory& dir, segment_meta_generator_t&& meta_generator, const comparer* comparator);
+    DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator, const column_info_provider_t& column_info, const comparer* comparator);
+    segment_context(directory& dir, segment_meta_generator_t&& meta_generator, const column_info_provider_t& column_info, const comparer* comparator);
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief flush current writer state into a materialized segment
@@ -1000,7 +1006,11 @@ class IRESEARCH_API index_writer:
     committed_state_t commit; // meta + references of next commit
 
     operator bool() const NOEXCEPT { return ctx && commit; }
-    void reset() NOEXCEPT { ctx.reset(), commit.reset(); }
+
+    void reset() NOEXCEPT {
+      ctx.reset();
+      commit.reset();
+    }
   }; // pending_state_t
 
   index_writer(
@@ -1011,9 +1021,10 @@ class IRESEARCH_API index_writer:
     size_t segment_pool_size,
     const segment_options& segment_limits,
     const comparer* comparator,
-    index_meta&& meta, 
+    const column_info_provider_t& column_info,
+    index_meta&& meta,
     committed_state_t&& committed_state
-  ) NOEXCEPT;
+  );
 
   pending_context_t flush_all(const before_commit_f& before_commit);
 
@@ -1025,6 +1036,7 @@ class IRESEARCH_API index_writer:
   void abort(); // aborts transaction
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  column_info_provider_t column_info_;
   const comparer* comparator_;
   readers_cache cached_readers_; // readers by segment name
   format::ptr codec_;
@@ -1048,4 +1060,4 @@ class IRESEARCH_API index_writer:
 
 NS_END
 
-#endif
+#endif // IRESEARCH_INDEX_WRITER_H

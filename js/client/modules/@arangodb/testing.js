@@ -289,7 +289,7 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
   function skipInternalMember (r, a) {
     return !r.hasOwnProperty(a) || internalMembers.indexOf(a) !== -1;
   }
-  print(BLUE + '================================================================================');
+  print(YELLOW + '================================================================================');
   print('TEST RESULTS');
   print('================================================================================\n' + RESET);
 
@@ -649,7 +649,7 @@ function iterateTests(cases, options, jsonReply) {
       } else if (testFuncs.hasOwnProperty(which)) {
         caselist.push(which);
       } else {
-        print('Unknown test "' + which + '"\nKnown tests are: ' + Object.keys(testFuncs).join(', '));
+        print('Unknown test "' + which + '"\nKnown tests are: ' + Object.keys(testFuncs).sort().join(', '));
 
         return {
           status: false
@@ -685,7 +685,7 @@ function iterateTests(cases, options, jsonReply) {
     if (options.testBuckets) {
       printTestName += " - " + options.testBuckets;
     }
-    print(BLUE + '================================================================================');
+    print(YELLOW + '================================================================================');
     print('Executing test', printTestName);
     print('================================================================================\n' + RESET);
 

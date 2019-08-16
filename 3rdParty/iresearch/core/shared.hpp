@@ -159,7 +159,7 @@
         || ((_MSC_FULL_VER >= 191326128) && (_MSC_FULL_VER <= 191326132)) \
         || ((_MSC_FULL_VER >= 191426430) && (_MSC_FULL_VER <= 191426433)) \
         || ((_MSC_FULL_VER >= 191526726) && (_MSC_FULL_VER <= 191526732)) \
-        || ((_MSC_FULL_VER >= 191627023) && (_MSC_FULL_VER <= 191627031)))
+        || ((_MSC_FULL_VER >= 191627023) && (_MSC_FULL_VER <= 191627032)))
   #define MSVC2017_3456789_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
 #else
   #define MSVC2017_3456789_OPTIMIZED_WORKAROUND(...)
@@ -335,6 +335,17 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+
+// likely/unlikely branch indicator
+// macro definitions similar to the ones at
+// https://kernelnewbies.org/FAQ/LikelyUnlikely
+#if defined(__GNUC__) || defined(__GNUG__)
+#define IRS_LIKELY(v) __builtin_expect(!!(v), 1)
+#define IRS_UNLIKELY(v) __builtin_expect(!!(v), 0)
+#else
+#define IRS_LIKELY(v) v
+#define IRS_UNLIKELY(v) v
+#endif
 
 #ifdef IRESEARCH_DEBUG
 #define IRS_ASSERT(CHECK) \

@@ -24,19 +24,23 @@
 #include "StringUtils.h"
 
 #include <ctype.h>
-#include <stdio.h>
-#include <algorithm>
-#include <limits>
-#include <vector>
-#include <cstring>
-
 #include <math.h>
-#include <time.h>
+#include <stdlib.h>
+#include <algorithm>
+#include <cstdint>
+#include <cstring>
+#include <limits>
+#include <memory>
+#include <utility>
+#include <vector>
 
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 #include "Basics/fpconv.h"
-#include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 // -----------------------------------------------------------------------------
 // helper functions
@@ -255,6 +259,7 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
     return name;
   }
 
+  // cppcheck-suppress unsignedPositive
   if (len >= (SIZE_MAX - 1) / 6) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -638,6 +643,7 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
   // the max amount of memory is:
   size_t mt = (std::max)(static_cast<size_t>(1), toLength);
 
+  // cppcheck-suppress unsignedPositive
   if ((sourceLength / fromLength) + 1 >= (SIZE_MAX - toLength) / mt) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -891,7 +897,8 @@ std::string urlEncode(char const* src, size_t const len) {
                               '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
   char const* end = src + len;
-
+  
+  // cppcheck-suppress unsignedPositive
   if (len >= (SIZE_MAX - 1) / 3) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -937,6 +944,7 @@ std::string encodeURIComponent(std::string const& str) {
 std::string encodeURIComponent(char const* src, size_t const len) {
   char const* end = src + len;
 
+  // cppcheck-suppress unsignedPositive
   if (len >= (SIZE_MAX - 1) / 3) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
