@@ -183,6 +183,39 @@ set(LIB_ARANGO_GRAPH_SOURCES
   RestServer/TraverserEngineRegistryFeature.cpp
 )
 
+set(LIB_ARANGO_PREGEL_SOURCES
+  Pregel/AggregatorHandler.cpp
+  Pregel/AlgoRegistry.cpp
+  Pregel/Algos/AsyncSCC.cpp
+  Pregel/Algos/ConnectedComponents.cpp
+  Pregel/Algos/DMID/DMID.cpp
+  Pregel/Algos/EffectiveCloseness/EffectiveCloseness.cpp
+  Pregel/Algos/EffectiveCloseness/HLLCounter.cpp
+  Pregel/Algos/HITS.cpp
+  Pregel/Algos/LabelPropagation.cpp
+  Pregel/Algos/LineRank.cpp
+  Pregel/Algos/PageRank.cpp
+  Pregel/Algos/RecoveringPageRank.cpp
+  Pregel/Algos/SCC.cpp
+  Pregel/Algos/SLPA.cpp
+  Pregel/Algos/SSSP.cpp
+  Pregel/Algos/ShortestPath.cpp
+  Pregel/Conductor.cpp
+  Pregel/GraphStore.cpp
+  Pregel/IncomingCache.cpp
+  Pregel/IndexHelpers.cpp
+  Pregel/OutgoingCache.cpp
+  Pregel/PregelFeature.cpp
+  Pregel/Recovery.cpp
+  Pregel/Utils.cpp
+  Pregel/Worker-templates-algorithms.cpp
+  Pregel/Worker-templates-native-types.cpp
+  Pregel/Worker.cpp
+  Pregel/WorkerConfig.cpp
+  RestHandler/RestControlPregelHandler.cpp
+  RestHandler/RestPregelHandler.cpp
+)
+
 set(ARANGOD_SOURCES_PART1
   Actions/actions.cpp
   Agency/AgentConfiguration.cpp
@@ -472,7 +505,6 @@ set(ARANGOD_SOURCES_PART2
   RestHandler/RestBaseHandler.cpp
   RestHandler/RestBatchHandler.cpp
   RestHandler/RestCollectionHandler.cpp
-  RestHandler/RestControlPregelHandler.cpp
   RestHandler/RestCursorHandler.cpp
   RestHandler/RestDatabaseHandler.cpp
   RestHandler/RestDebugHandler.cpp
@@ -583,35 +615,6 @@ set(ARANGOD_SOURCES_PART2
 
 
 
-  Pregel/AggregatorHandler.cpp
-  Pregel/AlgoRegistry.cpp
-  Pregel/Algos/AsyncSCC.cpp
-  Pregel/Algos/ConnectedComponents.cpp
-  Pregel/Algos/DMID/DMID.cpp
-  Pregel/Algos/EffectiveCloseness/EffectiveCloseness.cpp
-  Pregel/Algos/EffectiveCloseness/HLLCounter.cpp
-  Pregel/Algos/HITS.cpp
-  Pregel/Algos/LabelPropagation.cpp
-  Pregel/Algos/LineRank.cpp
-  Pregel/Algos/PageRank.cpp
-  Pregel/Algos/RecoveringPageRank.cpp
-  Pregel/Algos/SCC.cpp
-  Pregel/Algos/SLPA.cpp
-  Pregel/Algos/SSSP.cpp
-  Pregel/Algos/ShortestPath.cpp
-  Pregel/Conductor.cpp
-  Pregel/GraphStore.cpp
-  Pregel/IncomingCache.cpp
-  Pregel/IndexHelpers.cpp
-  Pregel/OutgoingCache.cpp
-  Pregel/PregelFeature.cpp
-  Pregel/Recovery.cpp
-  Pregel/Utils.cpp
-  Pregel/Worker-templates-algorithms.cpp
-  Pregel/Worker-templates-native-types.cpp
-  Pregel/Worker.cpp
-  Pregel/WorkerConfig.cpp
-  RestHandler/RestPregelHandler.cpp
   V8Server/FoxxQueuesFeature.cpp
   RestServer/InitDatabaseFeature.cpp
 )
@@ -654,6 +657,10 @@ add_library(arango_graph STATIC
   ${ADDITIONAL_LIB_ARANGO_GRAPH_SOURCES}
 )
 
+add_library(arango_pregel STATIC
+  ${LIB_ARANGO_PREGEL_SOURCES}
+)
+
 add_library(arangoserver_part1 STATIC
   ${ARANGOD_SOURCES_PART1}
   ${ADDITIONAL_LIB_ARANGOSERVER_PART1_SOURCES}
@@ -674,6 +681,7 @@ target_link_libraries(arangoserver
   arangoserver_part2
   arangoserver_part3
   arango_graph
+  arango_pregel
 )
 
 # Note that arango_geo publicly exports the /J compile option for MSVC, because
@@ -701,6 +709,7 @@ target_link_libraries(arangoserver_part2 arangoserver_part1)
 target_link_libraries(arangoserver_part2 arango_iresearch)
 target_link_libraries(arangoserver_part2 boost_boost)
 target_link_libraries(arangoserver_part2 arango_geo)
+target_link_libraries(arangoserver_part2 arango_pregel)
 target_link_libraries(arangoserver_part2 ${ROCKSDB_LIBS})
 
 target_link_libraries(arangoserver_part3 arangoserver_part1 arangoserver_part2)
@@ -773,6 +782,9 @@ if (USE_ENTERPRISE)
   target_compile_definitions(arango_graph PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango_graph PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
+  target_compile_definitions(arango_pregel PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(arango_pregel PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+
   target_compile_definitions(arango_rocksdb PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango_rocksdb PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
@@ -825,6 +837,7 @@ endif ()
 if(MSVC)
   target_compile_options(arangoserver PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arango_graph PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arango_pregel PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arangoserver_part1 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arangoserver_part2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   target_compile_options(arangoserver_part3 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
@@ -837,6 +850,7 @@ endif()
 if (DARWIN)
   target_compile_options(arangoserver PRIVATE -Werror)
   target_compile_options(arango_graph PRIVATE -Werror)
+  target_compile_options(arango_pregel PRIVATE -Werror)
   target_compile_options(arangoserver_part1 PRIVATE -Werror)
   target_compile_options(arangoserver_part2 PRIVATE -Werror)
   target_compile_options(arangoserver_part3 PRIVATE -Werror)
