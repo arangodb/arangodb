@@ -37,7 +37,7 @@ struct QueryResultV8 : public QueryResult {
 
   QueryResultV8(QueryResultV8&& other) = default;
 
-  QueryResultV8(QueryResult&& other)
+  explicit QueryResultV8(QueryResult&& other)
       : QueryResult(std::move(other)) {}
 
   QueryResultV8() : QueryResult() {}

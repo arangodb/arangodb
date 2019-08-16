@@ -199,6 +199,7 @@ bool parseOptions(aql::Query& query, LogicalView const& view, aql::AstNode const
                                 IResearchViewNode::Options&, std::string&);
 
   static std::map<irs::string_ref, OptionHandler> const Handlers{
+      // cppcheck-suppress constStatement
       {"collections",
        [](aql::Query& query, LogicalView const& view, aql::AstNode const& value,
           IResearchViewNode::Options& options, std::string& error) {
@@ -284,6 +285,7 @@ bool parseOptions(aql::Query& query, LogicalView const& view, aql::AstNode const
 
          return true;
        }},
+      // cppcheck-suppress constStatement
       {"waitForSync", [](aql::Query& /*query*/, LogicalView const& /*view*/,
                          aql::AstNode const& value,
                          IResearchViewNode::Options& options, std::string& error) {

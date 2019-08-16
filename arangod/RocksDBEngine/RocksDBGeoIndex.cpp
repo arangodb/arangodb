@@ -253,10 +253,6 @@ void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder,
   RocksDBIndex::toVelocyPack(builder, flags);
   _coverParams.toVelocyPack(builder);
   builder.add("geoJson", VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
-  // geo indexes are always non-unique
-  builder.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(false));
-  // geo indexes are always sparse.
-  builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(true));
   builder.close();
 }
 

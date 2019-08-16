@@ -462,6 +462,7 @@ static ssize_t DecodeWrite(v8::Isolate* isolate, char* buf, size_t buflen,
 
 static bool IsBigEndian() {
   const union {
+    // cppcheck-suppress unusedStructMember
     uint8_t u8[2];
     uint16_t u16;
   } u = {{0, 1}};

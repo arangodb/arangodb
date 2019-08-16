@@ -30,7 +30,7 @@ describe ArangoDB do
       doc.response.body.should eq ""
     end
 
-    it "checks whether async=1 returns status 202" do
+    it "checks whether async=1 returns status 200" do
       cmd = "/_api/version"
       doc = ArangoDB.log_get("#{prefix}-get-status", cmd, :headers => { "X-Arango-Async" => "1" })
 

@@ -100,6 +100,7 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterInfo-test.cpp
   Cluster/ClusterRepairsTest.cpp
+  Cluster/RebootTrackerTest.cpp
   Futures/Future-test.cpp
   Futures/Promise-test.cpp
   Futures/Try-test.cpp
@@ -169,6 +170,9 @@ set(ARANGODB_TESTS_SOURCES
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
+  Network/ConnectionPoolTest.cpp
+  Network/MethodsTest.cpp
+  Network/UtilsTest.cpp
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp
   Pregel/typedbuffer.cpp

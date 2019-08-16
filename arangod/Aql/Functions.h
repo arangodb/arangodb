@@ -306,6 +306,8 @@ struct Functions {
                                 transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue GeoEquals(arangodb::aql::ExpressionContext*,
                             transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue GeoArea(arangodb::aql::ExpressionContext*,
+                          transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue IsInPolygon(arangodb::aql::ExpressionContext*,
                               transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue GeoPoint(arangodb::aql::ExpressionContext*,

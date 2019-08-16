@@ -61,13 +61,16 @@ struct PregelID {
 template <typename V, typename E>
 class GraphStore;
 
-/// @brief header entry for the edge file
+// header entry for the edge file
 template <typename E>
+// cppcheck-suppress noConstructor
 class Edge {
   template <typename V, typename E2>
   friend class GraphStore;
 
   static_assert(sizeof(std::string) > 2, "");
+
+  // these members are initialized by the GrapStore
   char* _toKey;             // uint64_t
   uint16_t _toKeyLength;    // uint16_t
   PregelShard _targetShard; // uint16_t
@@ -87,11 +90,13 @@ class Edge {
 };
 
 template <typename V, typename E>
+// cppcheck-suppress noConstructor
 class Vertex {
   friend class GraphStore<V,E>;
   
   const char* _key; // uint64_t
   
+  // these members are initialized by the GrapStore
   Edge<E>* _edges; // uint64_t
   size_t _edgeCount; // uint64_t
   
