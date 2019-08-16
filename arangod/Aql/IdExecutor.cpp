@@ -37,11 +37,13 @@ IdExecutorInfos::IdExecutorInfos(RegisterId nrInOutRegisters,
                                  std::unordered_set<RegisterId> registersToKeep,
                                  // cppcheck-suppress passedByValue
                                  std::unordered_set<RegisterId> registersToClear,
-                                 std::string const& distributeId)
+                                 std::string const& distributeId,
+                                 bool isResponsibleForInitializeCursor)
     : ExecutorInfos(make_shared_unordered_set(), make_shared_unordered_set(),
                     nrInOutRegisters, nrInOutRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
-      _distributeId(distributeId) {}
+      _distributeId(distributeId),
+      _isResponsibleForInitializeCursor(isResponsibleForInitializeCursor) {}
 
 template <bool usePassThrough, class UsedFetcher>
 IdExecutor<usePassThrough, UsedFetcher>::IdExecutor(Fetcher& fetcher, IdExecutorInfos& infos)

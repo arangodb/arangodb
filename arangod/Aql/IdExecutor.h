@@ -48,7 +48,8 @@ class IdExecutorInfos : public ExecutorInfos {
  public:
   IdExecutorInfos(RegisterId nrInOutRegisters, std::unordered_set<RegisterId> registersToKeep,
                   std::unordered_set<RegisterId> registersToClear,
-                  std::string const& distributeId = "");
+                  std::string const& distributeId = "",
+                  bool isResponsibleForInitializeCursor = true);
 
   IdExecutorInfos() = delete;
   IdExecutorInfos(IdExecutorInfos&&) = default;
@@ -57,8 +58,14 @@ class IdExecutorInfos : public ExecutorInfos {
 
   std::string const& distributeId() { return _distributeId; }
 
+  bool isResponsibleForInitializeCursor() const {
+    return _isResponsibleForInitializeCursor;
+  }
+
  private:
   std::string const _distributeId;
+
+  bool const _isResponsibleForInitializeCursor;
 };
 
 // forward declaration
@@ -197,7 +204,7 @@ class IdExecutor {
 
  private:
   Fetcher& _fetcher;
-};
+};  // namespace aql
 }  // namespace aql
 }  // namespace arangodb
 

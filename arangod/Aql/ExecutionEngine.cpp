@@ -258,15 +258,16 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
     }
 
     TRI_ASSERT(block != nullptr);
-
-    // Now add dependencies:
-    for (auto const& it : en->getDependencies()) {
-      auto it2 = cache.find(it);
-      TRI_ASSERT(it2 != cache.end());
-      TRI_ASSERT(it2->second != nullptr);
-      block->addDependency(it2->second);
-    }
     if (doEmplace) {
+      // We have visited this node earlier, so we got it's dependencies
+      // Now add dependencies:
+      for (auto const& it : en->getDependencies()) {
+        auto it2 = cache.find(it);
+        TRI_ASSERT(it2 != cache.end());
+        TRI_ASSERT(it2->second != nullptr);
+        block->addDependency(it2->second);
+      }
+
       cache.emplace(en, block);
     }
   }

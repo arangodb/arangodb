@@ -507,6 +507,14 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::s
   return {state, subqueryResult};
 }
 
+template <>
+std::pair<ExecutionState, Result>
+ExecutionBlockImpl<IdExecutor<true, SingleRowFetcher<true>>>::shutdown(int errorCode) {
+  if (this->infos().isResponsibleForInitializeCursor()) {
+    return ExecutionBlock::shutdown(errorCode);
+  }
+  return {ExecutionState::DONE, {errorCode}};
+}
 }  // namespace aql
 }  // namespace arangodb
 

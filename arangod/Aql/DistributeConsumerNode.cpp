@@ -62,7 +62,7 @@ std::unique_ptr<ExecutionBlock> DistributeConsumerNode::createBlock(
   TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
              getRegisterPlan()->nrRegs[getDepth()]);
   IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()], calcRegsToKeep(),
-                        getRegsToClear(), _distributeId);
+                        getRegsToClear(), _distributeId, _isResponsibleForInitializeCursor);
   return std::make_unique<ExecutionBlockImpl<IdExecutor<true, SingleRowFetcher<true>>>>(
       &engine, this, std::move(infos));
 }

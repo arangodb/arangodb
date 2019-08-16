@@ -81,20 +81,9 @@ TEST_F(IdExecutorTest, there_are_rows_in_the_upstream) {
   IdExecutor<true, ConstFetcher> testee(fetcher, infos);
   NoStats stats{};
 
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
+  // This block consumes all rows at once.
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_TRUE(state == ExecutionState::DONE);
