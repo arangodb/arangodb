@@ -206,28 +206,18 @@ To remove all available node modules and start a clean installation run:
 
 The frontend can also be built using these commands:
 
-    cd <SourceRoot>/js/apps/system/_admin/aardvark/APP/
-    npm install
-    grunt deploy
+    cd <SourceRoot>/js/apps/system/_admin/aardvark/APP/react
+    npm run build
 
-For development purposes, go to `js/apps/system/_admin/aardvark/APP/` and open
-`manifest.json`. Then apply the following change:
+For development purposes, go to `js/apps/system/_admin/aardvark/APP/react` and
+run: 
 
-```
-     "/app.js": {
-     -      "path": "frontend/build/app.min.js",
-     -      "gzip": true
-     +      "path": "frontend/build/app.js",
-     +      "gzip": false
-          },
-```
+    npm start
 
-Then run `grunt`, `grunt deploy` and `grunt watch`. This should make every
-change in the code available after a reload for the browser. It is faster this
-way because the minification step is skipped.
+This will deploy a development server (Port: 3000). Navigate to: 
+`http://localhost:3000/_db/_system/_admin/aardvark/index.html`
 
-Note: You might need to do the same for other files.
-Usually the change for `app` should suffice however.
+All changes to any source will automatically re-build and reload your browser.
 
 #### NPM Dependencies
 
