@@ -1540,9 +1540,6 @@ function detectCurrentLeader(instanceInfo) {
 }
 
 function checkClusterAlive(options, instanceInfo, addArgs) {
-  // disabled because not in use (jslint)
-  // let coordinatorUrl = instanceInfo.url
-  // let response
   let httpOptions = makeAuthorizationHeaders(options);
   httpOptions.method = 'POST';
   httpOptions.returnBodyOnError = true;
@@ -1613,7 +1610,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
     }
   });
 
-  if (options.cluster) {
+  if (options.cluster || options.agency) {
     print("spawning cluster health inspector");
     internal.env.INSTANCEINFO = JSON.stringify(instanceInfo);
     internal.env.OPTIONS = JSON.stringify(options);
@@ -1946,6 +1943,9 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
     instanceInfo.role = 'agent';
     print(Date() + ' Agency Endpoint: ' + instanceInfo.endpoint);
   }
+
+  checkClusterAlive(options, instanceInfo, addArgs);
+
   return instanceInfo;
 }
 
