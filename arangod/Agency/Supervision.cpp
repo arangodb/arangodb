@@ -1357,14 +1357,14 @@ void Supervision::checkBrokenCreatedDatabases() {
     std::pair<bool, bool> isBuilding = db->hasAsBool(StaticStrings::DatabaseIsBuilding);
     if (isBuilding.first && isBuilding.second) {
 
-      // this database is currently build
-      //  check if the coordinator exists and its reboot its is the same as specified
+      // this database is currently beeing built
+      //  check if the coordinator exists and its reboot is the same as specified
       std::pair<uint64_t, bool> rebootID = db->hasAsUInt(StaticStrings::DatabaseCoordinatorRebootId);
       std::pair<std::string, bool> coordinatorID = db->hasAsString(StaticStrings::DatabaseCoordinator);
 
       if (!rebootID.second || !coordinatorID.second) {
         // incomplete data, should not happen
-                continue;   // continue or delete
+        continue;   // continue or delete?
       }
 
       // check if the server is still able to finish the initalisation
