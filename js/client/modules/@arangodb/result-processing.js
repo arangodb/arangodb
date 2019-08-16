@@ -533,7 +533,8 @@ function locateLongRunning(options, results) {
     testSuite: function(options, state, testSuite, testSuiteName) {
       if (testSuite.hasOwnProperty('duration') && testSuite.duration !== 0) {
         sortedByDuration.push(
-          { testName: testSuiteName,
+          {
+            testName: testSuiteName,
             duration: testSuite.duration,
             test: testSuite,
             count: Object.keys(testSuite).filter(testCase => skipInternalMember(testSuite, testCase)).length
@@ -597,6 +598,53 @@ function locateLongRunning(options, results) {
   });
   print(testRunStatistics);
 }
+
+function locateLongSetupTeardown(options, results) {
+  let testRunStatistics = "  Setup  | Run  |  tests | suite name\n";
+  let sortedByDuration = [];
+  let failedStates = {};
+  
+  iterateTestResults(options, results, failedStates, {
+    testRun: function(options, state, testRun, testRunName) {
+    },
+    testSuite: function(options, state, testSuite, testSuiteName) {
+      if (testSuite.hasOwnProperty('totalSetUp') &&
+          testSuite.hasOwnProperty('totalTearDown')) {
+        sortedByDuration.push({
+          testName: testSuiteName,
+          setupTearDown: testSuite.totalSetUp + testSuite.totalTearDown,
+          duration: testSuite.duration,
+          count: Object.keys(testSuite).filter(testCase => skipInternalMember(testSuite, testCase)).length,
+        });
+      } else {
+        print(RED + "This test doesn't have a duration: " + testSuiteName + "\n" + JSON.stringify(testSuite) + RESET);
+      }        
+    },
+    testCase: function(options, state, testCase, testCaseName) {
+    },
+    endTestSuite: function(options, state, testSuite, testSuiteName) {
+    },
+    endTestRun: function(options, state, testRun, testRunName) {
+      sortedByDuration.sort(function(a, b) {
+        return a.setupTearDown - b.setupTearDown;
+      });
+      let results = [];
+      for (let i = sortedByDuration.length - 1; (i >= 0) && (i > sortedByDuration.length - 11); i --) {
+        let key = " " +
+            fancyTimeFormat(sortedByDuration[i].setupTearDown / 1000) + " | " +
+            fancyTimeFormat(sortedByDuration[i].duration / 1000) + " |     " +
+            sortedByDuration[i].count + "  | " +
+            sortedByDuration[i].testName.replace('/\\/g', '/');
+        results.push(key);
+      }
+      testRunStatistics +=  yaml.safeDump(results);
+      sortedByDuration = [];
+    }
+  });
+  print(testRunStatistics);
+}
+
+
 
 function locateShortServerLife(options, results) {
   let rc = true;
@@ -699,5 +747,6 @@ exports.analyze = {
   saveToJunitXML: saveToJunitXML,
   locateLongRunning: locateLongRunning,
   locateShortServerLife: locateShortServerLife,
+  locateLongSetupTeardown: locateLongSetupTeardown,
   yaml: yamlDumpResults
 };

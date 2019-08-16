@@ -807,6 +807,7 @@ Currently available analyzers are:
   - saveToJunitXML - saves jUnit compatible XML files
   - locateLongRunning - searches the 10 longest running tests from a testsuite
   - locateShortServerLife - whether the servers lifetime for the tests isn't at least 10 times as long as startup/shutdown
+  - locateLongSetupTeardown - locate tests that may use a lot of time in setup/teardown
   - yaml - dumps the json file as a yaml file
 
 
