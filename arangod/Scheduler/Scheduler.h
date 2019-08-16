@@ -26,6 +26,7 @@
 #define ARANGOD_SCHEDULER_SCHEDULER_H 1
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <functional>
 #include <mutex>
@@ -36,11 +37,11 @@
 #include "GeneralServer/RequestLane.h"
 
 namespace arangodb {
-
 namespace velocypack {
 class Builder;
 }
 
+class LogTopic;
 class SchedulerThread;
 class SchedulerCronThread;
 
@@ -64,9 +65,22 @@ class Scheduler {
 
   // Enqueues a task after delay - this uses the queue functions above.
   // WorkHandle is a shared_ptr to a WorkItem. If all references the WorkItem
-  // are dropped, the task is canceled.
+  // are dropped, the task is canceled. It will return true if queued, false
+  // otherwise
   virtual std::pair<bool, WorkHandle> queueDelay(RequestLane lane, clock::duration delay,
                                                  std::function<void(bool canceled)> handler);
+
+  // Enqueues a task after delay - this uses the queue function above.
+  // If the enqueue attempt fails, it will enter a sleep-retry loop to attempt
+  // to queue it. With each failed attempt, it will print a log message like
+  // "No thread available to queue " + taskDescription + ", waiting to retry..."
+  // to the specified topic. If it reaches the configured timeout without
+  // successfully queuing the task, it will return false.
+  virtual std::pair<bool, WorkHandle> queueDelayWithRetry(
+      RequestLane lane, clock::duration delay, std::function<void(bool canceled)> handler,
+      LogTopic& topic, char const* taskDescription,
+      std::chrono::nanoseconds retryInterval = std::chrono::seconds(1),
+      std::chrono::nanoseconds timeout = std::chrono::minutes(5));
 
   class WorkItem final {
    public:
