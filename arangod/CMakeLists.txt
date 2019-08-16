@@ -793,38 +793,7 @@ target_link_libraries(arangoserver
 )
 
 if (USE_ENTERPRISE)
-  target_compile_definitions(arangoserver PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-  target_compile_definitions(arangoserver_part1 PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arangoserver_part1 PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-  target_compile_definitions(arangoserver_part2 PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arangoserver_part2 PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-  target_compile_definitions(arangoserver_part3 PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arangoserver_part3 PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-  target_compile_definitions(arango_mmfiles PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arango_mmfiles PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-  target_compile_definitions(arango_graph PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arango_graph PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-  target_compile_definitions(arango_pregel PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arango_pregel PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-  target_compile_definitions(arango_aql PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arango_aql PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-  target_compile_definitions(arango_vocbase PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arango_vocbase PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-  target_compile_definitions(arango_rocksdb PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arango_rocksdb PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-  target_compile_definitions(arango_cluster_engine PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arango_cluster_engine PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+  add_definitions(-DUSE_ENTERPRISE=1)
 
   if (MSVC)
     target_link_libraries(arangoserver
@@ -883,6 +852,8 @@ foreach(TARGET
   arango_cluster_engine
   arangod
 )
+  target_include_directories(${TARGET} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+
   if(MSVC)
     target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   elseif(DARWIN)
