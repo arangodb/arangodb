@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_COLLECTION_ACCESSING_NODE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
