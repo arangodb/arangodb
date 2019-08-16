@@ -736,6 +736,25 @@ add_library(arangoserver_part3 STATIC
   ${ADDITIONAL_LIB_ARANGOSERVER_PART3_SOURCES}
 )
 
+add_library(arango_mmfiles STATIC
+  ${MMFILES_SOURCES}
+)
+
+add_library(arango_rocksdb STATIC
+  ${ROCKSDB_SOURCES}
+  ${ADDITIONAL_LIB_ARANGO_ROCKSDB_SOURCES}
+)
+
+add_library(arango_cluster_engine STATIC
+  ${CLUSTER_ENGINE_SOURCES}
+)
+
+add_library(llhttp STATIC
+  ${LLHTTP_SOURCES}
+)
+
+target_include_directories(llhttp PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
+
 target_link_libraries(arangoserver
   arangoserver_part1
   arangoserver_part2
@@ -823,25 +842,6 @@ target_link_libraries(arango_replication arango_utils)
 target_link_libraries(arango_iresearch arango_indexes)
 
 target_link_libraries(arango_agency arango)
-
-add_library(arango_mmfiles STATIC
-  ${MMFILES_SOURCES}
-)
-
-add_library(arango_rocksdb STATIC
-  ${ROCKSDB_SOURCES}
-  ${ADDITIONAL_LIB_ARANGO_ROCKSDB_SOURCES}
-)
-
-add_library(arango_cluster_engine STATIC
-  ${CLUSTER_ENGINE_SOURCES}
-)
-
-add_library(llhttp STATIC
-  ${LLHTTP_SOURCES}
-)
-
-target_include_directories(llhttp PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
 
 target_link_libraries(arango_mmfiles llhttp)
 target_link_libraries(arango_mmfiles boost_boost)
