@@ -432,6 +432,37 @@ set(LIB_ARANGO_REPLICATION_SOURCES
   Replication/utilities.cpp
 )
 
+set(LIB_ARANGO_AGENCY_SOURCES
+  Agency/AgentConfiguration.cpp
+  Agency/ResignLeadership.cpp
+  Agency/StoreCallback.cpp
+  Agency/ActiveFailoverJob.cpp
+  Agency/AddFollower.cpp
+  Agency/AgencyComm.cpp
+  Agency/AgencyFeature.cpp
+  Agency/Agent.cpp
+  Agency/AgentCallback.cpp
+  Agency/CleanOutServer.cpp
+  Agency/Compactor.cpp
+  Agency/Constituent.cpp
+  Agency/FailedFollower.cpp
+  Agency/FailedLeader.cpp
+  Agency/FailedServer.cpp
+  Agency/GossipCallback.cpp
+  Agency/Inception.cpp
+  Agency/Job.cpp
+  Agency/JobContext.cpp
+  Agency/MoveShard.cpp
+  Agency/Node.cpp
+  Agency/RemoveFollower.cpp
+  Agency/RestAgencyHandler.cpp
+  Agency/RestAgencyPrivHandler.cpp
+  Agency/State.cpp
+  Agency/Store.cpp
+  Agency/Supervision.cpp
+  Agency/v8-agency.cpp
+)
+
 set(LIB_ARANGO_V8SERVER_SOURCES
   V8Server/v8-user-structures.cpp
   V8Server/FoxxQueuesFeature.cpp
@@ -457,9 +488,6 @@ set(LIB_ARANGO_V8SERVER_SOURCES
 
 set(ARANGOD_SOURCES_PART1
   Actions/actions.cpp
-  Agency/AgentConfiguration.cpp
-  Agency/ResignLeadership.cpp
-  Agency/StoreCallback.cpp
   Auth/Common.cpp
   Cluster/ActionDescription.cpp
   Cluster/ClusterCollectionCreationInfo.cpp
@@ -493,31 +521,6 @@ set(ARANGOD_SOURCES_PART1
 set(ARANGOD_SOURCES_PART2
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
-  Agency/ActiveFailoverJob.cpp
-  Agency/AddFollower.cpp
-  Agency/AgencyComm.cpp
-  Agency/AgencyFeature.cpp
-  Agency/Agent.cpp
-  Agency/AgentCallback.cpp
-  Agency/CleanOutServer.cpp
-  Agency/Compactor.cpp
-  Agency/Constituent.cpp
-  Agency/FailedFollower.cpp
-  Agency/FailedLeader.cpp
-  Agency/FailedServer.cpp
-  Agency/GossipCallback.cpp
-  Agency/Inception.cpp
-  Agency/Job.cpp
-  Agency/JobContext.cpp
-  Agency/MoveShard.cpp
-  Agency/Node.cpp
-  Agency/RemoveFollower.cpp
-  Agency/RestAgencyHandler.cpp
-  Agency/RestAgencyPrivHandler.cpp
-  Agency/State.cpp
-  Agency/Store.cpp
-  Agency/Supervision.cpp
-  Agency/v8-agency.cpp
   Auth/TokenCache.cpp
   Auth/User.cpp
   Auth/UserManager.cpp
@@ -714,6 +717,10 @@ add_library(arango_replication STATIC
   ${LIB_ARANGO_REPLICATION_SOURCES}
 )
 
+add_library(arango_agency STATIC
+  ${LIB_ARANGO_AGENCY_SOURCES}
+)
+
 add_library(arangoserver_part1 STATIC
   ${ARANGOD_SOURCES_PART1}
   ${ADDITIONAL_LIB_ARANGOSERVER_PART1_SOURCES}
@@ -759,6 +766,7 @@ target_link_libraries(arangoserver_part1 arango_v8server)
 target_link_libraries(arangoserver_part1 arango_storage_engine)
 target_link_libraries(arangoserver_part1 arango_replication)
 target_link_libraries(arangoserver_part1 ${ROCKSDB_LIBS})
+target_link_libraries(arangoserver_part1 arango_agency)
 
 target_link_libraries(arangoserver_part2 arango_vocbase)
 target_link_libraries(arangoserver_part2 arangoserver_part1)
@@ -773,6 +781,7 @@ target_link_libraries(arangoserver_part2 arango_storage_engine)
 target_link_libraries(arangoserver_part2 arango_indexes)
 target_link_libraries(arangoserver_part2 arango_replication)
 target_link_libraries(arangoserver_part2 ${ROCKSDB_LIBS})
+target_link_libraries(arangoserver_part2 arango_agency)
 
 target_link_libraries(arangoserver_part3 arango_vocbase)
 target_link_libraries(arangoserver_part3 arangoserver_part1 arangoserver_part2)
@@ -785,6 +794,7 @@ target_link_libraries(arango_graph arango_cache)
 
 target_link_libraries(arango_pregel boost_boost)
 target_link_libraries(arango_pregel boost_system)
+target_link_libraries(arango_pregel arango_agency)
 
 target_link_libraries(arango_aql arango_iresearch)
 target_link_libraries(arango_aql arango_graph)
@@ -794,6 +804,7 @@ target_link_libraries(arango_aql arango_indexes)
 target_link_libraries(arango_vocbase boost_system)
 target_link_libraries(arango_vocbase arango_indexes)
 target_link_libraries(arango_vocbase arango_replication)
+target_link_libraries(arango_vocbase arango_agency)
 
 target_link_libraries(arango_utils arango_aql)
 target_link_libraries(arango_utils arango_vocbase)
@@ -805,10 +816,13 @@ target_link_libraries(arango_storage_engine arango_mmfiles)
 
 target_link_libraries(arango_v8server arango_v8 ${V8_LIBS})
 target_link_libraries(arango_v8server arango_replication)
+target_link_libraries(arango_v8server arango_agency)
 
 target_link_libraries(arango_replication arango_utils)
 
 target_link_libraries(arango_iresearch arango_indexes)
+
+target_link_libraries(arango_agency arango)
 
 add_library(arango_mmfiles STATIC
   ${MMFILES_SOURCES}
