@@ -30,9 +30,9 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <algorithm>
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
+#include <algorithm>
 
 #include "AqlItemBlockUtils.h"
 
@@ -774,12 +774,13 @@ bool UpdateReplace<ModType>::doOutput(ModificationExecutorInfos& info,
   TRI_ASSERT(_operationResultArraySlice.isArray());
   // For every APPLY_RETURN we have one element in the operationResultArray, we might have more in the Array.
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  long numReturns = std::count_if(_operations.begin(), _operations.end(),
-                                  [](ModOperationType const& el) {
-                                    return el == ModOperationType::APPLY_RETURN;
-                                  });
-  long availableInArray = static_cast<long>(_operationResultArraySlice.length());
-  TRI_ASSERT(_justCopy || numReturns <= availableInArray);
+  size_t numReturns = 0;
+  for (auto const& op : _operations) {
+    if (op == ModOperationType::APPLY_RETURN) {
+      numReturns++;
+    }
+  }
+  TRI_ASSERT(_justCopy || numReturns <= _operationResultArraySlice.length());
 #endif
   while (_blockIndex < _operations.size() &&
          _operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
