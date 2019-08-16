@@ -3,24 +3,13 @@
 # OPEN
 
 ## Important
+- Fix the login view properly. Image loading of community or enterprise is not included nicely. Needs cleanup!
 - make react aware if we're in cluster env or not (clusterHealth)
-- move all old build files to new react folder.
-- remove all not needed files
 - check build environment
 - check starter copy js methods
 
-## Finalizing build
-- Change "make frontend"
-
-## Additional
-- Fix the login view properly. Image loading of community or enterprise is not included nicely. Needs cleanup!
-
-## CSS
-- Pure.css has isssues,  e.g. Nodes View: The header of the tabular view is misaligned. Currently don't know why.
-
 ## Features
 - Shard Distribution View needs to be finalized. Currently poc stace. 
-
 
 # TODO DEVs (optional)
 
@@ -36,6 +25,9 @@
   -  "defaultDocument": "react/build/index.html",
 
 # DONE
+
+- remove all not needed files
+- move all old build files to new react folder.
 
 ## Finalizing build
 - ~~Setup react dev and production setups.~~ (Done)
@@ -63,3 +55,10 @@
 
 ## Sass
 - ~~Concat and compile SASS / CSS with webpack~~ (Done)
+
+## Finalizing build
+- Change "make frontend"
+
+## CSS
+- Pure.css has isssues,  e.g. Nodes View: The header of the tabular view is misaligned. Currently don't know why.
+
