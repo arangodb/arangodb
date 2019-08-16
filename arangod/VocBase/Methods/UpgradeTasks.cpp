@@ -293,7 +293,7 @@ Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase, std::vector<std::s
                 {"status", "queue", "delayUntil"},
                 false, false);
   } catch (Result res) {
-    return res;
+    return {res};
   } catch (...) {
     // TODO: Is there anything more we can do here?
     return {TRI_ERROR_INTERNAL};
