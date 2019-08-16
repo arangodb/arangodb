@@ -4,6 +4,8 @@
 
 ## Important
 - make react aware if we're in cluster env or not (clusterHealth)
+- move all old build files to new react folder.
+- remove all not needed files
 - check build environment
 - check starter copy js methods
 
