@@ -42,6 +42,7 @@ v3.5.1 (XXXX-XX-XX)
 * Refactor maintenance to use a TakeoverShardLeadership job. This fixes a bug
   that a shard follower could have set the wrong leader for the shard locally.
 
+* Fixed an agency bug found in Windows tests.
 
 v3.5.0 (2019-08-20)
 -------------------
