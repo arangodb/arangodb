@@ -46,7 +46,7 @@
     },
     "/static": "react/build/static",
     "/static/css/static/media": "react/build/static/media",
-    "/img": "frontend/compressed-img",
+    "/img": "frontend/img",
     "/data": "frontend/data",
     "/js/arango/aqltemplates.json": "frontend/aqltemplates.json",
     "/worker-json.js": {
