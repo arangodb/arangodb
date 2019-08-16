@@ -70,18 +70,6 @@ class Scheduler {
   virtual std::pair<bool, WorkHandle> queueDelay(RequestLane lane, clock::duration delay,
                                                  std::function<void(bool canceled)> handler);
 
-  // Enqueues a task after delay - this uses the queue function above.
-  // If the enqueue attempt fails, it will enter a sleep-retry loop to attempt
-  // to queue it. With each failed attempt, it will print a log message like
-  // "No thread available to queue " + taskDescription + ", waiting to retry..."
-  // to the specified topic. If it reaches the configured timeout without
-  // successfully queuing the task, it will return false.
-  virtual std::pair<bool, WorkHandle> queueDelayWithRetry(
-      RequestLane lane, clock::duration delay, std::function<void(bool canceled)> handler,
-      LogTopic& topic, char const* taskDescription,
-      std::chrono::nanoseconds retryInterval = std::chrono::seconds(1),
-      std::chrono::nanoseconds timeout = std::chrono::minutes(5));
-
   class WorkItem final {
    public:
     ~WorkItem() {

@@ -33,6 +33,7 @@
 #include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
 
+#include "Basics/FunctionUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -397,21 +398,17 @@ void Conductor::cancel() {
 void Conductor::cancelNoLock() {
   _callbackMutex.assertLockedByCurrentThread();
   _state = ExecutionState::CANCELED;
-  bool queued = false;
-  for (size_t attempts = 0; attempts < 300; attempts++) {
-    if (_finalizeWorkers() == TRI_ERROR_QUEUE_FULL) {
-      LOG_TOPIC("f8a3c", WARN, Logger::PREGEL)
-          << "No thread available to cancel worker execution, will retry.";
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-    } else {
-      queued = true;
-      break;
-    }
-  }
-  if (!queued) {
+  bool ok;
+  int res;
+  std::tie(ok, res) = basics::function_utils::retryUntilTimeout<int>(
+      [this]() -> std::pair<bool, int> {
+        int res = _finalizeWorkers();
+        return std::make_pair(res != TRI_ERROR_QUEUE_FULL, res);
+      },
+      Logger::PREGEL, "cancel worker execution");
+  if (!ok) {
     LOG_TOPIC("f8b3c", ERR, Logger::PREGEL)
-        << "No thread available to cancel worker execution for five minutes, "
-        << "giving up.";
+        << "Failed to cancel worker execution for five minutes, giving up.";
   }
   _workHandle.reset();
 }

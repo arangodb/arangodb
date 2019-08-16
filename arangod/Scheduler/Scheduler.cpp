@@ -170,25 +170,6 @@ std::pair<bool, Scheduler::WorkHandle> Scheduler::queueDelay(
   return std::make_pair(true, item);
 }
 
-std::pair<bool, Scheduler::WorkHandle> Scheduler::queueDelayWithRetry(
-    RequestLane lane, clock::duration delay, std::function<void(bool canceled)> handler,
-    LogTopic& topic, char const* taskDescription,
-    std::chrono::nanoseconds retryInterval, std::chrono::nanoseconds timeout) {
-  auto start = std::chrono::steady_clock::now();
-  bool queued = false;
-  WorkHandle handle;
-  while ((std::chrono::steady_clock::now() - start) < timeout) {
-    std::tie(queued, handle) = queueDelay(lane, delay, handler);
-    if (queued) {
-      break;
-    }
-    LOG_TOPIC("18d0a", WARN, topic) << "No thread available to queue "
-                                    << taskDescription << ", waiting to retry...";
-    std::this_thread::sleep_for(retryInterval);
-  }
-  return std::make_pair(queued, handle);
-}
-
 /*
 void Scheduler::cancelAllTasks() {
   //std::unique_lock<std::mutex> guard(_cronQueueMutex);

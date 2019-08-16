@@ -23,6 +23,7 @@
 #include "ManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/FunctionUtils.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -39,27 +40,23 @@ using namespace arangodb::options;
 namespace {
 void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
                             std::function<void(bool)>& gcfunc) {
-  auto off = std::chrono::seconds(1);
   bool queued = false;
-  for (size_t attempts = 0; attempts <= 300; attempts++) {
-    {
-      std::lock_guard<std::mutex> guard(mutex);
-      std::tie(queued, workItem) =
-          arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::INTERNAL_LOW,
-                                                            off, gcfunc);
-    }
-    if (queued) {
-      break;
-    }
-    LOG_TOPIC("f8a3d", WARN, arangodb::Logger::TRANSACTIONS)
-        << "No thread available to queue transaction garbage collection, "
-        << "will retry.";
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+  {
+    std::lock_guard<std::mutex> guard(mutex);
+    std::tie(queued, workItem) =
+        arangodb::basics::function_utils::retryUntilTimeout<arangodb::Scheduler::WorkHandle>(
+            [&gcfunc]() -> std::pair<bool, arangodb::Scheduler::WorkHandle> {
+              auto off = std::chrono::seconds(1);
+              return arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::INTERNAL_LOW,
+                                                                       off, gcfunc);
+            },
+            arangodb::Logger::TRANSACTIONS,
+            "queue transaction garbage collection");
   }
   if (!queued) {
     LOG_TOPIC("f8b3d", FATAL, arangodb::Logger::TRANSACTIONS)
-        << "No thread available to queue transaction garbage collection, "
-        << "for 5 minutes, exiting.";
+        << "Failed to queue transaction garbage collection, for 5 minutes, "
+           "exiting.";
     FATAL_ERROR_EXIT();
   }
 }
