@@ -3,7 +3,6 @@
 # OPEN
 
 ## Important
-- hard Reload on graphs views, create new, enter something => auto drops out (important, need to fix this)
 - make react aware if we're in cluster env or not (clusterHealth)
 - check build environment
 - check starter copy js methods
@@ -38,6 +37,7 @@
 
 ## Finalizing build
 - ~~Setup react dev and production setups.~~ (Done)
+- ~~hard Reload on graphs views, create new, enter something => auto drops out (important, need to fix this) (DONE)
 
 ## Libraries
 - ~~Leaflet.css (../frontend/css/leaflet.css) used to use "images" not "img", this is a custom change, rewrite that with webpack later~~ (Done)
