@@ -675,6 +675,19 @@ target_link_libraries(arangoserver
   arangoserver_part3
 )
 
+# Note that arango_geo publicly exports the /J compile option for MSVC, because
+# s2 requires /J to be set on Windows.
+# /J makes char unsigned.
+# Thus all libraries depending on arango_geo will be compiled with /J (and need
+# to, if they include s2 headers).
+# I think it would safer to compile everything with /J, so we would not get a
+# mixture of signed and unsigned char interpretations in the same binary.
+# However, just setting
+#   add_compile_options(/J)
+# does not work, either, because
+# C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\include\atldef.h(94): fatal error C1189: #error:  ATL does not support compilation with /J or _CHAR_UNSIGNED flag enabled [C:\vm04-windows\oskar\work\ArangoDB\build\lib\arango.vcxproj]
+# .
+
 target_link_libraries(arangoserver_part1 boost_boost)
 target_link_libraries(arangoserver_part1 llhttp)
 target_link_libraries(arangoserver_part1 arango_iresearch)
