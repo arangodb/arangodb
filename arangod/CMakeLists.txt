@@ -724,6 +724,7 @@ target_link_libraries(arangoserver_part3 boost_boost)
 target_link_libraries(arangoserver_part3 arango_geo)
 
 target_link_libraries(arango_graph boost_boost)
+target_link_libraries(arango_pregel boost_system)
 target_link_libraries(arango_aql arango_iresearch)
 target_link_libraries(arango_aql arango_graph)
 target_link_libraries(arango_aql arango_geo)
