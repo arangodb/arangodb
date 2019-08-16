@@ -1285,7 +1285,7 @@ void Supervision::workJobs() {
 bool Supervision::verifyCoordinatorRebootID(std::string coordinatorID, uint64_t wantedRebootID) {
   // check if the coordinator exists in health
   std::string const& health = serverHealth(coordinatorID);
-  // if server is not found health is empty string
+  // if the server is not found, health is an empty string
   if (health != "GOOD" && health != "BAD") {
     return false;
   }

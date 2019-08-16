@@ -298,7 +298,7 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     return res;
   }
 
-  TRI_ASSERT(false);
+  
 
   auto failureGuard = scopeGuard([ci, info]() {
     Result res;
