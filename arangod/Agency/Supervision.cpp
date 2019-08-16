@@ -1127,7 +1127,7 @@ bool Supervision::handleJobs() {
   // is incremented inside the function. Furthermore, `cleanupLostCollections`
   // is static for catch testing purposes.
 
-  LOG_TOPIC("00789", TRACE, Logger::SUPERVISION) << "Begin readyOrphanedIndexCreations";
+  LOG_TOPIC("00790", TRACE, Logger::SUPERVISION) << "Begin readyOrphanedIndexCreations";
   readyOrphanedIndexCreations();
 
   LOG_TOPIC("00789", TRACE, Logger::SUPERVISION) << "Begin checkBrokenCreatedDatabases";
@@ -1362,13 +1362,19 @@ void Supervision::checkBrokenCreatedDatabases() {
       std::pair<uint64_t, bool> rebootID = db->hasAsUInt(StaticStrings::DatabaseCoordinatorRebootId);
       std::pair<std::string, bool> coordinatorID = db->hasAsString(StaticStrings::DatabaseCoordinator);
 
-      if (!rebootID.second || !coordinatorID.second) {
+      bool deleteDatabase = true;
+
+      if (rebootID.second && coordinatorID.second) {
+        deleteDatabase = verifyCoordinatorRebootID(coordinatorID.first, rebootID.first);
         // incomplete data, should not happen
-        continue;   // continue or delete?
+      } else {
+        //          v---- Please note this awesome log-id
+        LOG_TOPIC("dbbad", WARN, Logger::SUPERVISION)
+          << "database has set `isBuilding` but is missing coordinatorID and rebootID";
       }
 
       // check if the server is still able to finish the initalisation
-      if (false == verifyCoordinatorRebootID(coordinatorID.first, rebootID.first)) {
+      if (deleteDatabase) {
         // delete this database and all of its collections
         deleteBrokenDatabase(dbpair.first, coordinatorID.first, rebootID.first);
       }
@@ -1472,7 +1478,7 @@ void Supervision::readyOrphanedIndexCreations() {
 
           write_ret_t res = _agent->write(envelope);
           if (!res.successful()) {
-            LOG_TOPIC("38482", DEBUG, Logger::SUPERVISION)
+            LOG_TOPIC("3848f", DEBUG, Logger::SUPERVISION)
                 << "failed to report ready index to agency. Will retry.";
           }
         }
