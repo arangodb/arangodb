@@ -50,7 +50,7 @@ Retrieves the list of shards:
 
     var response = logCurlRequest('GET', "/_api/collection/" + cn + "/shards");
 
-    assert(response.code === 200 || response.code === 501);
+    assert(response.code === 200);
     logRawResponse(response);
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
@@ -64,7 +64,7 @@ Retrieves the list of shards with the responsible servers:
 
     var response = logCurlRequest('GET', "/_api/collection/" + cn + "/shards?details=true");
 
-    assert(response.code === 200 || response.code === 501);
+    assert(response.code === 200);
     logRawResponse(response);
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN

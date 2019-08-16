@@ -53,10 +53,10 @@ is returned.
     db._create(cn, { numberOfShards: 3, shardKeys: ["_key"] });
 
     var body = JSON.stringify({ _key: "testkey", value: 23 });
-    var response = logCurlRequestRaw('PUT', "/_api/collection/" + cn + "/getResponsibleShard, body);
+    var response = logCurlRequestRaw('PUT', "/_api/collection/" + cn + "/responsibleShard", body);
 
-    assert(response.code === 200 || response.code === 501);
-    if (response.code === 2000) { assert(JSON.parse(response.body).hasOwnProperty("shardId")); }
+    assert(response.code === 200);
+    assert(JSON.parse(response.body).hasOwnProperty("shardId")); 
 
     logJsonResponse(response);
     db._drop(cn);
