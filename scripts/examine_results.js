@@ -72,7 +72,7 @@ function main (argv) {
     }
     _.defaults(options, optionsDefaults);
     try {
-      print(YELLOW + "Analyzing: " + file);
+      print(YELLOW + "Analyzing: " + file + RESET);
       ret = ret && analyzers.forEach(function(which) {
         rp.analyze[which](options, results);
       });
