@@ -1,6 +1,10 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #9652: fix ArangoSearch wrong name collision and raising
+  "Name collision detected" error during creation of a custom analyzer with
+  stopwords.
+
 * Fixed an agency bug found in Windows tests.
 
 * Added initial support for wgs84 reference ellipsoid in GEO_DISTANCE through
