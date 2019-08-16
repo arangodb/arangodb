@@ -364,6 +364,16 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   VocBase/vocbase.cpp
 )
 
+set(LIB_ARANGO_UTILS_SOURCES
+  Utils/CollectionKeys.cpp
+  Utils/CollectionNameResolver.cpp
+  Utils/CursorRepository.cpp
+  Utils/DatabaseGuard.cpp
+  Utils/ExecContext.cpp
+  Utils/FlushThread.cpp
+  Utils/SingleCollectionTransaction.cpp
+)
+
 set(LIB_ARANGO_V8SERVER_SOURCES
   V8Server/v8-user-structures.cpp
   V8Server/FoxxQueuesFeature.cpp
@@ -616,13 +626,6 @@ set(ARANGOD_SOURCES_PART2
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/V8Context.cpp
-  Utils/CollectionKeys.cpp
-  Utils/CollectionNameResolver.cpp
-  Utils/CursorRepository.cpp
-  Utils/DatabaseGuard.cpp
-  Utils/ExecContext.cpp
-  Utils/FlushThread.cpp
-  Utils/SingleCollectionTransaction.cpp
 )
 
 set(ARANGOD_SOURCES_PART3
@@ -681,6 +684,10 @@ add_library(arango_v8server STATIC
   ${LIB_ARANGO_V8SERVER_SOURCES}
 )
 
+add_library(arango_utils STATIC
+  ${LIB_ARANGO_UTILS_SOURCES}
+)
+
 add_library(arangoserver_part1 STATIC
   ${ARANGOD_SOURCES_PART1}
   ${ADDITIONAL_LIB_ARANGOSERVER_PART1_SOURCES}
@@ -705,6 +712,7 @@ target_link_libraries(arangoserver
   arango_aql
   arango_vocbase
   arango_v8server
+  arango_utils
 )
 
 # Note that arango_geo publicly exports the /J compile option for MSVC, because
@@ -738,6 +746,7 @@ target_link_libraries(arangoserver_part2 arango_geo)
 target_link_libraries(arangoserver_part2 arango_pregel)
 target_link_libraries(arangoserver_part2 arango_aql)
 target_link_libraries(arangoserver_part2 arango_v8server)
+target_link_libraries(arangoserver_part2 arango_utils)
 target_link_libraries(arangoserver_part2 ${ROCKSDB_LIBS})
 
 target_link_libraries(arangoserver_part3 arango_vocbase)
@@ -756,6 +765,8 @@ target_link_libraries(arango_aql arango_graph)
 target_link_libraries(arango_aql arango_geo)
 
 target_link_libraries(arango_vocbase boost_system)
+target_link_libraries(arango_utils arango_aql)
+target_link_libraries(arango_utils arango_vocbase)
 
 target_link_libraries(arango_v8server
   arango_v8
@@ -861,6 +872,8 @@ foreach(TARGET
   arango_pregel
   arango_aql
   arango_vocbase
+  arango_v8server
+  arango_utils
   arangoserver_part1
   arangoserver_part2
   arangoserver_part3
