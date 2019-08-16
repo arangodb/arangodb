@@ -413,7 +413,17 @@
         this.navigate('#dashboard', {trigger: true});
         return;
       }
-      window.ShardsReactView.render();
+      // TODO re-enable React View, for now use old view:
+      // window.ShardsReactView.render();
+      // Below code needs to be removed then again.
+      if (this.shardsView) {
+        this.shardsView.remove();
+      }
+      this.shardsView = new window.ShardsView({
+        dbServers: this.dbServers
+      });
+      this.shardsView.render();
+
     },
 
     nodes: function (initialized) {
