@@ -1127,10 +1127,10 @@ bool Supervision::handleJobs() {
   // is incremented inside the function. Furthermore, `cleanupLostCollections`
   // is static for catch testing purposes.
 
-  LOG_TOPIC("00790", TRACE, Logger::SUPERVISION) << "Begin readyOrphanedIndexCreations";
+  LOG_TOPIC("00789", TRACE, Logger::SUPERVISION) << "Begin readyOrphanedIndexCreations";
   readyOrphanedIndexCreations();
 
-  LOG_TOPIC("00789", TRACE, Logger::SUPERVISION) << "Begin checkBrokenCreatedDatabases";
+  LOG_TOPIC("00790", TRACE, Logger::SUPERVISION) << "Begin checkBrokenCreatedDatabases";
   checkBrokenCreatedDatabases();
 
   LOG_TOPIC("00aab", TRACE, Logger::SUPERVISION) << "Begin workJobs";
