@@ -72,33 +72,38 @@ function agencyTestSuite () {
   var agencyServers = instanceInfo.arangods.map(arangod => {
     return arangod.url;
   });
+
   var agencyLeader = agencyServers[0];
   var request = require("@arangodb/request");
 
-  function findAgencyCompactionIntervals() {
+  function agencyConfig() {
     for (let count = 0; count < 60; ++count) {
       let res = request({url: agencyLeader + "/_api/agency/config",
                          method: "GET", followRedirect: true});
       if (res.statusCode === 200) {
-        try {
-          res.bodyParsed = JSON.parse(res.body);
-        } catch(e) {
-          require("console").error("Exception in body parse of '" + agencyLeader + "/_api/agency/config' : ", res.body, JSON.stringify(e),  JSON.stringify(res));
-          throw e;
+        res.bodyParsed = JSON.parse(res.body);
+        if (res.bodyParsed.leaderId !== "") {
+          return res.bodyParsed;
         }
-        return {
-          compactionStepSize: res.bodyParsed.configuration["compaction step size"],
-          compactionKeepSize: res.bodyParsed.configuration["compaction keep size"]
-        };
+        require('console').topic("agency=warn", "No leadership ...");
+      } else {
+        require('console').topic("agency=warn", "Got status " + res.statusCode +
+                                 " from agency.");
       }
-      require('console').topic("agency=warn", "Got status " + res.statusCode +
-        " from agency.");
       require("internal").wait(1.0);   // give the server another second
     }
     require('console').topic("agency=error",
-      "Giving up, agency did not boot successfully.");
+                             "Giving up, agency did not boot successfully.");
     assertEqual("apple", "orange");
     // all is lost because agency did not get up and running in time
+  }
+
+  function findAgencyCompactionIntervals() {
+    var c = agencyConfig();
+    return {
+      compactionStepSize: c.configuration["compaction step size"],
+      compactionKeepSize: c.configuration["compaction keep size"]
+    };
   }
 
   var compactionConfig = findAgencyCompactionIntervals();
@@ -117,30 +122,9 @@ function agencyTestSuite () {
         url: url + "/_api/agency/state",
         timeout: 240
       };
-      
-      let compactionReply = request(compaction);
-      let stateReply = request(state);
-      let compactionParsed;
-      let stateParsed;
-      try {
-        compactionParsed = JSON.parse(compactionReply.body);
-      }
-      catch (e) {
-        require("console").error("Exception in body parse of '" + url + "/_api/cursor' : ", compactionReply.body, JSON.stringify(e),  JSON.stringify(compactionReply));
-        throw e;
-      }
-      try {
-        stateParsed = JSON.parse(stateReply.body);
-      }
-      catch (e) {
-        require("console").error("Exception in body parse of '" + url + "/_api/agency/state' : ", stateReply.body, JSON.stringify(e),  JSON.stringify(stateReply));
-        throw e;
-      }
-      ret.push({
-        compactions: compactionParsed,
-        state: stateParsed,
-        url: url
-      });
+
+      ret.push({compactions: JSON.parse(request(compaction).body),
+                state: JSON.parse(request(state).body), url: url});
     });
     return ret;
   }
@@ -149,7 +133,6 @@ function agencyTestSuite () {
     // We simply try all agency servers in turn until one gives us an HTTP
     // response:
     var res;
-    let requestUrl;
     var inquire = false;
 
     var clientIds = [];
@@ -168,8 +151,7 @@ function agencyTestSuite () {
       }
 
       if (!inquire) {
-        requestUrl = agencyLeader + "/_api/agency/" + api;
-        res = request({url: requestUrl,
+        res = request({url: agencyLeader + "/_api/agency/" + api,
                        method: "POST", followRedirect: false,
                        body: JSON.stringify(list),
                        headers: {"Content-Type": "application/json"},
@@ -177,8 +159,7 @@ function agencyTestSuite () {
                                             running under ASAN in the CI */ });
         require('console').topic("agency=debug", 'Sent out agency request, statusCode:', res.statusCode);
       } else { // inquire. Remove successful commits. For later retries
-        requestUrl = agencyLeader + "/_api/agency/inquire";
-        res = request({url: requestUrl,
+        res = request({url: agencyLeader + "/_api/agency/inquire",
                        method: "POST", followRedirect: false,
                        body: JSON.stringify(clientIds),
                        headers: {"Content-Type": "application/json"},
@@ -191,7 +172,7 @@ function agencyTestSuite () {
         agencyLeader = res.headers.location;
         var l = 0;
         for (var i = 0; i < 3; ++i) {
-          l = agencyLeader.indexOf('/', l + 1);
+          l = agencyLeader.indexOf('/', l+1);
         }
         agencyLeader = agencyLeader.substring(0,l);
         if (clientIds.length > 0 && api === 'write') {
@@ -213,12 +194,7 @@ function agencyTestSuite () {
       }
       // In case of inquiry, we probably have done some of the transactions:
       var done = 0;
-      try {
-        res.bodyParsed = JSON.parse(res.body);
-      } catch(e) {
-        require("console").error("Exception in body parse of '" + requestUrl + "' : ", res.body, JSON.stringify(e), api, list, JSON.stringify(res));
-        throw e;
-      }
+      res.bodyParsed = JSON.parse(res.body);
       res.bodyParsed.results.forEach(function (index) {
         var noZeroYet = true;
         if (index > 0) {
@@ -242,7 +218,7 @@ function agencyTestSuite () {
     try {
       res.bodyParsed = JSON.parse(res.body);
     } catch(e) {
-      require("console").error("Exception in body parse of '" + requestUrl + "' : ", res.body, JSON.stringify(e), api, list, JSON.stringify(res));
+      require("console").error("Exception in body parse:", res.body, JSON.stringify(e), api, list, JSON.stringify(res));
     }
     return res;
   }
@@ -264,7 +240,7 @@ function agencyTestSuite () {
     assertEqual(res.statusCode, code);
     return res.bodyParsed;
   }
-  
+
   function doCountTransactions(count, start) {
     let i, res;
     let counter = 0;
@@ -287,10 +263,10 @@ function agencyTestSuite () {
     res = accessAgency("read", trxs);
     assertEqual(200, res.statusCode);
     for (i = 0; i < start + count; ++i) {
-      let key = "key" + i;
+      let key = "key"+i;
       let correct = {};
       correct[key] = "value" + i;
-      assertEqual(correct, res.bodyParsed[i], JSON.stringify(res.bodyParsed));
+      assertEqual(correct, res.bodyParsed[i]);
     }
   }
 
@@ -303,21 +279,21 @@ function agencyTestSuite () {
       var agents = getCompactions(servers), i, old;
       var ready = true;
       for (i = 1; i < agents.length; ++i) {
-        if (agents[0].state.log[agents[0].state.log.length - 1].index !==
-            agents[i].state.log[agents[i].state.log.length - 1].index) {
+        if (agents[0].state.log[agents[0].state.log.length-1].index !==
+            agents[i].state.log[agents[i].state.log.length-1].index) {
           ready = false;
           break;
-        } 
+        }
       }
       if (!ready) {
         continue;
       }
       agents.forEach( function (agent) {
 
-        var results = agent.compactions.result;         // All compactions 
-        var llog = agent.state.log[agent.state.log.length - 1];   // Last log entry
+        var results = agent.compactions.result;         // All compactions
+        var llog = agent.state.log[agent.state.log.length-1];   // Last log entry
         llogi = llog.index;                         // Last log index
-        var lcomp = results[results.length - 1];          // Last compaction entry
+        var lcomp = results[results.length-1];          // Last compaction entry
         var lcompi = parseInt(lcomp._key);              // Last compaction index
         var stepsize = compactionConfig.compactionStepSize;
 
@@ -351,11 +327,11 @@ function agencyTestSuite () {
                 }
               }
             });
-            
+
             // Sum of relevant log entries > last compaction index and last
             // compaction's foobar value must match foobar's value in agency
             assertEqual(lcomp.readDB[0].foobar + n, foobar);
-            
+
           }
           // this agent is fine remove it from agents to be check this time
           // around list
@@ -370,11 +346,11 @@ function agencyTestSuite () {
       }
 
     }
-    
+
     return llogi;
-    
+
   }
-      
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -427,7 +403,7 @@ function agencyTestSuite () {
       assertEqual(res, [++cur,++cur,{x:17}]);
       writeAndCheck([[{"/":{"op":"delete"}}]]);
     },
-    
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test to write a single top level key
@@ -469,18 +445,18 @@ function agencyTestSuite () {
       assertEqual(res.bodyParsed, {"results":[0]});
       writeAndCheck([[{a:{op:"delete"}}]]);
       // fail precond oldEmpty
-      res = accessAgency("write",[[{"a":14},{"a":{"oldEmpty":false}}]]); 
+      res = accessAgency("write",[[{"a":14},{"a":{"oldEmpty":false}}]]);
       assertEqual(res.statusCode, 412);
-      assertEqual(res.bodyParsed, {"results":[0]}); 
+      assertEqual(res.bodyParsed, {"results":[0]});
       writeAndCheck([[{"a":14},{"a":{"oldEmpty":true}}]]); // precond oldEmpty
       writeAndCheck([[{"a":14},{"a":{"old":14}}]]);        // precond old
       // fail precond old
-      res = accessAgency("write",[[{"a":14},{"a":{"old":13}}]]); 
+      res = accessAgency("write",[[{"a":14},{"a":{"old":13}}]]);
       assertEqual(res.statusCode, 412);
-      assertEqual(res.bodyParsed, {"results":[0]}); 
+      assertEqual(res.bodyParsed, {"results":[0]});
       writeAndCheck([[{"a":14},{"a":{"isArray":false}}]]); // precond isArray
       // fail precond isArray
-      res = accessAgency("write",[[{"a":14},{"a":{"isArray":true}}]]); 
+      res = accessAgency("write",[[{"a":14},{"a":{"isArray":true}}]]);
       assertEqual(res.statusCode, 412);
       assertEqual(res.bodyParsed, {"results":[0]});
       // check object precondition
@@ -573,7 +549,7 @@ function agencyTestSuite () {
         [[localObj, {"qux":localObj.qux,"baz":{"old":localObj.baz},"foo":localObj.foo}]]);
 
       for (var j in localKeys) {
-        permuted = {};      
+        permuted = {};
         shuffle(localKeys);
         for (var k in localKeys) {
           permuted[localKeys[k]] = localObj.baz[localKeys[k]];
@@ -611,9 +587,9 @@ function agencyTestSuite () {
         writeAndCheck([[ { "a" : [localObj,localObk] }, {"a" : [permuted,per2] }]]);
         res = accessAgency("write",
                            [[ { "a" : [localObj,localObk] }, {"a" : [per2,permuted] }]]);
-        assertEqual(res.statusCode, 412);        
+        assertEqual(res.statusCode, 412);
       }
-      
+
     },
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -644,7 +620,7 @@ function agencyTestSuite () {
       res = accessAgency("inquire",[id[0]]);
       assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
       cur++;
-      
+
       wres = accessAgency("write",[[query[1], pre[1], id[2]]]);
       assertEqual(wres.statusCode,412);
       res = accessAgency("inquire",[id[2]]);
@@ -671,7 +647,7 @@ function agencyTestSuite () {
       assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
       assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[1]);
       assertEqual(res.statusCode,200);
-      
+
       wres = accessAgency("write",[[query[0], pre[0], id[5]],
                                    [query[2], pre[2], id[5]],
                                    [query[1], pre[1], id[5]]]);
@@ -681,7 +657,7 @@ function agencyTestSuite () {
       assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
       assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[1]);
       assertEqual(res.statusCode,200);
-      
+
       wres = accessAgency("write",[[query[2], pre[2], id[6]],
                                    [query[0], pre[0], id[6]],
                                    [query[1], pre[1], id[6]]]);
@@ -691,7 +667,7 @@ function agencyTestSuite () {
       assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
       assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[2]);
       assertEqual(res.statusCode,200);
-      
+
       wres = accessAgency("write",[[query[2], pre[2], id[7]],
                                   [query[0], pre[0], id[8]],
                                   [query[1], pre[1], id[9]]]);
@@ -715,10 +691,10 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/!!@#$%^&*)/address"]]),[{"!!@#$%^&*)":{"address": "818ButlerStreet,Berwind,Colorado,2490"}}]);
     },
 
-    
+
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test arrays 
+/// @brief test arrays
 ////////////////////////////////////////////////////////////////////////////////
 
     testArrays : function () {
@@ -741,7 +717,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"2":[[[[[[]]]]],[],[],[],[[]]]}]]);
       assertEqual(readAndCheck([["/2"]]),[{"2":[[[[[[]]]]],[],[],[],[[]]]}]);
       writeAndCheck([[{"2":[[[[[["Hello World"],"Hello World"],1],2.0],"C"],[1],[2],[3],[[1,2],3],4]}]]);
-      assertEqual(readAndCheck([["/2"]]),[{"2":[[[[[["Hello World"],"Hello World"],1],2.0],"C"],[1],[2],[3],[[1,2],3],4]}]);      
+      assertEqual(readAndCheck([["/2"]]),[{"2":[[[[[["Hello World"],"Hello World"],1],2.0],"C"],[1],[2],[3],[[1,2],3],4]}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -796,12 +772,7 @@ function agencyTestSuite () {
       let res = request({url: agencyLeader + "/_api/agency/stores",
                          method: "GET", followRedirect: true});
       if (res.statusCode === 200) {
-        try {
-          res.bodyParsed = JSON.parse(res.body);
-        } catch(e) {
-          require("console").error("Exception in body parse of " + agencyLeader + "/_api/agency/stores' : ", res.body, JSON.stringify(e), JSON.stringify(res));
-          throw e;
-        }
+        res.bodyParsed = JSON.parse(res.body);
         if (res.bodyParsed.read_db[0].a !== undefined) {
           assertTrue(res.bodyParsed.read_db[1]["/a/u"] >= 0);
         } else {
@@ -823,12 +794,7 @@ function agencyTestSuite () {
         // only, if agency is still led by same guy/girl
         if (agencyLeader === tmp) {
           if (res.statusCode === 200) {
-            try {
-              res.bodyParsed = JSON.parse(res.body);
-            } catch(e) {
-              require("console").error("Exception in body parse of '" + agencyLeader + "/_api/agency/stores' : ", res.body, JSON.stringify(e), JSON.stringify(res));
-              throw e;
-            }
+            res.bodyParsed = JSON.parse(res.body);
             console.warn(res.bodyParsed.read_db[0]);
             if (res.bodyParsed.read_db[0].a !== undefined) {
               assertTrue(res.bodyParsed.read_db[1]["/a/u"] === undefined);
@@ -860,7 +826,7 @@ function agencyTestSuite () {
                   [{a:{euler:[2.71828182845904523536]}}]);
       writeAndCheck([[{"/a/euler":{"op":"set","new":2.71828182845904523536}}]]);
       assertEqual(readAndCheck([["/a/euler"]]),
-                  [{a:{euler:2.71828182845904523536}}]);          
+                  [{a:{euler:2.71828182845904523536}}]);
       writeAndCheck([[{"/a/euler":{"op":"push","new":2.71828182845904523536}}]]);
       assertEqual(readAndCheck([["/a/euler"]]),
                   [{a:{euler:[2.71828182845904523536]}}]);
@@ -874,7 +840,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"/a/euler":{"op":"delete"}}]]);
       assertEqual(readAndCheck([["/a/euler"]]), [{a:{}}]);
     },
-     
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "prepend" operator
 ////////////////////////////////////////////////////////////////////////////////
@@ -890,7 +856,7 @@ function agencyTestSuite () {
       writeAndCheck(
         [[{"/a/euler":{"op":"set","new":2.71828182845904523536}}]]);
       assertEqual(readAndCheck([["/a/euler"]]),
-                  [{a:{euler:2.71828182845904523536}}]);          
+                  [{a:{euler:2.71828182845904523536}}]);
       writeAndCheck(
         [[{"/a/euler":{"op":"prepend","new":2.71828182845904523536}}]]);
       assertEqual(readAndCheck(
@@ -912,7 +878,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"/a/b/c":{"op":"shift"}}]]); // on existing array
       assertEqual(readAndCheck([["/a/b/c"]]), [{a:{b:{c:[1,2,3,"max"]}}}]);
       writeAndCheck([[{"/a/b/d":{"op":"shift"}}]]); // on existing scalar
-      assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);        
+      assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -925,10 +891,10 @@ function agencyTestSuite () {
       writeAndCheck([[{"/a/e":{"op":"pop"}}]]); // on empty array
       assertEqual(readAndCheck([["/a/f"]]), [{a:{f:[]}}]);
       writeAndCheck([[{"/a/b/c":{"op":"pop"}}]]); // on existing array
-      assertEqual(readAndCheck([["/a/b/c"]]), [{a:{b:{c:[1,2,3]}}}]);        
+      assertEqual(readAndCheck([["/a/b/c"]]), [{a:{b:{c:[1,2,3]}}}]);
       writeAndCheck([[{"a/b/d":1}]]); // on existing scalar
       writeAndCheck([[{"/a/b/d":{"op":"pop"}}]]); // on existing scalar
-      assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);        
+      assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -936,9 +902,9 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOpErase : function () {
-      
+
       writeAndCheck([[{"/version":{"op":"delete"}}]]);
-      
+
       writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]); // none before
       assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,3,4,5,6,7,8,9]}]);
       writeAndCheck([[{"a":{"op":"erase","val":3}}]]);
@@ -962,7 +928,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"a":{"op":"erase","val":6}}],
                      [{"a":{"op":"erase","val":8}}]]);
       assertEqual(readAndCheck([["/a"]]), [{a:[]}]);
-      
+
       writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]); // none before
       assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,3,4,5,6,7,8,9]}]);
       writeAndCheck([[{"a":{"op":"erase","pos":3}}]]);
@@ -983,7 +949,7 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/a"]]), [{a:[4,9]}]);
       writeAndCheck([[{"a":{"op":"erase","pos":1}}],
                      [{"a":{"op":"erase","pos":0}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[]}]);      
+      assertEqual(readAndCheck([["/a"]]), [{a:[]}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -992,7 +958,7 @@ function agencyTestSuite () {
 
     testOpReplace : function () {
       writeAndCheck([[{"/version":{"op":"delete"}}]]); // clear
-      writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]); 
+      writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]);
       assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,3,4,5,6,7,8,9]}]);
       writeAndCheck([[{"a":{"op":"replace","val":3,"new":"three"}}]]);
       assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,"three",4,5,6,7,8,9]}]);
@@ -1117,6 +1083,129 @@ function agencyTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Test observe / unobserve
+////////////////////////////////////////////////////////////////////////////////
+
+    testObserve : function () {
+      var res, before, after, clean;
+      var trx = [{"/a":"a"}, {"a":{"oldEmpty":true}}];
+
+      // In the beginning
+      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+      assertEqual(200, res.statusCode);
+      clean = JSON.parse(res.body);
+
+      // Don't create empty object for observation
+      writeAndCheck([[{"/a":{"op":"observe", "url":"https://google.com"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 412);
+
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      var c = agencyConfig().term;
+
+      // No duplicate entries in
+      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+      assertEqual(200, res.statusCode);
+      before = JSON.parse(res.body);
+      writeAndCheck([[{"/a":{"op":"observe", "url":"https://google.com"}}]]);
+      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+      assertEqual(200, res.statusCode);
+      after = JSON.parse(res.body);
+      if (!_.isEqual(before, after)) {
+        if (agencyConfig().term === c) {
+          assertEqual(before, after); //peng
+        } else {
+          require("console").warn("skipping remaining callback tests this time around");
+          return; //
+        }
+      }
+
+      // Normalization
+      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+      assertEqual(200, res.statusCode);
+      before = JSON.parse(res.body);
+      writeAndCheck([[{"//////a////":{"op":"observe", "url":"https://google.com"}}]]);
+      writeAndCheck([[{"a":{"op":"observe", "url":"https://google.com"}}]]);
+      writeAndCheck([[{"a/":{"op":"observe", "url":"https://google.com"}}]]);
+      writeAndCheck([[{"/a/":{"op":"observe", "url":"https://google.com"}}]]);
+      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+      assertEqual(200, res.statusCode);
+      after = JSON.parse(res.body);
+      if (!_.isEqual(before, after)) {
+        if (agencyConfig().term === c) {
+          assertEqual(before, after); //peng
+        } else {
+          require("console").warn("skipping remaining callback tests this time around");
+          return; //
+        }
+      }
+
+      // Unobserve
+      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+      assertEqual(200, res.statusCode);
+      before = JSON.parse(res.body);
+      writeAndCheck([[{"//////a":{"op":"unobserve", "url":"https://google.com"}}]]);
+      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+      assertEqual(200, res.statusCode);
+      after = JSON.parse(res.body);
+      assertEqual(clean, after);
+      if (!_.isEqual(clean, after)) {
+        if (agencyConfig().term === c) {
+          assertEqual(clean, after); //peng
+        } else {
+          require("console").warn("skipping remaining callback tests this time around");
+          return; //
+        }
+      }
+
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test delete / replace / erase should not create new stuff in agency
+////////////////////////////////////////////////////////////////////////////////
+
+    testNotCreate : function () {
+      var trx = [{"/a":"a"}, {"a":{"oldEmpty":true}}], res;
+
+      // Don't create empty object for observation
+      writeAndCheck([[{"a":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 412);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+
+      // Don't create empty object for observation
+      writeAndCheck([[{"a":{"op":"replace", "val":1, "new":2}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 412);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+
+      // Don't create empty object for observation
+      writeAndCheck([[{"a":{"op":"erase", "val":1}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 412);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Test that order should not matter
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1175,23 +1264,23 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/"]]),
                   [{"\\":{"a":{"^&%^&$^&%$":{"b\\\n":{"b":{"c":4}}}}}}]);
     },
-    
+
     testKeysBeginningWithSameString: function() {
       var res = accessAgency("write",[[{"/bumms":{"op":"set","new":"fallera"}, "/bummsfallera": {"op":"set","new":"lalalala"}}]]);
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/bumms", "/bummsfallera"]]), [{bumms:"fallera", bummsfallera: "lalalala"}]);
     },
-    
+
     testHiddenAgencyWrite: function() {
       var res = accessAgency("write",[[{".agency": {"op":"set","new":"fallera"}}]]);
       assertEqual(res.statusCode, 403);
-    }, 
-    
+    },
+
     testHiddenAgencyWriteSlash: function() {
       var res = accessAgency("write",[[{"/.agency": {"op":"set","new":"fallera"}}]]);
       assertEqual(res.statusCode, 403);
     },
-    
+
     testHiddenAgencyWriteDeep: function() {
       var res = accessAgency("write",[[{"/.agency/hans": {"op":"set","new":"fallera"}}]]);
       assertEqual(res.statusCode, 403);
@@ -1199,8 +1288,8 @@ function agencyTestSuite () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Compaction
-////////////////////////////////////////////////////////////////////////////////    
-    
+////////////////////////////////////////////////////////////////////////////////
+
     testLogCompaction: function() {
       // Find current log index and erase all data:
       let cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
@@ -1217,9 +1306,9 @@ function agencyTestSuite () {
         "keys, from log entry", cur + count, "on.");
       doCountTransactions(count2, count);
 
-      // All tests so far have not really written many log entries in 
+      // All tests so far have not really written many log entries in
       // comparison to the compaction interval (with the default settings),
-      let count3 = 2 * compactionConfig.compactionStepSize + 100 
+      let count3 = 2 * compactionConfig.compactionStepSize + 100
         - (cur + count + count2);
       require("console").topic("agency=info", "Provoking second log compaction for now with",
         count3, "keys, from log entry", cur + count + count2, "on.");
@@ -1324,11 +1413,11 @@ function agencyTestSuite () {
       writeAndCheck(transaction);
       lim -= transaction.length;
       assertTrue(evalComp()>0);
-      
+
       writeAndCheck(transaction);
       lim -= transaction.length;
       assertTrue(evalComp()>0);
-      
+
       while(lim > compactionConfig.compactionStepSize) {
         writeAndCheck(transaction);
         lim -= transaction.length;
@@ -1337,14 +1426,14 @@ function agencyTestSuite () {
 
       writeAndCheck(transaction);
       assertTrue(evalComp()>0);
-      
-      writeAndCheck(transaction);
-      assertTrue(evalComp()>0);
 
       writeAndCheck(transaction);
       assertTrue(evalComp()>0);
 
-    }    
+      writeAndCheck(transaction);
+      assertTrue(evalComp()>0);
+
+    }
     */
   };
 }
@@ -1357,4 +1446,3 @@ function agencyTestSuite () {
 jsunity.run(agencyTestSuite);
 
 return jsunity.done();
-

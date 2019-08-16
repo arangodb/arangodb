@@ -295,9 +295,8 @@ bool RocksDBAnyIndexIterator::outOfRange() const {
 }
 
 RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::ReadOptions& options,
-                                               RocksDBKeyBounds const& bounds, bool reverse)
-    : _reverse(reverse),
-      _bounds(bounds),
+                                               RocksDBKeyBounds const& bounds)
+    : _bounds(bounds),
       _options(options),
       _iterator(arangodb::rocksutils::globalRocksDB()->NewIterator(_options,
                                                                    _bounds.columnFamily())),
@@ -310,19 +309,11 @@ bool RocksDBGenericIterator::hasMore() const {
 }
 
 bool RocksDBGenericIterator::outOfRange() const {
-  if (_reverse) {
-    return _cmp->Compare(_iterator->key(), _bounds.start()) < 0;
-  } else {
-    return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
-  }
+  return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
 }
 
 bool RocksDBGenericIterator::reset() {
-  if (_reverse) {
-    return seek(_bounds.end());
-  } else {
-    return seek(_bounds.start());
-  }
+  return seek(_bounds.start());
 }
 
 bool RocksDBGenericIterator::skip(uint64_t count, uint64_t& skipped) {
@@ -340,11 +331,7 @@ bool RocksDBGenericIterator::skip(uint64_t count, uint64_t& skipped) {
 }
 
 bool RocksDBGenericIterator::seek(rocksdb::Slice const& key) {
-  if (_reverse) {
-    _iterator->SeekForPrev(key);
-  } else {
-    _iterator->Seek(key);
-  }
+  _iterator->Seek(key);
   return hasMore();
 }
 
@@ -371,11 +358,7 @@ bool RocksDBGenericIterator::next(GenericCallback const& cb, size_t limit) {
       return false;
     }
     --limit;
-    if (_reverse) {
-      _iterator->Prev();
-    } else {
-      _iterator->Next();
-    }
+    _iterator->Next();
     
     // validate that Iterator is in a good shape and hasn't failed
     arangodb::rocksutils::checkIteratorStatus(_iterator.get());
