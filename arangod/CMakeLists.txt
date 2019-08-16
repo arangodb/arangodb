@@ -364,6 +364,29 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   VocBase/vocbase.cpp
 )
 
+set(LIB_ARANGO_V8SERVER_SOURCES
+  V8Server/v8-user-structures.cpp
+  V8Server/FoxxQueuesFeature.cpp
+  V8Server/V8Context.cpp
+  V8Server/V8DealerFeature.cpp
+  V8Server/v8-actions.cpp
+  V8Server/v8-collection-util.cpp
+  V8Server/v8-collection.cpp
+  V8Server/v8-dispatcher.cpp
+  V8Server/v8-general-graph.cpp
+  V8Server/v8-query.cpp
+  V8Server/v8-replication.cpp
+  V8Server/v8-statistics.cpp
+  V8Server/v8-ttl.cpp
+  V8Server/v8-user-functions.cpp
+  V8Server/v8-users.cpp
+  V8Server/v8-util.cpp
+  V8Server/v8-views.cpp
+  V8Server/v8-vocbase.cpp
+  V8Server/v8-voccursor.cpp
+  V8Server/v8-vocindex.cpp
+)
+
 set(ARANGOD_SOURCES_PART1
   Actions/actions.cpp
   Agency/AgentConfiguration.cpp
@@ -413,7 +436,6 @@ set(ARANGOD_SOURCES_PART1
   Utils/CollectionKeysRepository.cpp
   Utils/OperationCursor.cpp
   Utils/UrlHelper.cpp
-  V8Server/v8-user-structures.cpp
 )
 
 set(ARANGOD_SOURCES_PART2
@@ -601,25 +623,6 @@ set(ARANGOD_SOURCES_PART2
   Utils/ExecContext.cpp
   Utils/FlushThread.cpp
   Utils/SingleCollectionTransaction.cpp
-  V8Server/FoxxQueuesFeature.cpp
-  V8Server/V8Context.cpp
-  V8Server/V8DealerFeature.cpp
-  V8Server/v8-actions.cpp
-  V8Server/v8-collection-util.cpp
-  V8Server/v8-collection.cpp
-  V8Server/v8-dispatcher.cpp
-  V8Server/v8-general-graph.cpp
-  V8Server/v8-query.cpp
-  V8Server/v8-replication.cpp
-  V8Server/v8-statistics.cpp
-  V8Server/v8-ttl.cpp
-  V8Server/v8-user-functions.cpp
-  V8Server/v8-users.cpp
-  V8Server/v8-util.cpp
-  V8Server/v8-views.cpp
-  V8Server/v8-vocbase.cpp
-  V8Server/v8-voccursor.cpp
-  V8Server/v8-vocindex.cpp
 )
 
 set(ARANGOD_SOURCES_PART3
@@ -674,6 +677,10 @@ add_library(arango_vocbase STATIC
   ${ADDITIONAL_LIB_ARANGO_VOCBASE_SOURCES}
 )
 
+add_library(arango_v8server STATIC
+  ${LIB_ARANGO_V8SERVER_SOURCES}
+)
+
 add_library(arangoserver_part1 STATIC
   ${ARANGOD_SOURCES_PART1}
   ${ADDITIONAL_LIB_ARANGOSERVER_PART1_SOURCES}
@@ -697,6 +704,7 @@ target_link_libraries(arangoserver
   arango_pregel
   arango_aql
   arango_vocbase
+  arango_v8server
 )
 
 # Note that arango_geo publicly exports the /J compile option for MSVC, because
@@ -719,6 +727,7 @@ target_link_libraries(arangoserver_part1 arango_iresearch)
 target_link_libraries(arangoserver_part1 arango_geo)
 target_link_libraries(arangoserver_part1 fuerte)
 target_link_libraries(arangoserver_part1 arango_graph)
+target_link_libraries(arangoserver_part1 arango_v8server)
 target_link_libraries(arangoserver_part1 ${ROCKSDB_LIBS})
 
 target_link_libraries(arangoserver_part2 arango_vocbase)
@@ -728,6 +737,7 @@ target_link_libraries(arangoserver_part2 boost_boost)
 target_link_libraries(arangoserver_part2 arango_geo)
 target_link_libraries(arangoserver_part2 arango_pregel)
 target_link_libraries(arangoserver_part2 arango_aql)
+target_link_libraries(arangoserver_part2 arango_v8server)
 target_link_libraries(arangoserver_part2 ${ROCKSDB_LIBS})
 
 target_link_libraries(arangoserver_part3 arango_vocbase)
@@ -746,6 +756,11 @@ target_link_libraries(arango_aql arango_graph)
 target_link_libraries(arango_aql arango_geo)
 
 target_link_libraries(arango_vocbase boost_system)
+
+target_link_libraries(arango_v8server
+  arango_v8
+  ${V8_LIBS}
+)
 
 add_library(arango_mmfiles STATIC
   ${MMFILES_SOURCES}
