@@ -725,18 +725,9 @@ add_library(arangoserver_part3 STATIC
 )
 
 target_link_libraries(arangoserver
-  arango_indexes
-  arango_cache
   arangoserver_part1
   arangoserver_part2
   arangoserver_part3
-  arango_graph
-  arango_pregel
-  arango_aql
-  arango_vocbase
-  arango_v8server
-  arango_utils
-  arango_storage_engine
 )
 
 # Note that arango_geo publicly exports the /J compile option for MSVC, because
@@ -773,6 +764,7 @@ target_link_libraries(arangoserver_part2 arango_aql)
 target_link_libraries(arangoserver_part2 arango_v8server)
 target_link_libraries(arangoserver_part2 arango_utils)
 target_link_libraries(arangoserver_part2 arango_storage_engine)
+target_link_libraries(arangoserver_part2 arango_indexes)
 target_link_libraries(arangoserver_part2 ${ROCKSDB_LIBS})
 
 target_link_libraries(arangoserver_part3 arango_vocbase)
@@ -782,6 +774,7 @@ target_link_libraries(arangoserver_part3 arango_geo)
 
 target_link_libraries(arango_graph boost_boost)
 target_link_libraries(arango_graph arango_vocbase)
+target_link_libraries(arango_graph arango_cache)
 
 target_link_libraries(arango_pregel boost_boost)
 target_link_libraries(arango_pregel boost_system)
@@ -789,8 +782,10 @@ target_link_libraries(arango_pregel boost_system)
 target_link_libraries(arango_aql arango_iresearch)
 target_link_libraries(arango_aql arango_graph)
 target_link_libraries(arango_aql arango_geo)
+target_link_libraries(arango_aql arango_indexes)
 
 target_link_libraries(arango_vocbase boost_system)
+target_link_libraries(arango_vocbase arango_indexes)
 
 target_link_libraries(arango_utils arango_aql)
 target_link_libraries(arango_utils arango_vocbase)
@@ -804,6 +799,8 @@ target_link_libraries(arango_v8server
   arango_v8
   ${V8_LIBS}
 )
+
+target_link_libraries(arango_iresearch arango_indexes)
 
 add_library(arango_mmfiles STATIC
   ${MMFILES_SOURCES}
@@ -828,12 +825,16 @@ target_link_libraries(arango_mmfiles llhttp)
 target_link_libraries(arango_mmfiles boost_boost)
 target_link_libraries(arango_mmfiles boost_system)
 target_link_libraries(arango_mmfiles arango_geo)
+target_link_libraries(arango_mmfiles arango_indexes)
 
 target_link_libraries(arango_rocksdb arangoserver_part1)
 target_link_libraries(arango_rocksdb boost_boost)
 target_link_libraries(arango_rocksdb arango_geo)
+target_link_libraries(arango_rocksdb arango_indexes)
+target_link_libraries(arango_rocksdb arango_cache)
 
 target_link_libraries(arango_cluster_engine boost_boost)
+target_link_libraries(arango_cluster_engine arango_indexes)
 
 target_link_libraries(arangoserver
   arango_geo
