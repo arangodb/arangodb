@@ -670,15 +670,19 @@ target_link_libraries(arangoserver
 target_link_libraries(arangoserver_part1 boost_boost)
 target_link_libraries(arangoserver_part1 llhttp)
 target_link_libraries(arangoserver_part1 arango_iresearch)
+target_link_libraries(arangoserver_part1 arango_geo)
 target_link_libraries(arangoserver_part1 fuerte)
 target_link_libraries(arangoserver_part1 ${ROCKSDB_LIBS})
 
 target_link_libraries(arangoserver_part2 arangoserver_part1)
 target_link_libraries(arangoserver_part2 arango_iresearch)
 target_link_libraries(arangoserver_part2 boost_boost)
+target_link_libraries(arangoserver_part2 arango_geo)
 target_link_libraries(arangoserver_part2 ${ROCKSDB_LIBS})
+
 target_link_libraries(arangoserver_part3 arangoserver_part1 arangoserver_part2)
 target_link_libraries(arangoserver_part3 boost_boost)
+target_link_libraries(arangoserver_part3 arango_geo)
 
 add_library(arango_mmfiles STATIC
   ${MMFILES_SOURCES}

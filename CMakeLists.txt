@@ -895,6 +895,13 @@ elseif (MSVC)
   set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2"                      CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                  CACHE INTERNAL "C++ release with debug info flags")
 
+  # /J makes char unsigned.
+  # s2 requires, on Windows, -J to be set. Thus we need to compile at least
+  # all binaries and libraries depending on it with -J.
+  # I think its safer to compile everything with -J, so we don't get a mixture
+  # of signed and unsigned char interpretations in the same binary.
+  add_compile_options(/J)
+
   if (USE_CLCACHE_MODE)
     set(CMAKE_VS_GLOBALS "TrackFileAccess=false")
     add_definitions(/Z7)
