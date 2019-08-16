@@ -148,7 +148,6 @@ else ()
 endif ()
 
 # TODO: Add ${ProductVersionFiles} to libarangoserver sources
-# TODO: Add ${ENTERPRISE_FILES} to libarangoserver sources
 # TODO: Compile community, with/without maintainer
 
 set(LIB_ARANGO_GRAPH_SOURCES
@@ -366,12 +365,16 @@ set(LIB_ARANGO_VOCBASE_SOURCES
 
 set(LIB_ARANGO_UTILS_SOURCES
   Utils/CollectionKeys.cpp
+  Utils/CollectionKeysRepository.cpp
   Utils/CollectionNameResolver.cpp
   Utils/CursorRepository.cpp
   Utils/DatabaseGuard.cpp
   Utils/ExecContext.cpp
   Utils/FlushThread.cpp
+  Utils/OperationCursor.cpp
   Utils/SingleCollectionTransaction.cpp
+  Utils/UrlHelper.cpp
+  ${ENTERPRISE_FILES}
 )
 
 set(LIB_ARANGO_STORAGE_ENGINE_SOURCES
@@ -411,6 +414,25 @@ set(LIB_ARANGO_CACHE_SOURCES
   Cache/TransactionManager.cpp
   Cache/TransactionalBucket.cpp
   Cache/TransactionalCache.cpp
+)
+
+set(LIB_ARANGO_REPLICATION_SOURCES
+  Replication/DatabaseInitialSyncer.cpp
+  Replication/DatabaseTailingSyncer.cpp
+  Replication/GlobalInitialSyncer.cpp
+  Replication/GlobalReplicationApplier.cpp
+  Replication/GlobalTailingSyncer.cpp
+  Replication/InitialSyncer.cpp
+  Replication/ReplicationApplier.cpp
+  Replication/ReplicationApplierConfiguration.cpp
+  Replication/ReplicationApplierState.cpp
+  Replication/ReplicationClients.cpp
+  Replication/ReplicationFeature.cpp
+  Replication/Syncer.cpp
+  Replication/SyncerId.cpp
+  Replication/TailingSyncer.cpp
+  Replication/common-defines.cpp
+  Replication/utilities.cpp
 )
 
 set(LIB_ARANGO_V8SERVER_SOURCES
@@ -460,10 +482,6 @@ set(ARANGOD_SOURCES_PART1
   Network/Methods.cpp
   Network/NetworkFeature.cpp
   Network/Utils.cpp
-  Replication/ReplicationApplierState.cpp
-  Replication/ReplicationClients.cpp
-  Replication/SyncerId.cpp
-  Replication/common-defines.cpp
   RestServer/DatabasePathFeature.cpp
   RestServer/EndpointFeature.cpp
   RestServer/ServerIdFeature.cpp
@@ -473,9 +491,6 @@ set(ARANGOD_SOURCES_PART1
   Transaction/CountCache.cpp
   Transaction/Options.cpp
   Transaction/Status.cpp
-  Utils/CollectionKeysRepository.cpp
-  Utils/OperationCursor.cpp
-  Utils/UrlHelper.cpp
 )
 
 set(ARANGOD_SOURCES_PART2
@@ -549,18 +564,6 @@ set(ARANGOD_SOURCES_PART2
   GeneralServer/GeneralServerFeature.cpp
   GeneralServer/RestHandler.cpp
   GeneralServer/ServerSecurityFeature.cpp
-  Replication/DatabaseInitialSyncer.cpp
-  Replication/DatabaseTailingSyncer.cpp
-  Replication/GlobalInitialSyncer.cpp
-  Replication/GlobalReplicationApplier.cpp
-  Replication/GlobalTailingSyncer.cpp
-  Replication/InitialSyncer.cpp
-  Replication/ReplicationApplier.cpp
-  Replication/ReplicationApplierConfiguration.cpp
-  Replication/ReplicationFeature.cpp
-  Replication/Syncer.cpp
-  Replication/TailingSyncer.cpp
-  Replication/utilities.cpp
   RestHandler/RestAdminDatabaseHandler.cpp
   RestHandler/RestAdminExecuteHandler.cpp
   RestHandler/RestAdminLogHandler.cpp
@@ -709,6 +712,10 @@ add_library(arango_cache STATIC
   ${LIB_ARANGO_CACHE_SOURCES}
 )
 
+add_library(arango_replication STATIC
+  ${LIB_ARANGO_REPLICATION_SOURCES}
+)
+
 add_library(arangoserver_part1 STATIC
   ${ARANGOD_SOURCES_PART1}
   ${ADDITIONAL_LIB_ARANGOSERVER_PART1_SOURCES}
@@ -752,6 +759,7 @@ target_link_libraries(arangoserver_part1 fuerte)
 target_link_libraries(arangoserver_part1 arango_graph)
 target_link_libraries(arangoserver_part1 arango_v8server)
 target_link_libraries(arangoserver_part1 arango_storage_engine)
+target_link_libraries(arangoserver_part1 arango_replication)
 target_link_libraries(arangoserver_part1 ${ROCKSDB_LIBS})
 
 target_link_libraries(arangoserver_part2 arango_vocbase)
@@ -765,6 +773,7 @@ target_link_libraries(arangoserver_part2 arango_v8server)
 target_link_libraries(arangoserver_part2 arango_utils)
 target_link_libraries(arangoserver_part2 arango_storage_engine)
 target_link_libraries(arangoserver_part2 arango_indexes)
+target_link_libraries(arangoserver_part2 arango_replication)
 target_link_libraries(arangoserver_part2 ${ROCKSDB_LIBS})
 
 target_link_libraries(arangoserver_part3 arango_vocbase)
@@ -786,6 +795,7 @@ target_link_libraries(arango_aql arango_indexes)
 
 target_link_libraries(arango_vocbase boost_system)
 target_link_libraries(arango_vocbase arango_indexes)
+target_link_libraries(arango_vocbase arango_replication)
 
 target_link_libraries(arango_utils arango_aql)
 target_link_libraries(arango_utils arango_vocbase)
@@ -795,10 +805,10 @@ target_link_libraries(arango_cache boost_system)
 target_link_libraries(arango_storage_engine arango_rocksdb)
 target_link_libraries(arango_storage_engine arango_mmfiles)
 
-target_link_libraries(arango_v8server
-  arango_v8
-  ${V8_LIBS}
-)
+target_link_libraries(arango_v8server arango_v8 ${V8_LIBS})
+target_link_libraries(arango_v8server arango_replication)
+
+target_link_libraries(arango_replication arango_utils)
 
 target_link_libraries(arango_iresearch arango_indexes)
 
@@ -826,12 +836,14 @@ target_link_libraries(arango_mmfiles boost_boost)
 target_link_libraries(arango_mmfiles boost_system)
 target_link_libraries(arango_mmfiles arango_geo)
 target_link_libraries(arango_mmfiles arango_indexes)
+target_link_libraries(arango_mmfiles arango_replication)
 
 target_link_libraries(arango_rocksdb arangoserver_part1)
 target_link_libraries(arango_rocksdb boost_boost)
 target_link_libraries(arango_rocksdb arango_geo)
 target_link_libraries(arango_rocksdb arango_indexes)
 target_link_libraries(arango_rocksdb arango_cache)
+target_link_libraries(arango_rocksdb arango_replication)
 
 target_link_libraries(arango_cluster_engine boost_boost)
 target_link_libraries(arango_cluster_engine arango_indexes)
@@ -911,6 +923,7 @@ foreach(TARGET
   arango_storage_engine
   arango_indexes
   arango_cache
+  arango_replication
   arangoserver_part1
   arangoserver_part2
   arangoserver_part3
