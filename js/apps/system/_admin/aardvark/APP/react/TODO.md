@@ -3,26 +3,44 @@
 # OPEN
 
 ## Important
-- make react aware if we're in cluster env or not (clusterHealth)
 - check build environment
 - check starter copy js methods
 
 ## Features
 - Shard Distribution View needs to be finalized. Currently poc stace. 
 
+.
+.
+.
+.
+.
+
+
+# OK FOR NOW
+
+- (temp done): make react aware if we're in cluster env or not (clusterHealth) - TODO: make this clean with redux
+
+.
+.
+.
+.
+.
+
+
 # TODO DEVs (optional)
 
 # Sources
 - look for all `if (frontendConfig.react) {` statements and fix them properly (currently only for development)
-
-## Resolve & Alias
-- Fix loading of images (e.g. included ones in css) in react dev mode (because we have defined paths in aardvark which we are not available here).
 
 # Notes
 - Aardvark: What is defaultDocument. Is this still "working" and "needed"? This change does not change anything. See: 
   -  "defaultDocument": "index.html",
   -  "defaultDocument": "react/build/index.html",
 
+## Resolve & Alias
+- Fix loading of images (e.g. included ones in css) in react dev mode (because we have defined paths in aardvark which we are not available here).
+
+.
 .
 .
 .
