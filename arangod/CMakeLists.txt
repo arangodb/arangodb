@@ -811,6 +811,7 @@ target_link_libraries(arango_rocksdb arango_indexes)
 target_link_libraries(arango_rocksdb arango_replication)
 target_link_libraries(arango_rocksdb arangoserver_part1)
 target_link_libraries(arango_rocksdb boost_boost)
+target_link_libraries(arango_rocksdb ${ROCKSDB_LIBS})
 
 target_link_libraries(arango_storage_engine arango_mmfiles)
 target_link_libraries(arango_storage_engine arango_rocksdb)
@@ -827,7 +828,6 @@ target_link_libraries(arango_vocbase arango_indexes)
 target_link_libraries(arango_vocbase arango_replication)
 target_link_libraries(arango_vocbase boost_system)
 
-target_link_libraries(arangoserver_part1 ${ROCKSDB_LIBS})
 target_link_libraries(arangoserver_part1 arango_agency)
 target_link_libraries(arangoserver_part1 arango_geo)
 target_link_libraries(arangoserver_part1 arango_graph)
@@ -840,7 +840,6 @@ target_link_libraries(arangoserver_part1 boost_boost)
 target_link_libraries(arangoserver_part1 fuerte)
 target_link_libraries(arangoserver_part1 llhttp)
 
-target_link_libraries(arangoserver_part2 ${ROCKSDB_LIBS})
 target_link_libraries(arangoserver_part2 arango_agency)
 target_link_libraries(arangoserver_part2 arango_aql)
 target_link_libraries(arangoserver_part2 arango_geo)
@@ -861,21 +860,8 @@ target_link_libraries(arangoserver_part3 arangoserver_part1 arangoserver_part2)
 target_link_libraries(arangoserver_part3 boost_boost)
 
 target_link_libraries(arangoserver
-  arango_geo
-  arango_v8
-  arango
-  ${LINENOISE_LIBS}
+  ${LINENOISE_LIBS} # Is this ever anything but empty?
   ${MSVC_LIBS}
-  ${V8_LIBS}
-  ${ROCKSDB_LIBS}
-  arango_iresearch
-  s2
-  fuerte
-  boost_boost
-  boost_system
-  snappy
-  llhttp
-  ${SYSTEM_LIBRARIES}
 )
 
 if (USE_ENTERPRISE)

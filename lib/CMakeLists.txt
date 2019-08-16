@@ -263,9 +263,11 @@ add_library(arango STATIC
 )
 
 target_link_libraries(arango
-    s2
-    boost_system
-    boost_boost
+  s2
+  boost_system
+  boost_boost
+  ${V8_LIBS}
+  ${SYSTEM_LIBRARIES}
 )
 
 # Enterprise
@@ -291,9 +293,10 @@ add_library(arango_geo STATIC
 )
 
 target_link_libraries(arango_geo
-    arango
-    boost_system
-    boost_boost
+  arango
+  boost_system
+  boost_boost
+  s2
 )
 
 if (WINDOWS)
