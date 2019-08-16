@@ -765,6 +765,7 @@ target_link_libraries(arango_aql arango_graph)
 target_link_libraries(arango_aql arango_geo)
 
 target_link_libraries(arango_vocbase boost_system)
+
 target_link_libraries(arango_utils arango_aql)
 target_link_libraries(arango_utils arango_vocbase)
 
