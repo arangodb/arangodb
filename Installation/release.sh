@@ -337,10 +337,10 @@ fi
 
 echo "GRUNT"
 (
-    cd js/apps/system/_admin/aardvark/APP
+    cd js/apps/system/_admin/aardvark/APP/react
     rm -rf node_modules
     npm install
-    grunt deploy
+    npm run build
 )
 
 git add -f Documentation/Examples/*.generated
