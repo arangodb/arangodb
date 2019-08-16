@@ -374,6 +374,15 @@ set(LIB_ARANGO_UTILS_SOURCES
   Utils/SingleCollectionTransaction.cpp
 )
 
+set(LIB_ARANGO_STORAGE_ENGINE_SOURCES
+  StorageEngine/EngineSelectorFeature.cpp
+  StorageEngine/HotBackup.cpp
+  StorageEngine/PhysicalCollection.cpp
+  StorageEngine/TransactionCollection.cpp
+  StorageEngine/TransactionState.cpp
+  StorageEngine/WalAccess.cpp
+)
+
 set(LIB_ARANGO_V8SERVER_SOURCES
   V8Server/v8-user-structures.cpp
   V8Server/FoxxQueuesFeature.cpp
@@ -439,7 +448,6 @@ set(ARANGOD_SOURCES_PART1
   RestServer/VocbaseContext.cpp
   Scheduler/Scheduler.cpp
   Statistics/ServerStatistics.cpp
-  StorageEngine/TransactionCollection.cpp
   Transaction/CountCache.cpp
   Transaction/Options.cpp
   Transaction/Status.cpp
@@ -613,10 +621,6 @@ set(ARANGOD_SOURCES_PART2
   Statistics/RequestStatistics.cpp
   Statistics/StatisticsFeature.cpp
   Statistics/StatisticsWorker.cpp
-  StorageEngine/EngineSelectorFeature.cpp
-  StorageEngine/HotBackup.cpp
-  StorageEngine/PhysicalCollection.cpp
-  StorageEngine/TransactionState.cpp
   Transaction/ClusterUtils.cpp
   Transaction/Context.cpp
   Transaction/Helpers.cpp
@@ -640,7 +644,6 @@ set(ARANGOD_SOURCES_PART3
   RestServer/LanguageCheckFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/ScriptFeature.cpp
-  StorageEngine/WalAccess.cpp
 )
 
 if (USE_MAINTAINER_MODE)
@@ -688,6 +691,10 @@ add_library(arango_utils STATIC
   ${LIB_ARANGO_UTILS_SOURCES}
 )
 
+add_library(arango_storage_engine STATIC
+  ${LIB_ARANGO_STORAGE_ENGINE_SOURCES}
+)
+
 add_library(arangoserver_part1 STATIC
   ${ARANGOD_SOURCES_PART1}
   ${ADDITIONAL_LIB_ARANGOSERVER_PART1_SOURCES}
@@ -713,6 +720,7 @@ target_link_libraries(arangoserver
   arango_vocbase
   arango_v8server
   arango_utils
+  arango_storage_engine
 )
 
 # Note that arango_geo publicly exports the /J compile option for MSVC, because
@@ -736,6 +744,7 @@ target_link_libraries(arangoserver_part1 arango_geo)
 target_link_libraries(arangoserver_part1 fuerte)
 target_link_libraries(arangoserver_part1 arango_graph)
 target_link_libraries(arangoserver_part1 arango_v8server)
+target_link_libraries(arangoserver_part1 arango_storage_engine)
 target_link_libraries(arangoserver_part1 ${ROCKSDB_LIBS})
 
 target_link_libraries(arangoserver_part2 arango_vocbase)
@@ -747,6 +756,7 @@ target_link_libraries(arangoserver_part2 arango_pregel)
 target_link_libraries(arangoserver_part2 arango_aql)
 target_link_libraries(arangoserver_part2 arango_v8server)
 target_link_libraries(arangoserver_part2 arango_utils)
+target_link_libraries(arangoserver_part2 arango_storage_engine)
 target_link_libraries(arangoserver_part2 ${ROCKSDB_LIBS})
 
 target_link_libraries(arangoserver_part3 arango_vocbase)
@@ -769,6 +779,9 @@ target_link_libraries(arango_vocbase boost_system)
 target_link_libraries(arango_utils arango_aql)
 target_link_libraries(arango_utils arango_vocbase)
 
+target_link_libraries(arango_storage_engine arango_rocksdb)
+target_link_libraries(arango_storage_engine arango_mmfiles)
+
 target_link_libraries(arango_v8server
   arango_v8
   ${V8_LIBS}
@@ -780,6 +793,7 @@ add_library(arango_mmfiles STATIC
 
 add_library(arango_rocksdb STATIC
   ${ROCKSDB_SOURCES}
+  ${ADDITIONAL_LIB_ARANGO_ROCKSDB_SOURCES}
 )
 
 add_library(arango_cluster_engine STATIC
