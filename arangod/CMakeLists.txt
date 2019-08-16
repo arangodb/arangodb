@@ -383,6 +383,36 @@ set(LIB_ARANGO_STORAGE_ENGINE_SOURCES
   StorageEngine/WalAccess.cpp
 )
 
+set(LIB_ARANGO_INDEXES_SOURCES
+  GeoIndex/Index.cpp
+  GeoIndex/Near.cpp
+  Indexes/Index.cpp
+  Indexes/IndexFactory.cpp
+  Indexes/IndexIterator.cpp
+  Indexes/SimpleAttributeEqualityMatcher.cpp
+  Indexes/SortedIndexAttributeMatcher.cpp
+)
+
+set(LIB_ARANGO_CACHE_SOURCES
+  Cache/BucketState.cpp
+  Cache/Cache.cpp
+  Cache/CacheManagerFeature.cpp
+  Cache/CacheManagerFeatureThreads.cpp
+  Cache/CachedValue.cpp
+  Cache/Finding.cpp
+  Cache/Manager.cpp
+  Cache/ManagerTasks.cpp
+  Cache/Metadata.cpp
+  Cache/PlainBucket.cpp
+  Cache/PlainCache.cpp
+  Cache/Rebalancer.cpp
+  Cache/Table.cpp
+  Cache/Transaction.cpp
+  Cache/TransactionManager.cpp
+  Cache/TransactionalBucket.cpp
+  Cache/TransactionalCache.cpp
+)
+
 set(LIB_ARANGO_V8SERVER_SOURCES
   V8Server/v8-user-structures.cpp
   V8Server/FoxxQueuesFeature.cpp
@@ -412,14 +442,6 @@ set(ARANGOD_SOURCES_PART1
   Agency/ResignLeadership.cpp
   Agency/StoreCallback.cpp
   Auth/Common.cpp
-  Cache/BucketState.cpp
-  Cache/CachedValue.cpp
-  Cache/Finding.cpp
-  Cache/PlainBucket.cpp
-  Cache/Table.cpp
-  Cache/Transaction.cpp
-  Cache/TransactionManager.cpp
-  Cache/TransactionalBucket.cpp
   Cluster/ActionDescription.cpp
   Cluster/ClusterCollectionCreationInfo.cpp
   Cluster/ClusterHelpers.cpp
@@ -487,15 +509,6 @@ set(ARANGOD_SOURCES_PART2
   Auth/TokenCache.cpp
   Auth/User.cpp
   Auth/UserManager.cpp
-  Cache/Cache.cpp
-  Cache/CacheManagerFeature.cpp
-  Cache/CacheManagerFeatureThreads.cpp
-  Cache/Manager.cpp
-  Cache/ManagerTasks.cpp
-  Cache/Metadata.cpp
-  Cache/PlainCache.cpp
-  Cache/Rebalancer.cpp
-  Cache/TransactionalCache.cpp
   Cluster/Action.cpp
   Cluster/ActionBase.cpp
   Cluster/AgencyCallback.cpp
@@ -536,12 +549,6 @@ set(ARANGOD_SOURCES_PART2
   GeneralServer/GeneralServerFeature.cpp
   GeneralServer/RestHandler.cpp
   GeneralServer/ServerSecurityFeature.cpp
-  GeoIndex/Index.cpp
-  Indexes/Index.cpp
-  Indexes/IndexFactory.cpp
-  Indexes/IndexIterator.cpp
-  Indexes/SimpleAttributeEqualityMatcher.cpp
-  Indexes/SortedIndexAttributeMatcher.cpp
   Replication/DatabaseInitialSyncer.cpp
   Replication/DatabaseTailingSyncer.cpp
   Replication/GlobalInitialSyncer.cpp
@@ -634,7 +641,6 @@ set(ARANGOD_SOURCES_PART2
 
 set(ARANGOD_SOURCES_PART3
   GeneralServer/Task.cpp
-  GeoIndex/Near.cpp
   RestServer/CheckVersionFeature.cpp
   RestServer/ConsoleFeature.cpp
   RestServer/ConsoleThread.cpp
@@ -695,6 +701,14 @@ add_library(arango_storage_engine STATIC
   ${LIB_ARANGO_STORAGE_ENGINE_SOURCES}
 )
 
+add_library(arango_indexes STATIC
+  ${LIB_ARANGO_INDEXES_SOURCES}
+)
+
+add_library(arango_cache STATIC
+  ${LIB_ARANGO_CACHE_SOURCES}
+)
+
 add_library(arangoserver_part1 STATIC
   ${ARANGOD_SOURCES_PART1}
   ${ADDITIONAL_LIB_ARANGOSERVER_PART1_SOURCES}
@@ -711,6 +725,8 @@ add_library(arangoserver_part3 STATIC
 )
 
 target_link_libraries(arangoserver
+  arango_indexes
+  arango_cache
   arangoserver_part1
   arangoserver_part2
   arangoserver_part3
@@ -778,6 +794,8 @@ target_link_libraries(arango_vocbase boost_system)
 
 target_link_libraries(arango_utils arango_aql)
 target_link_libraries(arango_utils arango_vocbase)
+
+target_link_libraries(arango_cache boost_system)
 
 target_link_libraries(arango_storage_engine arango_rocksdb)
 target_link_libraries(arango_storage_engine arango_mmfiles)
@@ -889,6 +907,9 @@ foreach(TARGET
   arango_vocbase
   arango_v8server
   arango_utils
+  arango_storage_engine
+  arango_indexes
+  arango_cache
   arangoserver_part1
   arangoserver_part2
   arangoserver_part3
