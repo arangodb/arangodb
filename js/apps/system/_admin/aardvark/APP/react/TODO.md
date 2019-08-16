@@ -3,7 +3,6 @@
 # OPEN
 
 ## Important
-- Fix the login view properly. Image loading of community or enterprise is not included nicely. Needs cleanup!
 - make react aware if we're in cluster env or not (clusterHealth)
 - check build environment
 - check starter copy js methods
@@ -61,4 +60,5 @@
 
 ## CSS
 - Pure.css has isssues,  e.g. Nodes View: The header of the tabular view is misaligned. Currently don't know why.
+- Fix the login view properly. Image loading of community or enterprise is not included nicely. Needs cleanup!
 
