@@ -218,6 +218,8 @@ This will deploy a development server (Port: 3000). Navigate to:
 `http://localhost:3000/_db/_system/_admin/aardvark/index.html`
 
 All changes to any source will automatically re-build and reload your browser.
+ArangoDB itself needs to be startet with `--http.trusted-origin "*"` to be able
+to use that feature as it pushes requests through port 3000 to 8529.
 
 #### NPM Dependencies
 
