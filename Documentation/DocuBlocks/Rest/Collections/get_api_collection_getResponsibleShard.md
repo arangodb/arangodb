@@ -47,7 +47,7 @@ is returned.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestGetResponsibleShardExample}
+@EXAMPLE_ARANGOSH_RUN{RestGetResponsibleShardExample_cluster}
     var cn = "testCollection";
     db._drop(cn);
     db._create(cn, { numberOfShards: 3, shardKeys: ["_key"] });

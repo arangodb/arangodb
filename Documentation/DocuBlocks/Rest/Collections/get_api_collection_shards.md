@@ -43,7 +43,7 @@ is returned.
 
 Retrieves the list of shards:
 
-@EXAMPLE_ARANGOSH_RUN{RestGetShards}
+@EXAMPLE_ARANGOSH_RUN{RestGetShards_cluster}
     var cn = "testCollection";
     db._drop(cn);
     db._create(cn, { numberOfShards: 3 });
@@ -57,7 +57,7 @@ Retrieves the list of shards:
 
 Retrieves the list of shards with the responsible servers:
 
-@EXAMPLE_ARANGOSH_RUN{RestGetShardsWithDetails}
+@EXAMPLE_ARANGOSH_RUN{RestGetShardsWithDetails_cluster}
     var cn = "testCollection";
     db._drop(cn);
     db._create(cn, { numberOfShards: 3 });
