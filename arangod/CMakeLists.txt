@@ -153,16 +153,27 @@ endif ()
 
 set(LIB_ARANGO_GRAPH_SOURCES
   Graph/AttributeWeightShortestPathFinder.cpp
+  Graph/BaseOptions.cpp
   Graph/BreadthFirstEnumerator.cpp
+  Graph/ClusterTraverserCache.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
+  Graph/Graph.cpp
+  Graph/GraphManager.cpp
+  Graph/GraphOperations.cpp
   Graph/KShortestPathsFinder.cpp
   Graph/NeighborsEnumerator.cpp
   Graph/PathEnumerator.cpp
   Graph/ShortestPathFinder.cpp
   Graph/ShortestPathOptions.cpp
   Graph/ShortestPathResult.cpp
+  Graph/SingleServerEdgeCursor.cpp
   Graph/SingleServerTraverser.cpp
   Graph/Traverser.cpp
+  Graph/TraverserCache.cpp
+  Graph/TraverserCacheFactory.cpp
+  Graph/TraverserDocumentCache.cpp
+  Graph/TraverserOptions.cpp
+  Cluster/ClusterEdgeCursor.cpp
 )
 
 set(ARANGOD_SOURCES_PART1
@@ -389,7 +400,6 @@ set(ARANGOD_SOURCES_PART2
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
   Cluster/ClusterComm.cpp
-  Cluster/ClusterEdgeCursor.cpp
   Cluster/ClusterFeature.cpp
   Cluster/ClusterInfo.cpp
   Cluster/ClusterMethods.cpp
@@ -428,16 +438,6 @@ set(ARANGOD_SOURCES_PART2
   GeneralServer/RestHandler.cpp
   GeneralServer/ServerSecurityFeature.cpp
   GeoIndex/Index.cpp
-  Graph/BaseOptions.cpp
-  Graph/ClusterTraverserCache.cpp
-  Graph/Graph.cpp
-  Graph/GraphManager.cpp
-  Graph/GraphOperations.cpp
-  Graph/SingleServerEdgeCursor.cpp
-  Graph/TraverserCache.cpp
-  Graph/TraverserCacheFactory.cpp
-  Graph/TraverserDocumentCache.cpp
-  Graph/TraverserOptions.cpp
   Indexes/Index.cpp
   Indexes/IndexFactory.cpp
   Indexes/IndexIterator.cpp
