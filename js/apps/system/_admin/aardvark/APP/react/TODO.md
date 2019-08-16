@@ -23,6 +23,12 @@
   -  "defaultDocument": "index.html",
   -  "defaultDocument": "react/build/index.html",
 
+.
+.
+.
+.
+
+
 # DONE
 
 - remove all not needed files
