@@ -98,9 +98,9 @@ function main (argv) {
     print('failed to write test result: ' + x.message);
   }
 
+  rp.dumpAllResults(options, result);
   if (options.writeXmlReport) {
     try {
-      rp.dumpAllResults(options, result);
       rp.analyze.saveToJunitXML(options, result);
     } catch (x) {
       print('exception while serializing status xml!');
