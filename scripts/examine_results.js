@@ -46,29 +46,47 @@ function main (argv) {
     print("need a file to load!");
     process.exit(1);
   }
-
-  let resultsDump = fs.read(options.readFile);
-  let results;
-  try {
-    results = JSON.parse(resultsDump);
+  let readFile;
+  if (Array.isArray(options.readFile)) {
+    readFile = options.readFile;
+  } else {
+    readFile = [ options.readFile ];
   }
-  catch (x) {
-    print(RED + "Failed to parse " + options.readFile + " - " + x);
-  }
-  _.defaults(options, optionsDefaults);
-  try {
-    analyzers.forEach(function(which) {
-      rp.analyze[which](options, results);
-    });
-  } catch (x) {
-    print("Failed to analyze: " + x);
-  }
+  let rc = readFile.forEach(file => {
+    let ret = true;
+    let resultsDump;
+    try {
+      resultsDump = fs.read(file);
+    } catch (ex) {
+      print(RED + "File not found [" + file + "]: " + ex.message + RESET + "\n");
+      return false;
+    }
+      
+    let results;
+    try {
+      results = JSON.parse(resultsDump);
+    }
+    catch (ex) {
+      print(RED + "Failed to parse " + options.readFile + " - " + ex.message + RESET + "\n");
+      return false;
+    }
+    _.defaults(options, optionsDefaults);
+    try {
+      print(YELLOW + "Analyzing: " + file);
+      ret = ret && analyzers.forEach(function(which) {
+        rp.analyze[which](options, results);
+      });
+    } catch (ex) {
+      print("Failed to analyze [" + file + "]: " + ex.message + RESET + "\n");
+      return false;
+    }
+    return ret;
+  });
+  return rc;
 }
 
 let result = main(ARGUMENTS);
 
 if (!result) {
-  // force an error in the console
   process.exit(1);
-  // throw 'peng!';
 }

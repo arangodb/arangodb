@@ -490,8 +490,6 @@ function unitTestPrettyPrintResults (options, results) {
     // write more verbose failures to the testFailureText file
     onlyFailedMessages += '\n\n' + cu.GDB_OUTPUT;
   }
-
-
   print(`
 ${YELLOW}================================================================================'
 TEST RESULTS
@@ -504,231 +502,142 @@ ${failedMessages}${color} * Overall state: ${statusMessage}${RESET}${crashText}$
     onlyFailedMessages += '\n' + crashedText;
   }
   fs.write(options.testOutputDirectory + options.testFailureText, onlyFailedMessages);
-
 }
-/*
 
-function unitTestPrettyPrintResults (res, options) {
-  print(YELLOW + '================================================================================');
-  print('TEST RESULTS');
-  print('================================================================================\n' + RESET);
-
-  let failedSuite = 0;
-  let failedTests = 0;
-
-  let onlyFailedMessages = '';
-  let failedMessages = '';
-  let SuccessMessages = '';
-  let bucketName = "";
-  let sortedByDuration = [];
+function locateLongRunning(options, results) {
   let testRunStatistics = "";
-  if (options.testBuckets) {
-    let n = options.testBuckets.split('/');
-    bucketName = "_" + n[1];
-  }
-  try {
-    /* jshint forin: false * /
-    for (let testrunName in res) {
-      if (skipInternalMember(res, testrunName)) {
-        continue;
+  let sortedByDuration = [];
+  
+  let failedStates = {
+    state: true,
+    failCount: 0,
+    thisFailedTestCount: 0,
+    runFailedTestCount: 0,
+    currentSucces: true,
+    failedTests: {},
+    thisFailedTests: []
+  };
+  iterateTestResults(options, results, failedStates, {
+    testRun: function(options, state, testRun, testRunName) {
+      let startup = testRun['startupTime'];
+      let testDuration = testRun['testDuration'];
+      let shutdown = testRun['shutdownTime'];
+      let color = GREEN;
+      if (((startup + shutdown) * 10) > testDuration) {
+        color = RED;
       }
 
-      let testrun = res[testrunName];
-      testRunStatistics += `${testrunName} - startup [${testrun['startupTime']}] => run [${testrun['testDuration']}] => shutdown [${testrun['shutdownTime']}]
+      testRunStatistics += `${color}${testRunName} - startup [${startup}] => run [${testDuration}] => shutdown [${shutdown}]${RESET}
 `;
-
-      let successCases = {};
-      let failedCases = {};
-      let isSuccess = true;
-
-      for (let testName in testrun) {
-        if (skipInternalMember(testrun, testName)) {
-          continue;
-        }
-
-        let test = testrun[testName];
-
-        if (test.hasOwnProperty('duration') && test.duration !== 0) {
-          sortedByDuration.push({ testName: testName,
-                                  duration: test.duration,
-                                  test: test,
-                                  count: Object.keys(test).length});
-        } else {
-          print(RED + "This test doesn't have a duration: " + testName + "\n" + JSON.stringify(test) + RESET);
-        }        
-
-        if (test.status) {
-          successCases[testName] = test;
-        } else {
-          isSuccess = false;
-          ++failedSuite;
-
-          if (test.hasOwnProperty('message')) {
-            ++failedTests;
-            failedCases[testName] = {
-              test: testCaseMessage(test)
-            };
-          } else {
-            let fails = failedCases[testName] = {};
-
-            for (let oneName in test) {
-              if (skipInternalMember(test, oneName)) {
-                continue;
-              }
-
-              let oneTest = test[oneName];
-
-              if (!oneTest.status) {
-                ++failedTests;
-                fails[oneName] = testCaseMessage(oneTest);
-              }
-            }
-          }
-        }
-      }
-
-      if (isSuccess) {
-        SuccessMessages += '* Test "' + testrunName + bucketName + '"\n';
-
-        for (let name in successCases) {
-          if (!successCases.hasOwnProperty(name)) {
-            continue;
-          }
-
-          let details = successCases[name];
-
-          if (details.skipped) {
-            SuccessMessages += YELLOW + '    [SKIPPED] ' + name + RESET + '\n';
-          } else {
-            SuccessMessages += GREEN + '    [SUCCESS] ' + name + RESET + '\n';
-          }
-        }
+    },
+    testSuite: function(options, state, testSuite, testSuiteName) {
+      if (testSuite.hasOwnProperty('duration') && testSuite.duration !== 0) {
+        sortedByDuration.push(
+          { testName: testSuiteName,
+            duration: testSuite.duration,
+            test: testSuite,
+            count: Object.keys(testSuite).filter(testCase => skipInternalMember(testSuite, testCase)).length
+          });
       } else {
-        let m = '* Test "' + testrunName + bucketName + '"\n';
-        onlyFailedMessages += m;
-        failedMessages += m;
-
-        for (let name in successCases) {
-          if (!successCases.hasOwnProperty(name)) {
-            continue;
-          }
-
-          let details = successCases[name];
-
-          if (details.skipped) {
-            failedMessages += YELLOW + '    [SKIPPED] ' + name + RESET + '\n';
-            onlyFailedMessages += '    [SKIPPED] ' + name + '\n';
-          } else {
-            failedMessages += GREEN + '    [SUCCESS] ' + name + RESET + '\n';
-          }
-        }
-
-        for (let name in failedCases) {
-          if (!failedCases.hasOwnProperty(name)) {
-            continue;
-          }
-
-          failedMessages += RED + '    [FAILED]  ' + name + RESET + '\n\n';
-          onlyFailedMessages += '    [FAILED]  ' + name + '\n\n';
-
-          let details = failedCases[name];
-
-          let count = 0;
-          for (let one in details) {
-            if (!details.hasOwnProperty(one)) {
-              continue;
-            }
-
-            if (count > 0) {
-              failedMessages += '\n';
-              onlyFailedMessages += '\n';
-            }
-            failedMessages += RED + '      "' + one + '" failed: ' + details[one] + RESET + '\n\n';
-            onlyFailedMessages += '      "' + one + '" failed: ' + details[one] + '\n\n';
-            count++;
-          }
-        }
-      }
-    }
-    print(SuccessMessages);
-    print(failedMessages);
-
-    sortedByDuration.sort(function(a, b) {
-      return a.duration - b.duration;
-    });
-    for (let i = sortedByDuration.length - 1; (i >= 0) && (i > sortedByDuration.length - 11); i --) {
-      print(" - " + fancyTimeFormat(sortedByDuration[i].duration / 1000) + " - " +
-            sortedByDuration[i].count + " - " +
-            sortedByDuration[i].testName);
-      let testCases = [];
-      let thisTestSuite = sortedByDuration[i];
-      print(pu.sumarizeStats(thisTestSuite.test['processStats']));
-      for (let testName in thisTestSuite.test) {
-        if (skipInternalMember(thisTestSuite.test, testName)) {
-          continue;
-        }
-        let test = thisTestSuite.test[testName];
-        let duration = 0;
-        if (test.hasOwnProperty('duration')) {
-          duration += test.duration;
-        }
-        if (test.hasOwnProperty('setUpDuration')) {
-          duration += test.setUpDuration;
-        }
-        if (test.hasOwnProperty('tearDownDuration')) {
-          duration += test.tearDownDuration;
-        }
-        testCases.push({
-          testName: testName,
-          duration: duration
-        });
-      }
-      testCases.sort(function(a, b) {
+        print(RED + "This test doesn't have a duration: " + testSuiteName + "\n" + JSON.stringify(testSuite) + RESET);
+      }        
+    },
+    testCase: function(options, state, testCase, testCaseName) {
+    },
+    endTestSuite: function(options, state, testSuite, testSuiteName) {
+    },
+    endTestRun: function(options, state, testRun, testRunName) {
+      sortedByDuration.sort(function(a, b) {
         return a.duration - b.duration;
       });
+      let results = {};
+      for (let i = sortedByDuration.length - 1; (i >= 0) && (i > sortedByDuration.length - 11); i --) {
+        let key = " - " + fancyTimeFormat(sortedByDuration[i].duration / 1000) + " - " +
+          sortedByDuration[i].count + " - " +
+            sortedByDuration[i].testName.replace('/\\/g', '/');
+        let testCases = [];
+        let thisTestSuite = sortedByDuration[i];
+        for (let testName in thisTestSuite.test) {
+          if (skipInternalMember(thisTestSuite.test, testName)) {
+            continue;
+          }
+          let test = thisTestSuite.test[testName];
+          let duration = 0;
+          if (test.hasOwnProperty('duration')) {
+            duration += test.duration;
+          }
+          if (test.hasOwnProperty('setUpDuration')) {
+            duration += test.setUpDuration;
+          }
+          if (test.hasOwnProperty('tearDownDuration')) {
+            duration += test.tearDownDuration;
+          }
+          testCases.push({
+            testName: testName,
+            duration: duration
+          });
+        }
+        testCases.sort(function(a, b) {
+          return a.duration - b.duration;
+        });
 
-      let testSummary = "    ";
-      for (let j = testCases.length - 1; (j >= 0) && (j > testCases.length - 11); j --) {
-        testSummary += fancyTimeFormat(testCases[j].duration / 1000) + " - " + testCases[j].testName + " ";
+        let statistics = [];
+        for (let j = testCases.length - 1; (j >= 0) && (j > testCases.length - 11); j --) {
+          statistics.push(fancyTimeFormat(testCases[j].duration / 1000) + " - " + testCases[j].testName);
+        }
+        results[key] = {
+          'processStatistics': pu.sumarizeStats(thisTestSuite.test['processStats']),
+          'stats': statistics
+        };
+
       }
-      print(testSummary);
+      testRunStatistics +=  yaml.safeDump(results);
+      sortedByDuration = [];
     }
-    /* jshint forin: true * /
-
-    let color = (!res.crashed && res.status === true) ? GREEN : RED;
-    let crashText = '';
-    let crashedText = '';
-    if (res.crashed === true) {
-      for (let failed in failedRuns) {
-        crashedText += ' [' + failed + '] : ' + failedRuns[failed].replace(/^/mg, '    ');
-      }
-      crashedText += "\nMarking crashy!";
-      crashText = RED + crashedText + RESET;
-    }
-    print(testRunStatistics);
-    print('\n' + color + '* Overall state: ' + ((res.status === true) ? 'Success' : 'Fail') + RESET + crashText);
-
-    let failText = '';
-    if (res.status !== true) {
-      failText = '   Suites failed: ' + failedSuite + ' Tests Failed: ' + failedTests;
-      print(color + failText + RESET);
-    }
-
-    failedMessages = onlyFailedMessages;
-    if (crashedText !== '') {
-      failedMessages += '\n' + crashedText;
-    }
-    if (cu.GDB_OUTPUT !== '' || failText !== '') {
-      failedMessages += '\n\n' + cu.GDB_OUTPUT + failText + '\n';
-    }
-    fs.write(options.testOutputDirectory + options.testFailureText, failedMessages);
-  } catch (x) {
-    print('exception caught while pretty printing result: ');
-    print(x.message);
-    print(JSON.stringify(res));
-  }
+  });
+  print(testRunStatistics);
 }
-*/
+
+function locateShortServerLife(options, results) {
+  let rc = true;
+  let testRunStatistics = "";
+  let sortedByDuration = [];
+  
+  let failedStates = {
+    state: true,
+    failCount: 0,
+    thisFailedTestCount: 0,
+    runFailedTestCount: 0,
+    currentSucces: true,
+    failedTests: {},
+    thisFailedTests: []
+  };
+  iterateTestResults(options, results, failedStates, {
+    testRun: function(options, state, testRun, testRunName) {
+      if (testRun.hasOwnProperty('startupTime') &&
+          testRun.hasOwnProperty('testDuration') &&
+          testRun.hasOwnProperty('shutdownTime')) {
+        let startup = testRun['startupTime'];
+        let testDuration = testRun['testDuration'];
+        let shutdown = testRun['shutdownTime'];
+        let color = GREEN;
+        let OK = "YES";
+        if (((startup + shutdown) * 10) > testDuration) {
+          color = RED;
+          OK = "NOP";
+          rc = false;
+        }
+
+        testRunStatistics += `${color}[${OK}] ${testRunName} - startup [${startup}] => run [${testDuration}] => shutdown [${shutdown}]${RESET}`;
+      } else {
+        testRunStatistics += `${YELLOW}${testRunName} doesn't have server start statistics${RESET}`;
+      }
+    }
+  });
+  print(testRunStatistics);
+  return rc;
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 //  @brief simple status representations
 // //////////////////////////////////////////////////////////////////////////////
@@ -788,5 +697,7 @@ exports.writeReports = writeReports;
 exports.analyze = {
   unitTestPrettyPrintResults: unitTestPrettyPrintResults,
   saveToJunitXML: saveToJunitXML,
+  locateLongRunning: locateLongRunning,
+  locateShortServerLife: locateShortServerLife,
   yaml: yamlDumpResults
 };
