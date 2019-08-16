@@ -178,6 +178,8 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/TraverserCacheFactory.cpp
   Graph/TraverserDocumentCache.cpp
   Graph/TraverserOptions.cpp
+  InternalRestHandler/InternalRestTraverserHandler.cpp
+  RestHandler/RestGraphHandler.cpp
   RestServer/TraverserEngineRegistryFeature.cpp
 )
 
@@ -443,7 +445,6 @@ set(ARANGOD_SOURCES_PART2
   Indexes/IndexIterator.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
   Indexes/SortedIndexAttributeMatcher.cpp
-  InternalRestHandler/InternalRestTraverserHandler.cpp
   Replication/DatabaseInitialSyncer.cpp
   Replication/DatabaseReplicationApplier.cpp
   Replication/DatabaseTailingSyncer.cpp
@@ -480,7 +481,6 @@ set(ARANGOD_SOURCES_PART2
   RestHandler/RestEndpointHandler.cpp
   RestHandler/RestEngineHandler.cpp
   RestHandler/RestExplainHandler.cpp
-  RestHandler/RestGraphHandler.cpp
   RestHandler/RestImportHandler.cpp
   RestHandler/RestIndexHandler.cpp
   RestHandler/RestJobHandler.cpp
