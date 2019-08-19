@@ -557,9 +557,18 @@ void RocksDBEngine::start() {
     _options.db_write_buffer_size = opts->_totalWriteBufferSize;
   }
 
-  // this is cfFamilies.size() + 2 ... but _option needs to be set before
-  //  building cfFamilies
-  _options.max_write_buffer_number = 7 + 2;
+  if (!application_features::ApplicationServer::server->options()->processingResult().touched("rocksdb.max-write-buffer-number")) {
+    // user hasn't explicitly set the number of write buffers, so we use a default value based
+    // on the number of column families
+    // this is cfFamilies.size() + 2 ... but _option needs to be set before
+    //  building cfFamilies
+    // Update max_write_buffer_number above if you change number of families used
+    _options.max_write_buffer_number = 7 + 2;
+  } else if (_options.max_write_buffer_number < 7 + 2) {
+    // user set the value explicitly, and it is lower than recommended
+    LOG_TOPIC(WARN, Logger::ENGINES) << "ignoring value for option `--rocksdb.max-write-buffer-number` because it is lower than recommended";
+    _options.max_write_buffer_number = 7 + 2;
+  }
 
   // cf options for definitons (dbs, collections, views, ...)
   rocksdb::ColumnFamilyOptions definitionsCF(_options);
@@ -597,8 +606,9 @@ void RocksDBEngine::start() {
   cfFamilies.emplace_back("VPackIndex", vpackFixedPrefCF);  // 4
   cfFamilies.emplace_back("GeoIndex", fixedPrefCF);         // 5
   cfFamilies.emplace_back("FulltextIndex", fixedPrefCF);    // 6
-  // DO NOT FORGET TO DESTROY THE CFs ON CLOSE
-  //  Update max_write_buffer_number above if you change number of families used
+  
+  TRI_ASSERT(static_cast<int>(_options.max_write_buffer_number) >= static_cast<int>(cfFamilies.size()));
+  // Update max_write_buffer_number above if you change number of families used
 
   // validate sizes of existing RocksDB journal files
   // RocksDB may just crash when opening a logfile with an unexpected size
