@@ -589,7 +589,8 @@ void RocksDBEngine::start() {
     // Update max_write_buffer_number above if you change number of families used
     _options.max_write_buffer_number = 7 + 2;
   } else if (_options.max_write_buffer_number < 7 + 2) {
-    // use set the value explicitly, and it is lower than recommended
+    // user set the value explicitly, and it is lower than recommended
+    _options.max_write_buffer_number = 7 + 2;
     LOG_TOPIC("d5c49", WARN, Logger::ENGINES) << "ignoring value for option `--rocksdb.max-write-buffer-number` because it is lower than recommended";
   }
 
