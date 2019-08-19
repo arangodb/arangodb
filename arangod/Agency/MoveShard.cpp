@@ -853,6 +853,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
                             }
                             trx.add(srv);
                           }
+                          trx.add(VPackValue(_to));
                         }
                       });
       } else {
