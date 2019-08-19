@@ -120,6 +120,9 @@ std::string ShellBase::prompt(std::string const& prompt,
 
     if (StringUtils::isPrefix(line, plain)) {
       pos = line.find('>');
+      // The documentation has this, so we ignore it:
+    } else if (StringUtils::isPrefix(line, "arangosh>")) {
+      pos = line.find('>');
     } else if (StringUtils::isPrefix(line, "...")) {
       pos = line.find('>');
     }

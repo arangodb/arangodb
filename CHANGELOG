@@ -4,6 +4,8 @@ v3.5.1 (XXXX-XX-XX)
 * Made index selection much more deterministic in case there are
   multiple competing indexes.
 
+* Fixed cut'n'pasting code from the documentation into arangosh.
+
 * Fixed issue #9652: fix ArangoSearch wrong name collision and raising
   "Name collision detected" error during creation of a custom analyzer with
   stopwords.
