@@ -8,6 +8,8 @@ v3.4.8 (XXXX-XX-XX)
   Previous versions of ArangoDB always silently ignored the value of this setting 
   and effectively hard-coded the value to 9.
 
+* Fixed cut'n'pasting code from the documentation into arangosh.
+
 * Refactor maintenance to use a TakeoverShardLeadership job. This fixes a bug
   that a shard follower could have set the wrong leader for the shard locally.
 
@@ -30,7 +32,7 @@ v3.4.8 (XXXX-XX-XX)
 
 * Upgraded arangodb starter version to 0.14.12
 
-* Added options to make server more secure:
+* Fixed internal issue #3680 by adding two new options to make the server more secure:
   - `--foxx.api`: set to false disables Foxx management API
   - `--foxx.store`: set to false disables Foxx UI
 
