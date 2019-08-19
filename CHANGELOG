@@ -1,6 +1,8 @@
 v3.3.25 (2019-XX-XX)
 --------------------
 
+* fix cut'n'pasting code from the documentation into arangosh
+
 * Correct rocksdb statistics to report sums from column families instead of
   single value from default column family
 
