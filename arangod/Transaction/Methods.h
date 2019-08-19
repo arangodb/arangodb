@@ -568,11 +568,11 @@ class Methods {
     std::string name;
   } _collectionCache;
 
-  Result replicateOperations(LogicalCollection const& collection,
-                             std::shared_ptr<const std::vector<std::string>> const& followers,
-                             OperationOptions const& options, VPackSlice value,
-                             TRI_voc_document_operation_e operation,
-                             velocypack::Builder const& resultBuilder);
+  Future<Result> replicateOperations(LogicalCollection const& collection,
+                                     std::shared_ptr<const std::vector<std::string>> const& followers,
+                                     OperationOptions const& options, VPackSlice value,
+                                     TRI_voc_document_operation_e operation,
+                                     velocypack::Builder const& resultBuilder);
 };
 
 }  // namespace transaction

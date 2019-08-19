@@ -48,6 +48,7 @@
 #include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
+#include "Network/Methods.h"
 #include "Network/Utils.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -1562,9 +1563,7 @@ Future<OperationResult> transaction::Methods::insertCoordinator(std::string cons
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
   
-  return arangodb::createDocumentOnCoordinator(vocbase().name(), collectionName, *this,
-                                               options, value, responseCode,
-                                               *this, *colptr, options, value);
+  return arangodb::createDocumentOnCoordinator(*this, *colptr, options, value);
 }
 #endif
 
@@ -1803,7 +1802,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
     // Now replicate the good operations on all followers:
     res = replicateOperations(*collection, followers, options, value,
-                              TRI_VOC_DOCUMENT_OPERATION_INSERT, resultBuilder);
+                              TRI_VOC_DOCUMENT_OPERATION_INSERT, resultBuilder).get();
 
     if (!res.ok()) {
       return OperationResult{std::move(res), options};
@@ -2135,7 +2134,7 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
 
     // Now replicate the good operations on all followers:
     res = replicateOperations(*collection, followers, options, newValue,
-                              operation, resultBuilder);
+                              operation, resultBuilder).get();
 
     if (!res.ok()) {
       return OperationResult{std::move(res), options};
@@ -2393,7 +2392,7 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
 
     // Now replicate the good operations on all followers:
     res = replicateOperations(*collection, followers, options, value,
-                              TRI_VOC_DOCUMENT_OPERATION_REMOVE, resultBuilder);
+                              TRI_VOC_DOCUMENT_OPERATION_REMOVE, resultBuilder).get();
 
     if (!res.ok()) {
       return OperationResult{std::move(res), options};
@@ -3250,23 +3249,23 @@ Result transaction::Methods::resolveId(char const* handle, size_t length,
 
 // Unified replication of operations. May be inserts (with or without
 // overwrite), removes, or modifies (updates/replaces).
-Result Methods::replicateOperations(LogicalCollection const& collection,
-                                    std::shared_ptr<const std::vector<std::string>> const& followers,
-                                    OperationOptions const& options, VPackSlice const value,
-                                    TRI_voc_document_operation_e const operation,
-                                    VPackBuilder const& resultBuilder) {
+Future<Result> Methods::replicateOperations(LogicalCollection const& collection,
+                                            std::shared_ptr<const std::vector<std::string>> const& followers,
+                                            OperationOptions const& options, VPackSlice const value,
+                                            TRI_voc_document_operation_e const operation,
+                                            VPackBuilder const& resultBuilder) {
   TRI_ASSERT(followers != nullptr);
 
   Result res;
   if (followers->empty()) {
     return res;
   }
-
+  
   // nullptr only happens on controlled shutdown
-  auto cc = arangodb::ClusterComm::instance();
-  if (cc == nullptr) {
-    return res.reset(TRI_ERROR_SHUTTING_DOWN);
-  };
+//  auto cc = arangodb::ClusterComm::instance();
+//  if (cc == nullptr) {
+//    return res.reset(TRI_ERROR_SHUTTING_DOWN);
+//  };
 
   // path and requestType are different for insert/remove/modify.
 
@@ -3283,22 +3282,21 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
              << ServerState::instance()->getId() << "&"
              << StaticStrings::SilentString << "=true";
 
-  arangodb::rest::RequestType requestType = RequestType::ILLEGAL;
-
+  arangodb::fuerte::RestVerb requestType = arangodb::fuerte::RestVerb::Illegal;
   switch (operation) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
-      requestType = arangodb::rest::RequestType::POST;
+      requestType = arangodb::fuerte::RestVerb::Post;
       pathStream << "&" << StaticStrings::OverWrite << "="
                  << (options.overwrite ? "true" : "false");
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
-      requestType = arangodb::rest::RequestType::PATCH;
+      requestType = arangodb::fuerte::RestVerb::Patch;
       break;
     case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
-      requestType = arangodb::rest::RequestType::PUT;
+      requestType = arangodb::fuerte::RestVerb::Put;
       break;
     case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
-      requestType = arangodb::rest::RequestType::DELETE_REQ;
+      requestType = arangodb::fuerte::RestVerb::Delete;
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
     default:
@@ -3308,7 +3306,6 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
   std::string const path{pathStream.str()};
 
   transaction::BuilderLeaser payload(this);
-
   auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
     VPackObjectBuilder guard(payload.get());
     VPackSlice s = result.get(StaticStrings::KeyString);
@@ -3345,22 +3342,30 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
     return res;
   }
 
-  auto body = std::make_shared<std::string>();
-  *body = payload->slice().toJson();
-
   // Now prepare the requests:
-  std::vector<ClusterCommRequest> requests;
-  requests.reserve(followers->size());
-
+//  std::vector<ClusterCommRequest> requests;
+//  requests.reserve(followers->size());
+  
+  std::vector<Future<network::Response>> futures;
+  network::Timeout const timeout(chooseTimeout(count, payload->size()));
   for (auto const& f : *followers) {
-    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-    ClusterTrxMethods::addTransactionHeader(*this, f, *headers);
-    requests.emplace_back("server:" + f, requestType, path, body, std::move(headers));
+    // TODO we could steal the payload at least once
+    VPackBuffer<uint8_t> buffer;
+    buffer.append(payload->data(), payload->size());
+    
+    network::Headers headers;
+    ClusterTrxMethods::addTransactionHeader(*this, f, headers);
+    auto future = network::sendRequestRetry("server:" + f, requestType,
+                                            path, std::move(buffer), timeout, headers, /*retryNotFound*/true);
+    futures.emplace_back(std::move(future));
+//    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+//    ClusterTrxMethods::addTransactionHeader(*this, f, *headers);
+//    requests.emplace_back("server:" + f, requestType, path, body, std::move(headers));
   }
-
-  double const timeout = chooseTimeout(count, body->size() * followers->size());
-
-  cc->performRequests(requests, timeout, Logger::REPLICATION, false);
+  
+  // assuming this trx lives, the followers will live
+  auto* finfo = collection.followers().get();
+  
   // If any would-be-follower refused to follow there are two possiblities:
   // (1) there is a new leader in the meantime, or
   // (2) the follower was restarted and forgot that it is a follower.
@@ -3372,42 +3377,53 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
   // Therefore, we drop the follower here (just in case), and refuse to
   // return with a refusal error (note that we use the follower version,
   // since we have lost leadership):
-
-  // We drop all followers that were not successful:
-  for (size_t i = 0; i < followers->size(); ++i) {
-    bool replicationWorked =
-        requests[i].done && requests[i].result.status == CL_COMM_RECEIVED &&
-        (requests[i].result.answer_code == rest::ResponseCode::ACCEPTED ||
-         requests[i].result.answer_code == rest::ResponseCode::CREATED ||
-         requests[i].result.answer_code == rest::ResponseCode::OK);
-    if (replicationWorked) {
-      bool found;
-      requests[i].result.answer->header(StaticStrings::ErrorCodes, found);
-      replicationWorked = !found;
-    }
-    if (!replicationWorked) {
-      auto const& followerInfo = collection.followers();
-      Result res = followerInfo->remove((*followers)[i]);
-      if (res.ok()) {
-        // TODO: what happens if a server is re-added during a transaction ?
-        _state->removeKnownServer((*followers)[i]);
-        LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
-            << "synchronous replication: dropping follower " << (*followers)[i]
-            << " for shard " << collection.name();
-      } else {
-        LOG_TOPIC("db473", ERR, Logger::REPLICATION)
-            << "synchronous replication: could not drop follower " << (*followers)[i]
-            << " for shard " << collection.name() << ": " << res.errorMessage();
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+  auto cb = [=](std::vector<futures::Try<network::Response>>&& responses) -> Result {
+    
+    bool didRefuse = false;
+    
+    // We drop all followers that were not successful:
+    for (size_t i = 0; i < followers->size(); ++i) {
+      auto const& tryRes = responses[i];
+      tryRes.throwIfFailed(); // just throw the error upwards
+      network::Response const& resp = tryRes.get();
+      
+      bool replicationWorked = false;
+      if (resp.error == fuerte::Error::NoError) {
+        replicationWorked = (resp.response->statusCode() == fuerte::StatusAccepted ||
+                             resp.response->statusCode() == fuerte::StatusCreated ||
+                             resp.response->statusCode() == fuerte::StatusOK) &&
+                             replicationWorked;
+        if (replicationWorked) {
+          bool found;
+          resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);
+          replicationWorked = !found;
+        }
+        didRefuse = didRefuse || resp.response->statusCode() == fuerte::StatusNotAcceptable;
+      }
+      
+      if (!replicationWorked) {
+        Result res = finfo->remove((*followers)[i]);
+        if (res.ok()) {
+          // TODO: what happens if a server is re-added during a transaction ?
+          _state->removeKnownServer((*followers)[i]);
+          LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
+          << "synchronous replication: dropping follower " << (*followers)[i]
+          << " for shard " << "TODO";//collection.name();
+        } else {
+          LOG_TOPIC("db473", ERR, Logger::REPLICATION)
+          << "synchronous replication: could not drop follower " << (*followers)[i]
+          << " for shard " << "TODO"/*collection.name()*/ << ": " << res.errorMessage();
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+        }
       }
     }
-  }
-
-  if (findRefusal(requests)) {  // case (1), caller may abort this transaction
-    return res.reset(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
-  }
-
-  return res;
+    
+    if (didRefuse) {  // case (1), caller may abort this transaction
+      return Result(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+    }
+    return Result();
+  };
+  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
 
 #ifndef USE_ENTERPRISE

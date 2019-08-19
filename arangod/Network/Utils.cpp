@@ -102,7 +102,7 @@ OperationResult opResultFromBody(arangodb::velocypack::Buffer<uint8_t> const& bo
 
 OperationResult opResultFromBody(std::shared_ptr<VPackBuilder> const& body, int defaultErrorCode) {
   if (body) {
-    return errorFromBody(body->slice(), defaultErrorCode);
+    return opResultFromBody(body->slice(), defaultErrorCode);
   }
   return OperationResult(defaultErrorCode);
 }
@@ -126,7 +126,7 @@ OperationResult opResultFromBody(VPackSlice body, int defaultErrorCode) {
 }
 
 /// @brief extract the error code form the body
-int errorCodeFromBody(arangodb::velocypack::Slice const& body) {
+int errorCodeFromBody(arangodb::velocypack::Slice body) {
   if (body.isObject()) {
     VPackSlice num = body.get(StaticStrings::ErrorNum);
     if (num.isNumber()) {
@@ -240,15 +240,15 @@ OperationResult clusterResultInsert(arangodb::fuerte::StatusCode code,
       return OperationResult(Result(), std::move(body), nullptr, copy, errorCounter);
     }
     case fuerte::StatusPreconditionFailed:
-      return network::errorFromBody(*body, TRI_ERROR_ARANGO_CONFLICT);
+      return network::opResultFromBody(*body, TRI_ERROR_ARANGO_CONFLICT);
     case fuerte::StatusBadRequest:
-      return network::errorFromBody(*body, TRI_ERROR_INTERNAL);
+      return network::opResultFromBody(*body, TRI_ERROR_INTERNAL);
     case fuerte::StatusNotFound:
-      return network::errorFromBody(*body, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      return network::opResultFromBody(*body, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     case fuerte::StatusConflict:
-      return network::errorFromBody(*body, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+      return network::opResultFromBody(*body, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     default:
-      return network::errorFromBody(*body, TRI_ERROR_INTERNAL);
+      return network::opResultFromBody(*body, TRI_ERROR_INTERNAL);
   }
 }
 }  // namespace network
