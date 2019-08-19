@@ -331,18 +331,30 @@ Index::FilterCosts SimpleAttributeEqualityMatcher::calculateIndexCosts(
   if (itemsInIndex > 0) {
     costs.estimatedItems = static_cast<size_t>(itemsInIndex * values);
 
-    TRI_ASSERT(idx->hasSelectivityEstimate());
-    if (!idx->hasSelectivityEstimate()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "index does not have required selectivity estimate");
-    }
-    // use index selectivity estimate
-    arangodb::velocypack::StringRef att;
-    if (attribute != nullptr && attribute->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-      att = arangodb::velocypack::StringRef(attribute->getStringValue(), attribute->getStringLength());
-    }
-    double estimate = idx->selectivityEstimate(att);
-    if (estimate > 0.0) {
-      costs.estimatedItems = static_cast<size_t>(1.0 / estimate * values);
+    // the index mocks do not have a selectivity estimate...
+    if (idx->hasSelectivityEstimate()) {
+      // use index selectivity estimate
+      arangodb::velocypack::StringRef att;
+      if (attribute != nullptr && attribute->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+        att = arangodb::velocypack::StringRef(attribute->getStringValue(), attribute->getStringLength());
+      }
+      double estimate = idx->selectivityEstimate(att);
+      if (estimate > 0.0) {
+        costs.estimatedItems = static_cast<size_t>(1.0 / estimate * values);
+      }
+    } else {
+      // no selectivity estimate present. this should only happen for mock indexes.
+      // anyway, use a hard-coded formula for determining the number of results
+      double equalityReductionFactor = 20.0;
+      for (size_t i = 0; i < coveredAttributes; ++i) {
+        costs.estimatedItems /= static_cast<size_t>(equalityReductionFactor);
+        // decrease the effect of the equality reduction factor
+        equalityReductionFactor *= 0.25;
+        if (equalityReductionFactor < 2.0) {
+          // equalityReductionFactor shouldn't get too low
+          equalityReductionFactor = 2.0;
+        }
+      }
     }
       
     // costs.estimatedItems is always set here, make it at least 1
