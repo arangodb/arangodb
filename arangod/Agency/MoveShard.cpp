@@ -853,6 +853,8 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
                             }
                             trx.add(srv);
                           }
+                          // Add to server last. Will be removed by removeFollower if to much
+                          trx.add(VPackValue(_to));
                         }
                       });
       } else {
