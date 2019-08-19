@@ -2891,15 +2891,15 @@ class PlanCollectionReader {
 
     std::string path =
         "Plan/Collections/" + databaseName + "/" + collectionID;
-    AgencyCommResult read = ac.getValues(path);
+    _read = ac.getValues(path);
 
-    if (!read.successful()) {
+    if (!_read.successful()) {
       _state = Result(TRI_ERROR_CLUSTER_READING_PLAN_AGENCY,
                       "Could not retrieve " + path + " from agency");
       return;
     }
 
-    _collection = read.slice()[0].get(std::vector<std::string>(
+    _collection = _read.slice()[0].get(std::vector<std::string>(
         {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
 
     if (!_collection.isObject()) {
