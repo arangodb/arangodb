@@ -304,7 +304,7 @@ void TraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
   builder.add("base", VPackValue(VPackValueType::Array));
   for (auto const& it : _baseLookupInfos) {
     for (auto const& it2 : it.idxHandles) {
-      it2.getIndex()->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
+      it2.getIndex()->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics, Index::Serialize::Estimates));
     }
   }
   builder.close();
@@ -316,7 +316,7 @@ void TraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
     builder.add(VPackValue(VPackValueType::Array));
     for (auto const& it2 : it.second) {
       for (auto const& it3 : it2.idxHandles) {
-        it3.getIndex()->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
+        it3.getIndex()->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics, Index::Serialize::Estimates));
       }
     }
     builder.close();
