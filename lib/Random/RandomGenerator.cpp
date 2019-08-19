@@ -539,7 +539,7 @@ int64_t RandomGenerator::interval(int64_t left, int64_t right) {
   if (left == INT64_MIN) {
     diff = right + static_cast<uint64_t>(INT64_MAX);
   } else {
-    diff = right - left;
+    diff = static_cast<uint64_t>(right) - static_cast<uint64_t>(left);
   }
   int64_t value = left + interval(static_cast<uint64_t>(diff));
   TRI_ASSERT(value >= left && value <= right);

@@ -71,6 +71,9 @@ TEST(RandomGeneratorTest, test_RandomGeneratorMersenne_ranges_int64) {
   
   value = RandomGenerator::interval(int64_t(5), int64_t(15));
   EXPECT_EQ(13, value);
+  
+  value = RandomGenerator::interval(int64_t(INT64_MIN), int64_t(-49874753588));
+  EXPECT_EQ(-6563046468452533532, value);
 }
 
 TEST(RandomGeneratorTest, test_RandomGeneratorMersenne_ranges_int32) {
@@ -105,6 +108,9 @@ TEST(RandomGeneratorTest, test_RandomGeneratorMersenne_ranges_int32) {
   
   value = RandomGenerator::interval(int32_t(5), int32_t(15));
   EXPECT_EQ(11, value);
+  
+  value = RandomGenerator::interval(int32_t(INT32_MIN), int32_t(-485774));
+  EXPECT_EQ(-1208965022, value);
 }
   
 TEST(RandomGeneratorTest, test_RandomGeneratorMersenne_ranges_int16) {
@@ -139,6 +145,9 @@ TEST(RandomGeneratorTest, test_RandomGeneratorMersenne_ranges_int16) {
   
   value = RandomGenerator::interval(int16_t(5), int16_t(15));
   EXPECT_EQ(11, value);
+  
+  value = RandomGenerator::interval(int16_t(INT16_MIN), int16_t(-4854));
+  EXPECT_EQ(-16442, value);
 }
 
 TEST(RandomGeneratorTest, test_RandomGeneratorMersenne_interval_uint64) {
