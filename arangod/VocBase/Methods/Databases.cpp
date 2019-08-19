@@ -324,8 +324,8 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
 
   // Now create *all* system collections for the database,
   // if any of these fail, database creation is considered unsuccessful
-  UpgradeResult upgradeRes = methods::Upgrade::createDB(vocbase, info.getUsers());
 
+  UpgradeResult upgradeRes = methods::Upgrade::createDB(vocbase, info.getUsers());
   // If the creation of system collections was successful,
   // make the database visible, otherwise clean up what we can.
   if (upgradeRes.ok()) {

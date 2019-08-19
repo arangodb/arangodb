@@ -782,14 +782,22 @@ void ClusterInfo::loadPlan() {
       auto* vocbase = databaseFeature->lookupDatabase(databaseName);
 
       if (!vocbase) {
+        if (planDatabasesSlice.hasKey(databaseName)) {
+          LOG_DEVEL << "has key: " << planDatabasesSlice.get(databaseName).toJson();
+        }
+
         // No database with this name found.
         // We have an invalid state here.
+        if (newDatabases.find(databaseName) == std::end(newDatabases)) {
+          LOG_DEVEL << "isBuilding database -> ignored";
+        } else {
         LOG_TOPIC("83d4c", WARN, Logger::AGENCY)
             << "No database '" << databaseName << "' found,"
             << " corresponding collection will be ignored for now and the "
             << "invalid information will be repaired. VelocyPack: "
             << collectionsSlice.toJson();
         planValid &= !collectionsSlice.length();  // cannot find vocbase for defined collections (allow empty collections for missing vocbase)
+        }
 
         continue;
       }
@@ -1612,6 +1620,9 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(methods::CreateDatabaseInf
     // Something else went wrong.
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE);
   }
+
+  // Make sure we're all aware of collections that have been created
+  loadPlan();
 
   // The transaction was successful and the database should
   // now be visible and usable.
@@ -3054,7 +3065,6 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
                            newIndexBuilder.slice());
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
 
-  LOG_DEVEL << "creating index on " + databaseName + "/" + collectionID + " " << collectionFromPlan.slice();
   AgencyPrecondition oldValue(planCollKey, AgencyPrecondition::Type::VALUE, collectionFromPlan.slice());
   AgencyWriteTransaction trx({newValue, incrementVersion}, oldValue);
 

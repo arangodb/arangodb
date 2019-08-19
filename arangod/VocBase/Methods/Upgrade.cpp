@@ -72,6 +72,8 @@ UpgradeResult Upgrade::createDB(TRI_vocbase_t& vocbase,
                                 arangodb::velocypack::Slice const& users) {
   TRI_ASSERT(users.isArray());
 
+  LOG_DEVEL << "create";
+
   uint32_t clusterFlag = 0;
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   if (ServerState::isSingleServer(role)) {
