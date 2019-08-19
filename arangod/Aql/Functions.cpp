@@ -286,15 +286,18 @@ AqlValue numberValue(double value, bool nullify) {
 
 /// @brief optimized version of datetime stringification
 /// string format is hard-coded to YYYY-MM-DDTHH:MM:SS.XXXZ
-AqlValue timeAqlValue(tp_sys_clock_ms const& tp) {
+AqlValue timeAqlValue(ExpressionContext* expressionContext,
+                      char const* AFN,
+                      tp_sys_clock_ms const& tp) {
   char formatted[24];
 
   year_month_day ymd{floor<days>(tp)};
   auto day_time = make_time(tp - sys_days(ymd));
   
   auto y = static_cast<int>(ymd.year());
+  // quick sanity check here for dates outside the allowed range
   if (y < 0 || y > 9999) {
-    // quick sanity check here for dates outside the allowed range
+    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -403,7 +406,8 @@ DateSelectionModifier parseDateModifierFlag(VPackSlice flag) {
 
 AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
                                         tp_sys_clock_ms const& tp, VPackSlice durationUnitsSlice,
-                                        VPackSlice durationType, bool isSubtract) {
+                                        VPackSlice durationType, char const* AFN,
+                                        bool isSubtract) {
   bool isInteger = durationUnitsSlice.isInteger();
   double durationUnits = durationUnitsSlice.getNumber<double>();
   std::chrono::duration<double, std::ratio<1l, 1000l>> ms{};
@@ -473,11 +477,7 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
       ms *= durationUnits;
       break;
     default:
-      if (isSubtract) {
-        ::registerWarning(expressionContext, "DATE_SUBTRACT", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      } else {
-        ::registerWarning(expressionContext, "DATE_ADD", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      }
+      ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
   }
   // Here we reconstruct the timepoint again
@@ -492,21 +492,18 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
         tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() +
                         std::chrono::duration_cast<duration<int64_t, std::milli>>(ms)};
   }
-  return ::timeAqlValue(resTime);
+  return ::timeAqlValue(expressionContext, AFN, resTime);
 }
 
 AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionContext,
                                                tp_sys_clock_ms const& tp,
-                                               std::string const& duration, bool isSubtract) {
+                                               std::string const& duration, 
+                                               char const* AFN, bool isSubtract) {
   year_month_day ymd{floor<days>(tp)};
   auto day_time = make_time(tp - sys_days(ymd));
   std::smatch duration_parts;
   if (!basics::regexIsoDuration(duration, duration_parts)) {
-    if (isSubtract) {
-      ::registerWarning(expressionContext, "DATE_SUBTRACT", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-    } else {
-      ::registerWarning(expressionContext, "DATE_ADD", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-    }
+    ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -552,7 +549,7 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionCont
   } else {
     resTime = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() + ms};
   }
-  return ::timeAqlValue(resTime);
+  return ::timeAqlValue(expressionContext, AFN, resTime);
 }
 
 /// @brief register usage of an invalid function argument
@@ -1099,9 +1096,10 @@ AqlValue dateFromParameters(
   }
 
   if (asTimestamp) {
+    // TODO: validate
     return AqlValue(AqlValueHintInt(time.count()));
   }
-  return ::timeAqlValue(tp);
+  return ::timeAqlValue(expressionContext, AFN, tp);
 }
 
 AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Methods* trx,
@@ -3407,7 +3405,7 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
   }
   tp = tp_sys_clock_ms{sys_days(ymd) + ms};
 
-  return ::timeAqlValue(tp);
+  return ::timeAqlValue(expressionContext, AFN, tp);
 }
 
 /// @brief function DATE_ADD
@@ -3438,7 +3436,7 @@ AqlValue Functions::DateAdd(ExpressionContext* expressionContext, transaction::M
 
     // Numbers and Strings can both be sliced
     return ::addOrSubtractUnitFromTimestamp(expressionContext, tp, durationUnit.slice(),
-                                            durationType.slice(), false);
+                                            durationType.slice(), AFN, false);
   } else {  // iso duration
     AqlValue const& isoDuration = extractFunctionParameterValue(parameters, 1);
     if (!isoDuration.isString()) {
@@ -3447,7 +3445,7 @@ AqlValue Functions::DateAdd(ExpressionContext* expressionContext, transaction::M
     }
 
     std::string const duration = isoDuration.slice().copyString();
-    return ::addOrSubtractIsoDurationFromTimestamp(expressionContext, tp, duration, false);
+    return ::addOrSubtractIsoDurationFromTimestamp(expressionContext, tp, duration, AFN, false);
   }
 }
 
@@ -3480,7 +3478,7 @@ AqlValue Functions::DateSubtract(ExpressionContext* expressionContext,
 
     // Numbers and Strings can both be sliced
     return ::addOrSubtractUnitFromTimestamp(expressionContext, tp, durationUnit.slice(),
-                                            durationType.slice(), true);
+                                            durationType.slice(), AFN, true);
   } else {  // iso duration
     AqlValue const& isoDuration = extractFunctionParameterValue(parameters, 1);
     if (!isoDuration.isString()) {
@@ -3489,7 +3487,7 @@ AqlValue Functions::DateSubtract(ExpressionContext* expressionContext,
     }
 
     std::string const duration = isoDuration.slice().copyString();
-    return ::addOrSubtractIsoDurationFromTimestamp(expressionContext, tp, duration, true);
+    return ::addOrSubtractIsoDurationFromTimestamp(expressionContext, tp, duration, AFN, true);
   }
 }
 
@@ -3742,7 +3740,7 @@ AqlValue Functions::DateRound(ExpressionContext* expressionContext,
   // integer division!
   t /= multiplier;
   tp = tp_sys_clock_ms(milliseconds(t * multiplier));
-  return ::timeAqlValue(tp);
+  return ::timeAqlValue(expressionContext, AFN, tp);
 }
 
 /// @brief function PASSTHRU
