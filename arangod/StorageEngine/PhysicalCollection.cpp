@@ -132,7 +132,8 @@ bool PhysicalCollection::IndexOrder::operator()(
   if (_Left->needsReversal() != _Right->needsReversal()) {
     return _Right->needsReversal();
   }
-  return _Left < _Right;
+  // to make  order of other equally-sorted indexes deterministic
+  return _Left->id() < _Right->id();
 }
 
 
