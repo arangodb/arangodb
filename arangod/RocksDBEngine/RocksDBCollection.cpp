@@ -1245,15 +1245,10 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     if (res.fail()) {
       if (needReversal && !state->isSingleOperation()) {
         ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc, &options](RocksDBIndex* rid) {
-          return rid->remove(*trx, mthds, documentId, doc, options.indexOperationMode);
+          return rid->remove(*trx, mthds, documentId, doc,  Index::OperationMode::rollback);
         });
       }
       break;
-    }
-    TRI_IF_FAILURE("BreakLastIndexOperation") {
-      if ((*it)->id() == (*_indexes.rbegin())->id()) {
-        return Result(TRI_ERROR_DEBUG, "BreakLastIndexOperation failure point triggered");
-      }
     }
   }
 

@@ -104,7 +104,7 @@ bool PhysicalCollection::IndexOrder::operator()(
     const std::shared_ptr<Index>& _Right) const {
 
   // Primary index always first (but two primary indexes render comparsion invalid
-  // but that`s bug itself)
+  // but that`s a bug itself)
   TRI_ASSERT(
     !(
       (_Left->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) &&
@@ -114,7 +114,7 @@ bool PhysicalCollection::IndexOrder::operator()(
   if (_Left->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
     return true;
   }
-    if (_Right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+  if (_Right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
     return false;
   }
     
@@ -125,6 +125,16 @@ bool PhysicalCollection::IndexOrder::operator()(
   } else if (_Left->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX &&
               _Right->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
     return false;
+  }
+
+  // This failpoint allows CRUD tests to trigger reversal
+  // of index operations. Hash index placed always AFTER reversable indexes
+  // could be broken by unique violation or by intentional failpoint.
+  // And this will make possible to deterministically trigger index reversals
+  TRI_IF_FAILURE("HashIndexAlwaysLast") {
+    if (_Left->type() != _Right->type()) {
+      return _Right->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX;
+    }
   }
 
   // Non-reversable indexes should be done first to minimize 
