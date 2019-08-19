@@ -685,7 +685,7 @@ static time_t _FileTime_to_POSIX(FILETIME* ft) {
 
 ProcessInfo TRI_ProcessInfoH(HANDLE processHandle, TRI_pid_t pid) {
   ProcessInfo result;
-  
+
   PROCESS_MEMORY_COUNTERS_EX pmc;
   pmc.cb = sizeof(PROCESS_MEMORY_COUNTERS_EX);
   // compiler warning wird in kauf genommen!c
@@ -740,6 +740,9 @@ ProcessInfo TRI_ProcessInfoH(HANDLE processHandle, TRI_pid_t pid) {
       }
     }
     CloseHandle(snapShot);
+  }
+  else {
+    LOG_TOPIC("6667", ERR, arangodb::Logger::FIXME) << "failed to acquire process threads count";
   }
 
   return result;

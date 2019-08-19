@@ -54,11 +54,13 @@ while(true) {
     instanceInfo.arangods.forEach(arangod => {
       let serverId = arangod.role + '_' + arangod.port;
       let beforeCall = time();
-
+      let procStats = pu.getProcessStats(arangod.pid)
       if (arangod.role === "agent") {
         let reply = download(arangod.url + '/_api/version', '', opts);
         if (reply.hasOwnProperty('error') || reply.code !== 200) {
-          print(reply);
+          print("fail: " + JSON.toString(reply) +
+                " - ps before: " + JSON.toString(procStats) +
+                " - ps now: " + JSON.toString(pu.getProcessStats(arangod.pid)));
           state.state = false;
           oneSet.state = false;
           oneSet[serverId] = {
@@ -77,7 +79,9 @@ while(true) {
       } else {
         let reply = download(arangod.url + '/_admin/statistics', '', opts);
         if (reply.hasOwnProperty('error') || reply.code !== 200) {
-          print(reply);
+          print("fail: " + JSON.toString(reply) +
+                " - ps before: " + JSON.toString(procStats) +
+                " - ps now: " + JSON.toString(pu.getProcessStats(arangod.pid)));
           state.state = false;
           oneSet.state = false;
           oneSet[serverId] = {
