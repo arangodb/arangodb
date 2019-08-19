@@ -44,12 +44,10 @@ class WriteBatch;
 namespace arangodb {
 
 class LogicalCollection;
-class RocksDBCollection;
 class RocksDBRecoveryManager;
 
 /// @brief metadata used by the index estimates and collection counts
-/// transaction to verify
-struct RocksDBCollectionMeta final {
+struct RocksDBMetadata final {
   friend class RocksDBRecoveryManager;
 
   /// @brief collection count
@@ -67,7 +65,7 @@ struct RocksDBCollectionMeta final {
   };
 
  public:
-  RocksDBCollectionMeta();
+  RocksDBMetadata();
 
  public:
   /**
@@ -113,7 +111,16 @@ struct RocksDBCollectionMeta final {
 
   /// @brief deserialize collection metadata, only called on startup
   arangodb::Result deserializeMeta(rocksdb::DB*, LogicalCollection&);
+  
+  void loadInitialNumberDocuments();
 
+  uint64_t numberDocuments() const {
+    return _numberDocuments.load(std::memory_order_acquire);
+  }
+  
+  TRI_voc_rid_t revisionId() const {
+    return _revisionId.load(std::memory_order_acquire);
+  }
 
 public:
   // static helper methods to modify collection meta entries in rocksdb
@@ -154,6 +161,10 @@ public:
   std::map<rocksdb::SequenceNumber, Adjustment> _bufferedAdjs;
   /// @brief internal buffer for adjustments
   std::map<rocksdb::SequenceNumber, Adjustment> _stagedAdjs;
+  
+  // below values are updated immediately, but are not serialized
+  std::atomic<uint64_t> _numberDocuments;
+  std::atomic<TRI_voc_rid_t> _revisionId;
 };
 }  // namespace arangodb
 

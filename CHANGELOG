@@ -18,12 +18,14 @@ devel
   
 * Updated TOKENS function to deal with primitive types and arrays.
 
+* Fixed agency nodes to not create bogus keys on delete / observe / unobserve
+
+* Fixed an agency bug found in Windows tests.
 
 v3.5.0-rc.7 (2019-08-01)
 ------------------------
 
 * Upgraded arangodb starter version to 0.14.12.
-
 
 v3.5.0-rc.6 (2019-07-29)
 ------------------------

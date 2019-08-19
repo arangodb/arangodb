@@ -202,10 +202,11 @@ ClusterInfo::ClusterInfo(AgencyCallbackRegistry* agencyCallbackRegistry)
       _uniqid() {
   _uniqid._currentValue = 1ULL;
   _uniqid._upperValue = 0ULL;
-
+  _uniqid._nextBatchStart = 1ULL;
+  _uniqid._nextUpperValue = 0ULL;
+  _uniqid._backgroundJobIsRunning = false;
   // Actual loading into caches is postponed until necessary
 }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a cluster info object
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,9 +218,20 @@ ClusterInfo::~ClusterInfo() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterInfo::cleanup() {
+
   ClusterInfo* theInstance = instance();
   if (theInstance == nullptr) {
     return;
+  }
+
+  while (true) {
+    {
+      MUTEX_LOCKER(mutexLocker, theInstance->_idLock);
+      if (!theInstance->_uniqid._backgroundJobIsRunning) {
+        break ;
+      }
+    }
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
   MUTEX_LOCKER(mutexLocker, theInstance->_planProt.mutex);
@@ -231,6 +243,48 @@ void ClusterInfo::cleanup() {
   theInstance->_shardKeys.clear();
   theInstance->_shardIds.clear();
   theInstance->_currentCollections.clear();
+}
+
+void ClusterInfo::triggerBackgroundGetIds() {
+  // Trigger a new load of batches
+  _uniqid._nextBatchStart = 1ULL;
+  _uniqid._nextUpperValue = 0ULL;
+
+
+  try {
+    if (_uniqid._backgroundJobIsRunning) {
+      return ;
+    }
+    _uniqid._backgroundJobIsRunning = true;
+    std::thread([this]{
+      auto guardRunning = scopeGuard([this]{
+        MUTEX_LOCKER(mutexLocker, _idLock);
+        _uniqid._backgroundJobIsRunning = false;
+      });
+
+      uint64_t result;
+      try {
+        result = _agency.uniqid(MinIdsPerBatch, 0.0);
+      } catch (std::exception const&) {
+        return ;
+      }
+
+      {
+        MUTEX_LOCKER(mutexLocker, _idLock);
+
+        if (1ULL == _uniqid._nextBatchStart) {
+          // Invalidate next batch
+          _uniqid._nextBatchStart = result;
+          _uniqid._nextUpperValue = result + MinIdsPerBatch - 1;
+        }
+        // If we get here, somebody else tried succeeded in doing the same,
+        // so we just try again.
+      }
+
+    }).detach();
+  } catch (std::exception const& e) {
+    LOG_TOPIC("adef4", WARN, Logger::CLUSTER) << "Failed to trigger background get ids. " << e.what();
+  }
 }
 
 /// @brief produces an agency dump and logs it
@@ -254,45 +308,43 @@ void ClusterInfo::logAgencyDump() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t ClusterInfo::uniqid(uint64_t count) {
-  while (true) {
-    uint64_t oldValue;
-    {
-      // The quick path, we have enough in our private reserve:
-      MUTEX_LOCKER(mutexLocker, _idLock);
+  MUTEX_LOCKER(mutexLocker, _idLock);
 
-      if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
-        uint64_t result = _uniqid._currentValue;
-        _uniqid._currentValue += count;
-
-        return result;
-      }
-      oldValue = _uniqid._currentValue;
-    }
-
-    // We need to fetch from the agency
-
-    uint64_t fetch = count;
-
-    if (fetch < MinIdsPerBatch) {
-      fetch = MinIdsPerBatch;
-    }
-
-    uint64_t result = _agency.uniqid(fetch, 0.0);
-
-    {
-      MUTEX_LOCKER(mutexLocker, _idLock);
-
-      if (oldValue == _uniqid._currentValue) {
-        _uniqid._currentValue = result + count;
-        _uniqid._upperValue = result + fetch - 1;
-
-        return result;
-      }
-      // If we get here, somebody else tried succeeded in doing the same,
-      // so we just try again.
-    }
+  if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
+    uint64_t result = _uniqid._currentValue;
+    _uniqid._currentValue += count;
+    return result;
   }
+
+  // Try if we can use the next batch
+  if (_uniqid._nextBatchStart + count - 1 <= _uniqid._nextUpperValue) {
+    uint64_t result = _uniqid._nextBatchStart;
+    _uniqid._currentValue   = _uniqid._nextBatchStart + count;
+    _uniqid._upperValue     = _uniqid._nextUpperValue;
+    triggerBackgroundGetIds();
+
+    return result;
+  }
+
+  // We need to fetch from the agency
+
+  uint64_t fetch = count;
+
+  if (fetch < MinIdsPerBatch) {
+    fetch = MinIdsPerBatch;
+  }
+
+  uint64_t result = _agency.uniqid(2 * fetch, 0.0);
+
+  _uniqid._currentValue = result + count;
+  _uniqid._upperValue = result + fetch - 1;
+  // Invalidate next batch
+  _uniqid._nextBatchStart = _uniqid._upperValue + 1;
+  _uniqid._nextUpperValue = _uniqid._upperValue + fetch - 1;
+
+  return result;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush the caches (used for testing)
@@ -3762,9 +3814,9 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(ShardID
 
   return std::make_shared<std::vector<ServerID>>();
 }
-  
+
 //////////////////////////////////////////////////////////////////////////////
-/// @brief atomically find all servers who are responsible for the given 
+/// @brief atomically find all servers who are responsible for the given
 /// shards (only the leaders).
 /// will throw an exception if no leader can be found for any
 /// of the shards. will return an empty result if the shards couldn't be
@@ -3815,10 +3867,10 @@ std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(std::un
       // result is complete
       break;
     }
-    
+
     // reset everything we found so far for the next round
     result.clear();
-    
+
     if (++tries >= 2 || application_features::ApplicationServer::isStopping()) {
       break;
     }
