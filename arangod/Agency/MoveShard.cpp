@@ -840,20 +840,22 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       if (_isLeader) {
         // All changes to Plan for all shards:
         doForAllShards(_snapshot, _database, shardsLikeMe,
-                       [this, &trx](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
-                         // Restore leader to be _from:
-                         trx.add(VPackValue(planPath));
-                         {
-                           VPackArrayBuilder guard(&trx);
-                           trx.add(VPackValue(_from));
-                           VPackArrayIterator iter(plan);
-                           ++iter;  // skip the first
-                           while (iter.valid()) {
-                             trx.add(iter.value());
-                             ++iter;
-                           }
-                         }
-                       });
+                      [this, &trx](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
+                        // Restore leader to be _from:
+                        trx.add(VPackValue(planPath));
+                        {
+                          VPackArrayBuilder guard(&trx);
+                          trx.add(VPackValue(_from));
+                          for (auto const& srv : VPackArrayIterator(plan)) {
+                            // from could be in plan as <from> or <_from>. Exclude to server always.
+                            if (srv.isEqualString(_from) || srv.isEqualString("_" + _from) || srv.isEqualString(_to)) {
+                              continue ;
+                            }
+                            trx.add(srv);
+                          }
+                          trx.add(VPackValue(_to));
+                        }
+                      });
       } else {
         // All changes to Plan for all shards:
         doForAllShards(_snapshot, _database, shardsLikeMe,
@@ -863,7 +865,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
                          {
                            VPackArrayBuilder guard(&trx);
                            for (auto const& srv : VPackArrayIterator(plan)) {
-                             if (srv.copyString() != _to) {
+                             if (false == srv.isEqualString(_to)) {
                                trx.add(srv);
                              }
                            }
