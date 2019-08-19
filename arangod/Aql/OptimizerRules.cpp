@@ -3059,6 +3059,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
                                         usedIndexes, std::move(condition), opts);
 
         auto n = newNode.release();
+        enumerateCollectionNode->cloneInto(*n);
 
         _plan->registerNode(n);
         _plan->replaceNode(enumerateCollectionNode, n);

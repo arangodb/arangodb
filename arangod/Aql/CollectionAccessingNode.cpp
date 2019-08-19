@@ -41,16 +41,23 @@ using namespace arangodb::aql;
 
 CollectionAccessingNode::CollectionAccessingNode(aql::Collection const* collection)
     : _collection(collection),
+      _restrictedTo(""),
       _prototypeCollection(nullptr),
       _prototypeOutVariable(nullptr),
-      _usedShard() {
+      _usedShard(""),
+      _isSatellite(false) {
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(_usedShard.empty());
 }
 
 CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
                                                  arangodb::velocypack::Slice slice)
-    : _collection(nullptr), _prototypeCollection(nullptr), _prototypeOutVariable(nullptr) {
+    : _collection(nullptr),
+      _restrictedTo(""),
+      _prototypeCollection(nullptr),
+      _prototypeOutVariable(nullptr),
+      _usedShard(""),
+      _isSatellite(false) {
   if (slice.get("prototype").isString()) {
     _prototypeCollection =
         plan->getAst()->query()->collections()->get(slice.get("prototype").copyString());
@@ -80,6 +87,8 @@ CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
   if (restrictedTo.isString()) {
     _restrictedTo = restrictedTo.copyString();
   }
+
+  _isSatellite = basics::VelocyPackHelper::getBooleanValue(slice, "isSatellite", false);
 }
 
 TRI_vocbase_t* CollectionAccessingNode::vocbase() const {
@@ -113,6 +122,9 @@ void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builde
   if (!_restrictedTo.empty()) {
     builder.add("restrictedTo", VPackValue(_restrictedTo));
   }
+#ifdef USE_ENTERPRISE
+  builder.add("isSatellite", VPackValue(_isSatellite));
+#endif
 }
 
 void CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(arangodb::velocypack::Builder& builder) const {
@@ -122,4 +134,11 @@ void CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(arangodb::velocypac
                        [](arangodb::Index const* idx) {
                          return (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX);
                        });
+}
+
+void CollectionAccessingNode::useAsSatellite() {
+  TRI_ASSERT(_collection->isSatellite());
+#ifdef USE_ENTERPRISE
+  _isSatellite = true;
+#endif
 }

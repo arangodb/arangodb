@@ -231,6 +231,7 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
                                               _variable, _alternativeVariable,
                                               _createKeys, _allowKeyConversionToObject);
     c->copyClients(clients());
+    CollectionAccessingNode::cloneInto(*c);
 
     return cloneHelper(std::move(c), withDependencies, withProperties);
   }
@@ -387,10 +388,13 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    return cloneHelper(std::make_unique<SingleRemoteOperationNode>(
-                           plan, _id, _mode, _replaceIndexNode, _key, collection(), _options,
-                           _inVariable, _outVariable, _outVariableOld, _outVariableNew),
-                       withDependencies, withProperties);
+    auto n =
+        std::make_unique<SingleRemoteOperationNode>(plan, _id, _mode, _replaceIndexNode,
+                                                    _key, collection(), _options,
+                                                    _inVariable, _outVariable,
+                                                    _outVariableOld, _outVariableNew);
+    CollectionAccessingNode::cloneInto(*n);
+    return cloneHelper(std::move(n), withDependencies, withProperties);
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place

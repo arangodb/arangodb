@@ -58,13 +58,13 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId) {
       }
       // Add all Edge Collections to the Transactions, Traversals do never write
       for (auto const& col : node->edgeColls()) {
-        updateLocking(col.get(), AccessMode::Type::READ, snippetId, {});
+        updateLocking(col.get(), AccessMode::Type::READ, snippetId, {}, false);
       }
 
       // Add all Vertex Collections to the Transactions, Traversals do never
       // write, the collections have been adjusted already
       for (auto const& col : node->vertexColls()) {
-        updateLocking(col.get(), AccessMode::Type::READ, snippetId, {});
+        updateLocking(col.get(), AccessMode::Type::READ, snippetId, {}, false);
       }
       break;
     }
@@ -82,7 +82,8 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId) {
       }
 
       auto* col = colNode->collection();
-      updateLocking(col, AccessMode::Type::READ, snippetId, restrictedShard);
+      updateLocking(col, AccessMode::Type::READ, snippetId, restrictedShard,
+                    colNode->isUsedAsSatellite());
       break;
     }
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
@@ -92,7 +93,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId) {
                                        "unable to cast node to ViewNode");
       }
       for (aql::Collection const& col : viewNode->collections()) {
-        updateLocking(&col, AccessMode::Type::READ, snippetId, {});
+        updateLocking(&col, AccessMode::Type::READ, snippetId, {}, false);
       }
 
       break;
@@ -113,11 +114,12 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId) {
       if (modNode->isRestricted()) {
         restrictedShard.emplace(modNode->restrictedShard());
       }
-
+      // Not supported yet
+      TRI_ASSERT(!modNode->isUsedAsSatellite());
       updateLocking(col,
                     modNode->getOptions().exclusive ? AccessMode::Type::EXCLUSIVE
                                                     : AccessMode::Type::WRITE,
-                    snippetId, restrictedShard);
+                    snippetId, restrictedShard, modNode->isUsedAsSatellite());
       break;
     }
     default:
@@ -128,10 +130,14 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId) {
 
 void ShardLocking::updateLocking(Collection const* col,
                                  AccessMode::Type const& accessType, size_t snippetId,
-                                 std::unordered_set<std::string> const& restrictedShards) {
+                                 std::unordered_set<std::string> const& restrictedShards,
+                                 bool usedAsSatellite) {
   auto& info = _collectionLocking[col];
   // We need to upgrade the lock
   info.lockType = (std::max)(info.lockType, accessType);
+  if (usedAsSatellite) {
+    info.isSatellite = true;
+  }
   if (info.allShards.empty()) {
     // Load shards only once per collection!
     auto const shards = col->shardIds(_query->queryOptions().shardIds);
@@ -147,17 +153,18 @@ void ShardLocking::updateLocking(Collection const* col,
       info.allShards.emplace(s);
     }
   }
-  auto snippetPart = info.restrictedSnippets.find(snippetId);
-  if (snippetPart == info.restrictedSnippets.end()) {
-    std::tie(snippetPart, std::ignore) = info.restrictedSnippets.emplace(
-        snippetId, std::make_pair(false, std::unordered_set<ShardID>{}));
+  auto snippetPart = info.snippetInfo.find(snippetId);
+  if (snippetPart == info.snippetInfo.end()) {
+    std::tie(snippetPart, std::ignore) =
+        info.snippetInfo.emplace(snippetId, SnippetInformation{});
   }
-  TRI_ASSERT(snippetPart != info.restrictedSnippets.end());
+  TRI_ASSERT(snippetPart != info.snippetInfo.end());
+  SnippetInformation& snip = snippetPart->second;
 
   if (!restrictedShards.empty()) {
     // Restricted case, store the restriction for the snippet.
-    bool& isRestricted = snippetPart->second.first;
-    std::unordered_set<ShardID>& shards = snippetPart->second.second;
+    bool& isRestricted = snip.isRestricted;
+    std::unordered_set<ShardID>& shards = snip.restrictedShards;
     if (isRestricted) {
       // We are already restricted, only possible if the restriction is identical
       TRI_ASSERT(shards == restrictedShards);
@@ -198,6 +205,7 @@ std::vector<ServerID> ShardLocking::getRelevantServers() {
     TRI_ASSERT(_serverToLockTypeToShard.empty());
     // Will internally fetch shards if not existing
     auto shardMapping = getShardMapping();
+
     // Now we need to create the mappings
     // server => locktype => [shards]
     // server => collection => [shards](sorted)
@@ -209,6 +217,18 @@ std::vector<ServerID> ShardLocking::getRelevantServers() {
           // We will create all maps as empty default constructions on the way
           _serverToCollectionToShard[server->second][lockInfo.first].emplace(sid);
           _serverToLockTypeToShard[server->second][lockInfo.second.lockType].emplace(sid);
+        }
+      }
+    }
+    // We now have sorted out all participating servers. Insert Satellites
+    for (auto& lockInfo : _collectionLocking) {
+      if (lockInfo.second.isSatellite) {
+        TRI_ASSERT(lockInfo.second.allShards.size() == 1);
+        for (auto const& shard : lockInfo.second.allShards) {
+          for (auto& serverLock : _serverToLockTypeToShard) {
+            // For every server, add it! (using the given lock)
+            serverLock.second[lockInfo.second.lockType].emplace(shard);
+          }
         }
       }
     }
@@ -249,8 +269,8 @@ std::unordered_map<ShardID, ServerID> const& ShardLocking::getShardMapping() {
     for (auto& lockInfo : _collectionLocking) {
       auto& allShards = lockInfo.second.allShards;
       TRI_ASSERT(!allShards.empty());
-      for (auto const& rest : lockInfo.second.restrictedSnippets) {
-        if (!rest.second.first) {
+      for (auto const& rest : lockInfo.second.snippetInfo) {
+        if (!rest.second.isRestricted) {
           // We have an unrestricted snippet for this collection
           // Use all shards for locking
           for (auto const& s : allShards) {
@@ -259,7 +279,7 @@ std::unordered_map<ShardID, ServerID> const& ShardLocking::getShardMapping() {
           // No need to search further
           break;
         }
-        for (auto const& s : rest.second.second) {
+        for (auto const& s : rest.second.restrictedShards) {
           shardIds.emplace(s);
         }
       }
@@ -293,14 +313,14 @@ std::unordered_set<ShardID> const& ShardLocking::shardsForSnippet(size_t snippet
     // We ask for a collection we did not lock!
     return EmptyShardListUnordered;
   }
-  auto restricted = lockInfo->second.restrictedSnippets.find(snippetId);
+  auto restricted = lockInfo->second.snippetInfo.find(snippetId);
   // We are asking for shards of a collection that are not registered with this
-  TRI_ASSERT(restricted != lockInfo->second.restrictedSnippets.end());
-  if (restricted == lockInfo->second.restrictedSnippets.end()) {
+  TRI_ASSERT(restricted != lockInfo->second.snippetInfo.end());
+  if (restricted == lockInfo->second.snippetInfo.end()) {
     return EmptyShardListUnordered;
   }
-  if (restricted->second.first /* isRestricted */) {
-    return restricted->second.second;
+  if (restricted->second.isRestricted) {
+    return restricted->second.restrictedShards;
   }
   return lockInfo->second.allShards;
 }

@@ -44,15 +44,22 @@ class ShardLocking {
  private:
   static std::set<ShardID> const EmptyShardList;
   static std::unordered_set<ShardID> const EmptyShardListUnordered;
+  struct SnippetInformation {
+    SnippetInformation() : isRestricted(false), restrictedShards({}) {}
+    bool isRestricted;
+    std::unordered_set<ShardID> restrictedShards;
+  };
 
   struct CollectionLockingInformation {
     // Lock type used for this collection
     AccessMode::Type lockType{AccessMode::Type::NONE};
     // The list of All shards of this query respecting query limits,
     // it is possible that not all shards are used.
-    std::unordered_set<ShardID> allShards;
-    // The list of specific shard restriction(s) of snippets.
-    std::unordered_map<size_t, std::pair<bool, std::unordered_set<ShardID>>> restrictedSnippets;
+    std::unordered_set<ShardID> allShards{};
+    // The list of specific shard information for snippets
+    std::unordered_map<size_t, SnippetInformation> snippetInfo{};
+    // Flag if the collection is used as a Satellite in any snippet.
+    bool isSatellite = false;
   };
 
  public:
@@ -88,8 +95,9 @@ class ShardLocking {
 
  private:
   // Adjust locking level of a single collection
-  void updateLocking(Collection const* col, AccessMode::Type const& accessType, size_t snippetId,
-                     std::unordered_set<std::string> const& restrictedShards);
+  void updateLocking(Collection const* col, AccessMode::Type const& accessType,
+                     size_t snippetId, std::unordered_set<std::string> const& restrictedShards,
+                     bool useAsSatellite);
 
  private:
   Query* _query;

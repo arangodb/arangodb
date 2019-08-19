@@ -96,8 +96,21 @@ class CollectionAccessingNode {
   aql::Collection const* prototypeCollection() const {
     return _prototypeCollection;
   }
+
   aql::Variable const* prototypeOutVariable() const {
     return _prototypeOutVariable;
+  }
+
+  bool isUsedAsSatellite() const { return _isSatellite; }
+
+  void useAsSatellite();
+
+  void cloneInto(CollectionAccessingNode& c) const {
+    c._prototypeCollection = _prototypeCollection;
+    c._prototypeOutVariable = _prototypeOutVariable;
+    c._restrictedTo = _restrictedTo;
+    c._isSatellite = _isSatellite;
+    c._usedShard = _usedShard;
   }
 
  protected:
@@ -111,6 +124,8 @@ class CollectionAccessingNode {
   aql::Variable const* _prototypeOutVariable;
 
   std::string _usedShard;
+
+  bool _isSatellite;
 };
 
 }  // namespace aql

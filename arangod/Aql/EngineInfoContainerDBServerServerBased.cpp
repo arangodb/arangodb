@@ -282,28 +282,38 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
     infoBuilder.close();  // Base object
     TRI_ASSERT(infoBuilder.isClosed());
+
+    VPackSlice infoSlice = infoBuilder.slice();
     // Partial assertions to check if all required keys are present
-    TRI_ASSERT(infoBuilder.slice().hasKey("lockInfo"));
-    TRI_ASSERT(infoBuilder.slice().hasKey("options"));
-    TRI_ASSERT(infoBuilder.slice().hasKey("variables"));
+    TRI_ASSERT(infoSlice.hasKey("lockInfo"));
+    TRI_ASSERT(infoSlice.hasKey("options"));
+    TRI_ASSERT(infoSlice.hasKey("variables"));
     // We need to have at least one: snippets (non empty) or traverserEngines
-    TRI_ASSERT((infoBuilder.slice().hasKey("snippets") &&
-                infoBuilder.slice().get("snippets").isObject() &&
-                !infoBuilder.slice().get("snippets").isEmptyObject()) ||
-               infoBuilder.slice().hasKey("traverserEngines"));
+
+    if (!((infoSlice.hasKey("snippets") && infoSlice.get("snippets").isObject() &&
+           !infoSlice.get("snippets").isEmptyObject()) ||
+          infoSlice.hasKey("traverserEngines"))) {
+      // This is possible in the satellite case.
+      // The leader of a read-only satellite is potentially
+      // not part of the query.
+      continue;
+    }
+    TRI_ASSERT((infoSlice.hasKey("snippets") && infoSlice.get("snippets").isObject() &&
+                !infoSlice.get("snippets").isEmptyObject()) ||
+               infoSlice.hasKey("traverserEngines"));
 
     // add the transaction ID header
     std::unordered_map<std::string, std::string> headers;
     ClusterTrxMethods::addAQLTransactionHeader(*trx, server, headers);
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
     auto res = cc->syncRequest(coordTransactionID, serverDest, RequestType::POST,
-                               url, infoBuilder.toJson(), headers, SETUP_TIMEOUT);
+                               url, infoSlice.toJson(), headers, SETUP_TIMEOUT);
     _query->incHttpRequests(1);
     if (res->getErrorCode() != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("f9a77", DEBUG, Logger::AQL)
           << server << " responded with " << res->getErrorCode() << " -> "
           << res->stringifyErrorMessage();
-      LOG_TOPIC("41082", TRACE, Logger::AQL) << infoBuilder.toJson();
+      LOG_TOPIC("41082", TRACE, Logger::AQL) << infoSlice.toJson();
       return {res->getErrorCode(), res->stringifyErrorMessage()};
     }
     std::shared_ptr<VPackBuilder> builder = res->result->getBodyVelocyPack();

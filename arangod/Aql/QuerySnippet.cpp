@@ -55,13 +55,8 @@ void QuerySnippet::addNode(ExecutionNode* node) {
       // We just wanna know the shards!
       auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(node);
       TRI_ASSERT(collectionAccessingNode != nullptr);
-      auto col = collectionAccessingNode->collection();
-      // Satellites can only be used on ReadNodes
-      bool isSatellite = col->isSatellite() &&
-                         (node->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
-                          node->getType() == ExecutionNode::INDEX);
-
-      _expansions.emplace_back(node, true, isSatellite);
+      _expansions.emplace_back(node, !collectionAccessingNode->isUsedAsSatellite(),
+                               collectionAccessingNode->isUsedAsSatellite());
       break;
     }
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
@@ -340,13 +335,9 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
       // we have 1) a problem with locking before that should have thrown
       // 2) a problem with shardMapping lookup that should have thrown before
       TRI_ASSERT(check != shardMapping.end());
-      if (check->second == server) {
-        myExp.emplace(s);
-      } else if (exp.isSatellite && _expansions.size() > 1) {
-        // Satellite collection is used for local join.
-        // If we only have one expansion we have a snippet only
-        // based on the satellite, that needs to be only executed once
-        // So this part is not allowed to be executed
+      if (check->second == server || exp.isSatellite) {
+        // add all shards on satellites.
+        // and all shards where this server is the leader
         myExp.emplace(s);
       }
     }
@@ -361,6 +352,7 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
     TRI_ASSERT(collectionAccessingNode != nullptr);
     collectionAccessingNode->setUsedShard(*myExp.begin());
     if (exp.doExpand) {
+      TRI_ASSERT(!collectionAccessingNode->isUsedAsSatellite());
       // All parts need to have exact same size, they need to be permutated pairwise!
       TRI_ASSERT(numberOfShardsToPermutate == 0 || myExp.size() == numberOfShardsToPermutate);
       // set the max loop index (note this will essentially be done only once)

@@ -92,6 +92,7 @@ void ModificationNode::cloneCommon(ModificationNode* c) const {
     c->disableStatistics();
   }
   c->producesResults(_producesResults);
+  CollectionAccessingNode::cloneInto(*c);
 }
 
 RemoveNode::RemoveNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
