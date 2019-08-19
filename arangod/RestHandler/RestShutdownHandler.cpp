@@ -91,23 +91,23 @@ RestStatus RestShutdownHandler::execute() {
     clusterFeature->setUnregisterOnShutdown(true);
   }
 
-  try {
-    VPackBuilder result;
-    result.add(VPackValue("OK"));
-    generateResult(rest::ResponseCode::OK, result.slice());
-  } catch (...) {
-    // Ignore the error
-  }
   auto self = shared_from_this();
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self] {
+  bool queued = scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self] {
     // Give the server 2 seconds to send the reply:
     std::this_thread::sleep_for(std::chrono::seconds(2));
     // Go down:
     ApplicationServer::server->beginShutdown();
   });
+  if (queued) {
+    VPackBuilder result;
+    result.add(VPackValue("OK"));
+    generateResult(rest::ResponseCode::OK, result.slice());
+  } else {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_QUEUE_FULL);
+  }
 
   return RestStatus::DONE;
 }
