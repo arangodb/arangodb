@@ -48,6 +48,8 @@
 
 namespace arangodb {
 namespace transaction {
+  
+const size_t Manager::maxTransactionSize; // 128 MiB
 
 namespace {
   struct MGMethods final : arangodb::transaction::Methods {
@@ -168,12 +170,29 @@ void Manager::iterateActiveTransactions(
 uint64_t Manager::getActiveTransactionCount() {
   return _nrRunning.load(std::memory_order_relaxed);
 }
+  
+Manager::ManagedTrx::ManagedTrx(MetaType t, TransactionState* st)
+  : type(t), beginTimeSecs(TRI_microtime()), usedTimeSecs(this->beginTimeSecs),
+    state(st), finalStatus(Status::UNDEFINED), rwlock() {}
+  
+bool Manager::ManagedTrx::expired() const {
+  double now = TRI_microtime();
+  if (type == Manager::MetaType::Tombstone) {
+    return (now - beginTimeSecs) > tombstoneTTL;
+  }
+  
+  auto role = ServerState::instance()->getRole();
+  if ((ServerState::isSingleServer(role) || ServerState::isCoordinator(role))) {
+    return (now - usedTimeSecs) > idleTTL || (now - beginTimeSecs) > totalTTL;
+  }
+  return (now - beginTimeSecs) > totalTTLDBServer;
+}
 
 Manager::ManagedTrx::~ManagedTrx() {
   if (type == MetaType::StandaloneAQL ||
       state == nullptr ||
       state->isEmbeddedTransaction()) {
-    return;
+    return; // not managed by us
   }
   if (!state->isRunning()) {
     delete state;
@@ -220,8 +239,7 @@ void Manager::registerAQLTrx(TransactionState* state) {
 
     buck._managed.emplace(std::piecewise_construct,
                           std::forward_as_tuple(state->id()),
-                          std::forward_as_tuple(MetaType::StandaloneAQL, state,
-                                                (defaultTTL + TRI_microtime())));
+                          std::forward_as_tuple(MetaType::StandaloneAQL, state));
   }
 }
 
@@ -297,7 +315,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase,
     return res.reset(TRI_ERROR_BAD_PARAMETER, "invalid 'collections' attribute");
   }
 
-  return createManagedTrx(vocbase, tid, reads, writes, exclusives, options);
+  return createManagedTrx(vocbase, tid, reads, writes, exclusives, std::move(options));
 }
 
   /// @brief create managed transaction
@@ -305,7 +323,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                                  std::vector<std::string> const& readCollections,
                                  std::vector<std::string> const& writeCollections,
                                  std::vector<std::string> const& exclusiveCollections,
-                                 transaction::Options const& options) {
+                                 transaction::Options options) {
   Result res;
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
@@ -323,6 +341,10 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     }
   }
 
+  // enforce size limit per DBServer
+  options.maxTransactionSize = std::min<size_t>(options.maxTransactionSize,
+                                                Manager::maxTransactionSize);
+  
   std::unique_ptr<TransactionState> state;
   try {
     // now start our own transaction
@@ -387,13 +409,10 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     if (it != _transactions[bucket]._managed.end()) {
       return res.reset(TRI_ERROR_TRANSACTION_INTERNAL, "transaction ID already used");
     }
-    double expires = defaultTTL + TRI_microtime();
-    TRI_ASSERT(expires > 0);
     TRI_ASSERT(state->id() == tid);
     _transactions[bucket]._managed.emplace(std::piecewise_construct,
                                            std::forward_as_tuple(tid),
-                                           std::forward_as_tuple(MetaType::Managed, state.release(),
-                                                                 expires));
+                                           std::forward_as_tuple(MetaType::Managed, state.release()));
   }
 
   LOG_TOPIC("d6806", DEBUG, Logger::TRANSACTIONS) << "created managed trx '" << tid << "'";
@@ -431,13 +450,11 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
                                        "not allowed to write lock an AQL transaction");
       }
       if (mtrx.rwlock.tryWriteLock()) {
-        mtrx.expires = defaultTTL + TRI_microtime();
         state = mtrx.state;
         break;
       }
     } else {
       if (mtrx.rwlock.tryReadLock()) {
-        mtrx.expires = defaultTTL + TRI_microtime();
         state = mtrx.state;
         break;
       }
@@ -485,9 +502,9 @@ void Manager::returnManagedTrx(TRI_voc_tid_t tid, AccessMode::Type mode) noexcep
   TRI_ASSERT(!AccessMode::isWriteOrExclusive(mode) || level == 0);
 
   // garbageCollection might soft abort used transactions
-  const bool isSoftAborted = it->second.expires == 0;
+  const bool isSoftAborted = it->second.usedTimeSecs == 0;
   if (!isSoftAborted) {
-    it->second.expires = defaultTTL + TRI_microtime();
+    it->second.usedTimeSecs = TRI_microtime();
   }
   if (AccessMode::isWriteOrExclusive(mode)) {
     it->second.rwlock.unlockWrite();
@@ -517,7 +534,7 @@ transaction::Status Manager::getManagedTrxStatus(TRI_voc_tid_t tid) const {
 
   if (mtrx.type == MetaType::Tombstone) {
     return mtrx.finalStatus;
-  } else if (mtrx.expires > TRI_microtime() && mtrx.state != nullptr) {
+  } else if (!mtrx.expired() && mtrx.state != nullptr) {
     return transaction::Status::RUNNING;
   } else {
     return transaction::Status::ABORTED;
@@ -569,7 +586,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
     } else if (mtrx.type == MetaType::Tombstone) {
       TRI_ASSERT(mtrx.state == nullptr);
       // make sure everyone who asks gets the updated timestamp
-      mtrx.expires = TRI_microtime() + tombstoneTTL;
+      mtrx.usedTimeSecs = TRI_microtime();
       if (mtrx.finalStatus == status) {
         return res; // all good
       } else {
@@ -579,8 +596,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
       }
     }
 
-    double now = TRI_microtime();
-    if (mtrx.expires < now) {
+    if (mtrx.expired()) {
       status = transaction::Status::ABORTED;
       wasExpired = true;
     }
@@ -588,7 +604,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid,
     state.reset(mtrx.state);
     mtrx.state = nullptr;
     mtrx.type = MetaType::Tombstone;
-    mtrx.expires = now + tombstoneTTL;
+    mtrx.usedTimeSecs = TRI_microtime();
     mtrx.finalStatus = status;
     // it is sufficient to pretend that the operation already succeeded
   }
@@ -669,16 +685,15 @@ bool Manager::garbageCollect(bool abortAll) {
 
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
     WRITE_LOCKER(locker, _transactions[bucket]._lock);
-    double now = TRI_microtime();
-    auto it = _transactions[bucket]._managed.begin();
 
+    auto it = _transactions[bucket]._managed.begin();
     while (it != _transactions[bucket]._managed.end()) {
       ManagedTrx& mtrx = it->second;
 
       if (mtrx.type == MetaType::Managed) {
         TRI_ASSERT(mtrx.state != nullptr);
 
-        if (abortAll || mtrx.expires < now) {
+        if (abortAll || mtrx.expired()) {
           TRY_READ_LOCKER(tryGuard, mtrx.rwlock); // needs lock to access state
 
           if (tryGuard.isLocked()) {
@@ -686,18 +701,17 @@ bool Manager::garbageCollect(bool abortAll) {
             TRI_ASSERT(it->first == mtrx.state->id());
             toAbort.emplace_back(mtrx.state->id());
           } else if (abortAll) { // transaction is in
-            mtrx.expires = 0; // soft-abort transaction
+            mtrx.usedTimeSecs = 0; // soft-abort transaction
             didWork = true;
           }
         }
-      } else if (mtrx.type == MetaType::StandaloneAQL && mtrx.expires < now) {
+      } else if (mtrx.type == MetaType::StandaloneAQL && mtrx.expired()) {
         LOG_TOPIC("7ad3f", INFO, Logger::TRANSACTIONS)
           << "expired AQL query transaction '" << it->first << "'";
-      } else if (mtrx.type == MetaType::Tombstone && mtrx.expires < now) {
+      } else if (mtrx.type == MetaType::Tombstone && mtrx.expired()) {
         TRI_ASSERT(mtrx.state == nullptr);
         TRI_ASSERT(mtrx.finalStatus != transaction::Status::UNDEFINED);
         it = _transactions[bucket]._managed.erase(it);
-
         continue;
       }
 
@@ -840,6 +854,6 @@ void Manager::toVelocyPack(VPackBuilder& builder,
     builder.close();
   });
 }
-
+  
 }  // namespace transaction
 }  // namespace arangodb

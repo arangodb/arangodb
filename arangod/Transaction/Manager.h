@@ -53,11 +53,14 @@ namespace transaction {
 class Context;
 struct Options;
 
-/// @bried Tracks TransasctionState instances
+/// @brief Tracks TransasctionState instances
 class Manager final {
-  static constexpr size_t numBuckets = 16;
-  static constexpr double defaultTTL = 10.0 * 60.0;   // 10 minutes
-  static constexpr double tombstoneTTL = 5.0 * 60.0;  // 5 minutes
+  static constexpr size_t numBuckets   = 16;
+  static constexpr double idleTTL   = 10.0;              // 10 seconds
+  static constexpr double totalTTL  = 60.0;              // 60 seconds
+  static constexpr double totalTTLDBServer  = 3 * 60.0;  // 6 minutes
+  static constexpr double tombstoneTTL = 10.0 * 60.0;     //  6 minutes
+  static constexpr size_t maxTransactionSize = 128 * 1024 * 1024; // 128 MiB
   
   enum class MetaType : uint8_t {
     Managed = 1,  /// global single shard db transaction
@@ -66,13 +69,16 @@ class Manager final {
   };
   
   struct ManagedTrx {
-    ManagedTrx(MetaType t, TransactionState* st, double ex)
-      : type(t), expires(ex), state(st), finalStatus(Status::UNDEFINED),
-        rwlock() {}
+    ManagedTrx(MetaType t, TransactionState* st);
     ~ManagedTrx();
     
-    MetaType type;
-    double expires; /// expiration timestamp, if 0 it expires immediately
+    bool expired() const;
+    
+   public:
+    
+    MetaType type; /// managed, AQL or tombstone
+    const double beginTimeSecs; /// beginTimeSecs time, if 0 it expires immediately
+    double usedTimeSecs; /// last time used
     TransactionState* state; /// Transaction, may be nullptr
     /// @brief  final TRX state that is valid if this is a tombstone
     /// necessary to avoid getting error on a 'diamond' commit or accidantally
@@ -131,7 +137,7 @@ class Manager final {
                           std::vector<std::string> const& readCollections,
                           std::vector<std::string> const& writeCollections,
                           std::vector<std::string> const& exclusiveCollections,
-                          transaction::Options const& options);
+                          transaction::Options options);
 
   /// @brief lease the transaction, increases nesting
   std::shared_ptr<transaction::Context> leaseManagedTrx(TRI_voc_tid_t tid,
@@ -149,6 +155,14 @@ class Manager final {
 
   /// @brief abort all transactions matching
   bool abortManagedTrx(std::function<bool(TransactionState const&)>);
+  
+  /// @brief convert the list of running transactions to a VelocyPack array
+  /// the array must be opened already.
+  /// will use database and username to fan-out the request to the other
+  /// coordinators in a cluster
+  void toVelocyPack(arangodb::velocypack::Builder& builder,
+                    std::string const& database,
+                    std::string const& username, bool fanout) const;
 
   // ---------------------------------------------------------------------------
   // Hotbackup Stuff
@@ -177,14 +191,6 @@ class Manager final {
     }
   }
 
-  /// @brief convert the list of running transactions to a VelocyPack array
-  /// the array must be opened already.
-  /// will use database and username to fan-out the request to the other
-  /// coordinators in a cluster
-  void toVelocyPack(arangodb::velocypack::Builder& builder, 
-                    std::string const& database, 
-                    std::string const& username, bool fanout) const;
-  
  private:
   // hashes the transaction id into a bucket
   inline size_t getBucket(TRI_voc_tid_t tid) const {
@@ -197,6 +203,7 @@ class Manager final {
   /// @brief calls the callback function for each managed transaction
   void iterateManagedTrx(std::function<void(TRI_voc_tid_t, ManagedTrx const&)> const&) const;
   
+  /// @brief will be true only for MMFiles
   bool const _keepTransactionData;
 
   // a lock protecting ALL buckets in _transactions
@@ -226,7 +233,6 @@ class Manager final {
                        // time.
   basics::ReadWriteLock _rwLock;
   bool _writeLockHeld;
-
 };
 }  // namespace transaction
 }  // namespace arangodb

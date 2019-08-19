@@ -167,7 +167,7 @@ void RestTransactionHandler::executeBegin() {
   
   
   bool parseSuccess = false;
-  VPackSlice body = parseVPackBody(parseSuccess);
+  VPackSlice slice = parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
     return;
@@ -176,7 +176,7 @@ void RestTransactionHandler::executeBegin() {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
   
-  Result res = mgr->createManagedTrx(_vocbase, tid, body);
+  Result res = mgr->createManagedTrx(_vocbase, tid, slice);
   if (res.fail()) {
     generateError(res);
   } else {
