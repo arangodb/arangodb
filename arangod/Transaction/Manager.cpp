@@ -449,7 +449,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
 
     ManagedTrx& mtrx = it->second;
     if (mtrx.type == MetaType::Tombstone) {
-      return nullptr;  // already committet this trx
+      return nullptr;  // already committed this trx
     }
 
     if (AccessMode::isWriteOrExclusive(mode)) {
