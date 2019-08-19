@@ -22,12 +22,39 @@
 
 #include "NetworkFeature.h"
 
+#include "Basics/FunctionUtils.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/Logger.h"
 #include "Network/ConnectionPool.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Scheduler/SchedulerFeature.h"
+
+namespace {
+void queueGarbageCollection(std::shared_ptr<arangodb::NetworkFeature> feature,
+                            std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
+                            std::function<void(bool)>& gcfunc, std::chrono::seconds offset) {
+  bool queued = false;
+  {
+    std::lock_guard<std::mutex> guard(mutex);
+    std::tie(queued, workItem) =
+        arangodb::basics::function_utils::retryUntilTimeout<arangodb::Scheduler::WorkHandle>(
+            [feature, &gcfunc, offset]() -> std::pair<bool, arangodb::Scheduler::WorkHandle> {
+              return arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::INTERNAL_LOW,
+                                                                       offset, gcfunc);
+            },
+            arangodb::Logger::COMMUNICATION,
+            "queue transaction garbage collection");
+  }
+  if (!queued) {
+    LOG_TOPIC("f8b3d", FATAL, arangodb::Logger::COMMUNICATION)
+        << "Failed to queue transaction garbage collection, for 5 minutes, "
+           "exiting.";
+    FATAL_ERROR_EXIT();
+  }
+}
+}  // namespace
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -75,10 +102,9 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
       }
     }
     
-    auto off = std::chrono::seconds(3);
-    std::lock_guard<std::mutex> guard(_workItemMutex);
     if (!application_features::ApplicationServer::isStopping() && !canceled) {
-      _workItem = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
+      auto off = std::chrono::seconds(3);
+      ::queueGarbageCollection(shared_from_this(), _workItemMutex, _workItem, _gcfunc, off);
     }
   };
 }
@@ -107,9 +133,8 @@ void NetworkFeature::prepare() {
 void NetworkFeature::start() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler != nullptr) {  // is nullptr in catch tests
-    std::lock_guard<std::mutex> guard(_workItemMutex);
     auto off = std::chrono::seconds(1);
-    _workItem = scheduler->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
+    ::queueGarbageCollection(shared_from_this(), _workItemMutex, _workItem, _gcfunc, off);
   }
 }
 

@@ -245,8 +245,13 @@ class RequestsState : public std::enable_shared_from_this<RequestsState> {
             self->startRequest();
           }
         };
-        _workItem = sch->queueDelay(RequestLane::CLUSTER_INTERNAL,
-                                    tryAgainAfter, std::move(cb));
+        bool queued;
+        std::tie(queued, _workItem) = sch->queueDelay(RequestLane::CLUSTER_INTERNAL,
+                                                      tryAgainAfter, std::move(cb));
+        if (!queued) {
+          // scheduler queue is full, cannot requeue
+          callResponse(Error::QueueCapacityExceeded, nullptr);
+        }
         break;
       }
 
