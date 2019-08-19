@@ -248,12 +248,16 @@ TEST_F(ClusterInfoTest, test_drop_database) {
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
+    // create database
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
                  database->createDatabase(1, "testDatabase", vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
-    ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
-                                               arangodb::velocypack::Slice::emptyObjectSlice(), 0.0)
-                     .ok()));
+
+    // simulate heartbeat thread
+    ASSERT_TRUE(arangodb::AgencyComm().setValue("Current/Databases/testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
+    ASSERT_TRUE(ci->createDatabaseCoordinator(
+                  vocbase->name(),
+                  arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).ok());
 
     // initial view creation
     {
@@ -262,12 +266,11 @@ TEST_F(ClusterInfoTest, test_drop_database) {
           (viewFactory.create(logicalView, *vocbase, viewCreateJson->slice()).ok()));
       ASSERT_TRUE((false == !logicalView));
     }
-
     EXPECT_TRUE((ci->dropDatabaseCoordinator(vocbase->name(), 0.0).ok()));
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
-                                               arangodb::velocypack::Slice::emptyObjectSlice(), 0.0)
-                     .ok()));
-
+    ASSERT_TRUE(arangodb::AgencyComm().setValue("Current/Databases/testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
+    EXPECT_TRUE((ci->createDatabaseCoordinator(
+                   vocbase->name(),
+                   arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).ok()));
     arangodb::LogicalView::ptr logicalView;
     EXPECT_TRUE(
         (viewFactory.create(logicalView, *vocbase, viewCreateJson->slice()).ok()));

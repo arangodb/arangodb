@@ -191,6 +191,7 @@ function checkMonitorAlive (binary, instanceInfo, options, res) {
     if (!instanceInfo.monitor.hasOwnProperty('status')) {
       let rc = statusExternal(instanceInfo.monitor.pid, false);
       if (rc.status !== 'RUNNING') {
+        print(RED + "Procdump of " + instanceInfo.pid + " is gone: " + rc + RESET);
         instanceInfo.monitor = rc;
         // procdump doesn't set propper exit codes, check for
         // dumps that may exist:
