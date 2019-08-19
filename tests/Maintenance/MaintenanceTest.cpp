@@ -68,6 +68,61 @@ char const* dbs2Str =
 #include "DBServer0003.json"
     ;
 
+int loadResources(void) {return 0;}
+
+#else // _WIN32
+#include <unicode/locid.h>
+#include <unicode/uchar.h>
+#include <unicode/unistr.h>
+#include <Windows.h>
+#include "jsonresource.h"
+LPSTR planStr = nullptr;
+LPSTR currentStr = nullptr;
+LPSTR supervisionStr = nullptr;
+LPSTR dbs0Str = nullptr;
+LPSTR dbs1Str = nullptr;
+LPSTR dbs2Str = nullptr;
+
+int loadResources(void) {
+  int rc = 0;
+  printf("10--------\n");
+
+  HRSRC myResource = ::FindResource(NULL, MAKEINTRESOURCE(IDS_PLAN),  RT_RCDATA);
+  printf("11--------%p\n", myResource);
+  HGLOBAL myResourceData = ::LoadResource(NULL, myResource);
+  printf("12--------%p\n", myResourceData);
+  void* pMyBinaryData = ::LockResource(myResourceData);
+  printf("13--------%p\n", pMyBinaryData);
+
+  DWORD size = SizeofResource(0, myResource);
+  printf("14--------%d\n", size);
+  icu::UnicodeString buf = UnicodeString ((const wchar_t *) myResourceData, size);
+  printf("15--------\n");
+  std::string uBuf;
+  printf("16--------\n");
+  buf.toUTF8String<std::string>(uBuf);
+  printf("17--------\n");
+  printf(uBuf.c_str());
+  printf("18--------\n");
+  /*
+  rc += LoadStringA(GetModuleHandle(nullptr), IDS_PLAN, planStr, 0);
+  printf("2--------\n");
+  rc += LoadStringA(GetModuleHandle(nullptr), IDS_CURRENT, currentStr, 0);
+  printf("3--------\n");
+  rc += LoadStringA(GetModuleHandle(nullptr), IDS_DBSERVER0001, dbs0Str, 0);
+  printf("4--------\n");
+  rc += LoadStringA(GetModuleHandle(nullptr), IDS_DBSERVER0002, dbs1Str, 0);
+  printf("5--------\n");
+  rc += LoadStringA(GetModuleHandle(nullptr), IDS_DBSERVER0003, dbs2Str, 0);
+  printf("6--------\n");
+  rc += LoadStringA(GetModuleHandle(nullptr), IDS_SUPERVISION, supervisionStr, 0);
+  printf("7--------\n");
+  */
+  return rc;
+}
+
+#endif // _WIN32
+
 std::map<std::string, std::string> matchShortLongIds(Node const& supervision) {
   std::map<std::string, std::string> ret;
   for (auto const& dbs : supervision("Health").children()) {
@@ -291,6 +346,7 @@ class LogicalCollection;
 class MaintenanceTestActionDescription : public ::testing::Test {
  protected:
   MaintenanceTestActionDescription() {
+    loadResources();
     plan = createNode(planStr);
     originalPlan = plan;
     supervision = createNode(supervisionStr);
@@ -325,6 +381,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondes
     auto bogus = desc.get("bogus");
     ASSERT_TRUE(bogus == "bogus");
   } catch (std::out_of_range const& e) {
+    e;
   }
   std::string value;
   auto res = desc.get("bogus", value);
@@ -340,6 +397,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondes
     auto bogus = desc.get("bogus");
     ASSERT_TRUE(bogus == "bogus");
   } catch (std::out_of_range const& e) {
+    e;
   }
   std::string value;
   auto res = desc.get("bogus", value);
@@ -434,6 +492,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_array_value_from_actiondescrip
 
 class MaintenanceTestActionPhaseOne : public ::testing::Test {
  protected:
+  int _dummy;
   std::shared_ptr<arangodb::options::ProgramOptions> po;
   arangodb::application_features::ApplicationServer as;
   TestMaintenanceFeature feature;
@@ -443,11 +502,12 @@ class MaintenanceTestActionPhaseOne : public ::testing::Test {
 
   arangodb::MMFilesEngine engine;  // arbitrary implementation that has index types registered
   arangodb::StorageEngine* origStorageEngine;
-
+  
   MaintenanceTestActionPhaseOne()
       : po(std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
                                                                std::string(),
                                                                "path")),
+        _dummy(loadResources()),
         as(po, nullptr),
         feature(as),
         localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
@@ -836,5 +896,3 @@ TEST_F(MaintenanceTestActionPhaseOne, removed_follower_in_plan_must_be_dropped) 
     }
   }
 }
-
-#endif
