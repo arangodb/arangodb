@@ -98,7 +98,7 @@ typedef std::function<bool(rocksdb::Slice const& key, rocksdb::Slice const& valu
 class RocksDBGenericIterator {
  public:
   RocksDBGenericIterator(rocksdb::ReadOptions& options,
-                         RocksDBKeyBounds const& bounds, bool reverse = false);
+                         RocksDBKeyBounds const& bounds);
   RocksDBGenericIterator(RocksDBGenericIterator&&) = default;
 
   ~RocksDBGenericIterator() {}
@@ -120,7 +120,6 @@ class RocksDBGenericIterator {
   bool outOfRange() const;
 
  private:
-  bool _reverse;
   RocksDBKeyBounds const _bounds;
   rocksdb::ReadOptions const _options;
   std::unique_ptr<rocksdb::Iterator> _iterator;
