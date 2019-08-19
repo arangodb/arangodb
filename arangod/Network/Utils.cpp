@@ -92,22 +92,22 @@ int resolveDestination(DestinationId const& dest, std::string& endpoint) {
   return TRI_ERROR_NO_ERROR;
 }
 
-OperationResult errorFromBody(arangodb::velocypack::Buffer<uint8_t> const& body,
-                              int defaultErrorCode) {
+OperationResult opResultFromBody(arangodb::velocypack::Buffer<uint8_t> const& body,
+                                 int defaultErrorCode) {
   if (body.size() > 0) {
-    return errorFromBody(VPackSlice(body.data()), defaultErrorCode);
+    return opResultFromBody(VPackSlice(body.data()), defaultErrorCode);
   }
   return OperationResult(defaultErrorCode);
 }
 
-OperationResult errorFromBody(std::shared_ptr<VPackBuilder> const& body, int defaultErrorCode) {
+OperationResult opResultFromBody(std::shared_ptr<VPackBuilder> const& body, int defaultErrorCode) {
   if (body) {
     return errorFromBody(body->slice(), defaultErrorCode);
   }
   return OperationResult(defaultErrorCode);
 }
 
-OperationResult errorFromBody(VPackSlice const& body, int defaultErrorCode) {
+OperationResult opResultFromBody(VPackSlice body, int defaultErrorCode) {
   // read the error number from the response and use it if present
   if (body.isObject()) {
     VPackSlice num = body.get(StaticStrings::ErrorNum);
@@ -135,6 +135,35 @@ int errorCodeFromBody(arangodb::velocypack::Slice const& body) {
     }
   }
   return TRI_ERROR_ILLEGAL_NUMBER;
+}
+  
+Result resultFromBody(std::shared_ptr<arangodb::velocypack::Builder> const& body,
+                      int defaultError) {
+  
+  // read the error number from the response and use it if present
+  if (body) {
+    return resultFromBody(body->slice(), defaultError);
+  }
+
+  return Result(defaultError);
+}
+  
+Result resultFromBody(arangodb::velocypack::Slice slice,
+                      int defaultError) {
+  // read the error number from the response and use it if present
+  if (slice.isObject()) {
+    VPackSlice num = slice.get(StaticStrings::ErrorNum);
+    VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
+    if (num.isNumber()) {
+      if (msg.isString()) {
+        // found an error number and an error message, so let's use it!
+        return Result(num.getNumericValue<int>(), msg.copyString());
+      }
+      // we found an error number, so let's use it!
+      return Result(num.getNumericValue<int>());
+    }
+  }
+  return Result(defaultError);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

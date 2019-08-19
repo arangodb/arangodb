@@ -45,8 +45,10 @@
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
+#include "Network/Utils.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -76,6 +78,9 @@
 using namespace arangodb;
 using namespace arangodb::transaction;
 using namespace arangodb::transaction::helpers;
+
+template<typename T>
+using Future = futures::Future<T>;
 
 namespace {
 
@@ -1276,27 +1281,27 @@ Result transaction::Methods::documentFastPathLocal(std::string const& collection
   return res;
 }
 
-static Result resultFromClusterResult(std::shared_ptr<VPackBuilder> const& resultBody,
-                                      int defaultErrorCode) {
-  // read the error number from the response and use it if present
-  if (resultBody != nullptr) {
-    VPackSlice slice = resultBody->slice();
-    if (slice.isObject()) {
-      VPackSlice num = slice.get(StaticStrings::ErrorNum);
-      VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
-      if (num.isNumber()) {
-        if (msg.isString()) {
-          // found an error number and an error message, so let's use it!
-          return Result(Result(num.getNumericValue<int>(), msg.copyString()));
-        }
-        // we found an error number, so let's use it!
-        return Result(num.getNumericValue<int>());
-      }
-    }
-  }
-
-  return Result(defaultErrorCode);
-}
+//static Result resultFromClusterResult(std::shared_ptr<VPackBuilder> const& resultBody,
+//                                      int defaultErrorCode) {
+//  // read the error number from the response and use it if present
+//  if (resultBody != nullptr) {
+//    VPackSlice slice = resultBody->slice();
+//    if (slice.isObject()) {
+//      VPackSlice num = slice.get(StaticStrings::ErrorNum);
+//      VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
+//      if (num.isNumber()) {
+//        if (msg.isString()) {
+//          // found an error number and an error message, so let's use it!
+//          return Result(Result(num.getNumericValue<int>(), msg.copyString()));
+//        }
+//        // we found an error number, so let's use it!
+//        return Result(num.getNumericValue<int>());
+//      }
+//    }
+//  }
+//
+//  return Result(defaultErrorCode);
+//}
 
 /// @brief Create Cluster Communication result for document
 OperationResult transaction::Methods::clusterResultDocument(
@@ -1312,53 +1317,14 @@ OperationResult transaction::Methods::clusterResultDocument(
                                         : TRI_ERROR_ARANGO_CONFLICT),
                              resultBody->steal(), nullptr, OperationOptions{}, errorCounter);
     case rest::ResponseCode::NOT_FOUND:
-      errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+      return network::opResultFromBody(resultBody, TRI_ERROR_NO_ERROR);
       break;
     default: {
       // will remain at TRI_ERROR_INTERNAL
       TRI_ASSERT(errorCode == TRI_ERROR_INTERNAL);
     }
   }
-
-  return OperationResult(resultFromClusterResult(resultBody, errorCode));
-}
-
-/// @brief Create Cluster Communication result for insert
-OperationResult transaction::Methods::clusterResultInsert(
-    rest::ResponseCode const& responseCode,
-    std::shared_ptr<VPackBuilder> const& resultBody, OperationOptions const& options,
-    std::unordered_map<int, size_t> const& errorCounter) const {
-  int errorCode = TRI_ERROR_INTERNAL;
-
-  switch (responseCode) {
-    case rest::ResponseCode::ACCEPTED:
-    case rest::ResponseCode::CREATED: {
-      OperationOptions copy = options;
-      copy.waitForSync =
-          (responseCode == rest::ResponseCode::CREATED);  // wait for sync is abused here
-                                                          // operationResult should get a return
-                                                          // code.
-      return OperationResult(Result(), resultBody->steal(), nullptr, copy, errorCounter);
-    }
-    case rest::ResponseCode::BAD:
-      errorCode = TRI_ERROR_INTERNAL;
-      break;
-    case rest::ResponseCode::PRECONDITION_FAILED:
-      errorCode = TRI_ERROR_ARANGO_CONFLICT;
-      break;
-    case rest::ResponseCode::NOT_FOUND:
-      errorCode = TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-      break;
-    case rest::ResponseCode::CONFLICT:
-      errorCode = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
-      break;
-    default: {
-      // will remain at TRI_ERROR_INTERNAL
-      TRI_ASSERT(errorCode == TRI_ERROR_INTERNAL);
-    }
-  }
-
-  return OperationResult(resultFromClusterResult(resultBody, errorCode));
+  return network::opResultFromBody(resultBody, TRI_ERROR_INTERNAL);
 }
 
 /// @brief Create Cluster Communication result for modify
@@ -1366,7 +1332,6 @@ OperationResult transaction::Methods::clusterResultModify(
     rest::ResponseCode const& responseCode, std::shared_ptr<VPackBuilder> const& resultBody,
     std::unordered_map<int, size_t> const& errorCounter) const {
   int errorCode = TRI_ERROR_NO_ERROR;
-
   switch (responseCode) {
     case rest::ResponseCode::CONFLICT:
       errorCode = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
@@ -1380,30 +1345,24 @@ OperationResult transaction::Methods::clusterResultModify(
     case rest::ResponseCode::CREATED: {
       OperationOptions options;
       options.waitForSync = (responseCode == rest::ResponseCode::CREATED);
-      Result r(resultFromClusterResult(resultBody, errorCode));
+      
+      Result r = network::resultFromBody(resultBody, errorCode);
       return OperationResult(std::move(r), resultBody->steal(), nullptr, options, errorCounter);
     }
     case rest::ResponseCode::BAD:
-      errorCode = TRI_ERROR_INTERNAL;
-      break;
+      return network::opResultFromBody(resultBody, TRI_ERROR_INTERNAL);
     case rest::ResponseCode::NOT_FOUND:
-      errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
-      break;
+      return network::opResultFromBody(resultBody, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default: {
-      errorCode = TRI_ERROR_INTERNAL;
-      break;
+      return network::opResultFromBody(resultBody, TRI_ERROR_INTERNAL);
     }
   }
-
-  return OperationResult(resultFromClusterResult(resultBody, errorCode));
 }
 
 /// @brief Helper create a Cluster Communication remove result
 OperationResult transaction::Methods::clusterResultRemove(
     rest::ResponseCode const& responseCode, std::shared_ptr<VPackBuilder> const& resultBody,
     std::unordered_map<int, size_t> const& errorCounter) const {
-  int errorCode = TRI_ERROR_INTERNAL;
-
   switch (responseCode) {
     case rest::ResponseCode::OK:
     case rest::ResponseCode::ACCEPTED:
@@ -1416,18 +1375,16 @@ OperationResult transaction::Methods::clusterResultRemove(
                              resultBody->steal(), nullptr, options, errorCounter);
     }
     case rest::ResponseCode::BAD:
-      errorCode = TRI_ERROR_INTERNAL;
+      return network::opResultFromBody(resultBody, TRI_ERROR_INTERNAL);
       break;
     case rest::ResponseCode::NOT_FOUND:
-      errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+      return network::opResultFromBody(resultBody, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       break;
     default: {
       // will remain at TRI_ERROR_INTERNAL
-      TRI_ASSERT(errorCode == TRI_ERROR_INTERNAL);
+      return network::opResultFromBody(resultBody, TRI_ERROR_INTERNAL);
     }
   }
-
-  return OperationResult(resultFromClusterResult(resultBody, errorCode));
 }
 
 /// @brief return one or multiple documents from a collection
@@ -1564,9 +1521,9 @@ OperationResult transaction::Methods::documentLocal(std::string const& collectio
 /// @brief create one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-OperationResult transaction::Methods::insert(std::string const& collectionName,
-                                             VPackSlice const value,
-                                             OperationOptions const& options) {
+Future<OperationResult> transaction::Methods::insertF(std::string const& collectionName,
+                                                      VPackSlice const value,
+                                                      OperationOptions const& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray()) {
@@ -1583,38 +1540,31 @@ OperationResult transaction::Methods::insert(std::string const& collectionName,
   // Validate Edges
   OperationOptions optionsCopy = options;
 
-  OperationResult result;
   if (_state->isCoordinator()) {
-    result = insertCoordinator(collectionName, value, optionsCopy);
-  } else {
-    result = insertLocal(collectionName, value, optionsCopy);
+    return insertCoordinator(collectionName, value, optionsCopy);
   }
-
-  events::CreateDocument(vocbase().name(), collectionName,
-                         ((result.ok() && options.returnNew) ? result.slice() : value),
-                         options, result.errorNumber());
-  return result;
+  return insertLocal(collectionName, value, optionsCopy);
+//  events::CreateDocument(vocbase().name(), collectionName,
+//                         ((result.ok() && options.returnNew) ? result.slice() : value),
+//                         options, result.errorNumber());
 }
 
 /// @brief create one or multiple documents in a collection, coordinator
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
 #ifndef USE_ENTERPRISE
-OperationResult transaction::Methods::insertCoordinator(std::string const& collectionName,
-                                                        VPackSlice const value,
-                                                        OperationOptions& options) {
-  rest::ResponseCode responseCode;
-  std::unordered_map<int, size_t> errorCounter;
-  auto resultBody = std::make_shared<VPackBuilder>();
-
-  Result res = arangodb::createDocumentOnCoordinator(*this, collectionName,
-                                                     options, value, responseCode,
-                                                     errorCounter, resultBody);
-
-  if (res.ok()) {
-    return clusterResultInsert(responseCode, resultBody, options, errorCounter);
+Future<OperationResult> transaction::Methods::insertCoordinator(std::string const& collectionName,
+                                                                VPackSlice const value,
+                                                                OperationOptions& options) {
+  ClusterInfo* ci = ClusterInfo::instance();
+  auto colptr = ci->getCollectionNT(vocbase().name(), collectionName);
+  if (colptr == nullptr) {
+    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
-  return OperationResult(res, options);
+  
+  return arangodb::createDocumentOnCoordinator(vocbase().name(), collectionName, *this,
+                                               options, value, responseCode,
+                                               *this, *colptr, options, value);
 }
 #endif
 
@@ -1640,10 +1590,10 @@ static double chooseTimeout(size_t count, size_t totalBytes) {
 /// @brief create one or multiple documents in a collection, local
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-OperationResult transaction::Methods::insertLocal(std::string const& collectionName,
-                                                  VPackSlice const value,
-                                                  OperationOptions& options) {
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+Future<OperationResult> transaction::Methods::insertLocal(std::string const& cname,
+                                                          VPackSlice const value,
+                                                          OperationOptions& options) {
+  TRI_voc_cid_t cid = addCollectionAtRuntime(cname);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
   bool const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
@@ -1865,7 +1815,8 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
     resultBuilder.clear();
   }
 
-  return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options, countErrorCodes);
+  return futures::makeFuture(OperationResult(std::move(res), resultBuilder.steal(), nullptr, options, countErrorCodes));
+  //return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options, countErrorCodes);
 }
 
 /// @brief update/patch one or multiple documents in a collection
