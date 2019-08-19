@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed bug in MoveShard::abort which causes a duplicate entry in the follower list.
+
 * Added initial support for wgs84 reference ellipsoid in GEO_DISTANCE through third
   optional parameter to AQL function
 
