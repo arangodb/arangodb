@@ -2078,8 +2078,6 @@ class IResearchViewBlockTest : public ::testing::Test {
         "\"trackListPositions\": true }"
         "}}");
     EXPECT_TRUE(logicalView->properties(updateJson->slice(), true).ok());
-    auto* viewImpl =
-        dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     std::vector<std::string> EMPTY_VECTOR;
     auto trx = std::make_shared<arangodb::transaction::Methods>(
         arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY_VECTOR,
