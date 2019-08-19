@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed bug in MoveShard::abort which causes a duplicate entry in the follower list.
+
 * Fixed issue #9652: fix ArangoSearch wrong name collision and raising
   "Name collision detected" error during creation of a custom analyzer with
   stopwords.
