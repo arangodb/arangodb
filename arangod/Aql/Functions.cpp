@@ -291,8 +291,13 @@ AqlValue timeAqlValue(tp_sys_clock_ms const& tp) {
 
   year_month_day ymd{floor<days>(tp)};
   auto day_time = make_time(tp - sys_days(ymd));
-
+  
   auto y = static_cast<int>(ymd.year());
+  if (y < 0 || y > 9999) {
+    // quick sanity check here for dates outside the allowed range
+    return AqlValue(AqlValueHintNull());
+  }
+
   formatted[0] = '0' + (y / 1000);
   formatted[1] = '0' + ((y % 1000) / 100);
   formatted[2] = '0' + ((y % 100) / 10);
