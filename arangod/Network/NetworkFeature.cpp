@@ -48,7 +48,7 @@ void queueGarbageCollection(std::shared_ptr<arangodb::NetworkFeature> feature,
             "queue transaction garbage collection");
   }
   if (!queued) {
-    LOG_TOPIC("f8b3d", FATAL, arangodb::Logger::COMMUNICATION)
+    LOG_TOPIC("c8b3d", FATAL, arangodb::Logger::COMMUNICATION)
         << "Failed to queue transaction garbage collection, for 5 minutes, "
            "exiting.";
     FATAL_ERROR_EXIT();
