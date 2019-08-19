@@ -8,6 +8,9 @@ v3.5.1 (XXXX-XX-XX)
   Previous versions of ArangoDB always silently ignored the value of this setting 
   and effectively hard-coded the value to 9.
 
+* Fixed internal issue #4378: fix bug in MoveShard::abort which causes a
+  duplicate entry in the follower list.
+
 * Fixed cut'n'pasting code from the documentation into arangosh.
 
 * Fixed issue #9652: fix ArangoSearch wrong name collision and raising
