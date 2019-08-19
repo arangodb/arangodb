@@ -631,11 +631,34 @@ bool equalAnalyzer(
     return false;
   }
 
-  return type == pool.type() // same type
-         && arangodb::basics::VelocyPackHelper::equal(
-                     arangodb::iresearch::slice(normalizedProperties),
-                     pool.properties(), false) // same properties
-         && features == pool.features(); // same features
+  // first check non-normalizeable portion of analyzer definition
+  // to rule out need to check normalization of properties
+  if (type != pool.type() || features != pool.features()) {
+    return false;
+  }
+  
+  // this check is not final as old-normalized definition may be present in database!
+  if (arangodb::basics::VelocyPackHelper::equal(arangodb::iresearch::slice(normalizedProperties),
+                                                pool.properties(), false)) {
+    return true;
+  } 
+ 
+  // Here could be analyzer definition with old-normalized properties (see Issue #9652)
+  // To make sure properties really differ, let`s re-normalize and re-check
+  std::string reNormalizedProperties;
+  if (ADB_UNLIKELY(!::normalize(reNormalizedProperties, pool.type(), pool.properties()))) {
+    // failed to re-normalize definition - strange. It was already normalized once.
+    // Some bug in load/store?
+    TRI_ASSERT(FALSE);
+    LOG_TOPIC("a4073", WARN, arangodb::iresearch::TOPIC)
+        << "failed to re-normalize properties for analyzer type '"
+        << pool.type()
+        << "' properties '" << pool.properties().toString() << "'";
+    return false;
+  }
+  return arangodb::basics::VelocyPackHelper::equal(
+      arangodb::iresearch::slice(normalizedProperties),
+      arangodb::iresearch::slice(reNormalizedProperties), false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -777,34 +800,6 @@ void registerUpgradeTasks() {
       | Upgrade::Flags::DATABASE_UPGRADE,
     &dropLegacyAnalyzersCollection             // action
   });
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief split the analyzer name into the vocbase part and analyzer part
-/// @param name analyzer name
-/// @return pair of first == vocbase name, second == analyzer name
-///         EMPTY == system vocbase
-///         NIL == unprefixed analyzer name, i.e. active vocbase
-////////////////////////////////////////////////////////////////////////////////
-std::pair<irs::string_ref, irs::string_ref> splitAnalyzerName( // split name
-    irs::string_ref const& analyzer // analyzer name
-) noexcept {
-  // search for vocbase prefix ending with '::'
-  for (size_t i = 1, count = analyzer.size(); i < count; ++i) {
-    if (analyzer[i] == ANALYZER_PREFIX_DELIM // current is delim
-        && analyzer[i - 1] == ANALYZER_PREFIX_DELIM) { // previous is also delim
-      auto vocbase = i > 1 // non-empty prefix, +1 for first delimiter char
-        ? irs::string_ref(analyzer.c_str(), i - 1) // -1 for the first ':' delimiter
-        : irs::string_ref::EMPTY;
-      auto name = i < count - 1 // have suffix
-        ? irs::string_ref(analyzer.c_str() + i + 1, count - i - 1) // +-1 for the suffix after '::'
-        : irs::string_ref::EMPTY; // do not point after end of buffer
-
-      return std::make_pair(vocbase, name); // prefixed analyzer name
-    }
-  }
-
-  return std::make_pair(irs::string_ref::NIL, analyzer); // unprefixed analyzer name
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2084,11 +2079,47 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
 }
 
 /*static*/ irs::string_ref IResearchAnalyzerFeature::extractVocbaseName(
-    irs::string_ref const& name) {// analyzer name (normalized)
+    irs::string_ref const& name) noexcept {// analyzer name (normalized)
   auto split = splitAnalyzerName(name);
-  return split.first.empty() ? irs::string_ref::EMPTY : split.first;
+  return split.first;
 }
 
+/*static*/ bool IResearchAnalyzerFeature::analyzerReachableFromDb(
+    irs::string_ref const& dbNameFromAnalyzer, 
+    irs::string_ref const& currentDbName, bool forGetters) noexcept {
+  TRI_ASSERT(!currentDbName.empty());
+  if (dbNameFromAnalyzer.null()) { // NULL means local db name = always reachable
+    return true;
+  }
+  if (dbNameFromAnalyzer.empty()) { // empty name with :: means always system
+    if (forGetters) {
+      return true; // system database is always accessible for reading analyzer from any other db
+    }
+    return currentDbName == arangodb::StaticStrings::SystemDatabase;
+  }
+  return currentDbName == dbNameFromAnalyzer || 
+         (forGetters && dbNameFromAnalyzer == arangodb::StaticStrings::SystemDatabase);
+}
+
+/*static*/ std::pair<irs::string_ref, irs::string_ref> IResearchAnalyzerFeature::splitAnalyzerName( 
+    irs::string_ref const& analyzer) noexcept {
+  // search for vocbase prefix ending with '::'
+  for (size_t i = 1, count = analyzer.size(); i < count; ++i) {
+    if (analyzer[i] == ANALYZER_PREFIX_DELIM // current is delim
+        && analyzer[i - 1] == ANALYZER_PREFIX_DELIM) { // previous is also delim
+      auto vocbase = i > 1 // non-empty prefix, +1 for first delimiter char
+        ? irs::string_ref(analyzer.c_str(), i - 1) // -1 for the first ':' delimiter
+        : irs::string_ref::EMPTY;
+      auto name = i < count - 1 // have suffix
+        ? irs::string_ref(analyzer.c_str() + i + 1, count - i - 1) // +-1 for the suffix after '::'
+        : irs::string_ref::EMPTY; // do not point after end of buffer
+
+      return std::make_pair(vocbase, name); // prefixed analyzer name
+    }
+  }
+
+  return std::make_pair(irs::string_ref::NIL, analyzer); // unprefixed analyzer name
+}
 
 /*static*/ std::string IResearchAnalyzerFeature::normalize( // normalize name
   irs::string_ref const& name, // analyzer name
@@ -2174,7 +2205,6 @@ arangodb::Result IResearchAnalyzerFeature::remove( // remove analyzer
     // will make the state consistent again
     if (!pool) {
       _analyzers.erase(itr);
-
       return arangodb::Result( // result
         TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, // code
         std::string("failure to find a valid analyzer while removing arangosearch analyzer '") + std::string(name)+ "'"
