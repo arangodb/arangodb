@@ -323,12 +323,12 @@ void ClusterCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
     addIndex(std::move(idx));
   }
 
-  auto indexesVector = getIndexes();
-  if (indexesVector[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
+  auto it = _indexes.cbegin();
+  if ((*it)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
       (_logicalCollection.type() == TRI_COL_TYPE_EDGE &&
-       (indexesVector[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
-        (indexesVector.size() >= 3 && _engineType == ClusterEngineType::RocksDBEngine &&
-         indexesVector[2]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)))) {
+       ((*++it)->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
+        (_indexes.size() >= 3 && _engineType == ClusterEngineType::RocksDBEngine &&
+         (*++it)->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)))) {
     std::string msg =
         "got invalid indexes for collection '" + _logicalCollection.name() + "'";
 

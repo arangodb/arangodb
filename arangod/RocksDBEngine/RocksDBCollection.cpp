@@ -218,12 +218,12 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
     }
   }
 
-  auto indexVector = getIndexes();
-  if (indexVector[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
+  auto it = _indexes.cbegin();
+  if ((*it)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
       (TRI_COL_TYPE_EDGE == _logicalCollection.type() &&
-       (indexVector.size() < 3 ||
-        (indexVector[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
-         indexVector[2]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)))) {
+       (_indexes.size() < 3 ||
+        ((*++it)->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
+         (*++it)->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)))) {
     std::string msg =
         "got invalid indexes for collection '" + _logicalCollection.name() + "'";
     LOG_TOPIC("0ef34", ERR, arangodb::Logger::ENGINES) << msg;

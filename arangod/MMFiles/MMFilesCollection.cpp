@@ -2133,10 +2133,10 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
   {
     READ_LOCKER(guard, _indexesLock);
     TRI_ASSERT(!_indexes.empty());
-    auto indexesVector = getIndexes();
-    if (indexesVector[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
+    auto it = _indexes.cbegin();
+    if ((*it)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
         (TRI_COL_TYPE_EDGE == _logicalCollection.type() &&
-         (indexesVector.size() < 2 || indexesVector[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX))) {
+         (_indexes.size() < 2 || (*++it)->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX))) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       for (auto const& it : _indexes) {
         LOG_TOPIC("5e00b", ERR, arangodb::Logger::ENGINES) << "- " << it.get();
