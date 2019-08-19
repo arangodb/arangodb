@@ -351,7 +351,7 @@ stats::Descriptions::Descriptions()
 }
 
 void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
-  ServerStatistics info = ServerStatistics::statistics();
+  ServerStatistics const& info = ServerStatistics::statistics();
   b.add("uptime", VPackValue(info._uptime));
   b.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
 

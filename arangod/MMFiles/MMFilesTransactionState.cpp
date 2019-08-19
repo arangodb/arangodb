@@ -36,6 +36,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
+#include "Statistics/ServerStatistics.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -125,7 +126,6 @@ Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
     // all valid
     if (nestingLevel() == 0) {
       updateStatus(transaction::Status::RUNNING);
-
       // defer writing of the begin marker until necessary!
     }
   } else {
@@ -137,6 +137,7 @@ Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
     // free what we have got so far
     unuseCollections(nestingLevel());
   }
+
 
   return result;
 }
@@ -181,6 +182,7 @@ Result MMFilesTransactionState::commitTransaction(transaction::Methods* activeTr
     freeOperations(activeTrx);
   }
 
+  ServerStatistics::statistics()._transactionsStatistics._transactionsCommitted++;
   unuseCollections(nestingLevel());
 
   return result;
@@ -209,6 +211,7 @@ Result MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx
     freeOperations(activeTrx);
   }
 
+  ServerStatistics::statistics()._transactionsStatistics._transactionsAborted++;
   unuseCollections(nestingLevel());
 
   return result;
