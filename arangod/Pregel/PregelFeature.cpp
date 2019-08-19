@@ -308,14 +308,10 @@ void PregelFeature::cleanupWorker(uint64_t executionNumber) {
   // unmapping etc might need a few seconds
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, executionNumber, instance] {
+  scheduler->queue(RequestLane::INTERNAL_LOW, [this, executionNumber, instance] {
     MUTEX_LOCKER(guard, _mutex);
     _workers.erase(executionNumber);
   });
-  if (!queued) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
-                                   "No thread available to queue cleanup.");
-  }
 }
 
 void PregelFeature::cleanupAll() {
