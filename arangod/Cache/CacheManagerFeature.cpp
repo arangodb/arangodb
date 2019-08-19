@@ -104,11 +104,8 @@ void CacheManagerFeature::start() {
 
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto postFn = [scheduler](std::function<void()> fn) -> bool {
-    try {
-      return scheduler->queue(RequestLane::INTERNAL_LOW, fn);
-    } catch (...) {
-      return false;
-    }
+    scheduler->queue(RequestLane::INTERNAL_LOW, fn);
+    return true;
   };
   _manager.reset(new Manager(postFn, _cacheSize));
   MANAGER = _manager.get();

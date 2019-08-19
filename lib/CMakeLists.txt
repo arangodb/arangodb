@@ -155,7 +155,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/DataProtector.cpp
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
-  Basics/FunctionUtils.cpp
   Basics/HybridLogicalClock.cpp
   Basics/LdapUrlParser.cpp
   Basics/LocalTaskQueue.cpp

@@ -143,13 +143,8 @@ void RecoveryManager::updatedFailedServers(std::vector<ServerID> const& failed) 
 
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, shard] {
-        _renewPrimaryServer(shard);
-      });
-      if (!queued) {
-        LOG_TOPIC("038de", ERR, Logger::PREGEL)
-            << "No thread available to queue pregel recovery manager request";
-      }
+      scheduler->queue(RequestLane::INTERNAL_LOW,
+                       [this, shard] { _renewPrimaryServer(shard); });
     }
   }
 }

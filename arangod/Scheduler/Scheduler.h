@@ -26,22 +26,19 @@
 #define ARANGOD_SCHEDULER_SCHEDULER_H 1
 
 #include <atomic>
-#include <chrono>
 #include <condition_variable>
 #include <functional>
 #include <mutex>
 #include <queue>
 
-#include "Basics/Exceptions.h"
-#include "Basics/system-compiler.h"
 #include "GeneralServer/RequestLane.h"
 
 namespace arangodb {
+
 namespace velocypack {
 class Builder;
 }
 
-class LogTopic;
 class SchedulerThread;
 class SchedulerCronThread;
 
@@ -59,16 +56,13 @@ class Scheduler {
   typedef std::shared_ptr<WorkItem> WorkHandle;
 
   // Enqueues a task - this is implemented on the specific scheduler
-  // May throw.
-  virtual bool queue(RequestLane lane, std::function<void()>,
-                     bool allowDirectHandling = false) ADB_WARN_UNUSED_RESULT = 0;
+  virtual bool queue(RequestLane lane, std::function<void()>, bool allowDirectHandling = false) = 0;
 
   // Enqueues a task after delay - this uses the queue functions above.
   // WorkHandle is a shared_ptr to a WorkItem. If all references the WorkItem
-  // are dropped, the task is canceled. It will return true if queued, false
-  // otherwise
-  virtual std::pair<bool, WorkHandle> queueDelay(RequestLane lane, clock::duration delay,
-                                                 std::function<void(bool canceled)> handler);
+  // are dropped, the task is canceled.
+  virtual WorkHandle queueDelay(RequestLane lane, clock::duration delay,
+                                std::function<void(bool canceled)> handler);
 
   class WorkItem final {
    public:
@@ -104,11 +98,9 @@ class Scheduler {
         // The following code moves the _handler into the Scheduler.
         // Thus any reference to class to self in the _handler will be released
         // as soon as the scheduler executed the _handler lambda.
-        bool queued = _scheduler->queue(_lane, [handler = std::move(_handler),
-                                                arg]() { handler(arg); });
-        if (!queued) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
-        }
+        _scheduler->queue(_lane, [handler = std::move(_handler), arg]() {
+          handler(arg);
+        });
       }
     }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

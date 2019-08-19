@@ -22,10 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "InitialSyncer.h"
-
-#include "Basics/FunctionUtils.h"
-#include "Basics/application-exit.h"
-#include "Logger/LogMacros.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -60,32 +56,19 @@ void InitialSyncer::startRecurringBatchExtension() {
   }
         
   std::weak_ptr<Syncer> self(shared_from_this());
-  bool queued = false;
-  std::tie(queued, _batchPingTimer) =
-      basics::function_utils::retryUntilTimeout<Scheduler::WorkHandle>(
-          [secs, self]() -> std::pair<bool, Scheduler::WorkHandle> {
-            return SchedulerFeature::SCHEDULER->queueDelay(
-                RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs),
-                [self](bool cancelled) {
-                  if (!cancelled) {
-                    auto syncer = self.lock();
-                    if (syncer) {
-                      auto* s = static_cast<InitialSyncer*>(syncer.get());
-                      if (s->_batch.id != 0 && !s->isAborted()) {
-                        s->_batch.extend(s->_state.connection, s->_progress,
-                                         s->_state.syncerId);
-                        s->startRecurringBatchExtension();
-                      }
-                    }
-                  }
-                });
-          },
-          Logger::REPLICATION, "queue batch extension");
-  if (!queued) {
-    LOG_TOPIC("f8b3e", FATAL, Logger::REPLICATION)
-        << "Failed to queue batch extension for 5 minutes, exiting.";
-    FATAL_ERROR_EXIT();
-  }
+  _batchPingTimer = SchedulerFeature::SCHEDULER->queueDelay(
+      RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs), [self](bool cancelled) {
+        if (!cancelled) {
+          auto syncer = self.lock();
+          if (syncer) {
+            auto* s = static_cast<InitialSyncer*>(syncer.get());
+            if (s->_batch.id != 0 && !s->isAborted()) {
+              s->_batch.extend(s->_state.connection, s->_progress, s->_state.syncerId);
+              s->startRecurringBatchExtension();
+            }
+          }
+        }
+      });
 }
 
 }  // namespace arangodb
