@@ -1,6 +1,9 @@
 devel
 -----
 
+* Add TransactionStatistics to ServerStatistics (transactions started /
+  aborted / committed and number of intermediate commits).
+
 * Fixed bug in MoveShard::abort which causes a duplicate entry in the follower list. (Internal Bug #4378)
 
 * Fixed cut'n'pasting code from the documentation into arangosh.
