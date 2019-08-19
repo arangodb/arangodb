@@ -1,7 +1,7 @@
 v3.3.25 (2019-XX-XX)
 --------------------
 
-* Fixed bug in MoveShard::abort which causes a duplicate entry in the follower list.
+* Fixed bug in MoveShard::abort which causes a duplicate entry in the follower list. (Internal Bug #4378)
 
 * Correct rocksdb statistics to report sums from column families instead of
   single value from default column family
