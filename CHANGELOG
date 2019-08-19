@@ -1,6 +1,8 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Fixed bug in MoveShard::abort which causes a duplicate entry in the follower list.
+
 * Refactor maintenance to use a TakeoverShardLeadership job. This fixes a bug
   that a shard follower could have set the wrong leader for the shard locally.
 
