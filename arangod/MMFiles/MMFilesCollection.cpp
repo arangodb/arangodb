@@ -1677,7 +1677,8 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   size_t const n = indexes.size();
 
-  if (n == 0 || (n == 1 && (*indexes.begin())->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX)) {
+  if (n == 0 || (n == 1 && (*indexes.begin())->type() ==
+                               Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX)) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -2302,7 +2303,7 @@ int MMFilesCollection::saveIndex(transaction::Methods& trx, std::shared_ptr<Inde
   // we cannot persist PrimaryIndex
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   IndexContainerType indexListLocal;
-  indexListLocal.insert(idx);
+  indexListLocal.emplace(idx);
 
   int res = fillIndexes(trx, indexListLocal, false);
 
@@ -2376,7 +2377,7 @@ bool MMFilesCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
 
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
 
-  _indexes.insert(idx);
+  _indexes.emplace(idx);
   if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
     TRI_ASSERT(idx->id() == 0);
     _primaryIndex = static_cast<MMFilesPrimaryIndex*>(idx.get());
@@ -2458,8 +2459,6 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
 /// @brief removes an index by id
 bool MMFilesCollection::removeIndex(TRI_idx_iid_t iid) {
   WRITE_LOCKER(guard, _indexesLock);
-
-  size_t const n = _indexes.size();
 
   for (auto idx : _indexes) {
     if (!idx->canBeDropped()) {
@@ -2812,13 +2811,15 @@ Result MMFilesCollection::truncate(transaction::Methods& trx, OperationOptions& 
   }
 
   READ_LOCKER(guard, _indexesLock);
-  auto indexes = _indexes;
-  size_t const n = indexes.size();
-
   TRI_voc_tick_t tick = TRI_NewTickServer();
-  for (auto idx : _indexes) {
-    TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-    idx->afterTruncate(tick);
+  if (_indexes.size() > 1) {
+    auto indexes = _indexes;
+    auto idx = indexes.begin();
+    ++idx;  // skip primary index
+    for (; idx != indexes.end(); ++idx) {
+      TRI_ASSERT((*idx)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+      (*idx)->afterTruncate(tick);
+    }
   }
 
   return Result();
@@ -3252,33 +3253,32 @@ Result MMFilesCollection::insertSecondaryIndexes(arangodb::transaction::Methods&
   Result result;
 
   READ_LOCKER(guard, _indexesLock);
+  if (_indexes.size() > 1) {
+    auto indexes = _indexes;
+    auto idx = indexes.begin();
+    idx++; // skip primary index
+    for (; idx != indexes.end(); ++idx) {
+      TRI_ASSERT((*idx)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+      MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx->get());
+      if (!useSecondary && !midx->isPersistent()) {
+        continue;
+      }
 
-  auto indexes = _indexes;
-  size_t const n = indexes.size();
+      Result res = midx->insert(trx, documentId, doc, mode);
 
-  for (auto idx : _indexes) {
-    TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-
-    MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx.get());
-    if (!useSecondary && !midx->isPersistent()) {
-      continue;
-    }
-
-    Result res = midx->insert(trx, documentId, doc, mode);
-
-    // in case of no-memory, return immediately
-    if (res.errorNumber() == TRI_ERROR_OUT_OF_MEMORY) {
-      return res;
-    }
-    if (!res.ok()) {
-      if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
-          result.ok()) {
-        // "prefer" unique constraint violated
-        result = res;
+      // in case of no-memory, return immediately
+      if (res.errorNumber() == TRI_ERROR_OUT_OF_MEMORY) {
+        return res;
+      }
+      if (!res.ok()) {
+        if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
+            result.ok()) {
+          // "prefer" unique constraint violated
+          result = res;
+        }
       }
     }
   }
-
   return result;
 }
 
@@ -3300,25 +3300,23 @@ Result MMFilesCollection::deleteSecondaryIndexes(transaction::Methods& trx,
   Result result;
 
   READ_LOCKER(guard, _indexesLock);
-  auto indexes = _indexes;
-  size_t const n = indexes.size();
-
-  for (auto idx : _indexes) {
-    TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-
-    MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx.get());
-    if (!useSecondary && !midx->isPersistent()) {
-      continue;
-    }
-
-    Result res = midx->remove(trx, documentId, doc, mode);
-
-    if (res.fail()) {
-      // an error occurred
-      result = res;
+  if (_indexes.size() > 1) {
+    auto indexes = _indexes;
+    auto idx = indexes.begin();
+    ++idx; // skip primary index
+    for (; idx != indexes.end(); ++idx) {
+      TRI_ASSERT((*idx)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+      MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx->get());
+      if (!useSecondary && !midx->isPersistent()) {
+        continue;
+      }
+      Result res = midx->remove(trx, documentId, doc, mode);
+      if (res.fail()) {
+        // an error occurred
+        result = res;
+      }
     }
   }
-
   return result;
 }
 

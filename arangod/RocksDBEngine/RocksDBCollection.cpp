@@ -210,7 +210,7 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
 
     if (idx) {
       TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
-      _indexes.insert(idx);
+      _indexes.emplace(idx);
       if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
         TRI_ASSERT(idx->id() == 0);
         _primaryIndex = static_cast<RocksDBPrimaryIndex*>(idx.get());
@@ -365,7 +365,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     const bool inBackground =
     basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::IndexInBackground, false);
     if (inBackground) {  // allow concurrent inserts into index
-      _indexes.insert(buildIdx);
+      _indexes.emplace(buildIdx);
       res = buildIdx->fillIndexBackground(locker);
     } else {
       res = buildIdx->fillIndexForeground();
@@ -381,12 +381,12 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
       for (auto it : _indexes) {
         if (it->id() == buildIdx->id()) {
           _indexes.erase(it);
-          _indexes.insert(idx);
+          _indexes.emplace(idx);
           break;
         }
       }
     } else {
-      _indexes.insert(idx);
+      _indexes.emplace(idx);
     }
     guard.unlock();
 #if USE_PLAN_CACHE
