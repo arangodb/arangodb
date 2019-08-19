@@ -1247,7 +1247,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     needReversal = needReversal || rIdx->needsReversal();
     if (res.fail()) {
       if (needReversal && !state->isSingleOperation()) {
-        ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc, &options](RocksDBIndex* rid) {
+        ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex* rid) {
           return rid->remove(*trx, mthds, documentId, doc,  Index::OperationMode::rollback);
         });
       }
