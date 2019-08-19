@@ -549,6 +549,7 @@ void ClusterInfo::loadPlan() {
   }
 
   decltype(_plannedDatabases) newDatabases;
+  std::set<std::string> buildingDatabases;
   decltype(_plannedCollections) newCollections;  // map<string /*database id*/
                                                  //    ,map<string /*collection id*/
                                                  //        ,shared_ptr<LogicalCollection>
@@ -580,10 +581,34 @@ void ClusterInfo::loadPlan() {
         throw;
       }
 
-      // Only consider databases that have been fully created
+      // We create the database object on the coordinator here, because
+      // it is used further down to create LogicalCollection instances further
+      // down in this function.
+      if (ServerState::instance()->isCoordinator() and
+          !database.value.hasKey(StaticStrings::DatabaseIsBuilding)) {
+        TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+        if (vocbase == nullptr) {
+          // database does not yet exist, create it now
+          TRI_voc_tick_t id =
+              arangodb::basics::VelocyPackHelper::stringUInt64(database.value,
+                                                               StaticStrings::DatabaseId);
+          // create a local database object...
+          int res = databaseFeature->createDatabase(id, name, vocbase);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            LOG_TOPIC("91870", ERR, arangodb::Logger::AGENCY)
+                << "creating local database '" << name
+                << "' failed: " << TRI_errno_string(res);
+          }
+        }
+      }
+
+      // On a coordinator we can only see databases that have been fully created
       if (!(ServerState::instance()->isCoordinator() and
             database.value.hasKey(StaticStrings::DatabaseIsBuilding))) {
         newDatabases.emplace(std::move(name), database.value);
+      } else {
+        buildingDatabases.emplace(std::move(name));
       }
     }
   }
@@ -779,27 +804,22 @@ void ClusterInfo::loadPlan() {
 
       DatabaseCollections databaseCollections;
       auto const databaseName = databasePairSlice.key.copyString();
+
+      // Skip databases that are still building.
+      if (buildingDatabases.find(databaseName) != buildingDatabases.end()) {
+        continue;
+      }
       auto* vocbase = databaseFeature->lookupDatabase(databaseName);
 
       if (!vocbase) {
-        if (planDatabasesSlice.hasKey(databaseName)) {
-          LOG_DEVEL << "has key: " << planDatabasesSlice.get(databaseName).toJson();
-        }
-
         // No database with this name found.
         // We have an invalid state here.
-        if (newDatabases.find(databaseName) == std::end(newDatabases)) {
-          LOG_DEVEL << "isBuilding database -> ignored";
-        } else {
         LOG_TOPIC("83d4c", WARN, Logger::AGENCY)
             << "No database '" << databaseName << "' found,"
             << " corresponding collection will be ignored for now and the "
             << "invalid information will be repaired. VelocyPack: "
             << collectionsSlice.toJson();
         planValid &= !collectionsSlice.length();  // cannot find vocbase for defined collections (allow empty collections for missing vocbase)
-        }
-
-        continue;
       }
 
       for (auto const& collectionPairSlice : velocypack::ObjectIterator(collectionsSlice)) {
