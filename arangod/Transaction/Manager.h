@@ -47,7 +47,7 @@ struct TransactionData {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace transaction {
 class Context;
@@ -55,31 +55,28 @@ struct Options;
 
 /// @brief Tracks TransasctionState instances
 class Manager final {
-  static constexpr size_t numBuckets   = 16;
-  static constexpr double idleTTL   = 10.0;              // 10 seconds
-  static constexpr double totalTTL  = 60.0;              // 60 seconds
-  static constexpr double totalTTLDBServer  = 3 * 60.0;  // 6 minutes
-  static constexpr double tombstoneTTL = 10.0 * 60.0;     //  6 minutes
-  static constexpr size_t maxTransactionSize = 128 * 1024 * 1024; // 128 MiB
-  
+  static constexpr size_t numBuckets = 16;
+  static constexpr double idleTTL = 10.0;                          // 10 seconds
+  static constexpr double idleTTLDBServer = 3 * 60.0;              // 6 minutes
+  static constexpr double tombstoneTTL = 10.0 * 60.0;              //  6 minutes
+  static constexpr size_t maxTransactionSize = 128 * 1024 * 1024;  // 128 MiB
+
   enum class MetaType : uint8_t {
-    Managed = 1,  /// global single shard db transaction
+    Managed = 1,        /// global single shard db transaction
     StandaloneAQL = 2,  /// used for a standalone transaction (AQL standalone)
     Tombstone = 3  /// used to ensure we can acknowledge double commits / aborts
   };
-  
+
   struct ManagedTrx {
     ManagedTrx(MetaType t, TransactionState* st);
     ~ManagedTrx();
-    
+
     bool expired() const;
-    
+
    public:
-    
-    MetaType type; /// managed, AQL or tombstone
-    const double beginTimeSecs; /// beginTimeSecs time, if 0 it expires immediately
-    double usedTimeSecs; /// last time used
-    TransactionState* state; /// Transaction, may be nullptr
+    MetaType type;            /// managed, AQL or tombstone
+    double usedTimeSecs;      /// last time used
+    TransactionState* state;  /// Transaction, may be nullptr
     /// @brief  final TRX state that is valid if this is a tombstone
     /// necessary to avoid getting error on a 'diamond' commit or accidantally
     /// repeated commit / abort messages
@@ -87,7 +84,7 @@ class Manager final {
     /// cheap usage lock for *state
     mutable basics::ReadWriteSpinLock rwlock;
   };
-  
+
  public:
   typedef std::function<void(TRI_voc_tid_t, TransactionData const*)> TrxCallback;
 
@@ -95,10 +92,10 @@ class Manager final {
   Manager& operator=(Manager const&) = delete;
 
   explicit Manager(bool keepData)
-    : _keepTransactionData(keepData),
-      _nrRunning(0),
-      _disallowInserts(false),
-      _writeLockHeld(false) {}
+      : _keepTransactionData(keepData),
+        _nrRunning(0),
+        _disallowInserts(false),
+        _writeLockHeld(false) {}
 
   // register a list of failed transactions
   void registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions);
@@ -110,10 +107,12 @@ class Manager final {
   std::unordered_set<TRI_voc_tid_t> getFailedTransactions() const;
 
   // register a transaction
-  void registerTransaction(TRI_voc_tid_t, std::unique_ptr<TransactionData> data, bool isReadOnlyTransaction);
+  void registerTransaction(TRI_voc_tid_t, std::unique_ptr<TransactionData> data,
+                           bool isReadOnlyTransaction);
 
   // unregister a transaction
-  void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed, bool isReadOnlyTransaction);
+  void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed,
+                             bool isReadOnlyTransaction);
 
   // iterate all the active transactions
   void iterateActiveTransactions(TrxCallback const&);
@@ -155,13 +154,12 @@ class Manager final {
 
   /// @brief abort all transactions matching
   bool abortManagedTrx(std::function<bool(TransactionState const&)>);
-  
+
   /// @brief convert the list of running transactions to a VelocyPack array
   /// the array must be opened already.
   /// will use database and username to fan-out the request to the other
   /// coordinators in a cluster
-  void toVelocyPack(arangodb::velocypack::Builder& builder,
-                    std::string const& database,
+  void toVelocyPack(arangodb::velocypack::Builder& builder, std::string const& database,
                     std::string const& username, bool fanout) const;
 
   // ---------------------------------------------------------------------------
@@ -169,7 +167,7 @@ class Manager final {
   // ---------------------------------------------------------------------------
 
   // temporarily block all new transactions
-  template<typename TimeOutType>
+  template <typename TimeOutType>
   bool holdTransactions(TimeOutType timeout) {
     std::unique_lock<std::mutex> guard(_mutex);
     bool ret = false;
@@ -197,12 +195,11 @@ class Manager final {
     return std::hash<TRI_voc_cid_t>()(tid) % numBuckets;
   }
 
-  Result updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
-                           bool clearServers);
+  Result updateTransaction(TRI_voc_tid_t tid, transaction::Status status, bool clearServers);
 
   /// @brief calls the callback function for each managed transaction
   void iterateManagedTrx(std::function<void(TRI_voc_tid_t, ManagedTrx const&)> const&) const;
-  
+
   /// @brief will be true only for MMFiles
   bool const _keepTransactionData;
 
@@ -228,9 +225,9 @@ class Manager final {
 
   std::atomic<bool> _disallowInserts;
 
-  std::mutex _mutex;   // Makes sure that we only ever get or release the
-                       // write lock and adjust _writeLockHeld at the same
-                       // time.
+  std::mutex _mutex;  // Makes sure that we only ever get or release the
+                      // write lock and adjust _writeLockHeld at the same
+                      // time.
   basics::ReadWriteLock _rwLock;
   bool _writeLockHeld;
 };
