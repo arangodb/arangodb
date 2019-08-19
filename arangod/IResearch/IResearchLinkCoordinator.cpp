@@ -44,6 +44,7 @@
 namespace {
 
 arangodb::ClusterEngineType getEngineType() {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   // during the unit tests there is a mock storage engine which cannot be casted
   // to a ClusterEngine at all. the only sensible way to find out the engine type is 
   // to try a dynamic_cast here and assume the MockEngine if the cast goes wrong
@@ -52,6 +53,9 @@ arangodb::ClusterEngineType getEngineType() {
     return engine->engineType();
   }
   return arangodb::ClusterEngineType::MockEngine;
+#else
+  return static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE)->engineType();
+#endif
 }
 
 } // namespace
