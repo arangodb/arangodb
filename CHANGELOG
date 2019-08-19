@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed cut'n'pasting code from the documentation into arangosh.
+
 * Added initial support for wgs84 reference ellipsoid in GEO_DISTANCE through third
   optional parameter to AQL function
 
@@ -15,7 +17,7 @@ devel
 * Removed content from Documentation/Books, but keeping the subfolders.
   The documentation is in a separate repository (except DocuBlocks and Scripts):
   https://github.com/arangodb/docs.git
-  
+
 * Updated TOKENS function to deal with primitive types and arrays.
 
 * Fixed agency nodes to not create bogus keys on delete / observe / unobserve
