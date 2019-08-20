@@ -435,12 +435,15 @@ void SupervisedScheduler::runSupervisor() {
     }
     if (count % 5 == 0) {
       count = 0;
+    waitMe(__LINE__);
       auto info = TRI_ProcessInfoSelf();
+    waitMe(__LINE__);
       LOG_TOPIC("66677", DEBUG, arangodb::Logger::THREADS)
         << " numberOfThreads: " << info._numberThreads
         << " JobsDone - " << jobsDone
         << " JobsSubmitted - " << jobsSubmitted
         << " JobsDequeued - " << jobsDequeued;
+    waitMe(__LINE__);
     }
     _conditionSupervisor.wait_for(guard, std::chrono::milliseconds(100));
     waitMe(__LINE__);
