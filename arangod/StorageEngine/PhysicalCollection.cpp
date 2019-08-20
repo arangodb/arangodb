@@ -99,54 +99,6 @@ bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
   return KeyGenerator::validateId(docId, static_cast<size_t>(len));
 }
 
-bool PhysicalCollection::IndexOrder::operator()(
-    const std::shared_ptr<Index>& _Left,
-    const std::shared_ptr<Index>& _Right) const {
-
-  // Primary index always first (but two primary indexes render comparsion invalid
-  // but that`s a bug itself)
-  TRI_ASSERT(
-    !(
-      (_Left->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) &&
-      (_Right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX)
-      )
-  );
-  if (_Left->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
-    return true;
-  }
-  if (_Right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
-    return false;
-  }
-    
-  // edge indexes should go right after primary
-  if (_Left->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX &&
-      _Right->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
-    return true;
-  } else if (_Left->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX &&
-              _Right->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
-    return false;
-  }
-
-  // This failpoint allows CRUD tests to trigger reversal
-  // of index operations. Hash index placed always AFTER reversable indexes
-  // could be broken by unique violation or by intentional failpoint.
-  // And this will make possible to deterministically trigger index reversals
-  TRI_IF_FAILURE("HashIndexAlwaysLast") {
-    if (_Left->type() != _Right->type()) {
-      return _Right->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX;
-    }
-  }
-
-  // Non-reversable indexes should be done first to minimize 
-  // need for reversal procedures
-  if (_Left->needsReversal() != _Right->needsReversal()) {
-    return _Right->needsReversal();
-  }
-  // to make  order of other equally-sorted indexes deterministic
-  return _Left->id() < _Right->id();
-}
-
-
 bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
   READ_LOCKER(guard, _indexesLock);
   for (auto const& idx : _indexes) {
@@ -631,5 +583,52 @@ std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
   builder->close();
   return builder;
 }
+
+
+bool PhysicalCollection::IndexOrder::operator()(const std::shared_ptr<Index>& _Left,
+                                                const std::shared_ptr<Index>& _Right) const {
+  // Primary index always first (but two primary indexes render comparsion
+  // invalid but that`s a bug itself)
+  TRI_ASSERT(!((_Left->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) &&
+               (_Right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX)));
+  if (_Left->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    return true;
+  }
+  if (_Right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    return false;
+  }
+
+  // edge indexes should go right after primary
+  if (_Left->type() != _Right->type()) {
+    if (_Right->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+      return false;
+    } else if (_Left->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+      return true;
+    }
+  }
+
+  // This failpoint allows CRUD tests to trigger reversal
+  // of index operations. Hash index placed always AFTER reversable indexes
+  // could be broken by unique constraint violation or by intentional failpoint.
+  // And this will make possible to deterministically trigger index reversals
+  TRI_IF_FAILURE("HashIndexAlwaysLast") {
+    if (_Left->type() != _Right->type()) {
+      if (_Right->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+        return true;
+      } else if (_Left->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+        return false;
+      }
+    }
+  }
+
+  // indexes which needs no reverse should be done first to minimize
+  // need for reversal procedures
+  if (_Left->needsReversal() != _Right->needsReversal()) {
+    return _Right->needsReversal();
+  }
+  // use id to make  order of equally-sorted indexes deterministic
+  return _Left->id() < _Right->id();
+}
+
 
 }  // namespace arangodb
