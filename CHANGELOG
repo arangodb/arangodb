@@ -17,6 +17,8 @@ devel
   function will make the function return `null` and trigger a warning in the query,
   which can optionally be escalated to an error and stop the query.
 
+* Fixed bug in MoveShard::abort which causes a duplicate entry in the follower list. (Internal Bug #4378)
+
 * Fixed cut'n'pasting code from the documentation into arangosh.
 
 * Added initial support for wgs84 reference ellipsoid in GEO_DISTANCE through third

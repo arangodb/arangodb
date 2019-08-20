@@ -26,7 +26,11 @@
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
 #include "Indexes/Index.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/vocbase.h"
+
+#include <cmath>
 
 #include <velocypack/StringRef.h>
 
@@ -79,7 +83,7 @@ Index::FilterCosts SimpleAttributeEqualityMatcher::matchOne(arangodb::Index cons
       
     if (which != nullptr) {
       // we can use the index for the condition
-      costs = calculateIndexCosts(index, which, itemsInIndex * values, 1);
+      costs = calculateIndexCosts(index, which, itemsInIndex, values, 1);
     } else {
       // we cannot use the index for the condition
       ++postFilterConditions;
@@ -155,7 +159,7 @@ Index::FilterCosts SimpleAttributeEqualityMatcher::matchAll(arangodb::Index cons
     values = 1;
   }
   
-  Index::FilterCosts costs = Index::FilterCosts::defaultCosts(itemsInIndex * values);
+  Index::FilterCosts costs = Index::FilterCosts::defaultCosts(itemsInIndex);
 
   if (_found.size() == _attributes.size()) {
     // can only use this index if all index attributes are covered by the
@@ -168,7 +172,7 @@ Index::FilterCosts SimpleAttributeEqualityMatcher::matchAll(arangodb::Index cons
       which = nullptr;
     }
 
-    costs = calculateIndexCosts(index, which, itemsInIndex * values, _found.size());
+    costs = calculateIndexCosts(index, which, itemsInIndex, values, _found.size());
   }
   
   // honor the costs of post-index filter conditions
@@ -315,34 +319,34 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
 /// cost values have no special meaning, except that multiple cost values are
 /// comparable, and lower values mean lower costs
 Index::FilterCosts SimpleAttributeEqualityMatcher::calculateIndexCosts(
-    arangodb::Index const* index, arangodb::aql::AstNode const* attribute,
-    size_t itemsInIndex, size_t coveredAttributes) const {
+    arangodb::Index const* idx, arangodb::aql::AstNode const* attribute,
+    size_t itemsInIndex, size_t values, size_t coveredAttributes) const {
   // note: attribute will be set to the index attribute for single-attribute
   // indexes such as the primary and edge indexes, and is a nullptr for the
   // other indexes
-  Index::FilterCosts costs;
+  Index::FilterCosts costs = Index::FilterCosts::defaultCosts(itemsInIndex);
   costs.supportsCondition = true;
   costs.coveredAttributes = coveredAttributes;
 
-  if (index->unique() || index->implicitlyUnique()) {
-    // index is unique, and the condition covers all attributes
-    // now use a low value for the costs
-    costs.estimatedItems = 1;
-    costs.estimatedCosts = 0.95 - 0.05 * (index->fields().size() - 1);
-  } else if (index->hasSelectivityEstimate()) {
-    // use index selectivity estimate
-    arangodb::velocypack::StringRef att;
-    if (attribute != nullptr && attribute->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-      att = arangodb::velocypack::StringRef(attribute->getStringValue(), attribute->getStringLength());
-    }
-    double estimate = index->selectivityEstimate(att);
-    if (estimate <= 0.0) {
-      // prevent division by zero
-      costs.estimatedItems = itemsInIndex;
-      // the more attributes are contained in the index, the more specific the
-      // lookup will be
+  if (itemsInIndex > 0) {
+    costs.estimatedItems = static_cast<size_t>(itemsInIndex * values);
+
+    // the index mocks do not have a selectivity estimate...
+    if (idx->hasSelectivityEstimate()) {
+      // use index selectivity estimate
+      arangodb::velocypack::StringRef att;
+      if (attribute != nullptr && attribute->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+        att = arangodb::velocypack::StringRef(attribute->getStringValue(), attribute->getStringLength());
+      }
+      double estimate = idx->selectivityEstimate(att);
+      if (estimate > 0.0) {
+        costs.estimatedItems = static_cast<size_t>(1.0 / estimate * values);
+      }
+    } else {
+      // no selectivity estimate present. this should only happen for mock indexes.
+      // anyway, use a hard-coded formula for determining the number of results
       double equalityReductionFactor = 20.0;
-      for (size_t i = 0; i < index->fields().size(); ++i) {
+      for (size_t i = 0; i < coveredAttributes; ++i) {
         costs.estimatedItems /= static_cast<size_t>(equalityReductionFactor);
         // decrease the effect of the equality reduction factor
         equalityReductionFactor *= 0.25;
@@ -351,17 +355,34 @@ Index::FilterCosts SimpleAttributeEqualityMatcher::calculateIndexCosts(
           equalityReductionFactor = 2.0;
         }
       }
-    } else {
-      costs.estimatedItems = static_cast<size_t>(1.0 / estimate);
     }
+      
+    // costs.estimatedItems is always set here, make it at least 1
+    costs.estimatedItems = std::max(size_t(1), costs.estimatedItems);
 
-    costs.estimatedItems = (std::max)(costs.estimatedItems, static_cast<size_t>(1));
-    // the more attributes are covered by an index, the more accurate it
-    // is considered to be
-    costs.estimatedCosts = static_cast<double>(costs.estimatedItems) - index->fields().size() * 0.01;
-  } else {
-    // no such index should exist
-    TRI_ASSERT(false);
+    // seek cost is O(log(n)) for RocksDB, and O(1) for mmfiles
+    // TODO: move this into storage engine!
+    if (EngineSelectorFeature::ENGINE->typeName() == "mmfiles") {
+      costs.estimatedCosts = std::max(double(1.0), double(values));
+    } else {
+      costs.estimatedCosts = std::max(double(1.0),
+                                    std::log2(double(itemsInIndex)) * values);
+      if (idx->unique()) {
+        costs.estimatedCosts = std::max(double(1.0), double(itemsInIndex) * values);
+      }
+    }
+    // add per-document processing cost
+    costs.estimatedCosts += costs.estimatedItems * 0.05;
+    // slightly prefer indexes that cover more attributes
+    costs.estimatedCosts -= (idx->fields().size() - 1) * 0.02;
+    
+    // cost is already low... now slightly prioritize unique indexes
+    if (idx->unique() || idx->implicitlyUnique()) {
+      costs.estimatedCosts *= 0.995 - 0.05 * (idx->fields().size() - 1);
+     }
+
+    // box the estimated costs to [0 - inf
+    costs.estimatedCosts = std::max(double(0.0), costs.estimatedCosts);
   }
 
   return costs;
