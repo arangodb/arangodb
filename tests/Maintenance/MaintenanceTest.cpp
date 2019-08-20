@@ -71,9 +71,6 @@ char const* dbs2Str =
 int loadResources(void) {return 0;}
 
 #else // _WIN32
-#include <unicode/locid.h>
-#include <unicode/uchar.h>
-#include <unicode/unistr.h>
 #include <Windows.h>
 #include "jsonresource.h"
 LPSTR planStr = nullptr;
@@ -364,9 +361,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondes
   try {
     auto bogus = desc.get("bogus");
     ASSERT_TRUE(bogus == "bogus");
-  } catch (std::out_of_range const& e) {
-    e;
-  }
+  } catch (...) { }
   std::string value;
   auto res = desc.get("bogus", value);
   ASSERT_TRUE(value.empty());
@@ -380,9 +375,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondes
   try {
     auto bogus = desc.get("bogus");
     ASSERT_TRUE(bogus == "bogus");
-  } catch (std::out_of_range const& e) {
-    e;
-  }
+  } catch (...) { }
   std::string value;
   auto res = desc.get("bogus", value);
   ASSERT_TRUE(value == "bogus");

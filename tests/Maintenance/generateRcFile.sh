@@ -6,10 +6,9 @@ i=1
 for JSON in *.json ; do
     RCNAME="#define IDS_$(echo "${JSON}" |sed -e "s;.json;;" -e 's/\(.*\)/\U\1/') ${i}"
     echo "${RCNAME}" >> jsonresource.h
-    printf "${RCNAME}\r\n"    
     i=$(($i + 1))
 done
-
+printf '#include "jsonresource.h"\r\n'
 for JSON in *.json ; do
     RCNAME="IDS_$(echo "${JSON}"|sed -e "s;.json;;" -e 's/\(.*\)/\U\1/')"
 
