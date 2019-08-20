@@ -634,14 +634,19 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
     }
 
     LOG_TOPIC("7278d", TRACE, Logger::FIXME)
-        << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted()
-        << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size()
-        << ", supportsFilter: " << supportsFilter << ", supportsSort: " << supportsSort
-        << ", filterCost: " << filterCost << ", sortCost: " << sortCost
-        << ", totalCost: " << totalCost << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess
+        << "looking at index: " << idx.get() 
+        << ", isSorted: " << idx->isSorted()
+        << ", isSparse: " << idx->sparse() 
+        << ", fields: " << idx->fields().size()
+        << ", supportsFilter: " << supportsFilter 
+        << ", supportsSort: " << supportsSort
+        << ", filterCost: " << (supportsFilter ? filterCost : 0.0)
+        << ", sortCost: " << (supportsSort ? sortCost : 0.0)
+        << ", totalCost: " << totalCost 
+        << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess
         << ", isUnidirectional: " << sortCondition.isUnidirectional()
         << ", isOnlyEqualityMatch: " << node->isOnlyEqualityMatch()
-        << ", itemsInIndex: " << itemsInIndex;
+        << ", itemsInIndex/estimatedItems: " << itemsInIndex;
 
     if (bestIndex == nullptr || totalCost < bestCost) {
       bestIndex = idx;
