@@ -320,6 +320,8 @@ void SupervisedScheduler::runWorker() {
     state = _workerStates.back();
     // inform the supervisor that this thread is alive
     _conditionSupervisor.notify_one();
+    LOG_TOPIC("a235f", ERR, Logger::THREADS)
+      << "New worker thread notified waiting supervisor.";
   }
 
   state->_sleepTimeout_ms = 20 * (id + 1);
@@ -594,7 +596,7 @@ void SupervisedScheduler::startOneThread() {
     // failed to start a worker
     _workerStates.pop_back();  // pop_back deletes shared_ptr, which deletes thread
     LOG_TOPIC("913b5", ERR, Logger::THREADS)
-        << "could not start additional worker thread";
+      << "could not start additional worker thread";
 
     waitMe(__LINE__);
   } else {
