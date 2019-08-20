@@ -2082,8 +2082,13 @@ function complexFilteringSuite() {
       assertEqual(stats.scannedFull, 0);
       // The lookup will be using the primary Index.
       // It will find 0 elements.
-      assertEqual(stats.scannedIndex, 0);
-      assertEqual(stats.filtered, 0);
+      if (mmfilesEngine) {
+        assertEqual(stats.scannedIndex, 1);
+        assertEqual(stats.filtered, 1);
+      } else {
+        assertEqual(stats.scannedIndex, 0);
+        assertEqual(stats.filtered, 0);
+      }
     },
 
     testVertexLevel0: function () {
