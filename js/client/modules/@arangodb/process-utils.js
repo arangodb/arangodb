@@ -245,8 +245,12 @@ function setupBinaries (builddir, buildType, configDir) {
   }
 
   if (buildType !== '') {
-    BIN_DIR = fs.join(BIN_DIR, buildType);
-    UNITTESTS_DIR = fs.join(UNITTESTS_DIR, buildType);
+    if (fs.exists(fs.join(BIN_DIR, buildType))) {
+      BIN_DIR = fs.join(BIN_DIR, buildType);
+    }
+    if (fs.exists(fs.join(UNITTESTS_DIR, buildType))) {
+      UNITTESTS_DIR = fs.join(UNITTESTS_DIR, buildType);
+    }
   }
 
   ARANGOBACKUP_BIN = fs.join(BIN_DIR, 'arangobackup' + executableExt);
