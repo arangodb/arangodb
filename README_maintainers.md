@@ -207,6 +207,7 @@ To remove all available node modules and start a clean installation run:
 The frontend can also be built using these commands:
 
     cd <SourceRoot>/js/apps/system/_admin/aardvark/APP/react
+    npm install
     npm run build
 
 For development purposes, go to `js/apps/system/_admin/aardvark/APP/react` and
