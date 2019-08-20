@@ -1684,7 +1684,7 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
 
   bool rolledBack = false;
   auto rollbackAll = [&]() -> void {
-    for (auto idx : indexes) {
+    for (auto& idx : indexes) {
       if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
         continue;
       }
@@ -2460,7 +2460,7 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
 bool MMFilesCollection::removeIndex(TRI_idx_iid_t iid) {
   WRITE_LOCKER(guard, _indexesLock);
 
-  for (auto idx : _indexes) {
+  for (auto& idx : _indexes) {
     if (!idx->canBeDropped()) {
       continue;
     }

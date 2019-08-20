@@ -203,7 +203,7 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
   TRI_ASSERT(_info.isClosed());
 
   READ_LOCKER(guard, _indexesLock);
-  for (auto idx : _indexes) {
+  for (auto& idx : _indexes) {
     static_cast<ClusterIndex*>(idx.get())->updateProperties(_info.slice());
   }
 
@@ -496,7 +496,7 @@ void ClusterCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
       return;
     }
   }
-  _indexes.insert(idx);
+  _indexes.emplace(idx);
 }
 
 }  // namespace arangodb
