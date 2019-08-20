@@ -2875,7 +2875,7 @@ Result setTtlPropertiesOnAllDBServers(VPackSlice const& properties, VPackBuilder
 std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollectionOnCoordinator(
     TRI_vocbase_t& vocbase, velocypack::Slice parameters, bool ignoreDistributeShardsLikeErrors,
     bool waitForSyncReplication, bool enforceReplicationFactor,
-    bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colPtr) {
+    bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
   TRI_ASSERT(parameters.isArray());
   // Collections are temporary collections object that undergoes sanity checks
   // etc. It is not used anywhere and will be cleaned up after this call.
@@ -2887,9 +2887,9 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollection
   // Persist collection will return the real object.
   auto usableCollectionPointers =
       persistCollectionsInAgency(cols, ignoreDistributeShardsLikeErrors,
-
                                  waitForSyncReplication,
-                                 enforceReplicationFactor, isNewDatabase, colPtr);
+                                 enforceReplicationFactor, isNewDatabase,
+                                 colToDistributeShardsLike);
   TRI_ASSERT(usableCollectionPointers.size() == cols.size());
   return usableCollectionPointers;
 }

@@ -139,15 +139,15 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   std::vector<std::string> systemCollections;
 
   Result res;
-  std::shared_ptr<LogicalCollection> col;
+  std::shared_ptr<LogicalCollection> colToDistributeShardsLike;
   if (vocbase.isSystem()) {
     // we will use UsersCollection for distributeShardsLike
-    std::tie(res, col) =
+    std::tie(res, colToDistributeShardsLike) =
         methods::Collections::createSystem(vocbase, StaticStrings::UsersCollection, true);
     if (!res.ok()) {
       return res;
     }
-    createdCollections.push_back(col);
+    createdCollections.push_back(colToDistributeShardsLike);
     systemCollections.push_back(StaticStrings::GraphsCollection);
     if (StatisticsFeature::enabled()) {
       systemCollections.push_back(StaticStrings::StatisticsCollection);
@@ -156,13 +156,15 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
     }
   } else {
     // we will use GraphsCollection for distributeShardsLike
-    std::tie(res, col) =
+    std::tie(res, colToDistributeShardsLike) =
         methods::Collections::createSystem(vocbase, StaticStrings::GraphsCollection, true);
-    createdCollections.push_back(col);
+    createdCollections.push_back(colToDistributeShardsLike);
     if (!res.ok()) {
       return res;
     }
   }
+
+  TRI_ASSERT(colToDistributeShardsLike!=nullptr);
 
   systemCollections.push_back(StaticStrings::AnalyzersCollection);
   systemCollections.push_back(StaticStrings::AqlFunctionsCollection);
@@ -189,7 +191,7 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
     }
 
     methods::Collections::create(
-        vocbase, testSystemCollectionsToCreate, true, true, true, col,
+        vocbase, testSystemCollectionsToCreate, true, true, true, colToDistributeShardsLike,
         [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
   }
 
@@ -219,10 +221,9 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
 
   // We capture the vector of created LogicalCollections here
   // to use it to create indices later.
-  // std::vector<std::shared_ptr<LogicalCollection>> createdCollections;
   if (systemCollectionsToCreate.size() > 0) {
     res = methods::Collections::create(
-        vocbase, systemCollectionsToCreate, true, true, true, col,
+        vocbase, systemCollectionsToCreate, true, true, true, colToDistributeShardsLike,
         [&](std::vector<std::shared_ptr<LogicalCollection>> const& cols) -> void {
           // capture created collection vector
           createdCollections.insert(std::end(createdCollections), std::begin(cols), std::end(cols));
