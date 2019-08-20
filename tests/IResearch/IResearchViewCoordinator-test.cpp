@@ -1,5 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
+//////////////////////////////////////////////////////////////////////////////// /// DISCLAIMER
 ///
 /// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
@@ -318,9 +317,8 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
     ASSERT_TRUE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testVocbase", vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
     ASSERT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
-                     arangodb::velocypack::Slice::emptyObjectSlice())
-                     .ok()));
+                   vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
+                   arangodb::velocypack::Slice::emptyObjectSlice()).ok()));
   }
 
   std::string collectionId0("100");
@@ -403,7 +401,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     EXPECT_TRUE((1 == vocbase->id()));
 
     EXPECT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }
@@ -698,7 +696,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
     EXPECT_TRUE(1 == vocbase->id());
 
     EXPECT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }
@@ -848,7 +846,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     ASSERT_EQ(1, vocbase->id());
 
     ASSERT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }
@@ -967,7 +965,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
     EXPECT_TRUE((1 == vocbase->id()));
 
     EXPECT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }
@@ -1098,7 +1096,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
     EXPECT_TRUE(1 == vocbase->id());
 
     EXPECT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }
@@ -1271,7 +1269,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
     EXPECT_EQ(1, vocbase->id());
 
     EXPECT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }
@@ -1472,7 +1470,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE(1 == vocbase->id());
 
     EXPECT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }
@@ -2066,7 +2064,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE(1 == vocbase->id());
 
     EXPECT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }
@@ -2711,7 +2709,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE(1 == vocbase->id());
 
     EXPECT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }
@@ -3314,7 +3312,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     EXPECT_TRUE(1 == vocbase->id());
 
     EXPECT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }
@@ -3781,7 +3779,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     EXPECT_TRUE(1 == vocbase->id());
 
     EXPECT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }
@@ -4092,7 +4090,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     EXPECT_TRUE((1 == vocbase->id()));
 
     EXPECT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }
@@ -4863,7 +4861,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     EXPECT_TRUE((1 == vocbase->id()));
 
     EXPECT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }
@@ -5640,7 +5638,7 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     EXPECT_TRUE(1 == vocbase->id());
 
     EXPECT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }

@@ -326,6 +326,9 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
   }
 
   res = ::createSystemCollectionsIndices(vocbase, createdCollections);
+  for (auto &c : createdCollections) {
+    LOG_DEVEL << "created " << c->name();
+  }
   if (res.fail()) {
     LOG_TOPIC("e32fx", ERR, Logger::MAINTENANCE)
         << "could not create indices for system collections"

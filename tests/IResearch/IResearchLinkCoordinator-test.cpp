@@ -281,7 +281,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     EXPECT_TRUE(1 == vocbase->id());
 
     EXPECT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
   }

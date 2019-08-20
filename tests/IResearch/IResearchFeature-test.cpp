@@ -507,7 +507,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
                  database->createDatabase(1, "testDatabase", vocbase)));
 
     ASSERT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
 
