@@ -83,42 +83,26 @@ LPSTR dbs0Str = nullptr;
 LPSTR dbs1Str = nullptr;
 LPSTR dbs2Str = nullptr;
 
-int loadResources(void) {
-  int rc = 0;
-  printf("10--------\n");
-
-  HRSRC myResource = ::FindResource(NULL, MAKEINTRESOURCE(IDS_PLAN),  RT_RCDATA);
-  printf("11--------%p\n", myResource);
+LPSTR getResource(int which) {
+  HRSRC myResource = ::FindResource(NULL, MAKEINTRESOURCE(which),  RT_RCDATA);
   HGLOBAL myResourceData = ::LoadResource(NULL, myResource);
-  printf("12--------%p\n", myResourceData);
-  void* pMyBinaryData = ::LockResource(myResourceData);
-  printf("13--------%p\n", pMyBinaryData);
-
-  DWORD size = SizeofResource(0, myResource);
-  printf("14--------%d\n", size);
-  icu::UnicodeString buf = UnicodeString ((const wchar_t *) myResourceData, size);
-  printf("15--------\n");
-  std::string uBuf;
-  printf("16--------\n");
-  buf.toUTF8String<std::string>(uBuf);
-  printf("17--------\n");
-  printf(uBuf.c_str());
-  printf("18--------\n");
-  /*
-  rc += LoadStringA(GetModuleHandle(nullptr), IDS_PLAN, planStr, 0);
-  printf("2--------\n");
-  rc += LoadStringA(GetModuleHandle(nullptr), IDS_CURRENT, currentStr, 0);
-  printf("3--------\n");
-  rc += LoadStringA(GetModuleHandle(nullptr), IDS_DBSERVER0001, dbs0Str, 0);
-  printf("4--------\n");
-  rc += LoadStringA(GetModuleHandle(nullptr), IDS_DBSERVER0002, dbs1Str, 0);
-  printf("5--------\n");
-  rc += LoadStringA(GetModuleHandle(nullptr), IDS_DBSERVER0003, dbs2Str, 0);
-  printf("6--------\n");
-  rc += LoadStringA(GetModuleHandle(nullptr), IDS_SUPERVISION, supervisionStr, 0);
-  printf("7--------\n");
-  */
-  return rc;
+  return (LPSTR) ::LockResource(myResourceData);
+}
+int loadResources(void) {
+  if ((planStr == nullptr) &&
+      (currentStr == nullptr) &&
+      (supervisionStr == nullptr) &&
+      (dbs0Str == nullptr) &&
+      (dbs1Str == nullptr) &&
+      (dbs2Str == nullptr)) {
+    planStr = getResource(IDS_PLAN);
+    currentStr = getResource(IDS_CURRENT);
+    dbs0Str = getResource(IDS_DBSERVER0001);
+    dbs1Str = getResource(IDS_DBSERVER0002);
+    dbs2Str = getResource(IDS_DBSERVER0003);
+    supervisionStr = getResource(IDS_SUPERVISION);
+  }
+  return 0;
 }
 
 #endif // _WIN32

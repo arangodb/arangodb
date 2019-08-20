@@ -4,7 +4,7 @@
 #define IDS_DBSERVER0003 4
 #define IDS_PLAN 5
 #define IDS_SUPERVISION 6
-IDS_CURRENT, RCDATA
+IDS_CURRENT RCDATA
 {
   "",
   "{",
@@ -1982,8 +1982,9 @@ IDS_CURRENT, RCDATA
   "  }",
   "}",
   "",
+"\0"
 }
-IDS_DBSERVER0001, RCDATA
+IDS_DBSERVER0001 RCDATA
 {
   "",
   "{",
@@ -4891,8 +4892,9 @@ IDS_DBSERVER0001, RCDATA
   "  }",
   "}",
   "",
+"\0"
 }
-IDS_DBSERVER0002, RCDATA
+IDS_DBSERVER0002 RCDATA
 {
   "",
   "{",
@@ -6503,8 +6505,9 @@ IDS_DBSERVER0002, RCDATA
   "  }",
   "}",
   "",
+"\0"
 }
-IDS_DBSERVER0003, RCDATA
+IDS_DBSERVER0003 RCDATA
 {
   "",
   "{",
@@ -9391,8 +9394,9 @@ IDS_DBSERVER0003, RCDATA
   "  }",
   "}",
   "",
+"\0"
 }
-IDS_PLAN, RCDATA
+IDS_PLAN RCDATA
 {
   "",
   "{",
@@ -10806,8 +10810,9 @@ IDS_PLAN, RCDATA
   "  ""Lock"": ""UNLOCKED""",
   "}",
   "",
+"\0"
 }
-IDS_SUPERVISION, RCDATA
+IDS_SUPERVISION RCDATA
 {
   "",
   "{",
@@ -10866,6 +10871,7 @@ IDS_SUPERVISION, RCDATA
   "  }",
   "}",
   "",
+"\0"
 }
 
 }
