@@ -94,13 +94,12 @@ struct DocumentProducingFunctionContext {
         _trxPtr(trxPtr),
         _projections(projections),
         _coveringIndexAttributePositions(coveringIndexAttributePositions),
+        _numScanned(0),
         _produceResult(produceResult),
         _useRawDocumentPointers(useRawDocumentPointers),
         _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
         _isLastIndex(false),
-        _checkUniqueness(checkUniqueness),
-        _numScanned(0),
-        _alreadyReturned() {}
+        _checkUniqueness(checkUniqueness) {}
 
   DocumentProducingFunctionContext() = delete;
 
@@ -181,6 +180,11 @@ struct DocumentProducingFunctionContext {
   transaction::Methods* const _trxPtr;
   std::vector<std::string> const& _projections;
   std::vector<size_t> const& _coveringIndexAttributePositions;
+  size_t _numScanned;
+
+  /// @brief set of already returned documents. Used to make the result distinct
+  std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
+  
   bool const _produceResult;
   bool const _useRawDocumentPointers;
   bool _allowCoveringIndexOptimization;
@@ -190,10 +194,6 @@ struct DocumentProducingFunctionContext {
 
   /// @brief Flag if we need to check for uniqueness
   bool _checkUniqueness;
-  size_t _numScanned;
-
-  /// @brief set of already returned documents. Used to make the result distinct
-  std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
 };
 
 namespace DocumentProducingCallbackVariant {
