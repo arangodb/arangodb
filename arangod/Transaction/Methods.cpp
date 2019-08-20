@@ -3380,7 +3380,6 @@ Future<Result> Methods::replicateOperations(LogicalCollection const& collection,
   auto cb = [=](std::vector<futures::Try<network::Response>>&& responses) -> Result {
     
     bool didRefuse = false;
-    
     // We drop all followers that were not successful:
     for (size_t i = 0; i < followers->size(); ++i) {
       auto const& tryRes = responses[i];
@@ -3389,10 +3388,9 @@ Future<Result> Methods::replicateOperations(LogicalCollection const& collection,
       
       bool replicationWorked = false;
       if (resp.error == fuerte::Error::NoError) {
-        replicationWorked = (resp.response->statusCode() == fuerte::StatusAccepted ||
-                             resp.response->statusCode() == fuerte::StatusCreated ||
-                             resp.response->statusCode() == fuerte::StatusOK) &&
-                             replicationWorked;
+        replicationWorked = resp.response->statusCode() == fuerte::StatusAccepted ||
+                            resp.response->statusCode() == fuerte::StatusCreated ||
+                            resp.response->statusCode() == fuerte::StatusOK;
         if (replicationWorked) {
           bool found;
           resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);

@@ -48,8 +48,8 @@ ConnectionPool::~ConnectionPool() { shutdown(); }
 /// is always the same, we do not do any post-processing
 ConnectionPool::Ref ConnectionPool::leaseConnection(EndpointSpec const& str) {
   fuerte::ConnectionBuilder builder;
-  builder.protocolType(_config.protocol);
   builder.endpoint(str);
+  builder.protocolType(_config.protocol); // always overwrite protocol
 
   std::string endpoint = builder.normalizedEndpoint();
   
@@ -162,8 +162,8 @@ void ConnectionPool::pruneConnections() {
 /// @brief cancel connections to this endpoint
 void ConnectionPool::cancelConnections(EndpointSpec const& str) {
   fuerte::ConnectionBuilder builder;
-  builder.protocolType(_config.protocol);
   builder.endpoint(str);
+  builder.protocolType(_config.protocol); // always overwrite protocol
   
   std::string endpoint = builder.normalizedEndpoint();
   
