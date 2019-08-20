@@ -1,6 +1,10 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* The AQL functions `FULLTEXT`, `NEAR`, `WITHIN` and `WITHIN_RECTANGLE` are now
+  marked as cacheable, so they can be used in conjunction with the AQL query
+  results cache on a single server.
+
 * Consistently honor the return value of all attempts to queue tasks in the
   internal scheduler.
   
