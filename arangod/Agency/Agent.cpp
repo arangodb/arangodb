@@ -976,16 +976,27 @@ trans_ret_t Agent::transact(query_t const& queries) {
       return trans_ret_t(false, NO_LEADER);
     }
 
+    term_t currentTerm = term();   // this is the term we will be working with
+
+    // Check that we are actually still the leader:
+    if (!leading()) {
+      return trans_ret_t(false, NO_LEADER);
+    }
+
     _tiLock.assertNotLockedByCurrentThread();
     MUTEX_LOCKER(ioLocker, _ioLock);
 
     for (const auto& query : VPackArrayIterator(qs)) {
+      // Check that we are actually still the leader:
+      if (!leading()) {
+        return trans_ret_t(false, NO_LEADER);
+      }
       if (query[0].isObject()) {
         check_ret_t res = _spearhead.applyTransaction(query);
         if (res.successful()) {
           maxind = (query.length() == 3 && query[2].isString())
-                       ? _state.logLeaderSingle(query[0], term(), query[2].copyString())
-                       : _state.logLeaderSingle(query[0], term());
+                       ? _state.logLeaderSingle(query[0], currentTerm, query[2].copyString())
+                       : _state.logLeaderSingle(query[0], currentTerm);
           ret->add(VPackValue(maxind));
         } else {
           _spearhead.read(res.failed->slice(), *ret);
@@ -1135,6 +1146,13 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
       npacks++;
     }
 
+    term_t currentTerm = term();   // this is the term we will be working with
+
+    // Check that we are actually still the leader:
+    if (!leading()) {
+      return write_ret_t(false, NO_LEADER);
+    }
+
     // Apply to spearhead and get indices for log entries
     // Avoid keeping lock indefinitely
     for (size_t i = 0, l = 0; i < npacks; ++i) {
@@ -1152,11 +1170,16 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
         return write_ret_t(false, NO_LEADER);
       }
 
+      // Check that we are actually still the leader:
+      if (!leading()) {
+        return write_ret_t(false, NO_LEADER);
+      }
+
       _tiLock.assertNotLockedByCurrentThread();
       MUTEX_LOCKER(ioLocker, _ioLock);
 
       applied = _spearhead.applyTransactions(chunk, wmode);
-      auto tmp = _state.logLeaderMulti(chunk, applied, term());
+      auto tmp = _state.logLeaderMulti(chunk, applied, currentTerm);
       indices.insert(indices.end(), tmp.begin(), tmp.end());
     }
   }

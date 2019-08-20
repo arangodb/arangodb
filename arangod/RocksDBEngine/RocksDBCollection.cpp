@@ -612,9 +612,12 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   // normal transactional truncate
   RocksDBKeyBounds documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
   rocksdb::Comparator const* cmp = RocksDBColumnFamily::documents()->GetComparator();
+  // intentionally copy the read options so we can modify them
   rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
   rocksdb::Slice const end = documentBounds.end();
   ro.iterate_upper_bound = &end;
+  // we are going to blow away all data anyway. no need to blow up the cache
+  ro.fill_cache = false;
   
   TRI_ASSERT(ro.snapshot);
   

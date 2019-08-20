@@ -129,16 +129,25 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
         _runningThreads++;
         Scheduler* scheduler = SchedulerFeature::SCHEDULER;
         TRI_ASSERT(scheduler);
-        scheduler->queue(RequestLane::INTERNAL_LOW,
-                         [this, vertexShard, edges] {
-                           TRI_DEFER(_runningThreads--);  // exception safe
-                           try {
-                             _loadVertices(vertexShard, edges);
-                           } catch (std::exception const& ex) {
-                             LOG_TOPIC("c87c9", WARN, Logger::PREGEL) << "caught exception while "
-                                                                      << "loading pregel graph: " << ex.what();
-                          }
-                         });
+        bool queued =
+            scheduler->queue(RequestLane::INTERNAL_LOW, [this, vertexShard, edges] {
+              TRI_DEFER(_runningThreads--);  // exception safe
+              try {
+                _loadVertices(vertexShard, edges);
+              } catch (std::exception const& ex) {
+                LOG_TOPIC("c87c9", WARN, Logger::PREGEL)
+                    << "caught exception while "
+                    << "loading pregel graph: " << ex.what();
+              }
+            });
+        if (!queued) {
+          LOG_TOPIC("38da2", WARN, Logger::PREGEL)
+              << "No thread available to queue vertex loading";
+        }
+      } catch (basics::Exception const& ex) {
+        LOG_TOPIC("3f283", WARN, Logger::PREGEL)
+            << "unhandled exception while "
+            << "loading pregel graph: " << ex.what();
       } catch (...) {
         LOG_TOPIC("3f282", WARN, Logger::PREGEL) << "unhandled exception while "
         << "loading pregel graph";
@@ -151,7 +160,12 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
   }
 
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestLane::INTERNAL_LOW, cb);
+  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, cb);
+  if (!queued) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
+                                   "No thread available to queue callback, "
+                                   "canceling execution");
+  }
 }
 
 template <typename V, typename E>
@@ -563,7 +577,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
     numT << " threads";
   
   for (size_t i = 0; i < numT; i++) {
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [=]{
+    bool queued = SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [=] {
       size_t startI = i * (numSegments / numT);
       size_t endI = (i + 1) * (numSegments / numT);
       TRI_ASSERT(endI <= numSegments);
@@ -584,6 +598,11 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
         cb();
       }
     });
+    if (!queued) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
+                                     "No thread available to queue vertex "
+                                     "storage, canceling execution");
+    }
   }
 }
 
