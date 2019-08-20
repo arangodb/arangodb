@@ -72,36 +72,36 @@ class IndexExecutorInfos : public ExecutorInfos {
   ExecutionEngine* getEngine() const { return _engine; }
   Collection const* getCollection() const { return _collection; }
   Variable const* getOutVariable() const { return _outVariable; }
-  std::vector<std::string> const& getProjections() const {
+  std::vector<std::string> const& getProjections() const noexcept {
     return _projections;
   }
-  transaction::Methods* getTrxPtr() const { return _trxPtr; }
-  std::vector<size_t> const& getCoveringIndexAttributePositions() const {
+  transaction::Methods* getTrxPtr() const noexcept { return _trxPtr; }
+  std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept {
     return _coveringIndexAttributePositions;
   }
-  bool getProduceResult() const { return _produceResult; }
-  bool getUseRawDocumentPointers() const { return _useRawDocumentPointers; }
-  std::vector<transaction::Methods::IndexHandle> const& getIndexes() {
+  bool getProduceResult() const noexcept { return _produceResult; }
+  bool getUseRawDocumentPointers() const noexcept { return _useRawDocumentPointers; }
+  std::vector<transaction::Methods::IndexHandle> const& getIndexes() const noexcept {
     return _indexes;
   }
-  AstNode const* getCondition() { return _condition; }
-  bool getV8Expression() const { return _hasV8Expression; }
-  RegisterId getOutputRegisterId() const { return _outputRegisterId; }
-  std::vector<std::unique_ptr<NonConstExpression>> const& getNonConstExpressions() {
+  AstNode const* getCondition() const noexcept { return _condition; }
+  bool getV8Expression() const noexcept { return _hasV8Expression; }
+  RegisterId getOutputRegisterId() const noexcept { return _outputRegisterId; }
+  std::vector<std::unique_ptr<NonConstExpression>> const& getNonConstExpressions() const noexcept {
     return _nonConstExpression;
   }
-  bool hasMultipleExpansions() const { return _hasMultipleExpansions; }
+  bool hasMultipleExpansions() const noexcept { return _hasMultipleExpansions; }
 
   /// @brief whether or not all indexes are accessed in reverse order
   IndexIteratorOptions getOptions() const { return _options; }
-  bool isAscending() const { return _options.ascending; }
+  bool isAscending() const noexcept { return _options.ascending; }
 
-  Ast* getAst() const { return _ast; }
+  Ast* getAst() const noexcept { return _ast; }
 
-  std::vector<Variable const*> const& getExpInVars() const {
+  std::vector<Variable const*> const& getExpInVars() const noexcept {
     return _expInVars;
   }
-  std::vector<RegisterId> const& getExpInRegs() const { return _expInRegs; }
+  std::vector<RegisterId> const& getExpInRegs() const noexcept { return _expInRegs; }
 
   // setter
   void setHasMultipleExpansions(bool flag) { _hasMultipleExpansions = flag; }
@@ -126,25 +126,26 @@ class IndexExecutorInfos : public ExecutorInfos {
   /// a vector of RegisterId, used to execute the expression
   std::vector<std::vector<RegisterId>> _inRegs;
 
-  /// @brief true if one of the indexes uses more than one expanded attribute,
-  /// e.g. the index is on values[*].name and values[*].type
-  bool _hasMultipleExpansions;
-
   /// @brief the index sort order - this is the same order for all indexes
   IndexIteratorOptions _options;
 
-  RegisterId _outputRegisterId;
   ExecutionEngine* _engine;
   Collection const* _collection;
   Variable const* _outVariable;
   std::vector<std::string> const& _projections;
+  std::vector<size_t> const& _coveringIndexAttributePositions;
   transaction::Methods* _trxPtr;
   std::vector<Variable const*> _expInVars;  // input variables for expresseion
   std::vector<RegisterId> _expInRegs;       // input registers for expression
 
-  std::vector<size_t> const& _coveringIndexAttributePositions;
-  bool _useRawDocumentPointers;
   std::vector<std::unique_ptr<NonConstExpression>> _nonConstExpression;
+  
+  RegisterId _outputRegisterId;
+  /// @brief true if one of the indexes uses more than one expanded attribute,
+  /// e.g. the index is on values[*].name and values[*].type
+  bool _hasMultipleExpansions;
+
+  bool _useRawDocumentPointers;
   bool _produceResult;
   /// @brief Counter how many documents have been returned/skipped
   ///        during one call. Retained during WAITING situations.
@@ -230,7 +231,7 @@ class IndexExecutor {
     return _cursors[_currentIndex];
   }
 
-  inline bool needsUniquenessCheck() const {
+  inline bool needsUniquenessCheck() const noexcept {
     return _infos.getIndexes().size() > 1 || _infos.hasMultipleExpansions();
   }
 
