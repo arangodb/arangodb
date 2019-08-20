@@ -399,7 +399,7 @@ void Conductor::cancelNoLock() {
   _callbackMutex.assertLockedByCurrentThread();
   _state = ExecutionState::CANCELED;
   bool ok = basics::function_utils::retryUntilTimeout(
-      [this]() -> bool { int(_finalizeWorkers() != TRI_ERROR_QUEUE_FULL); },
+      [this]() -> bool { return (_finalizeWorkers() != TRI_ERROR_QUEUE_FULL); },
       Logger::PREGEL, "cancel worker execution");
   if (!ok) {
     LOG_TOPIC("f8b3c", ERR, Logger::PREGEL)
