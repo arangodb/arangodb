@@ -1,6 +1,15 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Consistently honor the return value of all attempts to queue tasks in the
+  internal scheduler. Previously some call sites did not check the return value
+  of internal queueing operations, and if the scheduler queue was full, operations
+  that were thought to be requeued were silently dropped. Now, there will be
+  reactions on such failures. Requeuing an important task with a time offset
+  (Scheduler::queueDelay) is now also retried on failure (queue full) up to
+  at most five minutes. If after five minutes such a task still cannot be 
+  queued, a fatal error will be logged and the server process will be aborted.
+
 * Fixed internal issue #4378: fix bug in MoveShard::abort which causes a
   duplicate entry in the follower list.
 
