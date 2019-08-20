@@ -361,7 +361,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondes
   try {
     auto bogus = desc.get("bogus");
     ASSERT_TRUE(bogus == "bogus");
-  } catch (...) { }
+  } catch (std::out_of_range const&) { }
   std::string value;
   auto res = desc.get("bogus", value);
   ASSERT_TRUE(value.empty());
@@ -375,7 +375,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondes
   try {
     auto bogus = desc.get("bogus");
     ASSERT_TRUE(bogus == "bogus");
-  } catch (...) { }
+  } catch (std::out_of_range const&) { }
   std::string value;
   auto res = desc.get("bogus", value);
   ASSERT_TRUE(value == "bogus");
