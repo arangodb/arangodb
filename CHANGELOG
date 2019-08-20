@@ -1,6 +1,9 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Fixed internal issue #4378: fix bug in MoveShard::abort which causes a
+  duplicate entry in the follower list.
+
 * Fixed issue #9654: honor value of `--rocksdb.max-write-buffer-number` if it
   is set to at least 9 (which is the recommended value). Ignore it if it is
   set to a lower value than 9, and warn the end user about it.
