@@ -1715,7 +1715,7 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
     // give the index a size hint
     auto primaryIdx = primaryIndex();
     auto nrUsed = primaryIdx->size();
-    for (auto idx : indexes) {
+    for (auto& idx : indexes) {
       if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
         continue;
       }
@@ -1739,7 +1739,7 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
     documents.reserve(blockSize);
 
     auto insertInAllIndexes = [&]() -> void {
-      for (auto idx : indexes) {
+      for (auto& idx : indexes) {
         if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
           continue;
         }

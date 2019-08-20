@@ -378,7 +378,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     // Step 5. register in index list
     WRITE_LOCKER(guard, _indexesLock);
     if (inBackground) {  // swap in actual index
-      for (auto it : _indexes) {
+      for (auto& it : _indexes) {
         if (it->id() == buildIdx->id()) {
           _indexes.erase(it);
           _indexes.emplace(idx);
@@ -446,7 +446,7 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
   {
     size_t i = 0;
     WRITE_LOCKER(guard, _indexesLock);
-    for (auto it : _indexes) {
+    for (auto& it : _indexes) {
       if (iid == it->id()) {
         toRemove = it;
         _indexes.erase(it);
