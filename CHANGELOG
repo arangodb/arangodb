@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Changes the idle timeout of stream transactions to 10 seconds
+
 * Consistently honor the return value of all attempts to queue tasks in the
   internal scheduler.
   
