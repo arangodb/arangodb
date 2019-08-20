@@ -40,8 +40,8 @@ namespace basics {
 bool parseDateTime(arangodb::velocypack::StringRef dateTime, 
                    tp_sys_clock_ms& date_tp);
 
-bool regexIsoDuration(std::string const& isoDuration, 
-                      std::smatch& durationParts);
+bool regexIsoDuration(arangodb::velocypack::StringRef isoDuration, 
+                      std::match_results<char const*>& durationParts);
 
 /// @brief formats a date(time) value according to formatString
 std::string formatDate(std::string const& formatString,

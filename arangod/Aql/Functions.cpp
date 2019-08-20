@@ -35,6 +35,7 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
@@ -497,24 +498,29 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
 
 AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionContext,
                                                tp_sys_clock_ms const& tp,
-                                               std::string const& duration, 
+                                               arangodb::velocypack::StringRef duration, 
                                                char const* AFN, bool isSubtract) {
   year_month_day ymd{floor<days>(tp)};
   auto day_time = make_time(tp - sys_days(ymd));
-  std::smatch duration_parts;
-  if (!basics::regexIsoDuration(duration, duration_parts)) {
+  
+  std::match_results<char const*> durationParts;
+  if (!basics::regexIsoDuration(duration, durationParts)) {
     ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     return AqlValue(AqlValueHintNull());
   }
 
-  int number = basics::StringUtils::int32(duration_parts[2].str());
+  char const* begin; 
+  
+  begin = duration.data() + durationParts.position(2);
+  int number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(2));
   if (isSubtract) {
     ymd -= years{number};
   } else {
     ymd += years{number};
   }
 
-  number = basics::StringUtils::int32(duration_parts[4].str());
+  begin = duration.data() + durationParts.position(4);
+  number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(4));
   if (isSubtract) {
     ymd -= months{number};
   } else {
@@ -522,25 +528,43 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionCont
   }
 
   milliseconds ms{0};
-  number = basics::StringUtils::int32(duration_parts[6].str());
+  begin = duration.data() + durationParts.position(6);
+  number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(6));
   ms += weeks{number};
 
-  number = basics::StringUtils::int32(duration_parts[8].str());
+  begin = duration.data() + durationParts.position(8);
+  number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(8));
   ms += days{number};
 
-  number = basics::StringUtils::int32(duration_parts[11].str());
+  begin = duration.data() + durationParts.position(11);
+  number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(11));
   ms += hours{number};
 
-  number = basics::StringUtils::int32(duration_parts[13].str());
+  begin = duration.data() + durationParts.position(13);
+  number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(13));
   ms += minutes{number};
 
-  number = basics::StringUtils::int32(duration_parts[15].str());
+  begin = duration.data() + durationParts.position(15);
+  number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(15));
   ms += seconds{number};
 
   // The Milli seconds can be shortened:
   // .1 => 100ms
   // so we append 00 but only take the first 3 digits
-  number = basics::StringUtils::int32((duration_parts[17].str() + "00").substr(0, 3));
+  std::size_t matchLength = durationParts.length(17);
+  number = 0;
+  if (matchLength > 0) {
+    if (matchLength > 3) {
+      matchLength = 3;
+    }
+    begin = duration.data() + durationParts.position(17);
+    number = NumberUtils::atoi_unchecked<int>(begin, begin + matchLength);
+    if (matchLength == 2) {
+      number *= 10;
+    } else if (matchLength == 1) {
+      number *= 100;
+    }
+  }
   ms += milliseconds{number};
 
   tp_sys_clock_ms resTime;
@@ -3444,8 +3468,7 @@ AqlValue Functions::DateAdd(ExpressionContext* expressionContext, transaction::M
       return AqlValue(AqlValueHintNull());
     }
 
-    std::string const duration = isoDuration.slice().copyString();
-    return ::addOrSubtractIsoDurationFromTimestamp(expressionContext, tp, duration, AFN, false);
+    return ::addOrSubtractIsoDurationFromTimestamp(expressionContext, tp, isoDuration.slice().stringRef(), AFN, false);
   }
 }
 
@@ -3486,8 +3509,7 @@ AqlValue Functions::DateSubtract(ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintNull());
     }
 
-    std::string const duration = isoDuration.slice().copyString();
-    return ::addOrSubtractIsoDurationFromTimestamp(expressionContext, tp, duration, AFN, true);
+    return ::addOrSubtractIsoDurationFromTimestamp(expressionContext, tp, isoDuration.slice().stringRef(), AFN, true);
   }
 }
 

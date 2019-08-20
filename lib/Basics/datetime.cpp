@@ -590,8 +590,8 @@ P1Y2M3W4DT5H6M7.891S
   submatch 17: 891
 */
 std::regex const durationRegex(
-    "P((\\d+)Y)?((\\d+)M)?((\\d+)W)?((\\d+)D)?(T((\\d+)H)?((\\d+)M)?((\\d+)(\\."
-    "(\\d{1,3}))?S)?)?");
+    "^P((\\d+)Y)?((\\d+)M)?((\\d+)W)?((\\d+)D)?(T((\\d+)H)?((\\d+)M)?((\\d+)(\\."
+    "(\\d{1,3}))?S)?)?", std::regex::optimize);
 
 struct DateRegexInitializer {
   DateRegexInitializer() {
@@ -751,17 +751,19 @@ bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
 
   // parse Time HH:MM:SS(.SSS)((+|-)HH:MM)
   if (1 < strTime.size()) {
-    std::match_results<char const*> time_parts;
+    std::match_results<char const*> timeParts;
 
-    if (!std::regex_match(strTime.begin(), strTime.end(), time_parts, ::timeRegex)) {
+    if (!std::regex_match(strTime.begin(), strTime.end(), timeParts, ::timeRegex)) {
       LOG_TOPIC("33cf9", DEBUG, arangodb::Logger::FIXME) << "regex failed for time " << strTime;
       return false;
     }
     
     int v;
+    char const* begin;
 
     // hour
-    v = NumberUtils::atoi_unchecked<int>(strTime.data() + time_parts.position(1), strTime.data() + time_parts.position(1) + time_parts.length(1));
+    begin = strTime.data() + timeParts.position(1);
+    v = NumberUtils::atoi_unchecked<int>(begin, begin + timeParts.length(1));
     hours parsedHours{v};
 
     if (hours{23} < parsedHours) {
@@ -770,7 +772,8 @@ bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
     date_tp += parsedHours;
 
     // minute
-    v = NumberUtils::atoi_unchecked<int>(strTime.data() + time_parts.position(2), strTime.data() + time_parts.position(2) + time_parts.length(2));
+    begin = strTime.data() + timeParts.position(2);
+    v = NumberUtils::atoi_unchecked<int>(begin, begin + timeParts.length(2));
     minutes parsedMinutes{v};
 
     if (minutes{59} < parsedMinutes) {
@@ -779,7 +782,8 @@ bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
     date_tp += parsedMinutes;
 
     // seconds
-    v = NumberUtils::atoi_unchecked<int>(strTime.data() + time_parts.position(4), strTime.data() + time_parts.position(4) + time_parts.length(4));
+    begin = strTime.data() + timeParts.position(4);
+    v = NumberUtils::atoi_unchecked<int>(begin, begin + timeParts.length(4));
     seconds parsedSeconds{v};
 
     if (seconds{59} < parsedSeconds) {
@@ -788,12 +792,13 @@ bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
     date_tp += parsedSeconds;
 
     // milliseconds .9 -> 900ms
-    std::size_t matchLength = time_parts.length(6);
+    std::size_t matchLength = timeParts.length(6);
     if (matchLength > 0) {    
       if (matchLength > 3) {
         matchLength = 3;
       }
-      v = NumberUtils::atoi_unchecked<int>(strTime.data() + time_parts.position(6), strTime.data() + time_parts.position(6) + matchLength);
+      begin = strTime.data() + timeParts.position(6);
+      v = NumberUtils::atoi_unchecked<int>(begin, begin + matchLength);
       if (matchLength == 2) {
         v *= 10;
       } else if (matchLength == 1) {
@@ -803,9 +808,10 @@ bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
     }
 
     // timezone offset
-    if (time_parts.length(8) > 0) {
+    if (timeParts.length(8) > 0) {
       // hours
-      v = NumberUtils::atoi_unchecked<int>(strTime.data() + time_parts.position(9), strTime.data() + time_parts.position(9) + time_parts.length(9));
+      begin = strTime.data() + timeParts.position(9);
+      v = NumberUtils::atoi_unchecked<int>(begin, begin + timeParts.length(9));
       hours parsedHours{v}; 
 
       if (hours{23} < parsedHours) {
@@ -814,7 +820,8 @@ bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
       minutes offset = parsedHours;
 
       // minutes
-      v = NumberUtils::atoi_unchecked<int>(strTime.data() + time_parts.position(10), strTime.data() + time_parts.position(10) + time_parts.length(10));
+      begin = strTime.data() + timeParts.position(10);
+      v = NumberUtils::atoi_unchecked<int>(begin, begin + timeParts.length(10));
       minutes parsedMinutes{v}; 
 
       if (minutes{59} < parsedMinutes) {
@@ -822,8 +829,8 @@ bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
       }
       offset += parsedMinutes;
 
-      if (time_parts.length(8) == 1 &&
-          strTime[time_parts.position(8)] == '-') {
+      if (timeParts.length(8) == 1 &&
+          strTime[timeParts.position(8)] == '-') {
         // minus sign!
         offset *= -1;
       }
@@ -834,17 +841,13 @@ bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
   return true;
 }
 
-bool arangodb::basics::regexIsoDuration(std::string const& isoDuration,
-                                        std::smatch& durationParts) {
+bool arangodb::basics::regexIsoDuration(arangodb::velocypack::StringRef isoDuration,
+                                        std::match_results<char const*>& durationParts) {
   if (isoDuration.length() <= 1) {
     return false;
   }
 
-  if (!std::regex_match(isoDuration, durationParts, ::durationRegex)) {
-    return false;
-  }
-
-  return true;
+  return std::regex_match(isoDuration.begin(), isoDuration.end(), durationParts, ::durationRegex);
 }
 
 std::string arangodb::basics::formatDate(std::string const& formatString,
