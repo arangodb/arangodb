@@ -103,7 +103,11 @@ function ahuacatlProfilerTestSuite () {
       const server = shardToServerMapping[shard];
       const callInfo = callsPerServer[server] ||  {calls: 0, overhead: 0};
       const testHere = rows + callInfo.overhead;
-      callInfo.calls += optimalBatches(testHere);
+      if (db._engine().name === 'mmfiles') {
+        callInfo.calls += mmfilesBatches(testHere);
+      } else {
+        callInfo.calls += optimalBatches(testHere);
+      }
       callInfo.overhead = testHere % defaultBatchSize;
       callsPerServer[server] = callInfo;
     }
