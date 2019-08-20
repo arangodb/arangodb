@@ -7,7 +7,6 @@ import * as d3 from 'd3';
 import nvd3 from 'nvd3';
 import * as fs from 'fs';
 
-// import logo from './logo.svg';
 import './App.css';
 
 // import new react views
