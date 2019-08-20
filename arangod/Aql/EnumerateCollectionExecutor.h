@@ -76,13 +76,13 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
   RegisterId getOutputRegisterId() const { return _outputRegisterId; }
 
  private:
-  RegisterId _outputRegisterId;
   ExecutionEngine* _engine;
   Collection const* _collection;
   Variable const* _outVariable;
   transaction::Methods* _trxPtr;
   std::vector<std::string> const& _projections;
   std::vector<size_t> const& _coveringIndexAttributePositions;
+  RegisterId _outputRegisterId;
   bool _useRawDocumentPointers;
   bool _produceResult;
   bool _random;

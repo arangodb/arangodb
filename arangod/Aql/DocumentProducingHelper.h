@@ -90,11 +90,11 @@ struct DocumentProducingFunctionContext {
                                    bool checkUniqueness)
       : _inputRow(inputRow),
         _outputRow(outputRow),
-        _outputRegister(outputRegister),
         _trxPtr(trxPtr),
         _projections(projections),
         _coveringIndexAttributePositions(coveringIndexAttributePositions),
         _numScanned(0),
+        _outputRegister(outputRegister),
         _produceResult(produceResult),
         _useRawDocumentPointers(useRawDocumentPointers),
         _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
@@ -176,7 +176,6 @@ struct DocumentProducingFunctionContext {
  private:
   InputAqlItemRow const& _inputRow;
   OutputAqlItemRow* _outputRow;
-  RegisterId const _outputRegister;
   transaction::Methods* const _trxPtr;
   std::vector<std::string> const& _projections;
   std::vector<size_t> const& _coveringIndexAttributePositions;
@@ -185,6 +184,7 @@ struct DocumentProducingFunctionContext {
   /// @brief set of already returned documents. Used to make the result distinct
   std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
   
+  RegisterId const _outputRegister;
   bool const _produceResult;
   bool const _useRawDocumentPointers;
   bool _allowCoveringIndexOptimization;

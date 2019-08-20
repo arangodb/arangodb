@@ -129,7 +129,6 @@ class IndexExecutorInfos : public ExecutorInfos {
   /// @brief the index sort order - this is the same order for all indexes
   IndexIteratorOptions _options;
 
-  RegisterId _outputRegisterId;
   ExecutionEngine* _engine;
   Collection const* _collection;
   Variable const* _outVariable;
@@ -140,6 +139,8 @@ class IndexExecutorInfos : public ExecutorInfos {
   std::vector<RegisterId> _expInRegs;       // input registers for expression
 
   std::vector<std::unique_ptr<NonConstExpression>> _nonConstExpression;
+  
+  RegisterId _outputRegisterId;
   /// @brief true if one of the indexes uses more than one expanded attribute,
   /// e.g. the index is on values[*].name and values[*].type
   bool _hasMultipleExpansions;
