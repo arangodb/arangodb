@@ -29,6 +29,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/FunctionUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
@@ -296,20 +297,35 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     }
 
     // now do the work:
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self, this, execContext] {
-      ExecContextScope scope(_user.empty() ? ExecContext::superuser()
-                                           : execContext.get());
-      work(execContext.get());
+    bool queued = basics::function_utils::retryUntilTimeout(
+        [this, self, execContext]() -> bool {
+          return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self, this, execContext] {
+            ExecContextScope scope(_user.empty() ? ExecContext::superuser()
+                                                 : execContext.get());
+            work(execContext.get());
 
-      if (_periodic.load() && !application_features::ApplicationServer::isStopping()) {
-        // requeue the task
-        queue(_interval);
-      } else {
-        // in case of one-off tasks or in case of a shutdown, simply
-        // remove the task from the list
-        Task::unregisterTask(_id, true);
-      }
-    });
+            if (_periodic.load() && !application_features::ApplicationServer::isStopping()) {
+              // requeue the task
+              bool queued = basics::function_utils::retryUntilTimeout(
+                  [this]() -> bool { return queue(_interval); }, Logger::FIXME,
+                  "queue task");
+              if (!queued) {
+                THROW_ARANGO_EXCEPTION_MESSAGE(
+                    TRI_ERROR_QUEUE_FULL,
+                    "Failed to queue task for 5 minutes, gave up.");
+              }
+            } else {
+              // in case of one-off tasks or in case of a shutdown, simply
+              // remove the task from the list
+              Task::unregisterTask(_id, true);
+            }
+          });
+        },
+        Logger::FIXME, "queue task");
+    if (!queued) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUEUE_FULL, "Failed to queue task for 5 minutes, gave up.");
+    }
   };
 }
 
@@ -327,13 +343,21 @@ void Task::start() {
   }
 
   // initially queue the task
-  queue(_offset);
+  bool queued = basics::function_utils::retryUntilTimeout(
+      [this]() -> bool { return queue(_offset); }, Logger::FIXME, "queue task");
+  if (!queued) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUEUE_FULL, "Failed to queue task for 5 minutes, gave up.");
+  }
 }
 
-void Task::queue(std::chrono::microseconds offset) {
+bool Task::queue(std::chrono::microseconds offset) {
   MUTEX_LOCKER(lock, _taskHandleMutex);
-  _taskHandle = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW,
-                                                        offset, callbackFunction());
+  bool queued = false;
+  std::tie(queued, _taskHandle) =
+      SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, offset,
+                                              callbackFunction());
+  return queued;
 }
 
 void Task::cancel() {

@@ -165,13 +165,11 @@
 
       </div>
 
-        <% if (figuresData.figures.alive && figuresData.figures.dead) { %>
-          <% if (window.frontendConfig.isCluster) { %>
+        <% if (figuresData.figures.alive && figuresData.figures.dead && !frontendConfig.isCluster && frontendConfig.engine === 'mmfiles') { %>
             <div class="infoBox">
               <h4>Figures</h4>
               <p>The following information does not contain data stored in the write-ahead log. It can be inaccurate, until the write-ahead log has been completely flushed.</p>
             </div>
-          <% } %>
           <table class="figures1 arango-table">
             <tr class="figuresHeader">
               <th>Type</th>
@@ -236,7 +234,7 @@
           </table>
         <% } %>
 
-        <% if (figuresData.figures.datafiles && figuresData.figures.journals && figuresData.figures.compactors) { %>
+        <% if (figuresData.figures.datafiles && figuresData.figures.journals && figuresData.figures.compactors && !frontendConfig.isCluster && frontendConfig.engine === 'mmfiles') { %>
           <table class="figures2 arango-table">
             <tr class="figuresHeader">
               <th>Type</th>
@@ -328,7 +326,7 @@
           </table>
         <% } %>
 
-        <% if (figuresData.figures.documentReferences && figuresData.figures.uncollectedLogfileEntries) { %>
+        <% if (figuresData.figures.documentReferences && figuresData.figures.uncollectedLogfileEntries && !frontendConfig.isCluster && frontendConfig.engine === 'mmfiles') { %>
           <table class="figures3 arango-table">
             <tr class="figuresHeader">
               <th>Type</th>

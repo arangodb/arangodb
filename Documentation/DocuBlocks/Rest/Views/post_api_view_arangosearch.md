@@ -9,7 +9,7 @@ The name of the View.
 @RESTBODYPARAM{type,string,required,string}
 The type of the View (immutable). Must be equal to *"arangosearch"*.
 
-@RESTBODYPARAM{cleanupIntervalStep,integer,optional,uint64}
+@RESTBODYPARAM{cleanupIntervalStep,integer,optional,int64}
 Wait at least this many commits between removing unused files in the
 ArangoSearch data directory (default: 10, to disable use: 0).
 For the case where the consolidation policies merge segments often (i.e. a lot
@@ -26,7 +26,7 @@ _Background:_
   However, the files for the released states/snapshots are left on disk, and
   only removed by "cleanup" operation.
 
-@RESTBODYPARAM{commitIntervalMsec,integer,optional,uint64}
+@RESTBODYPARAM{commitIntervalMsec,integer,optional,int64}
 Wait at least this many milliseconds between committing View data store
 changes and making documents visible to queries (default: 1000, to disable
 use: 0).
@@ -48,7 +48,7 @@ _Background:_
   subsequent ArangoDB transactions, in-progress ArangoDB transactions will
   still continue to return a repeatable-read state.
 
-@RESTBODYPARAM{consolidationIntervalMsec,integer,optional,uint64}
+@RESTBODYPARAM{consolidationIntervalMsec,integer,optional,int64}
 Wait at least this many milliseconds between applying 'consolidationPolicy' to
 consolidate View data store and possibly release space on the filesystem
 (default: 60000, to disable use: 0).

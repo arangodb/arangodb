@@ -86,7 +86,11 @@
 
     render: function () {
       this.breadcrumb();
-      this.$el.html(this.template.render({}));
+      this.$el.html(this.template.render({
+        parsedVersion: window.versionHelper.toDocuVersion(
+          window.frontendConfig.version.version
+        )
+      }));
       $('#propertiesEditor').height($('.centralRow').height() - 300 + 70 - $('.infoBox').innerHeight() - 10);
       this.initAce();
       this.getViewProperties();

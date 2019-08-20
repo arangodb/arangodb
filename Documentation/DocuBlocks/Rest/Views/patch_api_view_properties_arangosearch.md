@@ -12,7 +12,7 @@ The name of the View.
 The View properties. If specified, then *properties* should be a JSON object
 containing the following attributes:
 
-@RESTSTRUCT{cleanupIntervalStep,post_api_view_props,integer,optional,uint64}
+@RESTSTRUCT{cleanupIntervalStep,post_api_view_props,integer,optional,int64}
 Wait at least this many commits between removing unused files in the
 ArangoSearch data directory (default: 10, to disable use: 0).
 For the case where the consolidation policies merge segments often (i.e. a lot
@@ -29,8 +29,13 @@ _Background:_
   However, the files for the released states/snapshots are left on disk, and
   only removed by "cleanup" operation.
 
+<<<<<<< HEAD:Documentation/DocuBlocks/Rest/Views/patch_api_view_properties_arangosearch.md
 @RESTSTRUCT{commitIntervalMsec,post_api_view_props,integer,optional,uint64}
 Wait at least this many milliseconds between committing View data store
+=======
+@RESTSTRUCT{commitIntervalMsec,post_api_view_props,integer,optional,int64}
+Wait at least this many milliseconds between committing view data store
+>>>>>>> origin/3.5:Documentation/DocuBlocks/Rest/Views/patch_api_view_properties_iresearch.md
 changes and making documents visible to queries (default: 1000, to disable
 use: 0).
 For the case where there are a lot of inserts/updates, a lower value, until
@@ -52,7 +57,7 @@ _Background:_
   still continue to return a repeatable-read state.
 
 
-@RESTSTRUCT{consolidationIntervalMsec,post_api_view_props,integer,optional,uint64}
+@RESTSTRUCT{consolidationIntervalMsec,post_api_view_props,integer,optional,int64}
 Wait at least this many milliseconds between applying 'consolidationPolicy' to
 consolidate View data store and possibly release space on the filesystem
 (default: 60000, to disable use: 0).

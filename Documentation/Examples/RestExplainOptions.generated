@@ -51,12 +51,13 @@ x-content-type-options: nosniff
           <span class="hljs-string">"indexCoversProjections"</span> : <span class="hljs-literal">false</span>, 
           <span class="hljs-string">"indexes"</span> : [ 
             { 
-              <span class="hljs-string">"id"</span> : <span class="hljs-string">"104706"</span>, 
+              <span class="hljs-string">"id"</span> : <span class="hljs-string">"69441"</span>, 
               <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
-              <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1636256398284161026"</span>, 
+              <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1641835673337987072"</span>, 
               <span class="hljs-string">"fields"</span> : [ 
                 <span class="hljs-string">"id"</span> 
               ], 
+              <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
               <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
               <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
               <span class="hljs-string">"deduplicate"</span> : <span class="hljs-literal">true</span> 
@@ -269,7 +270,7 @@ x-content-type-options: nosniff
   <span class="hljs-string">"warnings"</span> : [ ], 
   <span class="hljs-string">"stats"</span> : { 
     <span class="hljs-string">"rulesExecuted"</span> : <span class="hljs-number">3</span>, 
-    <span class="hljs-string">"rulesSkipped"</span> : <span class="hljs-number">32</span>, 
+    <span class="hljs-string">"rulesSkipped"</span> : <span class="hljs-number">33</span>, 
     <span class="hljs-string">"plansCreated"</span> : <span class="hljs-number">1</span> 
   }, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 

@@ -9,13 +9,13 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h82E80CF18F1A/104873"</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"104873"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hE3D5B8D76078/69549"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"69549"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"arangosearch"</span>, 
-  <span class="hljs-string">"cleanupIntervalStep"</span> : <span class="hljs-number">10</span>, 
+  <span class="hljs-string">"cleanupIntervalStep"</span> : <span class="hljs-number">2</span>, 
   <span class="hljs-string">"commitIntervalMsec"</span> : <span class="hljs-number">1000</span>, 
-  <span class="hljs-string">"consolidationIntervalMsec"</span> : <span class="hljs-number">60000</span>, 
+  <span class="hljs-string">"consolidationIntervalMsec"</span> : <span class="hljs-number">10000</span>, 
   <span class="hljs-string">"consolidationPolicy"</span> : { 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"tier"</span>, 
     <span class="hljs-string">"segmentsBytesFloor"</span> : <span class="hljs-number">2097152</span>, 

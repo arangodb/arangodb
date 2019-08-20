@@ -45,8 +45,8 @@
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
 #include "Geo/GeoJson.h"
-#include "Geo/GeoParams.h"
-#include "Geo/GeoUtils.h"
+#include "Geo/Ellipsoid.h"
+#include "Geo/Utils.h"
 #include "Geo/ShapeContainer.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
@@ -218,7 +218,8 @@ void registerWarning(ExpressionContext* expressionContext,
 /// @brief register warning
 void registerWarning(ExpressionContext* expressionContext,
                      char const* functionName, int code) {
-  if (code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
+  if (code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH &&
+      code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH) {
     registerWarning(expressionContext, functionName, Result(code));
     return;
   }
@@ -4698,8 +4699,14 @@ AqlValue Functions::GeoDistance(ExpressionContext* expressionContext,
     ::registerWarning(expressionContext, "GEO_DISTANCE", res);
     return AqlValue(AqlValueHintNull());
   }
-
-  return ::numberValue(shape1.distanceFrom(shape2.centroid()), true);
+  
+  if (parameters.size() > 2 && parameters[2].isString()) {
+    VPackValueLength len;
+    const char* ptr = parameters[2].slice().getStringUnchecked(len);
+    geo::Ellipsoid const& e = geo::utils::ellipsoidFromString(ptr, len);
+    return ::numberValue(shape1.distanceFromCentroid(shape2.centroid(), e), true);
+  }
+  return ::numberValue(shape1.distanceFromCentroid(shape2.centroid()), true);
 }
 
 /// @brief function GEO_CONTAINS
@@ -4750,6 +4757,34 @@ AqlValue Functions::GeoEquals(ExpressionContext* expressionContext,
 
   bool result = first.equals(&second);
   return AqlValue(AqlValueHintBool(result));
+}
+
+/// @brief function GEO_AREA
+AqlValue Functions::GeoArea(ExpressionContext* expressionContext,
+                              transaction::Methods* trx,
+                              VPackFunctionParameters const& parameters) {
+  AqlValue p1 = extractFunctionParameterValue(parameters, 0);
+  AqlValue p2 = extractFunctionParameterValue(parameters, 1);
+  
+  AqlValueMaterializer mat(trx);
+  
+  geo::ShapeContainer shape;
+  Result res = geo::geojson::parseRegion(mat.slice(p1, true), shape);
+  
+  if (res.fail()) {
+    ::registerWarning(expressionContext, "GEO_AREA", res);
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  auto detEllipsoid = [](AqlValue const& p) {
+    if (p.isString()) {
+      VPackValueLength len;
+      const char* ptr = p.slice().getStringUnchecked(len);
+      return geo::utils::ellipsoidFromString(ptr, len);
+    }
+    return geo::SPHERE;
+  };
+  return AqlValue(AqlValueHintDouble(shape.area(detEllipsoid(p2))));
 }
 
 /// @brief function IS_IN_POLYGON

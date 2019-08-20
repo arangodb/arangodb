@@ -12,6 +12,7 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"_system::testAnalyzer"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"identity"</span>, 
-  <span class="hljs-string">"properties"</span> : <span class="hljs-literal">null</span>, 
+  <span class="hljs-string">"properties"</span> : { 
+  }, 
   <span class="hljs-string">"features"</span> : [ ] 
 }

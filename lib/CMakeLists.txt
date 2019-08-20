@@ -155,6 +155,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/DataProtector.cpp
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
+  Basics/FunctionUtils.cpp
   Basics/HybridLogicalClock.cpp
   Basics/LdapUrlParser.cpp
   Basics/LocalTaskQueue.cpp
@@ -278,11 +279,13 @@ endif()
 ################################################################################
 
 add_library(${LIB_ARANGO_GEO} STATIC
+  Geo/Ellipsoid.cpp
   Geo/GeoJson.cpp
   Geo/GeoParams.cpp
-  Geo/GeoUtils.cpp
   Geo/ShapeContainer.cpp
   Geo/Shapes.cpp
+  Geo/Utils.cpp
+  Geo/karney/geodesic.c
   Geo/S2/S2MultiPointRegion.cpp
   Geo/S2/S2MultiPolyline.cpp
 )

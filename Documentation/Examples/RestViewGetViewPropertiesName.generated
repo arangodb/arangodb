@@ -22,10 +22,10 @@ x-content-type-options: nosniff
     <span class="hljs-string">"segmentsMin"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"minScore"</span> : <span class="hljs-number">0</span> 
   }, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h82E80CF18F1A/107745"</span>, 
-  <span class="hljs-string">"cleanupIntervalStep"</span> : <span class="hljs-number">10</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"107745"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hE3D5B8D76078/71404"</span>, 
+  <span class="hljs-string">"cleanupIntervalStep"</span> : <span class="hljs-number">2</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"71404"</span>, 
   <span class="hljs-string">"links"</span> : { 
   }, 
-  <span class="hljs-string">"consolidationIntervalMsec"</span> : <span class="hljs-number">60000</span> 
+  <span class="hljs-string">"consolidationIntervalMsec"</span> : <span class="hljs-number">10000</span> 
 }

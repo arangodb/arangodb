@@ -19,7 +19,7 @@ arangosh&gt; stmt.explain();
           <span class="hljs-number">1</span> 
         ], 
         <span class="hljs-string">"id"</span> : <span class="hljs-number">6</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">1.95</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">1.995</span>, 
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"outVariable"</span> : { 
           <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
@@ -34,9 +34,9 @@ arangosh&gt; stmt.explain();
         <span class="hljs-string">"indexCoversProjections"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"indexes"</span> : [ 
           { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"9"</span>, 
+            <span class="hljs-string">"id"</span> : <span class="hljs-string">"10"</span>, 
             <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
-            <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1636256376692932608"</span>, 
+            <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1641835654923943936"</span>, 
             <span class="hljs-string">"fields"</span> : [ 
               <span class="hljs-string">"user"</span> 
             ], 
@@ -97,7 +97,7 @@ arangosh&gt; stmt.explain();
           <span class="hljs-number">6</span> 
         ], 
         <span class="hljs-string">"id"</span> : <span class="hljs-number">5</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">2.95</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">2.995</span>, 
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"inVariable"</span> : { 
           <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
@@ -127,14 +127,14 @@ arangosh&gt; stmt.explain();
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"doc"</span> 
       } 
     ], 
-    <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">2.95</span>, 
+    <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">2.995</span>, 
     <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"initialize"</span> : <span class="hljs-literal">true</span>, 
     <span class="hljs-string">"isModificationQuery"</span> : <span class="hljs-literal">false</span> 
   }, 
   <span class="hljs-string">"warnings"</span> : [ ], 
   <span class="hljs-string">"stats"</span> : { 
-    <span class="hljs-string">"rulesExecuted"</span> : <span class="hljs-number">35</span>, 
+    <span class="hljs-string">"rulesExecuted"</span> : <span class="hljs-number">36</span>, 
     <span class="hljs-string">"rulesSkipped"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"plansCreated"</span> : <span class="hljs-number">1</span> 
   }, 

@@ -1,0 +1,256 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Kaveh Vahedipour
+/// @author Matthew Von-Maszewski
+/// @author Max Neunhoeffer
+////////////////////////////////////////////////////////////////////////////////
+
+#include "TakeoverShardLeadership.h"
+#include "MaintenanceFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/FollowerInfo.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "Transaction/ClusterUtils.h"
+#include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/DatabaseGuard.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Collections.h"
+#include "VocBase/Methods/Databases.h"
+
+#include <velocypack/Compare.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+using namespace arangodb;
+using namespace arangodb::application_features;
+using namespace arangodb::maintenance;
+using namespace arangodb::methods;
+
+TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
+                                             ActionDescription const& desc)
+    : ActionBase(feature, desc) {
+  std::stringstream error;
+
+  _labels.emplace(FAST_TRACK);
+
+  if (!desc.has(DATABASE)) {
+    error << "database must be specified";
+  }
+  TRI_ASSERT(desc.has(DATABASE));
+
+  if (!desc.has(COLLECTION)) {
+    error << "collection must be specified. ";
+  }
+  TRI_ASSERT(desc.has(COLLECTION));
+
+  if (!desc.has(SHARD)) {
+    error << "shard must be specified";
+  }
+  TRI_ASSERT(desc.has(SHARD));
+
+  if (!desc.has(THE_LEADER)) {
+    error << "leader must be specified. ";
+  }
+  TRI_ASSERT(desc.has(THE_LEADER));
+
+  if (!desc.has(LOCAL_LEADER)) {
+    error << "local leader must be specified. ";
+  }
+  TRI_ASSERT(desc.has(LOCAL_LEADER));
+
+  TRI_ASSERT(desc.has(OLD_CURRENT_COUNTER));
+
+  if (!error.str().empty()) {
+    LOG_TOPIC("2aa85", ERR, Logger::MAINTENANCE) << "TakeoverLeadership: " << error.str();
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    setState(FAILED);
+  }
+}
+
+TakeoverShardLeadership::~TakeoverShardLeadership() {}
+
+static void sendLeaderChangeRequests(std::vector<ServerID> const& currentServers,
+                              std::shared_ptr<std::vector<ServerID>>& realInsyncFollowers,
+                              std::string const& databaseName, ShardID const& shardID,
+                              std::string const& oldLeader) {
+
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return;
+  }
+
+  std::string const& sid = ServerState::instance()->getId();
+
+
+  VPackBuilder bodyBuilder;
+  {
+    VPackObjectBuilder ob(&bodyBuilder);
+    bodyBuilder.add("leaderId", VPackValue(sid));
+    bodyBuilder.add("oldLeaderId", VPackValue(oldLeader));
+    bodyBuilder.add("shard", VPackValue(shardID));
+  }
+
+  std::string const url = "/_db/" + databaseName + "/_api/replication/set-the-leader";
+
+  std::vector<ClusterCommRequest> requests;
+  auto body = std::make_shared<std::string>(bodyBuilder.toJson());
+  for (auto const& srv : currentServers) {
+    if (srv == sid) {
+      continue; // ignore ourself
+    }
+    LOG_TOPIC("42516", DEBUG, Logger::MAINTENANCE)
+      << "Sending " << bodyBuilder.toJson() << " to " << srv;
+    requests.emplace_back("server:" + srv, RequestType::PUT, url, body);
+  }
+
+  cc->performRequests(requests, 3.0, Logger::COMMUNICATION, false);
+
+  // This code intentionally ignores all errors
+  realInsyncFollowers = std::make_shared<std::vector<ServerID>>();
+  for (auto const& req : requests) {
+    ClusterCommResult const& result = req.result;
+    if (result.status == CL_COMM_RECEIVED && result.errorCode == TRI_ERROR_NO_ERROR) {
+      if (result.result && result.result->getHttpReturnCode() == 200) {
+        realInsyncFollowers->push_back(result.serverID);
+      }
+    }
+  }
+}
+
+static void handleLeadership(LogicalCollection& collection,
+                      std::string const& localLeader,
+                      std::string const& plannedLeader,
+                      std::string const& databaseName,
+                      uint64_t oldCounter, MaintenanceFeature& feature) {
+  auto& followers = collection.followers();
+
+  if (plannedLeader.empty()) {   // Planned to lead
+    if (!localLeader.empty()) {  // We were not leader, assume leadership
+      // This will block the thread until we fetched a new current version
+      // in maintenance main thread.
+      feature.waitForLargerCurrentCounter(oldCounter);
+      auto currentInfo = ClusterInfo::instance()->getCollectionCurrent(
+          databaseName, std::to_string(collection.planId()));
+      if (currentInfo == nullptr) {
+        // Collection has been dropped we cannot continue here.
+        return;
+      }
+      TRI_ASSERT(currentInfo != nullptr);
+      std::vector<ServerID> currentServers = currentInfo->servers(collection.name());
+      std::shared_ptr<std::vector<ServerID>> realInsyncFollowers;
+
+      if (currentServers.size() > 0) {
+        std::string& oldLeader = currentServers.at(0);
+        // Check if the old leader has resigned and stopped all write
+        // (if so, we can assume that all servers are still in sync)
+        if (oldLeader.at(0) == '_') {
+          // remove the underscore from the list as it is useless anyway
+          oldLeader = oldLeader.substr(1);
+
+          // Update all follower and tell them that we are the leader now
+          sendLeaderChangeRequests(currentServers, realInsyncFollowers, databaseName, collection.name(), oldLeader);
+        }
+      }
+
+      std::vector<ServerID> failoverCandidates = currentInfo->failoverCandidates(collection.name());
+      followers->takeOverLeadership(failoverCandidates, realInsyncFollowers);
+      transaction::cluster::abortFollowerTransactionsOnShard(collection.id());
+    }
+  } else {  // Planned to follow
+    if (localLeader.empty()) {
+      // Note that the following does not delete the follower list
+      // and that this is crucial, because in the planned leader
+      // resign case, updateCurrentForCollections will report the
+      // resignation together with the old in-sync list to the
+      // agency. If this list would be empty, then the supervision
+      // would be very angry with us!
+      followers->setTheLeader(plannedLeader);
+      transaction::cluster::abortLeaderTransactionsOnShard(collection.id());
+    }
+    // Note that if we have been a follower to some leader
+    // we do not immediately adjust the leader here, even if
+    // the planned leader differs from what we have set locally.
+    // The setting must only be adjusted once we have
+    // synchronized with the new leader and negotiated
+    // a leader/follower relationship!
+  }
+}
+
+bool TakeoverShardLeadership::first() {
+  std::string const& database = _description.get(DATABASE);
+  std::string const& collection = _description.get(COLLECTION);
+  std::string const& shard = _description.get(SHARD);
+  std::string const& plannedLeader = _description.get(THE_LEADER);
+  std::string const& localLeader = _description.get(LOCAL_LEADER);
+  std::string const& oldCounterString = _description.get(OLD_CURRENT_COUNTER);
+  uint64_t oldCounter = basics::StringUtils::uint64(oldCounterString);
+
+  try {
+    DatabaseGuard guard(database);
+    auto& vocbase = guard.database();
+    Result found = methods::Collections::lookup(
+        vocbase, shard, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
+          TRI_ASSERT(coll);
+          LOG_TOPIC("5632a", DEBUG, Logger::MAINTENANCE)
+              << "trying to become leader of shard '" << database << "/" << shard;
+          // We adjust local leadership, note that the planned
+          // resignation case is not handled here, since then
+          // ourselves does not appear in shards[shard] but only
+          // "_" + ourselves.
+          handleLeadership(*coll, localLeader, plannedLeader,
+                           vocbase.name(), oldCounter, feature());
+        });
+
+    if (found.fail()) {
+      std::stringstream error;
+      error << "TakeoverShardLeadership: failed to lookup local collection " << shard << "in database " + database;
+      LOG_TOPIC("65342", ERR, Logger::MAINTENANCE) << error.str();
+      _result = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+    }
+  } catch (std::exception const& e) {
+    std::stringstream error;
+
+    error << "action " << _description << " failed with exception " << e.what();
+    LOG_TOPIC("79443", WARN, Logger::MAINTENANCE)
+        << "TakeoverShardLeadership: " << error.str();
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
+  }
+
+  if (_result.fail()) {
+    _feature.storeShardError(database, collection, shard,
+                             _description.get(SERVER_ID), _result);
+  }
+
+  notify();
+  return false;
+}
+

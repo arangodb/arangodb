@@ -561,9 +561,18 @@ void RocksDBEngine::start() {
     _options.db_write_buffer_size = opts->_totalWriteBufferSize;
   }
 
-  // this is cfFamilies.size() + 2 ... but _option needs to be set before
-  //  building cfFamilies
-  _options.max_write_buffer_number = 7 + 2;
+  if (!application_features::ApplicationServer::server->options()->processingResult().touched("rocksdb.max-write-buffer-number")) {
+    // user hasn't explicitly set the number of write buffers, so we use a default value based
+    // on the number of column families
+    // this is cfFamilies.size() + 2 ... but _option needs to be set before
+    //  building cfFamilies
+    // Update max_write_buffer_number above if you change number of families used
+    _options.max_write_buffer_number = 7 + 2;
+  } else if (_options.max_write_buffer_number < 7 + 2) {
+    // user set the value explicitly, and it is lower than recommended
+    _options.max_write_buffer_number = 7 + 2;
+    LOG_TOPIC("d5c49", WARN, Logger::ENGINES) << "ignoring value for option `--rocksdb.max-write-buffer-number` because it is lower than recommended";
+  }
 
   // cf options for definitons (dbs, collections, views, ...)
   rocksdb::ColumnFamilyOptions definitionsCF(_options);
@@ -601,8 +610,9 @@ void RocksDBEngine::start() {
   cfFamilies.emplace_back("VPackIndex", vpackFixedPrefCF);  // 4
   cfFamilies.emplace_back("GeoIndex", fixedPrefCF);         // 5
   cfFamilies.emplace_back("FulltextIndex", fixedPrefCF);    // 6
-  // DO NOT FORGET TO DESTROY THE CFs ON CLOSE
-  //  Update max_write_buffer_number above if you change number of families used
+    
+  TRI_ASSERT(static_cast<int>(_options.max_write_buffer_number) >= static_cast<int>(cfFamilies.size()));
+  // Update max_write_buffer_number above if you change number of families used
 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
   size_t const numberOfColumnFamilies = RocksDBColumnFamily::minNumberOfColumnFamilies;
@@ -1715,14 +1725,23 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       totalArchiveSize += f->SizeFileBytes();
     }
 
-    if (f->StartSequence() < minTickToKeep) {
-      // this file will be removed because it does not contain any data we 
-      // still need
-      if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
-        LOG_TOPIC("9f7a4", DEBUG, Logger::ENGINES)
-            << "RocksDB WAL file '" << f->PathName() << "' with start sequence "
-            << f->StartSequence() << " added to prunable list because it is not needed anymore";
-        _prunableWalFiles.emplace(f->PathName(), TRI_microtime() + _pruneWaitTime);
+    // check if there is another WAL file coming after the currently-looked-at
+    // There should be at least one live WAL file after it, however, let's be
+    // paranoid and do a proper check. If there is at least one WAL file following,
+    // we need to take its start tick into account as well, because the following
+    // file's start tick can be assumed to be the end tick of the current file!
+    if (f->StartSequence() < minTickToKeep &&
+        current < files.size() - 1) {      
+      auto const& n = files[current + 1].get();
+      if (n->StartSequence() < minTickToKeep) {
+        // this file will be removed because it does not contain any data we
+        // still need
+        if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
+          LOG_TOPIC("9f7a4", DEBUG, Logger::ENGINES)
+              << "RocksDB WAL file '" << f->PathName() << "' with start sequence "
+              << f->StartSequence() << " added to prunable list because it is not needed anymore";
+          _prunableWalFiles.emplace(f->PathName(), TRI_microtime() + _pruneWaitTime);
+        }
       }
     } 
   }
@@ -2108,6 +2127,23 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     }
   };
 
+  // get string property from each column family and return sum;
+  auto addIntAllCf = [&](std::string const& s) {
+    int64_t sum = 0;
+    for (auto cfh : RocksDBColumnFamily::_allHandles) {
+      std::string v;
+      if (_db->GetProperty(cfh, s, &v)) {
+        int64_t temp=basics::StringUtils::int64(v);
+
+        // -1 returned for somethings that are valid property but no value
+        if (0 < temp) {
+          sum += temp;
+        } // if
+      } // if
+    } // for
+    builder.add(s, VPackValue(sum));
+  };
+
   // add column family properties
   auto addCf = [&](std::string const& name, rocksdb::ColumnFamilyHandle* c) {
     std::string v;
@@ -2135,40 +2171,43 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
 
   builder.openObject();
   for (int i = 0; i < _options.num_levels; ++i) {
-    addStr(rocksdb::DB::Properties::kNumFilesAtLevelPrefix + std::to_string(i));
-    addStr(rocksdb::DB::Properties::kCompressionRatioAtLevelPrefix + std::to_string(i));
+    addIntAllCf(rocksdb::DB::Properties::kNumFilesAtLevelPrefix + std::to_string(i));
+    // ratio needs new calculation with all cf, not a simple add operation
+    addIntAllCf(rocksdb::DB::Properties::kCompressionRatioAtLevelPrefix + std::to_string(i));
   }
-  addInt(rocksdb::DB::Properties::kNumImmutableMemTable);
-  addInt(rocksdb::DB::Properties::kNumImmutableMemTableFlushed);
-  addInt(rocksdb::DB::Properties::kMemTableFlushPending);
-  addInt(rocksdb::DB::Properties::kCompactionPending);
+  // caution:  you must read rocksdb/db/interal_stats.cc carefully to
+  //           determine if a property is for whole database or one column family
+  addIntAllCf(rocksdb::DB::Properties::kNumImmutableMemTable);
+  addIntAllCf(rocksdb::DB::Properties::kNumImmutableMemTableFlushed);
+  addIntAllCf(rocksdb::DB::Properties::kMemTableFlushPending);
+  addIntAllCf(rocksdb::DB::Properties::kCompactionPending);
   addInt(rocksdb::DB::Properties::kBackgroundErrors);
-  addInt(rocksdb::DB::Properties::kCurSizeActiveMemTable);
-  addInt(rocksdb::DB::Properties::kCurSizeAllMemTables);
-  addInt(rocksdb::DB::Properties::kSizeAllMemTables);
-  addInt(rocksdb::DB::Properties::kNumEntriesActiveMemTable);
-  addInt(rocksdb::DB::Properties::kNumEntriesImmMemTables);
-  addInt(rocksdb::DB::Properties::kNumDeletesActiveMemTable);
-  addInt(rocksdb::DB::Properties::kNumDeletesImmMemTables);
-  addInt(rocksdb::DB::Properties::kEstimateNumKeys);
-  addInt(rocksdb::DB::Properties::kEstimateTableReadersMem);
+  addIntAllCf(rocksdb::DB::Properties::kCurSizeActiveMemTable);
+  addIntAllCf(rocksdb::DB::Properties::kCurSizeAllMemTables);
+  addIntAllCf(rocksdb::DB::Properties::kSizeAllMemTables);
+  addIntAllCf(rocksdb::DB::Properties::kNumEntriesActiveMemTable);
+  addIntAllCf(rocksdb::DB::Properties::kNumEntriesImmMemTables);
+  addIntAllCf(rocksdb::DB::Properties::kNumDeletesActiveMemTable);
+  addIntAllCf(rocksdb::DB::Properties::kNumDeletesImmMemTables);
+  addIntAllCf(rocksdb::DB::Properties::kEstimateNumKeys);
+  addIntAllCf(rocksdb::DB::Properties::kEstimateTableReadersMem);
   addInt(rocksdb::DB::Properties::kNumSnapshots);
   addInt(rocksdb::DB::Properties::kOldestSnapshotTime);
-  addInt(rocksdb::DB::Properties::kNumLiveVersions);
+  addIntAllCf(rocksdb::DB::Properties::kNumLiveVersions);
   addInt(rocksdb::DB::Properties::kMinLogNumberToKeep);
-  addInt(rocksdb::DB::Properties::kEstimateLiveDataSize);
-  addInt(rocksdb::DB::Properties::kLiveSstFilesSize);
+  addIntAllCf(rocksdb::DB::Properties::kEstimateLiveDataSize);
+  addIntAllCf(rocksdb::DB::Properties::kLiveSstFilesSize);
   addStr(rocksdb::DB::Properties::kDBStats);
   addStr(rocksdb::DB::Properties::kSSTables);
   addInt(rocksdb::DB::Properties::kNumRunningCompactions);
   addInt(rocksdb::DB::Properties::kNumRunningFlushes);
   addInt(rocksdb::DB::Properties::kIsFileDeletionsEnabled);
-  addInt(rocksdb::DB::Properties::kEstimatePendingCompactionBytes);
+  addIntAllCf(rocksdb::DB::Properties::kEstimatePendingCompactionBytes);
   addInt(rocksdb::DB::Properties::kBaseLevel);
   addInt(rocksdb::DB::Properties::kBlockCacheCapacity);
   addInt(rocksdb::DB::Properties::kBlockCacheUsage);
   addInt(rocksdb::DB::Properties::kBlockCachePinnedUsage);
-  addInt(rocksdb::DB::Properties::kTotalSstFilesSize);
+  addIntAllCf(rocksdb::DB::Properties::kTotalSstFilesSize);
   addInt(rocksdb::DB::Properties::kActualDelayedWriteRate);
   addInt(rocksdb::DB::Properties::kIsWriteStopped);
 
@@ -2199,6 +2238,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   }
 
   // print column family statistics
+  //  warning: output format limits numbers to 3 digits of precision or less.
   builder.add("columnFamilies", VPackValue(VPackValueType::Object));
   addCf("definitions", RocksDBColumnFamily::definitions());
   addCf("documents", RocksDBColumnFamily::documents());
@@ -2208,6 +2248,10 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf("geo", RocksDBColumnFamily::geo());
   addCf("fulltext", RocksDBColumnFamily::fulltext());
   builder.close();
+
+  if (_listener) {
+    builder.add("rocksdbengine.throttle.bps", VPackValue(_listener->GetThrottle()));
+  } // if
 
   builder.close();
 }

@@ -2,7 +2,7 @@ arangosh&gt; stmt.explain({ <span class="hljs-attr">allPlans</span>: <span class
 ........&gt; <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">plan</span>) </span>{ <span class="hljs-keyword">return</span> formatPlan(plan); });
 [ 
   { 
-    <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">2.95</span>, 
+    <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">2.995</span>, 
     <span class="hljs-string">"nodes"</span> : [ 
       <span class="hljs-string">"SingletonNode"</span>, 
       <span class="hljs-string">"IndexNode"</span>, 
