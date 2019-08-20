@@ -7,7 +7,7 @@
 The name of the View.
 
 @RESTBODYPARAM{type,string,required,string}
-The type of the View. Must be equal to *"arangosearch"*.
+The type of the View (immutable). Must be equal to *"arangosearch"*.
 
 @RESTBODYPARAM{cleanupIntervalStep,integer,optional,uint64}
 Wait at least this many commits between removing unused files in the
@@ -105,7 +105,7 @@ The list of analyzers to be used for indexing of string values
 The field properties. If specified, then *fields* should be a JSON object
 containing the following attributes:
 
-@RESTSTRUCT{[field-name],post_api_view_fields,array,optional,object}
+@RESTSTRUCT{[field-name],post_api_view_fields,object,optional,object}
 This is a recursive structure for the specific attribute path, potentially
 containing any of the following attributes:
 *analyzers*, *fields*, *includeAllFields*, *trackListPositions*, *storeValues*
