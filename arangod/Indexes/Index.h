@@ -224,6 +224,9 @@ class Index {
   /// @brief whether or not any attribute is expanded
   inline bool hasExpansion() const { return _useExpansion; }
 
+  /// @brief if index needs explicit reversal and wouldn`t be reverted by storage rollback
+  virtual bool needsReversal() const { return false; } 
+
   /// @brief whether or not the index covers all the attributes passed in
   virtual bool covers(std::unordered_set<std::string> const& attributes) const;
 
@@ -249,7 +252,7 @@ class Index {
   static IndexType type(char const* type, size_t len);
 
   static IndexType type(std::string const& type);
-  
+
  public:
 
   virtual char const* typeName() const = 0;
