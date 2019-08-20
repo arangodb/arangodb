@@ -2813,10 +2813,9 @@ Result MMFilesCollection::truncate(transaction::Methods& trx, OperationOptions& 
   READ_LOCKER(guard, _indexesLock);
   TRI_voc_tick_t tick = TRI_NewTickServer();
   if (_indexes.size() > 1) {
-    auto indexes = _indexes;
-    auto idx = indexes.begin();
+    auto idx = _indexes.begin();
     ++idx;  // skip primary index
-    for (; idx != indexes.end(); ++idx) {
+    for (; idx != _indexes.end(); ++idx) {
       TRI_ASSERT((*idx)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
       (*idx)->afterTruncate(tick);
     }
@@ -3254,10 +3253,9 @@ Result MMFilesCollection::insertSecondaryIndexes(arangodb::transaction::Methods&
 
   READ_LOCKER(guard, _indexesLock);
   if (_indexes.size() > 1) {
-    auto indexes = _indexes;
-    auto idx = indexes.begin();
+    auto idx = _indexes.begin();
     idx++; // skip primary index
-    for (; idx != indexes.end(); ++idx) {
+    for (; idx != _indexes.end(); ++idx) {
       TRI_ASSERT((*idx)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
       MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx->get());
       if (!useSecondary && !midx->isPersistent()) {
@@ -3301,10 +3299,9 @@ Result MMFilesCollection::deleteSecondaryIndexes(transaction::Methods& trx,
 
   READ_LOCKER(guard, _indexesLock);
   if (_indexes.size() > 1) {
-    auto indexes = _indexes;
-    auto idx = indexes.begin();
+    auto idx = _indexes.begin();
     ++idx; // skip primary index
-    for (; idx != indexes.end(); ++idx) {
+    for (; idx != _indexes.end(); ++idx) {
       TRI_ASSERT((*idx)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
       MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx->get());
       if (!useSecondary && !midx->isPersistent()) {

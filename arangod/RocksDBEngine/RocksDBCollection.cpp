@@ -444,7 +444,6 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
 
   std::shared_ptr<arangodb::Index> toRemove;
   {
-    size_t i = 0;
     WRITE_LOCKER(guard, _indexesLock);
     for (auto& it : _indexes) {
       if (iid == it->id()) {
@@ -452,7 +451,6 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
         _indexes.erase(it);
         break;
       }
-      ++i;
     }
   }
 
@@ -1200,7 +1198,7 @@ void reverseIdxOps(PhysicalCollection::IndexContainerType const& indexes,
       if (std::forward<F>(op)(rIdx).fail()) {
         // best effort for reverse failed. Let`s trigger full rollback  
         // or we will end up with inconsistent storage and indexes
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Failed to reverse index operation.");
       }
     }
   }
