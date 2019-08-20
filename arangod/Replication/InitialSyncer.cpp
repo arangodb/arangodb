@@ -82,9 +82,12 @@ void InitialSyncer::startRecurringBatchExtension() {
           },
           Logger::REPLICATION, "queue batch extension");
   if (!queued) {
-    LOG_TOPIC("f8b3e", FATAL, Logger::REPLICATION)
-        << "Failed to queue batch extension for 5 minutes, exiting.";
-    FATAL_ERROR_EXIT();
+    LOG_TOPIC("f8b3e", ERR, Logger::REPLICATION)
+        << "Failed to queue replication batch extension for 5 minutes, exiting.";
+    // don't abort, as this is not a critical error 
+    // if requeueing has failed here, the replication can still go on, but
+    // it _may_ fail later because the batch has expired on the leader.
+    // but there are still chances it can continue successfully
   }
 }
 
