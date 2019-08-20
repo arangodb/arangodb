@@ -4,7 +4,7 @@
 #define IDS_DBSERVER0003 4
 #define IDS_PLAN 5
 #define IDS_SUPERVISION 6
-IDS_CURRENT, RCDATA
+IDS_CURRENT RCDATA
 {
   "",
   "{",
@@ -1980,10 +1980,10 @@ IDS_CURRENT, RCDATA
   "      ""version"": 30500",
   "    }",
   "  }",
-  "}",
+  "}\0",
   "",
 }
-IDS_DBSERVER0001, RCDATA
+IDS_DBSERVER0001 RCDATA
 {
   "",
   "{",
@@ -4889,10 +4889,10 @@ IDS_DBSERVER0001, RCDATA
   "      ]",
   "    }",
   "  }",
-  "}",
+  "}\0",
   "",
 }
-IDS_DBSERVER0002, RCDATA
+IDS_DBSERVER0002 RCDATA
 {
   "",
   "{",
@@ -6501,10 +6501,10 @@ IDS_DBSERVER0002, RCDATA
   "      ]",
   "    }",
   "  }",
-  "}",
+  "}\0",
   "",
 }
-IDS_DBSERVER0003, RCDATA
+IDS_DBSERVER0003 RCDATA
 {
   "",
   "{",
@@ -9389,10 +9389,10 @@ IDS_DBSERVER0003, RCDATA
   "      ""theLeader"": ""PRMR-62940941-7b13-4333-86a4-819deacff9e3""",
   "    }",
   "  }",
-  "}",
+  "}\0",
   "",
 }
-IDS_PLAN, RCDATA
+IDS_PLAN RCDATA
 {
   "",
   "{",
@@ -10804,10 +10804,10 @@ IDS_PLAN, RCDATA
   "  ""Version"": 50,",
   "  ""Singles"": {},",
   "  ""Lock"": ""UNLOCKED""",
-  "}",
+  "}\0",
   "",
 }
-IDS_SUPERVISION, RCDATA
+IDS_SUPERVISION RCDATA
 {
   "",
   "{",
@@ -10864,8 +10864,6 @@ IDS_SUPERVISION, RCDATA
   "    ""Mode"": ""Normal"",",
   "    ""Timestamp"": ""2018-10-09T09:19:23Z""",
   "  }",
-  "}",
-  "",
-}
-
+  "}\0",
+  ""
 }
