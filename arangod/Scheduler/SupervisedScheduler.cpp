@@ -374,13 +374,13 @@ void SupervisedScheduler::runSupervisor() {
   
   auto tStart = TRI_microtime();
   auto waitMe = [&tStart](int where) {
-    auto tExit = TRI_microtime();
-    if (tExit - tStart > 0.25) {
-      LOG_TOPIC("66666", ERR, arangodb::Logger::FIXME) <<
-        "scheduler sleeps: " << (tExit - tStart) << " - where - " << where;
-      tStart = tExit;
-    }
-  };
+                  auto tExit = TRI_microtime();
+                  if (tExit - tStart > 0.25) {
+                    LOG_TOPIC("66666", INFO, arangodb::Logger::FIXME) <<
+                      "scheduler sleeps: " << (tExit - tStart) << " -  where - " << where;
+                  }
+                  tStart = tExit;
+                };
   while (!_stopping) {
     waitMe(__LINE__);
     uint64_t jobsDone = _jobsDone.load(std::memory_order_acquire);
@@ -563,13 +563,13 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
 void SupervisedScheduler::startOneThread() {
   auto tStart = TRI_microtime();
   auto waitMe = [&tStart](int where) {
-    auto tExit = TRI_microtime();
-    if (tExit - tStart > 0.25) {
-      LOG_TOPIC("66666", ERR, arangodb::Logger::FIXME) <<
-        "scheduler sleeps: " << (tExit - tStart) << " - where - " << where;
-      tStart = tExit;
-    }
-  };
+                  auto tExit = TRI_microtime();
+                  if (tExit - tStart > 0.25) {
+                    LOG_TOPIC("66666", INFO, arangodb::Logger::FIXME) <<
+                      "scheduler sleeps: " << (tExit - tStart) << " - wher    e - " << where;
+                  }
+                  tStart = tExit;
+                };
   // TRI_ASSERT(_numWorkers < _maxNumWorker);
   if (_numWorkers + _abandonedWorkerStates.size() >= _maxNumWorker) {
     return;  // do not add more threads, than maximum allows
