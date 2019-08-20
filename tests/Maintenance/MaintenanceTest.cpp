@@ -481,17 +481,17 @@ class MaintenanceTestActionPhaseOne : public ::testing::Test {
   arangodb::StorageEngine* origStorageEngine;
   
   MaintenanceTestActionPhaseOne()
-      : po(std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
-                                                               std::string(),
-                                                               "path")),
-        _dummy(loadResources()),
-        as(po, nullptr),
-        feature(as),
-        localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
-                   {dbsIds[shortNames[1]], createNode(dbs1Str)},
-                   {dbsIds[shortNames[2]], createNode(dbs2Str)}},
-        engine(as),
-        origStorageEngine(arangodb::EngineSelectorFeature::ENGINE) {
+    : _dummy(loadResources()),
+      po(std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
+                                                             std::string(),
+                                                             "path")),
+      as(po, nullptr),
+      feature(as),
+      localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
+                 {dbsIds[shortNames[1]], createNode(dbs1Str)},
+                 {dbsIds[shortNames[2]], createNode(dbs2Str)}},
+      engine(as),
+      origStorageEngine(arangodb::EngineSelectorFeature::ENGINE) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
   }
 
