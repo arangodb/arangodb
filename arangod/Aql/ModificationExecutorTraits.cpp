@@ -723,12 +723,13 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
   _updateOrReplaceBuilder.close();
   auto toUpdateOrReplace = _updateOrReplaceBuilder.slice();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  long numReturns = std::count_if(_operations.begin(), _operations.end(),
-                                  [](ModOperationType const& el) {
-                                    return el == ModOperationType::APPLY_RETURN;
-                                  });
-  long availableInArray = static_cast<long>(toUpdateOrReplace.length());
-  TRI_ASSERT(numReturns <= availableInArray);
+  size_t numReturns = 0;
+  for (auto const& op : _operations) {
+    if (op == ModOperationType::APPLY_RETURN) {
+      numReturns++;
+    }
+  }
+  TRI_ASSERT(_justCopy || numReturns <= toUpdateOrReplace.length());
 #endif
   if (toUpdateOrReplace.length() == 0) {
     _justCopy = true;
