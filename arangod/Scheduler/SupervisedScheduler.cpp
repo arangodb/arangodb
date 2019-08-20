@@ -31,6 +31,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "Basics/process-utils.h"
 #include "Basics/cpu-relax.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/Acceptor.h"
@@ -367,7 +368,7 @@ void SupervisedScheduler::runSupervisor() {
 
   uint64_t lastJobsDone = 0, lastJobsSubmitted = 0;
   uint64_t jobsStallingTick = 0, lastQueueLength = 0;
-
+  int count = 0;
   while (!_stopping) {
     uint64_t jobsDone = _jobsDone.load(std::memory_order_acquire);
     uint64_t jobsSubmitted = _jobsSubmitted.load(std::memory_order_acquire);
@@ -411,6 +412,15 @@ void SupervisedScheduler::runSupervisor() {
       break;
     }
 
+    if (count++ % 500) {
+      count = 0;
+      auto info = TRI_ProcessInfoSelf();
+      LOG_TOPIC("66677", DEBUG, arangodb::Logger::THREADS)
+        << " numberOfThreads: " << info._numberThreads
+        << " JobsDone - " << jobsDone
+        << " JobsSubmitted - " << jobsSubmitted
+        << " JobsDequeued - " << jobsDequeued;
+    }
     _conditionSupervisor.wait_for(guard, std::chrono::milliseconds(100));
   }
 }
