@@ -3,6 +3,17 @@ v3.5.1 (XXXX-XX-XX)
 
 * Agents to remove callback entries when responded to with code 404.
 
+* Fixed internal issue #4378: fix bug in MoveShard::abort which causes a
+  duplicate entry in the follower list.
+
+* Fixed cut'n'pasting code from the documentation into arangosh.
+
+* Fixed issue #9652: fix ArangoSearch wrong name collision and raising
+  "Name collision detected" error during creation of a custom analyzer with
+  stopwords.
+
+* Fixed an agency bug found in Windows tests.
+
 * Added initial support for wgs84 reference ellipsoid in GEO_DISTANCE through
   third optional parameter to AQL function.
 
