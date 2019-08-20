@@ -559,12 +559,22 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
 }
 
 void SupervisedScheduler::startOneThread() {
+  auto tStart = TRI_microtime();
+  auto waitMe = [&tStart](int where) {
+    auto tExit = TRI_microtime();
+    if (tExit - tStart > 0.25) {
+      LOG_TOPIC("66666", ERR, arangodb::Logger::FIXME) <<
+        "scheduler sleeps: " << (tExit - tStart) << " - where - " << where;
+      tStart = tExit;
+    }
+  };
   // TRI_ASSERT(_numWorkers < _maxNumWorker);
   if (_numWorkers + _abandonedWorkerStates.size() >= _maxNumWorker) {
     return;  // do not add more threads, than maximum allows
   }
 
   std::unique_lock<std::mutex> guard(_mutexSupervisor);
+    waitMe(__LINE__);
 
 // start a new thread
 
@@ -577,16 +587,20 @@ void SupervisedScheduler::startOneThread() {
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
+    waitMe(__LINE__);
 
   if (!_workerStates.back()->start()) {
+    waitMe(__LINE__);
     // failed to start a worker
     _workerStates.pop_back();  // pop_back deletes shared_ptr, which deletes thread
     LOG_TOPIC("913b5", ERR, Logger::THREADS)
         << "could not start additional worker thread";
 
+    waitMe(__LINE__);
   } else {
     LOG_TOPIC("f9de8", TRACE, Logger::THREADS) << "Started new thread";
     _conditionSupervisor.wait(guard);
+    waitMe(__LINE__);
   }
 }
 
