@@ -42,7 +42,7 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
     arangodb::aql::AstNode const* op,  // binary operation that is parent of access and other
     arangodb::aql::Variable const* reference,  // variable used in access(es)
     std::unordered_map<size_t /*offset in idx->fields()*/, std::vector<arangodb::aql::AstNode const*> /*conjunct - operation*/>& found,  // marks operations covered by index-fields
-    std::unordered_set<std::string>& nonNullAttributes,  // set of stringified op-childeren (access other) that may not be null
+    std::unordered_set<std::string>& nonNullAttributes,  // set of stringified op-children (access other) that may not be null
     bool isExecution  // skip usage check in execution phase
 ) {
   if (!idx->canUseConditionPart(access, other, op, reference, nonNullAttributes, isExecution)) {
@@ -218,7 +218,7 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
   size_t attributesCovered = 0;
   size_t attributesCoveredByEquality = 0;
   double equalityReductionFactor = 20.0;
-  double estimatedCosts = static_cast<double>(itemsInIndex);
+  double estimatedItems = static_cast<double>(itemsInIndex);
 
   for (size_t i = 0; i < idx->fields().size(); ++i) {
     auto it = found.find(i);
@@ -244,7 +244,7 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
 
     if (containsEquality) {
       ++attributesCoveredByEquality;
-      estimatedCosts /= equalityReductionFactor;
+      estimatedItems /= equalityReductionFactor;
 
       // decrease the effect of the equality reduction factor
       equalityReductionFactor *= 0.25;
@@ -257,10 +257,10 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
       if (nodes.size() >= 2) {
         // at least two (non-equality) conditions. probably a range with lower
         // and upper bound defined
-        estimatedCosts /= 7.5;
+        estimatedItems /= 7.5;
       } else {
         // one (non-equality). this is either a lower or a higher bound
-        estimatedCosts /= 2.0;
+        estimatedItems /= 2.0;
       }
     }
 
@@ -274,91 +274,87 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
   Index::FilterCosts costs = Index::FilterCosts::defaultCosts(itemsInIndex);
   costs.coveredAttributes = attributesCovered;
 
-  if (attributesCoveredByEquality == idx->fields().size() &&
-      (idx->unique() || idx->implicitlyUnique())) {
-    // index is unique and condition covers all attributes by equality
-    costs.supportsCondition = true;
-
-    if (itemsInIndex == 0) {
-      costs.estimatedItems = 0;
-      costs.estimatedCosts = 0.0;
-    } else {
-      costs.estimatedItems = values;
-      costs.estimatedCosts = (std::max)(static_cast<double>(1),
-                                        std::log2(static_cast<double>(itemsInIndex)) * values);
-    }
-    // cost is already low... now slightly prioritize unique indexes
-    costs.estimatedCosts *= 0.995 - 0.05 * (idx->fields().size() - 1);
-  } else if (attributesCovered > 0 &&
-             (!idx->sparse() || attributesCovered == idx->fields().size())) {
+  if (attributesCovered > 0 &&
+      (!idx->sparse() || attributesCovered == idx->fields().size())) {
     // if the condition contains at least one index attribute and is not sparse,
     // or the index is sparse and all attributes are covered by the condition,
     // then it can be used (note: additional checks for condition parts in
     // sparse indexes are contained in Index::canUseConditionPart)
     costs.supportsCondition = true;
-    costs.estimatedItems = static_cast<size_t>(
-        (std::max)(static_cast<size_t>(estimatedCosts * values), static_cast<size_t>(1)));
 
-    // check if the index has a selectivity estimate ready
-    if (idx->hasSelectivityEstimate() &&
-        attributesCoveredByEquality == idx->fields().size()) {
-      double estimate = idx->selectivityEstimate();
-      if (estimate > 0.0) {
-        costs.estimatedItems = static_cast<size_t>(1.0 / estimate);
-      }
-    } else if (attributesCoveredByEquality > 0) {
-      TRI_ASSERT(attributesCovered > 0);
-      // the index either does not have a selectivity estimate, or not all
-      // of its attributes are covered by the condition using an equality lookup
-      // however, if the search condition uses equality lookups on the prefix
-      // of the index, then we can check if there is another index which is just
-      // indexing the prefix, and "steal" the selectivity estimate from that
-      // index for example, if the condition is "doc.a == 1 && doc.b > 2", and
-      // the current index is created on ["a", "b"], then we will not use the
-      // selectivity estimate of the current index (due to the range condition
-      // used for the second index attribute). however, if there is another
-      // index on just "a", we know that the current index is at least as
-      // selective as the index on the single attribute. and that the extra
-      // condition we have will make it even more selectivity. so in this case
-      // we will re-use the selectivity estimate from the other index, and are
-      // happy.
-      for (auto const& otherIdx : allIndexes) {
-        auto const* other = otherIdx.get();
-        if (other == idx || !other->hasSelectivityEstimate()) {
-          continue;
-        }
-        auto const& otherFields = other->fields();
-        if (otherFields.size() >= attributesCovered) {
-          // other index has more fields than we have, or the same amount.
-          // then it will not be helpful
-          continue;
-        }
-        size_t matches = 0;
-        for (size_t i = 0; i < otherFields.size(); ++i) {
-          if (otherFields[i] != idx->fields()[i]) {
-            break;
-          }
-          ++matches;
-        }
-        if (matches == otherFields.size()) {
-          double estimate = other->selectivityEstimate();
-          if (estimate > 0.0) {
-            // reuse the estimate from the other index
-            costs.estimatedItems = static_cast<size_t>(1.0 / estimate);
-            break;
-          }
-        }
-      }
-    }
+    if (itemsInIndex > 0) {
+      costs.estimatedItems = static_cast<size_t>(estimatedItems * values);
 
-    if (itemsInIndex == 0) {
-      costs.estimatedCosts = 0.0;
-    } else {
-      // lookup cost is O(log(n))
-      costs.estimatedCosts = (std::max)(static_cast<double>(1),
-                                 std::log2(static_cast<double>(itemsInIndex)) * values);
+      // check if the index has a selectivity estimate ready
+      if (idx->hasSelectivityEstimate() &&
+          attributesCoveredByEquality == idx->fields().size()) {
+        double estimate = idx->selectivityEstimate();
+        if (estimate > 0.0) {
+          costs.estimatedItems = static_cast<size_t>(1.0 / estimate * values);
+        }
+      } else if (attributesCoveredByEquality > 0) {
+        TRI_ASSERT(attributesCovered > 0);
+        // the index either does not have a selectivity estimate, or not all
+        // of its attributes are covered by the condition using an equality lookup
+        // however, if the search condition uses equality lookups on the prefix
+        // of the index, then we can check if there is another index which is just
+        // indexing the prefix, and "steal" the selectivity estimate from that
+        // index for example, if the condition is "doc.a == 1 && doc.b > 2", and
+        // the current index is created on ["a", "b"], then we will not use the
+        // selectivity estimate of the current index (due to the range condition
+        // used for the second index attribute). however, if there is another
+        // index on just "a", we know that the current index is at least as
+        // selective as the index on the single attribute. and that the extra
+        // condition we have will make it even more selectivity. so in this case
+        // we will re-use the selectivity estimate from the other index, and are
+        // happy.
+        for (auto const& otherIdx : allIndexes) {
+          auto const* other = otherIdx.get();
+          if (other == idx || !other->hasSelectivityEstimate()) {
+            continue;
+          }
+          auto const& otherFields = other->fields();
+          if (otherFields.size() >= attributesCovered) {
+            // other index has more fields than we have, or the same amount.
+            // then it will not be helpful
+            continue;
+          }
+          size_t matches = 0;
+          for (size_t i = 0; i < otherFields.size(); ++i) {
+            if (otherFields[i] != idx->fields()[i]) {
+              break;
+            }
+            ++matches;
+          }
+          if (matches == otherFields.size()) {
+            double estimate = other->selectivityEstimate();
+            if (estimate > 0.0) {
+              // reuse the estimate from the other index
+              costs.estimatedItems = static_cast<size_t>(1.0 / estimate * values);
+              break;
+            }
+          }
+        }
+      }
+
+      // costs.estimatedItems is always set here, make it at least 1
+      costs.estimatedItems = std::max(size_t(1), costs.estimatedItems);
+      
+      // seek cost is O(log(n))
+      costs.estimatedCosts = std::max(double(1.0),
+                                      std::log2(double(itemsInIndex)) * values);
+      // add per-document processing cost
+      costs.estimatedCosts += costs.estimatedItems * 0.05;
       // slightly prefer indexes that cover more attributes
       costs.estimatedCosts -= (attributesCovered - 1) * 0.02;
+    
+      // cost is already low... now slightly prioritize unique indexes
+      if (idx->unique() || idx->implicitlyUnique()) {
+        costs.estimatedCosts *= 0.995 - 0.05 * (idx->fields().size() - 1);
+      }
+
+      // box the estimated costs to [0 - inf
+      costs.estimatedCosts = std::max(double(0.0), costs.estimatedCosts);
     }
   } else {
     // index does not help for this condition
@@ -397,7 +393,7 @@ Index::SortCosts SortedIndexAttributeMatcher::supportsSortCondition(
         costs.supportsCondition = true;
       } else if (costs.coveredAttributes > 0) {
         costs.estimatedCosts = (itemsInIndex / costs.coveredAttributes) *
-                               std::log2(static_cast<double>(itemsInIndex));
+                               std::log2(double(itemsInIndex));
         if (idx->isPersistent() && sortCondition->isDescending()) {
           // reverse iteration is more expensive
           costs.estimatedCosts *= 4;

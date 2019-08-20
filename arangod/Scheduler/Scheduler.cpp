@@ -143,14 +143,15 @@ void Scheduler::runCronThread() {
   }
 }
 
-Scheduler::WorkHandle Scheduler::queueDelay(RequestLane lane, clock::duration delay,
-                                            std::function<void(bool cancelled)> handler) {
+std::pair<bool, Scheduler::WorkHandle> Scheduler::queueDelay(
+    RequestLane lane, clock::duration delay, std::function<void(bool cancelled)> handler) {
   TRI_ASSERT(!isStopping());
 
   if (delay < std::chrono::milliseconds(1)) {
     // execute directly
-    queue(lane, [handler = std::move(handler)]() { handler(false); });
-    return nullptr;
+    bool queued =
+        queue(lane, [handler = std::move(handler)]() { handler(false); });
+    return std::make_pair(queued, nullptr);
   }
 
   auto item = std::make_shared<WorkItem>(std::move(handler), lane, this);
@@ -164,8 +165,9 @@ Scheduler::WorkHandle Scheduler::queueDelay(RequestLane lane, clock::duration de
     }
   }
 
-  return item;
+  return std::make_pair(true, item);
 }
+
 /*
 void Scheduler::cancelAllTasks() {
   //std::unique_lock<std::mutex> guard(_cronQueueMutex);
