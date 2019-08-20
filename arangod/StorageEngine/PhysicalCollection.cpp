@@ -528,12 +528,7 @@ int PhysicalCollection::checkRevision(transaction::Methods*, TRI_voc_rid_t expec
 /// @brief hands out a list of indexes
 std::vector<std::shared_ptr<arangodb::Index>> PhysicalCollection::getIndexes() const {
   READ_LOCKER(guard, _indexesLock);
-  std::vector<std::shared_ptr<arangodb::Index>> res;
-  res.reserve(_indexes.size());
-  for (auto const& idx : _indexes) {
-    res.push_back(idx);
-  }
-  return res;
+  return { _indexes.begin(), _indexes.end() };
 }
 
 void PhysicalCollection::getIndexesVPack(VPackBuilder& result, unsigned flags,
@@ -585,24 +580,24 @@ std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
 }
 
 
-bool PhysicalCollection::IndexOrder::operator()(const std::shared_ptr<Index>& _Left,
-                                                const std::shared_ptr<Index>& _Right) const {
+bool PhysicalCollection::IndexOrder::operator()(const std::shared_ptr<Index>& left,
+                                                const std::shared_ptr<Index>& right) const {
   // Primary index always first (but two primary indexes render comparsion
   // invalid but that`s a bug itself)
-  TRI_ASSERT(!((_Left->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) &&
-               (_Right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX)));
-  if (_Left->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+  TRI_ASSERT(!((left->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) &&
+               (right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX)));
+  if (left->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
     return true;
   }
-  if (_Right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+  if (right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
     return false;
   }
 
   // edge indexes should go right after primary
-  if (_Left->type() != _Right->type()) {
-    if (_Right->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+  if (left->type() != right->type()) {
+    if (right->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
       return false;
-    } else if (_Left->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+    } else if (left->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
       return true;
     }
   }
@@ -612,10 +607,10 @@ bool PhysicalCollection::IndexOrder::operator()(const std::shared_ptr<Index>& _L
   // could be broken by unique constraint violation or by intentional failpoint.
   // And this will make possible to deterministically trigger index reversals
   TRI_IF_FAILURE("HashIndexAlwaysLast") {
-    if (_Left->type() != _Right->type()) {
-      if (_Right->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+    if (left->type() != right->type()) {
+      if (right->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
         return true;
-      } else if (_Left->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+      } else if (left->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
         return false;
       }
     }
@@ -623,11 +618,11 @@ bool PhysicalCollection::IndexOrder::operator()(const std::shared_ptr<Index>& _L
 
   // indexes which needs no reverse should be done first to minimize
   // need for reversal procedures
-  if (_Left->needsReversal() != _Right->needsReversal()) {
-    return _Right->needsReversal();
+  if (left->needsReversal() != right->needsReversal()) {
+    return right->needsReversal();
   }
   // use id to make  order of equally-sorted indexes deterministic
-  return _Left->id() < _Right->id();
+  return left->id() < right->id();
 }
 
 

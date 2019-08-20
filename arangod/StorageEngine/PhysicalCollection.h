@@ -103,8 +103,8 @@ class PhysicalCollection {
 
   /// @brief determines order of index execution on collection
   struct IndexOrder {
-    bool operator()(const std::shared_ptr<Index>& _Left,
-                              const std::shared_ptr<Index>& _Right) const;
+    bool operator()(const std::shared_ptr<Index>& left,
+                              const std::shared_ptr<Index>& right) const;
   };
 
   using IndexContainerType = std::set<std::shared_ptr<Index>, IndexOrder> ;

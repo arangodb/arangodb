@@ -383,7 +383,6 @@ bool ClusterCollection::dropIndex(TRI_idx_iid_t iid) {
     return true;
   }
 
-  size_t i = 0;
   WRITE_LOCKER(guard, _indexesLock);
   for (auto it  : _indexes) {
     if (iid == it->id()) {
@@ -392,7 +391,6 @@ bool ClusterCollection::dropIndex(TRI_idx_iid_t iid) {
                         std::to_string(iid), TRI_ERROR_NO_ERROR);
       return true;
     }
-    ++i;
   }
 
   // We tried to remove an index that does not exist

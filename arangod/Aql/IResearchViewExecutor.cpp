@@ -278,23 +278,26 @@ template <typename Impl, typename Traits>
 bool IResearchViewExecutorBase<Impl, Traits>::next(ReadContext& ctx) {
   auto& impl = static_cast<Impl&>(*this);
 
-  if (_indexReadBuffer.empty()) {
-    impl.fillBuffer(ctx);
-  }
+  while (true) {
+    if (_indexReadBuffer.empty()) {
+      impl.fillBuffer(ctx);
+    }
 
-  if (_indexReadBuffer.empty()) {
-    return false;
-  }
+    if (_indexReadBuffer.empty()) {
+      return false;
+    }
 
-  IndexReadBufferEntry bufferEntry = _indexReadBuffer.pop_front();
+    IndexReadBufferEntry bufferEntry = _indexReadBuffer.pop_front();
 
-  if (!impl.writeRow(ctx, bufferEntry)) {
-     LOG_TOPIC("550cd", TRACE, arangodb::iresearch::TOPIC)
-            << "failed to write row in node executor";
+    if (impl.writeRow(ctx, bufferEntry)) {
+      break;
+    } else {
+      // to get correct stats we should continue looking for 
+      // other documents inside this one call
+      LOG_TOPIC("550cd", TRACE, arangodb::iresearch::TOPIC)
+          << "failed to write row in node executor";
+    }
   }
-  // return true anyway as we possbly failed to find one document 
-  // in collection due to eventual index consistency
-  // but there may be more other alive docs)
   return true;
 }
 
