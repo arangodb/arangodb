@@ -157,7 +157,7 @@ VPackBuilder createIndex(
       index.add("type", VPackValue(type));
       index.add("unique", VPackValue(unique));
     }}
-  
+
   return index;
 }
 
@@ -167,7 +167,7 @@ void createPlanIndex(
   bool unique, bool sparse, bool deduplicate, Node& plan) {
 
   VPackBuilder val;
-  { VPackObjectBuilder o(&val); 
+  { VPackObjectBuilder o(&val);
     val.add("new", createIndex(type, fields, unique, sparse, deduplicate).slice()); }
   plan(PLAN_COL_PATH + dbname + "/" + colname + "/indexes").handle<PUSH>(val.slice());
 }
@@ -180,15 +180,15 @@ void createCollection(
     keyOptions.add("lastValue", VPackValue(0));
     keyOptions.add("type", VPackValue("traditional"));
     keyOptions.add("allowUserKeys", VPackValue(true)); }
-  
+
   VPackBuilder shardKeys;
   { VPackArrayBuilder a(&shardKeys);
     shardKeys.add(VPackValue("_key")); }
-  
+
   VPackBuilder indexes;
   { VPackArrayBuilder a(&indexes);
     indexes.add(createIndex("primary", {"_key"}, true, false, false).slice()); }
-  
+
   col.add("id", VPackValue(std::to_string(localId++)));
   col.add("status", VPackValue(3));
   col.add("keyOptions", keyOptions.slice());
@@ -208,7 +208,7 @@ std::string C("c");
 
 void createPlanShards (
   size_t numberOfShards, size_t replicationFactor, VPackBuilder& col) {
-  
+
   auto servers = shortNames;
   std::shuffle(servers.begin(), servers.end(), g);
 
@@ -228,7 +228,7 @@ void createPlanShards (
 }
 
 void createPlanCollection(
-  std::string const& dbname, std::string const& colname, 
+  std::string const& dbname, std::string const& colname,
   size_t numberOfShards, size_t replicationFactor, Node& plan) {
 
   VPackBuilder tmp;
@@ -237,11 +237,11 @@ void createPlanCollection(
     tmp.add("isSmart", VPackValue(false));
     tmp.add("deleted", VPackValue(false));
     createPlanShards(numberOfShards, replicationFactor, tmp);}
-  
+
   Slice col = tmp.slice();
   auto id = col.get("id").copyString();
   plan(PLAN_COL_PATH + dbname + "/" + col.get("id").copyString()) = col;
-  
+
 }
 
 void createLocalCollection(
@@ -250,7 +250,7 @@ void createLocalCollection(
   size_t planId = std::stoull(colname);
   VPackBuilder tmp;
   { VPackObjectBuilder o(&tmp);
-    createCollection(colname, tmp); 
+    createCollection(colname, tmp);
     tmp.add("planId", VPackValue(colname));
     tmp.add("theLeader", VPackValue(""));
     tmp.add("globallyUniqueId",
@@ -285,7 +285,7 @@ TEST_CASE("ActionDescription", "[cluster][maintenance]") {
   originalPlan = plan;
   supervision = createNode(supervisionStr);
   current = createNode(currentStr);
-  
+
   dbsIds = matchShortLongIds(supervision);
 
   SECTION("Construct minimal ActionDescription") {
@@ -442,11 +442,11 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
   }
 
-  
+
   SECTION("Local databases one more empty database should be dropped") {
 
     std::vector<ActionDescription> actions;
-    
+
     localNodes.begin()->second("db3") =
       arangodb::velocypack::Slice::emptyObjectSlice();
 
@@ -485,14 +485,14 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
     "Add one collection to db3 in plan with shards for all db servers") {
 
     std::string dbname("db3"), colname("x");
-    
+
     plan = originalPlan;
     createPlanDatabase(dbname, plan);
     createPlanCollection(dbname, colname, 1, 3, plan);
-    
+
     for (auto node : localNodes) {
       std::vector<ActionDescription> actions;
-      
+
       node.second("db3") =
         arangodb::velocypack::Slice::emptyObjectSlice();
 
@@ -520,7 +520,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
     createPlanDatabase(dbname, plan);
     createPlanCollection(dbname, colname1, 1, 3, plan);
     createPlanCollection(dbname, colname2, 1, 3, plan);
-    
+
     for (auto node : localNodes) {
       std::vector<ActionDescription> actions;
 
@@ -542,21 +542,21 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
   }
 
-  
+
   SECTION("Add an index to _queues") {
 
     plan = originalPlan;
     auto cid = collectionMap(plan).at("_system/_queues");
     auto shards = plan({"Collections","_system",cid,"shards"}).children();
-    
+
     createPlanIndex(
       "_system", cid, "hash", {"someField"}, false, false, false, plan);
-    
+
     for (auto node : localNodes) {
       std::vector<ActionDescription> actions;
 
       auto local = node.second;
-      
+
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), local.toBuilder().slice(), node.first, errors, feature,
         actions);
@@ -567,7 +567,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
           ++n;
         }
       }
-        
+
       if (actions.size() != n) {
         std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
       }
@@ -588,26 +588,26 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
     plan = originalPlan;
     auto cid = collectionMap(plan).at("_system/bar");
     auto shards = plan({"Collections",dbname,cid,"shards"}).children();
-    
+
     plan({"Collections", dbname, cid, indexes}).handle<POP>(
       arangodb::velocypack::Slice::emptyObjectSlice());
 
     for (auto node : localNodes) {
       std::vector<ActionDescription> actions;
-      
+
       auto local = node.second;
-      
+
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), local.toBuilder().slice(), node.first, errors, feature,
         actions);
-      
+
       size_t n = 0;
       for (auto const& shard : shards) {
         if (local.has({"_system", shard.first})) {
           ++n;
         }
       }
-      
+
       if (actions.size() != n) {
         std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
       }
@@ -623,16 +623,16 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
   SECTION("Add one collection to local") {
 
     plan = originalPlan;
-    
+
     for (auto node : localNodes) {
 
       std::vector<ActionDescription> actions;
       createLocalCollection("_system", "1111111", node.second);
-      
+
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
         node.first, errors, feature, actions);
-      
+
       if (actions.size() != 1) {
         std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
       }
@@ -701,7 +701,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
       if (!leader.getString().empty()) {
         check = true;
         leader = v.slice();
-      } 
+      }
 
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
@@ -713,7 +713,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
         }
         REQUIRE(actions.size() == 1);
         for (auto const& action : actions) {
-          REQUIRE(action.name() == "UpdateCollection");
+          REQUIRE(action.name() == "TakeoverShardLeadership");
           REQUIRE(action.has("shard"));
           REQUIRE(action.get("shard") == collection("name").getString());
           REQUIRE(action.get("localLeader").empty());
@@ -786,7 +786,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
           break;
         }
       }
-      
+
       arangodb::maintenance::diffPlanLocal (
         plan.toBuilder().slice(), node.second.toBuilder().slice(), node.first,
         errors, feature, actions);
@@ -794,14 +794,10 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
       if (actions.size() != 2) {
         std::cout << actions << std::endl;
       }
-      REQUIRE(actions.size() == 2);
-      REQUIRE(actions.front().name() == "UpdateCollection");
-      REQUIRE(actions.front().get(DATABASE) == dbname);
-      REQUIRE(actions.front().get(SHARD) == shname);
-      REQUIRE(actions.front().get("localLeader") == std::string(""));
-      REQUIRE(actions[1].name() == "ResignShardLeadership");
-      REQUIRE(actions[1].get(DATABASE) == dbname);
-      REQUIRE(actions[1].get(SHARD) == shname);
+      REQUIRE(actions.size() == 1);
+      REQUIRE(actions[0].name() == "ResignShardLeadership");
+      REQUIRE(actions[0].get(DATABASE) == dbname);
+      REQUIRE(actions[0].get(SHARD) == shname);
     }
 
   }
@@ -822,7 +818,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
     for (auto const& node : localNodes) {
       std::vector<ActionDescription> actions;
-      
+
       arangodb::maintenance::diffPlanLocal (
         plan.toBuilder().slice(), node.second.toBuilder().slice(), node.first,
         errors, feature, actions);
@@ -853,7 +849,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 TEST_CASE("ActionPhaseTwo", "[cluster][maintenance]") {
 
   plan = originalPlan;
-  
+
   std::map<std::string, Node> localNodes {
     {dbsIds[shortNames[0]], createNode(dbs0Str)},
     {dbsIds[shortNames[1]], createNode(dbs1Str)},
@@ -861,7 +857,7 @@ TEST_CASE("ActionPhaseTwo", "[cluster][maintenance]") {
 
 
 /*  SECTION("Diffing local and current in equilibrium") {
-    
+
     VPackSlice p = plan.toBuilder().slice();
     REQUIRE(p.hasKey("Collections"));
     REQUIRE(p.get("Collections").isObject());
@@ -884,12 +880,12 @@ TEST_CASE("ActionPhaseTwo", "[cluster][maintenance]") {
 
       VPackSlice pt = report.get("PhaseTwo");
       REQUIRE(pt.isObject());
-      
+
       if (!pt.isEmptyObject()) {
         std::cout << pt.toJson() << std::endl;
       }
       REQUIRE(pt.isEmptyObject());
-      
+
     }
   }*/
 
