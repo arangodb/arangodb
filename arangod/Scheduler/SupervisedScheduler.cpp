@@ -369,16 +369,29 @@ void SupervisedScheduler::runSupervisor() {
   uint64_t lastJobsDone = 0, lastJobsSubmitted = 0;
   uint64_t jobsStallingTick = 0, lastQueueLength = 0;
   int count = 0;
+  
+  auto tStart = TRI_microtime();
+  auto waitMe = [&tStart](int where) {
+    auto tExit = TRI_microtime();
+    if (tExit - tStart > 0.25) {
+      LOG_TOPIC("66666", ERR, arangodb::Logger::FIXME) <<
+        "scheduler sleeps: " << (tExit - tStart) << " - where - " << where;
+      tStart = tExit;
+    }
+  };
   while (!_stopping) {
+    waitMe(__LINE__);
     uint64_t jobsDone = _jobsDone.load(std::memory_order_acquire);
     uint64_t jobsSubmitted = _jobsSubmitted.load(std::memory_order_acquire);
     uint64_t jobsDequeued = _jobsDequeued.load(std::memory_order_acquire);
 
+    waitMe(__LINE__);
     if (jobsDone == lastJobsDone && (jobsDequeued < jobsSubmitted)) {
       jobsStallingTick++;
     } else if (jobsStallingTick != 0) {
       jobsStallingTick--;
     }
+    waitMe(__LINE__);
 
     uint64_t queueLength = jobsSubmitted - jobsDequeued;
 
@@ -392,27 +405,33 @@ void SupervisedScheduler::runSupervisor() {
                             ((queueLength == 0) && (lastQueueLength == 0))) &&
                            ((rand() & 0x0F) == 0);
 
+    waitMe(__LINE__);
     lastJobsDone = jobsDone;
     lastQueueLength = queueLength;
     lastJobsSubmitted = jobsSubmitted;
 
+    waitMe(__LINE__);
     if (doStartOneThread && _numWorkers < _maxNumWorker) {
       jobsStallingTick = 0;
       startOneThread();
+    waitMe(__LINE__);
     } else if (doStopOneThread && _numWorkers > _numIdleWorker) {
       stopOneThread();
+    waitMe(__LINE__);
     }
 
     cleanupAbandonedThreads();
+    waitMe(__LINE__);
     sortoutLongRunningThreads();
 
+    waitMe(__LINE__);
     std::unique_lock<std::mutex> guard(_mutexSupervisor);
+    waitMe(__LINE__);
 
     if (_stopping) {
       break;
     }
-
-    if (count++ % 500) {
+    if (count % 5 == 0) {
       count = 0;
       auto info = TRI_ProcessInfoSelf();
       LOG_TOPIC("66677", DEBUG, arangodb::Logger::THREADS)
@@ -422,6 +441,7 @@ void SupervisedScheduler::runSupervisor() {
         << " JobsDequeued - " << jobsDequeued;
     }
     _conditionSupervisor.wait_for(guard, std::chrono::milliseconds(100));
+    waitMe(__LINE__);
   }
 }
 
