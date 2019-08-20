@@ -54,13 +54,13 @@ std::pair<bool, R> retryUntilTimeout(
     std::chrono::nanoseconds timeout = std::chrono::minutes(5)) {
   auto start = std::chrono::steady_clock::now();
   bool success = false;
-  R value;
+  R value{};
   while ((std::chrono::steady_clock::now() - start) < timeout) {
     std::tie(success, value) = fn();
     if (success) {
       break;
     }
-    LOG_TOPIC("18d0a", WARN, topic) << "Failed to " << message << ", waiting to retry...";
+    LOG_TOPIC("18d0a", INFO, topic) << "Failed to " << message << ", waiting to retry...";
     std::this_thread::sleep_for(retryInterval);
   }
   return std::make_pair(success, value);
