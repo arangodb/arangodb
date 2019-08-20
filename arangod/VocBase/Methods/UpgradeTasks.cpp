@@ -192,7 +192,10 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
 
     methods::Collections::create(
         vocbase, testSystemCollectionsToCreate, true, true, true, colToDistributeShardsLike,
-        [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
+        [&createdCollections](std::vector<std::shared_ptr<LogicalCollection>> const& cols) -> void {
+          // capture created collection vector
+          createdCollections.insert(std::end(createdCollections), std::begin(cols), std::end(cols));
+        });
   }
 
   // check wether we need fishbowl collection, or not.
@@ -206,7 +209,10 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> buffers;
 
   for (auto const& collection : systemCollections) {
-    auto res = methods::Collections::lookup(vocbase, collection, noop);
+
+    auto res = methods::Collections::lookup(vocbase, collection,
+                                            [&createdCollections](std::shared_ptr<LogicalCollection> const& col) -> void {
+                                              createdCollections.emplace_back(col); });
     if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       // if not found, create it
       VPackBuilder options;
@@ -224,7 +230,7 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   if (systemCollectionsToCreate.size() > 0) {
     res = methods::Collections::create(
         vocbase, systemCollectionsToCreate, true, true, true, colToDistributeShardsLike,
-        [&](std::vector<std::shared_ptr<LogicalCollection>> const& cols) -> void {
+        [&createdCollections](std::vector<std::shared_ptr<LogicalCollection>> const& cols) -> void {
           // capture created collection vector
           createdCollections.insert(std::end(createdCollections), std::begin(cols), std::end(cols));
         });
@@ -308,8 +314,13 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
                                                      arangodb::velocypack::Slice const& slice) {
   Result res;
 
-  std::vector<std::shared_ptr<LogicalCollection>> createdCollections;
-  res = ::createSystemCollections(vocbase, createdCollections);
+  // This vector should after the call to ::createSystemCollections contain
+  // a LogicalCollection for *every* (required) system collection.
+  std::vector<std::shared_ptr<LogicalCollection>> presentSystemCollections;
+  res = ::createSystemCollections(vocbase, presentSystemCollections);
+
+  // TODO: Maybe check or assert that all DBs are present (i.e. were present or
+  //       created), raise an error if not?
 
   if (res.fail()) {
     LOG_TOPIC("e32fi", ERR, Logger::MAINTENANCE)
@@ -325,10 +336,7 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
     std::this_thread::sleep_for(std::chrono::microseconds(5000));
   }
 
-  res = ::createSystemCollectionsIndices(vocbase, createdCollections);
-  for (auto &c : createdCollections) {
-    LOG_DEVEL << "created " << c->name();
-  }
+  res = ::createSystemCollectionsIndices(vocbase, presentSystemCollections);
   if (res.fail()) {
     LOG_TOPIC("e32fx", ERR, Logger::MAINTENANCE)
         << "could not create indices for system collections"
