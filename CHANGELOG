@@ -2,13 +2,25 @@ v3.5.1 (XXXX-XX-XX)
 -------------------
 
 * Consistently honor the return value of all attempts to queue tasks in the
-  internal scheduler. Previously some call sites did not check the return value
-  of internal queueing operations, and if the scheduler queue was full, operations
-  that were thought to be requeued were silently dropped. Now, there will be
-  reactions on such failures. Requeuing an important task with a time offset
-  (Scheduler::queueDelay) is now also retried on failure (queue full) up to
-  at most five minutes. If after five minutes such a task still cannot be 
-  queued, a fatal error will be logged and the server process will be aborted.
+  internal scheduler.
+  
+  Previously some call sites did not check the return value of internal queueing
+  operations, and if the scheduler queue was full, operations that were thought
+  to be requeued were silently dropped. Now, there will be reactions on such
+  failures. Requeuing an important task with a time offset (Scheduler::queueDelay)
+  is now also retried on failure (queue full) up to at most five minutes. If after
+  five minutes such a task still cannot be queued, a fatal error will be logged
+  and the server process will be aborted.
+
+* Made index selection much more deterministic in case there are
+  multiple competing indexes.
+
+* Fixed issue #9654: honor value of `--rocksdb.max-write-buffer-number` if it
+  is set to at least 9 (which is the recommended value). Ignore it if it is
+  set to a lower value than 9, and warn the end user about it.
+
+  Previous versions of ArangoDB always silently ignored the value of this setting 
+  and effectively hard-coded the value to 9.
 
 * Fixed internal issue #4378: fix bug in MoveShard::abort which causes a
   duplicate entry in the follower list.
