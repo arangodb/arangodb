@@ -60,9 +60,6 @@ class ClusterTransactionCollection final : public TransactionCollection {
 
   /// @brief request an unlock for a collection
   int doUnlock(AccessMode::Type, int nestingLevel) override;
-
- private:
-  AccessMode::Type _lockType;  // collection lock type, used for exclusive locks
 };
 }  // namespace arangodb
 

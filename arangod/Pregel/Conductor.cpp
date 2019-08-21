@@ -398,13 +398,8 @@ void Conductor::cancel() {
 void Conductor::cancelNoLock() {
   _callbackMutex.assertLockedByCurrentThread();
   _state = ExecutionState::CANCELED;
-  bool ok;
-  int res;
-  std::tie(ok, res) = basics::function_utils::retryUntilTimeout<int>(
-      [this]() -> std::pair<bool, int> {
-        int res = _finalizeWorkers();
-        return std::make_pair(res != TRI_ERROR_QUEUE_FULL, res);
-      },
+  bool ok = basics::function_utils::retryUntilTimeout(
+      [this]() -> bool { return (_finalizeWorkers() != TRI_ERROR_QUEUE_FULL); },
       Logger::PREGEL, "cancel worker execution");
   if (!ok) {
     LOG_TOPIC("f8b3c", ERR, Logger::PREGEL)
