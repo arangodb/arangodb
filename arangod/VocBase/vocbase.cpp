@@ -23,35 +23,46 @@
 
 #include "vocbase.h"
 
-#include <velocypack/Builder.h>
+#include <algorithm>
+#include <chrono>
+#include <exception>
+#include <type_traits>
+#include <utility>
+
 #include <velocypack/Collection.h>
-#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
+#include <velocypack/Value.h>
+#include <velocypack/ValueType.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
+#include "Auth/Common.h"
 #include "Basics/Exceptions.h"
-#include "Basics/FileUtils.h"
 #include "Basics/HybridLogicalClock.h"
+#include "Basics/Locking.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/conversions.h"
-#include "Basics/files.h"
-#include "Basics/memory-map.h"
-#include "Basics/threads.h"
-#include "Basics/tri-strings.h"
-#include "Cluster/ClusterInfo.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Basics/system-functions.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/Index.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Replication/DatabaseReplicationApplier.h"
-#include "Replication/utilities.h"
+#include "Replication/ReplicationClients.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -63,8 +74,8 @@
 #include "Utils/VersionTracker.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ticks.h"
 
 #include <thread>
 
@@ -1098,7 +1109,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
   engine->addParametersForNewCollection(merge, parameters);
   merge.close();
 
-  merge = VPackCollection::merge(parameters, merge.slice(), true, false);
+  merge = velocypack::Collection::merge(parameters, merge.slice(), true, false);
   parameters = merge.slice();
 
   READ_LOCKER(readLocker, _inventoryLock);
@@ -1691,6 +1702,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
   _queries.reset(new arangodb::aql::QueryList(this));
   _cursorRepository.reset(new arangodb::CursorRepository(*this));
   _collectionKeys.reset(new arangodb::CollectionKeysRepository());
+  _replicationClients.reset(new arangodb::ReplicationClientsProgressTracker());
 
   // init collections
   _collections.reserve(32);

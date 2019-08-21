@@ -68,6 +68,42 @@ char const* dbs2Str =
 #include "DBServer0003.json"
     ;
 
+int loadResources(void) {return 0;}
+
+#else // _WIN32
+#include <Windows.h>
+#include "jsonresource.h"
+LPSTR planStr = nullptr;
+LPSTR currentStr = nullptr;
+LPSTR supervisionStr = nullptr;
+LPSTR dbs0Str = nullptr;
+LPSTR dbs1Str = nullptr;
+LPSTR dbs2Str = nullptr;
+
+LPSTR getResource(int which) {
+  HRSRC myResource = ::FindResource(NULL, MAKEINTRESOURCE(which),  RT_RCDATA);
+  HGLOBAL myResourceData = ::LoadResource(NULL, myResource);
+  return (LPSTR) ::LockResource(myResourceData);
+}
+int loadResources(void) {
+  if ((planStr == nullptr) &&
+      (currentStr == nullptr) &&
+      (supervisionStr == nullptr) &&
+      (dbs0Str == nullptr) &&
+      (dbs1Str == nullptr) &&
+      (dbs2Str == nullptr)) {
+    planStr = getResource(IDS_PLAN);
+    currentStr = getResource(IDS_CURRENT);
+    dbs0Str = getResource(IDS_DBSERVER0001);
+    dbs1Str = getResource(IDS_DBSERVER0002);
+    dbs2Str = getResource(IDS_DBSERVER0003);
+    supervisionStr = getResource(IDS_SUPERVISION);
+  }
+  return 0;
+}
+
+#endif // _WIN32
+
 std::map<std::string, std::string> matchShortLongIds(Node const& supervision) {
   std::map<std::string, std::string> ret;
   for (auto const& dbs : supervision("Health").children()) {
@@ -291,6 +327,7 @@ class LogicalCollection;
 class MaintenanceTestActionDescription : public ::testing::Test {
  protected:
   MaintenanceTestActionDescription() {
+    loadResources();
     plan = createNode(planStr);
     originalPlan = plan;
     supervision = createNode(supervisionStr);
@@ -324,8 +361,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondes
   try {
     auto bogus = desc.get("bogus");
     ASSERT_TRUE(bogus == "bogus");
-  } catch (std::out_of_range const& e) {
-  }
+  } catch (std::out_of_range const&) { }
   std::string value;
   auto res = desc.get("bogus", value);
   ASSERT_TRUE(value.empty());
@@ -339,8 +375,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondes
   try {
     auto bogus = desc.get("bogus");
     ASSERT_TRUE(bogus == "bogus");
-  } catch (std::out_of_range const& e) {
-  }
+  } catch (std::out_of_range const&) { }
   std::string value;
   auto res = desc.get("bogus", value);
   ASSERT_TRUE(value == "bogus");
@@ -434,6 +469,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_array_value_from_actiondescrip
 
 class MaintenanceTestActionPhaseOne : public ::testing::Test {
  protected:
+  int _dummy;
   std::shared_ptr<arangodb::options::ProgramOptions> po;
   arangodb::application_features::ApplicationServer as;
   TestMaintenanceFeature feature;
@@ -443,18 +479,19 @@ class MaintenanceTestActionPhaseOne : public ::testing::Test {
 
   arangodb::MMFilesEngine engine;  // arbitrary implementation that has index types registered
   arangodb::StorageEngine* origStorageEngine;
-
+  
   MaintenanceTestActionPhaseOne()
-      : po(std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
-                                                               std::string(),
-                                                               "path")),
-        as(po, nullptr),
-        feature(as),
-        localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
-                   {dbsIds[shortNames[1]], createNode(dbs1Str)},
-                   {dbsIds[shortNames[2]], createNode(dbs2Str)}},
-        engine(as),
-        origStorageEngine(arangodb::EngineSelectorFeature::ENGINE) {
+    : _dummy(loadResources()),
+      po(std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
+                                                             std::string(),
+                                                             "path")),
+      as(po, nullptr),
+      feature(as),
+      localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
+                 {dbsIds[shortNames[1]], createNode(dbs1Str)},
+                 {dbsIds[shortNames[2]], createNode(dbs2Str)}},
+      engine(as),
+      origStorageEngine(arangodb::EngineSelectorFeature::ENGINE) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
   }
 
@@ -719,7 +756,7 @@ TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
       }
       ASSERT_TRUE(actions.size() == 1);
       for (auto const& action : actions) {
-        ASSERT_TRUE(action.name() == "UpdateCollection");
+        ASSERT_TRUE(action.name() == "TakeoverShardLeadership");
         ASSERT_TRUE(action.has("shard"));
         ASSERT_TRUE(action.get("shard") == collection("name").getString());
         ASSERT_TRUE(action.get("localLeader").empty());
@@ -790,14 +827,10 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership) {
     if (actions.size() != 2) {
       std::cout << actions << std::endl;
     }
-    ASSERT_TRUE(actions.size() == 2);
-    ASSERT_TRUE(actions.front().name() == "UpdateCollection");
-    ASSERT_TRUE(actions.front().get(DATABASE) == dbname);
-    ASSERT_TRUE(actions.front().get(SHARD) == shname);
-    ASSERT_TRUE(actions.front().get("localLeader") == std::string(""));
-    ASSERT_TRUE(actions[1].name() == "ResignShardLeadership");
-    ASSERT_TRUE(actions[1].get(DATABASE) == dbname);
-    ASSERT_TRUE(actions[1].get(SHARD) == shname);
+    ASSERT_TRUE(actions.size() == 1);
+    ASSERT_TRUE(actions[0].name() == "ResignShardLeadership");
+    ASSERT_TRUE(actions[0].get(DATABASE) == dbname);
+    ASSERT_TRUE(actions[0].get(SHARD) == shname);
   }
 }
 
@@ -840,5 +873,3 @@ TEST_F(MaintenanceTestActionPhaseOne, removed_follower_in_plan_must_be_dropped) 
     }
   }
 }
-
-#endif

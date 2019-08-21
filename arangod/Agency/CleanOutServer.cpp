@@ -256,7 +256,11 @@ bool CleanOutServer::start(bool& aborts) {
       failedServersBuilder.clear();
       { VPackObjectBuilder guard(&failedServersBuilder); }
     }
-  }  // if
+  } else {
+    // ignore this check
+    failedServersBuilder.clear();
+    { VPackObjectBuilder guard(&failedServersBuilder); }
+  } // if
 
   VPackSlice failedServers = failedServersBuilder.slice();
   if (failedServers.isObject()) {

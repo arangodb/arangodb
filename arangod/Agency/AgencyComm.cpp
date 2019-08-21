@@ -23,7 +23,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyComm.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/application-exit.h"
 #include "RestServer/ServerFeature.h"
 
 #include <thread>
@@ -41,6 +43,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
@@ -366,6 +369,38 @@ AgencyCommResult::AgencyCommResult(int code, std::string const& message,
       _statusCode(code),
       _connected(false),
       _sent(false) {}
+  
+AgencyCommResult::AgencyCommResult(AgencyCommResult&& other) noexcept 
+    : _location(std::move(other._location)),
+      _message(std::move(other._message)),
+      _body(std::move(other._body)),
+      _values(std::move(other._values)),
+      _statusCode(other._statusCode),
+      _connected(other._connected),
+      _sent(other._sent),
+      _vpack(std::move(other._vpack)) {
+  other._statusCode = 0;
+  other._connected = false;
+  other._sent = false;
+}
+
+AgencyCommResult& AgencyCommResult::operator=(AgencyCommResult&& other) noexcept {
+  if (this != &other) {
+    _location = std::move(other._location);
+    _message = std::move(other._message);
+    _body = std::move(other._body);
+    _values = std::move(other._values);
+    _statusCode = other._statusCode;
+    _connected = other._connected;
+    _sent = other._sent;
+    _vpack = std::move(other._vpack);
+    
+    other._statusCode = 0;
+    other._connected = false;
+    other._sent = false;
+  }
+  return *this;
+}
 
 void AgencyCommResult::set(int code, std::string const& message) {
   _message = message;
@@ -393,10 +428,9 @@ int AgencyCommResult::errorCode() const {
       // get "errorCode" attribute (0 if not exist)
       return basics::VelocyPackHelper::getNumericValue<int>(body, "errorCode", 0);
     }
-    return 0;
   } catch (VPackException const&) {
-    return 0;
   }
+  return 0;
 }
 
 std::string AgencyCommResult::errorMessage() const {

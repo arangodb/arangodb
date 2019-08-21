@@ -7,6 +7,9 @@ endforeach()
 ################################################################################
 ## IResearch
 ################################################################################
+if (WINDOWS)
+  set(RCFILE Maintenance/json.rc)
+endif ()
 
 set(ARANGODB_TESTS_SOURCES
   Agency/ActiveFailoverTest.cpp
@@ -78,6 +81,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/HashSetTest.cpp
   Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
+  Basics/RandomTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
   Basics/VelocyPackHelper-test.cpp
@@ -100,6 +104,7 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterInfo-test.cpp
   Cluster/ClusterRepairsTest.cpp
+  Cluster/RebootTrackerTest.cpp
   Futures/Future-test.cpp
   Futures/Promise-test.cpp
   Futures/Try-test.cpp
@@ -169,6 +174,7 @@ set(ARANGODB_TESTS_SOURCES
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
+  ${RCFILE}
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp
   Pregel/typedbuffer.cpp

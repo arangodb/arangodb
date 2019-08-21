@@ -24,9 +24,12 @@
 #ifndef ARANGODB_V8_V8LINE_EDITOR_H
 #define ARANGODB_V8_V8LINE_EDITOR_H 1
 
-#include "Utilities/LineEditor.h"
+#include <atomic>
+#include <string>
 
 #include <v8.h>
+
+#include "Utilities/LineEditor.h"
 
 namespace arangodb {
 

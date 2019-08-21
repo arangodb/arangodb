@@ -23,19 +23,23 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_APPLICATION_SERVER_H
 #define ARANGODB_APPLICATION_FEATURES_APPLICATION_SERVER_H 1
 
+#include <atomic>
+#include <functional>
+#include <memory>
+#include <string>
+#include <type_traits>
+#include <unordered_map>
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
-
 namespace options {
-
 class ProgramOptions;
 }
-
 namespace application_features {
 class ApplicationFeature;
 
@@ -113,7 +117,7 @@ class ApplicationServer {
     STOPPED,
     ABORTED
   };
-  
+
   class ProgressHandler {
    public:
     std::function<void(State)> _state;
@@ -122,10 +126,9 @@ class ApplicationServer {
 
   static ApplicationServer* server;
 
-  
   /// @brief whether or not the server has made it as least as far as the IN_START state
   static bool isPrepared();
-  
+
   /// @brief whether or not the server has made it as least as far as the IN_SHUTDOWN state
   static bool isStopping();
 
@@ -166,7 +169,7 @@ class ApplicationServer {
  public:
   ApplicationServer(std::shared_ptr<options::ProgramOptions>, char const* binaryPath);
 
-  ~ApplicationServer();
+  TEST_VIRTUAL ~ApplicationServer();
 
   std::string helpSection() const { return _helpSection; }
   bool helpShown() const { return !_helpSection.empty(); }
@@ -213,13 +216,13 @@ class ApplicationServer {
   // return VPack options, with optional filters applied to filter
   // out specific options. the filter function is expected to return true
   // for any options that should become part of the result
-  VPackBuilder options(std::function<bool(std::string const&)> const& filter) const;
-  
+  velocypack::Builder options(std::function<bool(std::string const&)> const& filter) const;
+
   // return the program options object
   std::shared_ptr<options::ProgramOptions> options() const { return _options; }
 
   // return the server state
-  State state() const { return _state; }
+  TEST_VIRTUAL State state() const { return _state; }
 
   void addReporter(ProgressHandler reporter) {
     _progressReports.emplace_back(reporter);
@@ -255,6 +258,12 @@ class ApplicationServer {
   std::vector<ApplicationFeature*> const& getOrderedFeatures() {
     return _orderedFeatures;
   }
+  
+#ifdef TEST_VIRTUAL
+  static void setStateUnsafe(State ss) {
+    server->_state = ss;
+  }
+#endif
 
  private:
   // throws an exception that a requested feature was not found

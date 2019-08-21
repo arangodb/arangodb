@@ -22,14 +22,22 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
+#include <type_traits>
+
 #include "LogAppender.h"
 
 #include "ApplicationFeatures/ShellColorsFeature.h"
+#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/operating-system.h"
 #include "Logger/LogAppenderFile.h"
 #include "Logger/LogAppenderSyslog.h"
+#include "Logger/LogMacros.h"
+#include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

@@ -26,6 +26,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/memory.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "MMFiles/MMFilesEdgeIndex.h"

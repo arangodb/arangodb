@@ -20,9 +20,13 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <errno.h>
+#include <string.h>
+
 #include "PrivilegeFeature.h"
 
-#include <sys/types.h>
+#include "Basics/application-exit.h"
+#include "Basics/error.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -36,10 +40,15 @@
 #include <pwd.h>
 #endif
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/conversions.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::options;

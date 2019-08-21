@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyCommManagerMock.h"
+#include "Basics/StringBuffer.h"
 #include "velocypack/velocypack-aliases.h"
 
 AgencyCommManagerMock::AgencyCommManagerMock(std::string const& prefix /*= ""*/)

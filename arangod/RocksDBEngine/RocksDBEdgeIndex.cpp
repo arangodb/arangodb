@@ -443,8 +443,6 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
                                     std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
-  builder.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(false));
-  builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(false));
   builder.close();
 }
 
@@ -600,8 +598,8 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   auto* mthds = RocksDBTransactionState::toMethods(trx);
   auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
 
-  uint64_t expectedCount =
-      static_cast<uint64_t>(selectivityEstimate() * rocksColl->numberDocuments());
+  uint64_t expectedCount = rocksColl->meta().numberDocuments();
+  expectedCount = static_cast<uint64_t>(expectedCount * selectivityEstimate());
 
   // Prepare the cache to be resized for this amount of objects to be inserted.
   _cache->sizeHint(expectedCount);

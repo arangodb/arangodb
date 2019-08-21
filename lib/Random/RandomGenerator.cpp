@@ -21,28 +21,38 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RandomGenerator.h"
-
-#include <chrono>
-#include <random>
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <errno.h>
 #include <fcntl.h>
-
+#include <stdint.h>
+#include <sys/types.h>
+#include <chrono>
 #include <cstring>
+#include <random>
+#include <string>
+#include <thread>
+
+#include "Basics/Common.h"
+#include "Basics/operating-system.h"
 
 #ifdef _WIN32
+#include <windows.h>  // must be before Wincrypt.h
+
 #include <Wincrypt.h>
 #endif
 
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#include "RandomGenerator.h"
+
 #include "Basics/Exceptions.h"
-#include "Basics/HybridLogicalClock.h"
-#include "Basics/Thread.h"
-#include "Basics/hashes.h"
+#include "Basics/application-exit.h"
+#include "Basics/debugging.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -90,7 +100,10 @@ int32_t RandomDevice::random(int32_t left, int32_t right) {
     return static_cast<int32_t>(random());
   }
 
-  uint32_t range = static_cast<uint32_t>(right - left + 1);
+  TRI_ASSERT(right > left);
+  int64_t r = static_cast<int64_t>(right) - static_cast<int64_t>(left) + 1;
+  TRI_ASSERT(r >= 0 && r <= UINT32_MAX);
+  uint32_t range = static_cast<uint32_t>(r);
 
   switch (range) {
     case 0x00000002:
@@ -165,6 +178,7 @@ int32_t RandomDevice::power2(int32_t left, uint32_t mask) {
 }
 
 int32_t RandomDevice::other(int32_t left, uint32_t range) {
+  TRI_ASSERT(range != 0);
   uint32_t g = UINT32_MAX - UINT32_MAX % range;
   uint32_t r = random();
   int count = 0;
@@ -187,7 +201,10 @@ int32_t RandomDevice::other(int32_t left, uint32_t range) {
 
   r %= range;
 
-  return left + static_cast<int32_t>(r);
+  int32_t result = left + static_cast<int32_t>(r);
+  TRI_ASSERT(result >= left);
+  TRI_ASSERT(result < left + static_cast<int64_t>(range));
+  return result;
 }
 
 // -----------------------------------------------------------------------------
@@ -452,6 +469,7 @@ RandomGenerator::RandomType RandomGenerator::_type;
 thread_local std::unique_ptr<RandomDevice> RandomGenerator::_device(nullptr);
 
 void RandomGenerator::initialize(RandomType type) {
+  _device.reset();
   _type = type;
 }
 
@@ -500,21 +518,16 @@ void RandomGenerator::ensureDeviceIsInitialized() {
 void RandomGenerator::shutdown() {
   // nothing to do...
   // thread-local devices will be released when their respective threads terminate.
+  // however, we want to reset the device for testing
+  _device.reset();
 }
-
+  
 int16_t RandomGenerator::interval(int16_t left, int16_t right) {
-  uint16_t value = static_cast<int16_t>(
-      interval(static_cast<int32_t>(left), static_cast<int32_t>(right)));
-
-  TRI_ASSERT(value >= left && value <= right);
-  return value;
+  return static_cast<int16_t>(interval(static_cast<int32_t>(left), static_cast<int32_t>(right)));
 }
 
 int32_t RandomGenerator::interval(int32_t left, int32_t right) {
-  ensureDeviceIsInitialized();
-  int32_t value = _device->interval(left, right);
-  TRI_ASSERT(value >= left && value <= right);
-  return value;
+  return static_cast<int32_t>(interval(static_cast<int64_t>(left), static_cast<int64_t>(right)));
 }
 
 int64_t RandomGenerator::interval(int64_t left, int64_t right) {
@@ -522,52 +535,19 @@ int64_t RandomGenerator::interval(int64_t left, int64_t right) {
     return left;
   }
 
-  int64_t value;
-
-  if (left == INT64_MIN && right == INT64_MAX) {
-    uint64_t r1 = interval(UINT32_MAX);
-    uint64_t r2 = interval(UINT32_MAX);
-
-    value = static_cast<int64_t>((r1 << 32) | r2);
-    TRI_ASSERT(value >= left && value <= right);
-    return value;
-  }
-
-  if (left < 0) {
-    if (right < 0) {
-      uint64_t high = static_cast<uint64_t>(-left);
-      uint64_t low = static_cast<uint64_t>(-right);
-      uint64_t d = high - low;
-      value = left + static_cast<int64_t>(interval(d));
-      TRI_ASSERT(value >= left && value <= right);
-      return value;
-    }
-
-    uint64_t low = static_cast<uint64_t>(-left);
-    uint64_t d = low + static_cast<uint64_t>(right);
-    uint64_t dRandom = interval(d);
-
-    if (dRandom < low) {
-      value = -1 - static_cast<int64_t>(dRandom);
-    } else {
-      value = static_cast<int64_t>(dRandom - low);
-    }
-    TRI_ASSERT(value >= left && value <= right);
-    return value;
+  int64_t diff;
+  if (left == INT64_MIN) {
+    diff = right + static_cast<uint64_t>(INT64_MAX);
   } else {
-    uint64_t high = static_cast<uint64_t>(right);
-    uint64_t low = static_cast<uint64_t>(left);
-    uint64_t d = high - low;
-    value = left + static_cast<int64_t>(interval(d));
-    TRI_ASSERT(value >= left && value <= right);
-    return value;
+    diff = static_cast<uint64_t>(right) - static_cast<uint64_t>(left);
   }
+  int64_t value = left + interval(static_cast<uint64_t>(diff));
+  TRI_ASSERT(value >= left && value <= right);
+  return value;
 }
 
 uint16_t RandomGenerator::interval(uint16_t right) {
-  uint16_t value = static_cast<uint16_t>(interval(static_cast<uint32_t>(right)));
-  TRI_ASSERT(value <= right);
-  return value;
+  return static_cast<uint16_t>(interval(static_cast<uint32_t>(right)));
 }
 
 uint32_t RandomGenerator::interval(uint32_t right) {

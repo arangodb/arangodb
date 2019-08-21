@@ -21,9 +21,14 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <WinSock2.h>
-#include <errno.h>
+#include "Basics/Common.h"
 
+#include <WinSock2.h>  // must be before windows.h
+#include <shellapi.h>
+#include <windows.h>
+
+#include <errno.h>
+#include <fcntl.h>
 #include <io.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -34,7 +39,6 @@
 #include <codecvt>
 #include <iomanip>
 #include <locale>
-#include <fcntl.h>
 
 #include "win-utils.h"
 
@@ -46,13 +50,17 @@
 #include <windows.h>
 
 #include "Basics/Common.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Basics/directories.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
-#include "Basics/ScopeGuard.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE

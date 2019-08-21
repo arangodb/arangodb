@@ -169,6 +169,7 @@ ERROR_REPLICATION_SHARD_NONEMPTY,1417,"shard not empty","Will be raised when a s
 ## ArangoDB cluster errors
 ################################################################################
 
+ERROR_CLUSTER_SERVER_UNKNOWN,1449,"got a request from an unkown server","Will be raised on some occasions when one server gets a request from another, which has not (yet?) been made known via the agency."
 ERROR_CLUSTER_COLLECTION_ID_EXISTS,1453,"collection ID already exists","Will be raised when a coordinator in a cluster tries to create a collection and the collection ID already exists."
 ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,1454,"could not create collection in plan","Will be raised when a coordinator in a cluster cannot create an entry for a new collection in the Plan hierarchy in the agency."
 ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,1456,"could not create collection","Will be raised when a coordinator in a cluster notices that some DBServers report problems when creating shards for a new collection."

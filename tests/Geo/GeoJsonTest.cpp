@@ -30,9 +30,9 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/Common.h"
-#include "Geo/ShapeContainer.h"
-
+#include "Basics/voc-errors.h"
 #include "Geo/GeoJson.h"
+#include "Geo/ShapeContainer.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite

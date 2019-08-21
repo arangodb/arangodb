@@ -19,11 +19,11 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
+#include "Basics/system-functions.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBEventListener.h"
 
@@ -69,46 +69,40 @@ struct CFilesSetup {
     TRI_RemoveDirectory(_directory.c_str());
   }
 
-  StringBuffer* writeFile (const char* blob) {
-    StringBuffer* filename = new StringBuffer(true);
-    filename->appendText(_directory);
-    filename->appendChar(TRI_DIR_SEPARATOR_CHAR);
-    filename->appendText("tmp-");
-    filename->appendInteger(++counter);
-    filename->appendInteger(arangodb::RandomGenerator::interval(UINT32_MAX));
+  void writeFile(char const* blob) {
+    StringBuffer filename(true);
+    filename.appendText(_directory);
+    filename.appendChar(TRI_DIR_SEPARATOR_CHAR);
+    filename.appendText("tmp-");
+    filename.appendInteger(++counter);
+    filename.appendInteger(arangodb::RandomGenerator::interval(UINT32_MAX));
 
-    FILE* fd = fopen(filename->c_str(), "wb");
+    FILE* fd = fopen(filename.c_str(), "wb");
 
     if (fd) {
       size_t numWritten = fwrite(blob, strlen(blob), 1, fd);
       (void) numWritten;
       fclose(fd);
-    }
-    else {
+    } else {
       EXPECT_TRUE(false);
     }
-
-    return filename;
   }
 
-  StringBuffer * writeFile (const char * name, const char * blob) {
-    StringBuffer* filename = new StringBuffer(true);
-    filename->appendText(_directory);
-    filename->appendChar(TRI_DIR_SEPARATOR_CHAR);
-    filename->appendText(name);
+  void writeFile(char const* name, char const* blob) {
+    StringBuffer filename(true);
+    filename.appendText(_directory);
+    filename.appendChar(TRI_DIR_SEPARATOR_CHAR);
+    filename.appendText(name);
 
-    FILE* fd = fopen(filename->c_str(), "wb");
+    FILE* fd = fopen(filename.c_str(), "wb");
 
     if (fd) {
       size_t numWritten = fwrite(blob, strlen(blob), 1, fd);
       (void) numWritten;
       fclose(fd);
-    }
-    else {
+    } else {
       EXPECT_TRUE(false);
     }
-
-    return filename;
   }
 
   StringBuffer _directory;

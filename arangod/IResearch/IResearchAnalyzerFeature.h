@@ -24,21 +24,37 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_ANALYZER_FEATURE_H
 #define ARANGOD_IRESEARCH__IRESEARCH_ANALYZER_FEATURE_H 1
 
-#include "analysis/analyzer.hpp"
-#include "utils/async_utils.hpp"
-#include "utils/hash_utils.hpp"
-#include "utils/object_pool.hpp"
+#include <chrono>
+#include <functional>
+#include <memory>
+#include <ostream>
+#include <string>
+#include <unordered_map>
+#include <utility>
+
+#include <analysis/analyzer.hpp>
+#include <analysis/analyzers.hpp>
+#include <utils/async_utils.hpp>
+#include <utils/attributes.hpp>
+#include <utils/hash_utils.hpp>
+#include <utils/memory.hpp>
+#include <utils/noncopyable.hpp>
+#include <utils/object_pool.hpp>
+#include <utils/string.hpp>
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Auth/Common.h"
-#include "VocBase/voc-types.h"
+#include "Basics/Result.h"
 
 namespace iresearch {
 namespace text_format {
-
+class type_id;
 const type_id& vpack_t();
 static const auto& vpack = vpack_t();
-
 }
 }
 
@@ -48,11 +64,9 @@ static const auto& vpack = vpack_t();
 struct TRI_vocbase_t; // forward declaration
 
 namespace arangodb {
-namespace transaction {
-
-class Methods;  // forward declaration
-
-}  // namespace transaction
+namespace application_features {
+class ApplicationServer;
+}
 }  // namespace arangodb
 
 namespace arangodb {
@@ -78,7 +92,7 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
     VPackSlice properties() const noexcept { return _properties; }
     irs::string_ref const& type() const noexcept { return _type; }
 
-    void toVelocyPack(VPackBuilder& builder, bool forPersistence = false);
+    void toVelocyPack(arangodb::velocypack::Builder& builder, bool forPersistence = false);
 
    private:
     friend class IResearchAnalyzerFeature; // required for calling AnalyzerPool::init(...) and AnalyzerPool::setKey(...)
@@ -203,8 +217,32 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   //////////////////////////////////////////////////////////////////////////////
   /// @param name analyzer name (normalized)
   /// @return vocbase prefix extracted from normalized analyzer name
+  ///         EMPTY == system vocbase
+  ///         NIL == analyzer name have had no db name prefix
+  /// @see analyzerReachableFromDb
   //////////////////////////////////////////////////////////////////////////////
-  static irs::string_ref extractVocbaseName(irs::string_ref const& name); 
+  static irs::string_ref extractVocbaseName(irs::string_ref const& name) noexcept; 
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// Checks if analyzer db (identified by db name prefix extracted from analyzer 
+  /// name) could be reached from specified db.
+  /// Properly handles special cases (e.g. NIL and EMPTY)       
+  /// @param dbNameFromAnalyzer database name extracted from analyzer name
+  /// @param currentDbName database name to check against (should not be empty!)
+  /// @param forGetters check special case for getting analyzer (not creating/removing)
+  /// @return true if analyzer is reachable
+  static bool analyzerReachableFromDb(irs::string_ref const& dbNameFromAnalyzer,
+                                        irs::string_ref const& currentDbName,
+                                        bool forGetters = false) noexcept;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief split the analyzer name into the vocbase part and analyzer part
+  /// @param name analyzer name
+  /// @return pair of first == vocbase name, second == analyzer name
+  ///         EMPTY == system vocbase
+  ///         NIL == unprefixed analyzer name, i.e. active vocbase
+  ////////////////////////////////////////////////////////////////////////////////
+  static std::pair<irs::string_ref, irs::string_ref> splitAnalyzerName(irs::string_ref const& analyzer) noexcept;
 
   void prepare() override;
 

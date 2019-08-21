@@ -33,8 +33,10 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/hashes.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterHelpers.h"
+#include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
@@ -114,6 +116,7 @@ static inline arangodb::AgencyOperation CreateCollectionSuccess(
 #endif
 
 using namespace arangodb;
+using namespace arangodb::cluster;
 
 static std::unique_ptr<ClusterInfo> _instance;
 
@@ -192,16 +195,18 @@ ClusterInfo* ClusterInfo::instance() { return _instance.get(); }
 ClusterInfo::ClusterInfo(AgencyCallbackRegistry* agencyCallbackRegistry)
     : _agency(),
       _agencyCallbackRegistry(agencyCallbackRegistry),
+      _rebootTracker(SchedulerFeature::SCHEDULER),
       _planVersion(0),
       _currentVersion(0),
       _planLoader(std::thread::id()),
       _uniqid() {
   _uniqid._currentValue = 1ULL;
   _uniqid._upperValue = 0ULL;
-
+  _uniqid._nextBatchStart = 1ULL;
+  _uniqid._nextUpperValue = 0ULL;
+  _uniqid._backgroundJobIsRunning = false;
   // Actual loading into caches is postponed until necessary
 }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a cluster info object
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,9 +218,20 @@ ClusterInfo::~ClusterInfo() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterInfo::cleanup() {
+
   ClusterInfo* theInstance = instance();
   if (theInstance == nullptr) {
     return;
+  }
+
+  while (true) {
+    {
+      MUTEX_LOCKER(mutexLocker, theInstance->_idLock);
+      if (!theInstance->_uniqid._backgroundJobIsRunning) {
+        break ;
+      }
+    }
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
   MUTEX_LOCKER(mutexLocker, theInstance->_planProt.mutex);
@@ -227,6 +243,48 @@ void ClusterInfo::cleanup() {
   theInstance->_shardKeys.clear();
   theInstance->_shardIds.clear();
   theInstance->_currentCollections.clear();
+}
+
+void ClusterInfo::triggerBackgroundGetIds() {
+  // Trigger a new load of batches
+  _uniqid._nextBatchStart = 1ULL;
+  _uniqid._nextUpperValue = 0ULL;
+
+
+  try {
+    if (_uniqid._backgroundJobIsRunning) {
+      return ;
+    }
+    _uniqid._backgroundJobIsRunning = true;
+    std::thread([this]{
+      auto guardRunning = scopeGuard([this]{
+        MUTEX_LOCKER(mutexLocker, _idLock);
+        _uniqid._backgroundJobIsRunning = false;
+      });
+
+      uint64_t result;
+      try {
+        result = _agency.uniqid(MinIdsPerBatch, 0.0);
+      } catch (std::exception const&) {
+        return ;
+      }
+
+      {
+        MUTEX_LOCKER(mutexLocker, _idLock);
+
+        if (1ULL == _uniqid._nextBatchStart) {
+          // Invalidate next batch
+          _uniqid._nextBatchStart = result;
+          _uniqid._nextUpperValue = result + MinIdsPerBatch - 1;
+        }
+        // If we get here, somebody else tried succeeded in doing the same,
+        // so we just try again.
+      }
+
+    }).detach();
+  } catch (std::exception const& e) {
+    LOG_TOPIC("adef4", WARN, Logger::CLUSTER) << "Failed to trigger background get ids. " << e.what();
+  }
 }
 
 /// @brief produces an agency dump and logs it
@@ -250,45 +308,43 @@ void ClusterInfo::logAgencyDump() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t ClusterInfo::uniqid(uint64_t count) {
-  while (true) {
-    uint64_t oldValue;
-    {
-      // The quick path, we have enough in our private reserve:
-      MUTEX_LOCKER(mutexLocker, _idLock);
+  MUTEX_LOCKER(mutexLocker, _idLock);
 
-      if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
-        uint64_t result = _uniqid._currentValue;
-        _uniqid._currentValue += count;
-
-        return result;
-      }
-      oldValue = _uniqid._currentValue;
-    }
-
-    // We need to fetch from the agency
-
-    uint64_t fetch = count;
-
-    if (fetch < MinIdsPerBatch) {
-      fetch = MinIdsPerBatch;
-    }
-
-    uint64_t result = _agency.uniqid(fetch, 0.0);
-
-    {
-      MUTEX_LOCKER(mutexLocker, _idLock);
-
-      if (oldValue == _uniqid._currentValue) {
-        _uniqid._currentValue = result + count;
-        _uniqid._upperValue = result + fetch - 1;
-
-        return result;
-      }
-      // If we get here, somebody else tried succeeded in doing the same,
-      // so we just try again.
-    }
+  if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
+    uint64_t result = _uniqid._currentValue;
+    _uniqid._currentValue += count;
+    return result;
   }
+
+  // Try if we can use the next batch
+  if (_uniqid._nextBatchStart + count - 1 <= _uniqid._nextUpperValue) {
+    uint64_t result = _uniqid._nextBatchStart;
+    _uniqid._currentValue   = _uniqid._nextBatchStart + count;
+    _uniqid._upperValue     = _uniqid._nextUpperValue;
+    triggerBackgroundGetIds();
+
+    return result;
+  }
+
+  // We need to fetch from the agency
+
+  uint64_t fetch = count;
+
+  if (fetch < MinIdsPerBatch) {
+    fetch = MinIdsPerBatch;
+  }
+
+  uint64_t result = _agency.uniqid(2 * fetch, 0.0);
+
+  _uniqid._currentValue = result + count;
+  _uniqid._upperValue = result + fetch - 1;
+  // Invalidate next batch
+  _uniqid._nextBatchStart = _uniqid._upperValue + 1;
+  _uniqid._nextUpperValue = _uniqid._upperValue + fetch - 1;
+
+  return result;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush the caches (used for testing)
@@ -429,7 +485,7 @@ void ClusterInfo::loadClusterId() {
 /// @brief (re-)load the information about our plan
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
-//
+
 static std::string const prefixPlan = "Plan";
 
 void ClusterInfo::loadPlan() {
@@ -501,10 +557,8 @@ void ClusterInfo::loadPlan() {
   auto slice = resultSlice[0].get(  // get slice
       std::vector<std::string>({AgencyCommManager::path(), "Plan"})  // args
   );
-  auto planBuilder = std::make_shared<velocypack::Builder>();
 
-  planBuilder->add(slice);
-
+  auto planBuilder = std::make_shared<velocypack::Builder>(slice);
   auto planSlice = planBuilder->slice();
 
   if (!planSlice.isObject()) {
@@ -576,7 +630,7 @@ void ClusterInfo::loadPlan() {
         throw;
       }
 
-      newDatabases.emplace(name, database.value);
+      newDatabases.emplace(std::move(name), database.value);
     }
   }
 
@@ -676,7 +730,7 @@ void ClusterInfo::loadPlan() {
           LOG_TOPIC("ec9e6", ERR, Logger::AGENCY)
               << "Failed to load information for view '" << viewId
               << "': " << ex.what() << ". invalid information in Plan. The "
-              << "view  will be ignored for now and the invalid "
+              << "view will be ignored for now and the invalid "
               << "information will be repaired. VelocyPack: " << viewSlice.toJson();
 
           TRI_ASSERT(false);
@@ -872,14 +926,11 @@ void ClusterInfo::loadPlan() {
             databaseCollections.emplace(collectionId, newCollection);
           }
 
-          auto shardKeys = std::make_shared<std::vector<std::string>>(  // shard keys
-              newCollection->shardKeys()                                // args
-          );
-
-          newShardKeys.emplace(collectionId, shardKeys);
+          newShardKeys.emplace(collectionId, std::make_shared<std::vector<std::string>>(newCollection->shardKeys()));
 
           auto shardIDs = newCollection->shardIds();
           auto shards = std::make_shared<std::vector<std::string>>();
+          shards->reserve(shardIDs->size());
 
           for (auto const& p : *shardIDs) {
             shards->push_back(p.first);
@@ -895,7 +946,7 @@ void ClusterInfo::loadPlan() {
                        std::strtol(b.c_str() + 1, nullptr, 10);
               }  // comparator
           );
-          newShards.emplace(collectionId, shards);
+          newShards.emplace(collectionId, std::move(shards));
         } catch (std::exception const& ex) {
           // The plan contains invalid collection information.
           // This should not happen in healthy situations.
@@ -925,7 +976,7 @@ void ClusterInfo::loadPlan() {
         }
       }
 
-      newCollections.emplace(std::make_pair(databaseName, databaseCollections));
+      newCollections.emplace(std::move(databaseName), std::move(databaseCollections));
     }
     LOG_TOPIC("12dfa", DEBUG, Logger::CLUSTER)
         << "loadPlan done: wantedVersion=" << storedVersion
@@ -934,7 +985,7 @@ void ClusterInfo::loadPlan() {
 
   WRITE_LOCKER(writeLocker, _planProt.lock);
 
-  _plan = planBuilder;
+  _plan = std::move(planBuilder);
   _planVersion = newPlanVersion;
 
   if (swapDatabases) {
@@ -968,6 +1019,13 @@ void ClusterInfo::loadPlan() {
 static std::string const prefixCurrent = "Current";
 
 void ClusterInfo::loadCurrent() {
+
+  // We need to update ServersKnown to notice rebootId changes for all servers.
+  // To keep things simple and separate, we call loadServers here instead of
+  // trying to integrate the servers upgrade code into loadCurrent, even if that
+  // means small bits of the plan are read twice.
+  loadServers();
+
   ++_currentProt.wantedVersion;  // Indicate that after *NOW* somebody has to
                                  // reread from the agency!
 
@@ -1277,6 +1335,15 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
   }
 
   return std::make_shared<CollectionInfoCurrent>(0);
+}
+
+
+RebootTracker& ClusterInfo::rebootTracker() noexcept {
+  return _rebootTracker;
+}
+
+RebootTracker const& ClusterInfo::rebootTracker() const noexcept {
+  return _rebootTracker;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -3232,7 +3299,8 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::string const prefixServers = "Current/ServersRegistered";
+static std::string const prefixServersRegistered = "Current/ServersRegistered";
+static std::string const prefixServersKnown = "Current/ServersKnown";
 static std::string const mapUniqueToShortId = "Target/MapUniqueToShortID";
 
 void ClusterInfo::loadServers() {
@@ -3247,8 +3315,9 @@ void ClusterInfo::loadServers() {
   }
 
   AgencyCommResult result = _agency.sendTransactionWithFailover(AgencyReadTransaction(
-      std::vector<std::string>({AgencyCommManager::path(prefixServers),
-                                AgencyCommManager::path(mapUniqueToShortId)})));
+      std::vector<std::string>({AgencyCommManager::path(prefixServersRegistered),
+                                AgencyCommManager::path(mapUniqueToShortId),
+                                AgencyCommManager::path(prefixServersKnown)})));
 
   if (result.successful()) {
     velocypack::Slice serversRegistered = result.slice()[0].get(std::vector<std::string>(
@@ -3257,11 +3326,16 @@ void ClusterInfo::loadServers() {
     velocypack::Slice serversAliases = result.slice()[0].get(std::vector<std::string>(
         {AgencyCommManager::path(), "Target", "MapUniqueToShortID"}));
 
+    velocypack::Slice serversKnownSlice = result.slice()[0].get(std::vector<std::string>(
+        {AgencyCommManager::path(), "Current", "ServersKnown"}));
+
     if (serversRegistered.isObject()) {
       decltype(_servers) newServers;
       decltype(_serverAliases) newAliases;
       decltype(_serverAdvertisedEndpoints) newAdvertisedEndpoints;
       decltype(_serverTimestamps) newTimestamps;
+
+      std::unordered_set<ServerID> serverIds;
 
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
         velocypack::Slice slice = res.value;
@@ -3289,9 +3363,12 @@ void ClusterInfo::loadServers() {
                   slice, "timestamp", "");
           newServers.emplace(std::make_pair(serverId, server));
           newAdvertisedEndpoints.emplace(std::make_pair(serverId, advertised));
+          serverIds.emplace(serverId);
           newTimestamps.emplace(std::make_pair(serverId, serverTimestamp));
         }
       }
+
+      decltype(_serversKnown) newServersKnown(serversKnownSlice, serverIds);
 
       // Now set the new value:
       {
@@ -3299,16 +3376,20 @@ void ClusterInfo::loadServers() {
         _servers.swap(newServers);
         _serverAliases.swap(newAliases);
         _serverAdvertisedEndpoints.swap(newAdvertisedEndpoints);
+        _serversKnown = std::move(newServersKnown);
         _serverTimestamps.swap(newTimestamps);
         _serversProt.doneVersion = storedVersion;
         _serversProt.isValid = true;
       }
+      // RebootTracker has its own mutex, and doesn't strictly need to be in sync
+      // with the other members.
+      rebootTracker().updateServerState(_serversKnown.rebootIds());
       return;
     }
   }
 
   LOG_TOPIC("449e0", DEBUG, Logger::CLUSTER)
-      << "Error while loading " << prefixServers
+      << "Error while loading " << prefixServersRegistered
       << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
       << " errorMessage: " << result.errorMessage() << " body: " << result.body();
 }
@@ -3733,9 +3814,9 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(ShardID
 
   return std::make_shared<std::vector<ServerID>>();
 }
-  
+
 //////////////////////////////////////////////////////////////////////////////
-/// @brief atomically find all servers who are responsible for the given 
+/// @brief atomically find all servers who are responsible for the given
 /// shards (only the leaders).
 /// will throw an exception if no leader can be found for any
 /// of the shards. will return an empty result if the shards couldn't be
@@ -3786,10 +3867,10 @@ std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(std::un
       // result is complete
       break;
     }
-    
+
     // reset everything we found so far for the next round
     result.clear();
-    
+
     if (++tries >= 2 || application_features::ApplicationServer::isStopping()) {
       break;
     }
@@ -4018,6 +4099,52 @@ arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
   return Result();
 }
 
+ClusterInfo::ServersKnown::ServersKnown(VPackSlice const serversKnownSlice,
+                                        std::unordered_set<ServerID> const& serverIds)
+    : _serversKnown() {
+
+  TRI_ASSERT(serversKnownSlice.isNone() || serversKnownSlice.isObject());
+  if (serversKnownSlice.isObject()) {
+    for (auto const it : VPackObjectIterator(serversKnownSlice)) {
+      VPackSlice const knownServerSlice = it.value;
+      TRI_ASSERT(knownServerSlice.isObject());
+      if (knownServerSlice.isObject()) {
+        VPackSlice const rebootIdSlice = knownServerSlice.get("rebootId");
+        TRI_ASSERT(rebootIdSlice.isInteger());
+        if (rebootIdSlice.isInteger()) {
+          std::string serverId = it.key.copyString();
+          auto const rebootId = RebootId{rebootIdSlice.getNumericValue<uint64_t>()};
+          _serversKnown.emplace(std::move(serverId), rebootId);
+        }
+      }
+    }
+  }
+
+  // For backwards compatibility / rolling upgrades, add servers that aren't in
+  // ServersKnown but in ServersRegistered with a reboot ID of 0 as a fallback.
+  // We should be able to remove this in 3.6.
+  for (auto const& serverId : serverIds) {
+    auto const rv = _serversKnown.emplace(serverId, RebootId{0});
+    LOG_TOPIC_IF("0acbd", INFO, Logger::CLUSTER, rv.second)
+        << "Server "
+        << serverId << " is in Current/ServersRegistered, but not in "
+                       "Current/ServersKnown. This is expected to happen "
+                       "during a rolling upgrade.";
+  }
+}
+
+std::unordered_map<ServerID, ClusterInfo::ServersKnown::KnownServer> const&
+ClusterInfo::ServersKnown::serversKnown() const noexcept {
+  return _serversKnown;
+}
+
+std::unordered_map<ServerID, RebootId> ClusterInfo::ServersKnown::rebootIds() const noexcept {
+  std::unordered_map<ServerID, RebootId> rebootIds;
+  for (auto const& it : _serversKnown) {
+    rebootIds.emplace(it.first, it.second.rebootId());
+  }
+  return rebootIds;
+}
 
 arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
 

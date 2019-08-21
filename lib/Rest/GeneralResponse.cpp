@@ -26,6 +26,7 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -353,6 +354,16 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS:
     case TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST:
     case TRI_ERROR_ARANGO_NO_JOURNAL:
+    case TRI_ERROR_NO_SMART_COLLECTION:
+    case TRI_ERROR_NO_SMART_GRAPH_ATTRIBUTE:
+    case TRI_ERROR_CANNOT_DROP_SMART_COLLECTION:
+    case TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE:
+    case TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE:
+    case TRI_ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH:
+    case TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE:
+    case TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE:
+    case TRI_ERROR_NO_SMART_JOIN_ATTRIBUTE:
+    case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE:
       return ResponseCode::BAD;
 
     case TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE:
@@ -420,6 +431,8 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_CLUSTER_UNSUPPORTED:
     case TRI_ERROR_NOT_IMPLEMENTED:
     case TRI_ERROR_ONLY_ENTERPRISE:
+    case TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR:
+    case TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER:
       return ResponseCode::NOT_IMPLEMENTED;
 
     default:
