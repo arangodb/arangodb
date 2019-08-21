@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fix an issue with potential spurious wakeups in the internal scheduler code.
+
 * Changes the _idle_ timeout of stream transactions to 10 seconds and the total
   per DB server size of stream transaction data to 128 MB. The idle timer is
   restarted after every operation in a stream transaction, so it is not the
@@ -12,7 +14,7 @@ v3.5.1 (XXXX-XX-XX)
 
 * Consistently honor the return value of all attempts to queue tasks in the
   internal scheduler.
-  
+
   Previously some call sites did not check the return value of internal queueing
   operations, and if the scheduler queue was full, operations that were thought
   to be requeued were silently dropped. Now, there will be reactions on such
