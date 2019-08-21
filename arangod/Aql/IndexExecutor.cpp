@@ -95,19 +95,19 @@ IndexExecutorInfos::IndexExecutorInfos(
       _indexes(std::move(indexes)),
       _condition(condition),
       _ast(ast),
-      _hasMultipleExpansions(false),
       _options(options),
-      _outputRegisterId(outputRegister),
       _engine(engine),
       _collection(collection),
       _outVariable(outVariable),
       _projections(projections),
+      _coveringIndexAttributePositions(coveringIndexAttributePositions),
       _trxPtr(trxPtr),
       _expInVars(std::move(expInVars)),
       _expInRegs(std::move(expInRegs)),
-      _coveringIndexAttributePositions(coveringIndexAttributePositions),
-      _useRawDocumentPointers(useRawDocumentPointers),
       _nonConstExpression(std::move(nonConstExpression)),
+      _outputRegisterId(outputRegister),
+      _hasMultipleExpansions(false),
+      _useRawDocumentPointers(useRawDocumentPointers),
       _produceResult(produceResult),
       _hasV8Expression(hasV8Expression) {
   if (_condition != nullptr) {
@@ -285,7 +285,9 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
   // As we want to create them lazily we only
   // reserve here.
   _cursors.reserve(_infos.getIndexes().size());
-};
+}
+
+IndexExecutor::~IndexExecutor() = default;
 
 void IndexExecutor::initializeCursor() {
   _state = ExecutionState::HASMORE;
@@ -310,8 +312,6 @@ size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
 
   return static_cast<size_t>(skipped);
 }
-
-IndexExecutor::~IndexExecutor() = default;
 
 void IndexExecutor::initIndexes(InputAqlItemRow& input) {
   // We start with a different context. Return documents found in the previous

@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed bug in MoveShard::abort which causes a duplicate entry in the follower list. (Internal Bug #4378)
+
 * Fixed cut'n'pasting code from the documentation into arangosh.
 
 * Added initial support for wgs84 reference ellipsoid in GEO_DISTANCE through third
