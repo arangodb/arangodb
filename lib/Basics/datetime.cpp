@@ -844,7 +844,18 @@ bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
         // minus sign!
         offset *= -1;
       }
-      date_tp -= offset;
+
+      if (offset.count() != 0) {
+        // apply timezone adjustment
+        date_tp -= offset;
+
+        // revalidate date after timezone adjustment
+        auto ymd = year_month_day(floor<date::days>(date_tp));
+        int year = static_cast<int>(ymd.year());
+        if (year < 0 || year > 9999) {
+          return false;
+        }
+      }
     }
   }  // if
   

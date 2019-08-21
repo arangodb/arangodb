@@ -33,6 +33,7 @@ var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var assertQueryError = helper.assertQueryError;
 var assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
+const _ = require("lodash");
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite
@@ -40,15 +41,36 @@ var assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
 
 function ahuacatlDateFunctionsTestSuite () {
   return {
-    testInsideRangeExtractFunctions () {
+    testRangesExtractFunctions () {
       let values = [
-        -62167219200000,
-        253402300799999,
-        "0000-01-01T00:00:00.000Z",
-        "0000-01-01T00:00:00.999Z",
-        "0000-01-01T23:59:59.000Z",
-        "9999-12-31T23:59:59.999Z",
+        [true, -62167219200000],
+        [true, 253402300799999],
+        [true, "0000-01-01T00:00:00.000Z"],
+        [true, "0000-01-01T00:00:00.999Z"],
+        [true, "0000-01-01T23:59:59.000Z"],
+        [true, "9999-12-31T23:59:59.999Z"],
+        [true, "0000-01-01T00:00:00-01:00"],
+        [true, "0000-01-01T00:01:00-02:00"],
+        [true, "9999-12-31T23:59:59+01:00"],
+        [false, -999999999999999],
+        [false,  -99999999999999],
+        [false, -62167219200001],
+        [false, "-9999-01-01"],
+        [false, "-9999-01-01T12:23:34Z"],
+        [false, "-300-01-01T12:23:34Z"],
+        [false, "-01-01-01T12:23:34Z"],
+        [false, "-00-01-01T12:23:34Z"],
+        [false, "0000-01-01T00:00:00+01:00"],
+        [false, "0000-01-01T00:01:00+02:00"],
+        [false, "9999-12-31T23:59:59-01:00"],
+        [false, "10000-01-01T12:23:34Z"],
+        [false, "10000-01-01"],
+        [false, "100000-01-01T12:23:34Z"],
+        [false, 253402300800000],
+        [false, 999999999999999],
+        [false, 9999999999999999],
       ];
+
       let functions = [
         "DATE_TIMESTAMP",
         "DATE_ISO8601",
@@ -68,50 +90,13 @@ function ahuacatlDateFunctionsTestSuite () {
       ];
 
       functions.forEach(function(fn) {
-        values.forEach(function(date) {
-          assertNotEqual([ null ], getQueryResults("RETURN " + fn + "(@value)", { value: date }), { fn, date });
-        });
-      });
-    },
-
-    testOutOfRangeExtractFunctions () {
-      let values = [
-        -999999999999999,
-        -99999999999999,
-        -62167219200001,
-        "-9999-01-01",
-        "-9999-01-01T12:23:34Z",
-        "-300-01-01T12:23:34Z",
-        "-01-01-01T12:23:34Z",
-        "-00-01-01T12:23:34Z",
-        "10000-01-01T12:23:34Z",
-        "10000-01-01",
-        "100000-01-01T12:23:34Z",
-        253402300800000,
-        999999999999999,
-        9999999999999999,
-      ];
-      let functions = [
-        "DATE_TIMESTAMP",
-        "DATE_ISO8601",
-        "DATE_DAYOFWEEK",
-        "DATE_YEAR",
-        "DATE_MONTH",
-        "DATE_DAY",
-        "DATE_MINUTE",
-        "DATE_HOUR",
-        "DATE_SECOND",
-        "DATE_MILLISECOND",
-        "DATE_DAYOFYEAR",
-        "DATE_ISOWEEK",
-        "DATE_LEAPYEAR",
-        "DATE_QUARTER",
-        "DATE_DAYS_IN_MONTH",
-      ];
-
-      functions.forEach(function(fn) {
-        values.forEach(function(date) {
-          assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN " + fn  + "(@value)", { value: date });
+        values.forEach(function(values) {
+          values = _.clone(values);
+          if (values.shift()) {
+            assertNotEqual([ null ], getQueryResults("RETURN " + fn + "(@value)", { value: values[0] }), { fn, value: values[0] });
+          } else {
+            assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN " + fn  + "(@value)", { value: values[0] });
+          }
         });
       });
     },
@@ -205,6 +190,46 @@ function ahuacatlDateFunctionsTestSuite () {
           assertNotEqual([ null ], getQueryResults("RETURN DATE_DIFF(" + values.join(", ") + ")"));
         } else {
           assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DIFF(" + values.join(", ") + ")");
+        }
+      });
+    },
+    
+    testRangesDateFormat () {
+      let values = [
+        [true, -62167219200000],
+        [true, 253402300799999],
+        [true, "0000-01-01T00:00:00.000Z"],
+        [true, "0000-01-01T00:00:00.999Z"],
+        [true, "0000-01-01T23:59:59.000Z"],
+        [true, "9999-12-31T23:59:59.999Z"],
+        [true, "0000-01-01T00:00:00-01:00"],
+        [true, "0000-01-01T00:01:00-02:00"],
+        [true, "9999-12-31T23:59:59+01:00"],
+        [false, -999999999999999],
+        [false,  -99999999999999],
+        [false, -62167219200001],
+        [false, "-9999-01-01"],
+        [false, "-9999-01-01T12:23:34Z"],
+        [false, "-300-01-01T12:23:34Z"],
+        [false, "-01-01-01T12:23:34Z"],
+        [false, "-00-01-01T12:23:34Z"],
+        [false, "0000-01-01T00:00:00+01:00"],
+        [false, "0000-01-01T00:01:00+02:00"],
+        [false, "9999-12-31T23:59:59-01:00"],
+        [false, "10000-01-01T12:23:34Z"],
+        [false, "10000-01-01"],
+        [false, "100000-01-01T12:23:34Z"],
+        [false, 253402300800000],
+        [false, 999999999999999],
+        [false, 9999999999999999],
+      ];
+
+      values.forEach(function(values) {
+        values = _.clone(values);
+        if (values.shift()) {
+          assertNotEqual([ null ], getQueryResults("RETURN DATE_FORMAT(@value, '%f')", { value: values[0] }), { value: values[0] });
+        } else {
+          assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_FORMAT(@value, '%f')", { value: values[0] });
         }
       });
     },
@@ -325,8 +350,8 @@ function ahuacatlDateFunctionsTestSuite () {
         [ "6789-12-31T23:59:58.99Z", true ],
         [ "6789-12-31Z", true ],
         [ "9999-12-31T23:59:59.999Z", true ],
-        [ "9999-12-31T23:59:59.999-1:00", true ],
-        [ "9999-12-31T23:59:59.999-01:00", true ],
+        [ "9999-12-31T22:59:59.999-1:00", true ],
+        [ "9999-12-31T22:59:59.999-01:00", true ],
         [ "9999-12-31T23:59:59.999+1:00", true ],
         [ "9999-12-31T23:59:59.999+01:00", true ],
         [ "9999-12-31Z", true ],
@@ -363,11 +388,13 @@ function ahuacatlDateFunctionsTestSuite () {
         [ [ "foo" ], false ],
         [ [ "foo", "bar" ], false ],
         [ [ "2015-01-23" ], false ],
+        [ "9999-12-31T23:59:59.999-1:00", false ],
+        [ "9999-12-31T23:59:59.999-01:00", false ],
         [ { }, false ]
       ];
 
       values.forEach(function (value) {
-        assertEqual([ value[1] ], getQueryResults("RETURN IS_DATESTRING(@value)", { value: value[0] }));
+        assertEqual([ value[1] ], getQueryResults("RETURN IS_DATESTRING(@value)", { value: value[0] }), value);
       });
     },
 
