@@ -38,6 +38,7 @@
 #include "utils/bit_utils.hpp"
 #include "utils/io_utils.hpp"
 #include "utils/log.hpp"
+#include "utils/lz4compression.hpp"
 #include "utils/map_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/object_pool.hpp"
@@ -54,6 +55,12 @@ NS_LOCAL
 using namespace irs;
 
 const byte_block_pool EMPTY_POOL;
+
+const column_info NORM_COLUMN{
+  compression::lz4::type(),
+  compression::options(),
+  false
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           helpers
@@ -784,7 +791,9 @@ void field_data::reset(doc_id_t doc_id) {
 
 data_output& field_data::norms(columnstore_writer& writer) {
   if (!norms_) {
-    auto handle = writer.push_column();
+    // FIXME encoder for norms???
+    // do not encrypt norms
+    auto handle = writer.push_column(NORM_COLUMN);
     norms_ = std::move(handle.second);
     meta_.norm = handle.first;
   }

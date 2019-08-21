@@ -36,7 +36,9 @@ using namespace arangodb::velocypack;
 
 const char RocksDBKeyBounds::_stringSeparator = '\0';
 
-RocksDBKeyBounds RocksDBKeyBounds::Empty() { return RocksDBKeyBounds(); }
+RocksDBKeyBounds RocksDBKeyBounds::Empty() {
+  return RocksDBKeyBounds::PrimaryIndex(0);
+}
 
 RocksDBKeyBounds RocksDBKeyBounds::Databases() {
   return RocksDBKeyBounds(RocksDBEntryType::Database);
@@ -378,7 +380,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
         // if we are in big-endian mode, we can cheat a bit...
         // for the upper bound we can use the object id + 1, which will always compare higher in a
         // bytewise comparison
-        uint64ToPersistent(_internals.buffer(), first + 1);
+        rocksutils::uintToPersistentBigEndian<uint64_t>(_internals.buffer(), first + 1);
         _internals.push_back(0x00U);  // lower/equal to any ascii char
       } else {
         uint64ToPersistent(_internals.buffer(), first);

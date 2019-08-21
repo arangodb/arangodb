@@ -573,6 +573,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   bool bufOwner = true;  // out parameter from AqlValue denoting ownership
                          // aquisition (must be true initially)
   auto release = irs::make_finally([&buffer, &bufOwner]() -> void {
+    // cppcheck-suppress knownConditionTrueFalse
     if (!bufOwner) {
       buffer.release();
     }
@@ -612,10 +613,35 @@ bool equalAnalyzer(arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool c
     return false;
   }
 
-  return type == pool.type()  // same type
-         && arangodb::basics::VelocyPackHelper::equal(arangodb::iresearch::slice(normalizedProperties),
-                                                      pool.properties(), false)  // same properties
-         && features == pool.features();  // same features
+  // first check non-normalizeable portion of analyzer definition
+  // to rule out need to check normalization of properties
+  if (type != pool.type() || features != pool.features()) {
+    return false;
+  }
+
+  // this check is not final as old-normalized definition may be present in database!
+  if (arangodb::basics::VelocyPackHelper::equal(arangodb::iresearch::slice(normalizedProperties),
+                                                pool.properties(), false)) {
+    return true;
+  }
+
+  // Here could be analyzer definition with old-normalized properties (see Issue #9652)
+  // To make sure properties really differ, let`s re-normalize and re-check
+  std::string reNormalizedProperties;
+  if (ADB_UNLIKELY(!::normalize(reNormalizedProperties, pool.type(), pool.properties()))) {
+    // failed to re-normalize definition - strange. It was already normalized once.
+    // Some bug in load/store?
+    TRI_ASSERT(FALSE);
+    LOG_TOPIC("a4073", WARN, arangodb::iresearch::TOPIC)
+        << "failed to re-normalize properties for analyzer type '"
+        << pool.type()
+        << "' properties '" << pool.properties().toString() << "'";
+    return false;
+  }
+  return arangodb::basics::VelocyPackHelper::equal(
+      arangodb::iresearch::slice(normalizedProperties),
+      arangodb::iresearch::slice(reNormalizedProperties), false);
+>>>>>>> devel
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -672,31 +698,96 @@ std::string normalizedAnalyzerName(std::string database,            // database
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief split the analyzer name into the vocbase part and analyzer part
-/// @param name analyzer name
-/// @return pair of first == vocbase name, second == analyzer name
-///         EMPTY == system vocbase
-///         NIL == unprefixed analyzer name, i.e. active vocbase
+/// @brief creates '_analyzers' collection
 ////////////////////////////////////////////////////////////////////////////////
-std::pair<irs::string_ref, irs::string_ref> splitAnalyzerName(  // split name
-    irs::string_ref const& analyzer                             // analyzer name
-    ) noexcept {
-  // search for vocbase prefix ending with '::'
-  for (size_t i = 1, count = analyzer.size(); i < count; ++i) {
-    if (analyzer[i] == ANALYZER_PREFIX_DELIM            // current is delim
-        && analyzer[i - 1] == ANALYZER_PREFIX_DELIM) {  // previous is also delim
-      auto vocbase = i > 1  // non-empty prefix, +1 for first delimiter char
-                         ? irs::string_ref(analyzer.c_str(), i - 1)  // -1 for the first ':' delimiter
-                         : irs::string_ref::EMPTY;
-      auto name = i < count - 1  // have suffix
-                      ? irs::string_ref(analyzer.c_str() + i + 1, count - i - 1)  // +-1 for the suffix after '::'
-                      : irs::string_ref::EMPTY;  // do not point after end of buffer
+bool setupAnalyzersCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& /*upgradeParams*/) {
+  return arangodb::methods::Collections::createSystem(vocbase, ANALYZER_COLLECTION_NAME).ok();
+}
 
-      return std::make_pair(vocbase, name);  // prefixed analyzer name
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops '_iresearch_analyzers' collection
+////////////////////////////////////////////////////////////////////////////////
+bool dropLegacyAnalyzersCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& /*upgradeParams*/) {
+  // drop legacy collection if upgrading the system vocbase and collection found
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
+    arangodb::SystemDatabaseFeature // feature type
+  >();
+
+  if (!sysDatabase) {
+    LOG_TOPIC("8783e", WARN, arangodb::iresearch::TOPIC)
+      << "failure to find '" << arangodb::SystemDatabaseFeature::name() << "' feature while registering legacy static analyzers with vocbase '" << vocbase.name() << "'";
+    TRI_set_errno(TRI_ERROR_INTERNAL);
+
+    return false; // internal error
   }
 
-  return std::make_pair(irs::string_ref::NIL, analyzer);  // unprefixed analyzer name
+  auto sysVocbase = sysDatabase->use();
+
+  TRI_ASSERT(sysVocbase.get() == &vocbase || sysVocbase->name() == vocbase.name());
+#endif
+
+  static std::string const LEGACY_ANALYZER_COLLECTION_NAME("_iresearch_analyzers");
+
+  // find legacy analyzer collection
+  arangodb::Result dropRes;
+  auto const lookupRes = arangodb::methods::Collections::lookup(
+    vocbase,
+    LEGACY_ANALYZER_COLLECTION_NAME,
+    [&dropRes](std::shared_ptr<arangodb::LogicalCollection> const& col)->void { // callback if found
+      if (col) {
+        dropRes = arangodb::methods::Collections::drop(*col, true, -1.0); // -1.0 same as in RestCollectionHandler
+      }
+    }
+  );
+
+  if (lookupRes.ok()) {
+    return dropRes.ok();
+  }
+
+  return lookupRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+}
+
+void registerUpgradeTasks() {
+  using namespace arangodb;
+  using namespace arangodb::application_features;
+  using namespace arangodb::methods;
+
+  auto* upgrade = ApplicationServer::lookupFeature<UpgradeFeature>("Upgrade");
+
+  if (!upgrade) {
+    return; // nothing to register with (OK if no tasks actually need to be applied)
+  }
+
+  // NOTE: db-servers do not have a dedicated collection for storing analyzers,
+  //       instead they get their cache populated from coordinators
+
+  upgrade->addTask({
+    "setupAnalyzers",                          // name
+    "setup _analyzers collection",             // description
+    Upgrade::Flags::DATABASE_ALL,              // system flags
+    Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL // cluster flags
+      | Upgrade::Flags::CLUSTER_NONE,
+    Upgrade::Flags::DATABASE_INIT              // database flags
+      | Upgrade::Flags::DATABASE_UPGRADE
+      | Upgrade::Flags::DATABASE_EXISTING,
+    &setupAnalyzersCollection                  // action
+  });
+
+  upgrade->addTask({
+    "dropLegacyAnalyzersCollection",           // name
+    "drop _iresearch_analyzers collection",    // description
+    Upgrade::Flags::DATABASE_SYSTEM,           // system flags
+    Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL // cluster flags
+      | Upgrade::Flags::CLUSTER_NONE,
+    Upgrade::Flags::DATABASE_INIT              // database flags
+      | Upgrade::Flags::DATABASE_UPGRADE,
+    &dropLegacyAnalyzersCollection             // action
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1174,8 +1265,9 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer(  // emplace
 
   // new analyzer creation, validate
   if (itr.second) {
-    bool erase = true;  // potentially invalid insertion took place
-    auto cleanup = irs::make_finally([&erase, &analyzers, &itr]() -> void {
+    bool erase = true; // potentially invalid insertion took place
+    auto cleanup = irs::make_finally([&erase, &analyzers, &itr]()->void {
+      // cppcheck-suppress knownConditionTrueFalse
       if (erase) {
         analyzers.erase(itr.first);  // ensure no broken analyzers are left behind
       }
@@ -1307,7 +1399,8 @@ arangodb::Result IResearchAnalyzerFeature::ensure(  // ensure analyzer existence
 
       if (res.ok()) {
         result = std::make_pair(pool, itr.second);
-        erase = false;  // successful pool creation, cleanup not required
+	// cppcheck-suppress unreadVariable
+        erase = false; // successful pool creation, cleanup not required
       }
 
       return res;
@@ -1590,6 +1683,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(  // f
   };
   static const Instance instance;
 
+  // cppcheck-suppress returnReference
   return instance.analyzers;
 }
 
@@ -1997,11 +2091,47 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(irs::string_ref const& 
 }
 
 /*static*/ irs::string_ref IResearchAnalyzerFeature::extractVocbaseName(
-    irs::string_ref const& name) {// analyzer name (normalized)
+    irs::string_ref const& name) noexcept {// analyzer name (normalized)
   auto split = splitAnalyzerName(name);
-  return split.first.empty() ? irs::string_ref::EMPTY : split.first;
+  return split.first;
 }
 
+/*static*/ bool IResearchAnalyzerFeature::analyzerReachableFromDb(
+    irs::string_ref const& dbNameFromAnalyzer, 
+    irs::string_ref const& currentDbName, bool forGetters) noexcept {
+  TRI_ASSERT(!currentDbName.empty());
+  if (dbNameFromAnalyzer.null()) { // NULL means local db name = always reachable
+    return true;
+  }
+  if (dbNameFromAnalyzer.empty()) { // empty name with :: means always system
+    if (forGetters) {
+      return true; // system database is always accessible for reading analyzer from any other db
+    }
+    return currentDbName == arangodb::StaticStrings::SystemDatabase;
+  }
+  return currentDbName == dbNameFromAnalyzer || 
+         (forGetters && dbNameFromAnalyzer == arangodb::StaticStrings::SystemDatabase);
+}
+
+/*static*/ std::pair<irs::string_ref, irs::string_ref> IResearchAnalyzerFeature::splitAnalyzerName( 
+    irs::string_ref const& analyzer) noexcept {
+  // search for vocbase prefix ending with '::'
+  for (size_t i = 1, count = analyzer.size(); i < count; ++i) {
+    if (analyzer[i] == ANALYZER_PREFIX_DELIM // current is delim
+        && analyzer[i - 1] == ANALYZER_PREFIX_DELIM) { // previous is also delim
+      auto vocbase = i > 1 // non-empty prefix, +1 for first delimiter char
+        ? irs::string_ref(analyzer.c_str(), i - 1) // -1 for the first ':' delimiter
+        : irs::string_ref::EMPTY;
+      auto name = i < count - 1 // have suffix
+        ? irs::string_ref(analyzer.c_str() + i + 1, count - i - 1) // +-1 for the suffix after '::'
+        : irs::string_ref::EMPTY; // do not point after end of buffer
+
+      return std::make_pair(vocbase, name); // prefixed analyzer name
+    }
+  }
+
+  return std::make_pair(irs::string_ref::NIL, analyzer); // unprefixed analyzer name
+}
 
 /*static*/ std::string IResearchAnalyzerFeature::normalize( // normalize name
   irs::string_ref const& name, // analyzer name
@@ -2090,12 +2220,10 @@ arangodb::Result IResearchAnalyzerFeature::remove(  // remove analyzer
     // will make the state consistent again
     if (!pool) {
       _analyzers.erase(itr);
-
-      return arangodb::Result(                  // result
-          TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,  // code
-          std::string("failure to find a valid analyzer while removing "
-                      "arangosearch analyzer '") +
-              std::string(name) + "'");
+      return arangodb::Result( // result
+        TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, // code
+        std::string("failure to find a valid analyzer while removing arangosearch analyzer '") + std::string(name)+ "'"
+      );
     }
 
     if (!force && pool.use_count() > 1) {  // +1 for ref in '_analyzers'

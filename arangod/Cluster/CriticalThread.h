@@ -33,7 +33,7 @@ class CriticalThread : public Thread {
   CriticalThread(CriticalThread const&) = delete;
   CriticalThread& operator=(CriticalThread const&) = delete;
 
-  CriticalThread(std::string const& name, bool deleteOnExit = false)
+  explicit CriticalThread(std::string const& name, bool deleteOnExit = false)
       : Thread(name, deleteOnExit) {}
 
   virtual ~CriticalThread() {}

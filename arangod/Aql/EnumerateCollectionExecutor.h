@@ -63,27 +63,26 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
   ~EnumerateCollectionExecutorInfos() = default;
 
   ExecutionEngine* getEngine() { return _engine; };
-  Collection const* getCollection() { return _collection; };
-  Variable const* getOutVariable() { return _outVariable; };
-  std::vector<std::string> const& getProjections() { return _projections; };
-  transaction::Methods* getTrxPtr() { return _trxPtr; };
-  std::vector<size_t> const& getCoveringIndexAttributePositions() {
+  Collection const* getCollection() const { return _collection; }
+  Variable const* getOutVariable() const { return _outVariable; }
+  std::vector<std::string> const& getProjections() const noexcept { return _projections; }
+  transaction::Methods* getTrxPtr() const { return _trxPtr; }
+  std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept {
     return _coveringIndexAttributePositions;
-  };
-  bool getProduceResult() { return _produceResult; };
-  bool getUseRawDocumentPointers() { return _useRawDocumentPointers; };
-  bool getRandom() { return _random; };
-  RegisterId getOutputRegisterId() { return _outputRegisterId; };
+  }
+  bool getProduceResult() const { return _produceResult; }
+  bool getUseRawDocumentPointers() const { return _useRawDocumentPointers; }
+  bool getRandom() const { return _random; }
+  RegisterId getOutputRegisterId() const { return _outputRegisterId; }
 
  private:
-  RegisterId _outputRegisterId;
   ExecutionEngine* _engine;
   Collection const* _collection;
   Variable const* _outVariable;
-  std::vector<std::string> const& _projections;
   transaction::Methods* _trxPtr;
-
+  std::vector<std::string> const& _projections;
   std::vector<size_t> const& _coveringIndexAttributePositions;
+  RegisterId _outputRegisterId;
   bool _useRawDocumentPointers;
   bool _produceResult;
   bool _random;
@@ -122,7 +121,7 @@ class EnumerateCollectionExecutor {
 
   void setProducingFunction(DocumentProducingFunction const& documentProducer) {
     _documentProducer = documentProducer;
-  };
+  }
 
   void initializeCursor();
 
@@ -145,9 +144,9 @@ class EnumerateCollectionExecutor {
   DocumentProducingFunction _documentProducer;
   DocumentProducingFunctionContext _documentProducingFunctionContext;
   ExecutionState _state;
+  bool _cursorHasMore;
   InputAqlItemRow _input;
   std::unique_ptr<OperationCursor> _cursor;
-  bool _cursorHasMore;
 };
 
 }  // namespace aql

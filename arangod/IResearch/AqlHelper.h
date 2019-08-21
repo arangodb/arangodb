@@ -293,6 +293,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
     bool failed = false;
     value = _node->isConstant() ? _node->getDoubleValue()
                                 : _value.toDouble(failed);
+    // cppcheck-suppress knownConditionTrueFalse
     return !failed;
   }
 

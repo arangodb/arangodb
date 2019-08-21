@@ -53,14 +53,14 @@ constexpr double kMaxDistanceBetweenPoints = kMaxRadiansBetweenPoints * kEarthRa
 enum class FilterType {
   // no filter, only useful on a near query
   NONE,
-  // Select documents with geospatial data that are located entirely within a
-  // shape.
-  // When determining inclusion, we consider the border of a shape to be part of
-  // the shape,
+  // Select documents with geospatial data that are located entirely
+  // within a shape.
+  // When determining inclusion, we consider the border of a shape to
+  // be part of the shape,
   // subject to the precision of floating point numbers.
   CONTAINS,
-  // Select documents whose geospatial data intersects with a specified GeoJSON
-  // object.
+  // Select documents whose geospatial data intersects with a
+  // specified GeoJSON object.
   INTERSECTS
 };
 

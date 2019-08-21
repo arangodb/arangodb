@@ -172,7 +172,6 @@ std::pair<arangodb::Result, uint64_t> startBatch(arangodb::httpclient::SimpleHtt
 
   std::string url = "/_api/replication/batch?serverId=" + clientId;
   std::string const body = "{\"ttl\":600}";
-  std::string urlExt;
   if (!DBserver.empty()) {
     url += "&DBserver=" + DBserver;
   }

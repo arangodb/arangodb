@@ -51,13 +51,13 @@ class RestAnalyzerHandler: public RestVocbaseBaseHandler {
  private:
   void createAnalyzer(IResearchAnalyzerFeature& analyzers);
   void getAnalyzer(
-    IResearchAnalyzerFeature& analyzers, // analyzer feature
-    std::string const& name // analyzer name 
+    IResearchAnalyzerFeature& analyzers, 
+    std::string const& requestedName 
   );
   void getAnalyzers(IResearchAnalyzerFeature& analyzers);
   void removeAnalyzer(
-    IResearchAnalyzerFeature& analyzers, // analyzer feature
-    std::string const& name, // analyzer name 
+    IResearchAnalyzerFeature& analyzers, 
+    std::string const& requestedName, 
     bool force
   );
 };

@@ -58,13 +58,13 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
                     make_shared_unordered_set({outputRegister}),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
-      _outputRegisterId(outputRegister),
       _engine(engine),
       _collection(collection),
       _outVariable(outVariable),
-      _projections(projections),
       _trxPtr(trxPtr),
+      _projections(projections),
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
+      _outputRegisterId(outputRegister),
       _useRawDocumentPointers(useRawDocumentPointers),
       _produceResult(produceResult),
       _random(random) {}
@@ -79,8 +79,8 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                         _infos.getCoveringIndexAttributePositions(),
                                         true, _infos.getUseRawDocumentPointers(), false),
       _state(ExecutionState::HASMORE),
-      _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
-      _cursorHasMore(false) {
+      _cursorHasMore(false),
+      _input(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
   _cursor = std::make_unique<OperationCursor>(
       _infos.getTrxPtr()->indexScan(_infos.getCollection()->name(),
                                     (_infos.getRandom()
@@ -106,14 +106,6 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
   TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  /*  // Allocate this on the stack, not the heap.
-    struct {
-      EnumerateCollectionExecutor& executor;
-      OutputAqlItemRow& output;
-      EnumerateCollectionStats stats;
-    } context{*this, output, {}};
-    // just a shorthand
-    EnumerateCollectionStats& stats = context.stats;*/
   EnumerateCollectionStats stats{};
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
   _documentProducingFunctionContext.setOutputRow(&output);

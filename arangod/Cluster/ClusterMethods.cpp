@@ -3717,8 +3717,6 @@ arangodb::Result lockDBServerTransactions(std::string const& backupId,
 
   std::string const url = apiStr + "lock";
 
-  std::unordered_map<std::string, std::string> headers;
-
   VPackBuilder lock;
   {
     VPackObjectBuilder o(&lock);
@@ -3823,7 +3821,6 @@ arangodb::Result unlockDBServerTransactions(std::string const& backupId,
     lock.add("id", VPackValue(backupId));
   }
 
-  std::unordered_map<std::string, std::string> headers;
   auto body = std::make_shared<std::string const>(lock.toJson());
   std::vector<ClusterCommRequest> requests;
   for (auto const& dbServer : lockedServers) {
@@ -4242,7 +4239,6 @@ arangodb::Result listHotBackupsOnCoordinator(VPackSlice const payload, VPackBuil
 }
 
 arangodb::Result deleteHotBackupsOnCoordinator(VPackSlice const payload, VPackBuilder& report) {
-  std::unordered_map<std::string, BackupMeta> listIds;
   std::vector<std::string> deleted;
   VPackBuilder dummy;
   arangodb::Result result;

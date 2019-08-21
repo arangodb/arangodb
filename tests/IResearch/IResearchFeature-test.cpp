@@ -511,9 +511,10 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
 
-    ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
-                                                 collectionJson->slice(), 0.0, false, nullptr)
-                     .ok()));
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase)));
+    ASSERT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());    
+    ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).ok()));
+    ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false, collectionJson->slice(), 0.0).ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
     EXPECT_TRUE(

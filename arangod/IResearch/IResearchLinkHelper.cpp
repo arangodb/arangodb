@@ -24,6 +24,9 @@
 #include "Basics/Common.h"
 
 #include "IResearchLinkHelper.h"
+
+#include <velocypack/Iterator.h>
+
 #include "IResearchCommon.h"
 #include "IResearchFeature.h"
 #include "IResearchLink.h"
@@ -43,7 +46,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
-#include "velocypack/Iterator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 
@@ -563,6 +565,7 @@ namespace iresearch {
     }
   } emptySlice;
 
+  // cppcheck-suppress returnReference
   return emptySlice._slice;
 }
 
@@ -795,14 +798,7 @@ namespace iresearch {
             continue; 
           }
           auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(analyzer._pool->name());
-          if (ADB_UNLIKELY(analyzerVocbase.empty())) { 
-            // in case of absent system database analyzer name will not be normalized
-            // and may not contain database prefix. But in that case analyzer will be
-            // considered local for current database and this is perefectly fine.
-            continue;
-          }
-          if (analyzerVocbase != arangodb::StaticStrings::SystemDatabase &&
-              analyzerVocbase != currentVocbase) {
+          if (!IResearchAnalyzerFeature::analyzerReachableFromDb(analyzerVocbase, currentVocbase, true)) {
             return arangodb::Result(
                 TRI_ERROR_BAD_PARAMETER,
                 std::string("Analyzer '").append(analyzer._pool->name())

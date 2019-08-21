@@ -681,7 +681,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       }
 
       syncer.setProgress(std::string("processing keys chunk ") + std::to_string(currentChunkId) +
-                         " for collection '" + col->name() + "'");
+          " of " + std::to_string(numChunks) + " for collection '" + col->name() + "'");
 
       // read remote chunk
       TRI_ASSERT(chunkSlice.isArray());
@@ -861,8 +861,9 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         // patch the document counter of the collection and the transaction
         int64_t diff = static_cast<int64_t>(numberDocumentsAfterSync) -
                        static_cast<int64_t>(numberDocumentsDueToCounter);
+        auto seq = rocksutils::latestSequenceNumber();
         static_cast<RocksDBCollection*>(trx.documentCollection()->getPhysical())
-            ->adjustNumberDocuments(0, diff);
+            ->meta().adjustNumberDocuments(seq, /*revId*/0, diff);
       }
     }
 
