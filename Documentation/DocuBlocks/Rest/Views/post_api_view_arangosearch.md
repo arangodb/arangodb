@@ -7,53 +7,21 @@
 The name of the View.
 
 @RESTBODYPARAM{type,string,required,string}
-The type of the View (immutable). Must be equal to *"arangosearch"*.
+The type of the View. Must be equal to *"arangosearch"*.
+This option is immutable.
 
-@RESTBODYPARAM{links,object,optional,post_api_view_links}
+@RESTBODYPARAM{links,object,optional,}
 Expects an object with the attribute keys being names of to be linked collections,
-and the link properties as attribute values.
-
-@RESTSTRUCT{[collection-name],post_api_view_links,object,optional,post_api_view_link_props}
-Name of a collection as attribute key.
-
-@RESTSTRUCT{analyzers,post_api_view_link_props,array,optional,string}
-The list of Analyzers to be used for indexing of string values
-(default: ["identity"]).
-
-@RESTSTRUCT{fields,post_api_view_link_props,object,optional,post_api_view_fields}
-The field properties. If specified, then *fields* should be a JSON object
-containing the following attributes:
-
-@RESTSTRUCT{[field-name],post_api_view_fields,object,optional,}
-This is a recursive structure for the specific attribute path, potentially
-containing any of the following attributes:
-  - *analyzers*
-  - *fields*
-  - *includeAllFields*
-  - *trackListPositions*
-  - *storeValues*
-Any attributes not specified are inherited from the parent.
-
-@RESTSTRUCT{includeAllFields,post_api_view_link_props,boolean,optional,bool}
-The flag determines whether or not to index all fields on a particular level of
-depth (default: false).
-
-@RESTSTRUCT{trackListPositions,post_api_view_link_props,boolean,optional,bool}
-The flag determines whether or not values in a lists should be treated separate
-(default: false).
-
-@RESTSTRUCT{storeValues,post_api_view_link_props,string,optional,string}
-How should the View track the attribute values, this setting allows for
-additional value retrieval optimizations, one of:
-- `"none"` (default): Do not store values by the View
-- `"id"`: Store only information about value presence, to allow use of the
-  EXISTS() function
+and the link properties as attribute values. See
+[ArangoSearch View Link Properties](https://www.arangodb.com/docs/stable/arangosearch-views.html#link-properties)
+for details.
 
 @RESTBODYPARAM{primarySort,array,optional,object}
 A primary sort order can be defined to enable an AQL optimization. If a query
 iterates over all documents of a View, wants to sort them by attribute values
 and the (left-most) fields to sort by as well as their sorting direction match
 with the *primarySort* definition, then the `SORT` operation is optimized away.
+This option is immutable.
 
 Expects an array of objects, each specifying a field (attribute path) and a
 sort direction (`"asc` for ascending, `"desc"` for descending):
@@ -133,15 +101,15 @@ Sub-properties:
     The segment candidates for the "consolidation" operation are selected based
     upon several possible configurable formulas as defined by their types.
     The currently supported types are:
+    - `"tier"` (default): consolidate based on segment byte size and live
+      document count as dictated by the customization attributes. If this type
+      is used, then below `segments*` and `minScore` properties are available.
     - `"bytes_accum"`: consolidate if and only if
       `{threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`
       i.e. the sum of all candidate segment byte size is less than the total
-      segment byte size multiplied by the `{threshold}`
-    - `"tier"` (default): consolidate based on segment byte size and live
-      document count as dictated by the customization attributes
-Additional properties if `type` is `"bytes_accum"`:
+      segment byte size multiplied by the `{threshold}`. If this type is used,
+      then below `threshold` property is available.
   - `threshold` (number, _optional_): value in the range `[0.0, 1.0]`
-Additional properties if `type` is `"tier"`:
   - `segmentsBytesFloor` (number, _optional_): Defines the value (in bytes) to
     treat all smaller segments as equal for consolidation selection
     (default: 2097152)
