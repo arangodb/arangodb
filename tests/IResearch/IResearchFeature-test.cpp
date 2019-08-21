@@ -447,6 +447,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     auto collectionId = std::to_string(1);
     auto viewId = std::to_string(42);
 
+    arangodb::ServerState::instance()->setRebootId(1); // Hack.
     auto serverRoleBefore = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
     auto serverRoleRestore = irs::make_finally([&serverRoleBefore]() -> void {

@@ -253,7 +253,7 @@ TEST_F(ClusterInfoTest, test_drop_database) {
     ASSERT_TRUE((nullptr != vocbase));
 
     ASSERT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
 
@@ -265,7 +265,7 @@ TEST_F(ClusterInfoTest, test_drop_database) {
       ASSERT_TRUE((false == !logicalView));
     }
 
-    EXPECT_TRUE((ci->dropDatabaseCoordinator(vocbase->name(), 0.0).ok()));
+    EXPECT_TRUE((arangodb::methods::Databases::drop(vocbase, vocbase->name()).ok()));
     ASSERT_TRUE((arangodb::methods::Databases::create(
                      vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
