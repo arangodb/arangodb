@@ -533,7 +533,7 @@ std::
 std::regex dateFormatRegex;
 
 std::regex const iso8601Regex(
-    "^(\\+|\\-)?\\d+(\\-\\d{1,2}(\\-\\d{1,2})?)?"  // YY[YY]-MM-DD
+    "^\\d+(\\-\\d{1,2}(\\-\\d{1,2})?)?"  // YY[YY]-MM-DD
     "("
     "("
     // Time is optional
@@ -662,6 +662,16 @@ bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
       break;
     }
     dateTime = dateTime.substr(1);
+  }
+
+  if (!dateTime.empty()) {
+    if (dateTime.front() == '+') {
+      // skip over initial +
+      dateTime = dateTime.substr(1);
+    } else if (dateTime.front() == '-') {
+      // we can't handle negative date values at all
+      return false;
+    }
   }
 
   while (!dateTime.empty()) {

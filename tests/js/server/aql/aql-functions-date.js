@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 500 */
-/* global assertEqual */
+/* global assertEqual, assertNotEqual */
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for query language, functions
 // /
@@ -40,6 +40,175 @@ var assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
 
 function ahuacatlDateFunctionsTestSuite () {
   return {
+    testInsideRangeExtractFunctions () {
+      let values = [
+        -62167219200000,
+        253402300799999,
+        "0000-01-01T00:00:00.000Z",
+        "0000-01-01T00:00:00.999Z",
+        "0000-01-01T23:59:59.000Z",
+        "9999-12-31T23:59:59.999Z",
+      ];
+      let functions = [
+        "DATE_TIMESTAMP",
+        "DATE_ISO8601",
+        "DATE_DAYOFWEEK",
+        "DATE_YEAR",
+        "DATE_MONTH",
+        "DATE_DAY",
+        "DATE_MINUTE",
+        "DATE_HOUR",
+        "DATE_SECOND",
+        "DATE_MILLISECOND",
+        "DATE_DAYOFYEAR",
+        "DATE_ISOWEEK",
+        "DATE_LEAPYEAR",
+        "DATE_QUARTER",
+        "DATE_DAYS_IN_MONTH",
+      ];
+
+      functions.forEach(function(fn) {
+        values.forEach(function(date) {
+          assertNotEqual([ null ], getQueryResults("RETURN " + fn + "(@value)", { value: date }), { fn, date });
+        });
+      });
+    },
+
+    testOutOfRangeExtractFunctions () {
+      let values = [
+        -999999999999999,
+        -99999999999999,
+        -62167219200001,
+        "-9999-01-01",
+        "-9999-01-01T12:23:34Z",
+        "-300-01-01T12:23:34Z",
+        "-01-01-01T12:23:34Z",
+        "-00-01-01T12:23:34Z",
+        "10000-01-01T12:23:34Z",
+        "10000-01-01",
+        "100000-01-01T12:23:34Z",
+        253402300800000,
+        999999999999999,
+        9999999999999999,
+      ];
+      let functions = [
+        "DATE_TIMESTAMP",
+        "DATE_ISO8601",
+        "DATE_DAYOFWEEK",
+        "DATE_YEAR",
+        "DATE_MONTH",
+        "DATE_DAY",
+        "DATE_MINUTE",
+        "DATE_HOUR",
+        "DATE_SECOND",
+        "DATE_MILLISECOND",
+        "DATE_DAYOFYEAR",
+        "DATE_ISOWEEK",
+        "DATE_LEAPYEAR",
+        "DATE_QUARTER",
+        "DATE_DAYS_IN_MONTH",
+      ];
+
+      functions.forEach(function(fn) {
+        values.forEach(function(date) {
+          assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN " + fn  + "(@value)", { value: date });
+        });
+      });
+    },
+    
+    testDateIso8601Ranges () {
+      let values = [
+        [false, -1000, 1, 1],
+        [false, -100, 1, 1],
+        [false, -10, 1, 1],
+        [false, -1, 1, 1],
+        [false, 10000, 1, 1],
+        [false, 99999, 1, 1],
+        [true, 0, 1, 1],
+        [true, 1, 1, 1],
+        [true, 9999, 12,31],
+      ];
+      values.forEach(function(values) {
+        const works = values.shift();
+        values = values.map(function(value) { return JSON.stringify(value); });
+        if (works) {
+          assertNotEqual([ null ], getQueryResults("RETURN DATE_ISO8601(" + values.join(", ") + ")"));
+        } else {
+          assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ISO8601(" + values.join(", ") + ")");
+        }
+      });
+    },
+    
+    testDateAddRanges () {
+      let values = [
+        [false, "-0001-01-01T00:00:00", 1, "day"],
+        [false, "-0000-01-01T00:00:00", 1, "day"],
+        [false, "-0000-01-01T00:00:00", 2, "day"],
+        [false, "9999-12-31T23:59:59", 1, "day"],
+        [false, "9999-12-31T23:59:59", 1, "second"],
+        [false, "10000-12-31T23:59:59", 1, "day"],
+        [true, "0000-01-01T00:00:00", 1, "second"],
+        [true, "0000-01-01T00:00:01", 1, "second"],
+        [true, "0000-01-01T00:00:00", 1, "day"],
+        [true, "0000-01-01T00:00:00", 9999, "year"],
+        [true, "9999-12-31T23:58:00", 1, "minute"],
+        [true, "9999-12-31T23:59:58", 1, "second"],
+      ];
+      values.forEach(function(values) {
+        const works = values.shift();
+        values = values.map(function(value) { return JSON.stringify(value); });
+        if (works) {
+          assertNotEqual([ null ], getQueryResults("RETURN DATE_ADD(" + values.join(", ") + ")"));
+        } else {
+          assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(" + values.join(", ") + ")");
+        }
+      });
+    },
+    
+    testDateSubRanges () {
+      let values = [
+        [false, "-0001-01-01T00:00:00", 1, "day"],
+        [false, "-0000-01-01T00:00:00", 1, "day"],
+        [false, "-0000-01-01T00:00:00", 2, "day"],
+        [false, "0000-01-01T00:00:00", 1, "day"],
+        [false, "0000-01-01T00:00:00", 1, "second"],
+        [false, "0000-01-01T00:00:00", 2, "day"],
+        [false, "10000-01-01T12:34:40", 1, "day"],
+        [false, "10000-12-31T23:59:59", 1, "day"],
+        [true, "0000-01-01T00:00:01", 1, "second"],
+        [true, "9999-12-31T23:59:59", 1, "second"],
+        [true, "9999-12-31T23:59:59", 9999, "year"],
+      ];
+      values.forEach(function(values) {
+        const works = values.shift();
+        values = values.map(function(value) { return JSON.stringify(value); });
+        if (works) {
+          assertNotEqual([ null ], getQueryResults("RETURN DATE_SUBTRACT(" + values.join(", ") + ")"));
+        } else {
+          assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_SUBTRACT(" + values.join(", ") + ")");
+        }
+      });
+    },
+    
+    testDateDiffRanges () {
+      let values = [
+        [false, "-0001-01-01T00:00:00", "0000-01-01T00:00:00", "day"],
+        [false, "0001-01-01T00:00:00", "-0000-01-01T00:00:00", "day"],
+        [false, "10000-01-01T00:00:00", "0000-01-01T00:00:00", "day"],
+        [false, "0000-01-01T00:00:00", "10000-01-01T00:00:00", "day"],
+        [false, "10000-01-01T00:00:00", "-0000-01-01T00:00:00", "day"],
+      ];
+      values.forEach(function(values) {
+        const works = values.shift();
+        values = values.map(function(value) { return JSON.stringify(value); });
+        if (works) {
+          assertNotEqual([ null ], getQueryResults("RETURN DATE_DIFF(" + values.join(", ") + ")"));
+        } else {
+          assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DIFF(" + values.join(", ") + ")");
+        }
+      });
+    },
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test date_format function
 // //////////////////////////////////////////////////////////////////////////////
@@ -48,9 +217,6 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_YEAR({})");
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_FORMAT({}, {})");
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_FORMAT([], [])");
-      //      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_FORMAT(1, 1))");
-      //      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_FORMAT(1, 'aoeu'))");
-      //      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_FORMAT('aoeu', 1))");
     },
 
     testDateFormat () {
@@ -58,7 +224,6 @@ function ahuacatlDateFunctionsTestSuite () {
       assertEqual([ date ], getQueryResults("RETURN DATE_FORMAT(@value, '%z')", { value: date }));
 
       const values = [
-   //     ["-300-04-29", "-300", "-0300", "00", "-000300", "04", "29"],
         ["7200-04-29", "7200", "7200", "00", "+007200", "04", "29"],
         ["200-04-29", "200", "0200", "00", "+000200", "04", "29"],
         ["20-04-29", "20", "0020", "20", "+000020", "04", "29"],
