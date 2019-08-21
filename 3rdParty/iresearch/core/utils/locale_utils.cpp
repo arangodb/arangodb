@@ -1919,7 +1919,7 @@ bool codecvtw_facet::append(
   // convert 'BUFFER_SIZE' at a time
   do {
     auto offset = buf.size();
-    UErrorCode status = U_ZERO_ERROR;
+    status = U_ZERO_ERROR;
 
     buf.resize(buf.size() + BUFFER_SIZE);
 
@@ -2897,8 +2897,9 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
       }
     }
 
-    icu_buf = ctx->icu_buf1_.length() < ctx->icu_buf1_.length()
-            ? &ctx->icu_buf1_ : &ctx->icu_buf0_;
+    icu_buf = ctx->icu_buf1_.length() < ctx->icu_buf0_.length()
+        ? &ctx->icu_buf1_
+        : &ctx->icu_buf0_;
   }
 
   // ensure all letters are uppercased/lowercased

@@ -21,10 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "store/mmap_directory.hpp"
-#include "store/store_utils.hpp"
-#include "utils/singleton.hpp"
-
 #include "IResearchCommon.h"
 #include "IResearchFeature.h"
 #include "IResearchLinkHelper.h"
@@ -49,6 +45,13 @@
 
 #include "IResearchLink.h"
 
+#include "index/column_info.hpp"
+#include "store/mmap_directory.hpp"
+#include "store/store_utils.hpp"
+#include "utils/lz4compression.hpp"
+#include "utils/encryption.hpp"
+#include "utils/singleton.hpp"
+
 using namespace std::literals;
 
 namespace {
@@ -56,7 +59,7 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the storage format used with IResearch writers
 ////////////////////////////////////////////////////////////////////////////////
-const irs::string_ref IRESEARCH_STORE_FORMAT("1_1");
+const irs::string_ref IRESEARCH_STORE_FORMAT("1_2");
 
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
@@ -1090,9 +1093,23 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
   _lastCommittedTick = _dataStore._recoveryTick;
   _flushSubscription.reset(new IResearchFlushSubscription(_dataStore._recoveryTick));
 
+
   irs::index_writer::init_options options;
   options.lock_repository = false; // do not lock index, ArangoDB has its own lock
   options.comparator = sorted ? &_comparer : nullptr; // set comparator if requested
+
+  // setup columnstore compression/encryption if requested by storage engine
+  auto const encrypt = (nullptr != irs::get_encryption(_dataStore._directory->attributes()));
+  if (encrypt) {
+    options.column_info = [](const irs::string_ref& name) -> irs::column_info {
+      // do not waste resources to encrypt primary key column
+      return { irs::compression::lz4::type(), {}, DocumentPrimaryKey::PK() != name };
+    };
+  } else {
+    options.column_info = [](const irs::string_ref& /*name*/) -> irs::column_info {
+      return { irs::compression::lz4::type(), {}, false };
+    };
+  }
 
   auto openFlags = irs::OM_APPEND;
   if (!_dataStore._reader) {

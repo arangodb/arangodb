@@ -3,9 +3,26 @@ v3.5.1 (XXXX-XX-XX)
 
 * Show query string length and cacheability information in query explain output.
 
+* The AQL functions `FULLTEXT`, `NEAR`, `WITHIN` and `WITHIN_RECTANGLE` are now
+  marked as cacheable, so they can be used in conjunction with the AQL query
+  results cache on a single server.
+
+* Fixed issue #9612: fix ArangoSearch views getting out of sync with collection.
+
+* Fix an issue with potential spurious wakeups in the internal scheduler code.
+
+* Changes the _idle_ timeout of stream transactions to 10 seconds and the total
+  per DB server size of stream transaction data to 128 MB. The idle timer is
+  restarted after every operation in a stream transaction, so it is not the
+  total timeout for the transaction.
+
+  These limits were documented in the manual for stream transactions since 3.5.0,
+  but are enforced only as of 3.5.1. Enforcing the limits is useful to free up
+  resources from abandoned transactions.
+
 * Consistently honor the return value of all attempts to queue tasks in the
   internal scheduler.
-  
+
   Previously some call sites did not check the return value of internal queueing
   operations, and if the scheduler queue was full, operations that were thought
   to be requeued were silently dropped. Now, there will be reactions on such
