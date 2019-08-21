@@ -60,7 +60,9 @@ const internalMembers = [
   'testDuration',
   'shutdownTime',
   'totalSetUp',
-  'totalTearDown'
+  'totalTearDown',
+  'setUpDuration',
+  'teardownAllDuration'
 ];
 
 function skipInternalMember (r, a) {
