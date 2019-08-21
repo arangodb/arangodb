@@ -24,11 +24,13 @@
 #ifndef IRESEARCH_TL_DOC_WRITER_H
 #define IRESEARCH_TL_DOC_WRITER_H
 
+#include "column_info.hpp"
 #include "field_data.hpp"
 #include "sorted_column.hpp"
 #include "analysis/token_stream.hpp"
 #include "formats/formats.hpp"
 #include "utils/bitvector.hpp"
+#include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/type_limits.hpp"
@@ -164,7 +166,11 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   }; // document
 
   DECLARE_UNIQUE_PTR(segment_writer);
-  DECLARE_FACTORY(directory& dir, const comparer* comparator);
+  DECLARE_FACTORY(
+    directory& dir,
+    const column_info_provider_t& column_info,
+    const comparer* comparator
+  );
 
   struct update_context {
     size_t generation;
@@ -238,6 +244,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     stored_column(
       const string_ref& name,
       columnstore_writer& columnstore,
+      const column_info_provider_t& column_info,
       bool cache
     );
 
@@ -248,13 +255,20 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   }; // stored_column
 
   struct sorted_column : util::noncopyable {
-    sorted_column() = default;
+    explicit sorted_column(
+        const column_info_provider_t& column_info) NOEXCEPT
+      : stream(column_info(string_ref::NIL)) {  // get compression for sorted column
+    }
 
     irs::sorted_column stream;
     field_id id{ field_limits::invalid() };
   }; // sorted_column
 
-  segment_writer(directory& dir, const comparer* comparator) NOEXCEPT;
+  segment_writer(
+    directory& dir,
+    const column_info_provider_t& column_info,
+    const comparer* comparator
+  ) NOEXCEPT;
 
   bool index(
     const hashed_string_ref& name,
@@ -399,6 +413,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   std::unordered_set<field_data*> norm_fields_; // document fields for normalization
   std::string seg_name_;
   field_writer::ptr field_writer_;
+  const column_info_provider_t* column_info_;
   column_meta_writer::ptr col_meta_writer_;
   columnstore_writer::ptr col_writer_;
   tracking_directory dir_;

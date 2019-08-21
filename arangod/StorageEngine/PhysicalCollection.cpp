@@ -111,7 +111,7 @@ bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
 
 /// @brief Find index by definition
 /*static*/ std::shared_ptr<Index> PhysicalCollection::findIndex(
-    VPackSlice const& info, std::vector<std::shared_ptr<Index>> const& indexes) {
+    VPackSlice const& info, IndexContainerType const& indexes) {
   TRI_ASSERT(info.isObject());
 
   auto value = info.get(arangodb::StaticStrings::IndexType);  // extract type
@@ -528,7 +528,7 @@ int PhysicalCollection::checkRevision(transaction::Methods*, TRI_voc_rid_t expec
 /// @brief hands out a list of indexes
 std::vector<std::shared_ptr<arangodb::Index>> PhysicalCollection::getIndexes() const {
   READ_LOCKER(guard, _indexesLock);
-  return _indexes;
+  return { _indexes.begin(), _indexes.end() };
 }
 
 void PhysicalCollection::getIndexesVPack(VPackBuilder& result, unsigned flags,
@@ -578,5 +578,52 @@ std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
   builder->close();
   return builder;
 }
+
+
+bool PhysicalCollection::IndexOrder::operator()(const std::shared_ptr<Index>& left,
+                                                const std::shared_ptr<Index>& right) const {
+  // Primary index always first (but two primary indexes render comparsion
+  // invalid but that`s a bug itself)
+  TRI_ASSERT(!((left->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) &&
+               (right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX)));
+  if (left->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    return true;
+  }
+  if (right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    return false;
+  }
+
+  // edge indexes should go right after primary
+  if (left->type() != right->type()) {
+    if (right->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+      return false;
+    } else if (left->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+      return true;
+    }
+  }
+
+  // This failpoint allows CRUD tests to trigger reversal
+  // of index operations. Hash index placed always AFTER reversable indexes
+  // could be broken by unique constraint violation or by intentional failpoint.
+  // And this will make possible to deterministically trigger index reversals
+  TRI_IF_FAILURE("HashIndexAlwaysLast") {
+    if (left->type() != right->type()) {
+      if (right->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+        return true;
+      } else if (left->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+        return false;
+      }
+    }
+  }
+
+  // indexes which needs no reverse should be done first to minimize
+  // need for reversal procedures
+  if (left->needsReversal() != right->needsReversal()) {
+    return right->needsReversal();
+  }
+  // use id to make  order of equally-sorted indexes deterministic
+  return left->id() < right->id();
+}
+
 
 }  // namespace arangodb
