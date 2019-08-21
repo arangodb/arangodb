@@ -744,11 +744,11 @@ ProcessInfo TRI_ProcessInfoH(HANDLE processHandle, TRI_pid_t pid) {
       LOG_TOPIC("6667", ERR, arangodb::Logger::FIXME) << "failed to acquire thread from snapshot - " << GetLastError();
     }
     CloseHandle(snapShot);
-  */
   }
   else {
     LOG_TOPIC("6667", ERR, arangodb::Logger::FIXME) << "failed to acquire process threads count - " << GetLastError();
   }
+  */
 
   return result;
 }
