@@ -29,14 +29,14 @@
 
 NS_LOCAL
 
-static std::thread::id INVALID;
+const auto RW_MUTEX_WAIT_TIMEOUT = std::chrono::milliseconds(100);
 
 NS_END
 
 NS_ROOT
 NS_BEGIN(async_utils)
 
-busywait_mutex::busywait_mutex(): owner_(INVALID) {}
+busywait_mutex::busywait_mutex(): owner_(std::thread::id()) {}
 
 busywait_mutex::~busywait_mutex() {
   assert(try_lock()); // ensure destroying an unlocked mutex
@@ -45,18 +45,17 @@ busywait_mutex::~busywait_mutex() {
 void busywait_mutex::lock() {
   auto this_thread_id = std::this_thread::get_id();
 
-  for (auto expected = INVALID;
+  for (auto expected = std::thread::id();
        !owner_.compare_exchange_strong(expected, this_thread_id);
-       expected = INVALID
-  ) {
-    assert(this_thread_id != expected); // recursive lock aquisition attempted
+       expected = std::thread::id()) {
+    assert(this_thread_id != expected); // recursive lock acquisition attempted
     std::this_thread::yield();
   }
 }
 
 bool busywait_mutex::try_lock() {
   auto this_thread_id = std::this_thread::get_id();
-  auto expected = INVALID;
+  auto expected = std::thread::id();
 
   return owner_.compare_exchange_strong(expected, this_thread_id);
 }
@@ -64,9 +63,9 @@ bool busywait_mutex::try_lock() {
 void busywait_mutex::unlock() {
   auto expected = std::this_thread::get_id();
 
-  if (!owner_.compare_exchange_strong(expected, INVALID)) {
+  if (!owner_.compare_exchange_strong(expected, std::thread::id())) {
     // try again since std::thread::id is garanteed to be '==' but may not be bit equal
-    if (expected == std::this_thread::get_id() && owner_.compare_exchange_strong(expected, INVALID)) {
+    if (expected == std::this_thread::get_id() && owner_.compare_exchange_strong(expected, std::thread::id())) {
       return;
     }
 
@@ -77,6 +76,7 @@ void busywait_mutex::unlock() {
 read_write_mutex::read_write_mutex() NOEXCEPT
   : concurrent_count_(0),
     exclusive_count_(0),
+    exclusive_owner_(std::thread::id()),
     exclusive_owner_recursion_count_(0) {
 }
 
@@ -100,8 +100,7 @@ void read_write_mutex::lock_read() {
 
   // yield if there is already a writer waiting
   // wait for notification (possibly with writers waiting) or no more writers waiting
-  while (exclusive_count_ && std::cv_status::timeout == reader_cond_.wait_for(lock, std::chrono::milliseconds(100))) {
-  }
+  while (exclusive_count_ && std::cv_status::timeout == reader_cond_.wait_for(lock, RW_MUTEX_WAIT_TIMEOUT)) {}
 
   ++concurrent_count_;
 }
@@ -120,7 +119,7 @@ void read_write_mutex::lock_write() {
   // wait until lock is held exclusively by the current thread
   while (concurrent_count_) {
     try {
-      writer_cond_.wait_for(lock, std::chrono::milliseconds(100));
+      writer_cond_.wait_for(lock, RW_MUTEX_WAIT_TIMEOUT);
     } catch (...) {
       // 'wait_for' may throw according to specification
     }
@@ -218,11 +217,11 @@ void read_write_mutex::unlock(bool exclusive_only /*= false*/) {
     --concurrent_count_;
   #endif // IRESEARCH_DEBUG
 
-  // TODO: this should be changed to SCOPED_LOCK_NAMED, as right now it is not 
+  // FIXME: this should be changed to SCOPED_LOCK_NAMED, as right now it is not
   // guaranteed that we can succesfully acquire the mutex here. and if we don't,
   // there is no guarantee that the notify_all will wake up queued waiter.
-  
-  TRY_SCOPED_LOCK_NAMED(mutex_, lock); // try to aquire mutex for use with cond
+
+  TRY_SCOPED_LOCK_NAMED(mutex_, lock); // try to acquire mutex for use with cond
 
   // wake only writers since this is a reader
   // wake even without lock since writer may be waiting in lock_write() on cond
