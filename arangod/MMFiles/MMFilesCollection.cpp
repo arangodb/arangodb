@@ -21,6 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "MMFilesCollection.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
 #include "Basics/Exceptions.h"
@@ -50,7 +51,6 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesTransactionState.h"
-#include "MMFilesCollection.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -169,7 +169,7 @@ Result persistLocalDocumentIdIterator(MMFilesMarker const* marker, void* data,
     case TRI_DF_MARKER_VPACK_DOCUMENT: {
       auto transactionId = MMFilesDatafileHelper::TransactionId(marker);
 
-      VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) + 
+      VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) +
                              MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
       uint8_t const* vpack = slice.begin();
 
@@ -335,7 +335,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(MMFilesMarker const* mar
   transaction::Methods* trx = state->_trx;
   TRI_ASSERT(trx != nullptr);
 
-  VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) + 
+  VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) +
                          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
   uint8_t const* vpack = slice.begin();
 
@@ -376,8 +376,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(MMFilesMarker const* mar
 
   // no primary index lock required here because we are the only ones reading
   // from the index ATM
-  MMFilesSimpleIndexElement* found =
-      state->_primaryIndex->lookupKeyRef(trx, keySlice);
+  MMFilesSimpleIndexElement* found = state->_primaryIndex->lookupKeyRef(trx, keySlice);
 
   // it is a new entry
   if (found == nullptr || !found->isSet()) {
@@ -454,7 +453,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(MMFilesMarker const* mar
   TRI_ASSERT(physical != nullptr);
   transaction::Methods* trx = state->_trx;
 
-  VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) + 
+  VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) +
                          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
 
   VPackSlice keySlice;
@@ -480,8 +479,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(MMFilesMarker const* mar
 
   // no primary index lock required here because we are the only ones reading
   // from the index ATM
-  MMFilesSimpleIndexElement found =
-      state->_primaryIndex->lookupKey(trx, keySlice);
+  MMFilesSimpleIndexElement found = state->_primaryIndex->lookupKey(trx, keySlice);
 
   // it is a new entry, so we missed the create
   if (!found) {
@@ -643,7 +641,7 @@ MMFilesCollection::MMFilesCollection(LogicalCollection& logical,
   _path = mmfiles._path;
   _doCompact = mmfiles._doCompact;
   _maxTick = mmfiles._maxTick;
-  
+
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   setCompactionStatus("compaction not yet started");
   //  not copied
@@ -677,7 +675,8 @@ bool MMFilesCollection::isVolatile() const { return _isVolatile; }
 
 /// @brief closes an open collection
 int MMFilesCollection::close() {
-  LOG_TOPIC("2408b", DEBUG, Logger::ENGINES) << "closing '" << _logicalCollection.name() << "'";
+  LOG_TOPIC("2408b", DEBUG, Logger::ENGINES)
+      << "closing '" << _logicalCollection.name() << "'";
   if (!_logicalCollection.deleted() && !_logicalCollection.vocbase().isDropped()) {
     auto primIdx = primaryIndex();
     auto idxSize = primIdx->size();
@@ -941,10 +940,12 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick, uint32_t size,
         df.release();
         TRI_ASSERT(_journals.size() == 1);
       } catch (basics::Exception const& ex) {
-        LOG_TOPIC("dfb34", ERR, Logger::COLLECTOR) << "cannot select journal: " << ex.what();
+        LOG_TOPIC("dfb34", ERR, Logger::COLLECTOR)
+            << "cannot select journal: " << ex.what();
         return ex.code();
       } catch (std::exception const& ex) {
-        LOG_TOPIC("79da1", ERR, Logger::COLLECTOR) << "cannot select journal: " << ex.what();
+        LOG_TOPIC("79da1", ERR, Logger::COLLECTOR)
+            << "cannot select journal: " << ex.what();
         return TRI_ERROR_INTERNAL;
       } catch (...) {
         LOG_TOPIC("167e7", ERR, Logger::COLLECTOR)
@@ -1197,9 +1198,9 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid, uint32_t j
     std::string oldName = datafile->getName();
     std::string jname("journal-" + std::to_string(datafile->fid()) + ".db");
     std::string filename = arangodb::basics::FileUtils::buildFilename(path(), jname);
-      
+
     LOG_TOPIC("3e87e", TRACE, arangodb::Logger::DATAFILES)
-          << "renaming journal '" << datafile->getName() << "' to '" << filename << "'";
+        << "renaming journal '" << datafile->getName() << "' to '" << filename << "'";
 
     int res = datafile->rename(filename);
 
@@ -1670,24 +1671,24 @@ int MMFilesCollection::fillAllIndexes(transaction::Methods& trx) {
 
 /// @brief Fill the given list of Indexes
 int MMFilesCollection::fillIndexes(transaction::Methods& trx,
-                                   std::vector<std::shared_ptr<arangodb::Index>> const& indexes,
+                                   PhysicalCollection::IndexContainerType const& indexes,
                                    bool skipPersistent) {
   // distribute the work to index threads plus this thread
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   size_t const n = indexes.size();
 
-  if (n == 0 || (n == 1 && indexes[0].get()->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX)) {
+  if (n == 0 || (n == 1 && (*indexes.begin())->type() ==
+                               Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX)) {
     return TRI_ERROR_NO_ERROR;
   }
 
   bool rolledBack = false;
   auto rollbackAll = [&]() -> void {
-    for (size_t i = 0; i < n; i++) {
-      auto idx = indexes[i].get();
+    for (auto& idx : indexes) {
       if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
         continue;
       }
-      MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx);
+      MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx.get());
       if (midx->isPersistent()) {
         continue;
       }
@@ -1714,8 +1715,7 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
     // give the index a size hint
     auto primaryIdx = primaryIndex();
     auto nrUsed = primaryIdx->size();
-    for (size_t i = 0; i < n; i++) {
-      auto idx = indexes[i];
+    for (auto& idx : indexes) {
       if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
         continue;
       }
@@ -1739,8 +1739,7 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
     documents.reserve(blockSize);
 
     auto insertInAllIndexes = [&]() -> void {
-      for (size_t i = 0; i < n; ++i) {
-        auto idx = indexes[i];
+      for (auto& idx : indexes) {
         if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
           continue;
         }
@@ -1966,7 +1965,9 @@ int MMFilesCollection::iterateMarkersOnLoad(transaction::Methods* trx) {
   // pick up persistent id flag from state
   _hasAllPersistentLocalIds.store(openState._hasAllPersistentLocalIds);
   auto engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
-  LOG_TOPIC_IF("40333", WARN, arangodb::Logger::ENGINES, !openState._hasAllPersistentLocalIds && !engine->upgrading() && !engine->inRecovery())
+  LOG_TOPIC_IF("40333", WARN, arangodb::Logger::ENGINES,
+               !openState._hasAllPersistentLocalIds && !engine->upgrading() &&
+                   !engine->inRecovery())
       << "collection '" << _logicalCollection.name() << "' does not have all "
       << "persistent LocalDocumentIds; cannot be linked to an arangosearch "
          "view";
@@ -2133,9 +2134,10 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
   {
     READ_LOCKER(guard, _indexesLock);
     TRI_ASSERT(!_indexes.empty());
-    if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
+    auto it = _indexes.cbegin();
+    if ((*it)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
         (TRI_COL_TYPE_EDGE == _logicalCollection.type() &&
-         (_indexes.size() < 2 || _indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX))) {
+         (_indexes.size() < 2 || (*++it)->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX))) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       for (auto const& it : _indexes) {
         LOG_TOPIC("5e00b", ERR, arangodb::Logger::ENGINES) << "- " << it.get();
@@ -2174,17 +2176,14 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(!_indexes.empty());
 }
 
-std::shared_ptr<Index> MMFilesCollection::createIndex(
-    arangodb::velocypack::Slice const& info,
-    bool restore,
-    bool& created) {
+std::shared_ptr<Index> MMFilesCollection::createIndex(arangodb::velocypack::Slice const& info,
+                                                      bool restore, bool& created) {
   transaction::StandaloneContext ctx(_logicalCollection.vocbase());
 
   SingleCollectionTransaction trx(
-    std::shared_ptr<transaction::Context>(
-       std::shared_ptr<transaction::Context>(),
-       &ctx), // aliasing ctor
-    _logicalCollection, AccessMode::Type::EXCLUSIVE);
+      std::shared_ptr<transaction::Context>(std::shared_ptr<transaction::Context>(),
+                                            &ctx),  // aliasing ctor
+      _logicalCollection, AccessMode::Type::EXCLUSIVE);
 
   Result res = trx.begin();
 
@@ -2201,11 +2200,9 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(
   return idx;
 }
 
-std::shared_ptr<Index> MMFilesCollection::createIndex(
-    transaction::Methods& trx,
-    velocypack::Slice const& info,
-    bool restore,
-    bool& created) {
+std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
+                                                      velocypack::Slice const& info,
+                                                      bool restore, bool& created) {
   // prevent concurrent dropping
   //  TRI_ASSERT(trx->isLocked(&_logicalCollection, AccessMode::Type::READ));
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -2237,11 +2234,12 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(
 
   bool generateKey = !restore;  // Restore is not allowed to generate an id
   try {
-    idx = engine->indexFactory().prepareIndexFromSlice(info, generateKey, _logicalCollection, false);
+    idx = engine->indexFactory().prepareIndexFromSlice(info, generateKey,
+                                                       _logicalCollection, false);
   } catch (std::exception const& ex) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED, ex.what());
   }
-    
+
   TRI_ASSERT(idx != nullptr);
 
   if (!restore) {
@@ -2264,11 +2262,9 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(
         << "' but found conflicting index '" << builder.slice().toJson() << "'";
 #endif
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
-                                   "duplicate value for `" +
-                                       arangodb::StaticStrings::IndexId +
+                                   "duplicate value for `" + arangodb::StaticStrings::IndexId +
                                        "` or `" +
-                                       arangodb::StaticStrings::IndexName +
-                                       "`");
+                                       arangodb::StaticStrings::IndexName + "`");
   }
 
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
@@ -2306,8 +2302,8 @@ int MMFilesCollection::saveIndex(transaction::Methods& trx, std::shared_ptr<Inde
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   // we cannot persist PrimaryIndex
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  std::vector<std::shared_ptr<arangodb::Index>> indexListLocal;
-  indexListLocal.emplace_back(idx);
+  IndexContainerType indexListLocal;
+  indexListLocal.emplace(idx);
 
   int res = fillIndexes(trx, indexListLocal, false);
 
@@ -2327,11 +2323,13 @@ int MMFilesCollection::saveIndex(transaction::Methods& trx, std::shared_ptr<Inde
         << "cannot save index definition: " << ex.what();
     return TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG_TOPIC("a05ba", ERR, arangodb::Logger::ENGINES) << "cannot save index definition";
+    LOG_TOPIC("a05ba", ERR, arangodb::Logger::ENGINES)
+        << "cannot save index definition";
     return TRI_ERROR_INTERNAL;
   }
   if (builder == nullptr) {
-    LOG_TOPIC("63a71", ERR, arangodb::Logger::ENGINES) << "cannot save index definition";
+    LOG_TOPIC("63a71", ERR, arangodb::Logger::ENGINES)
+        << "cannot save index definition";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -2379,7 +2377,7 @@ bool MMFilesCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
 
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
 
-  _indexes.emplace_back(idx);
+  _indexes.emplace(idx);
   if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
     TRI_ASSERT(idx->id() == 0);
     _primaryIndex = static_cast<MMFilesPrimaryIndex*>(idx.get());
@@ -2462,27 +2460,19 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
 bool MMFilesCollection::removeIndex(TRI_idx_iid_t iid) {
   WRITE_LOCKER(guard, _indexesLock);
 
-  size_t const n = _indexes.size();
-
-  for (size_t i = 0; i < n; ++i) {
-    auto idx = _indexes[i];
-
+  for (auto& idx : _indexes) {
     if (!idx->canBeDropped()) {
       continue;
     }
-
     if (idx->id() == iid) {
       // found!
       idx->drop();
-
-      _indexes.erase(_indexes.begin() + i);
-
       // update statistics
       MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx.get());
       if (midx->isPersistent()) {
         --_persistentIndexes;
       }
-
+      _indexes.erase(idx);
       return true;
     }
   }
@@ -2821,14 +2811,14 @@ Result MMFilesCollection::truncate(transaction::Methods& trx, OperationOptions& 
   }
 
   READ_LOCKER(guard, _indexesLock);
-  auto indexes = _indexes;
-  size_t const n = indexes.size();
-
   TRI_voc_tick_t tick = TRI_NewTickServer();
-  for (size_t i = 1; i < n; ++i) {
-    auto idx = indexes[i];
-    TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-    idx->afterTruncate(tick);
+  if (_indexes.size() > 1) {
+    auto idx = _indexes.begin();
+    ++idx;  // skip primary index
+    for (; idx != _indexes.end(); ++idx) {
+      TRI_ASSERT((*idx)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+      (*idx)->afterTruncate(tick);
+    }
   }
 
   return Result();
@@ -2859,8 +2849,7 @@ LocalDocumentId MMFilesCollection::reuseOrCreateLocalDocumentId(OperationOptions
 
 Result MMFilesCollection::insert(arangodb::transaction::Methods* trx, VPackSlice const slice,
                                  arangodb::ManagedDocumentResult& resultMdr,
-                                 OperationOptions& options,
-                                 bool lock, KeyLockInfo* keyLockInfo,
+                                 OperationOptions& options, bool lock, KeyLockInfo* keyLockInfo,
                                  std::function<void()> const& callbackDuringLock) {
   LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
@@ -3007,10 +2996,11 @@ Result MMFilesCollection::insert(arangodb::transaction::Methods* trx, VPackSlice
     if (options.returnNew) {
       resultMdr.setManaged(doc.begin());
       TRI_ASSERT(resultMdr.revisionId() == revisionId);
-    } else if (!options.silent) {   //  need to pass up revision and key
+    } else if (!options.silent) {  //  need to pass up revision and key
       transaction::BuilderLeaser keyBuilder(trx);
-      keyBuilder->openObject(/*unindexed*/true);
-      keyBuilder->add(StaticStrings::KeyString, transaction::helpers::extractKeyFromDocument(doc));
+      keyBuilder->openObject(/*unindexed*/ true);
+      keyBuilder->add(StaticStrings::KeyString,
+                      transaction::helpers::extractKeyFromDocument(doc));
       keyBuilder->close();
       resultMdr.setManaged()->assign(reinterpret_cast<char const*>(keyBuilder->start()),
                                      keyBuilder->size());
@@ -3262,34 +3252,31 @@ Result MMFilesCollection::insertSecondaryIndexes(arangodb::transaction::Methods&
   Result result;
 
   READ_LOCKER(guard, _indexesLock);
+  if (_indexes.size() > 1) {
+    auto idx = _indexes.begin();
+    idx++; // skip primary index
+    for (; idx != _indexes.end(); ++idx) {
+      TRI_ASSERT((*idx)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+      MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx->get());
+      if (!useSecondary && !midx->isPersistent()) {
+        continue;
+      }
 
-  auto indexes = _indexes;
-  size_t const n = indexes.size();
+      Result res = midx->insert(trx, documentId, doc, mode);
 
-  for (size_t i = 1; i < n; ++i) {
-    auto idx = indexes[i];
-    TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-
-    MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx.get());
-    if (!useSecondary && !midx->isPersistent()) {
-      continue;
-    }
-
-    Result res = midx->insert(trx, documentId, doc, mode);
-
-    // in case of no-memory, return immediately
-    if (res.errorNumber() == TRI_ERROR_OUT_OF_MEMORY) {
-      return res;
-    }
-    if (!res.ok()) {
-      if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
-          result.ok()) {
-        // "prefer" unique constraint violated
-        result = res;
+      // in case of no-memory, return immediately
+      if (res.errorNumber() == TRI_ERROR_OUT_OF_MEMORY) {
+        return res;
+      }
+      if (!res.ok()) {
+        if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
+            result.ok()) {
+          // "prefer" unique constraint violated
+          result = res;
+        }
       }
     }
   }
-
   return result;
 }
 
@@ -3311,26 +3298,22 @@ Result MMFilesCollection::deleteSecondaryIndexes(transaction::Methods& trx,
   Result result;
 
   READ_LOCKER(guard, _indexesLock);
-  auto indexes = _indexes;
-  size_t const n = indexes.size();
-
-  for (size_t i = 1; i < n; ++i) {
-    auto idx = indexes[i];
-    TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-
-    MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx.get());
-    if (!useSecondary && !midx->isPersistent()) {
-      continue;
-    }
-
-    Result res = midx->remove(trx, documentId, doc, mode);
-
-    if (res.fail()) {
-      // an error occurred
-      result = res;
+  if (_indexes.size() > 1) {
+    auto idx = _indexes.begin();
+    ++idx; // skip primary index
+    for (; idx != _indexes.end(); ++idx) {
+      TRI_ASSERT((*idx)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+      MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx->get());
+      if (!useSecondary && !midx->isPersistent()) {
+        continue;
+      }
+      Result res = midx->remove(trx, documentId, doc, mode);
+      if (res.fail()) {
+        // an error occurred
+        result = res;
+      }
     }
   }
-
   return result;
 }
 
@@ -3413,8 +3396,8 @@ Result MMFilesCollection::insertDocument(arangodb::transaction::Methods& trx,
 
 Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
                                  VPackSlice const newSlice, ManagedDocumentResult& resultMdr,
-                                 OperationOptions& options,
-                                 bool lock, ManagedDocumentResult& previousMdr) {
+                                 OperationOptions& options, bool lock,
+                                 ManagedDocumentResult& previousMdr) {
   VPackSlice key = newSlice.get(StaticStrings::KeyString);
   if (key.isNone()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -3493,7 +3476,8 @@ Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
       if (arangodb::shardKeysChanged(_logicalCollection, oldDoc, builder->slice(), true)) {
         return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
       }
-      if (arangodb::smartJoinAttributeChanged(_logicalCollection, oldDoc, builder->slice(), true)) {
+      if (arangodb::smartJoinAttributeChanged(_logicalCollection, oldDoc,
+                                              builder->slice(), true)) {
         return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE);
       }
     }
@@ -3621,7 +3605,8 @@ Result MMFilesCollection::replace(transaction::Methods* trx, VPackSlice const ne
       if (arangodb::shardKeysChanged(_logicalCollection, oldDoc, builder->slice(), false)) {
         return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
       }
-      if (arangodb::smartJoinAttributeChanged(_logicalCollection, oldDoc, builder->slice(), false)) {
+      if (arangodb::smartJoinAttributeChanged(_logicalCollection, oldDoc,
+                                              builder->slice(), false)) {
         return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE);
       }
     }
@@ -3675,10 +3660,9 @@ Result MMFilesCollection::replace(transaction::Methods* trx, VPackSlice const ne
 }
 
 Result MMFilesCollection::remove(transaction::Methods& trx, velocypack::Slice slice,
-                                 ManagedDocumentResult& previousMdr, OperationOptions& options,
-                                 bool lock, KeyLockInfo* keyLockInfo,
+                                 ManagedDocumentResult& previousMdr,
+                                 OperationOptions& options, bool lock, KeyLockInfo* keyLockInfo,
                                  std::function<void()> const& callbackDuringLock) {
-  
   LocalDocumentId const documentId = LocalDocumentId::create();
   transaction::BuilderLeaser builder(&trx);
   TRI_voc_rid_t revisionId;
@@ -3976,8 +3960,7 @@ Result MMFilesCollection::removeFastPath(transaction::Methods& trx, TRI_voc_rid_
 /// @brief looks up a document by key, low level worker
 /// the caller must make sure the read lock on the collection is held
 /// the key must be a string slice, no revision check is performed
-LocalDocumentId MMFilesCollection::lookupDocument(transaction::Methods* trx,
-                                                  VPackSlice key,
+LocalDocumentId MMFilesCollection::lookupDocument(transaction::Methods* trx, VPackSlice key,
                                                   ManagedDocumentResult& result) {
   TRI_ASSERT(key.isString());
   MMFilesSimpleIndexElement element = primaryIndex()->lookupKey(trx, key, result);
