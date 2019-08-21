@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fix an issue with potential spurious wakeups in the internal scheduler code.
+
 * Consistently honor the return value of all attempts to queue tasks in the
   internal scheduler.
   
