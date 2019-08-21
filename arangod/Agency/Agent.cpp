@@ -1942,17 +1942,25 @@ void Agent::emptyCbTrashBin() {
       return;
     }
 
-    { VPackArrayBuilder trxs(envelope.get());
+    {
+      VPackArrayBuilder trxs(envelope.get());
       for (auto const& i : _callbackTrashBin) {
-        { VPackArrayBuilder trx(envelope.get());
-          { VPackObjectBuilder ak(envelope.get());
-            envelope->add(VPackValue(i.first));
-            for (auto const& j : i.second) {
-              { VPackObjectBuilder oper(envelope.get());
+        for (auto const& j : i.second) {
+          {
+            VPackArrayBuilder trx(envelope.get());
+            {
+              VPackObjectBuilder ak(envelope.get());
+              envelope->add(VPackValue(i.first));
+              {
+                VPackObjectBuilder oper(envelope.get());
                 envelope->add("op", VPackValue("unobserve"));
-                envelope->add("url", VPackValue(j));}}}
+                envelope->add("url", VPackValue(j));
+              }
+            }
+          }
         }
-      }}
+      }
+    }
     _callbackTrashBin.clear();
     _callbackLastPurged = std::chrono::steady_clock::now();
   }
