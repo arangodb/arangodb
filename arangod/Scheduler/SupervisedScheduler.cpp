@@ -312,9 +312,19 @@ void SupervisedScheduler::runWorker() {
   uint64_t id;
 
   std::shared_ptr<WorkerState> state;
+  auto waitMe = [&tStart](int where) {
+                  auto tExit = TRI_microtime();
+                  if (tExit - tStart > 0.25) {
+                    LOG_TOPIC("66666", INFO, arangodb::Logger::FIXME) <<
+                      "scheduler sleeps: " << (tExit - tStart) << " - wher    e - " << where;
+                  }
+                  tStart = tExit;
+                };
+    waitMe(__LINE__);
 
   {
     std::lock_guard<std::mutex> guard(_mutexSupervisor);
+    waitMe(__LINE__);
     id = _numWorkers++;  // increase the number of workers here, to obtain the id
     // copy shared_ptr with worker state
     state = _workerStates.back();
@@ -335,7 +345,9 @@ void SupervisedScheduler::runWorker() {
     
     // inform the supervisor that this thread is alive
     state->_ready = true;
+    waitMe(__LINE__);
     _conditionSupervisor.notify_one();
+    waitMe(__LINE__);
   }
 
   while (true) {
@@ -571,11 +583,13 @@ void SupervisedScheduler::startOneThread() {
                   }
                   tStart = tExit;
                 };
+    waitMe(__LINE__);
   // TRI_ASSERT(_numWorkers < _maxNumWorker);
   if (_numWorkers + _abandonedWorkerStates.size() >= _maxNumWorker) {
     return;  // do not add more threads, than maximum allows
   }
 
+    waitMe(__LINE__);
   std::unique_lock<std::mutex> guard(_mutexSupervisor);
     waitMe(__LINE__);
 
@@ -604,10 +618,12 @@ void SupervisedScheduler::startOneThread() {
     return;
   }
  
+    waitMe(__LINE__);
   // sync with runWorker() 
   _conditionSupervisor.wait(guard, [&state]() {
     return state->_ready;
   });
+    waitMe(__LINE__);
   LOG_TOPIC("f9de8", TRACE, Logger::THREADS) << "Started new thread";
 }
 
