@@ -1,6 +1,15 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Changes the _idle_ timeout of stream transactions to 10 seconds and the total
+  per DB server size of stream transaction data to 128 MB. The idle timer is
+  restarted after every operation in a stream transaction, so it is not the
+  total timeout for the transaction.
+
+  These limits were documented in the manual for stream transactions since 3.5.0,
+  but are enforced only as of 3.5.1. Enforcing the limits is useful to free up
+  resources from abandoned transactions.
+
 * Consistently honor the return value of all attempts to queue tasks in the
   internal scheduler.
   
