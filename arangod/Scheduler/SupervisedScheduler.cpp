@@ -622,6 +622,7 @@ void SupervisedScheduler::startOneThread() {
     waitMe(__LINE__);
   // sync with runWorker() 
   _conditionSupervisor.wait(guard, [&state]() {
+    waitMe(__LINE__);
     return state->_ready;
   });
     waitMe(__LINE__);
