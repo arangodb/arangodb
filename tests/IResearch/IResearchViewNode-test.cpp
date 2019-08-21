@@ -27,6 +27,7 @@
 #include "Aql/IResearchViewNode.h"
 
 #include "../Mocks/StorageEngineMock.h"
+#include "Aql/TestExecutorHelper.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
@@ -69,7 +70,11 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "V8Server/V8DealerFeature.h"
+#include "Cluster/ClusterFeature.h"
 
+#include "IResearch/IResearchLinkMeta.h"
+#include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
@@ -200,12 +205,15 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
 
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-          "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
-          "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-          "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-          "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
-          "true, \"collections\":[42] }, \"viewId\": \"" + std::to_string(logicalView->id()) + "\", "
-          "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": false},  { \"field\": \"another.field\", \"asc\":true } ] }");
+        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
+        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
+        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
+        "true, \"collections\":[42] }, \"viewId\": \"" +
+        std::to_string(logicalView->id()) +
+        "\", "
+        "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": "
+        "false},  { \"field\": \"another.field\", \"asc\":true } ] }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                 json->slice());
@@ -243,12 +251,16 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
 
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-          "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
-          "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-          "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-          "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
-          "true, \"collections\":[42] }, \"viewId\": \"" + std::to_string(logicalView->id()) + "\", "
-          "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": false},  { \"field\": \"another.field\", \"asc\":true } ], \"primarySortBuckets\": 1 }");
+        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
+        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
+        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
+        "true, \"collections\":[42] }, \"viewId\": \"" +
+        std::to_string(logicalView->id()) +
+        "\", "
+        "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": "
+        "false},  { \"field\": \"another.field\", \"asc\":true } ], "
+        "\"primarySortBuckets\": 1 }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                 json->slice());
@@ -290,8 +302,12 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" + std::to_string(logicalView->id()) + "\", "
-        "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": false},  { \"field\": \"another.field\", \"asc\":true } ], \"primarySortBuckets\": false }");
+        "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
+        std::to_string(logicalView->id()) +
+        "\", "
+        "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": "
+        "false},  { \"field\": \"another.field\", \"asc\":true } ], "
+        "\"primarySortBuckets\": false }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -308,8 +324,12 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" + std::to_string(logicalView->id()) + "\", "
-        "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": false},  { \"field\": \"another.field\", \"asc\":true } ], \"primarySortBuckets\": 3 }");
+        "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
+        std::to_string(logicalView->id()) +
+        "\", "
+        "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": "
+        "false},  { \"field\": \"another.field\", \"asc\":true } ], "
+        "\"primarySortBuckets\": 3 }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -354,7 +374,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
-    EXPECT_TRUE(!node.sort().first);  // primary sort is not set by default
+    EXPECT_TRUE(!node.sort().first);   // primary sort is not set by default
     EXPECT_EQ(0, node.sort().second);  // primary sort is not set by default
 
     EXPECT_TRUE(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node.getType());
@@ -593,7 +613,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
-    EXPECT_TRUE(!node.sort().first);  // primary sort is not set by default
+    EXPECT_TRUE(!node.sort().first);   // primary sort is not set by default
     EXPECT_EQ(0, node.sort().second);  // primary sort is not set by default
 
     EXPECT_TRUE(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node.getType());
@@ -625,7 +645,8 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\", \"primarySort\": [], \"primarySortBuckets\": false }");
+        std::to_string(logicalView->id()) +
+        "\", \"primarySort\": [], \"primarySortBuckets\": false }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                 json->slice());
@@ -633,7 +654,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
-    EXPECT_TRUE(!node.sort().first);  // primary sort is not set by default
+    EXPECT_TRUE(!node.sort().first);   // primary sort is not set by default
     EXPECT_EQ(0, node.sort().second);  // primary sort is not set by default
 
     EXPECT_TRUE(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node.getType());
@@ -665,7 +686,8 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\", \"primarySort\": [], \"primarySortBuckets\": 42 }");
+        std::to_string(logicalView->id()) +
+        "\", \"primarySort\": [], \"primarySortBuckets\": 42 }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                 json->slice());
@@ -673,7 +695,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
-    EXPECT_TRUE(!node.sort().first);  // primary sort is not set by default
+    EXPECT_TRUE(!node.sort().first);   // primary sort is not set by default
     EXPECT_EQ(0, node.sort().second);  // primary sort is not set by default
 
     EXPECT_TRUE(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node.getType());
@@ -714,7 +736,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
-    EXPECT_TRUE(!node.sort().first);  // primary sort is not set by default
+    EXPECT_TRUE(!node.sort().first);   // primary sort is not set by default
     EXPECT_EQ(0, node.sort().second);  // primary sort is not set by default
 
     EXPECT_TRUE(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node.getType());
@@ -758,7 +780,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
-    EXPECT_TRUE(!node.sort().first);  // primary sort is not set by default
+    EXPECT_TRUE(!node.sort().first);   // primary sort is not set by default
     EXPECT_EQ(0, node.sort().second);  // primary sort is not set by default
 
     EXPECT_TRUE(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node.getType());
@@ -801,7 +823,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
-    EXPECT_TRUE(!node.sort().first);  // primary sort is not set by default
+    EXPECT_TRUE(!node.sort().first);   // primary sort is not set by default
     EXPECT_EQ(0, node.sort().second);  // primary sort is not set by default
 
     EXPECT_TRUE(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node.getType());
@@ -1957,4 +1979,183 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
   EXPECT_TRUE(nullptr !=
               dynamic_cast<arangodb::aql::ExecutionBlockImpl<arangodb::aql::NoResultsExecutor>*>(
                   emptyBlock.get()));
+}
+
+class IResearchViewBlockTest : public ::testing::Test {
+ protected:
+  StorageEngineMock engine;
+  arangodb::application_features::ApplicationServer server;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+
+  IResearchViewBlockTest()
+      : engine(server),
+        server(nullptr, nullptr) {
+    arangodb::EngineSelectorFeature::ENGINE = &engine;
+    arangodb::tests::init(true);
+
+    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+                                    arangodb::LogLevel::ERR);
+
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+                                    arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+
+    // setup required application features
+    features.emplace_back(new arangodb::FlushFeature(server), false);
+    features.emplace_back(new arangodb::V8DealerFeature(server),
+                          false);  // required for DatabaseFeature::createDatabase(...)
+    features.emplace_back(new arangodb::ViewTypesFeature(server), true);
+    features.emplace_back(new arangodb::AuthenticationFeature(server), true);
+    features.emplace_back(new arangodb::DatabasePathFeature(server), false);
+    features.emplace_back(new arangodb::DatabaseFeature(server), false);
+    features.emplace_back(new arangodb::ShardingFeature(server), false);
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // must be first
+    arangodb::application_features::ApplicationServer::server->addFeature(
+        features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
+    features.emplace_back(new arangodb::AqlFeature(server), true);
+    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
+    features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true);  // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true);  // required for IResearchAnalyzerFeature
+
+#if USE_ENTERPRISE
+    features.emplace_back(new arangodb::LdapFeature(server),
+                          false);  // required for AuthenticationFeature with USE_ENTERPRISE
+#endif
+
+    // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
+    arangodb::application_features::ApplicationServer::server->addFeature(
+        new arangodb::ClusterFeature(server));
+
+    for (auto& f : features) {
+      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
+    }
+
+    for (auto& f : features) {
+      f.first->prepare();
+    }
+
+    auto* dbPathFeature =
+        arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
+            "DatabasePath");
+    arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
+
+
+    auto const databases = arangodb::velocypack::Parser::fromJson(
+        std::string("[ { \"name\": \"") +
+        arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto* dbFeature =
+        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
+            "Database");
+    dbFeature->loadDatabases(databases->slice());
+
+    for (auto& f : features) {
+      if (f.second) {
+        f.first->start();
+      }
+    }
+    auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
+    std::shared_ptr<arangodb::LogicalCollection> collection0;
+    {
+      auto createJson = arangodb::velocypack::Parser::fromJson(
+          "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
+      collection0 = vocbase->createCollection(createJson->slice());
+      EXPECT_NE(nullptr, collection0);
+    }
+    auto createJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto logicalView = vocbase->createView(createJson->slice());
+    EXPECT_NE(nullptr, logicalView);
+    auto updateJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": {"
+        "\"testCollection0\": { \"includeAllFields\": true, "
+        "\"trackListPositions\": true }"
+        "}}");
+    EXPECT_TRUE(logicalView->properties(updateJson->slice(), true).ok());
+    std::vector<std::string> EMPTY_VECTOR;
+    auto trx = std::make_shared<arangodb::transaction::Methods>(
+        arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY_VECTOR,
+        EMPTY_VECTOR, EMPTY_VECTOR,
+        arangodb::transaction::Options());
+
+    EXPECT_TRUE(trx->begin().ok());
+    // Fill dummy data in index only (to simulate some documents where already removed from collection)
+    arangodb::iresearch::IResearchLinkMeta meta;
+    meta._includeAllFields = true;
+    {
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      auto indexes = collection0->getIndexes();
+      EXPECT_TRUE(!indexes.empty());
+      auto* l =
+          static_cast<arangodb::iresearch::IResearchMMFilesLink*>(indexes[0].get());
+      for (size_t i = 2; i < 10; ++i) {
+        l->insert(*trx, arangodb::LocalDocumentId(i), doc->slice(), arangodb::Index::normal);
+      }
+    }
+    // in collection only one alive doc
+    auto aliveDoc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+    arangodb::ManagedDocumentResult insertResult;
+    arangodb::OperationOptions options;
+    EXPECT_TRUE(collection0
+                    ->insert(trx.get(), aliveDoc->slice(), insertResult, options, false)
+                    .ok());
+    EXPECT_TRUE(trx->commit().ok());
+  }
+
+  ~IResearchViewBlockTest() {
+    arangodb::AqlFeature(server).stop();  // unset singleton instance
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+                                    arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(),
+                                    arangodb::LogLevel::DEFAULT);
+    // destroy application features
+    for (auto& f : features) {
+      if (f.second) {
+        f.first->stop();
+      }
+    }
+    for (auto& f : features) {
+      f.first->unprepare();
+    }
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+                                    arangodb::LogLevel::DEFAULT);
+    arangodb::application_features::ApplicationServer::server = nullptr;
+    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+  }
+};
+
+TEST_F(IResearchViewBlockTest, retrieveWithMissingInCollectionUnordered) {
+  auto* dbFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
+          "Database");
+  auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
+  auto queryResult = 
+    arangodb::tests::executeQuery(*vocbase, 
+                                  "FOR d IN testView OPTIONS { waitForSync: true } RETURN d");
+  ASSERT_TRUE(queryResult.result.ok());
+  auto result = queryResult.data->slice();
+  EXPECT_TRUE(result.isArray());
+  arangodb::velocypack::ArrayIterator resultIt(result);
+  ASSERT_EQ(1, resultIt.size());
+}
+
+TEST_F(IResearchViewBlockTest, retrieveWithMissingInCollection) {
+  auto* dbFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
+          "Database");
+  auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
+  auto queryResult = 
+    arangodb::tests::executeQuery(*vocbase, 
+                                  "FOR d IN testView  OPTIONS { waitForSync: true } SORT BM25(d) RETURN d");
+  ASSERT_TRUE(queryResult.result.ok());
+  auto result = queryResult.data->slice();
+  EXPECT_TRUE(result.isArray());
+  arangodb::velocypack::ArrayIterator resultIt(result);
+  ASSERT_EQ(1, resultIt.size());
 }
