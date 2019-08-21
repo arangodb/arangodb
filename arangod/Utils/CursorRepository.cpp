@@ -89,7 +89,7 @@ CursorRepository::~CursorRepository() {
           << "giving up waiting for unused cursors";
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     ++tries;
   }
 
@@ -118,7 +118,7 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
 
   {
     MUTEX_LOCKER(mutexLocker, _lock);
-    _cursors.emplace(id, std::make_pair(cursor.get(), user));
+    _cursors.emplace(id, std::make_pair(cursor.get(), std::move(user)));
   }
 
   return cursor.release();
