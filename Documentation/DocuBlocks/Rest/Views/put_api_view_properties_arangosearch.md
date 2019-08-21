@@ -16,7 +16,7 @@ and the link properties as attribute values.
 Name of a collection as attribute key.
 
 @RESTSTRUCT{analyzers,post_api_view_link_props,array,optional,string}
-The list of analyzers to be used for indexing of string values
+The list of Analyzers to be used for indexing of string values
 (default: ["identity"]).
 
 @RESTSTRUCT{fields,post_api_view_link_props,object,optional,post_api_view_fields}
@@ -26,7 +26,11 @@ containing the following attributes:
 @RESTSTRUCT{[field-name],post_api_view_fields,object,optional,object}
 This is a recursive structure for the specific attribute path, potentially
 containing any of the following attributes:
-*analyzers*, *fields*, *includeAllFields*, *trackListPositions*, *storeValues*
+- *analyzers*
+- *fields*
+- *includeAllFields*
+- *trackListPositions*
+- *storeValues*
 Any attributes not specified are inherited from the parent.
 
 @RESTSTRUCT{includeAllFields,post_api_view_link_props,boolean,optional,bool}
@@ -112,8 +116,7 @@ _Background:_
   A "consolidation" operation selects one or more segments and copies all of
   their valid documents into a single new segment, thereby allowing the
   search algorithm to perform more optimally and for extra file handles to be
-  released once old segments are no longer used.
-
+  released once old segments are no longer used.<br/>
 Sub-properties:
 - `type` (string, _optional_):
   The segment candidates for the "consolidation" operation are selected based
