@@ -33,7 +33,7 @@
 
   "files": {
     "/static": "react/build/static",
-    "/img": "react/build/img",
+    "/img": "frontend/img",
     "/static/css/static/media": "react/build/static/media",
 
     "/js/arango/aqltemplates.json": "react/public/assets/aqltemplates.json",
