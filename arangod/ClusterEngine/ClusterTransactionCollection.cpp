@@ -35,8 +35,7 @@ ClusterTransactionCollection::ClusterTransactionCollection(TransactionState* trx
                                                            TRI_voc_cid_t cid,
                                                            AccessMode::Type accessType,
                                                            int nestingLevel)
-    : TransactionCollection(trx, cid, accessType, nestingLevel),
-      _lockType(AccessMode::Type::NONE) {}
+    : TransactionCollection(trx, cid, accessType, nestingLevel) {}
 
 ClusterTransactionCollection::~ClusterTransactionCollection() {}
 
