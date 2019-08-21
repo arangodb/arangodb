@@ -27,8 +27,8 @@
 #include "comparer.hpp"
 #include "formats/format_utils.hpp"
 #include "search/exclusion.hpp"
-#include "utils/bitset.hpp"
 #include "utils/bitvector.hpp"
+#include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/index_utils.hpp"
 #include "utils/string_utils.hpp"
@@ -46,6 +46,11 @@ typedef range<irs::index_writer::modification_context> modification_contexts_ref
 typedef range<irs::segment_writer::update_context> update_contexts_ref;
 
 const size_t NON_UPDATE_RECORD = irs::integer_traits<size_t>::const_max; // non-update
+
+const irs::column_info_provider_t DEFAULT_COLUMN_INFO = [](const irs::string_ref&) {
+  // no compression, no encryption
+  return irs::column_info{ irs::compression::raw::type(), {}, false };
+};
 
 struct flush_segment_context {
   const size_t doc_id_begin_; // starting doc_id to consider in 'segment.meta' (inclusive)
@@ -383,8 +388,7 @@ bool map_removals(
     const candidates_mapping_t& candidates_mapping,
     const irs::merge_writer& merger,
     irs::readers_cache& readers,
-    irs::document_mask& docs_mask
-) {
+    irs::document_mask& docs_mask) {
   assert(merger);
 
   for (auto& mapping : candidates_mapping) {
@@ -594,7 +598,14 @@ index_writer::active_segment_context::active_segment_context(
     flush_ctx_(flush_ctx),
     pending_segment_context_offset_(pending_segment_context_offset),
     segments_active_(&segments_active) {
-  assert(!flush_ctx || flush_ctx->pending_segment_contexts_[pending_segment_context_offset_].segment_ == ctx_); // thread-safe because pending_segment_contexts_ is a deque
+#ifdef IRESEARCH_DEBUG
+  if (flush_ctx) {
+    // ensure there are no active struct update operations (only needed for assert)
+    SCOPED_LOCK_NAMED(flush_ctx->mutex_, lock);
+    // assert that flush_ctx and ctx are compatible
+    assert(flush_ctx->pending_segment_contexts_[pending_segment_context_offset_].segment_ == ctx_);
+  }
+#endif
 
   if (ctx_) {
     ++*segments_active_; // track here since garanteed to have 1 ref per active segment
@@ -602,8 +613,7 @@ index_writer::active_segment_context::active_segment_context(
 }
 
 index_writer::active_segment_context::active_segment_context(
-    active_segment_context&& other
-) NOEXCEPT
+    active_segment_context&& other) NOEXCEPT
   : ctx_(std::move(other.ctx_)),
     flush_ctx_(std::move(other.flush_ctx_)),
     pending_segment_context_offset_(std::move(other.pending_segment_context_offset_)),
@@ -723,6 +733,7 @@ index_writer::documents_context::~documents_context() NOEXCEPT {
 
 void index_writer::documents_context::reset() NOEXCEPT {
   tick_ = 0; // reset tick
+
   auto& ctx = segment_.ctx();
 
   if (!ctx) {
@@ -1025,16 +1036,17 @@ void index_writer::flush_context::reset() NOEXCEPT {
 index_writer::segment_context::segment_context(
     directory& dir,
     segment_meta_generator_t&& meta_generator,
-    const comparer* comparator
-): active_count_(0),
-   buffered_docs_(0),
-   dirty_(false),
-   dir_(dir),
-   meta_generator_(std::move(meta_generator)),
-   uncomitted_doc_id_begin_(doc_limits::min()),
-   uncomitted_generation_offset_(0),
-   uncomitted_modification_queries_(0),
-   writer_(segment_writer::make(dir_, comparator)) {
+    const column_info_provider_t& column_info,
+    const comparer* comparator)
+  : active_count_(0),
+    buffered_docs_(0),
+    dirty_(false),
+    dir_(dir),
+    meta_generator_(std::move(meta_generator)),
+    uncomitted_doc_id_begin_(doc_limits::min()),
+    uncomitted_generation_offset_(0),
+    uncomitted_modification_queries_(0),
+    writer_(segment_writer::make(dir_, column_info, comparator)) {
   assert(meta_generator_);
 }
 
@@ -1081,9 +1093,9 @@ uint64_t index_writer::segment_context::flush() {
 index_writer::segment_context::ptr index_writer::segment_context::make(
     directory& dir,
     segment_meta_generator_t&& meta_generator,
-    const comparer* comparator
-) {
-  return memory::make_shared<segment_context>(dir, std::move(meta_generator), comparator);
+    const column_info_provider_t& column_info,
+    const comparer* comparator) {
+  return memory::make_shared<segment_context>(dir, std::move(meta_generator), column_info, comparator);
 }
 
 segment_writer::update_context index_writer::segment_context::make_update_context() {
@@ -1094,8 +1106,7 @@ segment_writer::update_context index_writer::segment_context::make_update_contex
 }
 
 segment_writer::update_context index_writer::segment_context::make_update_context(
-    const filter& filter
-) {
+    const filter& filter) {
   auto generation = ++uncomitted_generation_offset_; // increment generation due to removal
   auto update_id = modification_queries_.size();
 
@@ -1108,8 +1119,7 @@ segment_writer::update_context index_writer::segment_context::make_update_contex
 }
 
 segment_writer::update_context index_writer::segment_context::make_update_context(
-    const std::shared_ptr<filter>& filter
-) {
+    const std::shared_ptr<filter>& filter) {
   assert(filter);
   auto generation = ++uncomitted_generation_offset_; // increment generation due to removal
   auto update_id = modification_queries_.size();
@@ -1123,8 +1133,7 @@ segment_writer::update_context index_writer::segment_context::make_update_contex
 }
 
 segment_writer::update_context index_writer::segment_context::make_update_context(
-    filter::ptr&& filter
-) {
+    filter::ptr&& filter) {
   assert(filter);
   auto generation = ++uncomitted_generation_offset_; // increment generation due to removal
   auto update_id = modification_queries_.size();
@@ -1200,9 +1209,10 @@ index_writer::index_writer(
     size_t segment_pool_size,
     const segment_options& segment_limits,
     const comparer* comparator,
+    const column_info_provider_t& column_info,
     index_meta&& meta,
-    committed_state_t&& committed_state
-) NOEXCEPT :
+    committed_state_t&& committed_state)
+  : column_info_(column_info),
     comparator_(comparator),
     cached_readers_(dir),
     codec_(codec),
@@ -1216,6 +1226,7 @@ index_writer::index_writer(
     writer_(codec->get_index_meta_writer()),
     write_lock_(std::move(lock)),
     write_lock_file_ref_(std::move(lock_file_ref)) {
+  assert(column_info); // ensured by 'make'
   assert(codec);
   flush_context_.store(&flush_context_pool_[0]);
 
@@ -1256,6 +1267,9 @@ void index_writer::clear() {
   pending_meta.update_generation(meta_); // clone index metadata generation
   pending_meta.seg_counter_.store(meta_.counter()); // ensure counter() >= max(seg#)
 
+  // rollback already opened transaction if any
+  writer_->rollback();
+
   // write 1st phase of index_meta transaction
   if (!writer_->prepare(dir, pending_meta)) {
     throw illegal_state();
@@ -1288,8 +1302,7 @@ index_writer::ptr index_writer::make(
     directory& dir,
     format::ptr codec,
     OpenMode mode,
-    const init_options& opts /*= init_options()*/
-) {
+    const init_options& opts /*= init_options()*/) {
   std::vector<index_file_refs::ref_t> file_refs;
   index_lock::ptr lock;
   index_file_refs::ref_t lockfile_ref;
@@ -1351,6 +1364,7 @@ index_writer::ptr index_writer::make(
     opts.segment_pool_size,
     segment_options(opts),
     opts.comparator,
+    opts.column_info ? opts.column_info : DEFAULT_COLUMN_INFO,
     std::move(meta),
     std::move(comitted_state)
   );
@@ -1385,8 +1399,7 @@ uint64_t index_writer::buffered_docs() const {
 bool index_writer::consolidate(
     const consolidation_policy_t& policy,
     format::ptr codec /*= nullptr*/,
-    const merge_writer::flush_progress_t& progress /*= {}*/
-) {
+    const merge_writer::flush_progress_t& progress /*= {}*/) {
   REGISTER_TIMER_DETAILED();
 
   if (!codec) {
@@ -1490,7 +1503,7 @@ bool index_writer::consolidate(
   consolidation_segment.meta.name = file_name(meta_.increment()); // increment active meta, not fn arg
 
   ref_tracking_directory dir(dir_); // track references for new segment
-  merge_writer merger(dir, comparator_);
+  merge_writer merger(dir, column_info_, comparator_);
   merger.reserve(candidates.size());
 
   // add consolidated segments to the merge_writer
@@ -1669,8 +1682,7 @@ bool index_writer::consolidate(
 bool index_writer::import(
     const index_reader& reader,
     format::ptr codec /*= nullptr*/,
-    const merge_writer::flush_progress_t& progress /*= {}*/
-) {
+    const merge_writer::flush_progress_t& progress /*= {}*/) {
   if (!reader.live_docs_count()) {
     return true; // skip empty readers since no documents to import
   }
@@ -1685,7 +1697,7 @@ bool index_writer::import(
   segment.meta.name = file_name(meta_.increment());
   segment.meta.codec = codec;
 
-  merge_writer merger(dir);
+  merge_writer merger(dir, column_info_, comparator_);
   merger.reserve(reader.size());
 
   for (auto& segment : reader) {
@@ -1773,11 +1785,12 @@ index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= 
 }
 
 index_writer::active_segment_context index_writer::get_segment_context(
-    flush_context& ctx
-) {
-  auto segments_active_decrement =
-    irs::make_finally([this]()->void { --segments_active_; }); // release reservation (delcare before aquisition since operator++() is noexcept)
-  auto segments_active = ++segments_active_; // increment counter to aquire reservation, if another thread tries to reserve last context then it'll be over limit
+    flush_context& ctx) {
+  // release reservation (delcare before aquisition since operator++() is noexcept)
+  auto segments_active_decrement = irs::make_finally([this]()->void { --segments_active_; });
+  // increment counter to aquire reservation, if another thread
+  // tries to reserve last context then it'll be over limit
+  auto segments_active = ++segments_active_;
   auto segment_count_max = segment_limits_.segment_count_max.load();
 
   // no free segment_context available and maximum number of segments reached
@@ -1794,7 +1807,6 @@ index_writer::active_segment_context index_writer::get_segment_context(
   ); // only nodes of type 'pending_segment_context' are added to 'pending_segment_contexts_freelist_'
 
   if (freelist_node) {
-    assert(ctx.pending_segment_contexts_[freelist_node->value].segment_ == freelist_node->segment_); // thread-safe because pending_segment_contexts_ is a deque
     assert(freelist_node->segment_.use_count() == 1); // +1 for the reference in 'pending_segment_contexts_'
     assert(!freelist_node->segment_->dirty_);
     return active_segment_context(
@@ -1809,14 +1821,16 @@ index_writer::active_segment_context index_writer::get_segment_context(
   auto meta_generator = [this]()->segment_meta {
     return segment_meta(file_name(meta_.increment()), codec_);
   };
-  auto segment_ctx =
-    segment_writer_pool_.emplace(dir_, std::move(meta_generator), comparator_).release();
+  auto segment_ctx = segment_writer_pool_.emplace(
+    dir_, std::move(meta_generator),
+    column_info_, comparator_
+  ).release();
   auto segment_memory_max = segment_limits_.segment_memory_max.load();
 
   // recreate writer if it reserved more memory than allowed by current limits
   if (segment_memory_max &&
       segment_memory_max < segment_ctx->writer_->memory_reserved()) {
-    segment_ctx->writer_ = segment_writer::make(segment_ctx->dir_, comparator_);
+    segment_ctx->writer_ = segment_writer::make(segment_ctx->dir_, column_info_, comparator_);
   }
 
   return active_segment_context(segment_ctx, segments_active_);

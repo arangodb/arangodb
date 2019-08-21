@@ -30,12 +30,13 @@
 #include "store/memory_directory.hpp"
 #include "utils/bitvector.hpp"
 #include "utils/bytes_utils.hpp"
+#include "utils/lz4compression.hpp"
 #include "utils/type_limits.hpp"
 
 // FIXME check gaps && deleted docs
 
 TEST(sorted_column_test, ctor) {
-  irs::sorted_column col;
+  irs::sorted_column col({ irs::compression::lz4::type(), {}, false });
   ASSERT_TRUE(col.empty());
   ASSERT_EQ(0, col.size());
   ASSERT_EQ(0, col.memory_active());
@@ -43,7 +44,7 @@ TEST(sorted_column_test, ctor) {
 }
 
 TEST(sorted_column_test, flush_empty) {
-  irs::sorted_column col;
+  irs::sorted_column col({ irs::compression::lz4::type(), {}, false });
   ASSERT_TRUE(col.empty());
   ASSERT_EQ(0, col.size());
   ASSERT_EQ(0, col.memory_active());
@@ -159,7 +160,7 @@ TEST(sorted_column_test, insert_duplicates) {
 
     writer->prepare(dir, segment);
 
-    irs::sorted_column col;
+    irs::sorted_column col({ irs::compression::raw::type(), {}, true });
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.size());
     ASSERT_EQ(0, col.memory_active());
@@ -270,7 +271,7 @@ TEST(sorted_column_test, sort) {
 
     writer->prepare(dir, segment);
 
-    irs::sorted_column col;
+    irs::sorted_column col({ irs::compression::lz4::type(), {}, true });
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.size());
     ASSERT_EQ(0, col.memory_active());
