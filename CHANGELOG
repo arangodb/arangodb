@@ -1,6 +1,10 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* The AQL functions `FULLTEXT`, `NEAR`, `WITHIN` and `WITHIN_RECTANGLE` are now
+  marked as cacheable, so they can be used in conjunction with the AQL query
+  results cache on a single server.
+
 * Fixed issue #9612: fix ArangoSearch views getting out of sync with collection.
 
 * Fix an issue with potential spurious wakeups in the internal scheduler code.
