@@ -8,13 +8,45 @@
 @RESTURLPARAM{view-name,string,required}
 The name of the View.
 
-@RESTBODYPARAM{properties,object,optional,post_api_view_props}
-The View properties. If specified, then *properties* should be a JSON object
+@RESTBODYPARAM{links,object,optional,post_api_view_links}
+Expects an object with the attribute keys being names of to be linked collections,
+and the link properties as attribute values.
+
+@RESTSTRUCT{[collection-name],post_api_view_links,object,optional,post_api_view_link_props}
+Name of a collection as attribute key.
+
+@RESTSTRUCT{analyzers,post_api_view_link_props,array,optional,string}
+The list of analyzers to be used for indexing of string values
+(default: ["identity"]).
+
+@RESTSTRUCT{fields,post_api_view_link_props,object,optional,post_api_view_fields}
+The field properties. If specified, then *fields* should be a JSON object
 containing the following attributes:
 
-@RESTSTRUCT{cleanupIntervalStep,post_api_view_props,integer,optional,int64}
+@RESTSTRUCT{[field-name],post_api_view_fields,object,optional,object}
+This is a recursive structure for the specific attribute path, potentially
+containing any of the following attributes:
+*analyzers*, *fields*, *includeAllFields*, *trackListPositions*, *storeValues*
+Any attributes not specified are inherited from the parent.
+
+@RESTSTRUCT{includeAllFields,post_api_view_link_props,boolean,optional,bool}
+The flag determines whether or not to index all fields on a particular level of
+depth (default: false).
+
+@RESTSTRUCT{trackListPositions,post_api_view_link_props,boolean,optional,bool}
+The flag determines whether or not values in a lists should be treated separate
+(default: false).
+
+@RESTSTRUCT{storeValues,post_api_view_link_props,string,optional,string}
+How should the View track the attribute values, this setting allows for
+additional value retrieval optimizations, one of:
+- `"none"` (default): Do not store values by the View
+- `"id"`: Store only information about value presence, to allow use of the
+  EXISTS() function
+
+@RESTBODYPARAM{cleanupIntervalStep,integer,optional,int64}
 Wait at least this many commits between removing unused files in the
-ArangoSearch data directory (default: 10, to disable use: 0).
+ArangoSearch data directory (default: 2, to disable use: 0).
 For the case where the consolidation policies merge segments often (i.e. a lot
 of commit+consolidate), a lower value will cause a lot of disk space to be
 wasted.
@@ -29,13 +61,8 @@ _Background:_
   However, the files for the released states/snapshots are left on disk, and
   only removed by "cleanup" operation.
 
-<<<<<<< HEAD:Documentation/DocuBlocks/Rest/Views/put_api_view_properties_arangosearch.md
-@RESTSTRUCT{commitIntervalMsec,post_api_view_props,integer,optional,uint64}
+@RESTBODYPARAM{commitIntervalMsec,integer,optional,int64}
 Wait at least this many milliseconds between committing View data store
-=======
-@RESTSTRUCT{commitIntervalMsec,post_api_view_props,integer,optional,int64}
-Wait at least this many milliseconds between committing view data store
->>>>>>> origin/3.5:Documentation/DocuBlocks/Rest/Views/put_api_view_properties_iresearch.md
 changes and making documents visible to queries (default: 1000, to disable
 use: 0).
 For the case where there are a lot of inserts/updates, a lower value, until
@@ -56,11 +83,10 @@ _Background:_
   subsequent ArangoDB transactions, in-progress ArangoDB transactions will
   still continue to return a repeatable-read state.
 
-
-@RESTSTRUCT{consolidationIntervalMsec,post_api_view_props,integer,optional,int64}
+@RESTBODYPARAM{consolidationIntervalMsec,integer,optional,int64}
 Wait at least this many milliseconds between applying 'consolidationPolicy' to
 consolidate View data store and possibly release space on the filesystem
-(default: 60000, to disable use: 0).
+(default: 10000, to disable use: 0).
 For the case where there are a lot of data modification operations, a higher
 value could potentially have the data store consume more space and file handles.
 For the case where there are a few data modification operations, a lower value
@@ -73,8 +99,7 @@ _Background:_
   compaction operations are governed by 'consolidationIntervalMsec' and the
   candidates for compaction are selected via 'consolidationPolicy'.
 
-
-@RESTSTRUCT{consolidationPolicy,post_api_view_props,object,optional,post_api_view_props_consolidation}
+@RESTBODYPARAM{consolidationPolicy,object,optional,object}
 The consolidation policy to apply for selecting which segments should be merged
 (default: {})<br/>
 _Background:_
@@ -89,58 +114,30 @@ _Background:_
   search algorithm to perform more optimally and for extra file handles to be
   released once old segments are no longer used.
 
-
-@RESTSTRUCT{type,post_api_view_props_consolidation,string,optional,string}
-The segment candidates for the "consolidation" operation are selected based
-upon several possible configurable formulas as defined by their types.
-The currently supported types are (default: "bytes_accum"):
-- *bytes_accum*: consolidate if and only if (`{threshold}` range `[0.0, 1.0]`):
-  `{threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`
-  i.e. the sum of all candidate segment byte size is less than the total
-  segment byte size multiplied by the `{threshold}`
-- *tier*: consolidate based on segment byte size and live document count
-  as dictated by the customization attributes.
-
-
-@RESTSTRUCT{links,post_api_view_props,object,optional,post_api_view_links}
-The set of collection names associated with the properties.
-
-
-@RESTSTRUCT{[collection-name],post_api_view_links,object,optional,post_api_view_link_props}
-The link properties. If specified, then *properties* should be a JSON object
-containing the following attributes:
-
-@RESTSTRUCT{analyzers,post_api_view_link_props,array,optional,string}
-The list of analyzers to be used for indexing of string values
-(default: ["identity"]).
-
-
-@RESTSTRUCT{fields,post_api_view_link_props,object,optional,post_api_view_fields}
-The field properties. If specified, then *properties* should be a JSON object
-containing the following attributes:
-
-@RESTSTRUCT{field-name,post_api_view_fields,array,optional,object}
-This is a recursive structure for the specific attribute path, potentially
-containing any of the following attributes:
-*analyzers*, *includeAllFields*, *trackListPositions*, *storeValues*
-Any attributes not specified are inherited from the parent.
-
-
-@RESTSTRUCT{includeAllFields,post_api_view_link_props,boolean,optional,bool}
-The flag determines whether or not to index all fields on a particular level of
-depth (default: false).
-
-@RESTSTRUCT{trackListPositions,post_api_view_link_props,boolean,optional,bool}
-The flag determines whether or not values in a lists should be treated separate
-(default: false).
-
-@RESTSTRUCT{storeValues,post_api_view_link_props,string,optional,string}
-How should the View track the attribute values, this setting allows for
-additional value retrieval optimizations, one of:
-- *none*: Do not store values by the View
-- *id*: Store only information about value presence, to allow use of the EXISTS() function
-(default "none").
-
+Sub-properties:
+- `type` (string, _optional_):
+  The segment candidates for the "consolidation" operation are selected based
+  upon several possible configurable formulas as defined by their types.
+  The currently supported types are:
+  - `"bytes_accum"`: consolidate if and only if
+    `{threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`
+    i.e. the sum of all candidate segment byte size is less than the total
+    segment byte size multiplied by the `{threshold}`
+  - `"tier"` (default): consolidate based on segment byte size and live
+    document count as dictated by the customization attributes
+Additional properties if `type` is `"bytes_accum"`:
+- `threshold` (number, _optional_): value in the range `[0.0, 1.0]`
+Additional properties if `type` is `"tier"`:
+- `segmentsBytesFloor` (number, _optional_): Defines the value (in bytes) to
+  treat all smaller segments as equal for consolidation selection
+  (default: 2097152)
+- `segmentsBytesMax` (number, _optional_): Maximum allowed size of all
+  consolidated segments in bytes (default: 5368709120)
+- `segmentsMax` (number, _optional_): The maximum number of segments that will
+  be evaluated as candidates for consolidation (default: 10)
+- `segmentsMin` (number, _optional_): The minimum number of segments that will
+  be evaluated as candidates for consolidation (default: 1)
+- `minScore` (number, _optional_): (default: 0)
 
 @RESTDESCRIPTION
 Changes the properties of a View by replacing them.
