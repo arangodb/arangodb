@@ -4262,53 +4262,6 @@ arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
   return Result();
 }
 
-ClusterInfo::ServersKnown::ServersKnown(VPackSlice const serversKnownSlice,
-                                        std::unordered_set<ServerID> const& serverIds)
-    : _serversKnown() {
-
-  TRI_ASSERT(serversKnownSlice.isNone() || serversKnownSlice.isObject());
-  if (serversKnownSlice.isObject()) {
-    for (auto const it : VPackObjectIterator(serversKnownSlice)) {
-      VPackSlice const knownServerSlice = it.value;
-      TRI_ASSERT(knownServerSlice.isObject());
-      if (knownServerSlice.isObject()) {
-        VPackSlice const rebootIdSlice = knownServerSlice.get("rebootId");
-        TRI_ASSERT(rebootIdSlice.isInteger());
-        if (rebootIdSlice.isInteger()) {
-          std::string serverId = it.key.copyString();
-          auto const rebootId = RebootId{rebootIdSlice.getNumericValue<uint64_t>()};
-          _serversKnown.emplace(std::move(serverId), rebootId);
-        }
-      }
-    }
-  }
-
-  // For backwards compatibility / rolling upgrades, add servers that aren't in
-  // ServersKnown but in ServersRegistered with a reboot ID of 0 as a fallback.
-  // We should be able to remove this in 3.6.
-  for (auto const& serverId : serverIds) {
-    auto const rv = _serversKnown.emplace(serverId, RebootId{0});
-    LOG_TOPIC_IF("0acbd", INFO, Logger::CLUSTER, rv.second)
-        << "Server "
-        << serverId << " is in Current/ServersRegistered, but not in "
-                       "Current/ServersKnown. This is expected to happen "
-                       "during a rolling upgrade.";
-  }
-}
-
-std::unordered_map<ServerID, ClusterInfo::ServersKnown::KnownServer> const&
-ClusterInfo::ServersKnown::serversKnown() const noexcept {
-  return _serversKnown;
-}
-
-std::unordered_map<ServerID, RebootId> ClusterInfo::ServersKnown::rebootIds() const noexcept {
-  std::unordered_map<ServerID, RebootId> rebootIds;
-  for (auto const& it : _serversKnown) {
-    rebootIds.emplace(it.first, it.second.rebootId());
-  }
-  return rebootIds;
-}
-
 arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
   AgencyCommResult dump = _agency.getValues("Plan");
 
