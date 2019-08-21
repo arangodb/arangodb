@@ -312,6 +312,7 @@ void SupervisedScheduler::runWorker() {
   uint64_t id;
 
   std::shared_ptr<WorkerState> state;
+  auto tStart = TRI_microtime();
   auto waitMe = [&tStart](int where) {
                   auto tExit = TRI_microtime();
                   if (tExit - tStart > 0.25) {
