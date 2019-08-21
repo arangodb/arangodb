@@ -118,29 +118,29 @@ _Background:_
   search algorithm to perform more optimally and for extra file handles to be
   released once old segments are no longer used.<br/>
 Sub-properties:
-- `type` (string, _optional_):
-  The segment candidates for the "consolidation" operation are selected based
-  upon several possible configurable formulas as defined by their types.
-  The currently supported types are:
-  - `"bytes_accum"`: consolidate if and only if
-    `{threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`
-    i.e. the sum of all candidate segment byte size is less than the total
-    segment byte size multiplied by the `{threshold}`
-  - `"tier"` (default): consolidate based on segment byte size and live
-    document count as dictated by the customization attributes
+  - `type` (string, _optional_):
+    The segment candidates for the "consolidation" operation are selected based
+    upon several possible configurable formulas as defined by their types.
+    The currently supported types are:
+    - `"bytes_accum"`: consolidate if and only if
+      `{threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`
+      i.e. the sum of all candidate segment byte size is less than the total
+      segment byte size multiplied by the `{threshold}`
+    - `"tier"` (default): consolidate based on segment byte size and live
+      document count as dictated by the customization attributes
 Additional properties if `type` is `"bytes_accum"`:
-- `threshold` (number, _optional_): value in the range `[0.0, 1.0]`
+  - `threshold` (number, _optional_): value in the range `[0.0, 1.0]`
 Additional properties if `type` is `"tier"`:
-- `segmentsBytesFloor` (number, _optional_): Defines the value (in bytes) to
-  treat all smaller segments as equal for consolidation selection
-  (default: 2097152)
-- `segmentsBytesMax` (number, _optional_): Maximum allowed size of all
-  consolidated segments in bytes (default: 5368709120)
-- `segmentsMax` (number, _optional_): The maximum number of segments that will
-  be evaluated as candidates for consolidation (default: 10)
-- `segmentsMin` (number, _optional_): The minimum number of segments that will
-  be evaluated as candidates for consolidation (default: 1)
-- `minScore` (number, _optional_): (default: 0)
+  - `segmentsBytesFloor` (number, _optional_): Defines the value (in bytes) to
+    treat all smaller segments as equal for consolidation selection
+    (default: 2097152)
+  - `segmentsBytesMax` (number, _optional_): Maximum allowed size of all
+    consolidated segments in bytes (default: 5368709120)
+  - `segmentsMax` (number, _optional_): The maximum number of segments that will
+    be evaluated as candidates for consolidation (default: 10)
+  - `segmentsMin` (number, _optional_): The minimum number of segments that will
+    be evaluated as candidates for consolidation (default: 1)
+  - `minScore` (number, _optional_): (default: 0)
 
 @RESTDESCRIPTION
 Changes the properties of a View by updating the specified attributes.
