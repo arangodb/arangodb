@@ -113,7 +113,7 @@ function CommonStatisticsSuite() {
       }
 
       if(db._engine().name === "rocksdb") {
-        assertTrue(stats1.transactions.intermediateCommits >= stats2.transactions.intermediateCommits);
+        assertTrue(stats1.transactions.intermediateCommits <= stats2.transactions.intermediateCommits);
       } else {
         assertEqual(stats1.transactions.intermediateCommits, 0);
       }
