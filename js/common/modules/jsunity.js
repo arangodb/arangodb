@@ -44,6 +44,8 @@ var TEARDOWNS = 0;
 var TOTALSETUPS = 0;
 var TOTALTEARDOWNS = 0;
 
+
+
 var jsUnity = require('./jsunity/jsunity').jsUnity;
 var STARTTEST = 0.0;
 var ENDTEST = 0.0;
@@ -141,6 +143,15 @@ jsUnity.results.end = function (passed, failed, duration) {
   }
 };
 
+jsUnity.results.beginSetUpAll = function(index) {
+  STARTTEST = jsUnity.env.getDate();
+};
+
+jsUnity.results.endSetUpAll = function(index) {
+  RESULTS.setUpAllDuration = jsUnity.env.getDate() - SETUPS;
+  TOTALSETUPS += RESULTS.setUpAllDuration;
+};
+
 jsUnity.results.beginSetUp = function(index, testName) {
   if (testCount === 0)
   {
@@ -169,6 +180,15 @@ jsUnity.results.beginTeardown = function(index, testName) {
 jsUnity.results.endTeardown = function(index, testName) {
   RESULTS[testName].tearDownDuration = jsUnity.env.getDate() - TEARDOWNS;
   TOTALTEARDOWNS += RESULTS[testName].tearDownDuration;
+};
+
+jsUnity.results.beginTeardownAll = function(index) {
+  STARTTEST = jsUnity.env.getDate();
+};
+
+jsUnity.results.endSetUpAll = function(index) {
+  RESULTS.teardownAllDuration = jsUnity.env.getDate() - SETUPS;
+  TOTALTEARDOWNS += RESULTS.teardownAllDuration;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -251,12 +271,14 @@ function Run (testsuite) {
   suite.tearDownAll = tearDownAll;
 
   var result = jsUnity.run(suite);
+  print(JSON.stringify(result))
   TOTAL += result.total;
   PASSED += result.passed;
   FAILED += result.failed;
   DURATION += result.duration;
   
-  
+  print(RESULTS);
+  print(COMPLETE);
   let duplicates = [];
   for (var attrname in RESULTS) {
     if (RESULTS.hasOwnProperty(attrname)) {
