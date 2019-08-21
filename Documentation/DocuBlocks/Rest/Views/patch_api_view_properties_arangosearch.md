@@ -103,7 +103,7 @@ _Background:_
   compaction operations are governed by 'consolidationIntervalMsec' and the
   candidates for compaction are selected via 'consolidationPolicy'.
 
-@RESTBODYPARAM{consolidationPolicy,object,optional,object}
+@RESTBODYPARAM{consolidationPolicy,object,optional,}
 The consolidation policy to apply for selecting which segments should be merged
 (default: {})<br/>
 _Background:_
