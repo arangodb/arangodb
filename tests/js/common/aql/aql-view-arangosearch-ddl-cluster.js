@@ -1096,6 +1096,27 @@ function IResearchFeatureDDLTestSuite () {
       
       db._useDatabase("_system");
       db._dropDatabase(dbName);
+    },
+    testLeftAnalyzerInDroppedDatabase: function () {
+      const dbName = "TestNameDroppedDB";
+      const analyzerName = "TestAnalyzer";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      analyzers.save(analyzerName, "identity");
+      // recreating database
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+
+      assertNull(analyzers.analyzer(analyzerName));
+      // this should be no name conflict
+      analyzers.save(analyzerName, "text", {"stopwords" : [], "locale":"en"});
+     
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
     }
 
   };
