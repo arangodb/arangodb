@@ -84,6 +84,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   /// @brief forwards the request to the appropriate server
   bool forwardRequest();
+  
+  void handleExceptionPtr(std::exception_ptr) noexcept;
 
  public:
   // rest handler name for debugging and logging

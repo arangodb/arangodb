@@ -209,9 +209,9 @@ class RequestsState : public std::enable_shared_from_this<RequestsState> {
                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                        network::errorCodeFromBody(res->slice())) {
           LOG_TOPIC("5a8e9", DEBUG, Logger::COMMUNICATION) << "retrying request";
-        } else {
+        } else { // a "proper error" which has to be returned to the client
           LOG_TOPIC("5a8d9", DEBUG, Logger::COMMUNICATION) << "canceling request";
-          callResponse(Error::Canceled, std::move(res));
+          callResponse(err, std::move(res));
           break;
         }
 #ifndef _MSC_VER

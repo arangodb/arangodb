@@ -1545,9 +1545,6 @@ Future<OperationResult> transaction::Methods::insertF(std::string const& collect
     return insertCoordinator(collectionName, value, optionsCopy);
   }
   return insertLocal(collectionName, value, optionsCopy);
-//  events::CreateDocument(vocbase().name(), collectionName,
-//                         ((result.ok() && options.returnNew) ? result.slice() : value),
-//                         options, result.errorNumber());
 }
 
 /// @brief create one or multiple documents in a collection, coordinator
@@ -1792,6 +1789,8 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
   } else {
     res = workForOneDocument(value);
   }
+  
+  auto resDocs = resultBuilder.steal();
   if (res.ok() && replicationType == ReplicationType::LEADER) {
     TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(followers != nullptr);
@@ -1799,23 +1798,33 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
     // get here, in the single document case, we do not try to replicate
     // in case of an error.
-
+    
+    auto cb = [options, errs = std::move(countErrorCodes), resDocs](Result&& res) -> OperationResult {
+      if (!res.ok()) {
+        return OperationResult{std::move(res), options};
+      }
+      if (options.silent && errs.empty()) {
+        // We needed the results, but do not want to report:
+        resDocs->clear();
+      }
+      return OperationResult(std::move(res), std::move(resDocs), nullptr, options, errs);
+    };
+    events::CreateDocument(vocbase().name(), collection->name(),
+                           ((res.ok() && options.returnNew) ? VPackSlice(resDocs->data()) : value),
+                           options, res.errorNumber());
     // Now replicate the good operations on all followers:
-    res = replicateOperations(*collection, followers, options, value,
-                              TRI_VOC_DOCUMENT_OPERATION_INSERT, resultBuilder).get();
-
-    if (!res.ok()) {
-      return OperationResult{std::move(res), options};
-    }
+    return replicateOperations(*collection, followers, options, value,
+                               TRI_VOC_DOCUMENT_OPERATION_INSERT, resDocs).thenValue(std::move(cb));
   }
-
   if (options.silent && countErrorCodes.empty()) {
     // We needed the results, but do not want to report:
-    resultBuilder.clear();
+    resDocs->clear();
   }
-
-  return futures::makeFuture(OperationResult(std::move(res), resultBuilder.steal(), nullptr, options, countErrorCodes));
-  //return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options, countErrorCodes);
+  events::CreateDocument(vocbase().name(), collection->name(),
+                         ((res.ok() && options.returnNew) ? VPackSlice(resDocs->data()) : value),
+                         options, res.errorNumber());
+  return futures::makeFuture(OperationResult(std::move(res), std::move(resDocs),
+                                             nullptr, options, countErrorCodes));
 }
 
 /// @brief update/patch one or multiple documents in a collection
@@ -2116,6 +2125,7 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
     res = workForOneDocument(newValue, false);
   }
 
+  auto resDocs = resultBuilder.steal();
   if (res.ok() && replicationType == ReplicationType::LEADER) {
     // We still hold a lock here, because this is update/replace and we're
     // therefore not doing single document operations. But if we didn't hold it
@@ -2134,7 +2144,7 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
 
     // Now replicate the good operations on all followers:
     res = replicateOperations(*collection, followers, options, newValue,
-                              operation, resultBuilder).get();
+                              operation, resDocs).get();
 
     if (!res.ok()) {
       return OperationResult{std::move(res), options};
@@ -2143,10 +2153,10 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
 
   if (options.silent && errorCounter.empty()) {
     // We needed the results, but do not want to report:
-    resultBuilder.clear();
+    resDocs->clear();
   }
 
-  return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options, errorCounter);
+  return OperationResult(std::move(res), std::move(resDocs), nullptr, options, errorCounter);
 }
 
 /// @brief remove one or multiple documents in a collection
@@ -2381,6 +2391,7 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
     res = workForOneDocument(value, false);
   }
 
+  auto resDocs = resultBuilder.steal();
   if (res.ok() && replicationType == ReplicationType::LEADER) {
     TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(followers != nullptr);
@@ -2392,7 +2403,7 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
 
     // Now replicate the good operations on all followers:
     res = replicateOperations(*collection, followers, options, value,
-                              TRI_VOC_DOCUMENT_OPERATION_REMOVE, resultBuilder).get();
+                              TRI_VOC_DOCUMENT_OPERATION_REMOVE, resDocs).get();
 
     if (!res.ok()) {
       return OperationResult{std::move(res), options};
@@ -2401,10 +2412,10 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
 
   if (options.silent && countErrorCodes.empty()) {
     // We needed the results, but do not want to report:
-    resultBuilder.clear();
+    resDocs->clear();
   }
 
-  return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options, countErrorCodes);
+  return OperationResult(std::move(res), std::move(resDocs), nullptr, options, countErrorCodes);
 }
 
 /// @brief fetches all documents in a collection
@@ -3253,7 +3264,7 @@ Future<Result> Methods::replicateOperations(LogicalCollection const& collection,
                                             std::shared_ptr<const std::vector<std::string>> const& followers,
                                             OperationOptions const& options, VPackSlice const value,
                                             TRI_voc_document_operation_e const operation,
-                                            VPackBuilder const& resultBuilder) {
+                                            std::shared_ptr<VPackBuffer<uint8_t>> const& ops) {
   TRI_ASSERT(followers != nullptr);
 
   Result res;
@@ -3317,7 +3328,7 @@ Future<Result> Methods::replicateOperations(LogicalCollection const& collection,
     }
   };
 
-  VPackSlice ourResult = resultBuilder.slice();
+  VPackSlice ourResult(ops->data());
   size_t count = 0;
   if (value.isArray()) {
     VPackArrayBuilder guard(payload.get());

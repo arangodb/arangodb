@@ -257,6 +257,58 @@ bool RestHandler::forwardRequest() {
   return true;
 }
 
+void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
+  try {
+    if (eptr) {
+      std::rethrow_exception(eptr);
+    }
+  } catch (Exception const& ex) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG_TOPIC("11929", WARN, arangodb::Logger::FIXME)
+    << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
+#endif
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    handleError(ex);
+  } catch (arangodb::velocypack::Exception const& ex) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG_TOPIC("fdcbc", WARN, arangodb::Logger::FIXME)
+    << "caught velocypack exception in " << name() << ": "
+    << DIAGNOSTIC_INFORMATION(ex);
+#endif
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    bool const isParseError =
+    (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
+     ex.errorCode() == arangodb::velocypack::Exception::UnexpectedControlCharacter);
+    Exception err(isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL,
+                  std::string("VPack error: ") + ex.what(), __FILE__, __LINE__);
+    handleError(err);
+  } catch (std::bad_alloc const& ex) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG_TOPIC("5c9f6", WARN, arangodb::Logger::FIXME)
+    << "caught memory exception in " << name() << ": "
+    << DIAGNOSTIC_INFORMATION(ex);
+#endif
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
+    handleError(err);
+  } catch (std::exception const& ex) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG_TOPIC("252ea", WARN, arangodb::Logger::FIXME)
+    << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
+#endif
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
+    handleError(err);
+  } catch (...) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG_TOPIC("f729d", WARN, arangodb::Logger::FIXME) << "caught unknown exception in " << name();
+#endif
+    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
+    handleError(err);
+  }
+}
+
 void RestHandler::runHandlerStateMachine() {
   TRI_ASSERT(_callback);
   MUTEX_LOCKER(locker, _executionMutex);
@@ -268,7 +320,7 @@ void RestHandler::runHandlerStateMachine() {
         break;
 
       case HandlerState::EXECUTE: {
-        executeEngine(false);
+        executeEngine(/*isContinue*/false);
         if (_state == HandlerState::PAUSED) {
           shutdownExecute(false);
           LOG_TOPIC("23a33", DEBUG, Logger::COMMUNICATION)
@@ -279,9 +331,9 @@ void RestHandler::runHandlerStateMachine() {
       }
 
       case HandlerState::CONTINUED: {
-        executeEngine(true);
+        executeEngine(/*isContinue*/true);
         if (_state == HandlerState::PAUSED) {
-          shutdownExecute(false);
+          shutdownExecute(/*isFinalized*/false);
           LOG_TOPIC("23727", DEBUG, Logger::COMMUNICATION)
               << "Pausing rest handler execution";
           return;  // stop state machine
