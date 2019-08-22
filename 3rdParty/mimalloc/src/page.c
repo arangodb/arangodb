@@ -142,7 +142,7 @@ static void mi_page_thread_free_collect(mi_page_t* page)
   mi_thread_free_t tfree;
   mi_thread_free_t tfreex;
   do {
-    tfreex = tfree = page->thread_free;
+    tfree = page->thread_free;
     head = mi_tf_block(tfree);
     tfreex = mi_tf_set_block(tfree,NULL);
   } while (!mi_atomic_compare_exchange((volatile uintptr_t*)&page->thread_free, tfreex, tfree));
@@ -472,7 +472,7 @@ static void mi_page_free_list_extend( mi_heap_t* heap, mi_page_t* page, size_t e
   }
   // enable the new free list
   page->capacity += (uint16_t)extend;
-  mi_stat_increase(stats->page_committed, extend * page->block_size);
+  _mi_stat_increase(&stats->page_committed, extend * page->block_size);
 }
 
 /* -----------------------------------------------------------
@@ -500,13 +500,8 @@ static void mi_page_extend_free(mi_heap_t* heap, mi_page_t* page, mi_stats_t* st
   if (page->capacity >= page->reserved) return;
 
   size_t page_size;
-  _mi_page_start(_mi_page_segment(page), page, &page_size);
-  if (page->is_reset) {
-    page->is_reset = false;
-    mi_stat_decrease( stats->reset, page_size);
-  }
-
-  mi_stat_increase( stats->pages_extended, 1);
+  _mi_page_start(_mi_page_segment(page), page, &page_size);  
+  _mi_stat_increase(&stats->pages_extended, 1);
 
   // calculate the extend count
   size_t extend = page->reserved - page->capacity;
@@ -612,7 +607,7 @@ static mi_page_t* mi_page_queue_find_free_ex(mi_heap_t* heap, mi_page_queue_t* p
     page = next;
   } // for each page
 
-  mi_stat_counter_increase(heap->tld->stats.searches,count);
+  _mi_stat_counter_increase(&heap->tld->stats.searches,count);
 
   if (page == NULL) {
     page = rpage;

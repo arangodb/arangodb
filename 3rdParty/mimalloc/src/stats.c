@@ -141,7 +141,7 @@ static void mi_printf_amount(int64_t n, int64_t unit, FILE* out, const char* fmt
   _mi_fprintf(out, (fmt==NULL ? "%11s" : fmt), buf);
 }
 
-#if MI_STAT>0
+
 static void mi_print_amount(int64_t n, int64_t unit, FILE* out) {
   mi_printf_amount(n,unit,out,NULL);
 }
@@ -175,7 +175,8 @@ static void mi_stat_counter_print(const mi_stat_counter_t* stat, const char* msg
   double avg = (stat->count == 0 ? 0.0 : (double)stat->total / (double)stat->count);
   _mi_fprintf(out,"%10s: %7.1f avg\n", msg, avg);
 }
-#endif
+
+
 
 static void mi_print_header( FILE* out ) {
   _mi_fprintf(out,"%10s: %10s %10s %10s %10s %10s\n", "heap stats", "peak  ", "total  ", "freed  ", "unit  ", "count  ");
@@ -209,28 +210,22 @@ static void mi_process_info(double* utime, double* stime, size_t* peak_rss, size
 static void _mi_stats_print(mi_stats_t* stats, double secs, FILE* out) mi_attr_noexcept {
   if (out == NULL) out = stderr;
   mi_print_header(out);
-#if !defined(MI_STAT) || (MI_STAT==0)
-  UNUSED(stats);
-  //_mi_fprintf(out,"(mimalloc built without statistics)\n");
-#else
   #if MI_STAT>1
   mi_stat_count_t normal = { 0,0,0,0 };
   mi_stats_print_bins(&normal, stats->normal, MI_BIN_HUGE, "normal",out);
   mi_stat_print(&normal, "normal", 1, out);
-  #endif
   mi_stat_print(&stats->huge, "huge", 1, out);
-  #if MI_STAT>1
   mi_stat_count_t total = { 0,0,0,0 };
   mi_stat_add(&total, &normal, 1);
   mi_stat_add(&total, &stats->huge, 1);
   mi_stat_print(&total, "total", 1, out);
-  #endif
   _mi_fprintf(out, "malloc requested:     ");
   mi_print_amount(stats->malloc.allocated, 1, out);
   _mi_fprintf(out, "\n\n");
+  #endif
   mi_stat_print(&stats->reserved, "reserved", 1, out);
   mi_stat_print(&stats->committed, "committed", 1, out);
-  mi_stat_print(&stats->reset, "reset", -1, out);
+  mi_stat_print(&stats->reset, "reset", 1, out);
   mi_stat_print(&stats->page_committed, "touched", 1, out);
   mi_stat_print(&stats->segments, "segments", -1, out);
   mi_stat_print(&stats->segments_abandoned, "-abandoned", -1, out);
@@ -243,7 +238,6 @@ static void _mi_stats_print(mi_stats_t* stats, double secs, FILE* out) mi_attr_n
   mi_stat_print(&stats->commit_calls, "commits", 0, out);
   mi_stat_print(&stats->threads, "threads", 0, out);
   mi_stat_counter_print(&stats->searches, "searches", out);
-#endif
 
   if (secs >= 0.0) _mi_fprintf(out, "%10s: %9.3f s\n", "elapsed", secs);
 
@@ -413,7 +407,11 @@ static void mi_process_info(double* utime, double* stime, size_t* peak_rss, size
 }
 
 #else
+#ifndef __wasi__
+// WebAssembly instances are not processes
 #pragma message("define a way to get process info")
+#endif
+
 static void mi_process_info(double* utime, double* stime, size_t* peak_rss, size_t* page_faults, size_t* page_reclaim, size_t* peak_commit) {
   *peak_rss = 0;
   *page_faults = 0;

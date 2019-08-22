@@ -36,18 +36,25 @@ uintptr_t  _mi_ptr_cookie(const void* p);
 uintptr_t  _mi_random_shuffle(uintptr_t x);
 uintptr_t  _mi_random_init(uintptr_t seed /* can be zero */);
 
-// "os.c"
-bool       _mi_os_reset(void* p, size_t size, mi_stats_t* stats);
-void*      _mi_os_alloc(size_t size, mi_stats_t* stats);
-bool       _mi_os_shrink(void* p, size_t oldsize, size_t newsize, mi_stats_t* stats);
-void       _mi_os_free(void* p, size_t size, mi_stats_t* stats);
-bool       _mi_os_protect(void* addr, size_t size);
-bool       _mi_os_unprotect(void* addr, size_t size);
-void       _mi_os_init(void);  // called from process init
-
-void*      _mi_os_alloc_aligned(size_t size, size_t alignment, bool commit, mi_os_tld_t* tld);
+// os.c
 size_t     _mi_os_page_size(void);
 uintptr_t  _mi_align_up(uintptr_t sz, size_t alignment);
+void       _mi_os_init(void);                                      // called from process init
+void*      _mi_os_alloc(size_t size, mi_stats_t* stats);           // to allocate thread local data
+void       _mi_os_free(void* p, size_t size, mi_stats_t* stats);   // to free thread local data
+
+// memory.c
+void*      _mi_mem_alloc_aligned(size_t size, size_t alignment, bool commit, size_t* id, mi_os_tld_t* tld);
+void*      _mi_mem_alloc(size_t size, bool commit, size_t* id, mi_os_tld_t* tld);
+void       _mi_mem_free(void* p, size_t size, size_t id, mi_stats_t* stats);
+
+bool       _mi_mem_reset(void* p, size_t size, mi_stats_t* stats);
+bool       _mi_mem_unreset(void* p, size_t size, mi_stats_t* stats);
+bool       _mi_mem_commit(void* p, size_t size, mi_stats_t* stats);
+bool       _mi_mem_protect(void* addr, size_t size);
+bool       _mi_mem_unprotect(void* addr, size_t size);
+
+void        _mi_mem_collect(mi_stats_t* stats);
 
 // "segment.c"
 mi_page_t* _mi_segment_page_alloc(size_t block_wsize, mi_segments_tld_t* tld, mi_os_tld_t* os_tld);

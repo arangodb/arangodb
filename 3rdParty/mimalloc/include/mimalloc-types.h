@@ -93,7 +93,6 @@ terms of the MIT license. A copy of the license can be found in the file
 #define MI_LARGE_PAGES_PER_SEGMENT        (MI_SEGMENT_SIZE/MI_LARGE_PAGE_SIZE)
 
 #define MI_MEDIUM_SIZE_MAX                (MI_MEDIUM_PAGE_SIZE/8)   // 64kb on 64-bit
-
 #define MI_LARGE_SIZE_MAX                 (MI_LARGE_PAGE_SIZE/8)    // 512kb on 64-bit
 #define MI_LARGE_WSIZE_MAX                (MI_LARGE_SIZE_MAX>>MI_INTPTR_SHIFT)
 
@@ -161,11 +160,12 @@ typedef struct mi_page_s {
   uint8_t               segment_idx;       // index in the segment `pages` array, `page == &segment->pages[page->segment_idx]`
   bool                  segment_in_use:1;  // `true` if the segment allocated this page
   bool                  is_reset:1;        // `true` if the page memory was reset
+  bool                  is_committed:1;    // `true` if the page virtual memory is committed
 
   // layout like this to optimize access in `mi_malloc` and `mi_free`
   mi_page_flags_t       flags;
   uint16_t              capacity;          // number of blocks committed
-  uint16_t              reserved;          // numbes of blocks reserved in memory
+  uint16_t              reserved;          // number of blocks reserved in memory
 
   mi_block_t*           free;              // list of available free blocks (`malloc` allocates from this list)
   uintptr_t             cookie;            // random cookie to encode the free lists
@@ -211,6 +211,7 @@ typedef struct mi_segment_s {
   size_t          segment_size;// for huge pages this may be different from `MI_SEGMENT_SIZE`
   size_t          segment_info_size;  // space we are using from the first page for segment meta-data and possible guard pages.
   uintptr_t       cookie;      // verify addresses in debug mode: `mi_ptr_cookie(segment) == segment->cookie`
+  size_t          memid;       // id for the os-level memory manager
 
   // layout like this to optimize access in `mi_free`
   size_t          page_shift;  // `1 << page_shift` == the page sizes == `page->block_size * page->reserved` (unless the first page, then `-segment_info_size`).
@@ -369,11 +370,13 @@ typedef struct mi_segment_queue_s {
 typedef struct mi_segments_tld_s {
   mi_segment_queue_t  small_free;   // queue of segments with free small pages
   mi_segment_queue_t  medium_free;  // queue of segments with free medium pages
+  size_t              count;        // current number of segments;
+  size_t              peak_count;   // peak number of segments
   size_t              current_size; // current size of all segments
   size_t              peak_size;    // peak size of all segments
   size_t              cache_count;  // number of segments in the cache
   size_t              cache_size;   // total size of all segments in the cache
-  mi_segment_queue_t  cache;        // (small) cache of segments for small and large pages (to avoid repeated mmap calls)
+  mi_segment_t*       cache;        // (small) cache of segments
   mi_stats_t*         stats;        // points to tld stats
 } mi_segments_tld_t;
 

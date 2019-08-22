@@ -31,19 +31,31 @@ typedef struct mi_option_desc_s {
   const char* name;   // option name without `mimalloc_` prefix
 } mi_option_desc_t;
 
-static mi_option_desc_t options[_mi_option_last] = {
-  { 0, UNINIT, "page_reset" },
-  { 0, UNINIT, "cache_reset" },
-  { 0, UNINIT, "pool_commit" },
-  { 0, UNINIT, "large_os_pages" },   // use large OS pages
+static mi_option_desc_t options[_mi_option_last] =
+{
+  // stable options
+  { 0, UNINIT, "show_stats" },
+  { MI_DEBUG, UNINIT, "show_errors" },
+  { 0, UNINIT, "verbose" },
+
   #if MI_SECURE
-  { MI_SECURE, INITIALIZED, "secure" }, // in secure build the environment setting is ignored
+  { MI_SECURE, INITIALIZED, "secure" }, // in a secure build the environment setting is ignored
   #else
   { 0, UNINIT, "secure" },
   #endif
-  { 0, UNINIT, "show_stats" },
-  { MI_DEBUG, UNINIT, "show_errors" },
-  { 0, UNINIT, "verbose" }
+
+  // the following options are experimental and not all combinations make sense.
+  { 1, UNINIT, "eager_commit" },        // note: if eager_region_commit is on, this should be on too.
+  #ifdef _WIN32   // and BSD?
+  { 0, UNINIT, "eager_region_commit" }, // don't commit too eagerly on windows (just for looks...)
+  #else
+  { 1, UNINIT, "eager_region_commit" },
+  #endif
+  { 0, UNINIT, "large_os_pages" },      // use large OS pages, use only with eager commit to prevent fragmentation of VMA's
+  { 0, UNINIT, "page_reset" },
+  { 0, UNINIT, "cache_reset" },
+  { 0, UNINIT, "reset_decommits" },     // note: cannot enable this if secure is on
+  { 0, UNINIT, "reset_discards" }       // note: cannot enable this if secure is on
 };
 
 static void mi_option_init(mi_option_desc_t* desc);

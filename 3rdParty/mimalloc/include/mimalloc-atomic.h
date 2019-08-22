@@ -39,7 +39,24 @@ static inline bool mi_atomic_compare_exchange(volatile uintptr_t* p, uintptr_t e
 // Atomically exchange a value.
 static inline uintptr_t mi_atomic_exchange(volatile uintptr_t* p, uintptr_t exchange);
 
+// Atomically read a value
+static inline uintptr_t mi_atomic_read(volatile uintptr_t* p);
+
+// Atomically write a value
+static inline void mi_atomic_write(volatile uintptr_t* p, uintptr_t x);
+
+// Atomically read a pointer
+static inline void* mi_atomic_read_ptr(volatile void** p) {
+  return (void*)mi_atomic_read( (volatile uintptr_t*)p );
+}
+
 static inline void mi_atomic_yield(void);
+
+
+// Atomically write a pointer
+static inline void mi_atomic_write_ptr(volatile void** p, void* x) {
+  mi_atomic_write((volatile uintptr_t*)p, (uintptr_t)x );
+}
 
 // Atomically compare and exchange a pointer; returns `true` if successful.
 static inline bool mi_atomic_compare_exchange_ptr(volatile void** p, void* newp, void* compare) {
@@ -86,6 +103,12 @@ static inline bool mi_atomic_compare_exchange(volatile uintptr_t* p, uintptr_t e
 }
 static inline uintptr_t mi_atomic_exchange(volatile uintptr_t* p, uintptr_t exchange) {
   return (uintptr_t)RC64(_InterlockedExchange)((volatile msc_intptr_t*)p, (msc_intptr_t)exchange);
+}
+static inline uintptr_t mi_atomic_read(volatile uintptr_t* p) {
+  return *p;
+}
+static inline void mi_atomic_write(volatile uintptr_t* p, uintptr_t x) {
+  *p = x;
 }
 static inline void mi_atomic_yield(void) {
   YieldProcessor();
@@ -149,6 +172,14 @@ static inline uintptr_t mi_atomic_exchange(volatile uintptr_t* p, uintptr_t exch
   MI_USING_STD
   return atomic_exchange_explicit((volatile atomic_uintptr_t*)p, exchange, memory_order_acquire);
 }
+static inline uintptr_t mi_atomic_read(volatile uintptr_t* p) {
+  MI_USING_STD
+  return atomic_load_explicit((volatile atomic_uintptr_t*)p, memory_order_relaxed);
+}
+static inline void mi_atomic_write(volatile uintptr_t* p, uintptr_t x) {
+  MI_USING_STD
+  return atomic_store_explicit((volatile atomic_uintptr_t*)p, x, memory_order_relaxed);
+}
 
 #if defined(__cplusplus)
   #include <thread>
@@ -166,6 +197,11 @@ static inline uintptr_t mi_atomic_exchange(volatile uintptr_t* p, uintptr_t exch
     asm volatile("yield");
   }
 #endif
+#elif defined(__wasi__)
+  #include <sched.h>
+  static inline void mi_atomic_yield() {
+    sched_yield();
+  }
 #else
   #include <unistd.h>
   static inline void mi_atomic_yield(void) {

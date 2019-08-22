@@ -609,14 +609,22 @@ bool mi_heap_visit_blocks(const mi_heap_t* heap, bool visit_all_blocks, mi_block
 
 /// Runtime options.
 typedef enum mi_option_e {
-  mi_option_page_reset,   ///< Reset page memory when it becomes free.
-  mi_option_cache_reset,  ///< Reset segment memory when a segment is cached.
-  mi_option_pool_commit,  ///< Commit segments in large pools.
+  // stable options
   mi_option_show_stats,   ///< Print statistics to `stderr` when the program is done.
   mi_option_show_errors,  ///< Print error messages to `stderr`.
   mi_option_verbose,      ///< Print verbose messages to `stderr`.
+  // the following options are experimental
+  mi_option_secure,       ///< Experimental
+  mi_option_eager_commit, ///< Eagerly commit segments (4MiB) (enabled by default).
+  mi_option_eager_region_commit, ///< Eagerly commit large (256MiB) memory regions (enabled by default except on Windows)
+  mi_option_large_os_pages,      ///< Use large OS pages if possible
+  mi_option_page_reset,   ///< Reset page memory when it becomes free.
+  mi_option_cache_reset,  ///< Reset segment memory when a segment is cached.
+  mi_option_reset_decommits, ///< Experimental
+  mi_option_reset_discards,  ///< Experimental
   _mi_option_last
 } mi_option_t;
+
 
 bool  mi_option_enabled(mi_option_t option);
 void  mi_option_enable(mi_option_t option, bool enable);
@@ -654,12 +662,17 @@ void mi_free_size(void* p, size_t size);
 void mi_free_size_aligned(void* p, size_t size, size_t alignment);
 void mi_free_aligned(void* p, size_t alignment);
 
-/// Only defined in C++ compilation; raise `std::bad_alloc` exception on failure.
+/// raise `std::bad_alloc` exception on failure.
 void* mi_new(std::size_t n) noexcept(false);
 
-/// Only defined in C++ compilation; raise `std::bad_alloc` exception on failure.
+/// raise `std::bad_alloc` exception on failure.
 void* mi_new_aligned(std::size_t n, std::align_val_t alignment) noexcept(false);
 
+/// return `NULL` on failure.
+void* mi_new_nothrow(size_t n);
+``
+/// return `NULL` on failure.
+void* mi_new_aligned_nothrow(size_t n, size_t alignment);
 
 /// \}
 
@@ -791,6 +804,25 @@ completely and redirect all calls to the _mimalloc_ library instead.
 
 See \ref overrides for more info.
 
+## Environment Options
+
+You can set further options either programmatically (using [`mi_option_set`](https://microsoft.github.io/mimalloc/group__options.html)),
+or via environment variables.
+
+- `MIMALLOC_SHOW_STATS=1`: show statistics when the program terminates.
+- `MIMALLOC_VERBOSE=1`: show verbose messages.
+- `MIMALLOC_SHOW_ERRORS=1`: show error and warning messages.
+- `MIMALLOC_LARGE_OS_PAGES=1`: use large OS pages when available; for some workloads this can significantly
+   improve performance. Use `MIMALLOC_VERBOSE` to check if the large OS pages are enabled -- usually one needs
+   to explicitly allow large OS pages (as on [Windows][windows-huge] and [Linux][linux-huge]).
+- `MIMALLOC_EAGER_REGION_COMMIT=1`: on Windows, commit large (256MiB) regions eagerly. On Windows, these regions
+   show in the working set even though usually just a small part is committed to physical memory. This is why it
+   turned off by default on Windows as it looks not good in the task manager. However, in reality it is always better
+   to turn it on as it improves performance and has no other drawbacks.
+
+[linux-huge]: https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/5/html/tuning_and_optimizing_red_hat_enterprise_linux_for_oracle_9i_and_10g_databases/sect-oracle_9i_and_10g_tuning_guide-large_memory_optimization_big_pages_and_huge_pages-configuring_huge_pages_in_red_hat_enterprise_linux_4_or_5
+[windows-huge]: https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/enable-the-lock-pages-in-memory-option-windows?view=sql-server-2017
+
 */
 
 /*! \page overrides Overriding Malloc
@@ -801,17 +833,14 @@ Overriding the standard `malloc` can be done either _dynamically_ or _statically
 
 This is the recommended way to override the standard malloc interface.
 
-### Unix, BSD, macOS
+
+### Linux, BSD
 
 On these systems we preload the mimalloc shared
 library so all calls to the standard `malloc` interface are
 resolved to the _mimalloc_ library.
 
-- `env LD_PRELOAD=/usr/lib/libmimalloc.so myprogram` (on Linux, BSD, etc.)
-- `env DYLD_INSERT_LIBRARIES=/usr/lib/libmimalloc.dylib myprogram` (On macOS)
-
-  Note certain security restrictions may apply when doing this from
-  the [shell](https://stackoverflow.com/questions/43941322/dyld-insert-libraries-ignored-when-calling-application-through-bash).
+- `env LD_PRELOAD=/usr/lib/libmimalloc.so myprogram`
 
 You can set extra environment variables to check that mimalloc is running,
 like:
@@ -823,18 +852,36 @@ or run with the debug version to get detailed statistics:
 env MIMALLOC_SHOW_STATS=1 LD_PRELOAD=/usr/lib/libmimalloc-debug.so myprogram
 ```
 
+### MacOS
+
+On macOS we can also preload the mimalloc shared
+library so all calls to the standard `malloc` interface are
+resolved to the _mimalloc_ library.
+
+- `env DYLD_FORCE_FLAT_NAMESPACE=1 DYLD_INSERT_LIBRARIES=/usr/lib/libmimalloc.dylib myprogram`
+
+Note that certain security restrictions may apply when doing this from
+the [shell](https://stackoverflow.com/questions/43941322/dyld-insert-libraries-ignored-when-calling-application-through-bash).
+
+Note: unfortunately, at this time, dynamic overriding on macOS seems broken but it is actively worked on to fix this
+(see issue [`#50`](https://github.com/microsoft/mimalloc/issues/50)).
+
 ### Windows
 
 On Windows you need to link your program explicitly with the mimalloc
 DLL, and use the C-runtime library as a DLL (the `/MD` or `/MDd` switch).
 To ensure the mimalloc DLL gets loaded it is easiest to insert some
-call to the mimalloc API in the `main` function, like `mi_version()`.
+call to the mimalloc API in the `main` function, like `mi_version()`
+(or use the `/INCLUDE:mi_version` switch on the linker)
 
 Due to the way mimalloc intercepts the standard malloc at runtime, it is best
 to link to the mimalloc import library first on the command line so it gets
 loaded right after the universal C runtime DLL (`ucrtbase`). See
 the `mimalloc-override-test` project for an example.
 
+Note: the current overriding on Windows works for most programs but some programs still have
+trouble -- the `dev-exp` branch contains a newer way of overriding that is more
+robust; try this out if you experience troubles.
 
 ## Static override
 

@@ -54,6 +54,10 @@ You can read more on the design of _mimalloc_ in the [technical report](https://
 
 Enjoy!  
 
+### Releases
+
+* 2019-08-10, `v1.0.6`: pre-release 6: various performance improvements.
+
 # Building
 
 ## Windows
@@ -174,7 +178,24 @@ though in existing programs that already use the standard malloc interface,
 and another option is to override the standard malloc interface
 completely and redirect all calls to the _mimalloc_ library instead.
 
+## Environment Options
 
+You can set further options either programmatically (using [`mi_option_set`](https://microsoft.github.io/mimalloc/group__options.html)),
+or via environment variables.
+
+- `MIMALLOC_SHOW_STATS=1`: show statistics when the program terminates.
+- `MIMALLOC_VERBOSE=1`: show verbose messages.
+- `MIMALLOC_SHOW_ERRORS=1`: show error and warning messages.
+- `MIMALLOC_LARGE_OS_PAGES=1`: use large OS pages when available; for some workloads this can significantly 
+   improve performance. Use `MIMALLOC_VERBOSE` to check if the large OS pages are enabled -- usually one needs
+   to explicitly allow large OS pages (as on [Windows][windows-huge] and [Linux][linux-huge]).
+- `MIMALLOC_EAGER_REGION_COMMIT=1`: on Windows, commit large (256MiB) regions eagerly. On Windows, these regions
+   show in the working set even though usually just a small part is committed to physical memory. This is why it 
+   turned off by default on Windows as it looks not good in the task manager. However, in reality it is always better 
+   to turn it on as it improves performance and has no other drawbacks.
+
+[linux-huge]: https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/5/html/tuning_and_optimizing_red_hat_enterprise_linux_for_oracle_9i_and_10g_databases/sect-oracle_9i_and_10g_tuning_guide-large_memory_optimization_big_pages_and_huge_pages-configuring_huge_pages_in_red_hat_enterprise_linux_4_or_5
+[windows-huge]: https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/enable-the-lock-pages-in-memory-option-windows?view=sql-server-2017
 
 # Overriding Malloc
 
@@ -182,19 +203,15 @@ Overriding the standard `malloc` can be done either _dynamically_ or _statically
 
 ## Dynamic override
 
-This is the recommended way to override the standard malloc interface.
+This is the recommended way to override the standard malloc interface. 
 
-### Unix, BSD, macOS
+### Linux, BSD
 
 On these systems we preload the mimalloc shared
 library so all calls to the standard `malloc` interface are
 resolved to the _mimalloc_ library.
 
-- `env LD_PRELOAD=/usr/lib/libmimalloc.so myprogram` (on Linux, BSD, etc.)
-- `env DYLD_INSERT_LIBRARIES=/usr/lib/libmimalloc.dylib myprogram` (On macOS)
-
-  Note certain security restrictions may apply when doing this from
-  the [shell](https://stackoverflow.com/questions/43941322/dyld-insert-libraries-ignored-when-calling-application-through-bash).
+- `env LD_PRELOAD=/usr/lib/libmimalloc.so myprogram` 
 
 You can set extra environment variables to check that mimalloc is running,
 like:
@@ -206,17 +223,36 @@ or run with the debug version to get detailed statistics:
 env MIMALLOC_SHOW_STATS=1 LD_PRELOAD=/usr/lib/libmimalloc-debug.so myprogram
 ```
 
+### MacOS
+
+On macOS we can also preload the mimalloc shared
+library so all calls to the standard `malloc` interface are
+resolved to the _mimalloc_ library.
+
+- `env DYLD_FORCE_FLAT_NAMESPACE=1 DYLD_INSERT_LIBRARIES=/usr/lib/libmimalloc.dylib myprogram`
+
+Note that certain security restrictions may apply when doing this from
+the [shell](https://stackoverflow.com/questions/43941322/dyld-insert-libraries-ignored-when-calling-application-through-bash).
+
+Note: unfortunately, at this time, dynamic overriding on macOS seems broken but it is actively worked on to fix this 
+(see issue [`#50`](https://github.com/microsoft/mimalloc/issues/50)).
+
 ### Windows
 
 On Windows you need to link your program explicitly with the mimalloc
 DLL, and use the C-runtime library as a DLL (the `/MD` or `/MDd` switch).
 To ensure the mimalloc DLL gets loaded it is easiest to insert some
-call to the mimalloc API in the `main` function, like `mi_version()`.
+call to the mimalloc API in the `main` function, like `mi_version()` 
+(or use the `/INCLUDE:mi_version` switch on the linker)
 
 Due to the way mimalloc intercepts the standard malloc at runtime, it is best
 to link to the mimalloc import library first on the command line so it gets
 loaded right after the universal C runtime DLL (`ucrtbase`). See
 the `mimalloc-override-test` project for an example.
+
+Note: the current overriding on Windows works for most programs but some programs still have
+trouble -- the `dev-exp` branch contains a newer way of overriding that is more
+robust; try this out if you experience troubles.
 
 
 ## Static override

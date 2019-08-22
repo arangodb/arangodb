@@ -139,6 +139,8 @@ int main() {
   CHECK("heap_destroy", test_heap1());
   CHECK("heap_delete", test_heap2());
 
+  //mi_stats_print(NULL);
+
   // ---------------------------------------------------
   // various
   // ---------------------------------------------------

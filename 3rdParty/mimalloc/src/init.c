@@ -11,7 +11,7 @@ terms of the MIT license. A copy of the license can be found in the file
 
 // Empty page used to initialize the small free pages array
 const mi_page_t _mi_page_empty = {
-  0, false, false, {0},
+  0, false, false, false, {0},
   0, 0,
   NULL, 0, 0,   // free, used, cookie
   NULL, 0, 0,
@@ -91,7 +91,7 @@ mi_decl_thread mi_heap_t* _mi_heap_default = (mi_heap_t*)&_mi_heap_empty;
 static mi_tld_t tld_main = {
   0,
   &_mi_heap_main,
-  { { NULL, NULL }, {NULL ,NULL}, 0, 0, 0, 0, {NULL,NULL}, tld_main_stats }, // segments
+  { { NULL, NULL }, {NULL ,NULL}, 0, 0, 0, 0, 0, 0, NULL, tld_main_stats }, // segments
   { 0, NULL, NULL, 0, tld_main_stats },              // os
   { MI_STATS_NULL }                                  // stats
 };
@@ -148,6 +148,10 @@ uintptr_t _mi_random_shuffle(uintptr_t x) {
 }
 
 uintptr_t _mi_random_init(uintptr_t seed /* can be zero */) {
+#ifdef __wasi__ // no ASLR when using WebAssembly, and time granularity may be coarse
+  uintptr_t x;
+  arc4random_buf(&x, sizeof x);
+#else
    // Hopefully, ASLR makes our function address random
   uintptr_t x = (uintptr_t)((void*)&_mi_random_init);
   x ^= seed;
@@ -169,6 +173,7 @@ uintptr_t _mi_random_init(uintptr_t seed /* can be zero */) {
   for (uintptr_t i = 0; i < max; i++) {
     x = _mi_random_shuffle(x);
   }
+#endif
   return x;
 }
 
@@ -230,7 +235,7 @@ static bool _mi_heap_done(void) {
   heap = heap->tld->heap_backing;
   if (!mi_heap_is_initialized(heap)) return false;
 
-  // collect if not the main thread 
+  // collect if not the main thread
   if (heap != &_mi_heap_main) {
     _mi_heap_collect_abandon(heap);
   }
@@ -269,7 +274,9 @@ static bool _mi_heap_done(void) {
 // to set up the thread local keys.
 // --------------------------------------------------------
 
-#ifndef _WIN32
+#ifdef __wasi__
+// no pthreads in the WebAssembly Standard Interface
+#elif !defined(_WIN32)
 #define MI_USE_PTHREADS
 #endif
 
@@ -290,6 +297,8 @@ static bool _mi_heap_done(void) {
   static void mi_pthread_done(void* value) {
     if (value!=NULL) mi_thread_done();
   }
+#elif defined(__wasi__)
+// no pthreads in the WebAssembly Standard Interface
 #else
   #pragma message("define a way to call mi_thread_done when a thread is done")
 #endif
