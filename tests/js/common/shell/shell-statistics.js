@@ -60,7 +60,9 @@ function CommonStatisticsSuite() {
       c.insert({ "gondel" : "ulf" });
       let stats2 = internal.serverStatistics();
 
-      assertTrue(stats1.transactions.started < stats2.transactions.started);
+      assertTrue(stats1.transactions.started < stats2.transactions.started
+                , "1 started: " + stats1.transactions.started 
+                + " -- 2 started: " + stats2.transactions.started);
       assertTrue(stats1.transactions.committed < stats2.transactions.committed);
     },
 
