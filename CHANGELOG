@@ -3,6 +3,8 @@ v3.5.1 (XXXX-XX-XX)
 
 * Agents to remove callback entries when responded to with code 404.
 
+* Fixed internal issue #622: Analyzer cache is now invalidated for dropped database.
+
 * Show query string length and cacheability information in query explain output.
 
 * The AQL functions `FULLTEXT`, `NEAR`, `WITHIN` and `WITHIN_RECTANGLE` are now
