@@ -1,6 +1,8 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Show query string length and cacheability information in query explain output.
+
 * Fixed internal issue #4378: fix bug in MoveShard::abort which causes a
   duplicate entry in the follower list.
 

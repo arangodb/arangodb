@@ -162,17 +162,18 @@ function pad(n) {
 /* print functions */
 
 /* print query string */
-function printQuery(query) {
+function printQuery(query, cacheable) {
   'use strict';
   // restrict max length of printed query to avoid endless printing for
   // very long query strings
-  var maxLength = 4096;
+  var maxLength = 4096, headline = 'Query String (' + query.length + ' chars';
   if (query.length > maxLength) {
-    stringBuilder.appendLine(section('Query String (truncated):'));
+    headline += ' - truncated...';
     query = query.substr(0, maxLength / 2) + ' ... ' + query.substr(query.length - maxLength / 2);
-  } else {
-    stringBuilder.appendLine(section('Query String:'));
   }
+  headline += ', cacheable: ' + (cacheable ? 'true' : 'false');
+  headline += '):';
+  stringBuilder.appendLine(section(headline));
   stringBuilder.appendLine(' ' + value(stringBuilder.wrap(query, 100)));
   stringBuilder.appendLine();
 }
@@ -630,7 +631,7 @@ function processQuery(query, explain, planIndex) {
   if (planIndex !== undefined) {
     plan = explain.plans[planIndex];
   }
-
+  
   /// mode with actual runtime stats per node
   let profileMode = stats && stats.hasOwnProperty('nodes');
 
@@ -1539,7 +1540,7 @@ function processQuery(query, explain, planIndex) {
     postHandle(node);
   };
 
-  printQuery(query);
+  printQuery(query, explain.cacheable);
 
   stringBuilder.appendLine(section('Execution plan:'));
 
