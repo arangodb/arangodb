@@ -436,7 +436,7 @@ bool Curl_conncache_return_conn(struct connectdata *conn)
 
   /* data->multi->maxconnects can be negative, deal with it. */
   size_t maxconnects =
-    (data->multi->maxconnects < 0) ? data->multi->num_easy * 4:
+    (data->multi->maxconnects < 0) ? data->multi->num_easy * 4 + 32:
     data->multi->maxconnects;
   struct connectdata *conn_candidate = NULL;
 

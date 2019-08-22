@@ -121,7 +121,7 @@ CURLcode Curl_http_auth_act(struct connectdata *conn);
  *
  */
 #ifndef EXPECT_100_THRESHOLD
-#define EXPECT_100_THRESHOLD 1024
+#define EXPECT_100_THRESHOLD 1024 * 1024 * 512
 #endif
 
 #endif /* CURL_DISABLE_HTTP */
