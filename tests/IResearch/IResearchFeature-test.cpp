@@ -183,7 +183,7 @@ TEST_F(IResearchFeatureTest, test_start) {
   };
 }
 
-TEST_F(IResearchFeatureTest, test_upgrade0_1) {
+TEST_F(IResearchFeatureTest, DISABLED_test_upgrade0_1) {
   // version 0 data-source path
   auto getPersistedPath0 = [](arangodb::LogicalView const& view) -> irs::utf8_path {
     auto* dbPathFeature =
