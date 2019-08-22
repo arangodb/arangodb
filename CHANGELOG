@@ -1,6 +1,8 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Obtain new unique IDs via a background thread.
+
 * Fixed internal issue #4378: fix bug in MoveShard::abort which causes a
   duplicate entry in the follower list.
 
