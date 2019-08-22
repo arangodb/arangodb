@@ -1,6 +1,10 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Don't retry persisting follower information for collections/shards already
+  dropped. The previous implementation retried (unsuccessfully in this case)
+  for up to 2 hours, occupying one scheduler thread.
+
 * Show query string length and cacheability information in query explain output.
 
 * Fixed internal issue #4378: fix bug in MoveShard::abort which causes a
