@@ -49,7 +49,6 @@ function CommonStatisticsSuite() {
 
     testServerStatsStructure: function () {
       let stats = internal.serverStatistics();
-      print(stats);
       assertTrue(Number.isInteger(stats.transactions.started));
       assertTrue(Number.isInteger(stats.transactions.committed));
       assertTrue(Number.isInteger(stats.transactions.aborted));
