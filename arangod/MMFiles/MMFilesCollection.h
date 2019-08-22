@@ -358,7 +358,7 @@ class MMFilesCollection final : public PhysicalCollection {
 
   /// @brief Fill indexes used in recovery
   int fillIndexes(transaction::Methods& trx,
-                  std::vector<std::shared_ptr<Index>> const& indexes,
+                  PhysicalCollection::IndexContainerType const& indexes,
                   bool skipPersistent = true);
 
   int openWorker(bool ignoreErrors);

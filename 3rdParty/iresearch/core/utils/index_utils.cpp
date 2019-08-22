@@ -28,9 +28,6 @@
 
 NS_LOCAL
 
-// FIXME
-// - FIX segment_consolidate_clear_commit
-
 /// @returns percentage of live documents
 inline double_t fill_factor(const irs::segment_meta& segment) NOEXCEPT {
   return double(segment.live_docs_count)/segment.docs_count;
@@ -40,6 +37,8 @@ inline double_t fill_factor(const irs::segment_meta& segment) NOEXCEPT {
 inline size_t size_without_removals(const irs::segment_meta& segment) NOEXCEPT{
   return size_t(segment.size * fill_factor(segment));
 }
+
+NS_BEGIN(tier)
 
 struct segment_stat {
   segment_stat(const irs::segment_meta& meta) NOEXCEPT
@@ -62,6 +61,10 @@ struct segment_stat {
     }
 
     return lhs.size < rhs.size;
+  }
+
+  operator const irs::segment_meta*() const NOEXCEPT {
+    return meta;
   }
 
   const irs::segment_meta* meta;
@@ -100,32 +103,6 @@ struct consolidation_candidate {
 
   range_t segments;
   size_t count{ 0 };
-  size_t size{ 0 }; // estimated size of the level
-  double_t score{ DBL_MIN }; // how good this permutation is
-};
-
-struct consolidation {
-  explicit consolidation(
-      const consolidation_candidate& candidate
-  ) : size(candidate.size),
-      score(candidate.score) {
-    segments.reserve(candidate.count);
-    for (const auto& segment : candidate) {
-      segments.emplace_back(segment);
-    }
-  }
-
-  bool operator<(const consolidation& rhs) const NOEXCEPT {
-    if (score < rhs.score) {
-      return true;
-    } else if (score > rhs.score) {
-      return false;
-    }
-
-    return segments.size() > segments.size();
-  }
-
-  std::vector<segment_stat> segments;
   size_t size{ 0 }; // estimated size of the level
   double_t score{ DBL_MIN }; // how good this permutation is
 };
@@ -197,14 +174,14 @@ double_t consolidation_score(
   return score;
 }
 
+NS_END // tier
 NS_END
 
 NS_ROOT
 NS_BEGIN(index_utils)
 
 index_writer::consolidation_policy_t consolidation_policy(
-     const consolidate_bytes& options
-) {
+    const consolidate_bytes& options) {
   return [options](
       std::set<const segment_meta*>& candidates,
       const index_meta& meta,
@@ -233,8 +210,7 @@ index_writer::consolidation_policy_t consolidation_policy(
 }
 
 index_writer::consolidation_policy_t consolidation_policy(
-  const consolidate_bytes_accum& options
-) {
+    const consolidate_bytes_accum& options) {
   return [options](
       std::set<const segment_meta*>& candidates,
       const index_meta& meta,
@@ -280,8 +256,7 @@ index_writer::consolidation_policy_t consolidation_policy(
 }
 
 index_writer::consolidation_policy_t consolidation_policy(
-  const consolidate_count& options
-) {
+    const consolidate_count& options) {
   return [options](
       std::set<const segment_meta*>& candidates,
       const index_meta& meta,
@@ -297,8 +272,7 @@ index_writer::consolidation_policy_t consolidation_policy(
 }
 
 index_writer::consolidation_policy_t consolidation_policy(
-  const consolidate_docs_fill& options
-) {
+    const consolidate_docs_fill& options) {
   return [options](
       std::set<const segment_meta*>& candidates,
       const index_meta& meta,
@@ -318,8 +292,7 @@ index_writer::consolidation_policy_t consolidation_policy(
 }
 
 index_writer::consolidation_policy_t consolidation_policy(
-  const consolidate_docs_live& options
-) {
+    const consolidate_docs_live& options) {
   return [options](
       std::set<const segment_meta*>& candidates,
       const index_meta& meta,
@@ -347,8 +320,8 @@ index_writer::consolidation_policy_t consolidation_policy(
 }
 
 index_writer::consolidation_policy_t consolidation_policy(
-  const consolidate_tier& options
-) {
+    const consolidate_tier& options) {
+
   // validate input
   const auto max_segments_per_tier = (std::max)(size_t(1), options.max_segments); // can't merge less than 1 segment
   auto min_segments_per_tier = (std::max)(size_t(1), options.min_segments); // can't merge less than 1 segment
@@ -360,8 +333,7 @@ index_writer::consolidation_policy_t consolidation_policy(
   return [max_segments_per_tier, min_segments_per_tier, floor_segment_bytes, max_segments_bytes, min_score](
       std::set<const segment_meta*>& candidates,
       const index_meta& meta,
-      const index_writer::consolidating_segments_t& consolidating_segments
-  )->void {
+      const index_writer::consolidating_segments_t& consolidating_segments) -> void {
     size_t consolidating_size = 0; // size of segments in bytes that are currently under consolidation
     size_t min_segment_size = integer_traits<size_t>::const_max; // the smallest segment
     size_t total_index_size = 0; // total size in bytes of all segments in index
@@ -373,14 +345,19 @@ index_writer::consolidation_policy_t consolidation_policy(
     /// get sorted list of segments
     ///////////////////////////////////////////////////////////////////////////
 
-    std::set<segment_stat> sorted_segments;
+    std::set<tier::segment_stat> sorted_segments;
 
     // get sorted segments from index meta
     auto push_segments = [&sorted_segments](
         const std::string& /*filename*/,
-        const irs::segment_meta& segment
-    ) {
-      sorted_segments.insert(segment);
+        const irs::segment_meta& segment) {
+      if (segment.live_docs_count) {
+        // skip empty segments, they'll be
+        // removed from index by index_writer
+        // during 'commit'
+        sorted_segments.insert(segment);
+      }
+
       return true;
     };
 
@@ -406,6 +383,11 @@ index_writer::consolidation_policy_t consolidation_policy(
         total_docs_count += segment.meta->docs_count;
         ++begin;
       }
+    }
+
+    if (!total_docs_count) {
+      // nothing to consolidate
+      return;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -434,16 +416,14 @@ index_writer::consolidation_policy_t consolidation_policy(
     /// find candidates
     ///////////////////////////////////////////////////////////////////////////
 
-    consolidation_candidate best(sorted_segments.begin());
+    tier::consolidation_candidate best(sorted_segments.begin());
 
     if (sorted_segments.size() >= min_segments_per_tier) {
       for (auto i = sorted_segments.begin(), end = sorted_segments.end(); i != end; ++i) {
-        consolidation_candidate candidate(i);
+        tier::consolidation_candidate candidate(i);
 
-        while (
-            candidate.segments.second != end
-            && candidate.count < max_segments_per_tier
-        ) {
+        while (candidate.segments.second != end
+               && candidate.count < max_segments_per_tier) {
           candidate.size += candidate.segments.second->size;
 
           if (candidate.size > max_segments_bytes) {
@@ -459,7 +439,7 @@ index_writer::consolidation_policy_t consolidation_policy(
             continue;
           }
 
-          candidate.score = ::consolidation_score(
+          candidate.score = tier::consolidation_score(
             candidate, max_segments_per_tier, floor_segment_bytes
           );
 
@@ -480,9 +460,7 @@ index_writer::consolidation_policy_t consolidation_policy(
     /// pick the best candidate
     ///////////////////////////////////////////////////////////////////////////
 
-    for (auto& candidate : best) {
-      candidates.insert(candidate.meta);
-    }
+    candidates.insert(best.begin(), best.end());
   };
 }
 

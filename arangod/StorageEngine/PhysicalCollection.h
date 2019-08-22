@@ -23,7 +23,7 @@
 
 #ifndef ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H
 #define ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H 1
-
+#include <set>
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/Index.h"
@@ -99,9 +99,16 @@ class PhysicalCollection {
 
   bool hasIndexOfType(arangodb::Index::IndexType type) const;
 
+  /// @brief determines order of index execution on collection
+  struct IndexOrder {
+    bool operator()(const std::shared_ptr<Index>& left,
+                              const std::shared_ptr<Index>& right) const;
+  };
+
+  using IndexContainerType = std::set<std::shared_ptr<Index>, IndexOrder> ;
   /// @brief find index by definition
   static std::shared_ptr<Index> findIndex(velocypack::Slice const&,
-                                          std::vector<std::shared_ptr<Index>> const&);
+                                          IndexContainerType const&);
   /// @brief Find index by definition
   std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const;
 
@@ -137,7 +144,7 @@ class PhysicalCollection {
   ///////////////////////////////////
 
   virtual Result truncate(transaction::Methods& trx, OperationOptions& options) = 0;
-  
+
   /// @brief compact-data operation
   virtual Result compact() = 0;
 
@@ -174,12 +181,12 @@ class PhysicalCollection {
   virtual Result insert(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice newSlice,
                         arangodb::ManagedDocumentResult& result,
-                        OperationOptions& options,
-                        bool lock, KeyLockInfo* keyLockInfo,
+                        OperationOptions& options, bool lock, KeyLockInfo* keyLockInfo,
                         std::function<void()> const& cbDuringLock) = 0;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-                arangodb::ManagedDocumentResult& result, OperationOptions& options, bool lock) {
+                arangodb::ManagedDocumentResult& result,
+                OperationOptions& options, bool lock) {
     return insert(trx, newSlice, result, options, lock, nullptr, nullptr);
   }
 
@@ -197,7 +204,7 @@ class PhysicalCollection {
                         ManagedDocumentResult& previous, OperationOptions& options,
                         bool lock, KeyLockInfo* keyLockInfo,
                         std::function<void()> const& cbDuringLock) = 0;
-  
+
   /// @brief new object for insert, value must have _key set correctly.
   Result newObjectForInsert(transaction::Methods* trx, velocypack::Slice const& value,
                             bool isEdgeCollection, velocypack::Builder& builder,
@@ -240,7 +247,7 @@ class PhysicalCollection {
   bool const _isDBServer;
 
   mutable basics::ReadWriteLock _indexesLock;
-  std::vector<std::shared_ptr<Index>> _indexes;
+  IndexContainerType _indexes;
 };
 
 }  // namespace arangodb

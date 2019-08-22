@@ -4,6 +4,14 @@ v3.5.1 (XXXX-XX-XX)
 * Add TransactionStatistics to ServerStatistics (transactions started /
   aborted / committed and number of intermediate commits).
 
+* Show query string length and cacheability information in query explain output.
+
+* The AQL functions `FULLTEXT`, `NEAR`, `WITHIN` and `WITHIN_RECTANGLE` are now
+  marked as cacheable, so they can be used in conjunction with the AQL query
+  results cache on a single server.
+
+* Fixed issue #9612: fix ArangoSearch views getting out of sync with collection.
+
 * Fix an issue with potential spurious wakeups in the internal scheduler code.
 
 * Changes the _idle_ timeout of stream transactions to 10 seconds and the total
