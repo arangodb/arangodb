@@ -22,6 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "InitialSyncer.h"
+
+#include "Basics/FunctionUtils.h"
+#include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -56,19 +60,35 @@ void InitialSyncer::startRecurringBatchExtension() {
   }
         
   std::weak_ptr<Syncer> self(shared_from_this());
-  _batchPingTimer = SchedulerFeature::SCHEDULER->queueDelay(
-      RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs), [self](bool cancelled) {
-        if (!cancelled) {
-          auto syncer = self.lock();
-          if (syncer) {
-            auto* s = static_cast<InitialSyncer*>(syncer.get());
-            if (s->_batch.id != 0 && !s->isAborted()) {
-              s->_batch.extend(s->_state.connection, s->_progress, s->_state.syncerId);
-              s->startRecurringBatchExtension();
-            }
-          }
-        }
-      });
+  bool queued = false;
+  std::tie(queued, _batchPingTimer) =
+      basics::function_utils::retryUntilTimeout<Scheduler::WorkHandle>(
+          [secs, self]() -> std::pair<bool, Scheduler::WorkHandle> {
+            return SchedulerFeature::SCHEDULER->queueDelay(
+                RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs),
+                [self](bool cancelled) {
+                  if (!cancelled) {
+                    auto syncer = self.lock();
+                    if (syncer) {
+                      auto* s = static_cast<InitialSyncer*>(syncer.get());
+                      if (s->_batch.id != 0 && !s->isAborted()) {
+                        s->_batch.extend(s->_state.connection, s->_progress,
+                                         s->_state.syncerId);
+                        s->startRecurringBatchExtension();
+                      }
+                    }
+                  }
+                });
+          },
+          Logger::REPLICATION, "queue batch extension");
+  if (!queued) {
+    LOG_TOPIC("f8b3e", ERR, Logger::REPLICATION)
+        << "Failed to queue replication batch extension for 5 minutes, exiting.";
+    // don't abort, as this is not a critical error 
+    // if requeueing has failed here, the replication can still go on, but
+    // it _may_ fail later because the batch has expired on the leader.
+    // but there are still chances it can continue successfully
+  }
 }
 
 }  // namespace arangodb

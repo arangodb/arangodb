@@ -22,6 +22,7 @@
 
 #include "RocksDBBackgroundThread.h"
 #include "Basics/ConditionLocker.h"
+#include "Replication/ReplicationClients.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"

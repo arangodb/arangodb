@@ -25,9 +25,10 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_VELOCY_PACK_HELPER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
-#include "velocypack/Slice.h"
-#include "velocypack/velocypack-aliases.h"
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "utils/string.hpp"  // for irs::string_ref
 

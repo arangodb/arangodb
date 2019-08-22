@@ -20,6 +20,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <chrono>
+#include <thread>
+
 #include "Conductor.h"
 
 #include "Pregel/Aggregator.h"
@@ -30,6 +33,7 @@
 #include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
 
+#include "Basics/FunctionUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -305,7 +309,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  scheduler->queue(RequestLane::INTERNAL_LOW, [this] {
+  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this] {
     MUTEX_LOCKER(guard, _callbackMutex);
 
     if (_state == ExecutionState::RUNNING) {
@@ -319,6 +323,11 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
           << "No further action taken after receiving all responses";
     }
   });
+  if (!queued) {
+    LOG_TOPIC("038db", ERR, Logger::PREGEL)
+        << "No thread available to queue response, canceling execution";
+    cancel();
+  }
   return VPackBuilder();
 }
 
@@ -389,7 +398,13 @@ void Conductor::cancel() {
 void Conductor::cancelNoLock() {
   _callbackMutex.assertLockedByCurrentThread();
   _state = ExecutionState::CANCELED;
-  _finalizeWorkers();
+  bool ok = basics::function_utils::retryUntilTimeout(
+      [this]() -> bool { return (_finalizeWorkers() != TRI_ERROR_QUEUE_FULL); },
+      Logger::PREGEL, "cancel worker execution");
+  if (!ok) {
+    LOG_TOPIC("f8b3c", ERR, Logger::PREGEL)
+        << "Failed to cancel worker execution for five minutes, giving up.";
+  }
   _workHandle.reset();
 }
 
@@ -412,7 +427,8 @@ void Conductor::startRecovery() {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
 
   // let's wait for a final state in the cluster
-  _workHandle = SchedulerFeature::SCHEDULER->queueDelay(
+  bool queued = false;
+  std::tie(queued, _workHandle) = SchedulerFeature::SCHEDULER->queueDelay(
       RequestLane::CLUSTER_AQL, std::chrono::seconds(2), [this](bool cancelled) {
         if (cancelled || _state != ExecutionState::RECOVERING) {
           return;  // seems like we are canceled
@@ -460,6 +476,10 @@ void Conductor::startRecovery() {
           LOG_TOPIC("fefc6", ERR, Logger::PREGEL) << "Compensation failed";
         }
       });
+  if (!queued) {
+    LOG_TOPIC("92a8d", ERR, Logger::PREGEL)
+        << "No thread available to queue recovery, may be in dirty state.";
+  }
 }
 
 // resolves into an ordered list of shards for each collection on each server
@@ -691,12 +711,17 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
     auto* scheduler = SchedulerFeature::SCHEDULER;
     if (scheduler) {
       uint64_t exe = _executionNumber;
-      scheduler->queue(RequestLane::CLUSTER_AQL, [exe] {
+      bool queued = scheduler->queue(RequestLane::CLUSTER_AQL, [exe] {
         auto pf = PregelFeature::instance();
         if (pf) {
           pf->cleanupConductor(exe);
         }
       });
+      if (!queued) {
+        LOG_TOPIC("038da", ERR, Logger::PREGEL)
+            << "No thread available to queue cleanup, canceling execution";
+        cancel();
+      }
     }
   }
 }
@@ -766,7 +791,7 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       uint64_t exe = _executionNumber;
       Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->queue(RequestLane::INTERNAL_LOW, [path, message, exe] {
+      bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [path, message, exe] {
         auto pf = PregelFeature::instance();
         if (!pf) {
           return;
@@ -778,6 +803,9 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
           PregelFeature::handleWorkerRequest(vocbase, path, message.slice(), response);
         }
       });
+      if (!queued) {
+        return TRI_ERROR_QUEUE_FULL;
+      }
     }
     return TRI_ERROR_NO_ERROR;
   }

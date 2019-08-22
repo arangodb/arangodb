@@ -435,16 +435,16 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
 
     if (match) {
       // now must hash the range
-      uint64_t hash = 0x012345678;
+      uint64_t hashval = 0x012345678;
 
       for (size_t i = localFrom; i <= localTo; ++i) {
         TRI_ASSERT(i < markers.size());
         VPackSlice const current(markers.at(i));
-        hash ^= current.get(StaticStrings::KeyString).hashString();
-        hash ^= current.get(StaticStrings::RevString).hash();
+        hashval ^= current.get(StaticStrings::KeyString).hashString();
+        hashval ^= current.get(StaticStrings::RevString).hash();
       }
 
-      if (std::to_string(hash) != hashSlice.copyString()) {
+      if (std::to_string(hashval) != hashSlice.copyString()) {
         match = false;
       }
     }

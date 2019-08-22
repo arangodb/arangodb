@@ -21,11 +21,22 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stddef.h>
+#include <algorithm>
+#include <ios>
+
 #include "RocksDBOptionFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 #include <rocksdb/options.h>
 #include <rocksdb/table.h>
@@ -46,7 +57,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
       _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
-      _maxWriteBufferNumber(rocksDBDefaults.max_write_buffer_number),
+      _maxWriteBufferNumber(7 + 2), // number of column families plus 2
       _maxTotalWalSize(80 << 20),
       _delayedWriteRate(rocksDBDefaults.delayed_write_rate),
       _minWriteBufferNumberToMerge(rocksDBDefaults.min_write_buffer_number_to_merge),

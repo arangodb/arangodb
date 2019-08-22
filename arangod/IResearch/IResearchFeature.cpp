@@ -52,6 +52,7 @@
 #include "Logger/LogMacros.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -88,7 +89,7 @@ static const std::string FLUSH_VALUE_FIELD("value");
 
 class IResearchLogTopic final : public arangodb::LogTopic {
  public:
-  IResearchLogTopic(std::string const& name)
+  explicit IResearchLogTopic(std::string const& name)
       : arangodb::LogTopic(name, DEFAULT_LEVEL) {
     setIResearchLogLevel(DEFAULT_LEVEL);
   }
@@ -342,7 +343,7 @@ bool upgradeSingleServerArangoSearchView0_1(
                                                                builder.slice());
 
     if (!res.ok()) {
-      LOG_TOPIC("f8d19", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("f8d20", WARN, arangodb::iresearch::TOPIC)
           << "failure to recreate view while upgrading IResearchView from "
              "version 0 to version 1, error: "
           << res.errorNumber() << " " << res.errorMessage()
@@ -581,7 +582,7 @@ class IResearchFeature::Async {
   struct Task : public Pending {
     std::unique_lock<ReadMutex> _lock;  // prevent resource deallocation
 
-    Task(Pending&& pending) : Pending(std::move(pending)) {}
+    explicit Task(Pending&& pending) : Pending(std::move(pending)) {}
   };
 
   struct Thread : public arangodb::Thread {
@@ -596,7 +597,7 @@ class IResearchFeature::Async {
                                     // to store pointer for move-assignment)
     mutable bool _wasNotified;  // a notification was raised from another thread
 
-    Thread(std::string const& name)
+    explicit Thread(std::string const& name)
         : arangodb::Thread(name), _next(nullptr), _terminate(nullptr), _wasNotified(false) {}
     Thread(Thread&& other)  // used in constructor before tasks are started
         : arangodb::Thread(other.name()),

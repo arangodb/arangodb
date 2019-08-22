@@ -135,7 +135,7 @@ function transactionRevisionsSuite () {
         tc.remove('test');
         assertEqual(0, tc.count());
       } catch(e) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(e));
       } finally {
         trx.abort();
       }
@@ -155,7 +155,7 @@ function transactionRevisionsSuite () {
         tc.remove('test');
         tc.insert({ _key: 'test', _rev: doc._rev, value: 2 }, { isRestore: true });
       } catch(e) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(e));
       } finally {
         trx.commit();
       }
@@ -174,7 +174,7 @@ function transactionRevisionsSuite () {
         let tc = trx.collection(c.name());
         tc.update('test', { _key: 'test', _rev: doc._rev, value: 2 }, { isRestore: true });
       } catch(e) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(e));
       } finally {
         trx.commit();
       }
@@ -193,7 +193,7 @@ function transactionRevisionsSuite () {
         let tc = trx.collection(c.name());
         tc.update('test', { _key: 'test', _rev: doc._rev, value: 2 }, { isRestore: true });
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         trx.abort();
       }
@@ -212,7 +212,7 @@ function transactionRevisionsSuite () {
         let tc = trx.collection(c.name());
         tc.update('test', { _key: 'test', value: 2 });
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         trx.abort();
       }
@@ -253,7 +253,7 @@ function transactionRevisionsSuite () {
         tc.remove('test');
         tc.insert({ _key: 'test', value: 2 });
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         trx.commit();
       }
@@ -273,7 +273,7 @@ function transactionRevisionsSuite () {
         tc.remove('test');
         tc.insert({ _key: 'test', value: 3 });
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         trx.abort();
       }
@@ -410,7 +410,7 @@ function transactionInvocationSuite () {
         try {
           trx = db._createTransaction(test);
         } catch(err) {
-          fail();
+          fail("Transaction failed with: " + JSON.stringify(err));
         } finally {
           if (trx) {
             trx.abort();
@@ -832,7 +832,7 @@ function transactionCollectionsSuite () {
       try {
         trx = db._createTransaction(obj);
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -857,7 +857,7 @@ function transactionCollectionsSuite () {
         trx = db._createTransaction(obj);
         result = trx.query('FOR i IN [ 1, 2, 3 ] RETURN i').toArray();
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -884,7 +884,7 @@ function transactionCollectionsSuite () {
         let tc = trx.collection(c1.name());
         tc.save({ _key: 'foo' });
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -910,7 +910,7 @@ function transactionCollectionsSuite () {
         let tc = trx.collection(c1.name());
         tc.save({ _key: 'foo' });
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -939,7 +939,7 @@ function transactionCollectionsSuite () {
         tc1.save({ _key: 'foo' });
         tc2.save({ _key: 'foo' });
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -972,7 +972,7 @@ function transactionCollectionsSuite () {
         tc1.save({ _key: 'foo' });
         tc2.document('foo');
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1001,7 +1001,7 @@ function transactionCollectionsSuite () {
         let tc1 = trx.collection(c1.name());
         tc1.save({ _key: 'foo' });
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1030,7 +1030,7 @@ function transactionCollectionsSuite () {
         let tc1 = trx.collection(c1.name());
         tc1.save({ _key: 'foo' });
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1059,7 +1059,7 @@ function transactionCollectionsSuite () {
         let tc2 = trx.collection(c2.name());
         tc2.save({ _key: 'foo' });
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1088,7 +1088,7 @@ function transactionCollectionsSuite () {
         let tc1 = trx.collection(c1.name());
         tc1.save({ _key: 'foo' });
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1117,7 +1117,7 @@ function transactionCollectionsSuite () {
         let tc1 = trx.collection(c1.name());
         tc1.save({ _key: 'foo' });
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1151,7 +1151,7 @@ function transactionCollectionsSuite () {
         assertEqual(10, docs.length);
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1185,7 +1185,7 @@ function transactionCollectionsSuite () {
         assertEqual(100, docs.length);
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1218,7 +1218,7 @@ function transactionCollectionsSuite () {
         assertEqual(100, docs.length);
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1252,7 +1252,7 @@ function transactionCollectionsSuite () {
         assertEqual(0, tc1.count());
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1293,7 +1293,7 @@ function transactionCollectionsSuite () {
         assertEqual(0, tc2.count());
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1337,7 +1337,7 @@ function transactionCollectionsSuite () {
         assertEqual(10, tc2.count());
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1380,7 +1380,7 @@ function transactionCollectionsSuite () {
         assertEqual(0, tc2.count());
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1456,7 +1456,7 @@ function transactionOperationsSuite () {
         let tc1 = trx.collection(c1.name());
         assertEqual(1, tc1.document('foo').a);
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1487,7 +1487,7 @@ function transactionOperationsSuite () {
         let tc1 = trx.collection(c1.name());
         assertEqual(1, tc1.document('foo').a);
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1525,7 +1525,7 @@ function transactionOperationsSuite () {
           assertEqual(i, tc1.document('foo' + i).a);
         }
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1564,7 +1564,7 @@ function transactionOperationsSuite () {
         }
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1595,7 +1595,7 @@ function transactionOperationsSuite () {
         tc1.save({ _key: 'foo' });
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1628,7 +1628,7 @@ function transactionOperationsSuite () {
         tc1.save({ _key: 'bar' });
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1663,7 +1663,7 @@ function transactionOperationsSuite () {
         tc1.save({ _key: 'bam' });
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1702,7 +1702,7 @@ function transactionOperationsSuite () {
         tc1.replace('bar', { b: 9 });
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1747,7 +1747,7 @@ function transactionOperationsSuite () {
         assertEqual(99, tc1.document('foo').b);
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1793,7 +1793,7 @@ function transactionOperationsSuite () {
         assertEqual(4, tc1.document('bam').d);
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1834,7 +1834,7 @@ function transactionOperationsSuite () {
         tc1.remove('baz');
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1867,7 +1867,7 @@ function transactionOperationsSuite () {
         tc1.truncate();
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1903,7 +1903,7 @@ function transactionOperationsSuite () {
         tc1.truncate();
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -1940,7 +1940,7 @@ function transactionOperationsSuite () {
         tc1.save({ _key: 'foo' });
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
           trx.commit();
@@ -3400,7 +3400,7 @@ function transactionCrossCollectionSuite () {
         assertEqual(2, tc2.document('b1').a);
 
       } catch (err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         trx.abort(); // rollback
       }
@@ -3455,7 +3455,7 @@ function transactionCrossCollectionSuite () {
           }
   
         } catch (err) {
-          fail();
+          fail("Transaction failed with: " + JSON.stringify(err));
         } finally {
           trx.abort(); // rollback
         }
@@ -3538,7 +3538,7 @@ function transactionTraversalSuite () {
           return 1;
         }
       } catch (err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         trx.commit();
       }
@@ -3666,7 +3666,7 @@ function transactionAQLStreamSuite () {
         }
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (cursor) {
           cursor.dispose();
@@ -3704,7 +3704,7 @@ function transactionAQLStreamSuite () {
           }
   
         } catch(err) {
-          fail();
+          fail("Transaction failed with: " + JSON.stringify(err));
         } finally {
           if (cursor) {
             cursor.dispose();
@@ -3752,7 +3752,7 @@ function transactionAQLStreamSuite () {
         assertEqual(100, tc.count());
 
       } catch(err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (cursor1) {
           cursor1.dispose();
@@ -3793,13 +3793,63 @@ function transactionAQLStreamSuite () {
           return 1;
         }
       } catch (err) {
-        fail();
+        fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         trx.commit();
       }
       // end trx
 
       assertEqual(1, result);
+    }
+  };
+}
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
+
+function transactionTTLStreamSuite () {
+  'use strict';
+  const cn = 'UnitTestsTransaction';
+  let c;
+
+  return {
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
+
+    setUp: function () {
+      db._drop(cn);
+      c = db._create(cn, {numberOfShards: 2, replicationFactor: 2});
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
+
+    tearDown: function () {
+      db._drop(cn);
+    },
+
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: abort idle transactions
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testAbortIdleTrx: function () {
+      let trx = db._createTransaction({
+        collections: { read: cn }
+      });
+
+      internal.sleep(12);
+      try {
+        trx.collection(cn).save({key:'val'});
+        fail();
+      } catch (err) {
+        assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, err.errorNum);
+      }
     }
   };
 }
@@ -3818,5 +3868,6 @@ jsunity.run(transactionCountSuite);
 jsunity.run(transactionCrossCollectionSuite);
 jsunity.run(transactionTraversalSuite);
 jsunity.run(transactionAQLStreamSuite);
+jsunity.run(transactionTTLStreamSuite);
 
 return jsunity.done();

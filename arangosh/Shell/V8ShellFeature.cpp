@@ -29,8 +29,13 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/application-exit.h"
+#include "Basics/files.h"
+#include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"
@@ -963,7 +968,13 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
     code = TRI_ObjectToInt64(isolate, args[0]);
   }
 
-  exit((int)code);
+  ShellFeature* shell =
+      application_features::ApplicationServer::getFeature<ShellFeature>(
+          "Shell");
+
+  shell->setExitCode(static_cast<int>(code));
+  
+  isolate->TerminateExecution();
 
   TRI_V8_TRY_CATCH_END
 }

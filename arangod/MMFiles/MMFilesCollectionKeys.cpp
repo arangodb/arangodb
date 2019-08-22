@@ -142,7 +142,7 @@ std::tuple<std::string, std::string, uint64_t> MMFilesCollectionKeys::hashChunk(
   TRI_ASSERT(first.isObject());
   TRI_ASSERT(last.isObject());
 
-  uint64_t hash = 0x012345678;
+  uint64_t hashval = 0x012345678;
 
   for (size_t i = from; i < to; ++i) {
     VPackSlice current(_vpack.at(i));
@@ -150,13 +150,13 @@ std::tuple<std::string, std::string, uint64_t> MMFilesCollectionKeys::hashChunk(
 
     // we can get away with the fast hash function here, as key values are
     // restricted to strings
-    hash ^= transaction::helpers::extractKeyFromDocument(current).hashString();
-    hash ^= transaction::helpers::extractRevSliceFromDocument(current).hash();
+    hashval ^= transaction::helpers::extractKeyFromDocument(current).hashString();
+    hashval ^= transaction::helpers::extractRevSliceFromDocument(current).hash();
   }
 
   return std::make_tuple(transaction::helpers::extractKeyFromDocument(first).copyString(),
                          transaction::helpers::extractKeyFromDocument(last).copyString(),
-                         hash);
+                         hashval);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

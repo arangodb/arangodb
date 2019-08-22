@@ -21,14 +21,23 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tri-zip.h"
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <algorithm>
+#include <cstring>
 
-#include "Basics/Common.h"
+#include "tri-zip.h"
+
+#include "Basics/operating-system.h"
+
 #include "Basics/FileUtils.h"
-#include "Basics/files.h"
-#include "Basics/tri-strings.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Basics/files.h"
+#include "Basics/memory.h"
+#include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
 #include "Zip/unzip.h"
 #include "Zip/zip.h"
 
@@ -36,10 +45,6 @@
 #define USEWIN32IOAPI
 #include "Zip/iowin32.h"
 #endif
-
-#include <sys/stat.h>
-
-#include <cstring>
 
 using namespace arangodb;
 
@@ -294,7 +299,7 @@ int TRI_ZipFile(char const* filename, char const* dir,
     return TRI_ERROR_CANNOT_OVERWRITE_FILE;
   }
 
-  int bufferSize = 16384;
+  constexpr int bufferSize = 16384;
   buffer = TRI_Allocate((size_t)bufferSize);
 
   if (buffer == nullptr) {

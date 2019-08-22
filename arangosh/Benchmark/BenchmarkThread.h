@@ -30,10 +30,15 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Thread.h"
+#include "Basics/application-exit.h"
 #include "Basics/hashes.h"
+#include "Basics/system-functions.h"
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -68,9 +73,8 @@ class BenchmarkThread : public arangodb::Thread {
         _offset(0),
         _counter(0),
         _time(0.0),
-        _verbose(verbose) {
-    _errorHeader = basics::StringUtils::tolower(StaticStrings::Errors);
-  }
+        _errorHeader(basics::StringUtils::tolower(StaticStrings::Errors)),
+        _verbose(verbose) {}
 
   ~BenchmarkThread() { shutdown(); }
 
@@ -126,6 +130,7 @@ class BenchmarkThread : public arangodb::Thread {
 
     // wait for start condition to be broadcasted
     {
+      // cppcheck-suppress redundantPointerOp
       CONDITION_LOCKER(guard, (*_startCondition));
       guard.wait();
     }

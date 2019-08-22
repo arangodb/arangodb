@@ -21,36 +21,47 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VelocyPackHelper.h"
-#include "Basics/Exceptions.h"
-#include "Basics/NumberUtils.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
-#include "Basics/VPackStringBufferAdapter.h"
-#include "Basics/conversions.h"
-#include "Basics/files.h"
-#include "Basics/hashes.h"
-#include "Basics/tri-strings.h"
-#include "Basics/ScopeGuard.h"
-#include "Logger/Logger.h"
+#include <fcntl.h>
+#include <string.h>
+#include <sys/types.h>
+#include <algorithm>
+#include <cstdint>
+#include <memory>
+#include <set>
 
 #include <velocypack/AttributeTranslator.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
 
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <fcntl.h>
+#include "Basics/operating-system.h"
+
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+
+#include "VelocyPackHelper.h"
+
+#include "Basics/Exceptions.h"
+#include "Basics/NumberUtils.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
+#include "Basics/VPackStringBufferAdapter.h"
+#include "Basics/error.h"
+#include "Basics/files.h"
+#include "Basics/memory.h"
+#include "Basics/system-compiler.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 extern "C" {
 unsigned long long XXH64(const void* input, size_t length, unsigned long long seed);
@@ -680,7 +691,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
 #ifndef _WIN32
   if (syncFile) {
     // also sync target directory
-    std::string const dir = TRI_Dirname(filename.c_str());
+    std::string const dir = TRI_Dirname(filename);
     fd = TRI_OPEN(dir.c_str(), O_RDONLY | TRI_O_CLOEXEC);
     if (fd < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);

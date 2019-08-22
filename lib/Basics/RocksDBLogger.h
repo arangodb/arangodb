@@ -24,6 +24,9 @@
 #ifndef ARANGODB_BASICS_ROCKSDB_LOGGER_H
 #define ARANGODB_BASICS_ROCKSDB_LOGGER_H 1
 
+#include <stdarg.h>
+#include <atomic>
+
 #include "Basics/Common.h"
 
 #include <rocksdb/env.h>

@@ -24,8 +24,8 @@
 
 #include <velocypack/velocypack-aliases.h>
 
-#include "zconf.h"
-#include "zlib.h"
+#include <zconf.h>
+#include <zlib.h>
 
 namespace arangodb {
 

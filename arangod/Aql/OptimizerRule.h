@@ -297,9 +297,9 @@ struct OptimizerRule {
 
   OptimizerRule() = delete;
 
-  OptimizerRule(std::string const& name, RuleFunction const& func, RuleLevel level, std::underlying_type<Flags>::type flags)
+  OptimizerRule(std::string const& name, RuleFunction const& ruleFunc, RuleLevel level, std::underlying_type<Flags>::type flags)
       : name(name),
-        func(func),
+        func(ruleFunc),
         level(level),
         flags(flags) {}
 };

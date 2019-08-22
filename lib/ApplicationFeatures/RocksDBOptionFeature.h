@@ -24,11 +24,20 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_ROCKSDB_OPTION_FEATURE_H
 #define ARANGODB_APPLICATION_FEATURES_ROCKSDB_OPTION_FEATURE_H 1
 
+#include <cstdint>
+#include <memory>
+#include <string>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
-#include "VocBase/voc-types.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
+namespace options {
+class ProgramOptions;
+}
 
 // This feature is used to configure RocksDB in a central place.
 //
@@ -49,6 +58,7 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   std::string _walDirectory;
   uint64_t _totalWriteBufferSize;
   uint64_t _writeBufferSize;
+  // Update max_write_buffer_number above if you change number of families used
   uint64_t _maxWriteBufferNumber;
   uint64_t _maxTotalWalSize;
   uint64_t _delayedWriteRate;
