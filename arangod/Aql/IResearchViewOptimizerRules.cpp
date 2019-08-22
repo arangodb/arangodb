@@ -292,15 +292,21 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
      auto loop = const_cast<ExecutionNode*>(node->getLoop());
      if (arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
        auto & viewNode = *EN::castTo<IResearchViewNode*>(loop);
-       std::cerr << " Found View:" << viewNode.view()->name() << std::endl;
+       std::cerr << " Found View:" << viewNode.view()->name() << std::endl; //!!!!
        ExecutionNode* current = node->getFirstDependency();
-       bool hasSortNode = false; // we need sort node present  (maybe not, actually. Just limit will be enough)
+       bool hasSortNode = false; // we need sort node present  (without sor it will be just skip, nothing to optimize)
        bool docBodyUsed = false; // let it be false for now. Figure out later how to check it properly
        while(current != loop) { // we should check  that this loop has sort node
-         if (arangodb::aql::ExecutionNode::SORT == current->getType()) {
-           std::cerr << " Found SORT NODE" << std::endl;
+         if (!hasSortNode || arangodb::aql::ExecutionNode::SORT == current->getType()) {
+           std::cerr << " Found SORT NODE" << std::endl; //!!!!
            hasSortNode = true;
-           break; // we are done for now
+         }
+         arangodb::HashSet<Variable const*> currentUsedVars;
+         current->getVariablesUsedHere(currentUsedVars);
+         if (currentUsedVars.find(&viewNode.outVariable()) != currentUsedVars.end()) {
+           std::cerr << " Variable used in node " << current->getTypeString() << std::endl;//!!!!
+           docBodyUsed = true;
+           break; // this means we can not optimize. Nothing to look anymore.
          }
          current = current->getFirstDependency();  // inspect next node
        }
@@ -316,9 +322,7 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
          limitNode.doMaterializationOf(localColIdTmp, localDocIdTmp, &viewNode.outVariable());
          modified = true;
        }
-       
      }
-     //viewNode.view()->~LogicalDataSource;
    }
 }
 
