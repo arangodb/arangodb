@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Obtain new unique IDs via a background thread. 
+
 * Show query string length and cacheability information in query explain output.
 
 * The AQL functions `FULLTEXT`, `NEAR`, `WITHIN` and `WITHIN_RECTANGLE` are now
