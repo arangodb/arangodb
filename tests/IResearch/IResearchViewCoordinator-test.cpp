@@ -312,12 +312,12 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(IResearchViewCoordinatorTest, DISABLED_test_type) {
+TEST_F(IResearchViewCoordinatorTest, DISABLED_DISABLED_test_type) {
   EXPECT_TRUE((arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(
                    "arangosearch")) == arangodb::iresearch::DATA_SOURCE_TYPE));
 }
 
-TEST_F(IResearchViewCoordinatorTest, DISABLED_test_rename) {
+TEST_F(IResearchViewCoordinatorTest, DISABLED_DISABLED_test_rename) {
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\", "
       "\"collections\": [1,2,3] }");
@@ -343,7 +343,7 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_rename) {
   EXPECT_TRUE(TRI_ERROR_CLUSTER_UNSUPPORTED == res.errorNumber());
 }
 
-TEST_F(IResearchViewCoordinatorTest, DISABLED_visit_collections) {
+TEST_F(IResearchViewCoordinatorTest, DISABLED_DISABLED_visit_collections) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE((nullptr != ci));
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
@@ -411,7 +411,7 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_visit_collections) {
   EXPECT_TRUE(3 == (begin - expectedCollections));
 }
 
-TEST_F(IResearchViewCoordinatorTest, test_defaults) {
+TEST_F(IResearchViewCoordinatorTest, DISABLED_test_defaults) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE((nullptr != ci));
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
@@ -688,7 +688,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
   }
 }
 
-TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
+TEST_F(IResearchViewCoordinatorTest, DISABLED_test_create_drop_view) {
   auto* database = arangodb::DatabaseFeature::DATABASE;
   ASSERT_TRUE(nullptr != database);
 
@@ -826,7 +826,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
   }
 }
 
-TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
+TEST_F(IResearchViewCoordinatorTest, DISABLED_test_create_link_in_background) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_NE(nullptr, ci);
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
@@ -928,7 +928,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
   }
 }
 
-TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
+TEST_F(IResearchViewCoordinatorTest, DISABLED_test_drop_with_link) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE((nullptr != ci));
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
@@ -1041,7 +1041,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
   }
 }
 
-TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
+TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_properties) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE(nullptr != ci);
 
@@ -1197,7 +1197,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
   }
 }
 
-TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
+TEST_F(IResearchViewCoordinatorTest, DISABLED_test_overwrite_immutable_properties) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_NE(nullptr, ci);
 
@@ -1381,7 +1381,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
   }
 }
 
-TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
+TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_links_partial_remove) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE(nullptr != ci);
 
@@ -1958,7 +1958,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   }
 }
 
-TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
+TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_links_partial_add) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE(nullptr != ci);
 
@@ -2586,7 +2586,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   }
 }
 
-TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
+TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_links_replace) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE(nullptr != ci);
 
@@ -3172,7 +3172,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   }
 }
 
-TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
+TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_links_clear) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE(nullptr != ci);
 
@@ -3622,7 +3622,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
 }
 
-TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
+TEST_F(IResearchViewCoordinatorTest, DISABLED_test_drop_link) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE(nullptr != ci);
 
@@ -3917,7 +3917,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
   }
 }
 
-TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
+TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_overwrite) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE((nullptr != ci));
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
@@ -4671,7 +4671,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
   }
 }
 
-TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
+TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_partial) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE((nullptr != ci));
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
@@ -5430,7 +5430,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
   }
 }
 
-TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
+TEST_F(IResearchViewCoordinatorTest, DISABLED_IResearchViewNode_createBlock) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE(nullptr != ci);
 
