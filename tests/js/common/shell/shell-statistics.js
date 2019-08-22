@@ -44,11 +44,12 @@ function CommonStatisticsSuite() {
       c = db._create("shellCommonStatTestCollection");
     },
     tearDown: function () {
-      db._drop(c);
+      db._drop("shellCommonStatTestCollection");
     },
 
     testServerStatsStructure: function () {
       let stats = internal.serverStatistics();
+      print(stats);
       assertTrue(Number.isInteger(stats.transactions.started));
       assertTrue(Number.isInteger(stats.transactions.committed));
       assertTrue(Number.isInteger(stats.transactions.aborted));
@@ -106,7 +107,7 @@ function CommonStatisticsSuite() {
                             FILTER ASSERT(i == 0, "abort on purpose")
                             INSERT { "ulf" : i } IN ${c.name()}
                            `, {}, { "intermediateCommitCount" : 2});
-        fail()
+        fail();
       } catch (err) {
         stats2 = internal.serverStatistics();
         assertMatch(/abort on purpose/, err.errorMessage);

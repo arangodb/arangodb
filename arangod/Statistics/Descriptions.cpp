@@ -355,6 +355,13 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   b.add("uptime", VPackValue(info._uptime));
   b.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
 
+  b.add("transactions", VPackValue(VPackValueType::Object));
+  b.add("started", VPackValue(info._transactionsStatistics._transactionsStarted));
+  b.add("aborted", VPackValue(info._transactionsStatistics._transactionsAborted));
+  b.add("committed", VPackValue(info._transactionsStatistics._transactionsCommitted));
+  b.add("intermediateCommits", VPackValue(info._transactionsStatistics._intermediateCommits));
+  b.close();
+
   V8DealerFeature* dealer =
       application_features::ApplicationServer::getFeature<V8DealerFeature>(
           "V8Dealer");
