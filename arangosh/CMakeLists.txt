@@ -104,9 +104,7 @@ else ()
   add_dependencies(arangobackup zlibstatic)
 endif ()
 
-if (USE_JEMALLOC)
-  add_dependencies(arangobackup jemalloc)
-endif ()
+  add_dependencies(arangobackup mimalloc)
 
 if(MSVC)
   target_compile_options(arangobackup PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
