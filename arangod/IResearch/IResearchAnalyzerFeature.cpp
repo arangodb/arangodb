@@ -764,6 +764,7 @@ bool dropLegacyAnalyzersCollection(
   return lookupRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
+
 void registerUpgradeTasks() {
   using namespace arangodb;
   using namespace arangodb::application_features;
@@ -1820,38 +1821,15 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
     }
 
     auto* vocbase = dbFeature->lookupDatabase(database);
-    static auto cleanupAnalyzers = []( // remove invalid analyzers
-      IResearchAnalyzerFeature& feature, // analyzer feature
-      decltype(_lastLoad)::iterator& lastLoadItr, // iterator
-      irs::string_ref const& database // database
-    )->void {
-      if (lastLoadItr == feature._lastLoad.end()) {
-        return; // nothing to do (if not in '_lastLoad' then not in '_analyzers')
-      }
-
-      // remove invalid database and analyzers
-      feature._lastLoad.erase(lastLoadItr);
-
-      // remove no longer valid analyzers (force remove)
-      for (auto itr = feature._analyzers.begin(),
-           end = feature._analyzers.end();
-           itr != end;) {
-        auto split = splitAnalyzerName(itr->first);
-
-        if (split.first == database) {
-          itr = feature._analyzers.erase(itr);
-        } else {
-          ++itr;
-        }
-      }
-    };
 
     if (!vocbase) {
       if (engine && engine->inRecovery()) {
         return arangodb::Result(); // database might not have come up yet
       }
-
-      cleanupAnalyzers(*this, itr, database); // cleanup any analyzers for 'database'
+      if (itr != _lastLoad.end()) {
+        cleanupAnalyzers(database); // cleanup any analyzers for 'database'
+        _lastLoad.erase(itr);
+      }
 
       return arangodb::Result( // result
         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, // code
@@ -1860,7 +1838,9 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
     }
 
     if (!getAnalyzerCollection(*vocbase)) {
-      cleanupAnalyzers(*this, itr, database); // cleanup any analyzers for 'database'
+      if (itr != _lastLoad.end()) {
+        cleanupAnalyzers(database); // cleanup any analyzers for 'database'
+      }
       _lastLoad[databaseKey] = currentTimestamp; // update timestamp
 
       return arangodb::Result(); // no collection means nothing to load
@@ -2582,6 +2562,33 @@ bool IResearchAnalyzerFeature::visit( // visit analyzers
   }
 
   return true;
+}
+
+void IResearchAnalyzerFeature::cleanupAnalyzers(irs::string_ref const& database) {
+  if (ADB_UNLIKELY(database.empty())) {
+    TRI_ASSERT(FALSE);
+    return;
+  }
+  for (auto itr = _analyzers.begin(), end = _analyzers.end();  itr != end;) {
+    auto split = splitAnalyzerName(itr->first);
+    if (split.first == database) {
+      itr = _analyzers.erase(itr);
+    } else {
+      ++itr;
+    }
+  }
+}
+
+void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
+  WriteMutex mutex(_mutex);
+  SCOPED_LOCK(mutex); 
+  auto database = irs::string_ref(vocbase.name());
+  auto itr = _lastLoad.find(
+      irs::make_hashed_ref(database, std::hash<irs::string_ref>())); 
+  if (itr != _lastLoad.end()) {
+    cleanupAnalyzers(database);
+    _lastLoad.erase(itr);
+  }
 }
 
 }  // namespace iresearch
