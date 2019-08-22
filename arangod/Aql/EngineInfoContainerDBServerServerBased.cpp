@@ -65,6 +65,11 @@ Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string&
   }
   return {TRI_ERROR_NO_ERROR};
 }
+
+struct NoopCb final : public arangodb::ClusterCommCallback {
+  bool operator()(ClusterCommResult*) override { return true; }
+};
+
 }  // namespace
 
 EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngineShardLists(
@@ -413,7 +418,46 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
  */
 void EngineInfoContainerDBServerServerBased::cleanupEngines(
     std::shared_ptr<ClusterComm> cc, int errorCode, std::string const& dbname,
-    MapRemoteToSnippet& queryIds) const {}
+    MapRemoteToSnippet& queryIds) const {
+  // Shutdown query snippets
+  std::string url("/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
+                  "/_api/aql/shutdown/");
+  std::vector<ClusterCommRequest> requests;
+  auto body = std::make_shared<std::string>(
+      "{\"code\":" + std::to_string(errorCode) + "}");
+  for (auto const& it : queryIds) {
+    // it.first == RemoteNodeId, we don't need this
+    // it.second server -> [snippets]
+    for (auto const& serToSnippets : it.second) {
+      auto server = serToSnippets.first;
+      for (auto const& shardId : serToSnippets.second) {
+        requests.emplace_back(server, rest::RequestType::PUT, url + shardId, body);
+      }
+    }
+  }
+
+  // Shutdown traverser engines
+  url = "/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
+        "/_internal/traverser/";
+  std::unordered_map<std::string, std::string> headers;
+  std::shared_ptr<std::string> noBody;
+
+  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
+  auto cb = std::make_shared<::NoopCb>();
+
+  constexpr double shortTimeout = 10.0;  // Picked arbitrarily
+  for (auto const& gn : _graphNodes) {
+    auto allEngines = gn->engines();
+    for (auto const& engine : *allEngines) {
+      cc->asyncRequest(coordinatorTransactionID, engine.first, rest::RequestType::DELETE_REQ,
+                       url + basics::StringUtils::itoa(engine.second), noBody,
+                       headers, cb, shortTimeout, false, 2.0);
+    }
+    _query->incHttpRequests(allEngines->size());
+  }
+
+  queryIds.clear();
+}
 
 // Insert a GraphNode that needs to generate TraverserEngines on
 // the DBServers. The GraphNode itself will retain on the coordinator.

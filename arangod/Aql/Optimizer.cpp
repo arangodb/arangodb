@@ -57,7 +57,7 @@ void Optimizer::disableRule(std::string const& name) {
   }
 
   if (arangodb::velocypack::StringRef(p, size) == "all") {
-    // enable all rules
+    // disable all rules
     for (auto& it : _rules) {
       disableRule(it.first);
     }
@@ -118,7 +118,7 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan,
                         OptimizerRule const& rule, bool wasModified, int newLevel) {
   TRI_ASSERT(plan != nullptr);
   TRI_ASSERT(_currentRule->second.rule.level == rule.level);
-        
+
   plan->setValidity(true);
 
   auto it = _currentRule;
@@ -215,8 +215,8 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         // skip over rules if we should
         // however, we don't want to skip those rules that will not create
         // additional plans
-        if (!it->second.enabled ||
-            (_runOnlyRequiredRules && rule.canCreateAdditionalPlans() && rule.canBeDisabled())) {
+        if (!it->second.enabled || (_runOnlyRequiredRules && rule.canCreateAdditionalPlans() &&
+                                    rule.canBeDisabled())) {
           // we picked a disabled rule or we have reached the max number of
           // plans and just skip this rule
           ++it;  // move it to the next rule to be processed in the next
@@ -302,6 +302,6 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
     }
   }
 
-  LOG_TOPIC("5b5f6", TRACE, Logger::FIXME) << "optimization ends with " << _plans.size() << " plans";
+  LOG_TOPIC("5b5f6", TRACE, Logger::FIXME)
+      << "optimization ends with " << _plans.size() << " plans";
 }
-

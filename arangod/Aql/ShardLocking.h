@@ -40,16 +40,33 @@ struct Collection;
 class ExecutionNode;
 class Query;
 
+/*
+ * This class is responsible to ensure all shards that participate in a query
+ * get locked with the correct lock type.
+ * During instanciation on the coordinator every ExecutionNode is passed
+ * through this class which adapts locking accordingly.
+ * As a side-effect this class can expose which servers are going
+ * to participate in this query, and it can also expose a mapping
+ * of participating shards => leaders.
+ */
+
 class ShardLocking {
  private:
   static std::set<ShardID> const EmptyShardList;
   static std::unordered_set<ShardID> const EmptyShardListUnordered;
+  // @brief Information about a single snippet, if this snippet is restricted to a certain set of shards
   struct SnippetInformation {
     SnippetInformation() : isRestricted(false), restrictedShards({}) {}
+    // Flag if this snippet is restricted at all
     bool isRestricted;
+    // THe list of shards this snippet is restricted to.
+    // Invariant isRestricted == false => restrictedShards.empty()
+    // Invariant isRestricted == true => !restrictedShards.empty()
     std::unordered_set<ShardID> restrictedShards;
   };
 
+  // @brief the information about the locking for a single collection.
+  //  will be modified during the instanciation of the plan on coordinator.
   struct CollectionLockingInformation {
     // Lock type used for this collection
     AccessMode::Type lockType{AccessMode::Type::NONE};
@@ -63,17 +80,33 @@ class ShardLocking {
   };
 
  public:
+  // @brief prepare a shardlocking for the new query.
   ShardLocking(Query* query) : _query(query) { TRI_ASSERT(_query != nullptr); }
 
+  // @brief Every ExectionNode that is send to a Database server needs to be passed through this method
+  // this class will check if a collection (or more) is used, and will adapt the locking.
+  // The given snippetId is used to determin in which snippet this node is used.
+  // This will also check for shard restrictions on the given node.
   void addNode(ExecutionNode const* node, size_t snippetId);
 
+  // @brief we need to send the lock information to a database server.
+  // This is the function that serializes this information for the given server.
+  // NOTE: There is only one locking, but there can be many snippets on this
+  // server. The handed in Builder needs to be an Open Object.
   void serializeIntoBuilder(ServerID const& server,
                             arangodb::velocypack::Builder& builder) const;
 
+  // The list of servers that will participate in this query as leaders for at least one shard.
+  // Only these servers need to be informed by the coordinator.
+  // Note: As a side effec this will create the ShardMapping on the first call.
+  // This function needs to be called before you can get any shardInformation below.
   std::vector<ServerID> getRelevantServers();
 
+  // The list of all collections used within this query.
+  // Only shards of these collections are locked!
   std::vector<Collection const*> getUsedCollections() const;
 
+  // Get the shards for the given collection, that hat their leader on the given server.
   std::set<ShardID> const& getShardsForCollection(ServerID const& server,
                                                   Collection const* col) const {
     // NOTE: This function will not lazily update the Server list
@@ -88,8 +121,13 @@ class ShardLocking {
     return shards->second;
   }
 
+  // Get a full mapping of ShardID => LeaderID.
+  // This will stay constant during this query, and a query could be aborted in case of failovers.
   std::unordered_map<ShardID, ServerID> const& getShardMapping();
 
+  // Get the shards of the given collection within the given snippet.
+  // This will honor shard restrictions on the given snippet.
+  // All shards will be returned, there will be no filtering on the server.
   std::unordered_set<ShardID> const& shardsForSnippet(size_t snippetId,
                                                       Collection const* col);
 
