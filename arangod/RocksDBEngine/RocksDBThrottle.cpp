@@ -45,7 +45,9 @@
 
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 namespace arangodb {
 
@@ -85,8 +87,11 @@ namespace arangodb {
 //  base +2 : level 0 compaction to level 1
 //  base +3 : all other compactions
 struct sPriorityInfo {
+  // cppcheck-suppress unusedStructMember
   bool _baseSet;
+  // cppcheck-suppress unusedStructMember
   int _basePriority;
+  // cppcheck-suppress unusedStructMember
   int _currentPriority;
 };
 

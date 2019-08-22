@@ -22,7 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-analyzers.h"
+
+#include <velocypack/Parser.h>
+#include <velocypack/StringRef.h>
+
 #include "Basics/StringUtils.h"
+#include "Basics/StaticStrings.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -33,8 +38,6 @@
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/vocbase.h"
-#include "velocypack/Parser.h"
-#include "velocypack/StringRef.h"
 
 namespace {
 
@@ -279,12 +282,22 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
   >();
   auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
 
-  auto name = TRI_ObjectToString(isolate, args[0]);
+  auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
+  auto splittedAnalyzerName = 
+    arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(nameFromArgs);
+  if (!arangodb::iresearch::IResearchAnalyzerFeature::analyzerReachableFromDb(
+         splittedAnalyzerName.first, vocbase.name())) { 
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+      TRI_ERROR_FORBIDDEN,
+      "Database in analyzer name does not match current database");
+    return;
+  }
+  auto name = splittedAnalyzerName.second;
 
   if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
       TRI_ERROR_BAD_PARAMETER,
-      "invalid characters in analyzer name '" + name + "'"
+      std::string("invalid characters in analyzer name '").append(name).append("'")
     );
 
     return;
@@ -443,6 +456,24 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
+  const auto analyzerVocbase = arangodb::iresearch::IResearchAnalyzerFeature::extractVocbaseName(name);
+  if (!arangodb::iresearch::IResearchAnalyzerFeature::analyzerReachableFromDb(
+          analyzerVocbase, vocbase.name(), true)) {
+    std::string errorMessage("Analyzer '");
+    errorMessage.append(name)
+      .append("' is not accessible. Only analyzers from current database ('")
+      .append(vocbase.name())
+      .append("')");
+    if (vocbase.name() != arangodb::StaticStrings::SystemDatabase) {
+      errorMessage.append(" or system database");
+    }
+    errorMessage.append(" are available");
+    TRI_V8_THROW_EXCEPTION_MESSAGE( 
+      TRI_ERROR_FORBIDDEN, // code
+      errorMessage
+    );
+  }
+
   if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(name, arangodb::auth::Level::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
       TRI_ERROR_FORBIDDEN, // code
@@ -500,12 +531,6 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // ...........................................................................
 
   typedef arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr AnalyzerPoolPtr;
-  static const auto nameLess = []( // analyzer name less
-    AnalyzerPoolPtr const& lhs, // left hand side
-    AnalyzerPoolPtr const& rhs // right hand side
-  )->bool {
-    return arangodb::basics::StringUtils::tolower(lhs->name()) < arangodb::basics::StringUtils::tolower(rhs->name());
-  };
   std::vector<AnalyzerPoolPtr> result;
   auto visitor = [&result](AnalyzerPoolPtr const& analyzer)->bool {
     if (analyzer) {
@@ -528,8 +553,6 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
        && arangodb::iresearch::IResearchAnalyzerFeature::canUse(*sysVocbase, arangodb::auth::Level::RO)) {
       analyzers->visit(visitor, sysVocbase.get());
     }
-
-    std::sort(result.begin(), result.end(), nameLess);
 
     auto v8Result = v8::Array::New(isolate);
 
@@ -586,9 +609,27 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   >();
   auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
 
-  auto name = TRI_ObjectToString(isolate, args[0]);
-  std::string nameBuf;
+  auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
+  auto splittedAnalyzerName = 
+    arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(nameFromArgs);
+  if (!arangodb::iresearch::IResearchAnalyzerFeature::analyzerReachableFromDb(
+           splittedAnalyzerName.first, vocbase.name())) { 
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+      TRI_ERROR_FORBIDDEN,
+      "Database in analyzer name does not match current database");
+    return;
+  }
+  auto name = splittedAnalyzerName.second;
+  
+  if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string( "Invalid characters in analyzer name '").append(name)
+        .append("'.")
+    );
+  }
 
+  std::string nameBuf;
   if (sysVocbase) {
     nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
       name, vocbase, *sysVocbase // args

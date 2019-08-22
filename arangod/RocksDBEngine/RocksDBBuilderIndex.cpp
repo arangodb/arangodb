@@ -24,6 +24,7 @@
 
 #include "Basics/HashSet.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -236,6 +237,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
 
     if (numDocsWritten % 200 == 0) {  // commit buffered writes
       commitLambda();
+      // cppcheck-suppress identicalConditionAfterEarlyExit
       if (res.fail()) {
         break;
       }

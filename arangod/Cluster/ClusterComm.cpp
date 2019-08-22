@@ -28,6 +28,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -155,7 +156,7 @@ void ClusterCommResult::setDestination(std::string const& dest, bool logConnecti
     serverID = "";
     endpoint = "";
     status = CL_COMM_BACKEND_UNAVAILABLE;
-    errorMessage = "did not understand destination'" + dest + "'";
+    errorMessage = "did not understand destination '" + dest + "'";
     if (logConnectionErrors) {
       LOG_TOPIC("1671f", ERR, Logger::CLUSTER) << "did not understand destination '" << dest << "'";
     } else {

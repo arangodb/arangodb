@@ -26,6 +26,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
 #include "Basics/EnumIterator.h"
+#include "Basics/system-functions.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>

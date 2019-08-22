@@ -23,8 +23,8 @@
 
 #include "VelocyPackHelper.h"
 
-#include "velocypack/Builder.h"
-#include "velocypack/Iterator.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 
 namespace {
 template<typename T>

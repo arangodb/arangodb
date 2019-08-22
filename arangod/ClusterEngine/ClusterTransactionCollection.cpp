@@ -20,10 +20,12 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ClusterTransactionCollection.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterInfo.h"
-#include "ClusterTransactionCollection.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
@@ -35,8 +37,7 @@ ClusterTransactionCollection::ClusterTransactionCollection(TransactionState* trx
                                                            TRI_voc_cid_t cid,
                                                            AccessMode::Type accessType,
                                                            int nestingLevel)
-    : TransactionCollection(trx, cid, accessType, nestingLevel),
-      _lockType(AccessMode::Type::NONE) {}
+    : TransactionCollection(trx, cid, accessType, nestingLevel) {}
 
 ClusterTransactionCollection::~ClusterTransactionCollection() {}
 

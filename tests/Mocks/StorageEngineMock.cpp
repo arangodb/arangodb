@@ -530,13 +530,13 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
     return nullptr;
   }
 
-  _indexes.emplace_back(std::move(index));
+  _indexes.insert(index);
   created = true;
 
   res = trx.commit();
   TRI_ASSERT(res.ok());
 
-  return _indexes.back();
+  return index;
 }
 
 void PhysicalCollectionMock::deferDropCollection(
@@ -702,7 +702,7 @@ bool PhysicalCollectionMock::addIndex(std::shared_ptr<arangodb::Index> idx) {
 
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
 
-  _indexes.emplace_back(idx);
+  _indexes.insert(idx);
   return true;
 }
 
@@ -1086,6 +1086,11 @@ void StorageEngineMock::getViewProperties(TRI_vocbase_t& vocbase,
 
 TRI_voc_tick_t StorageEngineMock::currentTick() const {
   return TRI_CurrentTickServer();
+}
+
+std::string StorageEngineMock::dataPath() const {
+  before();
+  return "";  // no valid path filesystem persisted, return empty string
 }
 
 std::string StorageEngineMock::databasePath(TRI_vocbase_t const* vocbase) const {

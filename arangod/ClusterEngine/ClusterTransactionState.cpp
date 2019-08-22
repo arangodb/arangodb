@@ -23,10 +23,12 @@
 #include "ClusterTransactionState.h"
 
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Manager.h"
@@ -72,7 +74,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   if (nestingLevel() == 0) {
     updateStatus(transaction::Status::RUNNING);
     
-    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr);
+    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr, isReadOnlyTransaction());
     setRegistered();
     
     ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);

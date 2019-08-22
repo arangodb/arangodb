@@ -24,6 +24,9 @@
 #ifndef ARANGODB_BASICS_TRI__STRINGS_H
 #define ARANGODB_BASICS_TRI__STRINGS_H 1
 
+#include <cstdint>
+#include <cstdlib>
+
 #include "Basics/Common.h"
 
 ////////////////////////////////////////////////////////////////////////////////

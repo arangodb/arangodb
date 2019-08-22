@@ -24,6 +24,9 @@
 #include "RestAgencyCallbacksHandler.h"
 
 #include "Cluster/AgencyCallbackRegistry.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 

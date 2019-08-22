@@ -24,6 +24,9 @@
 #ifndef ARANGOD_AQL_RANGE_H
 #define ARANGOD_AQL_RANGE_H 1
 
+#include <cstdint>
+#include <cstdlib>
+
 #include "Basics/Common.h"
 
 namespace arangodb {

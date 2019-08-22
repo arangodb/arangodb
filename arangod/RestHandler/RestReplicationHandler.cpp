@@ -36,6 +36,7 @@
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/ResignShardLeadership.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Replication/DatabaseInitialSyncer.h"
@@ -43,6 +44,7 @@
 #include "Replication/GlobalInitialSyncer.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -104,6 +106,41 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force
   }
 #endif
   return false;
+}
+
+static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& col,
+                                    std::string const& claimLeaderId) {
+
+  std::vector<std::string> agencyPath = {
+    "Plan",
+    "Collections",
+    col->vocbase().name(),
+    std::to_string(col->planId()),
+    "shards",
+    col->name()
+  };
+
+  std::string shardAgencyPathString = StringUtils::join(agencyPath, '/');
+
+  AgencyComm ac;
+  AgencyCommResult res = ac.getValues(shardAgencyPathString);
+
+  if (res.successful()) {
+
+    // This is bullshit. Why does the *fancy* AgencyComm Manager
+    // prepend the agency url with `arango` but in the end returns an object
+    // that is prepended by `arango`! WTF!?
+    VPackSlice plan = res.slice().at(0).get(AgencyCommManager::path()).get(agencyPath);
+    TRI_ASSERT(plan.isArray() && plan.length() > 0);
+
+    VPackSlice leaderSlice = plan.at(0);
+    TRI_ASSERT(leaderSlice.isString());
+    if (leaderSlice.isEqualString(claimLeaderId)) {
+      return Result{};
+    }
+  }
+
+  return Result{TRI_ERROR_FORBIDDEN};
 }
 
 static Result restoreDataParser(char const* ptr, char const* pos,
@@ -233,6 +270,7 @@ std::string const RestReplicationHandler::ApplierStateAll = "applier-state-all";
 std::string const RestReplicationHandler::ClusterInventory = "clusterInventory";
 std::string const RestReplicationHandler::AddFollower = "addFollower";
 std::string const RestReplicationHandler::RemoveFollower = "removeFollower";
+std::string const RestReplicationHandler::SetTheLeader = "set-the-leader";
 std::string const RestReplicationHandler::HoldReadLockCollection =
     "holdReadLockCollection";
 
@@ -504,6 +542,15 @@ RestStatus RestReplicationHandler::execute() {
       } else {
         handleCommandRemoveFollower();
       }
+    } else if (command == SetTheLeader) {
+      if (type != rest::RequestType::PUT) {
+        goto BAD_CALL;
+      }
+      if (!ServerState::instance()->isDBServer()) {
+        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
+      } else {
+        handleCommandSetTheLeader();
+      }
     } else if (command == HoldReadLockCollection) {
       if (!ServerState::instance()->isDBServer()) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
@@ -648,7 +695,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   std::unique_ptr<ClusterCommResult> res;
   if (!useVst) {
     TRI_ASSERT(_request->transportType() == Endpoint::TransportType::HTTP);
-    
+
     VPackStringRef body = _request->rawPayload();
     // Send a synchronous request to that shard using ClusterComm:
     res = cc->syncRequest(TRI_NewTickServer(), "server:" + DBserver,
@@ -1152,7 +1199,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     if (replFactorSlice.isString() &&
         replFactorSlice.isEqualString("satellite")) {
       minReplicationFactor = 0;
-    } else if (minReplicationFactor <= 0) {
+    } else if (minReplicationFactor == 0) {
       minReplicationFactor = 1;
     }
     TRI_ASSERT(minReplicationFactor <= replicationFactor);
@@ -1330,7 +1377,7 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
   VPackBuilder builder(&options);
 
   allMarkers.clear();
-  
+
   if (_request->transportType() != Endpoint::TransportType::HTTP) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
@@ -2430,6 +2477,74 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
     // this will create an error response with the appropriate message
     THROW_ARANGO_EXCEPTION(res);
   }
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bb(&b);
+    b.add(StaticStrings::Error, VPackValue(false));
+  }
+
+  generateResult(rest::ResponseCode::OK, b.slice());
+}
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief update the leader of a shard
+  //////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandSetTheLeader() {
+  TRI_ASSERT(ServerState::instance()->isDBServer());
+
+  bool success = false;
+  VPackSlice const body = this->parseVPackBody(success);
+  if (!success) {
+    // error already created
+    return;
+  }
+  if (!body.isObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body needs to be an object with attributes 'leaderId' "
+                  "and 'shard'");
+    return;
+  }
+  VPackSlice const leaderIdSlice = body.get("leaderId");
+  VPackSlice const oldLeaderIdSlice = body.get("oldLeaderId");
+  VPackSlice const shard = body.get("shard");
+  if (!leaderIdSlice.isString() || !shard.isString() || !oldLeaderIdSlice.isString()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "'leaderId' and 'shard' attributes must be strings");
+    return;
+  }
+
+  std::string leaderId = leaderIdSlice.copyString();
+  auto col = _vocbase.lookupCollection(shard.copyString());
+
+  if (col == nullptr) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                  "did not find collection");
+    return;
+  }
+
+  std::string currentLeader = col->followers()->getLeader();
+  if (currentLeader == arangodb::maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
+    // We have resigned, check that we are the old leader
+    currentLeader = ServerState::instance()->getId();
+  }
+
+  if (leaderId != currentLeader) {
+
+    Result res = checkPlanLeaderDirect(col, leaderId);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    if (!oldLeaderIdSlice.isEqualString(currentLeader)) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN, "old leader not as expected");
+      return;
+    }
+
+    col->followers()->setTheLeader(leaderId);
+  }
+
 
   VPackBuilder b;
   {

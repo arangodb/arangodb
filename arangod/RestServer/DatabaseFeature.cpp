@@ -35,14 +35,18 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Cluster/v8-cluster.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -61,6 +65,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 
 #include <velocypack/velocypack-aliases.h>
 
@@ -818,6 +823,12 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
     arangodb::aql::PlanCache::instance()->invalidate(vocbase);
 #endif
     arangodb::aql::QueryCache::instance()->invalidate(vocbase);
+
+    auto* analyzers = 
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    if (analyzers != nullptr) {
+      analyzers->invalidate(*vocbase);
+    }
 
     engine->prepareDropDatabase(*vocbase, !engine->inRecovery(), res);
   }

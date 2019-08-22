@@ -21,19 +21,23 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "socket-utils.h"
+#include <errno.h>
+#include <fcntl.h>
+#include <string.h>
 
-#include "Logger/Logger.h"
+#include "socket-utils.h"
 
 #ifdef TRI_HAVE_NETDB_H
 #include <netdb.h>
 #endif
-
-#include <fcntl.h>
-#include <string.h>
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a socket

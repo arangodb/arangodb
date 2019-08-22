@@ -676,6 +676,7 @@ struct AqlValueMaterializer {
     }
   }
 
+  // cppcheck-suppress operatorEqVarError
   AqlValueMaterializer& operator=(AqlValueMaterializer const& other) {
     if (this != &other) {
       TRI_ASSERT(trx == other.trx);  // must be from same transaction
@@ -699,6 +700,7 @@ struct AqlValueMaterializer {
     other.materialized = AqlValue();
   }
 
+  // cppcheck-suppress operatorEqVarError
   AqlValueMaterializer& operator=(AqlValueMaterializer&& other) noexcept {
     if (this != &other) {
       TRI_ASSERT(trx == other.trx);  // must be from same transaction

@@ -345,7 +345,7 @@ void AqlFunctionFeature::addGeoFunctions() {
   add({"IS_IN_POLYGON", ".,.|.",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
        &Functions::IsInPolygon});
-  add({"GEO_DISTANCE", ".,.",
+  add({"GEO_DISTANCE", ".,.|.",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
        &Functions::GeoDistance});
   add({"GEO_CONTAINS", ".,.",
@@ -357,6 +357,9 @@ void AqlFunctionFeature::addGeoFunctions() {
   add({"GEO_EQUALS", ".,.",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
        &Functions::GeoEquals});
+  add({"GEO_AREA", ".|.",
+    Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
+    &Functions::GeoArea});
 }
 
 void AqlFunctionFeature::addGeometryConstructors() {
@@ -440,14 +443,13 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"WARN", ".,.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Warn});  // not deterministic and not cacheable
 
   // NEAR, WITHIN, WITHIN_RECTANGLE and FULLTEXT are replaced by the AQL
-  // optimizer with collection-based subqueries they are all not marked as
-  // non-deterministic and non-cacheable here as they refer to documents
-  // note further that all of these function call will be replaced by equivalent
-  // subqueries by the optimizer
-  add({"NEAR", ".h,.,.|.,.", Function::makeFlags(), &Functions::NotImplemented});
-  add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(), &Functions::NotImplemented});
-  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(), &Functions::NotImplemented});
-  add({"FULLTEXT", ".h,.,.|.", Function::makeFlags(), &Functions::NotImplemented});
+  // optimizer with collection-/index-based subqueries. they are all
+  // marked as deterministic and cacheable here as they are just
+  // placeholders for collection/index accesses nowaways.
+  add({"NEAR", ".h,.,.|.,.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
+  add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
+  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
+  add({"FULLTEXT", ".h,.,.|.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
 }
 
 }  // namespace aql

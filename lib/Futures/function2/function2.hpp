@@ -405,7 +405,7 @@ struct bad_function_call : std::exception {
     return "bad function call";
   }
 };
-#elif
+#else
 using std::bad_function_call;
 #endif
 #endif

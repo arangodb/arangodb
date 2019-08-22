@@ -4,23 +4,11 @@
 # General
 # ------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 3.2)
-
-if (POLICY CMP0048)
-  cmake_policy(SET CMP0048 NEW)
-endif ()
-
-if (POLICY CMP0037)
-  cmake_policy(SET CMP0037 NEW)
-endif ()
-
-if (POLICY CMP0017)
-  cmake_policy(SET CMP0017 NEW)
-endif ()
+cmake_minimum_required(VERSION 3.9)
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release
-      CACHE string
+      CACHE STRING
       "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
       FORCE
   )
@@ -38,7 +26,7 @@ endif ()
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
 
 if (NOT CMAKE_OSX_DEPLOYMENT_TARGET)
-  set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your sysem")
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your system")
 endif ()
 
 # where to find CMAKE modules
@@ -254,7 +242,7 @@ set(ARANGODB_SNAP_REVISION "1")
 message(STATUS "SNAP REVISION: ${ARANGODB_SNAP_REVISION}")
 
 # ------------------------------------------------------------------------------
-# 
+#
 # ------------------------------------------------------------------------------
 
 if (WIN32)
@@ -275,6 +263,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(STATIC_EXECUTABLES "produce static executables" OFF)
 if (STATIC_EXECUTABLES)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+  if (WINDOWS)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
+  else ()
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+  endif ()
 endif()
 
 # enable enterprise features
@@ -302,12 +295,13 @@ set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model NoSQL database")
 
 # MSVC
 set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test tool")
-set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - dump data and configuration")
-set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - restore data and configuration")
+set(ARANGO_BACKUP_FRIENDLY_STRING  "arangobackup - hot backup tool")
+set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - data and configuration dumping tool")
+set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - data and configuration restoration tool")
 set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - data exporter")
 set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - data importer")
-set(ARANGOSH_FRIENDLY_STRING       "arangosh - command-line client")
-set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - VelocyPack pretty-printer")
+set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
+set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - VelocyPack formatter")
 
 # libraries
 set(LIB_ARANGO        arango)
@@ -316,6 +310,7 @@ set(LIB_ARANGO_V8     arango_v8)
 
 # binaries
 set(BIN_ARANGOBENCH   arangobench)
+set(BIN_ARANGOBACKUP  arangobackup)
 set(BIN_ARANGOD       arangod)
 set(BIN_ARANGODUMP    arangodump)
 set(BIN_ARANGOEXPORT  arangoexport)
@@ -452,6 +447,24 @@ endif ()
 
 # ------------------------------------------------------------------------------
 # user options
+# ------------------------------------------------------------------------------
+
+if (WINDOWS)
+  SET(USE_JEMALLOC OFF)
+else ()
+  option(
+    USE_JEMALLOC
+    "use jemalloc memory allocator"
+    ON
+  )
+endif ()
+
+if (CROSS_COMPILING)
+# currently off, need additional params to configure like --host=triple <params>
+  SET(USE_JEMALLOC OFF)
+endif()
+
+################################################################################
 ## EXTERNAL PROGRAMS
 ################################################################################
 
@@ -702,14 +715,14 @@ endif()
 
 if (USE_BACKTRACE)
   if (MSVC)
-    set(BT_LIBS "Dbghelp" CACHE path "Debug Helper libraries")
+    set(BT_LIBS "Dbghelp" CACHE PATH "Debug Helper libraries")
   else ()
-    set(BT_LIBS ${Backtrace_LIBRARY} CACHE path "Debug Helper libraries")
+    set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
   endif ()
 
   add_definitions("-DARANGODB_ENABLE_BACKTRACE=1")
 else ()
-  set(BT_LIBS ${Backtrace_LIBRARY} CACHE path "Debug Helper libraries")
+  set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
 endif ()
 
 ################################################################################
@@ -949,7 +962,7 @@ endif()
 ## OPENSSL
 ################################################################################
 
-# Some special stuff for Mac OSX and homebrew as a preparation for the 
+# Some special stuff for Mac OSX and homebrew as a preparation for the
 # generic FindOpenSSL script:
 if (APPLE AND BREW AND NOT OPENSSL_ROOT_DIR)
   message("searching openssl with brew (${BREW})")
@@ -1222,6 +1235,7 @@ if (USE_GOOGLE_TESTS)
 endif()
 
 add_dependencies(arangobench   zlibstatic)
+add_dependencies(arangobackup  zlibstatic)
 add_dependencies(arangod       zlibstatic)
 add_dependencies(arangodump    zlibstatic)
 add_dependencies(arangoexport  zlibstatic)
@@ -1231,6 +1245,7 @@ add_dependencies(arangosh      zlibstatic)
 
 if(UNIX)
   add_dependencies(arangobench   man)
+  add_dependencies(arangobackup  man)
   add_dependencies(arangod       man)
   add_dependencies(arangodump    man)
   add_dependencies(arangoexport  man)
@@ -1242,6 +1257,7 @@ endif()
 if (NOT USE_PRECOMPILED_V8)
   # all binaries depend on v8_build because it contains ICU as well
   add_dependencies(arangobench   v8_build)
+  add_dependencies(arangobackup  v8_build)
   add_dependencies(arangod       v8_build)
   add_dependencies(arangodump    v8_build)
   add_dependencies(arangoexport  v8_build)

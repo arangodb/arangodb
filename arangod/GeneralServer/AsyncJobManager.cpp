@@ -25,6 +25,7 @@
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"

@@ -26,6 +26,7 @@
 #define ARANGODB_BASICS_INDEX_BUCKET_H 1
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 #include "Basics/files.h"
 #include "Basics/memory-map.h"
 #include "Logger/Logger.h"

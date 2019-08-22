@@ -29,6 +29,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -160,7 +163,7 @@ bool CreateCollection::first() {
 
                               if (leader.empty()) {
                                 std::vector<std::string> noFollowers;
-                                col->followers()->takeOverLeadership(noFollowers);
+                                col->followers()->takeOverLeadership(noFollowers, nullptr);
                               } else {
                                 col->followers()->setTheLeader(leader);
                               }

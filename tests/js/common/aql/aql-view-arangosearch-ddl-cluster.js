@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse*/
+/*global fail, assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -922,7 +922,73 @@ function IResearchFeatureDDLTestSuite () {
       } // forget variable `view`, it's invalid now
       assertEqual(db[viewName], undefined);
     },
+    testLinkWithAnalyzerFromOtherDb: function() {
+      let databaseNameAnalyzer = "testDatabaseAnalyzer";
+      let databaseNameView = "testDatabaseView";
+      let tmpAnalyzerName = "TmpIdentity";
+      let systemAnalyzerName = "SystemIdentity";
+      db._useDatabase("_system");
+      try { db._dropDatabase(databaseNameAnalyzer);} catch(e) {}
+      try { db._dropDatabase(databaseNameView);} catch(e) {}
+      analyzers.save(systemAnalyzerName, "identity");
+      db._createDatabase(databaseNameAnalyzer);
+      db._createDatabase(databaseNameView);
+      db._useDatabase(databaseNameAnalyzer);
+      let tmpIdentity = analyzers.save(tmpAnalyzerName, "identity");
+      assertTrue(tmpIdentity != null);
+      tmpIdentity = undefined;
+      db._useDatabase(databaseNameView);
+      db._create("FOO");
+      try {
+        db._createView("FOO_view", "arangosearch", {links:{"FOO":{analyzers:[databaseNameAnalyzer + "::" + tmpAnalyzerName]}}});
+        fail();
+      } catch(e) {
+        assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                    e.errorNum);
+      }
+      // but cross-db usage of system analyzers is ok
+      db._createView("FOO_view", "arangosearch", {links:{"FOO":{analyzers:["::" + systemAnalyzerName]}}});
+      db._createView("FOO_view2", "arangosearch", {links:{"FOO":{analyzers:["_system::" + systemAnalyzerName]}}});
 
+      db._useDatabase("_system");
+      db._dropDatabase(databaseNameAnalyzer);
+      db._dropDatabase(databaseNameView);
+      analyzers.remove(systemAnalyzerName, true);
+    },
+    // Commented as this situation is not documented (user should not do this), will be adressed later
+    //testLinkWithAnalyzerFromOtherDbByAnalyzerDefinitions: function() {
+    //  let databaseNameAnalyzer = "testDatabaseAnalyzer";
+    //  let databaseNameView = "testDatabaseView";
+
+    //  db._useDatabase("_system");
+    //  try { db._dropDatabase(databaseNameAnalyzer);} catch(e) {}
+    //  try { db._dropDatabase(databaseNameView);} catch(e) {}
+    //  db._createDatabase(databaseNameAnalyzer);
+    //  db._createDatabase(databaseNameView);
+    //  db._useDatabase(databaseNameAnalyzer);
+    //  db._useDatabase(databaseNameView);
+    //  db._create("FOO");
+    //  try {
+    //    db._createView("FOO_view", "arangosearch", 
+    //      {
+    //        links:{
+    //          "FOO":{ 
+    //            analyzerDefinitions:[{name:databaseNameAnalyzer + "::TmpIdentity", type: "identity"}],
+    //            analyzers:[databaseNameAnalyzer + "::TmpIdentity"]
+    //          }
+    //        }
+    //      });
+    //    fail();
+    //  } catch(e) {
+    //    // analyzerDefinitions should be ignored
+    //    // analyzer should not be found
+    //    assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+    //                e.errorNum);
+    //  }
+    //  db._useDatabase("_system");
+    //  db._dropDatabase(databaseNameAnalyzer);
+    //  db._dropDatabase(databaseNameView);
+    //},
     ////////////////////////////////////////////////////////////////////////////
     /// @brief test ensure that view is deleted within deleted database
     /// Regression test for arangodb/release-3.4#153.
@@ -930,7 +996,7 @@ function IResearchFeatureDDLTestSuite () {
     testLeftViewInDroppedDatabase: function () {
       const dbName = 'TestDB';
       const viewName = 'TestView';
-
+      db._useDatabase("_system");
       try { db._dropDatabase(dbName); } catch (e) {}
 
       db._createDatabase(dbName);
@@ -945,6 +1011,113 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(db._views().length, 0);
       assertEqual(db[viewName], undefined);
     },
+
+ // test for public issue #9652
+    testAnalyzerWithStopwordsNameConflict : function() {
+      const dbName = "TestNameConflictDB";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+
+      db._create("col1");
+      db._create("col2");
+      analyzers.save("custom_analyzer", 
+        "text", 
+        { 
+          locale: "en.UTF-8", 
+          case: "lower", 
+          stopwords: ["the", "of", "inc", "co", "plc", "ltd", "ag"], 
+          accent: false, 
+          stemming: false
+        },
+        ["position", "norm","frequency"]);
+
+      let v = db._createView("view1", "arangosearch", {
+        "links": {
+          "col1": {
+            "analyzers": ["identity"],
+            "fields": { "name": { "analyzers": ["custom_analyzer"]}},
+            "includeAllFields": false,
+            "storeValues": "none",
+            "trackListPositions": false
+          },
+          "col2": {
+            "analyzers": ["identity"],
+            "fields": { "name": { "analyzers": ["custom_analyzer"]}},
+            "includeAllFields": false,
+            "storeValues": "none",
+            "trackListPositions": false
+          }
+        }});
+      let properties = v.properties();
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(2, Object.keys(properties.links).length);
+
+      assertTrue(Object === properties.links.col1.constructor);
+      assertTrue(Object === properties.links.col1.fields.constructor);
+      assertEqual(1, Object.keys(properties.links.col1.fields).length);
+      assertTrue(Object === properties.links.col1.fields.name.constructor);
+      assertTrue(Array === properties.links.col1.fields.name.analyzers.constructor);
+      assertEqual(1, properties.links.col1.fields.name.analyzers.length);
+      assertTrue(String === properties.links.col1.fields.name.analyzers[0].constructor);
+      assertEqual("custom_analyzer", properties.links.col1.fields.name.analyzers[0]);
+      assertTrue(Boolean === properties.links.col1.includeAllFields.constructor);
+      assertEqual(false, properties.links.col1.includeAllFields);
+      assertTrue(Boolean === properties.links.col1.trackListPositions.constructor);
+      assertEqual(false, properties.links.col1.trackListPositions);
+      assertTrue(String === properties.links.col1.storeValues.constructor);
+      assertEqual("none", properties.links.col1.storeValues);
+      assertTrue(Array === properties.links.col1.analyzers.constructor);
+      assertEqual(1, properties.links.col1.analyzers.length);
+      assertTrue(String === properties.links.col1.analyzers[0].constructor);
+      assertEqual("identity", properties.links.col1.analyzers[0]);
+
+
+      assertTrue(Object === properties.links.col2.constructor);
+      assertTrue(Object === properties.links.col2.fields.constructor);
+      assertEqual(1, Object.keys(properties.links.col2.fields).length);
+      assertTrue(Object === properties.links.col2.fields.name.constructor);
+      assertTrue(Array === properties.links.col2.fields.name.analyzers.constructor);
+      assertEqual(1, properties.links.col2.fields.name.analyzers.length);
+      assertTrue(String === properties.links.col2.fields.name.analyzers[0].constructor);
+      assertEqual("custom_analyzer", properties.links.col2.fields.name.analyzers[0]);
+      assertTrue(Boolean === properties.links.col2.includeAllFields.constructor);
+      assertEqual(false, properties.links.col2.includeAllFields);
+      assertTrue(Boolean === properties.links.col2.trackListPositions.constructor);
+      assertEqual(false, properties.links.col2.trackListPositions);
+      assertTrue(String === properties.links.col2.storeValues.constructor);
+      assertEqual("none", properties.links.col2.storeValues);
+      assertTrue(Array === properties.links.col2.analyzers.constructor);
+      assertEqual(1, properties.links.col2.analyzers.length);
+      assertTrue(String === properties.links.col2.analyzers[0].constructor);
+      assertEqual("identity", properties.links.col2.analyzers[0]);
+      
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    },
+    testLeftAnalyzerInDroppedDatabase: function () {
+      const dbName = "TestNameDroppedDB";
+      const analyzerName = "TestAnalyzer";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      analyzers.save(analyzerName, "identity");
+      // recreating database
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+
+      assertNull(analyzers.analyzer(analyzerName));
+      // this should be no name conflict
+      analyzers.save(analyzerName, "text", {"stopwords" : [], "locale":"en"});
+     
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    }
 
   };
 }

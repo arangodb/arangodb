@@ -24,6 +24,8 @@
 #define ARANGOD_FUTURES_TRY_H 1
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
+#include "Basics/system-compiler.h"
 #include "Futures/backports.h"
 
 #include <exception>
@@ -306,7 +308,7 @@ template <>
 class Try<void> {
  public:
   Try() noexcept : _exception() { TRI_ASSERT(!hasException()); }
-  Try(std::exception_ptr e) : _exception(std::move(e)) {}
+  explicit Try(std::exception_ptr e) : _exception(std::move(e)) {}
   Try(Try<void>&& o) : _exception(std::move(o._exception)) {}
 
   /// copy assignment

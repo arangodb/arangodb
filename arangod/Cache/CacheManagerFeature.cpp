@@ -30,11 +30,14 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Scheduler/Scheduler.h"
@@ -101,8 +104,11 @@ void CacheManagerFeature::start() {
 
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto postFn = [scheduler](std::function<void()> fn) -> bool {
-    scheduler->queue(RequestLane::INTERNAL_LOW, fn);
-    return true;
+    try {
+      return scheduler->queue(RequestLane::INTERNAL_LOW, fn);
+    } catch (...) {
+      return false;
+    }
   };
   _manager.reset(new Manager(postFn, _cacheSize));
   MANAGER = _manager.get();
