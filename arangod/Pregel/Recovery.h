@@ -24,11 +24,8 @@
 #define ARANGODB_PREGEL_RECOVERY_H 1
 
 #include <map>
+#include <set>
 
-#include <velocypack/velocypack-aliases.h>
-#include <velocypack/vpack.h>
-//#include "Cluster/AgencyCallbackRegistry.h"
-//#include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
 #include "Cluster/ClusterInfo.h"
 
