@@ -149,7 +149,20 @@ time the server is up and running
 @RESTSTRUCT{physicalMemory,server_statistics_struct,integer,required,}
 available physical memory on the server
 
+@RESTSTRUCT{transactions,server_statistics_struct,object,required,transactions_struct}
+Statistics about transactions
 
+@RESTSTRUCT{started,transactions_struct,integer,required,}
+the number of started transactions
+
+@RESTSTRUCT{committed,transactions_struct,integer,required,}
+the number of committed transactions
+
+@RESTSTRUCT{aborted,transactions_struct,integer,required,}
+the number of aborted transactions
+
+@RESTSTRUCT{intermediateCommits,transactions_struct,integer,required,}
+the number of intermediate commits done
 
 @RESTSTRUCT{v8Context,server_statistics_struct,object,required,v8_context_struct}
 Statistics about the V8 javascript contexts
