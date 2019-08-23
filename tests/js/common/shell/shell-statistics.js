@@ -36,6 +36,7 @@ const db = require("@arangodb").db;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
+
 function CommonStatisticsSuite() {
   'use strict';
   let c;
@@ -92,7 +93,7 @@ function CommonStatisticsSuite() {
       db._query(`FOR i IN 1..3 INSERT { "ulf" : i } IN ${c.name()}`, {}, { "intermediateCommitCount" : 2});
       let stats2 = internal.serverStatistics();
 
-      if(db._engine().name === "rocksdb") {
+      if(db._engine().name === "rocksdb" && !internal.isCluster()) {
         assertTrue(stats1.transactions.intermediateCommits < stats2.transactions.intermediateCommits);
       } else {
         assertEqual(stats1.transactions.intermediateCommits, 0);
@@ -114,7 +115,7 @@ function CommonStatisticsSuite() {
         assertMatch(/abort on purpose/, err.errorMessage);
       }
 
-      if(db._engine().name === "rocksdb") {
+      if(db._engine().name === "rocksdb" && !internal.isCluster()) {
         assertTrue(stats1.transactions.intermediateCommits <= stats2.transactions.intermediateCommits);
       } else {
         assertEqual(stats1.transactions.intermediateCommits, 0);
