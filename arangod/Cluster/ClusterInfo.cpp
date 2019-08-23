@@ -1507,10 +1507,6 @@ Result ClusterInfo::waitForDatabaseInCurrent(methods::CreateDatabaseInfo const& 
   AgencyComm ac;
   AgencyCommResult res;
 
-  // TODO: Is it important to know the number of DBServers before we start the creation of the database?
-  //       In that case this has to be moved to the createIsBuildingDatabase and passed in.
-  //       PARTA: We update the DBServers list in the loop at the bottom of this function, so tentatively
-  //              *NO*
   auto DBServers = std::make_shared<std::vector<ServerID>>(getCurrentDBServers());
   auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
