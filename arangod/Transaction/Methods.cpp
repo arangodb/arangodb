@@ -884,7 +884,7 @@ void transaction::Methods::buildDocumentIdentity(
 
   // append / and key part
   temp.push_back('/');
-  temp.append(key.begin(), key.size());
+  temp.append(key.data(), key.size());
 
   builder.openObject();
   builder.add(StaticStrings::IdString, VPackValue(temp));
