@@ -2653,10 +2653,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE) {}
     } execContext;
-    auto* origExecContext = ExecContext::CURRENT;
-    auto resetExecContext = irs::make_finally(
-        [origExecContext]() -> void { ExecContext::CURRENT = origExecContext; });
-    ExecContext::CURRENT = &execContext;
+    arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::removeAllUsers()
@@ -4029,10 +4026,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE) {}
     } execContext;
-    auto* origExecContext = ExecContext::CURRENT;
-    auto resetExecContext = irs::make_finally(
-        [origExecContext]() -> void { ExecContext::CURRENT = origExecContext; });
-    ExecContext::CURRENT = &execContext;
+    arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::removeAllUsers()
@@ -4361,10 +4355,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE) {}
     } execContext;
-    auto* origExecContext = ExecContext::CURRENT;
-    auto resetExecContext = irs::make_finally(
-        [origExecContext]() -> void { ExecContext::CURRENT = origExecContext; });
-    ExecContext::CURRENT = &execContext;
+    arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -5127,10 +5118,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE) {}
     } execContext;
-    auto* origExecContext = ExecContext::CURRENT;
-    auto resetExecContext = irs::make_finally(
-        [origExecContext]() -> void { ExecContext::CURRENT = origExecContext; });
-    ExecContext::CURRENT = &execContext;
+    arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions

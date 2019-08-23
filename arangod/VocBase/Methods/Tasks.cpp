@@ -63,16 +63,12 @@ using namespace arangodb::basics;
 
 namespace {
 bool authorized(std::pair<std::string, std::shared_ptr<arangodb::Task>> const& task) {
-  auto context = arangodb::ExecContext::CURRENT;
-  if (context == nullptr || !arangodb::ExecContext::isAuthEnabled()) {
+  arangodb::ExecContext const& exec = arangodb::ExecContext::current();
+  if (exec.isSuperuser()) {
     return true;
   }
 
-  if (context->isSuperuser()) {
-    return true;
-  }
-
-  return (task.first == context->user());
+  return (task.first == exec.user());
 }
 }  // namespace
 
@@ -99,7 +95,7 @@ std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const&
                                    // DatabaseGuard constructor which on failure
                                    // would fail Task constructor
 
-  std::string user = ExecContext::CURRENT ? ExecContext::CURRENT->user() : "";
+  std::string const& user = ExecContext::current().user();
   auto task = std::make_shared<Task>(id, name, *vocbase, command, allowUseDatabase);
   
   MUTEX_LOCKER(guard, _tasksLock);
@@ -289,7 +285,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     if (!_user.empty()) {  // not superuser
       auto& dbname = _dbGuard->database().name();
 
-      execContext.reset(ExecContext::create(_user, dbname));
+      execContext.reset(ExecContext::create(_user, dbname).release());
       allowContinue = execContext->canUseDatabase(dbname, auth::Level::RW);
     }
 
@@ -303,7 +299,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     bool queued = basics::function_utils::retryUntilTimeout(
         [this, self, execContext]() -> bool {
           return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self, this, execContext] {
-            ExecContextScope scope(_user.empty() ? ExecContext::superuser()
+            ExecContextScope scope(_user.empty() ? &ExecContext::superuser()
                                                  : execContext.get());
             work(execContext.get());
 
@@ -333,8 +329,8 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
 }
 
 void Task::start() {
-  TRI_ASSERT(ExecContext::CURRENT == nullptr || ExecContext::CURRENT->isAdminUser() ||
-             (!_user.empty() && ExecContext::CURRENT->user() == _user));
+  ExecContext const& exec = ExecContext::current();
+  TRI_ASSERT(exec.isAdminUser() || (!_user.empty() && exec.user() == _user));
 
   {
     MUTEX_LOCKER(lock, _taskHandleMutex);

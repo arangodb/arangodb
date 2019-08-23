@@ -30,8 +30,17 @@ using namespace arangodb;
 
 thread_local ExecContext const* ExecContext::CURRENT = nullptr;
 
-ExecContext ExecContext::SUPERUSER(ExecContext::Type::Internal, "", "",
+ExecContext ExecContext::Superuser(ExecContext::Type::Internal, /*name*/"", /*db*/"",
                                    auth::Level::RW, auth::Level::RW);
+
+/// Should always contain a reference to current user context
+/*static*/ ExecContext const& ExecContext::current() {
+  if (ExecContext::CURRENT != nullptr) {
+    return *ExecContext::CURRENT;
+  }
+  return ExecContext::Superuser;
+}
+
 
 bool ExecContext::isAuthEnabled() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
@@ -41,9 +50,9 @@ bool ExecContext::isAuthEnabled() {
 
 /// @brief an internal superuser context, is
 ///        a singleton instance, deleting is an error
-ExecContext const* ExecContext::superuser() { return &ExecContext::SUPERUSER; }
+ExecContext const& ExecContext::superuser() { return ExecContext::Superuser; }
 
-ExecContext* ExecContext::create(std::string const& user, std::string const& dbname) {
+std::unique_ptr<ExecContext> ExecContext::create(std::string const& user, std::string const& dbname) {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   auth::Level dbLvl = auth::Level::RW;
@@ -60,7 +69,8 @@ ExecContext* ExecContext::create(std::string const& user, std::string const& dbn
       sysLvl = um->databaseAuthLevel(user, TRI_VOC_SYSTEM_DATABASE);
     }
   }
-  return new ExecContext(ExecContext::Type::Default, user, dbname, sysLvl, dbLvl);
+  auto* ptr = new ExecContext(ExecContext::Type::Default, user, dbname, sysLvl, dbLvl);
+  return std::unique_ptr<ExecContext>(ptr);
 }
 
 bool ExecContext::canUseDatabase(std::string const& db, auth::Level requested) const {
