@@ -47,7 +47,9 @@ class CallbackGuard {
   // Allows only move semantics and no copy semantics.
 
   CallbackGuard();
-  // The passed callback should not throw exceptions, they will not be caught!
+  // IMPORTANT NOTE:
+  // The passed callback should not throw exceptions, they will not be caught
+  // here, but thrown by the destructor!
   explicit CallbackGuard(std::function<void(void)> callback);
   ~CallbackGuard();
 
@@ -76,8 +78,6 @@ class CallbackGuard {
 // scheduler is destroyed.
 class RebootTracker {
  public:
-  // TODO Maybe pass information about the change(s) to the callback - is there
-  //      anything useful?
   using Callback = std::function<void(void)>;
   using SchedulerPointer = decltype(SchedulerFeature::SCHEDULER);
   static_assert(std::is_pointer<SchedulerPointer>::value,
@@ -105,7 +105,6 @@ class RebootTracker {
   CallbackGuard callMeOnChange(PeerState const& peerState, Callback callback,
                                std::string callbackDescription);
 
-  // void notifyChanges(std::vector<PeerState> const& peerStates);
   void updateServerState(std::unordered_map<ServerID, RebootId> const& state);
 
  private:

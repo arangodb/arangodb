@@ -43,7 +43,9 @@
 #include "Cluster/RebootTracker.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
+
 
 namespace arangodb {
 namespace velocypack {
@@ -53,6 +55,90 @@ class Slice;
 class ClusterInfo;
 class LogicalCollection;
 struct ClusterCollectionCreationInfo;
+
+// make sure a collection is still in Plan
+// we are only going from *assuming* that it is present
+// to it being changed to not present.
+class CollectionWatcher
+{
+public:
+  CollectionWatcher(CollectionWatcher const&) = delete;
+  CollectionWatcher(AgencyCallbackRegistry *agencyCallbackRegistry, LogicalCollection const& collection)
+    : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
+    AgencyComm ac;
+
+    std::string databaseName = collection.vocbase().name();
+    std::string collectionID = std::to_string(collection.id());
+    std::string where = "Plan/Collections/" + databaseName + "/" + collectionID;
+
+    _agencyCallback = std::make_shared<AgencyCallback>(
+        ac, where,
+        [this](VPackSlice const& result) {
+          if (result.isNone()) {
+            _present.store(false);
+          }
+          return true;
+        },
+        true, false);
+    _agencyCallbackRegistry->registerCallback(_agencyCallback);
+  };
+  ~CollectionWatcher();
+
+  bool isPresent() {
+    return _present.load();
+  };
+
+private:
+  AgencyCallbackRegistry *_agencyCallbackRegistry;
+  std::shared_ptr<AgencyCallback> _agencyCallback;
+
+  // TODO: this does not really need to be atomic: We only write to it
+  //       in the callback, and we only read it in `isPresent`; it does
+  //       not actually matter whether this value is "correct".
+  std::atomic<bool> _present;
+};
+
+// Read the collection from Plan; this is an object to have a valid VPack
+// around to read from and to not have to carry around vpack builders.
+// Might want to do the error handling with throw/catch?
+class PlanCollectionReader {
+ public:
+  PlanCollectionReader(PlanCollectionReader const&&) = delete;
+  PlanCollectionReader(PlanCollectionReader const&) = delete;
+  PlanCollectionReader(LogicalCollection const& collection) {
+    std::string databaseName = collection.vocbase().name();
+    std::string collectionID = std::to_string(collection.id());
+
+    AgencyComm ac;
+
+    std::string path =
+        "Plan/Collections/" + databaseName + "/" + collectionID;
+    _read = ac.getValues(path);
+
+    if (!_read.successful()) {
+      _state = Result(TRI_ERROR_CLUSTER_READING_PLAN_AGENCY,
+                      "Could not retrieve " + path + " from agency");
+      return;
+    }
+
+    _collection = _read.slice()[0].get(std::vector<std::string>(
+        {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
+
+    if (!_collection.isObject()) {
+      _state = Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      return;
+    }
+    _state = Result();
+  }
+  VPackSlice indexes();
+  VPackSlice slice() { return _collection; }
+  Result state() { return _state; }
+
+ private:
+  AgencyCommResult _read;
+  Result _state;
+  velocypack::Slice _collection;
+};
 
 class CollectionInfoCurrent {
   friend class ClusterInfo;
@@ -266,7 +352,6 @@ class ClusterInfo final {
   ClusterInfo& operator=(ClusterInfo const&) = delete;  // not implemented
 
  public:
-
   class ServersKnown {
    public:
     ServersKnown() = default;
@@ -634,16 +719,16 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<std::vector<ServerID>> getResponsibleServer(ShardID const&);
-  
+
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief atomically find all servers who are responsible for the given 
+  /// @brief atomically find all servers who are responsible for the given
   /// shards (only the leaders).
   /// will throw an exception if no leader can be found for any
   /// of the shards. will return an empty result if the shards couldn't be
   /// determined after a while - it is the responsibility of the caller to
   /// check for an empty result!
   //////////////////////////////////////////////////////////////////////////////
-  
+
   std::unordered_map<ShardID, ServerID> getResponsibleServers(std::unordered_set<ShardID> const&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -797,6 +882,11 @@ class ClusterInfo final {
   );
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief triggers a new background thread to obtain the next batch of ids
+  //////////////////////////////////////////////////////////////////////////////
+  void triggerBackgroundGetIds();
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief object for agency communication
   //////////////////////////////////////////////////////////////////////////////
 
@@ -908,6 +998,9 @@ class ClusterInfo final {
   struct {
     uint64_t _currentValue;
     uint64_t _upperValue;
+    uint64_t _nextBatchStart;
+    uint64_t _nextUpperValue;
+    bool _backgroundJobIsRunning;
   } _uniqid;
 
   //////////////////////////////////////////////////////////////////////////////

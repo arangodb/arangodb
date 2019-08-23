@@ -22,6 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchLinkCoordinator.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "ClusterEngine/ClusterEngine.h"
@@ -36,8 +40,25 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VelocyPackHelper.h"
 #include "VocBase/LogicalCollection.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Slice.h"
+
+namespace {
+
+arangodb::ClusterEngineType getEngineType() {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // during the unit tests there is a mock storage engine which cannot be casted
+  // to a ClusterEngine at all. the only sensible way to find out the engine type is 
+  // to try a dynamic_cast here and assume the MockEngine if the cast goes wrong
+  auto engine = dynamic_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE);
+  if (engine != nullptr) {
+    return engine->engineType();
+  }
+  return arangodb::ClusterEngineType::MockEngine;
+#else
+  return static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE)->engineType();
+#endif
+}
+
+} // namespace
 
 namespace arangodb {
 namespace iresearch {
@@ -86,9 +107,7 @@ struct IResearchLinkCoordinator::IndexFactory : public arangodb::IndexTypeFactor
 }
 
 IResearchLinkCoordinator::IResearchLinkCoordinator(TRI_idx_iid_t id, LogicalCollection& collection)
-    : arangodb::ClusterIndex(id, collection,
-                             static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE)
-                                 ->engineType(),
+    : arangodb::ClusterIndex(id, collection, ::getEngineType(),
                              arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK,
                              IResearchLinkHelper::emptyIndexSlice()),
       IResearchLink(id, collection) {

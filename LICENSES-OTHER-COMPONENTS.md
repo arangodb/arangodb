@@ -218,14 +218,24 @@ exception from the GPL license:
 * License: https://raw.githubusercontent.com/madler/zlib/master/README
 * License Comment: free as-is license
 
-### HTTP Parser
+### llhttp
 
-* Name: HTTP Parser
-* Version: 2.4.0
-* Project Home: https://github.com/nodejs/http-parser
-* License: https://raw.githubusercontent.com/nodejs/http-parser/master/LICENSE-MIT
+* Name: llhttp
+* Version: 1.1.1
+* Project Home: https://github.com/nodejs/llhttp
+* License: https://raw.githubusercontent.com/nodejs/llhttp/master/LICENSE-MIT
 * License Name: MIT License
 * License Id: MIT
+
+### GeographicLib
+
+* Name: GeographicLib
+* Version: 1.49
+* Project Home: https://geographiclib.sourceforge.io/
+* License: https://geographiclib.sourceforge.io/html/LICENSE.txt
+* License Name: MIT License
+* License Id: MIT
+
 
 ## Programs
 

@@ -99,7 +99,8 @@ class HashSet {
 
     const_iterator() { }
 
-    const_iterator(iterator proto) : _set(proto._set), _bucket(proto._bucket) {}
+    // cppcheck-suppress noExplicitConstructor
+    /* implicit */ const_iterator(iterator proto) : _set(proto._set), _bucket(proto._bucket) {}
 
     const_iterator(const MyType* hash_set, size_t bucket) : _set(hash_set), _bucket(bucket) {}
 
@@ -153,7 +154,7 @@ class HashSet {
     doMove(std::move(other));
   }
 
-  HashSet(std::initializer_list<KeyT> const& values) : HashSet() {
+  explicit HashSet(std::initializer_list<KeyT> const& values) : HashSet() {
     for (auto const& v : values) {
       insert(v);
     }
@@ -391,8 +392,8 @@ class HashSet {
     } else {
       new_buffer = new char[states_size + keys_size];
     }
-    auto new_states = (State*)new_buffer;
-    auto new_keys  = (KeyT*)(new_buffer + states_size);
+    auto new_states = reinterpret_cast<State*>(new_buffer);
+    auto new_keys  = reinterpret_cast<KeyT*>(new_buffer + states_size);
 
     // auto old_num_filled  = _num_filled;
     auto old_num_buckets = _num_buckets;
@@ -443,7 +444,7 @@ class HashSet {
     } else {
       // we can copy the other's local buffer
       _buffer = &_local_buffer[0];
-      _states = (State*)_buffer;
+      _states = reinterpret_cast<State*>(_buffer);
       size_t states_size = ((other._num_buckets * sizeof(State) + 8 - 1) / 8) * 8;
       memcpy(&_local_buffer[0], &other._local_buffer[0], states_size);
       _keys  = (KeyT*)(_buffer + states_size);

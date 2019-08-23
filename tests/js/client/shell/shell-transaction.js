@@ -3804,6 +3804,56 @@ function transactionAQLStreamSuite () {
   };
 }
 
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
+
+function transactionTTLStreamSuite () {
+  'use strict';
+  const cn = 'UnitTestsTransaction';
+  let c;
+
+  return {
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
+
+    setUp: function () {
+      db._drop(cn);
+      c = db._create(cn, {numberOfShards: 2, replicationFactor: 2});
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
+
+    tearDown: function () {
+      db._drop(cn);
+    },
+
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: abort idle transactions
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testAbortIdleTrx: function () {
+      let trx = db._createTransaction({
+        collections: { read: cn }
+      });
+
+      internal.sleep(12);
+      try {
+        trx.collection(cn).save({key:'val'});
+        fail();
+      } catch (err) {
+        assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, err.errorNum);
+      }
+    }
+  };
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief executes the test suites
 // //////////////////////////////////////////////////////////////////////////////
@@ -3818,5 +3868,6 @@ jsunity.run(transactionCountSuite);
 jsunity.run(transactionCrossCollectionSuite);
 jsunity.run(transactionTraversalSuite);
 jsunity.run(transactionAQLStreamSuite);
+jsunity.run(transactionTTLStreamSuite);
 
 return jsunity.done();

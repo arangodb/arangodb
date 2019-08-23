@@ -31,6 +31,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
@@ -41,6 +42,9 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/UpgradeFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalView.h"
@@ -142,8 +146,13 @@ class ClusterInfoTest : public ::testing::Test {
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
   ViewFactory viewFactory;
 
-  ClusterInfoTest() : engine(server), server(nullptr, nullptr) {
+  ClusterInfoTest() : engine(server),
+                      server(std::make_shared<arangodb::options::ProgramOptions>("", "", "", nullptr), nullptr) {
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
+
+    arangodb::ServerState::instance()->setRebootId(1);
+    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
+
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(agencyStore);
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
         agencyStore);  // need 2 connections or Agency callbacks will fail
@@ -178,6 +187,9 @@ class ClusterInfoTest : public ::testing::Test {
                           false);  // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::ViewTypesFeature(server),
                           false);  // required for LogicalView::instantiate(...)
+    features.emplace_back(new arangodb::UpgradeFeature(server, nullptr, {}), true);
+    features.emplace_back(new arangodb::InitDatabaseFeature(server, {}), true);
+    features.emplace_back(new arangodb::ShardingFeature(server), false);
 
 #if USE_ENTERPRISE
     features.emplace_back(new arangodb::LdapFeature(server),
@@ -252,8 +264,10 @@ TEST_F(ClusterInfoTest, test_drop_database) {
                  database->createDatabase(1, "testDatabase", vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
 
+    ASSERT_TRUE(arangodb::AgencyComm().setValue("Current/Databases/testDatabase",
+                                                arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     ASSERT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
+                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
 
@@ -265,7 +279,7 @@ TEST_F(ClusterInfoTest, test_drop_database) {
       ASSERT_TRUE((false == !logicalView));
     }
 
-    EXPECT_TRUE((ci->dropDatabaseCoordinator(vocbase->name(), 0.0).ok()));
+    EXPECT_TRUE((arangodb::methods::Databases::drop(vocbase, vocbase->name()).ok()));
     ASSERT_TRUE((arangodb::methods::Databases::create(
                      vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())

@@ -187,7 +187,7 @@ install:
   ############################################################################
   - set ICU_DIR=%DEPS_DIR%\icu
   - mkdir %ICU_DIR% && cd %ICU_DIR%
-  - set ICU_URL="https://iweb.dl.sourceforge.net/project/icu/ICU4C/57.1/icu4c-57_1-Win64-msvc10.zip"
+  - set ICU_URL="https://ayera.dl.sourceforge.net/project/icu/ICU4C/57.1/icu4c-57_1-Win64-msvc10.zip"
   - appveyor DownloadFile %ICU_URL% -FileName icu4c-57_1-win64-msvc10.zip
   - 7z x icu4c-57_1-win64-msvc10.zip -o. > nul
   - set ICU_ROOT=%ICU_DIR%\icu

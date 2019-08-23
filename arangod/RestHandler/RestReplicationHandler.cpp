@@ -1195,7 +1195,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     if (replFactorSlice.isString() &&
         replFactorSlice.isEqualString("satellite")) {
       minReplicationFactor = 0;
-    } else if (minReplicationFactor <= 0) {
+    } else if (minReplicationFactor == 0) {
       minReplicationFactor = 1;
     }
     TRI_ASSERT(minReplicationFactor <= replicationFactor);

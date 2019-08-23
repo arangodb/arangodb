@@ -227,7 +227,7 @@ RestStatus RestAgencyHandler::handleWrite() {
 
   // Empty request array
   if (query->slice().length() == 0) {
-    return reportMessage(rest::ResponseCode::BAD, "Empty request.");
+    return reportMessage(rest::ResponseCode::BAD, "Empty request");
   }
 
   // Leadership established?

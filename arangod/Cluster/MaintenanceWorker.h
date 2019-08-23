@@ -35,7 +35,7 @@ namespace maintenance {
 
 class MaintenanceWorker : public Thread {
  public:
-  MaintenanceWorker(MaintenanceFeature& feature,
+  explicit MaintenanceWorker(MaintenanceFeature& feature,
                     std::unordered_set<std::string> const& labels = std::unordered_set<std::string>());
 
   MaintenanceWorker(MaintenanceFeature& feature, std::shared_ptr<Action>& directAction);
