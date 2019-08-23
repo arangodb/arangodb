@@ -96,11 +96,11 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
   return res;
 }
 
-bool upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
+void upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
   if (EngineSelectorFeature::engineName() != RocksDBEngine::EngineName) {
     LOG_TOPIC("2cb46", DEBUG, Logger::STARTUP)
         << "No need to upgrade geo indexes!";
-    return true;
+    return;
   }
 
   auto collections = vocbase.collections(false);
@@ -119,13 +119,11 @@ bool upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
         if (res.fail()) {
           LOG_TOPIC("5550a", ERR, Logger::STARTUP)
               << "Error upgrading geo indexes " << res.errorMessage();
-          return false;
+          throw res;
         }
       }
     }
   }
-
-  return true;
 }
 
 Result createSystemCollections(TRI_vocbase_t& vocbase,
