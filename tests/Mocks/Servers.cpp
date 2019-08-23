@@ -39,6 +39,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLinkCoordinator.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
@@ -505,6 +506,11 @@ void MockClusterServer::startFeatures() {
   MockServer::startFeatures();
   arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
   arangodb::ServerState::instance()->setRebootId(1);
+
+  // register factories & normalizers
+  auto& indexFactory = const_cast<arangodb::IndexFactory&>(_engine.indexFactory());
+  indexFactory.emplace(arangodb::iresearch::DATA_SOURCE_TYPE.name(),
+                       arangodb::iresearch::IResearchLinkCoordinator::factory());
 }
 
 void MockClusterServer::agencyTrx(std::string const& key, std::string const& value) {
