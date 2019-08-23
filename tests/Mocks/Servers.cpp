@@ -48,6 +48,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -330,6 +331,7 @@ MockClusterServer::MockClusterServer()
   std::ignore = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
       _agencyStore);  // need 2 connections or Agency callbacks will fail
   arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
+  _oldRole = arangodb::ServerState::instance()->getRole();
 
   // Handle logging
   // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
@@ -359,9 +361,12 @@ MockClusterServer::MockClusterServer()
                     false);  // required for IResearchLinkMeta::init(...)
   _features.emplace(new arangodb::iresearch::IResearchFeature(_server),
                     false);  // required for instantiating IResearchView*
+  _features.emplace(new arangodb::UpgradeFeature(_server, nullptr, {}), true);
 }
 
-MockClusterServer::~MockClusterServer() {}
+MockClusterServer::~MockClusterServer() {
+  arangodb::ServerState::instance()->setRole(_oldRole);
+}
 
 MockDBServer::MockDBServer() : MockClusterServer() {
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
@@ -370,3 +375,34 @@ MockDBServer::MockDBServer() : MockClusterServer() {
 }
 
 MockDBServer::~MockDBServer() {}
+
+TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
+  // TODO call templated plan
+  auto* ci = ClusterInfo::instance();
+  TRI_ASSERT(ci != nullptr);
+  ci->loadPlan();
+  ci->loadCurrent();
+  auto* databaseFeature = arangodb::DatabaseFeature::DATABASE;
+  TRI_ASSERT(databaseFeature != nullptr);
+  databaseFeature->lookupDatabase(name);
+  return nullptr;
+};
+
+MockCoordinator::MockCoordinator() : MockClusterServer() {
+  arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_COORDINATOR);
+  startFeatures();
+}
+
+MockCoordinator::~MockCoordinator() {}
+
+TRI_vocbase_t* MockCoordinator::createDatabase(std::string const& name) {
+  // TODO call templated plan
+  auto* ci = ClusterInfo::instance();
+  TRI_ASSERT(ci != nullptr);
+  ci->loadPlan();
+  ci->loadCurrent();
+  auto* databaseFeature = arangodb::DatabaseFeature::DATABASE;
+  TRI_ASSERT(databaseFeature != nullptr);
+  databaseFeature->lookupDatabase(name);
+  return nullptr;
+};
