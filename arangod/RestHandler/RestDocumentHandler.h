@@ -83,8 +83,8 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   bool removeDocument();
   
 private:
-  
   std::unique_ptr<SingleCollectionTransaction> _activeTrx;
+  std::string _cname;
 };
 }  // namespace arangodb
 

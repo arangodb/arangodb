@@ -35,6 +35,7 @@
 #include "VocBase/vocbase.h"
 
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -187,14 +188,7 @@ RestStatus RestDocumentHandler::insertDocument() {
   if (!wasReady) {
     self = shared_from_this();
   }
-  std::move(f).thenFinal([cname = std::move(cname), self, this,
-                          wasReady, isMultiple](futures::Try<OperationResult>&& trie) {
-    if (trie.hasException()) {
-      self->handleExceptionPtr(trie.exception());
-      return;
-    }
-    
-    OperationResult const& opres = trie.get();
+  std::move(f).thenValue([cname = std::move(cname), this, isMultiple](OperationResult&& opres) {
     // Will commit if no error occured.
     // or abort if an error occured.
     // result stays valid!
@@ -204,7 +198,7 @@ RestStatus RestDocumentHandler::insertDocument() {
       return;
     }
     
-    if (!res.ok()) {
+    if (res.fail()) {
       generateTransactionError(cname, res, "");
       return;
     }
@@ -213,6 +207,10 @@ RestStatus RestDocumentHandler::insertDocument() {
                   TRI_col_type_e(_activeTrx->getCollectionType(cname)),
                   _activeTrx->transactionContextPtr()->getVPackOptionsForDump(),
                   isMultiple);
+  }).thenFinal([self, this, wasReady](futures::Try<futures::Unit> t) {
+    if (t.hasException()) {
+      handleExceptionPtr(t.exception());
+    }
     if (!wasReady) {
       this->continueHandlerExecution();
     }

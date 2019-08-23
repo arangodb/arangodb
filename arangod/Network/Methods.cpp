@@ -121,7 +121,7 @@ FutureRes sendRequest(DestinationId const& destination, RestVerb type,
 
 /// Handler class with enough information to keep retrying
 /// a request until an overall timeout is hit (or the request succeeds)
-class RequestsState : public std::enable_shared_from_this<RequestsState> {
+class RequestsState final : public std::enable_shared_from_this<RequestsState> {
  public:
   RequestsState(DestinationId const& destination, RestVerb type,
                 std::string const& path, velocypack::Buffer<uint8_t>&& payload,
@@ -137,6 +137,8 @@ class RequestsState : public std::enable_shared_from_this<RequestsState> {
         _endTime(_startTime +
                  std::chrono::duration_cast<std::chrono::steady_clock::duration>(timeout)),
         _retryOnCollNotFound(retryNotFound) {}
+  
+  ~RequestsState() = default;
 
  private:
   DestinationId _destination;

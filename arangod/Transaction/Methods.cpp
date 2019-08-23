@@ -1522,19 +1522,19 @@ OperationResult transaction::Methods::documentLocal(std::string const& collectio
 /// @brief create one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-Future<OperationResult> transaction::Methods::insertF(std::string const& collectionName,
+Future<OperationResult> transaction::Methods::insertF(std::string const& cname,
                                                       VPackSlice const value,
                                                       OperationOptions const& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
-    events::CreateDocument(vocbase().name(), collectionName, value, options,
+    events::CreateDocument(vocbase().name(), cname, value, options,
                            TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (value.isArray() && value.length() == 0) {
-    events::CreateDocument(vocbase().name(), collectionName, value, options, TRI_ERROR_NO_ERROR);
+    events::CreateDocument(vocbase().name(), cname, value, options, TRI_ERROR_NO_ERROR);
     return emptyResult(options);
   }
 
@@ -1542,9 +1542,15 @@ Future<OperationResult> transaction::Methods::insertF(std::string const& collect
   OperationOptions optionsCopy = options;
 
   if (_state->isCoordinator()) {
-    return insertCoordinator(collectionName, value, optionsCopy);
+    return insertCoordinator(cname, value, optionsCopy)
+    .thenValue([this, value, cname](OperationResult&& opres) {
+      events::CreateDocument(vocbase().name(), cname,
+                             (opres.ok() && opres._options.returnNew) ? opres.slice() : value,
+                             opres._options, opres.errorNumber());
+      return std::move(opres);
+    });
   }
-  return insertLocal(collectionName, value, optionsCopy);
+  return insertLocal(cname, value, optionsCopy);
 }
 
 /// @brief create one or multiple documents in a collection, coordinator

@@ -480,7 +480,7 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   // and there is currently only a single client handled by the IoContext
   auto cb = [self = shared_from_this(), handler = std::move(handler)]() {
     RequestStatistics::SET_QUEUE_END(handler->statistics());
-    handler->runHandler([self = std::move(self), handler](rest::RestHandler* handler) {
+    handler->runHandler([self = std::move(self)](rest::RestHandler* handler) {
       // Pass the response the io context
       self->sendResponse(handler->stealResponse(), handler->stealStatistics());
     });
