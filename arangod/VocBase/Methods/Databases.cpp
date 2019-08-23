@@ -178,7 +178,6 @@ Result CreateDatabaseInfo::sanitizeOptions(VPackSlice const& options,
     events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid options slice");
   }
-  // TODO: check this is correct?
   sanitizedOptions.add(options);
   return Result();
 }
@@ -275,8 +274,6 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
      return Result();
     }
   }
-
-  // TODO: what happens if ExecContext::CURRENT or um are nullptr?
 
   return Result();
 }
@@ -395,6 +392,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   // Encapsulate and sanitize the input
   // TODO: maybe this should just be a function that produces
   //       a struct to avoid the try/catch
+  //       or the object could have a .valid() method?
   CreateDatabaseInfo createInfo;
   try {
       createInfo = CreateDatabaseInfo(dbName, options, users);
