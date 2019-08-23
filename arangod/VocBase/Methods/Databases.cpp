@@ -295,6 +295,8 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     return res;
   }
 
+  
+
   auto failureGuard = scopeGuard([ci, info]() {
     Result res;
     LOG_TOPIC("8cc61", ERR, Logger::FIXME)
