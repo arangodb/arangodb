@@ -98,7 +98,6 @@ char const* current_colls_string =
 
 class TemplateSpecializer {
   std::unordered_map<std::string, std::string> _replacements;
-  int _nextId;
   int _nextServerNumber;
   std::string _dbName;
 
@@ -106,7 +105,7 @@ class TemplateSpecializer {
 
  public:
   TemplateSpecializer(std::string const& dbName)
-      : _nextId(101), _nextServerNumber(1), _dbName(dbName) {}
+      : _nextServerNumber(1), _dbName(dbName) {}
 
   std::string specialize(char const* templ) {
     size_t len = strlen(templ);
@@ -130,10 +129,10 @@ class TemplateSpecializer {
             std::string newSt;
             switch (c) {
               case ReplacementCase::Number:
-                newSt = std::to_string(_nextId++);
+                newSt = std::to_string(TRI_NewTickServer());
                 break;
               case ReplacementCase::Shard:
-                newSt = std::string("s") + std::to_string(_nextId++);
+                newSt = std::string("s") + std::to_string(TRI_NewTickServer());
                 break;
               case ReplacementCase::DBServer:
                 newSt = std::string("PRMR_000") + std::to_string(_nextServerNumber++);
