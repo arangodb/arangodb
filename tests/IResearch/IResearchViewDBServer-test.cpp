@@ -227,7 +227,7 @@ class IResearchViewDBServerTest : public ::testing::Test {
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(IResearchViewDBServerTest, test_drop) {
+TEST_F(IResearchViewDBServerTest, DISABLED_test_drop) {
   auto* database = arangodb::DatabaseFeature::DATABASE;
   ASSERT_TRUE(nullptr != database);
   auto* ci = arangodb::ClusterInfo::instance();
@@ -346,7 +346,7 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
   }
 }
 
-TEST_F(IResearchViewDBServerTest, test_drop_cid) {
+TEST_F(IResearchViewDBServerTest, DISABLED_test_drop_cid) {
   auto* database = arangodb::DatabaseFeature::DATABASE;
   ASSERT_TRUE((nullptr != database));
   auto* ci = arangodb::ClusterInfo::instance();
@@ -404,7 +404,7 @@ TEST_F(IResearchViewDBServerTest, test_drop_cid) {
   EXPECT_TRUE((impl->unlink(logicalCollection->id()).ok()));
 }
 
-TEST_F(IResearchViewDBServerTest, test_drop_database) {
+TEST_F(IResearchViewDBServerTest, DISABLED_test_drop_database) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE((nullptr != ci));
   auto* databaseFeature =
@@ -452,7 +452,7 @@ TEST_F(IResearchViewDBServerTest, test_drop_database) {
   EXPECT_TRUE((0 == beforeCount));
 }
 
-TEST_F(IResearchViewDBServerTest, test_ensure) {
+TEST_F(IResearchViewDBServerTest, DISABLED_test_ensure) {
   auto* database = arangodb::DatabaseFeature::DATABASE;
   ASSERT_TRUE((nullptr != database));
   auto* ci = arangodb::ClusterInfo::instance();
@@ -505,7 +505,7 @@ TEST_F(IResearchViewDBServerTest, test_ensure) {
                                                                         *wiew)));
 }
 
-TEST_F(IResearchViewDBServerTest, test_make) {
+TEST_F(IResearchViewDBServerTest, DISABLED_test_make) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE(nullptr != ci);
 
@@ -534,7 +534,7 @@ TEST_F(IResearchViewDBServerTest, test_make) {
   }
 }
 
-TEST_F(IResearchViewDBServerTest, test_open) {
+TEST_F(IResearchViewDBServerTest, DISABLED_test_open) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE(nullptr != ci);
 
@@ -596,7 +596,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
   }
 }
 
-TEST_F(IResearchViewDBServerTest, test_query) {
+TEST_F(IResearchViewDBServerTest, DISABLED_test_query) {
   auto* database = arangodb::DatabaseFeature::DATABASE;
   ASSERT_TRUE((nullptr != database));
   auto* ci = arangodb::ClusterInfo::instance();
@@ -898,7 +898,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
   }
 }
 
-TEST_F(IResearchViewDBServerTest, test_rename) {
+TEST_F(IResearchViewDBServerTest, DISABLED_test_rename) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE(nullptr != ci);
 
@@ -1007,7 +1007,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
   }
 }
 
-TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
+TEST_F(IResearchViewDBServerTest, DISABLED_test_toVelocyPack) {
   // base
   {
     auto json = arangodb::velocypack::Parser::fromJson(
@@ -1119,7 +1119,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
   }
 }
 
-TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
+TEST_F(IResearchViewDBServerTest, DISABLED_test_transaction_snapshot) {
   auto* database = arangodb::DatabaseFeature::DATABASE;
   ASSERT_TRUE((nullptr != database));
   auto* ci = arangodb::ClusterInfo::instance();
@@ -1260,7 +1260,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
   }
 }
 
-TEST_F(IResearchViewDBServerTest, test_updateProperties) {
+TEST_F(IResearchViewDBServerTest, DISABLED_test_updateProperties) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE((nullptr != ci));
   auto* databaseFeature =
@@ -1789,7 +1789,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
   }
 }
 
-TEST_F(IResearchViewDBServerTest, test_visitCollections) {
+TEST_F(IResearchViewDBServerTest, DISABLED_test_visitCollections) {
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE(nullptr != ci);
 

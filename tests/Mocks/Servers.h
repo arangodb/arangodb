@@ -23,8 +23,10 @@
 #ifndef ARANGODB_TESTS_MOCKS_SERVERS_H
 #define ARANGODB_TESTS_MOCKS_SERVERS_H 1
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "StorageEngineMock.h"
+
+#include "Agency/Store.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 struct TRI_vocbase_t;
 
@@ -45,21 +47,13 @@ class ApplicationFeature;
 namespace tests {
 namespace mocks {
 
-class MockApplicationServer : public arangodb::application_features::ApplicationServer {
- public:
-  MockApplicationServer(std::shared_ptr<options::ProgramOptions> options, char const* binaryPath)
-      : ApplicationServer(std::move(options), binaryPath) {}
-  ~MockApplicationServer() override = default;
-
-  // Appear to be started
-  State state() const override { return State::IN_START; }
-};
-
 class MockServer {
- public:
+ protected:
+  // You can only create specialized types
   MockServer();
   virtual ~MockServer();
 
+ public:
   void init();
 
   TRI_vocbase_t& getSystemDatabase() const;
@@ -73,22 +67,16 @@ class MockServer {
   void stopFeatures();
 
  protected:
-  MockApplicationServer _server;
+  arangodb::application_features::ApplicationServer _server;
   StorageEngineMock _engine;
-  std::unique_ptr<TRI_vocbase_t> _system;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> _features;
-};
-
-class MockEmptyServer : public MockServer {
- public:
-  MockEmptyServer();
-  ~MockEmptyServer() override;
+  std::unordered_map<arangodb::application_features::ApplicationFeature*, bool> _features;
+  std::string _testFilesystemPath;
 };
 
 class MockAqlServer : public MockServer {
  public:
   MockAqlServer();
-  ~MockAqlServer() override;
+  ~MockAqlServer();
 
   std::shared_ptr<arangodb::transaction::Methods> createFakeTransaction() const;
   std::unique_ptr<arangodb::aql::Query> createFakeQuery() const;
@@ -97,7 +85,23 @@ class MockAqlServer : public MockServer {
 class MockRestServer : public MockServer {
  public:
   MockRestServer();
-  ~MockRestServer() override;
+  ~MockRestServer();
+};
+
+class MockClusterServer : public MockServer {
+  // You can only create specialized types
+ protected:
+  MockClusterServer();
+  ~MockClusterServer();
+
+ private:
+  arangodb::consensus::Store _agencyStore;
+};
+
+class MockDBServer : public MockClusterServer {
+ public:
+  MockDBServer();
+  ~MockDBServer();
 };
 
 }  // namespace mocks

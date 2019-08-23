@@ -82,10 +82,7 @@ public:
         true, false);
     _agencyCallbackRegistry->registerCallback(_agencyCallback);
   };
-  ~CollectionWatcher() {
-    // Sure hope this does not throw?
-    _agencyCallbackRegistry->unregisterCallback(_agencyCallback);
-  };
+  ~CollectionWatcher();
 
   bool isPresent() {
     return _present.load();
@@ -133,7 +130,7 @@ class PlanCollectionReader {
     }
     _state = Result();
   }
-  VPackSlice indexes() { return _collection.get("indexes"); }
+  VPackSlice indexes();
   VPackSlice slice() { return _collection; }
   Result state() { return _state; }
 

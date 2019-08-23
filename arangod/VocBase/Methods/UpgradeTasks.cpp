@@ -97,11 +97,11 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
   return res;
 }
 
-bool upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
+void upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
   if (EngineSelectorFeature::engineName() != RocksDBEngine::EngineName) {
     LOG_TOPIC("2cb46", DEBUG, Logger::STARTUP)
         << "No need to upgrade geo indexes!";
-    return true;
+    return;
   }
 
   auto collections = vocbase.collections(false);
@@ -120,13 +120,11 @@ bool upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
         if (res.fail()) {
           LOG_TOPIC("5550a", ERR, Logger::STARTUP)
               << "Error upgrading geo indexes " << res.errorMessage();
-          return false;
+          throw res;
         }
       }
     }
   }
-
-  return true;
 }
 
 Result createSystemCollections(TRI_vocbase_t& vocbase,
@@ -285,7 +283,6 @@ Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase,
       }
     }
 
-    // TODO: check what happens here, throw on fail?
     upgradeGeoIndexes(vocbase);
 
     createIndex(StaticStrings::AppsCollection,
@@ -298,7 +295,6 @@ Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase,
   } catch (Result res) {
     return {res};
   } catch (...) {
-    // TODO: Is there anything more we can do here?
     return {TRI_ERROR_INTERNAL};
   }
   return {TRI_ERROR_NO_ERROR};
@@ -315,8 +311,8 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
   std::vector<std::shared_ptr<LogicalCollection>> presentSystemCollections;
   res = ::createSystemCollections(vocbase, presentSystemCollections);
 
-  // TODO: Maybe check or assert that all DBs are present (i.e. were present or
-  //       created), raise an error if not?
+  // TODO: Maybe check or assert that all collections are present (i.e. were
+  //       present or created), raise an error if not?
 
   if (res.fail()) {
     LOG_TOPIC("e32fi", ERR, Logger::MAINTENANCE)

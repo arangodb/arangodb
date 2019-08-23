@@ -1430,7 +1430,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_db_server) {
                              {irs::frequency::type()})));
 }
 
-TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index) {
+TEST_F(IResearchAnalyzerFeatureCoordinatorTest, DISABLED_test_ensure_index) {
   // add index factory
   {
     struct IndexTypeFactory : public arangodb::IndexTypeFactory {
