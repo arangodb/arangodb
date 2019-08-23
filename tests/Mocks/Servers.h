@@ -102,6 +102,8 @@ class MockClusterServer : public MockServer {
  protected:
   // Implementation knows the place when all features are included
   void startFeatures() override;
+  void agencyTrx(std::string const& key, std::string const& value);
+  void agencyCreateDatabase(std::string const& name);
 
  private:
   arangodb::consensus::Store _agencyStore;

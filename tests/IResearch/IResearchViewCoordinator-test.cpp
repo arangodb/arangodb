@@ -121,7 +121,7 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
   }
 
   void createTestDatabase(TRI_vocbase_t*& vocbase) {
-    vocbase = server->createDatabase("testDatabase");
+    vocbase = server.createDatabase("testDatabase");
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ("testDatabase", vocbase->name());
     ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
