@@ -471,8 +471,7 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
       return rocksutils::convertStatus(s);
     }
 
-    LocalDocumentId documentId =
-        RocksDBKey::indexDocumentId(RocksDBEntryType::FulltextIndexValue, iter->key());
+    LocalDocumentId documentId = RocksDBKey::indexDocumentId(iter->key());
     if (token.operation == FulltextQueryToken::AND) {
       intersect.insert(documentId);
     } else if (token.operation == FulltextQueryToken::OR) {
