@@ -72,6 +72,131 @@ namespace {
 struct ClusterCommResetter : public arangodb::ClusterComm {
   static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
 };
+
+char const* plan_dbs_string =
+#include "plan_dbs_db.h"
+;
+
+char const* plan_colls_string =
+#include "plan_colls_db.h"
+;
+
+char const* current_dbs_string =
+#include "current_dbs_db.h"
+;
+
+char const* current_colls_string =
+#include "current_colls_db.h"
+;
+
+class TemplateSpecializer {
+  std::unordered_map<std::string, std::string> _replacements;
+  int _nextId;
+  int _nextServerNumber;
+
+  enum ReplacementCase {
+    Not,
+    Number,
+    Shard,
+    DBServer
+  };
+
+ public:
+  TemplateSpecializer() : _nextId(101), _nextServerNumber(1) {
+  }
+
+  std::string specialize(char const* templ) {
+    size_t len = strlen(templ);
+
+    size_t pos = 0;
+    std::string result;
+    result.reserve(len);
+
+    while (pos < len) {
+      if (templ[pos] != '"') {
+        result.push_back(templ[pos++]);
+      } else {
+        std::string st;
+        pos = parseString(templ, pos, len, st);
+        ReplacementCase c = whichCase(st);
+        if (c != ReplacementCase::Not) {
+          auto it = _replacements.find(st);
+          if (it != _replacements.end()) {
+            st = it->second;
+          } else {
+            std::string newSt;
+            switch (c) {
+              case ReplacementCase::Number:
+                newSt = std::to_string(_nextId++);
+                break;
+              case ReplacementCase::Shard:
+                newSt = std::string("s") + std::to_string(_nextId++);
+                break;
+              case ReplacementCase::DBServer:
+                newSt = std::string("PRMR_000") +
+                        std::to_string(_nextServerNumber++);
+                break;
+              case ReplacementCase::Not:
+                newSt = st;
+                // never happens, just to please compilers
+            }
+            _replacements[st] = newSt;
+            st = newSt;
+          }
+        }
+        result.push_back('"');
+        result.append(st);
+        result.push_back('"');
+      }
+    }
+    return result;
+  }
+
+ private:
+  size_t parseString(char const* templ, size_t pos, size_t const len,
+                     std::string& st) {
+    // This must be called when templ[pos] == '"'. It parses the string
+    // and // puts it into st (not including the quotes around it).
+    // The return value is pos advanced to behind the closing quote of
+    // the string.
+    ++pos;   // skip quotes
+    size_t startPos = pos;
+    while (pos < len && templ[pos] != '"') {
+      ++pos;
+    }
+    // Now the string in question is between startPos and pos.
+    // Extract string as it is:
+    st = std::string(templ + startPos, pos - startPos);
+    // Skip final quotes if they are there:
+    if (pos < len && templ[pos] == '"') {
+      ++pos;
+    }
+    return pos;
+  }
+
+  ReplacementCase whichCase(std::string& st) {
+    bool onlyNumbers = true;
+    size_t pos = 0;
+    ReplacementCase c = ReplacementCase::Number;
+    if (pos < st.size() && st[pos] == 's') {
+      c = ReplacementCase::Shard;
+      ++pos;
+    } else if (pos + 5 <= st.size() && st.substr(0, 5) == "PRMR-") {
+      return ReplacementCase::DBServer;
+    }
+    for (; pos < st.size(); ++pos) {
+      if (st[pos] < '0' || st[pos] > '9') {
+        onlyNumbers = false;
+        break;
+      }
+    }
+    if (!onlyNumbers) {
+      return ReplacementCase::Not;
+    }
+    return c;
+  }
+};
+
 }  // namespace
 
 static void SetupGreetingsPhase(
