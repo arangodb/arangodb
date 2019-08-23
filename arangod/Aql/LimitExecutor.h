@@ -49,14 +49,24 @@ class LimitExecutorInfos : public ExecutorInfos {
  public:
   LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                      std::unordered_set<RegisterId> registersToClear,
-                     std::unordered_set<RegisterId> registersToKeep,
-                     size_t offset, size_t limit, bool fullCount,
-                     RegisterId inNonMaterializedColRegId,
-                     RegisterId inNonMaterializedDocRegId,
-                     RegisterId outMaterializedDocumentRegId,
+                     std::unordered_set<RegisterId> registersToKeep, size_t offset,
+                     size_t limit, bool fullCount, RegisterId inNonMaterializedColRegId,
+                     RegisterId inNonMaterializedDocRegId, RegisterId outMaterializedDocumentRegId,
                      std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
                      std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
                      Query* query);
+
+  // Constructor for backward compatibility (!!!! Maybe delete and update tests?)
+  LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                     std::unordered_set<RegisterId> registersToClear,
+                     std::unordered_set<RegisterId> registersToKeep,
+                     size_t offset, size_t limit, bool fullCount)
+      : LimitExecutorInfos(nrInputRegisters, nrOutputRegisters,
+                           std::forward<std::unordered_set<RegisterId>>(registersToClear),
+                           std::forward<std::unordered_set<RegisterId>>(registersToKeep), 
+                          //!!!! find a way to go without passing shared pointers
+                           offset, limit, fullCount, 0, 0, 0, std::make_shared < std::unordered_set<RegisterId>>(),
+                           std::make_shared < std::unordered_set<RegisterId>>(), nullptr) {}
 
   LimitExecutorInfos() = delete;
   LimitExecutorInfos(LimitExecutorInfos&&) = default;
@@ -68,24 +78,24 @@ class LimitExecutorInfos : public ExecutorInfos {
   size_t getLimitPlusOffset() const noexcept { return _offset + _limit; };
   bool isFullCountEnabled() const noexcept { return _fullCount; };
   bool doMaterialization() const noexcept {
-    // If we need to do materialization, this two would be set 
+    // If we need to do materialization, this two would be set
     // different registers. If not - both will be zero
     return _inNonMaterializedColRegId != _inNonMaterializedDocRegId;
   }
-    
-  inline RegisterId inputNonMaterializedDocRegId() const noexcept { 
-    return _inNonMaterializedDocRegId; 
+
+  inline RegisterId inputNonMaterializedDocRegId() const noexcept {
+    return _inNonMaterializedDocRegId;
   }
 
-  inline RegisterId inputNonMaterializedColRegId() const noexcept { 
-    return _inNonMaterializedColRegId; 
+  inline RegisterId inputNonMaterializedColRegId() const noexcept {
+    return _inNonMaterializedColRegId;
   }
 
-  inline RegisterId outputMaterializedDocumentRegId() const noexcept { 
+  inline RegisterId outputMaterializedDocumentRegId() const noexcept {
     return _outMaterializedDocumentRegId;
   }
 
-   Query* getQuery() const noexcept { return _query; }
+  Query* getQuery() const noexcept { return _query; }
 
  private:
   /// @brief the remaining offset
@@ -144,7 +154,6 @@ class LimitExecutor {
   std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkipRequested);
 
   std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
-
 
  private:
   Infos const& infos() const noexcept { return _infos; };

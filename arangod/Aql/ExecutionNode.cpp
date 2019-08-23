@@ -1500,8 +1500,13 @@ LimitNode::LimitNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _offset(base.get("offset").getNumericValue<decltype(_offset)>()),
       _limit(base.get("limit").getNumericValue<decltype(_limit)>()),
       _fullCount(base.get("fullCount").getBoolean()),
-      _inNonMaterializedColId(nullptr), _inNonMaterializedDocId(nullptr),
-      _outMaterializedDocument(nullptr){}
+      _inNonMaterializedColPtr(
+          aql::Variable::varFromVPack(plan->getAst(), base, "inNmColPtr", true)),
+      _inNonMaterializedDocId(
+          aql::Variable::varFromVPack(plan->getAst(), base, "inNmDocId", true)),
+      _outMaterializedDocument(
+          aql::Variable::varFromVPack(plan->getAst(), base, "outDocument", true))
+      {}
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
@@ -1516,9 +1521,9 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
   RegisterId inColRegId = 0;
   RegisterId inDocRegId = 0;
   RegisterId outDocRegId = 0;
-  if(_inNonMaterializedColId != nullptr) {
+  if(_inNonMaterializedColPtr != nullptr) {
     {
-      auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedColId->id);
+      auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedColPtr->id);
       TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
       inColRegId = it->second.registerId;
       inputRegisters->insert(inColRegId);
@@ -1549,8 +1554,8 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
 
 void LimitNode::getVariablesUsedHere(
     arangodb::HashSet<arangodb::aql::Variable const*>& vars) const {
-  if(_inNonMaterializedColId != nullptr && _inNonMaterializedDocId != nullptr) {
-    vars.insert(_inNonMaterializedColId);
+  if(_inNonMaterializedColPtr != nullptr && _inNonMaterializedDocId != nullptr) {
+    vars.insert(_inNonMaterializedColPtr);
     vars.insert(_inNonMaterializedDocId);
   }
 }
@@ -1570,7 +1575,18 @@ void LimitNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   nodes.add("offset", VPackValue(_offset));
   nodes.add("limit", VPackValue(_limit));
   nodes.add("fullCount", VPackValue(_fullCount));
-
+  if (_inNonMaterializedColPtr != nullptr) {
+    nodes.add(VPackValue("inNmColPtr"));
+      _inNonMaterializedColPtr->toVelocyPack(nodes);
+  }
+  if (_inNonMaterializedDocId != nullptr) {
+    nodes.add(VPackValue("inNmDocId"));
+    _inNonMaterializedDocId->toVelocyPack(nodes);
+  }
+  if (_outMaterializedDocument != nullptr) {
+    nodes.add(VPackValue("outDocument"));
+    _outMaterializedDocument->toVelocyPack(nodes);
+  }
   // And close it:
   nodes.close();
 }

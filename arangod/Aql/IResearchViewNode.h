@@ -28,8 +28,6 @@
 #include "Aql/ExecutionNode.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
-#include "Aql/ExecutionBlockImpl.h"
-#include "Aql/NoResultsExecutor.h"
 
 namespace arangodb {
 
@@ -81,11 +79,11 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @returns true if underlying view has no links
   bool empty() const noexcept;
 
-  void skipMaterializationTo(aql::Variable* colIdVariable,
-                             aql::Variable* docIdVariable) noexcept {
+  void skipMaterializationTo(aql::Variable const* colPtrVariable,
+                             aql::Variable const* docIdVariable) noexcept {
     TRI_ASSERT((docIdVariable != nullptr) == (colIdVariable != nullptr));
     _outNonMaterializedDocId = docIdVariable;
-    _outNonMaterializedColId = colIdVariable;
+    _outNonMaterializedColPtr = colPtrVariable;
   }
 
   /// @brief the cost of an enumerate view node
@@ -94,13 +92,13 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief getVariablesSetHere
   std::vector<arangodb::aql::Variable const*> getVariablesSetHere() const override final {
     std::vector<arangodb::aql::Variable const*> vars(_scorers.size() + 
-    (_outNonMaterializedColId != nullptr ? 2 : 1) // document or  collection + docId for late materialization
+    (_outNonMaterializedColPtr != nullptr ? 2 : 1) // document or  collection + docId for late materialization
     );
 
     std::transform(_scorers.begin(), _scorers.end(), vars.begin(),
       [](auto const& scorer) { return scorer.var; }); 
-    if(_outNonMaterializedColId != nullptr) {
-      vars[vars.size() - 2] = _outNonMaterializedColId;
+    if(_outNonMaterializedColPtr != nullptr) {
+      vars[vars.size() - 2] = _outNonMaterializedColPtr;
       vars[vars.size() - 1] = _outNonMaterializedDocId;
     } else {
       vars[vars.size() - 1] = _outVariable;
@@ -197,13 +195,13 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   // Following two variables should be set in pairs.
   // Info is split between 2 registers to allow constructing
-  // AqlValue with type VPACK_INLINE, which is much faster.
-  // CollectionId  is needed for materialization node -
+  // AqlValue with type VPACK_INLINE, which is much faster(no allocations!).
+  // CollectionId  is needed for materialization step -
   // as view could return documents from different collections.
   /// @brief output variable to write only non-materialized document ids
   aql::Variable const* _outNonMaterializedDocId;
   /// @brief output variable to write only non-materialized collection ids
-  aql::Variable const* _outNonMaterializedColId;
+  aql::Variable const* _outNonMaterializedColPtr;
 
 
   /// @brief filter node to pass to the view

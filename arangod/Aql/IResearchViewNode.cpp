@@ -384,7 +384,7 @@ bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
       // found nondeterministic setter
       return true;
     }
-
+    //!!!! check possible optimization usability
     switch (setter->getType()) {
       case aql::ExecutionNode::ENUMERATE_COLLECTION:
       case aql::ExecutionNode::ENUMERATE_LIST:
@@ -414,7 +414,7 @@ bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node) {
     if (!dep) {
       break;
     }
-
+    /// !!!! check optimization usability
     switch (dep->getType()) {
       case aql::ExecutionNode::ENUMERATE_COLLECTION:
       case aql::ExecutionNode::INDEX:
@@ -639,6 +639,21 @@ SnapshotPtr snapshotSingleServer(IResearchViewNode const& node, transaction::Met
   return reader;
 }
 
+const char* NODE_DATABAE_PARAM = "database";
+const char* NODE_VIEW_NAME_PARAM = "view";
+const char* NODE_VIEW_ID_PARAM = "viewId";
+const char* NODE_OUT_VARIABLE_PARAM = "outVariable";
+const char* NODE_OUT_NM_DOC_PARAM = "outNmDocId";
+const char* NODE_OUT_NM_COL_PARAM = "outNmColPtr";
+const char* NODE_CONDITION_PARAM = "condition";
+const char* NODE_SCORERS_PARAM = "scorers";
+const char* NODE_SHARDS_PARAM = "shards";
+const char* NODE_OPTIONS_PARAM = "options";
+const char* NODE_VOLATILITY_PARAM = "volatility";
+const char* NODE_PRIMARY_SORT_PARAM = "primarySort";
+const char* NODE_PRIMARY_SORT_BUCKETS_PARAM = "primarySortBuckets";
+
+
 }  // namespace
 
 namespace arangodb {
@@ -663,7 +678,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, size_t id,
       _filterCondition(filterCondition ? filterCondition : &ALL),
       _scorers(std::move(scorers)),
       _outNonMaterializedDocId(nullptr),
-      _outNonMaterializedColId(nullptr) {
+      _outNonMaterializedColPtr(nullptr) {
   TRI_ASSERT(_view);
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
   TRI_ASSERT(LogicalView::category() == _view->category());
@@ -683,18 +698,31 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
     : aql::ExecutionNode(&plan, base),
       _vocbase(plan.getAst()->query()->vocbase()),
       _outVariable(
-          aql::Variable::varFromVPack(plan.getAst(), base, "outVariable")),
+          aql::Variable::varFromVPack(plan.getAst(), base, NODE_OUT_VARIABLE_PARAM)),
+      _outNonMaterializedDocId(
+          aql::Variable::varFromVPack(plan.getAst(), base, NODE_OUT_NM_DOC_PARAM, true)),
+      _outNonMaterializedColPtr(
+          aql::Variable::varFromVPack(plan.getAst(), base, NODE_OUT_NM_COL_PARAM, true)),
       // in case if filter is not specified
       // set it to surrogate 'RETURN ALL' node
       _filterCondition(&ALL),
-      _scorers(fromVelocyPack(plan, base.get("scorers"))) {
+      _scorers(fromVelocyPack(plan, base.get(NODE_SCORERS_PARAM))) {
+
+  if ((_outNonMaterializedColPtr != nullptr) != (_outNonMaterializedDocId != nullptr)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+      std::string("invalid node config, '").append(NODE_OUT_NM_DOC_PARAM)
+        .append("' attribute should be consistent with '")
+        .append(NODE_OUT_NM_COL_PARAM).append("' attribute"));
+  }
+
   // view
-  auto const viewIdSlice = base.get("viewId");
+  auto const viewIdSlice = base.get(NODE_VIEW_ID_PARAM);
 
   if (!viewIdSlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "invalid vpack format, 'viewId' attribute is intended to be a string");
+        std::string("invalid vpack format, '").append(NODE_VIEW_ID_PARAM)
+          .append("' attribute is intended to be a string"));
   }
 
   auto const viewId = viewIdSlice.copyString();
@@ -714,7 +742,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
   }
 
   // filter condition
-  auto const filterSlice = base.get("condition");
+  auto const filterSlice = base.get(NODE_CONDITION_PARAM);
 
   if (filterSlice.isObject() && !filterSlice.isEmptyObject()) {
     // AST will own the node
@@ -722,7 +750,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
   }
 
   // shards
-  auto const shardsSlice = base.get("shards");
+  auto const shardsSlice = base.get(NODE_SHARDS_PARAM);
 
   if (shardsSlice.isArray()) {
     TRI_ASSERT(plan.getAst() && plan.getAst()->query());
@@ -751,7 +779,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
   // options
   TRI_ASSERT(plan.getAst() && plan.getAst()->query());
 
-  auto const options = base.get("options");
+  auto const options = base.get(NODE_OPTIONS_PARAM);
 
   if (!::fromVelocyPack(options, _options)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -760,14 +788,14 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
   }
 
   // volatility mask
-  auto const volatilityMaskSlice = base.get("volatility");
+  auto const volatilityMaskSlice = base.get(NODE_VOLATILITY_PARAM);
 
   if (volatilityMaskSlice.isNumber()) {
     _volatilityMask = volatilityMaskSlice.getNumber<int>();
   }
 
   // primary sort
-  auto const primarySortSlice = base.get("primarySort");
+  auto const primarySortSlice = base.get(NODE_PRIMARY_SORT_PARAM);
 
   if (!primarySortSlice.isNone()) {
     std::string error;
@@ -793,13 +821,15 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
     if (!primarySort.empty()) {
       size_t primarySortBuckets = primarySort.size();
 
-      auto const primarySortBucketsSlice = base.get("primarySortBuckets");
+      auto const primarySortBucketsSlice = base.get(NODE_PRIMARY_SORT_BUCKETS_PARAM);
 
       if (!primarySortBucketsSlice.isNone()) {
         if (!primarySortBucketsSlice.isNumber()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
-            "invalid vpack format: 'primarySortBuckets' attribute is intended to be a number");
+            std::string("invalid vpack format: '")
+              .append(NODE_PRIMARY_SORT_BUCKETS_PARAM)
+              .append("' attribute is intended to be a number"));
         }
 
         primarySortBuckets = primarySortBucketsSlice.getNumber<size_t>();
@@ -848,10 +878,10 @@ void IResearchViewNode::planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHe
   // Plan register for document-id only block
   if(_outNonMaterializedDocId != nullptr) {
     // paired variable should be there as well
-    TRI_ASSERT(_outNonMaterializedColId != nullptr);
+    TRI_ASSERT(_outNonMaterializedColPtr != nullptr);
     ++nrRegsHere[depth];
     ++nrRegs[depth];
-    varInfo.emplace(_outNonMaterializedColId->id, VarInfo(depth, totalNrRegs++));
+    varInfo.emplace(_outNonMaterializedColPtr->id, VarInfo(depth, totalNrRegs++));
     ++nrRegsHere[depth];
     ++nrRegs[depth];
     varInfo.emplace(_outNonMaterializedDocId->id, VarInfo(depth, totalNrRegs++));
@@ -868,23 +898,35 @@ std::pair<bool, bool> IResearchViewNode::volatility(bool force /*=false*/) const
   );
 }
 
+
+
 /// @brief toVelocyPack, for EnumerateViewNode
 void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   // call base class method
   aql::ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   // system info
-  nodes.add("database", VPackValue(_vocbase.name()));
+  nodes.add(NODE_DATABAE_PARAM, VPackValue(_vocbase.name()));
   // need 'view' field to correctly print view name in JS explanation
-  nodes.add("view", VPackValue(_view->name()));
-  nodes.add("viewId", VPackValue(basics::StringUtils::itoa(_view->id())));
+  nodes.add(NODE_VIEW_NAME_PARAM, VPackValue(_view->name()));
+  nodes.add(NODE_VIEW_ID_PARAM, VPackValue(basics::StringUtils::itoa(_view->id())));
 
   // our variable
-  nodes.add(VPackValue("outVariable"));
+  nodes.add(VPackValue(NODE_OUT_VARIABLE_PARAM));
   _outVariable->toVelocyPack(nodes);
 
+  if (_outNonMaterializedDocId != nullptr) {
+    nodes.add(VPackValue(NODE_OUT_NM_DOC_PARAM));
+    _outNonMaterializedDocId->toVelocyPack(nodes);
+  } 
+
+  if (_outNonMaterializedColPtr != nullptr) {
+    nodes.add(VPackValue(NODE_OUT_NM_COL_PARAM));
+    _outNonMaterializedColPtr->toVelocyPack(nodes);
+  } 
+
   // filter condition
-  nodes.add(VPackValue("condition"));
+  nodes.add(VPackValue(NODE_CONDITION_PARAM));
   if (!::filterConditionIsEmpty(_filterCondition)) {
     _filterCondition->toVelocyPack(nodes, flags != 0);
   } else {
@@ -893,31 +935,31 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) 
   }
 
   // sort condition
-  nodes.add(VPackValue("scorers"));
+  nodes.add(VPackValue(NODE_SCORERS_PARAM));
   ::toVelocyPack(nodes, _scorers, flags != 0);
 
   // shards
   {
-    VPackArrayBuilder arrayScope(&nodes, "shards");
+    VPackArrayBuilder arrayScope(&nodes, NODE_SHARDS_PARAM);
     for (auto& shard : _shards) {
       nodes.add(VPackValue(shard));
     }
   }
 
   // options
-  nodes.add(VPackValue("options"));
+  nodes.add(VPackValue(NODE_OPTIONS_PARAM));
   ::toVelocyPack(nodes, _options);
 
   // volatility mask
-  nodes.add("volatility", VPackValue(_volatilityMask));
+  nodes.add(NODE_VOLATILITY_PARAM, VPackValue(_volatilityMask));
 
   // primarySort
   if (_sort.first && !_sort.first->empty()) {
     {
-      VPackArrayBuilder arrayScope(&nodes, "primarySort");
+      VPackArrayBuilder arrayScope(&nodes, NODE_PRIMARY_SORT_PARAM);
       _sort.first->toVelocyPack(nodes);
     }
-    nodes.add("primarySortBuckets", VPackValue(_sort.second));
+    nodes.add(NODE_PRIMARY_SORT_BUCKETS_PARAM, VPackValue(_sort.second));
   }
 
 
@@ -964,9 +1006,19 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   TRI_ASSERT(plan);
 
   auto* outVariable = _outVariable;
+  auto* outNonMaterializedDocId = _outNonMaterializedDocId;
+  auto* outNonMaterializedColId = _outNonMaterializedColPtr;
 
   if (withProperties) {
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    if (outNonMaterializedDocId != nullptr) {
+      TRI_ASSERT(_outNonMaterializedColPtr != nullptr);
+      outNonMaterializedDocId = plan->getAst()->variables()->createVariable(outNonMaterializedDocId);
+    }
+    if (outNonMaterializedColId != nullptr) {
+      TRI_ASSERT(_outNonMaterializedDocId != nullptr);
+      outNonMaterializedColId = plan->getAst()->variables()->createVariable(outNonMaterializedColId);
+    }
   }
 
   auto node =
@@ -977,7 +1029,9 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   node->_options = _options;
   node->_volatilityMask = _volatilityMask;
   node->_sort = _sort;
-
+  if (outNonMaterializedColId != nullptr && outNonMaterializedDocId != nullptr) {
+    node->skipMaterializationTo(outNonMaterializedColId, outNonMaterializedDocId);
+  }
   return cloneHelper(std::move(node), withDependencies, withProperties);
 }
 
@@ -1133,7 +1187,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   aql::RegisterId numDocumentRegs = 1;
   // Also we could be asked to produce only document/collection ids for later materialization
-  if(_outNonMaterializedColId != nullptr) {
+  if(_outNonMaterializedColPtr != nullptr) {
     numDocumentRegs += 2;
   }
 
@@ -1170,7 +1224,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                                 volatility(),
                                                 getRegisterPlan()->varInfo,
                                                 getDepth(),
-                                                _outNonMaterializedColId == nullptr};
+                                                _outNonMaterializedColPtr == nullptr};
 
   if (_sort.first) {
     TRI_ASSERT(!_sort.first->empty()); // guaranteed by optimizer rule

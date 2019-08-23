@@ -785,7 +785,7 @@ class LimitNode : public ExecutionNode {
  public: 
   LimitNode(ExecutionPlan* plan, size_t id, size_t offset, size_t limit)
       : ExecutionNode(plan, id), _offset(offset), _limit(limit), _fullCount(false),
-        _inNonMaterializedDocId(nullptr), _inNonMaterializedColId(nullptr),
+        _inNonMaterializedDocId(nullptr), _inNonMaterializedColPtr(nullptr),
         _outMaterializedDocument(nullptr){}
 
   LimitNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
@@ -804,12 +804,30 @@ class LimitNode : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = std::make_unique<LimitNode>(plan, _id, _offset, _limit);
+
+    auto* inNonMaterializedDocId = _inNonMaterializedDocId;
+    auto* inNonMaterializedColPtr = _inNonMaterializedColPtr;
+    auto* outMaterializedDocument = _outMaterializedDocument;
+    if (withProperties) {
+      if (_inNonMaterializedDocId != nullptr) {
+         inNonMaterializedDocId = plan->getAst()->variables()->createVariable(inNonMaterializedDocId);
+      }
+      if (_inNonMaterializedColPtr != nullptr) {
+        inNonMaterializedColPtr = plan->getAst()->variables()->createVariable(inNonMaterializedColPtr);
+      }
+      if (_outMaterializedDocument != nullptr) {
+        outMaterializedDocument = plan->getAst()->variables()->createVariable(outMaterializedDocument);
+      }
+    }
+    auto c = std::make_unique<LimitNode>(plan, _id, _offset, _limit,);
 
     if (_fullCount) {
       c->setFullCount();
     }
-
+    if (outMaterializedDocument != nullptr) {
+      c->doMaterialization(inNonMaterializedColPtr, inNonMaterializedDocId,
+                           outMaterializedDocument);
+    }
     return cloneHelper(std::move(c), withDependencies, withProperties);
   }
 
@@ -830,13 +848,13 @@ class LimitNode : public ExecutionNode {
   std::vector<arangodb::aql::Variable const*> getVariablesSetHere() const override final;
 
   void doMaterializationOf(
-    aql::Variable const* colIdVariable, 
+    aql::Variable const* colPtrVariable, 
     aql::Variable const* docIdVariable,
     aql::Variable const* outDocument) noexcept {
-    TRI_ASSERT((docIdVariable != nullptr) == (colIdVariable != nullptr));
+    TRI_ASSERT((docIdVariable != nullptr) == (colPtrVariable != nullptr));
     TRI_ASSERT((docIdVariable != nullptr) == (outDocument != nullptr));
     _inNonMaterializedDocId = docIdVariable;
-    _inNonMaterializedColId = colIdVariable;
+    _inNonMaterializedColPtr = colPtrVariable;
     _outMaterializedDocument = outDocument;
   }
 
@@ -850,15 +868,16 @@ class LimitNode : public ExecutionNode {
   /// @brief whether or not the node should fully count what it limits
   bool _fullCount;
 
- // Following three variables should be set coherently.
+  // Following three variables should be set coherently.
   // Info is split between 2 registers to allow constructing
   // AqlValue with type VPACK_INLINE, which is much faster.
-  // CollectionId  is needed for materialization node -
+  // CollectionPtr  is needed for materialization -
   // as view could return documents from different collections.
+
   /// @brief output variable to write only non-materialized document ids
   aql::Variable const* _inNonMaterializedDocId;
-  /// @brief output variable to write only non-materialized collection ids
-  aql::Variable const* _inNonMaterializedColId;
+  /// @brief output variable to write only non-materialized collection ptrs
+  aql::Variable const* _inNonMaterializedColPtr;
   /// @brief finally materialized document
   aql::Variable const* _outMaterializedDocument;
 
