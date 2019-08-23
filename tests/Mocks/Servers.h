@@ -98,6 +98,9 @@ class MockClusterServer : public MockServer {
   MockClusterServer();
   ~MockClusterServer();
 
+  void agencyTrx(std::string const& key, std::string const& value);
+  void agencyCreateDatabase(std::string const& name);
+
  private:
   arangodb::consensus::Store _agencyStore;
   arangodb::ServerState::RoleEnum _oldRole;

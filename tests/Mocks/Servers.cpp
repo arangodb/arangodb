@@ -65,6 +65,11 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::tests;
 using namespace arangodb::tests::mocks;
@@ -94,16 +99,19 @@ class TemplateSpecializer {
   std::unordered_map<std::string, std::string> _replacements;
   int _nextId;
   int _nextServerNumber;
+  std::string _dbName;
 
   enum ReplacementCase {
     Not,
     Number,
     Shard,
-    DBServer
+    DBServer,
+    DBName
   };
 
  public:
-  TemplateSpecializer() : _nextId(101), _nextServerNumber(1) {
+  TemplateSpecializer(std::string const& dbName)
+    : _nextId(101), _nextServerNumber(1), _dbName(dbName) {
   }
 
   std::string specialize(char const* templ) {
@@ -136,6 +144,9 @@ class TemplateSpecializer {
               case ReplacementCase::DBServer:
                 newSt = std::string("PRMR_000") +
                         std::to_string(_nextServerNumber++);
+                break;
+              case ReplacementCase::DBName:
+                newSt = _dbName;
                 break;
               case ReplacementCase::Not:
                 newSt = st;
@@ -178,6 +189,9 @@ class TemplateSpecializer {
   ReplacementCase whichCase(std::string& st) {
     bool onlyNumbers = true;
     size_t pos = 0;
+    if (st == "db") {
+      return ReplacementCase::DBName;
+    }
     ReplacementCase c = ReplacementCase::Number;
     if (pos < st.size() && st[pos] == 's') {
       c = ReplacementCase::Shard;
@@ -493,6 +507,36 @@ MockClusterServer::~MockClusterServer() {
   arangodb::ServerState::instance()->setRole(_oldRole);
 }
 
+void MockClusterServer::agencyTrx(std::string const& key,
+                                  std::string const& value) {
+  // Build an agency transaction:
+  VPackBuilder b;
+  {
+    VPackArrayBuilder guard(&b);
+    {
+      VPackObjectBuilder guard2(&b);
+      auto b2 = VPackParser::fromJson(value);
+      b.add(key, b2->slice());
+    }
+  }
+  _agencyStore.applyTransaction(b.slice());
+}
+  
+void MockClusterServer::agencyCreateDatabase(std::string const& name) {
+  TemplateSpecializer ts(name);
+
+  std::string st = ts.specialize(plan_dbs_string);
+  agencyTrx("/arango/Plan/Databases/" + name, st);
+  st = ts.specialize(plan_colls_string);
+  agencyTrx("/arango/Plan/Collections/" + name, st);
+  st = ts.specialize(current_dbs_string);
+  agencyTrx("/arango/Current/Databases/" + name, st);
+  st = ts.specialize(current_colls_string);
+  agencyTrx("/arango/Current/Collections/" + name, st);
+  agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=");
+  agencyTrx("/arango/Plan/Current", R"=({"op":"increment"})=");
+}
+
 MockDBServer::MockDBServer() : MockClusterServer() {
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
   _features.emplace(new arangodb::FlushFeature(_server), false);  // do not start the thread
@@ -502,7 +546,7 @@ MockDBServer::MockDBServer() : MockClusterServer() {
 MockDBServer::~MockDBServer() {}
 
 TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
-  // TODO call templated plan
+  agencyCreateDatabase(name);
   auto* ci = ClusterInfo::instance();
   TRI_ASSERT(ci != nullptr);
   ci->loadPlan();
@@ -521,7 +565,7 @@ MockCoordinator::MockCoordinator() : MockClusterServer() {
 MockCoordinator::~MockCoordinator() {}
 
 TRI_vocbase_t* MockCoordinator::createDatabase(std::string const& name) {
-  // TODO call templated plan
+  agencyCreateDatabase(name);
   auto* ci = ClusterInfo::instance();
   TRI_ASSERT(ci != nullptr);
   ci->loadPlan();
