@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "../Mocks/StorageEngineMock.h"
+#include "../Mocks/Servers.h"
 #include "AgencyMock.h"
 #include "common.h"
 #include "gtest/gtest.h"
@@ -101,218 +102,40 @@
 
 class IResearchViewCoordinatorTest : public ::testing::Test {
  protected:
-  struct ClusterCommControl : arangodb::ClusterComm {
-    static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
-  };
 
-  arangodb::consensus::Store _agencyStore{nullptr, "arango"};
-  GeneralClientConnectionAgencyMock* agency;
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
-  std::map<std::string, std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
-  std::vector<arangodb::application_features::ApplicationFeature*> orderedFeatures;
-  std::string testFilesystemPath;
+  arangodb::tests::mocks::MockCoordinator server;
+  arangodb::consensus::Store& _agencyStore;
 
-  IResearchViewCoordinatorTest() : engine(server), server(std::make_shared<arangodb::options::ProgramOptions>("", "", "", nullptr), nullptr) {
-    // need 2 connections or Agency callbacks will fail
-    auto* agencyCommManager = new AgencyCommManagerMock("arango");
-    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
-    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
-    arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
-
+  IResearchViewCoordinatorTest() : server(), _agencyStore(server.getAgencyStore()) {
+/*
     arangodb::EngineSelectorFeature::ENGINE = &engine;
     // register factories & normalizers
     auto& indexFactory = const_cast<arangodb::IndexFactory&>(engine.indexFactory());
     indexFactory.emplace(arangodb::iresearch::DATA_SOURCE_TYPE.name(),
                          arangodb::iresearch::IResearchLinkCoordinator::factory());
-
+*/
     arangodb::tests::init();
-
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::WARN);
-    // pretend we're on coordinator
-    serverRoleBeforeSetup = arangodb::ServerState::instance()->getRole();
-    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
-
-    auto buildFeatureEntry = [&](arangodb::application_features::ApplicationFeature* ftr,
-                                 bool start) -> void {
-      std::string name = ftr->name();
-      features.emplace(name, std::make_pair(ftr, start));
-    };
-    arangodb::application_features::ApplicationFeature* tmpFeature;
-
-    buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(server, false), false);
-    buildFeatureEntry(new arangodb::application_features::CommunicationFeaturePhase(server),
-                      false);
-    buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(server), false);
-    buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(server), false);
-    buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(server, false),
-                      false);
-    buildFeatureEntry(new arangodb::application_features::V8FeaturePhase(server), false);
-
-    // setup required application features
-    buildFeatureEntry(new arangodb::V8DealerFeature(server), false);
-    buildFeatureEntry(new arangodb::ViewTypesFeature(server), true);
-    buildFeatureEntry(tmpFeature = new arangodb::QueryRegistryFeature(server), false);
-    arangodb::application_features::ApplicationServer::server->addFeature(tmpFeature);  // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                                     0, TRI_VOC_SYSTEM_DATABASE);
-    buildFeatureEntry(new arangodb::SystemDatabaseFeature(server, system.get()),
-                      false);  // required for IResearchAnalyzerFeature
-    buildFeatureEntry(new arangodb::RandomFeature(server), false);  // required by AuthenticationFeature
-    buildFeatureEntry(new arangodb::AuthenticationFeature(server), false);
-    buildFeatureEntry(arangodb::DatabaseFeature::DATABASE =
-                          new arangodb::DatabaseFeature(server),
-                      false);
-    buildFeatureEntry(new arangodb::DatabasePathFeature(server), false);
-    buildFeatureEntry(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
-    buildFeatureEntry(new arangodb::AqlFeature(server), true);
-    buildFeatureEntry(new arangodb::aql::AqlFunctionFeature(server), true);  // required for IResearchAnalyzerFeature
-    buildFeatureEntry(new arangodb::iresearch::IResearchFeature(server), true);
-    buildFeatureEntry(new arangodb::aql::OptimizerRulesFeature(server), true);
-    buildFeatureEntry(new arangodb::FlushFeature(server), false);  // do not start the thread
-    buildFeatureEntry(new arangodb::ClusterFeature(server), false);
-    buildFeatureEntry(new arangodb::ShardingFeature(server), false);
-    buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
-    buildFeatureEntry(new arangodb::UpgradeFeature(server, nullptr, {}), true);
-    buildFeatureEntry(new arangodb::InitDatabaseFeature(server, {}), true);
-
-
-#if USE_ENTERPRISE
-    buildFeatureEntry(new arangodb::LdapFeature(server),
-                      false);  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
-
-    for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(
-          f.second.first);
-    }
-    arangodb::application_features::ApplicationServer::server->setupDependencies(false);
-    orderedFeatures =
-        arangodb::application_features::ApplicationServer::server->getOrderedFeatures();
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
-                                    arangodb::LogLevel::FATAL);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::ENGINES.name(), arangodb::LogLevel::FATAL);  // suppress ERROR {engines} failed to instantiate index, error: ...
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress ERROR recovery failure due to error from callback
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::FATAL);
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
-
-
-    for (auto& f : orderedFeatures) {
-      f->prepare();
-
-      if (f->name() == "Authentication") {
-        f->forceDisable();
-      }
-    }
-
-    for (auto& f : orderedFeatures) {
-      if (features.at(f->name()).second) {
-        f->start();
-      }
-    }
-
-    auto* authFeature =
-        arangodb::application_features::ApplicationServer::getFeature<arangodb::AuthenticationFeature>(
-            "Authentication");
-    authFeature->enable();  // required for authentication tests
-
-
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
-
-    auto* dbPathFeature =
-        arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
-            "DatabasePath");
-    arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
-    testFilesystemPath = dbPathFeature->directory();
-
-    long systemError;
-    std::string systemErrorStr;
-    TRI_CreateDirectory(testFilesystemPath.c_str(), systemError, systemErrorStr);
-
-    agencyCommManager->start();  // initialize agency
-    arangodb::ServerState::instance()->setRebootId(1);
   }
 
   void createTestDatabase(TRI_vocbase_t*& vocbase) {
-    auto* database = arangodb::DatabaseFeature::DATABASE;
-    ASSERT_NE(nullptr, database);
-
-    // simulate heartbeat thread
-    ASSERT_EQ(TRI_ERROR_NO_ERROR, database->createDatabase(1, "testDatabase", vocbase));
-    // simulate heartbeat thread (create database in current)
-    // this is stupid.
-    {
-      auto const path = "/Current/Databases/" + vocbase->name();
-      auto const value = arangodb::velocypack::Parser::fromJson(
-//    TODO: This one asserts with "not an object". No idea why.
-//        "{ \"id\": \"1\" }" );
-      "{ \"id\": { \"id\": \"1\" } }" );
-      EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
-    }
-
+    vocbase = server->createDatabase("testDatabase");
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ("testDatabase", vocbase->name());
     ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
-    ASSERT_EQ(1, vocbase->id());
-
-    ASSERT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
-                     arangodb::velocypack::Slice::emptyObjectSlice())
-                     .ok()));
-  };
-
-  ~IResearchViewCoordinatorTest() {
-    system.reset();  // destroy before reseting the 'ENGINE'
-    TRI_RemoveDirectory(testFilesystemPath.c_str());
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::ENGINES.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::ClusterInfo::cleanup();  // reset ClusterInfo::instance() before DatabaseFeature::unprepare()
-    arangodb::application_features::ApplicationServer::server = nullptr;
-
-    // destroy application features
-    for (auto f = orderedFeatures.rbegin(); f != orderedFeatures.rend(); ++f) {
-      if (features.at((*f)->name()).second) {
-        (*f)->stop();
-      }
-    }
-
-    for (auto f = orderedFeatures.rbegin(); f != orderedFeatures.rend(); ++f) {
-      (*f)->unprepare();
-    }
-
-    ClusterCommControl::reset();
-    arangodb::ServerState::instance()->setRole(serverRoleBeforeSetup);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 
-  arangodb::ServerState::RoleEnum serverRoleBeforeSetup;
+  ~IResearchViewCoordinatorTest() {
+  }
 };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(IResearchViewCoordinatorTest, DISABLED_DISABLED_test_type) {
+TEST_F(IResearchViewCoordinatorTest, test_type) {
   EXPECT_TRUE((arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(
                    "arangosearch")) == arangodb::iresearch::DATA_SOURCE_TYPE));
 }
@@ -327,8 +150,8 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_DISABLED_test_rename) {
   arangodb::LogicalView::ptr view;
   ASSERT_TRUE(
       (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), 0).ok()));
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(0 == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -385,7 +208,7 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_DISABLED_visit_collections) {
   auto* view =
       dynamic_cast<arangodb::iresearch::IResearchViewCoordinator*>(logicalView.get());
 
-  EXPECT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr != view);
   EXPECT_EQ(9, view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
@@ -752,8 +575,8 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_create_drop_view) {
     auto planVersion = arangodb::tests::getCurrentPlanVersion();
 
     auto view = ci->getView(vocbase->name(), viewId);
-    EXPECT_TRUE(nullptr != view);
-    EXPECT_TRUE(nullptr !=
+    ASSERT_TRUE(nullptr != view);
+    ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
     EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
@@ -775,7 +598,7 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_create_drop_view) {
     EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
 
     // check there is no more view
-    EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+    ASSERT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
 
     // drop already dropped view
     EXPECT_TRUE((view->drop().ok()));
@@ -796,8 +619,8 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_create_drop_view) {
     auto planVersion = arangodb::tests::getCurrentPlanVersion();
 
     auto view = ci->getView(vocbase->name(), viewId);
-    EXPECT_TRUE(nullptr != view);
-    EXPECT_TRUE(nullptr !=
+    ASSERT_TRUE(nullptr != view);
+    ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
     EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
@@ -819,7 +642,7 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_create_drop_view) {
     EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
 
     // check there is no more view
-    EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+    ASSERT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
 
     // drop already dropped view
     EXPECT_TRUE((view->drop().ok()));
@@ -1062,8 +885,8 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_properties) {
     auto planVersion = arangodb::tests::getCurrentPlanVersion();
 
     auto view = ci->getView(vocbase->name(), viewId);
-    EXPECT_TRUE(nullptr != view);
-    EXPECT_TRUE(nullptr !=
+    ASSERT_TRUE(nullptr != view);
+    ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
     EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
@@ -1101,8 +924,8 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_properties) {
 
       fullyUpdatedView = ci->getView(vocbase->name(), viewId);
       EXPECT_TRUE(fullyUpdatedView != view);  // different objects
-      EXPECT_TRUE(nullptr != fullyUpdatedView);
-      EXPECT_TRUE(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
+      ASSERT_TRUE(nullptr != fullyUpdatedView);
+      ASSERT_TRUE(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
                                  fullyUpdatedView));
       EXPECT_TRUE(planVersion == fullyUpdatedView->planVersion());
       EXPECT_TRUE("testView" == fullyUpdatedView->name());
@@ -1157,8 +980,8 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_properties) {
 
       auto partiallyUpdatedView = ci->getView(vocbase->name(), viewId);
       EXPECT_TRUE(partiallyUpdatedView != view);  // different objects
-      EXPECT_TRUE(nullptr != partiallyUpdatedView);
-      EXPECT_TRUE(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
+      ASSERT_TRUE(nullptr != partiallyUpdatedView);
+      ASSERT_TRUE(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
                                  partiallyUpdatedView));
       EXPECT_TRUE(planVersion == partiallyUpdatedView->planVersion());
       EXPECT_TRUE("testView" == partiallyUpdatedView->name());
@@ -1193,7 +1016,7 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_properties) {
     EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
 
     // there is no more view
-    EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+    ASSERT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
   }
 }
 
@@ -1500,8 +1323,8 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_links_partial_remove) 
   auto oldView = view;
   view = ci->getView(vocbase->name(), viewId);  // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -1745,8 +1568,8 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_links_partial_remove) 
   oldView = view;
   view = ci->getView(vocbase->name(), viewId);  // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -1927,7 +1750,7 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_links_partial_remove) 
   EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
 
   // there is no more view
-  EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+  ASSERT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
 
   // there are no more links
   {
@@ -2068,8 +1891,8 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_links_partial_add) {
   auto oldView = view;
   view = ci->getView(vocbase->name(), viewId);  // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -2252,8 +2075,8 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_links_partial_add) {
   oldView = view;
   view = ci->getView(vocbase->name(), viewId);  // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -2511,7 +2334,7 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_links_partial_add) {
   EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
 
   // there is no more view
-  EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+  ASSERT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
 
   // there are no more links
   {
@@ -2696,8 +2519,8 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_links_replace) {
   auto oldView = view;
   view = ci->getView(vocbase->name(), viewId);  // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -2897,8 +2720,8 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_links_replace) {
   oldView = view;
   view = ci->getView(vocbase->name(), viewId);  // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -3027,8 +2850,8 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_links_replace) {
   oldView = view;
   view = ci->getView(vocbase->name(), viewId);  // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -3141,7 +2964,7 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_links_replace) {
   EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
 
   // there is no more view
-  EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+  ASSERT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
 
   // there are no more links
   {
@@ -3291,8 +3114,8 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_links_clear) {
   auto oldView = view;
   view = ci->getView(vocbase->name(), viewId);  // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -3552,8 +3375,8 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_links_clear) {
   oldView = view;
   view = ci->getView(vocbase->name(), viewId);  // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -3619,7 +3442,7 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_update_links_clear) {
   EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
 
   // there is no more view
-  EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+  ASSERT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
 }
 
 TEST_F(IResearchViewCoordinatorTest, DISABLED_test_drop_link) {
@@ -3690,8 +3513,8 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_drop_link) {
     view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
         ci->getView(vocbase->name(), viewId));  // get new version of the view
     EXPECT_TRUE(view != oldView);               // different objects
-    EXPECT_TRUE(nullptr != view);
-    EXPECT_TRUE(nullptr !=
+    ASSERT_TRUE(nullptr != view);
+    ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
     EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
@@ -3817,8 +3640,8 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_drop_link) {
     view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
         ci->getView(vocbase->name(), viewId));  // get new version of the view
     EXPECT_TRUE(view != oldView);               // different objects
-    EXPECT_TRUE(nullptr != view);
-    EXPECT_TRUE(nullptr !=
+    ASSERT_TRUE(nullptr != view);
+    ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
     EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
@@ -3861,7 +3684,7 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_test_drop_link) {
     EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
 
     // there is no more view
-    EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+    ASSERT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
   }
 
   // add link (collection not authorized)
@@ -5451,8 +5274,8 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_IResearchViewNode_createBlock) {
     auto planVersion = arangodb::tests::getCurrentPlanVersion();
 
     auto view = ci->getView(vocbase->name(), viewId);
-    EXPECT_TRUE(nullptr != view);
-    EXPECT_TRUE(nullptr !=
+    ASSERT_TRUE(nullptr != view);
+    ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
     EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
@@ -5491,8 +5314,8 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_IResearchViewNode_createBlock) {
     node.planRegisters(nullptr);
     auto singletonBlock = singleton.createBlock(engine, cache);
     auto execBlock = node.createBlock(engine, cache);
-    EXPECT_TRUE(nullptr != execBlock);
-    EXPECT_TRUE(nullptr !=
+    ASSERT_TRUE(nullptr != execBlock);
+    ASSERT_TRUE(nullptr !=
                 dynamic_cast<arangodb::aql::ExecutionBlockImpl<arangodb::aql::NoResultsExecutor>*>(
                     execBlock.get()));
 
@@ -5501,6 +5324,6 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_IResearchViewNode_createBlock) {
     EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
 
     // check there is no more view
-    EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+    ASSERT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
   }
 }

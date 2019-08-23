@@ -61,7 +61,7 @@ class MockServer {
 
  protected:
   // Implementation knows the place when all features are included
-  void startFeatures();
+  virtual void startFeatures();
 
  private:
   // Will be called by destructor
@@ -92,11 +92,16 @@ class MockRestServer : public MockServer {
 class MockClusterServer : public MockServer {
  public:
   virtual TRI_vocbase_t* createDatabase(std::string const& name) = 0;
+  arangodb::consensus::Store& getAgencyStore() { return _agencyStore; };
 
   // You can only create specialized types
  protected:
   MockClusterServer();
   ~MockClusterServer();
+
+ protected:
+  // Implementation knows the place when all features are included
+  void startFeatures() override;
 
  private:
   arangodb::consensus::Store _agencyStore;

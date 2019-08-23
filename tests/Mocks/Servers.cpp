@@ -45,6 +45,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
+#include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -102,6 +103,7 @@ static void SetupDatabaseFeaturePhase(
   features.emplace(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(server),
                    false);
   features.emplace(new arangodb::SystemDatabaseFeature(server), true);
+  features.emplace(new arangodb::InitDatabaseFeature(server, {}), true);
   features.emplace(new arangodb::ViewTypesFeature(server), false);  // true ??
 
 #if USE_ENTERPRISE
@@ -149,7 +151,9 @@ static void SetupAqlPhase(
   features.emplace(new arangodb::TraverserEngineRegistryFeature(server), false);
 }
 
-MockServer::MockServer() : _server(nullptr, nullptr), _engine(_server) {
+MockServer::MockServer()
+    : _server(std::make_shared<arangodb::options::ProgramOptions>("", "", "", nullptr), nullptr),
+      _engine(_server) {
   arangodb::EngineSelectorFeature::ENGINE = &_engine;
   init();
 }
@@ -366,6 +370,12 @@ MockClusterServer::MockClusterServer()
 
 MockClusterServer::~MockClusterServer() {
   arangodb::ServerState::instance()->setRole(_oldRole);
+}
+
+void MockClusterServer::startFeatures() {
+  MockServer::startFeatures();
+  arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
+  arangodb::ServerState::instance()->setRebootId(1);
 }
 
 MockDBServer::MockDBServer() : MockClusterServer() {
