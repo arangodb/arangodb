@@ -81,7 +81,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   void skipMaterializationTo(aql::Variable const* colPtrVariable,
                              aql::Variable const* docIdVariable) noexcept {
-    TRI_ASSERT((docIdVariable != nullptr) == (colIdVariable != nullptr));
+    TRI_ASSERT((docIdVariable != nullptr) == (colPtrVariable != nullptr));
     _outNonMaterializedDocId = docIdVariable;
     _outNonMaterializedColPtr = colPtrVariable;
   }

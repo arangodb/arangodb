@@ -803,33 +803,7 @@ class LimitNode : public ExecutionNode {
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final {
-
-    auto* inNonMaterializedDocId = _inNonMaterializedDocId;
-    auto* inNonMaterializedColPtr = _inNonMaterializedColPtr;
-    auto* outMaterializedDocument = _outMaterializedDocument;
-    if (withProperties) {
-      if (_inNonMaterializedDocId != nullptr) {
-         inNonMaterializedDocId = plan->getAst()->variables()->createVariable(inNonMaterializedDocId);
-      }
-      if (_inNonMaterializedColPtr != nullptr) {
-        inNonMaterializedColPtr = plan->getAst()->variables()->createVariable(inNonMaterializedColPtr);
-      }
-      if (_outMaterializedDocument != nullptr) {
-        outMaterializedDocument = plan->getAst()->variables()->createVariable(outMaterializedDocument);
-      }
-    }
-    auto c = std::make_unique<LimitNode>(plan, _id, _offset, _limit,);
-
-    if (_fullCount) {
-      c->setFullCount();
-    }
-    if (outMaterializedDocument != nullptr) {
-      c->doMaterialization(inNonMaterializedColPtr, inNonMaterializedDocId,
-                           outMaterializedDocument);
-    }
-    return cloneHelper(std::move(c), withDependencies, withProperties);
-  }
+                       bool withProperties) const override final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;

@@ -1552,6 +1552,34 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
                                                              std::move(infos));
 }
 
+ExecutionNode* LimitNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                bool withProperties) const {
+  auto* inNonMaterializedDocId = _inNonMaterializedDocId;
+  auto* inNonMaterializedColPtr = _inNonMaterializedColPtr;
+  auto* outMaterializedDocument = _outMaterializedDocument;
+  if (withProperties) {
+    if (_inNonMaterializedDocId != nullptr) {
+        inNonMaterializedDocId = plan->getAst()->variables()->createVariable(inNonMaterializedDocId);
+    }
+    if (_inNonMaterializedColPtr != nullptr) {
+      inNonMaterializedColPtr = plan->getAst()->variables()->createVariable(inNonMaterializedColPtr);
+    }
+    if (_outMaterializedDocument != nullptr) {
+      outMaterializedDocument = plan->getAst()->variables()->createVariable(outMaterializedDocument);
+    }
+  }
+  auto c = std::make_unique<LimitNode>(plan, _id, _offset, _limit);
+
+  if (_fullCount) {
+    c->setFullCount();
+  }
+  if (outMaterializedDocument != nullptr) {
+    c->doMaterializationOf(inNonMaterializedColPtr, inNonMaterializedDocId,
+                          outMaterializedDocument);
+  }
+  return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
 void LimitNode::getVariablesUsedHere(
     arangodb::HashSet<arangodb::aql::Variable const*>& vars) const {
   if(_inNonMaterializedColPtr != nullptr && _inNonMaterializedDocId != nullptr) {
