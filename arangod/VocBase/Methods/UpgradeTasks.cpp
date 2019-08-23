@@ -299,7 +299,6 @@ Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase, std::vector<std::s
   } catch (Result res) {
     return {res};
   } catch (...) {
-    // TODO: Is there anything more we can do here?
     return {TRI_ERROR_INTERNAL};
   }
   return {TRI_ERROR_NO_ERROR};
@@ -316,8 +315,8 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
   std::vector<std::shared_ptr<LogicalCollection>> presentSystemCollections;
   res = ::createSystemCollections(vocbase, presentSystemCollections);
 
-  // TODO: Maybe check or assert that all DBs are present (i.e. were present or
-  //       created), raise an error if not?
+  // TODO: Maybe check or assert that all collections are present (i.e. were
+  //       present or created), raise an error if not?
 
   if (res.fail()) {
     LOG_TOPIC("e32fi", ERR, Logger::MAINTENANCE)
