@@ -78,7 +78,7 @@ cache::Finding TraverserDocumentCache::lookup(arangodb::velocypack::StringRef id
 VPackSlice TraverserDocumentCache::lookupAndCache(arangodb::velocypack::StringRef id) {
   VPackSlice result = lookupInCollection(id);
   if (_cache != nullptr) {
-    void const* key = id.begin();
+    void const* key = id.data();
     auto keySize = static_cast<uint32_t>(id.length());
 
     void const* resVal = result.begin();

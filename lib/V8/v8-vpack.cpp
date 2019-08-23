@@ -273,7 +273,7 @@ template <typename T, bool inObject>
 static inline void AddValue(BuilderContext& context,
                             arangodb::velocypack::StringRef const& attributeName, T const& value) {
   if (inObject) {
-    context.builder.addUnchecked(attributeName.begin(), attributeName.size(), value);
+    context.builder.addUnchecked(attributeName.data(), attributeName.size(), value);
   } else {
     context.builder.add(value);
   }
