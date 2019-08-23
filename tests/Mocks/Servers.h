@@ -27,6 +27,7 @@
 
 #include "Agency/Store.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ServerState.h"
 
 struct TRI_vocbase_t;
 
@@ -89,6 +90,9 @@ class MockRestServer : public MockServer {
 };
 
 class MockClusterServer : public MockServer {
+ public:
+  virtual TRI_vocbase_t* createDatabase(std::string const& name) = 0;
+
   // You can only create specialized types
  protected:
   MockClusterServer();
@@ -96,12 +100,23 @@ class MockClusterServer : public MockServer {
 
  private:
   arangodb::consensus::Store _agencyStore;
+  arangodb::ServerState::RoleEnum _oldRole;
 };
 
 class MockDBServer : public MockClusterServer {
  public:
   MockDBServer();
   ~MockDBServer();
+
+  TRI_vocbase_t* createDatabase(std::string const& name) override;
+};
+
+class MockCoordinator : public MockClusterServer {
+ public:
+  MockCoordinator();
+  ~MockCoordinator();
+
+  TRI_vocbase_t* createDatabase(std::string const& name) override;
 };
 
 }  // namespace mocks
