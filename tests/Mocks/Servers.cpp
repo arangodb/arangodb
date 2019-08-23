@@ -483,18 +483,8 @@ MockClusterServer::MockClusterServer()
   irs::logger::output_le(::iresearch::logger::IRL_FATAL, stderr);
 
   // Add features
-  SetupV8Phase(_features, _server);
+  SetupAqlPhase(_features, _server);
 
-  // setup required application features
-  // required for AgencyComm::send(...)
-  // required for TRI_vocbase_t::renameView(...)
-  _features.emplace(new arangodb::QueryRegistryFeature(_server),
-                    false);  // required for TRI_vocbase_t instantiation
-
-  _features.emplace(new arangodb::iresearch::IResearchAnalyzerFeature(_server),
-                    false);  // required for IResearchLinkMeta::init(...)
-  _features.emplace(new arangodb::iresearch::IResearchFeature(_server),
-                    false);  // required for instantiating IResearchView*
   _features.emplace(new arangodb::UpgradeFeature(_server, nullptr, {}), true);
 }
 
