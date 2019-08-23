@@ -553,8 +553,9 @@ TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
   ci->loadCurrent();
   auto* databaseFeature = arangodb::DatabaseFeature::DATABASE;
   TRI_ASSERT(databaseFeature != nullptr);
-  databaseFeature->lookupDatabase(name);
-  return nullptr;
+  auto vocbase = databaseFeature->lookupDatabase(name);
+  TRI_ASSERT(vocbase != nullptr);
+  return vocbase;
 };
 
 MockCoordinator::MockCoordinator() : MockClusterServer() {
@@ -572,6 +573,7 @@ TRI_vocbase_t* MockCoordinator::createDatabase(std::string const& name) {
   ci->loadCurrent();
   auto* databaseFeature = arangodb::DatabaseFeature::DATABASE;
   TRI_ASSERT(databaseFeature != nullptr);
-  databaseFeature->lookupDatabase(name);
-  return nullptr;
+  auto vocbase = databaseFeature->lookupDatabase(name);
+  TRI_ASSERT(vocbase != nullptr);
+  return vocbase;
 };
