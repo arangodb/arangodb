@@ -43,7 +43,7 @@ using EN = arangodb::aql::ExecutionNode;
 void MMFilesOptimizerRules::registerResources() {
   // remove SORT RAND() if appropriate
   OptimizerRulesFeature::registerRule("remove-sort-rand", removeSortRandRule,
-                                      OptimizerRule::removeSortRandRule, 
+                                      OptimizerRule::removeSortRandRule,
                                       OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 }
 
@@ -114,8 +114,7 @@ void MMFilesOptimizerRules::removeSortRandRule(Optimizer* opt,
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
         case EN::INDEX:
-        case EN::ENUMERATE_IRESEARCH_VIEW:
-        {
+        case EN::ENUMERATE_IRESEARCH_VIEW: {
           // if we found another SortNode, a CollectNode, FilterNode, a
           // SubqueryNode, an EnumerateListNode, a TraversalNode or an IndexNode
           // this means we cannot apply our optimization

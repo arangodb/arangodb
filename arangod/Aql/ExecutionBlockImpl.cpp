@@ -72,19 +72,21 @@ using namespace arangodb::aql;
  * constexpr bool someClassHasSomeMethod = hasSomeMethod<SomeClass>::value;
  */
 
-#define CREATE_HAS_MEMBER_CHECK(methodName, checkName)  \
-  template <typename T>                                 \
-  class checkName {                                     \
-    typedef char yes[1];                                \
-    typedef char no[2];                                 \
-                                                        \
-    template <typename C>                               \
-    static yes& test(decltype(&C::methodName));         \
-    template <typename>                                 \
-    static no& test(...);                               \
-                                                        \
-   public:                                              \
-    enum { value = sizeof(test<T>(0)) == sizeof(yes) }; \
+#define CREATE_HAS_MEMBER_CHECK(methodName, checkName)     \
+  template <typename T>                                    \
+  class checkName {                                        \
+    typedef char yes[1];                                   \
+    typedef char no[2];                                    \
+                                                           \
+    template <typename C>                                  \
+    static yes& test(decltype(&C::methodName));            \
+    template <typename C>                                  \
+    static yes& test(decltype(&C::template methodName<>)); \
+    template <typename>                                    \
+    static no& test(...);                                  \
+                                                           \
+   public:                                                 \
+    enum { value = sizeof(test<T>(0)) == sizeof(yes) };    \
   }
 
 CREATE_HAS_MEMBER_CHECK(initializeCursor, hasInitializeCursor);
@@ -281,11 +283,13 @@ static SkipVariants constexpr skipType() {
                      std::is_same<Executor, IResearchViewMergeExecutor<false>>::value ||
                      std::is_same<Executor, IResearchViewMergeExecutor<true>>::value ||
                      std::is_same<Executor, EnumerateCollectionExecutor>::value ||
-                     std::is_same<Executor, LimitExecutor>::value),
+                     std::is_same<Executor, LimitExecutor>::value ||
+                     std::is_same<Executor, IdExecutor<false, SingleRowFetcher<false>>>::value),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
-  static_assert(!std::is_same<Executor, LimitExecutor>::value || useFetcher,
+  static_assert(
+      !std::is_same<Executor, LimitExecutor>::value || useFetcher,
       "LimitExecutor needs to implement skipRows() to work correctly");
 
   if (useExecutor) {
@@ -400,7 +404,7 @@ namespace arangodb {
 namespace aql {
 // TODO -- remove this specialization when cpp 17 becomes available
 template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
+std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<true, ConstFetcher>>::initializeCursor(
     InputAqlItemRow const& input) {
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
@@ -504,6 +508,14 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::s
   return {state, subqueryResult};
 }
 
+template <>
+std::pair<ExecutionState, Result>
+ExecutionBlockImpl<IdExecutor<true, SingleRowFetcher<true>>>::shutdown(int errorCode) {
+  if (this->infos().isResponsibleForInitializeCursor()) {
+    return ExecutionBlock::shutdown(errorCode);
+  }
+  return {ExecutionState::DONE, {errorCode}};
+}
 }  // namespace aql
 }  // namespace arangodb
 
@@ -511,7 +523,11 @@ namespace arangodb {
 namespace aql {
 
 // The constant "PASSTHROUGH" is somehow reserved with MSVC.
-enum class RequestWrappedBlockVariant { DEFAULT , PASS_THROUGH , INPUTRESTRICTED };
+enum class RequestWrappedBlockVariant {
+  DEFAULT,
+  PASS_THROUGH,
+  INPUTRESTRICTED
+};
 
 // Specifying the namespace here is important to MSVC.
 template <enum arangodb::aql::RequestWrappedBlockVariant>
@@ -546,9 +562,9 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::PASS_THROUGH> {
       typename Executor::Infos const& infos,
 #endif
       Executor& executor, ExecutionEngine& engine, size_t nrItems, RegisterCount nrRegs) {
-    static_assert(
-        Executor::Properties::allowsBlockPassthrough,
-        "This function can only be used with executors supporting `allowsBlockPassthrough`");
+    static_assert(Executor::Properties::allowsBlockPassthrough,
+                  "This function can only be used with executors supporting "
+                  "`allowsBlockPassthrough`");
     static_assert(hasFetchBlockForPassthrough<Executor>::value,
                   "An Executor with allowsBlockPassthrough must implement "
                   "fetchBlockForPassthrough");
@@ -602,9 +618,9 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
       typename Executor::Infos const&,
 #endif
       Executor& executor, ExecutionEngine& engine, size_t nrItems, RegisterCount nrRegs) {
-    static_assert(
-        Executor::Properties::inputSizeRestrictsOutputSize,
-        "This function can only be used with executors supporting `inputSizeRestrictsOutputSize`");
+    static_assert(Executor::Properties::inputSizeRestrictsOutputSize,
+                  "This function can only be used with executors supporting "
+                  "`inputSizeRestrictsOutputSize`");
     static_assert(hasExpectedNumberOfRows<Executor>::value,
                   "An Executor with inputSizeRestrictsOutputSize must "
                   "implement expectedNumberOfRows");
@@ -686,8 +702,9 @@ template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false>>
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<SingleRowFetcher<true>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<true, ConstFetcher>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<true, SingleRowFetcher<true>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<false, SingleRowFetcher<false>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;

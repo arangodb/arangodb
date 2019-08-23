@@ -404,7 +404,7 @@ void scatterViewInClusterRule(arangodb::aql::Optimizer* opt,
 
     // insert a scatter node
     auto scatterNode =
-        plan->registerNode(std::make_unique<ScatterNode>(plan.get(), plan->nextId()));
+        plan->registerNode(std::make_unique<ScatterNode>(plan.get(), plan->nextId(), ScatterNode::ScatterType::SHARD));
     TRI_ASSERT(!deps.empty());
     scatterNode->addDependency(deps[0]);
 

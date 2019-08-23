@@ -212,10 +212,11 @@ SET(ARANGOD_SOURCES
   Aql/CountCollectExecutor.cpp
   Aql/DependencyProxy.cpp
   Aql/DistinctCollectExecutor.cpp
+  Aql/DistributeConsumerNode.cpp
   Aql/DistributeExecutor.cpp
   Aql/DocumentProducingNode.cpp
   Aql/EngineInfoContainerCoordinator.cpp
-  Aql/EngineInfoContainerDBServer.cpp
+  Aql/EngineInfoContainerDBServerServerBased.cpp
   Aql/EnumerateCollectionExecutor.cpp
   Aql/EnumerateListExecutor.cpp
   Aql/ExecutionBlock.cpp
@@ -274,6 +275,7 @@ SET(ARANGOD_SOURCES
   Aql/QueryProfile.cpp
   Aql/QueryRegistry.cpp
   Aql/QueryResources.cpp
+  Aql/QuerySnippet.cpp
   Aql/QueryString.cpp
   Aql/Range.cpp
   Aql/RegexCache.cpp
@@ -282,6 +284,7 @@ SET(ARANGOD_SOURCES
   Aql/ReturnExecutor.cpp
   Aql/ScatterExecutor.cpp
   Aql/Scopes.cpp
+  Aql/ShardLocking.cpp
   Aql/SharedAqlItemBlockPtr.cpp
   Aql/SharedQueryState.cpp
   Aql/ShortStringStorage.cpp

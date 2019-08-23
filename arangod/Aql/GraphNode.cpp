@@ -267,8 +267,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _options(nullptr),
       _optionsBuilt(false),
       _isSmart(false) {
-
-  uint64_t dir = arangodb::basics::VelocyPackHelper::stringUInt64(base.get("defaultDirection"));
+  uint64_t dir = arangodb::basics::VelocyPackHelper::stringUInt64(
+      base.get("defaultDirection"));
   _defaultDirection = uint64ToDirection(dir);
 
   // Directions
@@ -401,9 +401,10 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 
 GraphNode::~GraphNode() {}
 
-void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                   std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
 
   // Vocbase
   nodes.add("database", VPackValue(_vocbase->name()));
@@ -512,6 +513,26 @@ Collection const* GraphNode::collection() const {
   TRI_ASSERT(!_edgeColls.empty());
   TRI_ASSERT(_edgeColls.front() != nullptr);
   return _edgeColls.front().get();
+}
+
+void GraphNode::injectVertexCollection(aql::Collection const* other) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+  for (auto const& e : _edgeColls) {
+    if (e->name() == other->name()) {
+      // This collection is already known.
+      // unfortunately we cannot do pointer comparison
+      return;
+    }
+  }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // This is a workaround to inject all unknown aql collections into
+  // this node, that should be list of unique values!
+  for (auto const& v : _vertexColls) {
+    TRI_ASSERT(v->name() != other->name());
+  }
+#endif
+  _vertexColls.emplace_back(std::make_unique<aql::Collection>(other->name(), _vocbase,
+                                                              AccessMode::Type::READ));
 }
 
 #ifndef USE_ENTERPRISE

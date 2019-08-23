@@ -41,13 +41,13 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
   void unprepare() override final;
 
   /// @brief translate a list of rule ids into rule name
-  static std::vector<std::string> translateRules(std::vector<int> const&);
+  static std::vector<char const*> translateRules(std::vector<int> const&);
 
   /// @brief translate a single rule
   static char const* translateRule(int rule);
-
-  /// @brief look up the ids of all disabled rules
-  static std::unordered_set<int> getDisabledRuleIds(std::vector<std::string> const& names);
+  
+  /// @brief translate a single rule
+  static int translateRule(std::string const& name);
 
   /// @brief register a rule
   static void registerRule(std::string const& name, RuleFunction func,
@@ -57,9 +57,6 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
  private:
   void addRules();
   void addStorageEngineRules();
-
-  static void disableRule(std::string const& name, std::unordered_set<int>& disabled);
-  static void enableRule(std::string const& name, std::unordered_set<int>& disabled);
 
   /// @brief the rules database
   static std::map<int, OptimizerRule> _rules;

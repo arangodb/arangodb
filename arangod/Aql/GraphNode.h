@@ -63,7 +63,8 @@ class GraphNode : public ExecutionNode {
  public:
   virtual ~GraphNode();
 
-  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags) const override;
+  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override;
 
   /// @brief the cost of a graph node
   CostEstimate estimateCost() const override;
@@ -128,6 +129,8 @@ class GraphNode : public ExecutionNode {
 
   /// @brief return any of the collections
   Collection const* collection() const;
+
+  void injectVertexCollection(aql::Collection const* other);
 
  private:
   void addEdgeCollection(std::string const& n, TRI_edge_direction_e dir);

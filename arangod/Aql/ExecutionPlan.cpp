@@ -64,6 +64,7 @@ namespace {
 /// @brief validate the counters of the plan
 struct NodeCounter final : public WalkerWorker<ExecutionNode> {
   std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> counts;
+  std::unordered_set<ExecutionNode const*> seen;
 
   NodeCounter() : counts{} {}
 
@@ -71,7 +72,23 @@ struct NodeCounter final : public WalkerWorker<ExecutionNode> {
     return true;
   }
 
-  void after(ExecutionNode* en) override final { counts[en->getType()]++; }
+  void after(ExecutionNode* en) override final {
+    if (seen.find(en) == seen.end()) {
+      // There is a chance that we ahve the same node twice
+      // if we have multiple streams leading to it (e.g. Distribute)
+      counts[en->getType()]++;
+      seen.emplace(en);
+    }
+  }
+
+  bool done(ExecutionNode* en) override final {
+    if (!arangodb::ServerState::instance()->isDBServer() ||
+        (en->getType() != ExecutionNode::REMOTE && en->getType() != ExecutionNode::SCATTER &&
+         en->getType() != ExecutionNode::DISTRIBUTE)) {
+      return WalkerWorker<ExecutionNode>::done(en);
+    }
+    return false;
+  }
 };
 #endif
 
@@ -205,7 +222,8 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Que
   return ret;
 }
 
-std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast, AstNode* node) {
+std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast,
+                                                  AstNode* node) {
   if (node->type == NODE_TYPE_NOP) {
     return nullptr;
   }
@@ -230,7 +248,10 @@ ExecutionPlan::ExecutionPlan(Ast* ast)
 /// @brief destroy the plan, frees all assigned nodes
 ExecutionPlan::~ExecutionPlan() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (_root != nullptr && _planValid) {
+  // On coordinator there are temporary nodes injected into the Plan, that are NOT part
+  // of the full execution tree. This is in order to reuse a lot of the nodes
+  // for each DBServer instead of having all nodes copy everything once again.
+  if (_root != nullptr && _planValid && !arangodb::ServerState::instance()->isCoordinator()) {
     try {
       // count the actual number of nodes in the plan
       ::NodeCounter counter;
@@ -327,9 +348,8 @@ ExecutionPlan* ExecutionPlan::instantiateFromVelocyPack(Ast* ast, VPackSlice con
 /// @brief clone an existing execution plan
 ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
   auto plan = std::make_unique<ExecutionPlan>(ast);
-
-  plan->_root = _root->clone(plan.get(), true, false);
   plan->_nextId = _nextId;
+  plan->_root = _root->clone(plan.get(), true, false);
   plan->_appliedRules = _appliedRules;
   plan->_nestingLevel = _nestingLevel;
 
@@ -343,7 +363,9 @@ ExecutionPlan* ExecutionPlan::clone() { return clone(_ast); }
 ///   keep the memory of the plan on the query object specified.
 ExecutionPlan* ExecutionPlan::clone(Query const& query) {
   auto otherPlan = std::make_unique<ExecutionPlan>(query.ast());
-
+  // Clone nextID, this is required, if we need to create Nodes after
+  // this clone;
+  otherPlan->_nextId = _nextId;
   for (auto const& it : _ids) {
     auto clonedNode = it.second->clone(otherPlan.get(), false, true);
     otherPlan->registerNode(clonedNode);
@@ -406,9 +428,15 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) 
   builder.close();
 }
 
-/// @brief get a list of all applied rules
-std::vector<std::string> ExecutionPlan::getAppliedRules() const {
-  return OptimizerRulesFeature::translateRules(_appliedRules);
+void ExecutionPlan::addAppliedRule(int level) {
+  if (_appliedRules.empty() || _appliedRules.back() != level) {
+    _appliedRules.emplace_back(level);
+  }
+}
+
+bool ExecutionPlan::hasAppliedRule(int level) const {
+  return std::any_of(_appliedRules.begin(), _appliedRules.end(),
+                     [level](int l) { return l == level; });
 }
 
 /// @brief get a node by its id
@@ -778,6 +806,7 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
 /// @brief register a node with the plan
 ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) {
   TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->plan() == this);
   TRI_ASSERT(node->id() > 0);
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
@@ -788,6 +817,7 @@ ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) 
 /// @brief register a node with the plan, will delete node if addition fails
 ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->plan() == this);
   TRI_ASSERT(node->id() > 0);
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
@@ -1010,7 +1040,8 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode
   }
 
   // Prune Expression
-  std::unique_ptr<Expression> pruneExpression = createPruneExpression(this, _ast, node->getMember(3));
+  std::unique_ptr<Expression> pruneExpression =
+      createPruneExpression(this, _ast, node->getMember(3));
 
   auto options =
       createTraversalOptions(getAst()->query(), direction, node->getMember(4));
@@ -1021,9 +1052,9 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode
   TRI_ASSERT(direction->isIntValue());
 
   // First create the node
-  auto travNode = new TraversalNode(this, nextId(), &(_ast->query()->vocbase()),
-                                    direction, start, graph,
-                                    std::move(pruneExpression), std::move(options));
+  auto travNode =
+      new TraversalNode(this, nextId(), &(_ast->query()->vocbase()), direction, start,
+                        graph, std::move(pruneExpression), std::move(options));
 
   auto variable = node->getMember(5);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -2258,7 +2289,6 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
   }
 
   VPackSlice nodes = slice.get("nodes");
-
   if (!nodes.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "plan \"nodes\" attribute is not an array");
@@ -2275,6 +2305,11 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
     }
 
     ret = ExecutionNode::fromVPackFactory(this, it);
+    // We need to adjust nextId here, otherwise we cannot add new nodes to this
+    // plan anymore
+    if (_nextId <= ret->id()) {
+      _nextId = ret->id() + 1;
+    }
     registerNode(ret);
 
     // we have to count all nodes by their type here, because our caller
