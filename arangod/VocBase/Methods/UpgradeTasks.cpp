@@ -282,7 +282,6 @@ Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase, std::vector<std::s
       }
     }
 
-    // TODO: check what happens here, throw on fail?
     upgradeGeoIndexes(vocbase);
 
     createIndex(StaticStrings::AppsCollection,
