@@ -275,7 +275,7 @@ void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
 
   auto& buck = _transactions[bucket];
   auto it = buck._managed.find(tid);
-  if (it == buck._managed.end() || !::authorized(it->second.user)) {
+  if (it == buck._managed.end()) {
     LOG_TOPIC("92a49", ERR, Logger::TRANSACTIONS)
         << "a registered transaction was not found";
     TRI_ASSERT(false);
