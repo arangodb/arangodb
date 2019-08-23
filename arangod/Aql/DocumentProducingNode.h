@@ -47,13 +47,13 @@ class DocumentProducingNode {
   /// @brief return the out variable
   Variable const* outVariable() const { return _outVariable; }
 
-  std::vector<std::string> const& projections() const { return _projections; }
+  std::vector<std::string> const& projections() const noexcept { return _projections; }
 
   void projections(std::vector<std::string> const& projections) {
     _projections = projections;
   }
 
-  void projections(std::vector<std::string>&& projections) {
+  void projections(std::vector<std::string>&& projections) noexcept {
     _projections = std::move(projections);
   }
 
@@ -65,7 +65,7 @@ class DocumentProducingNode {
     }
   }
 
-  std::vector<size_t> const& coveringIndexAttributePositions() const {
+  std::vector<size_t> const& coveringIndexAttributePositions() const noexcept {
     return _coveringIndexAttributePositions;
   }
 
