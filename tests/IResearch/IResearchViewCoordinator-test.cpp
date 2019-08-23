@@ -33,13 +33,6 @@
 #include "utils/utf8_path.hpp"
 
 #include "Agency/Store.h"
-#include "ApplicationFeatures/BasicPhase.h"
-#include "ApplicationFeatures/ClusterPhase.h"
-#include "ApplicationFeatures/CommunicationPhase.h"
-#include "ApplicationFeatures/DatabasePhase.h"
-#include "ApplicationFeatures/GreetingsPhase.h"
-#include "ApplicationFeatures/V8Phase.h"
-#include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
@@ -47,28 +40,23 @@
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/NoResultsExecutor.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SortCondition.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
+#include "GeneralServer/AuthenticationFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/Methods/Databases.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "VocBase/Methods/Indexes.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
-#include "Agency/AgencyFeature.h"
 #include "Cluster/ClusterComm.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
@@ -76,20 +64,6 @@
 #include "IResearch/IResearchViewCoordinator.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
-#include "Random/RandomFeature.h"
-#include "RestServer/AqlFeature.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FlushFeature.h"
-#include "RestServer/InitDatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
-#include "RestServer/UpgradeFeature.h"
-#include "RestServer/ViewTypesFeature.h"
-#include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "V8Server/V8DealerFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -197,9 +171,16 @@ TEST_F(IResearchViewCoordinatorTest, DISABLED_DISABLED_visit_collections) {
                    .ok()));
   auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
   ASSERT_TRUE((false == !logicalCollection1));
+  {
+  auto res = ci->createCollectionCoordinator(vocbase->name(), collectionId2, 0, 1, 1, false,
+                                               collectionJson2->slice(), 0.0, false, nullptr);
+                                               LOG_DEVEL << res.errorMessage();
+  }
+  /*
   ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId2, 0, 1, 1, false,
                                                collectionJson2->slice(), 0.0, false, nullptr)
                    .ok()));
+                   */
   auto logicalCollection2 = ci->getCollection(vocbase->name(), collectionId2);
   ASSERT_TRUE((false == !logicalCollection2));
   ASSERT_TRUE((ci->createViewCoordinator(vocbase->name(), viewId, json->slice()).ok()));
