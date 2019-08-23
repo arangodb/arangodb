@@ -1,6 +1,8 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Agents to remove callback entries when responded to with code 404
+
 * Show query string length and cacheability information in query explain output.
 
 * Fixed internal issue #4378: fix bug in MoveShard::abort which causes a
