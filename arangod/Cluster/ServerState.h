@@ -28,6 +28,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
+#include "Cluster/ResultT.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -207,6 +208,10 @@ class ServerState {
   /// @brief set the server short id
   void setShortId(uint32_t);
 
+  uint64_t getRebootId() const;
+
+  void setRebootId(uint64_t const rebootId);
+
   /// @brief get the server endpoint
   std::string getEndpoint();
 
@@ -269,11 +274,14 @@ class ServerState {
   /// @brief check equality of engines with other registered servers
   bool checkEngineEquality(AgencyComm&);
 
+  /// @brief try to read the rebootID from the Agency
+  ResultT<uint64_t> readRebootIdFromAgency(AgencyComm& comm);
+
   /// @brief register at agency, might already be done
   bool registerAtAgencyPhase1(AgencyComm&, const RoleEnum&);
 
   /// @brief write the Current/ServersRegistered entry
-  bool registerAtAgencyPhase2(AgencyComm&);
+  bool registerAtAgencyPhase2(AgencyComm&, bool const hadPersistedId);
 
   void setFoxxmasterSinceNow();
 
@@ -291,6 +299,21 @@ class ServerState {
 
   /// @brief the server's short id, can be set just once
   std::atomic<uint32_t> _shortId;
+
+  /// @brief the server's rebootId.
+  ///
+  /// A server
+  ///   * ~boots~ if it is started on a new database directory without a UUID persisted
+  ///   * ~reboots~ if it is started on a pre-existing database directory with a UUID present
+  ///
+  /// when integrating into a cluster (via integrateIntoCluster), the server tries to increment
+  /// the agency key Current/KnownServers/_id/rebootId; if this key did not exist it is
+  /// created with the value 1, so a valid rebootId is always >= 1, and if the server booted
+  /// must be 1.
+  ///
+  /// Changes of rebootIds (i.e. server reboots) are noticed in ClusterInfo and
+  /// can be used through a notification architecture from there
+  uint64_t _rebootId;
 
   /// @brief the JavaScript startup path, can be set just once
   std::string _javaScriptStartupPath;

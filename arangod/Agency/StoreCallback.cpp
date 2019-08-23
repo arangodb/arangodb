@@ -21,18 +21,28 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Agent.h"
 #include "StoreCallback.h"
 
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 
-StoreCallback::StoreCallback(std::string const& path, std::string const& body)
-    : _path(path), _body(body) {}
+StoreCallback::StoreCallback(
+  std::string const& url, query_t const& body, Agent* agent)
+  : _url(url), _body(body), _agent(agent) {}
 
 bool StoreCallback::operator()(arangodb::ClusterCommResult* res) {
-  if (res->status != CL_COMM_SENT) {
-    LOG_TOPIC("7c4cc", DEBUG, Logger::AGENCY) << res->endpoint + _path << "(" << res->status
-                                     << ", " << res->errorMessage << "): " << _body;
+
+  if (res->status == CL_COMM_ERROR) {
+    LOG_TOPIC("9sdbf0", TRACE, Logger::AGENCY)
+      << _url << "(" << res->status << ", " << res->errorMessage
+      << "): " << _body->toJson();
+
+    if (res->result->getHttpReturnCode() == 404 && _agent != nullptr) {
+      LOG_TOPIC("9sdbf0", DEBUG, Logger::AGENCY) << "dropping dead callback at " << _url;
+      _agent->trashStoreCallback(_url, _body);
+    }
   }
+
   return true;
 }

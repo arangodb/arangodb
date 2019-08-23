@@ -38,7 +38,7 @@ struct ShortestPathAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   std::string _source, _target;
 
  public:
-  ShortestPathAlgorithm(VPackSlice userParams);
+  explicit ShortestPathAlgorithm(VPackSlice userParams);
 
   bool supportsAsyncMode() const override { return true; }
   bool supportsLazyLoading() const override { return true; }

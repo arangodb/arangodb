@@ -458,7 +458,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
   state->recoveryTick = marker->getTick(); // update recovery tick
 
   auto visitRecoveryHelpers = arangodb::scopeGuard([marker, state]()->void { // ensure recovery helpers are called
-    if (!state || (!state->canContinue() && state->errorCount) || !marker) {
+    if ((!state->canContinue() && state->errorCount) || !marker) {
         return; // ignore invalid state or unset marker
       }
 

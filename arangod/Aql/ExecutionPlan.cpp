@@ -479,6 +479,7 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out, Variable const* c
   // replace NODE_TYPE_COLLECTION function call arguments in the expression
   auto node = Ast::traverseAndModify(const_cast<AstNode*>(expression), visitor);
 
+  // cppcheck-suppress knownConditionTrueFalse
   if (containsCollection) {
     // we found at least one occurence of NODE_TYPE_COLLECTION
     // now replace them with proper (FOR doc IN collection RETURN doc)

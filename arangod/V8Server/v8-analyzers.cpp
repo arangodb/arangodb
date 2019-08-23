@@ -22,6 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-analyzers.h"
+
+#include <velocypack/Parser.h>
+#include <velocypack/StringRef.h>
+
 #include "Basics/StringUtils.h"
 #include "Basics/StaticStrings.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -34,8 +38,6 @@
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/vocbase.h"
-#include "velocypack/Parser.h"
-#include "velocypack/StringRef.h"
 
 namespace {
 
@@ -280,12 +282,22 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
   >();
   auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
 
-  auto name = TRI_ObjectToString(isolate, args[0]);
+  auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
+  auto splittedAnalyzerName = 
+    arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(nameFromArgs);
+  if (!arangodb::iresearch::IResearchAnalyzerFeature::analyzerReachableFromDb(
+         splittedAnalyzerName.first, vocbase.name())) { 
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+      TRI_ERROR_FORBIDDEN,
+      "Database in analyzer name does not match current database");
+    return;
+  }
+  auto name = splittedAnalyzerName.second;
 
   if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
       TRI_ERROR_BAD_PARAMETER,
-      "invalid characters in analyzer name '" + name + "'"
+      std::string("invalid characters in analyzer name '").append(name).append("'")
     );
 
     return;
@@ -445,8 +457,8 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // ...........................................................................
 
   const auto analyzerVocbase = arangodb::iresearch::IResearchAnalyzerFeature::extractVocbaseName(name);
-  if(!analyzerVocbase.empty() && vocbase.name() != analyzerVocbase   && 
-    arangodb::StaticStrings::SystemDatabase != analyzerVocbase) {
+  if (!arangodb::iresearch::IResearchAnalyzerFeature::analyzerReachableFromDb(
+          analyzerVocbase, vocbase.name(), true)) {
     std::string errorMessage("Analyzer '");
     errorMessage.append(name)
       .append("' is not accessible. Only analyzers from current database ('")
@@ -597,13 +609,23 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   >();
   auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
 
-  auto name = TRI_ObjectToString(isolate, args[0]);
+  auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
+  auto splittedAnalyzerName = 
+    arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(nameFromArgs);
+  if (!arangodb::iresearch::IResearchAnalyzerFeature::analyzerReachableFromDb(
+           splittedAnalyzerName.first, vocbase.name())) { 
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+      TRI_ERROR_FORBIDDEN,
+      "Database in analyzer name does not match current database");
+    return;
+  }
+  auto name = splittedAnalyzerName.second;
   
   if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
       TRI_ERROR_BAD_PARAMETER,
       std::string( "Invalid characters in analyzer name '").append(name)
-        .append("'. Analyzer name should be specified without database prefix.")
+        .append("'.")
     );
   }
 

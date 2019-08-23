@@ -180,7 +180,7 @@ void MaintenanceFeature::beginShutdown() {
       std::mutex _mutex;            // mutex used by callback and loop to sync access to callback_data
       std::condition_variable _cv;  // signaled if callback has found something
 
-      callback_data(uint64_t jobId) : _jobId(jobId), _completed(false) {}
+      explicit callback_data(uint64_t jobId) : _jobId(jobId), _completed(false) {}
     };
 
     // create common shared memory with jobid

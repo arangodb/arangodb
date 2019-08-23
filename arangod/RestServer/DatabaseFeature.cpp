@@ -67,6 +67,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 
 #include <velocypack/velocypack-aliases.h>
 
@@ -830,6 +831,12 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
     arangodb::aql::PlanCache::instance()->invalidate(vocbase);
 #endif
     arangodb::aql::QueryCache::instance()->invalidate(vocbase);
+
+    auto* analyzers = 
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    if (analyzers != nullptr) {
+      analyzers->invalidate(*vocbase);
+    }
 
     engine->prepareDropDatabase(*vocbase, !engine->inRecovery(), res);
   }

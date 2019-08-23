@@ -96,11 +96,15 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
 
   auto physical = engine.createPhysicalCollection(*collection, json->slice());
 
-  auto doc = arangodb::velocypack::Parser::fromJson("{ \"doc1\":\"test1\", \"doc100\":\"test2\", \"doc2\":\"test3\", \"z\":1, \"b\":2, \"a\":3, \"Z\":1, \"B\":2, \"A\": 3, \"_foo\":1, \"_bar\":2, \"_zoo\":3 }");
+  auto doc = arangodb::velocypack::Parser::fromJson(
+      "{ \"doc1\":\"test1\", \"doc100\":\"test2\", \"doc2\":\"test3\", "
+      "\"z\":1, \"b\":2, \"a\":3, \"Z\":1, \"B\":2, \"A\": 3, \"_foo\":1, "
+      "\"_bar\":2, \"_zoo\":3 }");
 
   TRI_voc_rid_t revisionId = 0;
   arangodb::velocypack::Builder builder;
-  Result res = physical->newObjectForInsert(nullptr, doc->slice(), false, builder, false, revisionId);
+  Result res = physical->newObjectForInsert(nullptr, doc->slice(), false,
+                                            builder, false, revisionId);
   EXPECT_TRUE(res.ok());
   EXPECT_TRUE(revisionId > 0);
 
@@ -156,7 +160,9 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
   // iterate over the data in the order that is stored in the builder
   {
     velocypack::ObjectIterator it(slice, true);
-    std::vector<std::string> expected{ "_key", "_id", "_rev", "doc1", "doc100", "doc2", "z", "b", "a", "Z", "B", "A", "_foo", "_bar", "_zoo" };
+    std::vector<std::string> expected{"_key", "_id", "_rev", "doc1", "doc100",
+                                      "doc2", "z",   "b",    "a",    "Z",
+                                      "B",    "A",   "_foo", "_bar", "_zoo"};
 
     for (auto const& key : expected) {
       EXPECT_TRUE(it.valid());
@@ -168,12 +174,76 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
   // iterate over the data in the order that is stored in the index table
   {
     velocypack::ObjectIterator it(slice, false);
-    std::vector<std::string> expected{ "A", "B", "Z", "_bar", "_foo", "_id", "_key", "_rev", "_zoo", "a", "b", "doc1", "doc100", "doc2", "z" };
+    std::vector<std::string> expected{"A",   "B",    "Z",      "_bar", "_foo",
+                                      "_id", "_key", "_rev",   "_zoo", "a",
+                                      "b",   "doc1", "doc100", "doc2", "z"};
 
     for (auto const& key : expected) {
       EXPECT_TRUE(it.valid());
       EXPECT_EQ(key, it.key().copyString());
       it.next();
     }
-    }
   }
+}
+
+class MockIndex : public Index {
+ public:
+  MockIndex(Index::IndexType type, bool needsReversal, TRI_idx_iid_t id,
+            LogicalCollection& collection, const std::string& name,
+            std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
+            bool unique, bool sparse)
+      : Index(id, collection, name, fields, unique, sparse),
+        _type(type),
+        _needsReversal(needsReversal) {}
+
+  bool needsReversal() const override { return _needsReversal; }
+  IndexType type() const override { return _type; }
+  char const* typeName() const override { return "IndexMock"; }
+  bool isPersistent() const override { return true; }
+  bool canBeDropped() const override { return true; }
+  bool isSorted() const override { return false; }
+  bool isHidden() const override { return false; }
+  bool hasSelectivityEstimate() const override { return false; }
+  size_t memory() const override { return 0; }
+  void load() override {}
+  void unload() override {}
+
+ private:
+  Index::IndexType _type;
+  bool _needsReversal;
+};
+
+TEST_F(PhysicalCollectionTest, test_index_ordeing) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                        testDatabaseArgs);
+  auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
+  auto collection = vocbase.createCollection(json->slice());
+  std::vector<std::vector<arangodb::basics::AttributeName>> dummyFields;
+  PhysicalCollection::IndexContainerType test_container;
+  // also regular index but no need to be reversed
+  test_container.insert(std::make_shared<MockIndex>(Index::TRI_IDX_TYPE_HASH_INDEX,
+                                                    false, 2, *collection, "4",
+                                                    dummyFields, false, false));
+  // Edge index- should go right after primary and after all other non-reversable edge indexes
+  test_container.insert(std::make_shared<MockIndex>(Index::TRI_IDX_TYPE_EDGE_INDEX,
+                                                    true, 3, *collection, "3",
+                                                    dummyFields, false, false));
+  // Edge index- non-reversable should go right after primary
+  test_container.insert(std::make_shared<MockIndex>(Index::TRI_IDX_TYPE_EDGE_INDEX,
+                                                    false, 4, *collection, "2",
+                                                    dummyFields, false, false));
+  // Primary index. Should be first!
+  test_container.insert(std::make_shared<MockIndex>(Index::TRI_IDX_TYPE_PRIMARY_INDEX,
+                                                    true, 5, *collection, "1",
+                                                    dummyFields, true, false));
+  // should execute last - regular index with reversal possible
+  test_container.insert(std::make_shared<MockIndex>(Index::TRI_IDX_TYPE_HASH_INDEX,
+                                                    true, 1, *collection, "5",
+                                                    dummyFields, false, false));
+
+  TRI_idx_iid_t prevId = 5;
+  for (auto idx : test_container) {
+    ASSERT_EQ(prevId, idx->id());
+    --prevId;
+  }
+}

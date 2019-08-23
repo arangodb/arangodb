@@ -43,6 +43,7 @@ class Slice;
 }
 namespace geo {
 struct Coordinate;
+class Ellipsoid;
 struct QueryParams;
 
 /// Thin wrapper around S2Region objects combined with
@@ -90,8 +91,10 @@ class ShapeContainer final {
   /// @brief generate a cell covering
   std::vector<S2CellId> covering(S2RegionCoverer*) const noexcept;
 
-  /// @brief distance from center in meters
-  double distanceFrom(S2Point const&) const noexcept;
+  /// @brief distance from center in meters on the unit sphere
+  double distanceFromCentroid(S2Point const&) const noexcept;
+  /// @brief distance from center in meters on the ellipsoid surfaces
+  double distanceFromCentroid(S2Point const&, Ellipsoid const&) const noexcept;
 
   /// @brief may intersect the cell
   bool mayIntersect(S2CellId) const noexcept;
@@ -126,7 +129,10 @@ class ShapeContainer final {
   bool equals(S2Polygon const*) const;
   bool equals(ShapeContainer const*) const;
 
-  S2Region const* region() const;
+  /// @brief calculate area of polygon or multipolygon
+  double area(geo::Ellipsoid const& e);
+
+  S2Region const* region() const noexcept { return _data; }
 
  private:
   S2Region* _data;

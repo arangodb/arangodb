@@ -102,7 +102,7 @@ function arangosh (options) {
     }
 
     const startTime = time();
-    let rc = executeExternalAndWait(pu.ARANGOSH_BIN, toArgv(args));
+    let rc = executeExternalAndWait(pu.ARANGOSH_BIN, toArgv(args), false, 0 /*, coverageEnvironment() */);
     const deltaTime = time() - startTime;
     const failSuccess = (rc.hasOwnProperty('exit') && rc.exit === expectedReturnCode);
 

@@ -214,3 +214,9 @@ MockRestServer::~MockRestServer() {
   arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                   arangodb::LogLevel::DEFAULT);
 }
+
+MockEmptyServer::MockEmptyServer() {
+  startFeatures();
+}
+
+MockEmptyServer::~MockEmptyServer() = default;

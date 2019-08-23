@@ -30,11 +30,11 @@ const _ = require('lodash');
 const fs = require('fs');
 const yaml = require('js-yaml');
 const internal = require('internal');
-const toArgv = internal.toArgv;
 const crashUtils = require('@arangodb/crash-utils');
 const crypto = require('@arangodb/crypto');
 
 /* Functions: */
+const toArgv = internal.toArgv;
 const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const killExternal = internal.killExternal;
@@ -191,6 +191,23 @@ const TOP_DIR = (function findTopDir () {
 
   return topDir;
 }());
+
+// create additional system environment variables for coverage
+function coverageEnvironment () {
+  let result = [];
+  let name = 'GCOV_PREFIX';
+
+  if (process.env.hasOwnProperty(name)) {
+    result.push(
+      name +
+      "=" +
+      process.env[name] + 
+      "/" + 
+      crypto.md5(String(internal.time() + Math.random())));
+  }
+
+  return result;
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief calculates all the path locations
@@ -621,7 +638,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
 
   let res = {};
   if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
-    res = executeExternal(cmd, args);
+    res = executeExternal(cmd, args, false, coverageEnvironment());
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
     if (runProcdump(options, instanceInfo, rootDir, res.pid)) {
@@ -649,7 +666,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
       instanceInfo.exitStatus = res;
     }
   } else {
-    res = executeExternalAndWait(cmd, args, false, timeout);
+    res = executeExternalAndWait(cmd, args, false, timeout, coverageEnvironment());
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
   }
@@ -1033,6 +1050,18 @@ function checkInstanceAlive (instanceInfo, options) {
   let rc = instanceInfo.arangods.reduce((previous, arangod) => {
     return previous && checkArangoAlive(arangod, options);
   }, true);
+  if (rc && options.cluster && instanceInfo.arangods.length > 1) {
+    try {
+      let health = require('internal').clusterHealth();
+      rc = instanceInfo.arangods.reduce((previous, arangod) => {
+        if (arangod.role === "agent") return true;
+        if (arangod.role === "single") return true;
+        return health.hasOwnProperty(arangod.id) && health[arangod.id].Status === "GOOD";
+      }, true);
+    } catch (x) {
+      print(Date() + " ClusterHealthCheck failed: " + x);
+    }
+  }
   if (!rc) {
     dumpAgency(instanceInfo, options);
     print(Date() + ' If cluster - will now start killing the rest.');
@@ -1115,7 +1144,8 @@ function executeArangod (cmd, args, options) {
   if (options.extremeVerbosity) {
     print(Date() + ' starting process ' + cmd + ' with arguments: ' + JSON.stringify(args));
   }
-  return executeExternal(cmd, args);
+
+  return executeExternal(cmd, args, coverageEnvironment());
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1479,6 +1509,18 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
       throw new Error('cluster startup timed out after 10 minutes!');
     }
   }
+  print("Determining server IDs");
+  instanceInfo.arangods.forEach(arangod => {
+    // agents don't support the ID call...
+    if ((arangod.role !== "agent") && (arangod.role !== "single")) {
+      const reply = download(arangod.url + '/_db/_system/_admin/server/id', '', makeAuthorizationHeaders(instanceInfo.authOpts));
+      if (reply.error || reply.code !== 200) {
+        throw new Error("Server has no detectable ID! " + JSON.stringify(reply) + "\n" + JSON.stringify(arangod));
+      }
+      let res = JSON.parse(reply.body);
+      arangod.id = res['id'];
+    }
+  });
 }
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief starts an instance
@@ -1958,6 +2000,7 @@ exports.arangod = {
 };
 
 exports.findFreePort = findFreePort;
+exports.coverageEnvironment = coverageEnvironment;
 
 exports.executeArangod = executeArangod;
 exports.executeAndWait = executeAndWait;

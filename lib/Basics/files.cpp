@@ -2070,13 +2070,12 @@ std::string TRI_HomeDirectory() {
 int TRI_Crc32File(char const* path, uint32_t* crc) {
   FILE* fin;
   void* buffer;
-  int bufferSize;
   int res;
   int res2;
 
   *crc = TRI_InitialCrc32();
 
-  bufferSize = 4096;
+  constexpr int bufferSize = 4096;
   buffer = TRI_Allocate((size_t)bufferSize);
 
   if (buffer == nullptr) {
@@ -2546,6 +2545,7 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
 #endif
 #endif
 
+  // cppcheck-suppress knownConditionTrueFalse
   if (res != TRI_ERROR_NO_ERROR) {
     // either fallocate failed or it is not there...
 
