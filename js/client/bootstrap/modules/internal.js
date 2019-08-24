@@ -334,6 +334,13 @@
     exports.output(level, ': ', msg, '\n');
   };
 
+  exports.isCluster = function () {
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult = exports.arango.GET("/_admin/server/role");
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.role === "COORDINATOR";
+  };
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief sprintf wrapper
   // //////////////////////////////////////////////////////////////////////////////
