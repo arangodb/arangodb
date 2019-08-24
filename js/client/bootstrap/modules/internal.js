@@ -340,6 +340,15 @@
     arangosh.checkRequestResult(requestResult);
     return requestResult.role === "COORDINATOR";
   };
+  
+  // / @brief serverStatistics
+  exports.serverStatistics = function () {
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult = exports.arango.GET('/_admin/statistics');
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.server;
+  };
+
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief sprintf wrapper
