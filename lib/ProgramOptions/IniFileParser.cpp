@@ -156,7 +156,7 @@ bool IniFileParser::parseContent(std::string const& filename, std::string const&
         // use option prefixed with current section
         option = currentSection + "." + match[1].str();
       }
-
+      
 #ifdef USE_ENTERPRISE
       if (isCommunity) {
         continue;
