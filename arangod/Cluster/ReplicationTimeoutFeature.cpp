@@ -44,7 +44,7 @@ void ReplicationTimeoutFeature::collectOptions(std::shared_ptr<ProgramOptions> o
 
   options->addOption(
       "--cluster.synchronous-replication-timeout-minimum",
-      "all synchronous replication timeouts will be at least this value",
+      "all synchronous replication timeouts will be at least this value (in seconds)",
       new DoubleParameter(&lowerLimit));
 
   options->addOption(
