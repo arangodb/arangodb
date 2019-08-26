@@ -63,9 +63,6 @@ class ClusterEngine final : public StorageEngine {
   void prepare() override;
   void start() override;
 
-  // minimum timeout for the synchronous replication
-  double minimumSyncReplicationTimeout() const override { return 1.0; }
-
   bool supportsDfdb() const override { return false; }
   bool useRawDocumentPointers() override { return false; }
 
