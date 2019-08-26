@@ -31,7 +31,6 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-#include "Basics/process-utils.h"
 #include "Basics/cpu-relax.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/Acceptor.h"
@@ -312,20 +311,9 @@ void SupervisedScheduler::runWorker() {
   uint64_t id;
 
   std::shared_ptr<WorkerState> state;
-  auto tStart = TRI_microtime();
-  auto waitMe = [&tStart](int where) {
-                  auto tExit = TRI_microtime();
-                  if (tExit - tStart > 0.25) {
-                    LOG_TOPIC("66666", INFO, arangodb::Logger::FIXME) <<
-                      "scheduler sleeps: " << (tExit - tStart) << " - wher    e - " << where;
-                  }
-                  tStart = tExit;
-                };
-    waitMe(__LINE__);
 
   {
     std::lock_guard<std::mutex> guard(_mutexSupervisor);
-    waitMe(__LINE__);
     id = _numWorkers++;  // increase the number of workers here, to obtain the id
     // copy shared_ptr with worker state
     state = _workerStates.back();
@@ -346,9 +334,7 @@ void SupervisedScheduler::runWorker() {
     
     // inform the supervisor that this thread is alive
     state->_ready = true;
-    waitMe(__LINE__);
     _conditionSupervisor.notify_one();
-    waitMe(__LINE__);
   }
 
   while (true) {
@@ -383,29 +369,17 @@ void SupervisedScheduler::runSupervisor() {
 
   uint64_t lastJobsDone = 0, lastJobsSubmitted = 0;
   uint64_t jobsStallingTick = 0, lastQueueLength = 0;
-  
-  auto tStart = TRI_microtime();
-  auto waitMe = [&tStart](int where) {
-                  auto tExit = TRI_microtime();
-                  if (tExit - tStart > 0.25) {
-                    LOG_TOPIC("66666", INFO, arangodb::Logger::FIXME) <<
-                      "scheduler sleeps: " << (tExit - tStart) << " -  where - " << where;
-                  }
-                  tStart = tExit;
-                };
+
   while (!_stopping) {
-    waitMe(__LINE__);
     uint64_t jobsDone = _jobsDone.load(std::memory_order_acquire);
     uint64_t jobsSubmitted = _jobsSubmitted.load(std::memory_order_acquire);
     uint64_t jobsDequeued = _jobsDequeued.load(std::memory_order_acquire);
 
-    waitMe(__LINE__);
     if (jobsDone == lastJobsDone && (jobsDequeued < jobsSubmitted)) {
       jobsStallingTick++;
     } else if (jobsStallingTick != 0) {
       jobsStallingTick--;
     }
-    waitMe(__LINE__);
 
     uint64_t queueLength = jobsSubmitted - jobsDequeued;
 
@@ -419,45 +393,27 @@ void SupervisedScheduler::runSupervisor() {
                             ((queueLength == 0) && (lastQueueLength == 0))) &&
                            ((rand() & 0x0F) == 0);
 
-    waitMe(__LINE__);
     lastJobsDone = jobsDone;
     lastQueueLength = queueLength;
     lastJobsSubmitted = jobsSubmitted;
 
-    waitMe(__LINE__);
     if (doStartOneThread && _numWorkers < _maxNumWorker) {
       jobsStallingTick = 0;
       startOneThread();
-    waitMe(__LINE__);
     } else if (doStopOneThread && _numWorkers > _numIdleWorker) {
       stopOneThread();
-    waitMe(__LINE__);
     }
 
     cleanupAbandonedThreads();
-    waitMe(__LINE__);
     sortoutLongRunningThreads();
 
-    waitMe(__LINE__);
     std::unique_lock<std::mutex> guard(_mutexSupervisor);
-    waitMe(__LINE__);
 
     if (_stopping) {
       break;
     }
-    if (true) {
-    waitMe(__LINE__);
-      auto info = TRI_ProcessInfoSelf();
-    waitMe(__LINE__);
-      LOG_TOPIC("66677", DEBUG, arangodb::Logger::THREADS)
-        << " numberOfThreads: " << info._numberThreads
-        << " JobsDone - " << jobsDone
-        << " JobsSubmitted - " << jobsSubmitted
-        << " JobsDequeued - " << jobsDequeued;
-    waitMe(__LINE__);
-    }
+
     _conditionSupervisor.wait_for(guard, std::chrono::milliseconds(100));
-    waitMe(__LINE__);
   }
 }
 
@@ -575,24 +531,12 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
 }
 
 void SupervisedScheduler::startOneThread() {
-  auto tStart = TRI_microtime();
-  auto waitMe = [&tStart](int where) {
-                  auto tExit = TRI_microtime();
-                  if (tExit - tStart > 0.25) {
-                    LOG_TOPIC("66666", INFO, arangodb::Logger::FIXME) <<
-                      "scheduler sleeps: " << (tExit - tStart) << " - wher    e - " << where;
-                  }
-                  tStart = tExit;
-                };
-    waitMe(__LINE__);
   // TRI_ASSERT(_numWorkers < _maxNumWorker);
   if (_numWorkers + _abandonedWorkerStates.size() >= _maxNumWorker) {
     return;  // do not add more threads, than maximum allows
   }
 
-    waitMe(__LINE__);
   std::unique_lock<std::mutex> guard(_mutexSupervisor);
-    waitMe(__LINE__);
 
 // start a new thread
 
@@ -605,26 +549,21 @@ void SupervisedScheduler::startOneThread() {
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
-    waitMe(__LINE__);
 
   auto& state = _workerStates.back();
-    waitMe(__LINE__);
 
   if (!state->start()) {
     // failed to start a worker
     _workerStates.pop_back();  // pop_back deletes shared_ptr, which deletes thread
     LOG_TOPIC("913b5", ERR, Logger::THREADS)
         << "could not start additional worker thread";
-    waitMe(__LINE__);
     return;
   }
  
-    waitMe(__LINE__);
   // sync with runWorker() 
   _conditionSupervisor.wait(guard, [&state]() {
     return state->_ready;
   });
-    waitMe(__LINE__);
   LOG_TOPIC("f9de8", TRACE, Logger::THREADS) << "Started new thread";
 }
 

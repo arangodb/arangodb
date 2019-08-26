@@ -725,7 +725,6 @@ ProcessInfo TRI_ProcessInfoH(HANDLE processHandle, TRI_pid_t pid) {
     // for computing  the timestamps of creation and exit time
     // the function '_FileTime_to_POSIX' should be called
   }
-  /*
   /// computing number of threads
   HANDLE snapShot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, pid);
 
@@ -748,7 +747,6 @@ ProcessInfo TRI_ProcessInfoH(HANDLE processHandle, TRI_pid_t pid) {
   else {
     LOG_TOPIC("6667", ERR, arangodb::Logger::FIXME) << "failed to acquire process threads count - " << GetLastError();
   }
-  */
 
   return result;
 }
