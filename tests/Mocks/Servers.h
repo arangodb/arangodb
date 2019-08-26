@@ -99,6 +99,7 @@ class MockRestServer : public MockServer {
 class MockClusterServer : public MockServer {
  public:
   virtual TRI_vocbase_t* createDatabase(std::string const& name) = 0;
+  virtual void dropDatabase(std::string const& name) = 0;
   arangodb::consensus::Store& getAgencyStore() { return _agencyStore; };
 
   // You can only create specialized types
@@ -111,6 +112,7 @@ class MockClusterServer : public MockServer {
   void startFeatures() override;
   void agencyTrx(std::string const& key, std::string const& value);
   void agencyCreateDatabase(std::string const& name);
+  void agencyDropDatabase(std::string const& name);
 
  private:
   arangodb::consensus::Store _agencyStore;
@@ -123,6 +125,7 @@ class MockDBServer : public MockClusterServer {
   ~MockDBServer();
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;
+  void dropDatabase(std::string const& name) override;
 };
 
 class MockCoordinator : public MockClusterServer {
@@ -131,6 +134,7 @@ class MockCoordinator : public MockClusterServer {
   ~MockCoordinator();
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;
+  void dropDatabase(std::string const& name) override;
 };
 
 }  // namespace mocks

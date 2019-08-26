@@ -37,6 +37,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/CreateDatabase.h"
+#include "Cluster/DropDatabase.h"
 #include "Cluster/Maintenance.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -557,11 +558,22 @@ void MockClusterServer::agencyCreateDatabase(std::string const& name) {
   agencyTrx("/arango/Plan/Current", R"=({"op":"increment"})=");
 }
 
+void MockClusterServer::agencyDropDatabase(std::string const& name) {
+  std::string st = R"=({"op":"delete"}))=";
+  agencyTrx("/arango/Plan/Databases/" + name, st);
+  agencyTrx("/arango/Plan/Collections/" + name, st);
+  agencyTrx("/arango/Current/Databases/" + name, st);
+  agencyTrx("/arango/Current/Collections/" + name, st);
+  agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=");
+  agencyTrx("/arango/Plan/Current", R"=({"op":"increment"})=");
+}
+
 MockDBServer::MockDBServer() : MockClusterServer() {
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
   _features.emplace(new arangodb::FlushFeature(_server), false);  // do not start the thread
   _features.emplace(new arangodb::MaintenanceFeature(_server), false); // do not start the thread
   startFeatures();
+  createDatabase("_system");
 }
 
 MockDBServer::~MockDBServer() {}
@@ -573,14 +585,17 @@ TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
   ci->loadPlan();
   ci->loadCurrent();
 
-  // Now we must run a maintenance action to create the database locally:
-  maintenance::ActionDescription ad(
-      {{std::string(maintenance::NAME), std::string(maintenance::CREATE_DATABASE)},
-       {std::string(maintenance::DATABASE), std::string(name)}},
-       maintenance::HIGHER_PRIORITY);
-  auto* mf = arangodb::application_features::ApplicationServer::lookupFeature<arangodb::MaintenanceFeature>("Maintenance");
-  maintenance::CreateDatabase cd(*mf, ad);
-  cd.first();   // Does the job
+  // Now we must run a maintenance action to create the database locally,
+  // unless it is the system database, in which case this does not work:
+  if (name != "_system") {
+    maintenance::ActionDescription ad(
+        {{std::string(maintenance::NAME), std::string(maintenance::CREATE_DATABASE)},
+         {std::string(maintenance::DATABASE), std::string(name)}},
+         maintenance::HIGHER_PRIORITY);
+    auto* mf = arangodb::application_features::ApplicationServer::lookupFeature<arangodb::MaintenanceFeature>("Maintenance");
+    maintenance::CreateDatabase cd(*mf, ad);
+    cd.first();   // Does the job
+  }
 
   auto* databaseFeature = arangodb::DatabaseFeature::DATABASE;
   TRI_ASSERT(databaseFeature != nullptr);
@@ -589,9 +604,31 @@ TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
   return vocbase;
 };
 
+void MockDBServer::dropDatabase(std::string const& name) {
+  agencyDropDatabase(name);
+  auto* ci = ClusterInfo::instance();
+  TRI_ASSERT(ci != nullptr);
+  ci->loadPlan();
+  ci->loadCurrent();
+  auto* databaseFeature = arangodb::DatabaseFeature::DATABASE;
+  TRI_ASSERT(databaseFeature != nullptr);
+  auto vocbase = databaseFeature->lookupDatabase(name);
+  TRI_ASSERT(vocbase == nullptr);
+
+  // Now we must run a maintenance action to create the database locally:
+  maintenance::ActionDescription ad(
+      {{std::string(maintenance::NAME), std::string(maintenance::DROP_DATABASE)},
+       {std::string(maintenance::DATABASE), std::string(name)}},
+       maintenance::HIGHER_PRIORITY);
+  auto* mf = arangodb::application_features::ApplicationServer::lookupFeature<arangodb::MaintenanceFeature>("Maintenance");
+  maintenance::DropDatabase dd(*mf, ad);
+  dd.first();   // Does the job
+}
+
 MockCoordinator::MockCoordinator() : MockClusterServer() {
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_COORDINATOR);
   startFeatures();
+  createDatabase("_system");
 }
 
 MockCoordinator::~MockCoordinator() {}
@@ -608,3 +645,16 @@ TRI_vocbase_t* MockCoordinator::createDatabase(std::string const& name) {
   TRI_ASSERT(vocbase != nullptr);
   return vocbase;
 };
+
+void MockCoordinator::dropDatabase(std::string const& name) {
+  agencyDropDatabase(name);
+  auto* ci = ClusterInfo::instance();
+  TRI_ASSERT(ci != nullptr);
+  ci->loadPlan();
+  ci->loadCurrent();
+  auto* databaseFeature = arangodb::DatabaseFeature::DATABASE;
+  TRI_ASSERT(databaseFeature != nullptr);
+  auto vocbase = databaseFeature->lookupDatabase(name);
+  TRI_ASSERT(vocbase == nullptr);
+}
+

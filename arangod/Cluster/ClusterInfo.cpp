@@ -2549,7 +2549,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
     std::string const& viewID,
     velocypack::Slice json  // view definition
 ) {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
+  // TRI_ASSERT(ServerState::instance()->isCoordinator());
   // FIXME TODO is this check required?
   auto const typeSlice = json.get(arangodb::StaticStrings::DataSourceType);
 
@@ -2712,7 +2712,7 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
 Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName,
                                                  std::string const& viewID,
                                                  VPackSlice const& json) {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
+  //TRI_ASSERT(ServerState::instance()->isCoordinator());
   AgencyComm ac;
 
   auto res = ac.getValues("Plan/Views/" + databaseName + "/" + viewID);
