@@ -72,7 +72,7 @@ please install it via:
 To optimize the OS "now", without having to restart the system,
 the script **must** also be directly executed once.
 
-CentOS
+RedHat / CentOS / Suse
 ------
 
 **Script:**
