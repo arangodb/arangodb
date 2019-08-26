@@ -1913,7 +1913,6 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
   for (let i = 0; i < N; i++) {
     let instanceArgs = _.clone(addArgs);
     instanceArgs['log.file'] = fs.join(rootDir, 'log' + String(i));
-    instanceArgs['log.level'] = "threads=debug";
     instanceArgs['javascript.enabled'] = 'false';
     instanceArgs['agency.activate'] = 'true';
     instanceArgs['agency.size'] = String(N);
