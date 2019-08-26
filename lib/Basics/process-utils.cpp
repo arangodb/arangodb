@@ -174,18 +174,15 @@ ExternalProcessStatus::ExternalProcessStatus()
     : _status(TRI_EXT_NOT_STARTED), _exitStatus(0), _errorMessage() {}
 
 static ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid) {
-  ExternalProcess *external = nullptr;
   {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
-
-    for (auto& it : ExternalProcesses) {
-      if (it->_pid == pid) {
-        external = it;
-        break;
-      }
+    auto found = std::find_if(ExternalProcesses.begin(), ExternalProcesses.end(),
+                              [pid](const ExternalProcess * m) -> bool { return m->_pid == pid; });
+    if (found != ExternalProcesses.end()) {
+      return *found;
     }
   }
-  return external;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -740,12 +737,12 @@ ProcessInfo TRI_ProcessInfoH(HANDLE processHandle, TRI_pid_t pid) {
       }
     }
     else {
-      LOG_TOPIC("6667", ERR, arangodb::Logger::FIXME) << "failed to acquire thread from snapshot - " << GetLastError();
+      LOG_TOPIC("66667", ERR, arangodb::Logger::FIXME) << "failed to acquire thread from snapshot - " << GetLastError();
     }
     CloseHandle(snapShot);
   }
   else {
-    LOG_TOPIC("6667", ERR, arangodb::Logger::FIXME) << "failed to acquire process threads count - " << GetLastError();
+    LOG_TOPIC("66668", ERR, arangodb::Logger::FIXME) << "failed to acquire process threads count - " << GetLastError();
   }
 
   return result;
