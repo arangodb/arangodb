@@ -183,7 +183,6 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
       dynamic_cast<arangodb::iresearch::IResearchViewCoordinator*>(logicalView.get());
 
   ASSERT_TRUE(nullptr != view);
-  EXPECT_EQ(9, view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(1 == view->id());
