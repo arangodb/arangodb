@@ -26,6 +26,8 @@
 // / @author Simon Grätzer
 // //////////////////////////////////////////////////////////////////////////////
 
+// tests for streaming transactions
+
 var jsunity = require('jsunity');
 var internal = require('internal');
 var arangodb = require('@arangodb');
