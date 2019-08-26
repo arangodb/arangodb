@@ -224,7 +224,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
 
       cb(_index->_unique ? RocksDBValue::documentId(_iterator->value())
-                        : RocksDBKey::indexDocumentId(_bounds.type(), _iterator->key()));
+                         : RocksDBKey::indexDocumentId(_iterator->key()));
 
       --limit;
       if (!advance()) {
@@ -255,7 +255,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
       LocalDocumentId const documentId(
           _index->_unique ? RocksDBValue::documentId(_iterator->value())
-                          : RocksDBKey::indexDocumentId(_bounds.type(), key));
+                          : RocksDBKey::indexDocumentId(key));
       cb(documentId, RocksDBKey::indexedVPack(key));
 
       --limit;

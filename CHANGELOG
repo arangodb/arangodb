@@ -16,6 +16,9 @@ devel
 * Add new server option `--cluster.default-replication-factor` that allows to set the
   default replication factor for non-system collections (default: 1).
 
+* Add TransactionStatistics to ServerStatistics (transactions started /
+  aborted / committed and number of intermediate commits).
+
 * Agents to remove callback entries when responded to with code 404
 
 * Added AQL function DATE_ROUND to bin a date/time into a set of equal-distance
