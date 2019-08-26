@@ -171,16 +171,9 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
                    .ok()));
   auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
   ASSERT_TRUE((false == !logicalCollection1));
-  {
-  auto res = ci->createCollectionCoordinator(vocbase->name(), collectionId2, 0, 1, 1, false,
-                                               collectionJson2->slice(), 0.0, false, nullptr);
-                                               LOG_DEVEL << res.errorMessage();
-  }
-  /*
   ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId2, 0, 1, 1, false,
                                                collectionJson2->slice(), 0.0, false, nullptr)
                    .ok()));
-                   */
   auto logicalCollection2 = ci->getCollection(vocbase->name(), collectionId2);
   ASSERT_TRUE((false == !logicalCollection2));
   ASSERT_TRUE((ci->createViewCoordinator(vocbase->name(), viewId, json->slice()).ok()));
