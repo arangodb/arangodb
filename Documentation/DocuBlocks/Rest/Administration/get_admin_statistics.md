@@ -16,15 +16,17 @@ In case of a distribution, the returned object contains the total count in
 *count* and the distribution list in *counts*. The sum (or total) of the
 individual values is returned in *sum*.
 
-The transaction statistics show the started, committed and aborted transactions
-as well as intermediate commits done for the server queried. The intermediate
-commit count will only take non zero values for the RocksDB storage engine.
-Coordinators do almost no commits themselves to their local databases, therefor
-cluster transactions are just added to their local statistics. This means that
-the statistics you would see for a single server is roughly what you can expect
-in a cluster setup using a single coordinator querying this coordinator. Just
-with the difference that cluster transactions have no notion of intermediate
-commits and will not increase the value.
+The transaction statistics show the local started, committed and aborted
+transactions as well as intermediate commits done for the server queried. The
+intermediate commit count will only take non zero values for the RocksDB
+storage engine. Coordinators do almost no local transactions themselves in
+their local databases, therefor cluster transactions (transactions started on a
+coordinator that require DBServers to finish before the transactions is
+committed cluster wide) are just added to their local statistics. This means
+that the statistics you would see for a single server is roughly what you can
+expect in a cluster setup using a single coordinator querying this coordinator.
+Just with the difference that cluster transactions have no notion of
+intermediate commits and will not increase the value.
 
 @RESTRETURNCODES
 
