@@ -58,6 +58,9 @@ class MockServer {
   void init();
 
   TRI_vocbase_t& getSystemDatabase() const;
+  std::string const testFilesystemPath() const {
+    return _testFilesystemPath;
+  }
 
  protected:
   // Implementation knows the place when all features are included
