@@ -578,3 +578,14 @@ void GraphNode::addEdgeCollection(std::string const& n, TRI_edge_direction_e dir
         std::make_unique<aql::Collection>(n, _vocbase, AccessMode::Type::READ));
   }
 }
+
+std::vector<aql::Collection const*> const GraphNode::collections() const {
+    std::vector<aql::Collection const*> rv{};
+    for(auto const& collPointer : _edgeColls) {
+      rv.push_back(collPointer.get());
+    }
+    for(auto const& collPointer : _vertexColls) {
+      rv.push_back(collPointer.get());
+    }
+    return rv;
+  }
