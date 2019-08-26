@@ -1,7 +1,9 @@
 devel
 -----
 
-* Add TransactionStatistics to ServerStatistics (transactions started /
+* Fixed internal issue #4407: remove storage engine warning
+
+* Added TransactionStatistics to ServerStatistics (transactions started /
   aborted / committed and number of intermediate commits).
 
 * Agents to remove callback entries when responded to with code 404
