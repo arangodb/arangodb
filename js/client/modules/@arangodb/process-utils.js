@@ -630,7 +630,7 @@ function getDeltaProcessStats(instanceInfo) {
   return deltaStats;
 }
 
-function sumarizeStats(deltaStats) {
+function summarizeStats(deltaStats) {
   let sumStats = {};
   for (let instance in deltaStats) {
     for (let key in deltaStats[instance]) {
