@@ -41,6 +41,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "Logger/LogTopic.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -291,12 +292,17 @@ MockServer::MockServer()
 MockServer::~MockServer() {
   stopFeatures();
   ClusterCommResetter::reset();
+  arangodb::application_features::ApplicationServer::setStateUnsafe(_oldApplicationServerState);
   arangodb::EngineSelectorFeature::ENGINE = nullptr;
   arangodb::application_features::ApplicationServer::server = nullptr;
   arangodb::AgencyCommManager::MANAGER.reset();
 }
 
 void MockServer::init() {
+  _oldApplicationServerState = arangodb::application_features::ApplicationServer::server->state();
+
+  arangodb::application_features::ApplicationServer::setStateUnsafe(
+      arangodb::application_features::ApplicationServer::State::IN_WAIT);
   arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
 }
 
@@ -308,6 +314,15 @@ void MockServer::startFeatures() {
   arangodb::application_features::ApplicationServer::server->setupDependencies(false);
   auto orderedFeatures =
       arangodb::application_features::ApplicationServer::server->getOrderedFeatures();
+
+  auto* sched =
+    arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SchedulerFeature>(
+      "Scheduler");
+  if (sched != nullptr) {
+    // Needed to set nrMaximalThreads
+    sched->validateOptions(std::make_shared<arangodb::options::ProgramOptions>("", "", "", nullptr));
+  }
+
   for (auto& f : orderedFeatures) {
     if (f->name() == "Endpoint") {
       // We need this feature to be there but do not use it.
@@ -334,6 +349,7 @@ void MockServer::startFeatures() {
       f->start();
     }
   }
+
   auto* dbPathFeature =
       arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
           "DatabasePath");
@@ -440,6 +456,11 @@ MockRestServer::MockRestServer() : MockServer() {
   _features.emplace(new arangodb::DatabaseFeature(_server), false);
   _features.emplace(new arangodb::QueryRegistryFeature(_server), false);
   _features.emplace(new arangodb::SystemDatabaseFeature(_server), false);
+  // This is needed because loadDatabases calls into iterateDatabases
+  _features.emplace(new arangodb::V8DealerFeature(_server), false);
+  _features.emplace(new arangodb::ClusterFeature(_server), false);
+  _features.emplace(new arangodb::DatabasePathFeature(_server), false);
+  _features.emplace(new arangodb::SchedulerFeature(_server), true);
 
 #if USE_ENTERPRISE
   _features.emplace(new arangodb::LdapFeature(_server),

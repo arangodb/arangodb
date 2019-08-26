@@ -29,6 +29,7 @@
 #include "Mocks/Servers.h"
 
 #include "lib/Logger/Logger.h"
+#include "lib/Logger/LogMacros.h"
 
 #include <memory>
 #include <type_traits>

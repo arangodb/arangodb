@@ -68,10 +68,14 @@ class MockServer {
   void stopFeatures();
 
  protected:
+
+  arangodb::application_features::ApplicationServer::State
+    _oldApplicationServerState;
   arangodb::application_features::ApplicationServer _server;
   StorageEngineMock _engine;
   std::unordered_map<arangodb::application_features::ApplicationFeature*, bool> _features;
   std::string _testFilesystemPath;
+
 };
 
 class MockAqlServer : public MockServer {
