@@ -526,5 +526,14 @@
     exports.debugCanUseFailAt = global.SYS_DEBUG_CAN_USE_FAILAT;
     delete global.SYS_DEBUG_CAN_USE_FAILAT;
   }
+  
+  // /////////////////////////////////////////////////////////////////////////////
+  // / @brief whether or not clustering is enabled
+  // /////////////////////////////////////////////////////////////////////////////
+
+  exports.isCluster = function () {
+    var role = global.ArangoServerState.role();
+    return (role !== undefined && role !== 'SINGLE' && role !== 'AGENT');
+  };
 
 }());

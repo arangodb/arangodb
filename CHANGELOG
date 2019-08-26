@@ -1,6 +1,9 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Add TransactionStatistics to ServerStatistics (transactions started /
+  aborted / committed and number of intermediate commits).
+
 * Upgraded version of bundled curl library to 7.65.3.
 
 * Don't retry persisting follower information for collections/shards already
