@@ -1,6 +1,10 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Make minimum timeout for synchronous replication configurable via parameter
+  (--cluster.synchronous-replication-timeout-minimum) and increase default value
+  to prevent dropping followers unnecessarily.
+
 * Don't retry persisting follower information for collections/shards already
   dropped. The previous implementation retried (unsuccessfully in this case)
   for up to 2 hours, occupying one scheduler thread.
