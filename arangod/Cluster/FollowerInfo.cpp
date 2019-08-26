@@ -126,6 +126,11 @@ void FollowerInfo::add(ServerID const& sid) {
   double startTime = TRI_microtime();
   bool success = false;
   do {
+    if (_docColl->deleted() || _docColl->vocbase().isDropped()) {
+      LOG_TOPIC(WARN, Logger::CLUSTER) << "giving up persisting follower info for dropped collection"; 
+      return;
+    }
+
     AgencyReadTransaction trx(std::vector<std::string>(
         {AgencyCommManager::path(planPath), AgencyCommManager::path(curPath)}));
     AgencyCommResult res = ac.sendTransactionWithFailover(trx);
@@ -265,6 +270,10 @@ bool FollowerInfo::remove(ServerID const& sid) {
   double startTime = TRI_microtime();
   bool success = false;
   do {
+    if (_docColl->deleted() || _docColl->vocbase().isDropped()) {
+      LOG_TOPIC(WARN, Logger::CLUSTER) << "giving up persisting follower info for dropped collection"; 
+      return true;
+    }
     AgencyReadTransaction trx(std::vector<std::string>(
         {AgencyCommManager::path(planPath), AgencyCommManager::path(curPath)}));
     AgencyCommResult res = ac.sendTransactionWithFailover(trx);
