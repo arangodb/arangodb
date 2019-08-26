@@ -4,6 +4,14 @@ v3.5.1 (XXXX-XX-XX)
 * Add TransactionStatistics to ServerStatistics (transactions started /
   aborted / committed and number of intermediate commits).
 
+* Upgraded version of bundled curl library to 7.65.3.
+
+* Don't retry persisting follower information for collections/shards already
+  dropped. The previous implementation retried (unsuccessfully in this case)
+  for up to 2 hours, occupying one scheduler thread.
+
+* Fixed internal issue #4407: remove storage engine warning.
+
 * Agents to remove callback entries when responded to with code 404.
 
 * Fixed internal issue #622: Analyzer cache is now invalidated for dropped database.
