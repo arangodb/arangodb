@@ -94,13 +94,6 @@ void EngineSelectorFeature::prepare() {
 
   if (_engine == "auto") {
     _engine = defaultEngine();
-    LOG_TOPIC("18bb0", WARN, Logger::STARTUP)
-        << "using default storage engine '" << _engine
-        << "', as no storage engine was explicitly selected via the "
-           "`--server.storage-engine` option";
-    LOG_TOPIC("bdd59", INFO, Logger::STARTUP)
-        << "please note that default storage engine has changed from 'mmfiles' "
-           "to 'rocksdb' in ArangoDB 3.4";
   }
 
   TRI_ASSERT(_engine != "auto");
