@@ -1,6 +1,10 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Don't retry persisting follower information for collections/shards already
+  dropped. The previous implementation retried (unsuccessfully in this case)
+  for up to 2 hours, occupying one scheduler thread.
+
 * Fixed internal issue #4407: remove storage engine warning.
 
 * Agents to remove callback entries when responded to with code 404.

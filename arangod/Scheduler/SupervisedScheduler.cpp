@@ -333,14 +333,14 @@ void SupervisedScheduler::runWorker() {
   }
 
   while (true) {
-    std::unique_ptr<WorkItem> work = getWork(state);
-    if (work == nullptr) {
-      break;
-    }
-
-    _jobsDequeued++;
-
     try {
+      std::unique_ptr<WorkItem> work = getWork(state);
+      if (work == nullptr) {
+        break;
+      }
+    
+      _jobsDequeued++;
+
       state->_lastJobStarted = clock::now();
       state->_working = true;
       work->_handler();
@@ -392,23 +392,27 @@ void SupervisedScheduler::runSupervisor() {
     lastQueueLength = queueLength;
     lastJobsSubmitted = jobsSubmitted;
 
-    if (doStartOneThread && _numWorkers < _maxNumWorker) {
-      jobsStallingTick = 0;
-      startOneThread();
-    } else if (doStopOneThread && _numWorkers > _numIdleWorker) {
-      stopOneThread();
+    try {
+      if (doStartOneThread && _numWorkers < _maxNumWorker) {
+        jobsStallingTick = 0;
+        startOneThread();
+      } else if (doStopOneThread && _numWorkers > _numIdleWorker) {
+        stopOneThread();
+      }
+
+      cleanupAbandonedThreads();
+      sortoutLongRunningThreads();
+
+      std::unique_lock<std::mutex> guard(_mutexSupervisor);
+
+      if (_stopping) {
+        break;
+      }
+
+      _conditionSupervisor.wait_for(guard, std::chrono::milliseconds(100));
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("3318c", WARN, Logger::THREADS) << "scheduler supervisor thread caught exception: " << ex.what();
     }
-
-    cleanupAbandonedThreads();
-    sortoutLongRunningThreads();
-
-    std::unique_lock<std::mutex> guard(_mutexSupervisor);
-
-    if (_stopping) {
-      break;
-    }
-
-    _conditionSupervisor.wait_for(guard, std::chrono::milliseconds(100));
   }
 }
 
