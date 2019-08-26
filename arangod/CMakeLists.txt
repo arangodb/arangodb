@@ -809,15 +809,28 @@ target_link_libraries(arango_rocksdb arango_cache)
 target_link_libraries(arango_rocksdb arango_geo)
 target_link_libraries(arango_rocksdb arango_indexes)
 target_link_libraries(arango_rocksdb arango_replication)
-target_link_libraries(arango_rocksdb arangoserver_part1)
 target_link_libraries(arango_rocksdb boost_boost)
 target_link_libraries(arango_rocksdb ${ROCKSDB_LIBS})
 
 target_link_libraries(arango_storage_engine arango_mmfiles)
 target_link_libraries(arango_storage_engine arango_rocksdb)
 
+# Note that arango_utils is part of this cycle:
+# arango_utils -> arango_aql -> arango_graph -> arango_vocbase -> arango_replication -> arango_utils
 target_link_libraries(arango_utils arango_aql)
+
+# Note that arango_utils is part of this cycle:
+# arango_utils -> arango_vocbase -> arango_replication -> arango_utils
+# This is probably hard to avoid.
+# All three libraries are relatively small, so this isn't too bad.
+# TODO Still, I'd like to revisit this before finishing up, and if possible
+#      break the cycle, or maybe contract the cycle to a single library.
+# An additional note: I suspect arango_utils might also need arango_storage_engine.
+# This would increase the cycle.
 target_link_libraries(arango_utils arango_vocbase)
+
+# TODO Maybe its possible to break the two cycles above by splitting arango_utils, and/or moving its source files
+#      into different libraries.
 
 target_link_libraries(arango_v8server arango_agency)
 target_link_libraries(arango_v8server arango_replication)
