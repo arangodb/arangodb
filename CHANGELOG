@@ -1,6 +1,10 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Make minimum timeout for synchronous replication configurable via parameter
+  (--cluster.synchronous-replication-timeout-minimum) and increase default value
+  to prevent dropping followers unnecessarily.
+
 * Add TransactionStatistics to ServerStatistics (transactions started /
   aborted / committed and number of intermediate commits).
 
