@@ -296,7 +296,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/Quantifier.cpp
   Aql/Query.cpp
   Aql/QueryCache.cpp
-  Aql/QueryCursor.cpp
   Aql/QueryExecutionState.cpp
   Aql/QueryExpressionContext.cpp
   Aql/QueryList.cpp
@@ -339,7 +338,12 @@ set(LIB_ARANGO_AQL_SOURCES
 
 set(LIB_ARANGO_VOCBASE_SOURCES
   Aql/PlanCache.cpp
+  Aql/QueryCursor.cpp
   Replication/DatabaseReplicationApplier.cpp
+  Utils/CollectionNameResolver.cpp
+  Utils/CursorRepository.cpp
+  Utils/DatabaseGuard.cpp
+  Utils/SingleCollectionTransaction.cpp
   VocBase/KeyGenerator.cpp
   VocBase/KeyLockInfo.cpp
   VocBase/LogicalCollection.cpp
@@ -363,13 +367,9 @@ set(LIB_ARANGO_VOCBASE_SOURCES
 set(LIB_ARANGO_UTILS_SOURCES
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp
-  Utils/CollectionNameResolver.cpp
-  Utils/CursorRepository.cpp
-  Utils/DatabaseGuard.cpp
   Utils/ExecContext.cpp
   Utils/FlushThread.cpp
   Utils/OperationCursor.cpp
-  Utils/SingleCollectionTransaction.cpp
   Utils/UrlHelper.cpp
   ${ENTERPRISE_FILES}
 )
@@ -778,6 +778,8 @@ target_link_libraries(arango_pregel boost_system)
 
 target_link_libraries(arango_replication arango_utils)
 
+target_link_libraries(arango_utils boost_boost)
+
 target_link_libraries(arango_rocksdb arango_cache)
 target_link_libraries(arango_rocksdb arango_geo)
 target_link_libraries(arango_rocksdb arango_indexes)
@@ -787,23 +789,6 @@ target_link_libraries(arango_rocksdb ${ROCKSDB_LIBS})
 
 target_link_libraries(arango_storage_engine arango_mmfiles)
 target_link_libraries(arango_storage_engine arango_rocksdb)
-
-# Note that arango_utils is part of this cycle:
-# arango_utils -> arango_aql -> arango_graph -> arango_vocbase -> arango_replication -> arango_utils
-target_link_libraries(arango_utils arango_aql)
-
-# Note that arango_utils is part of this cycle:
-# arango_utils -> arango_vocbase -> arango_replication -> arango_utils
-# This is probably hard to avoid.
-# All three libraries are relatively small, so this isn't too bad.
-# TODO Still, I'd like to revisit this before finishing up, and if possible
-#      break the cycle, or maybe contract the cycle to a single library.
-# An additional note: I suspect arango_utils might also need arango_storage_engine.
-# This would increase the cycle.
-target_link_libraries(arango_utils arango_vocbase)
-
-# TODO Maybe its possible to break the two cycles above by splitting arango_utils, and/or moving its source files
-#      into different libraries.
 
 target_link_libraries(arango_v8server arango_agency)
 target_link_libraries(arango_v8server arango_replication)
