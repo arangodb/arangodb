@@ -268,7 +268,7 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
         return TRI_ERROR_NO_ERROR;
       });
     } else {
-      LOG_TOPIC("2a4dd", WARN, Logger::FIXME)
+      LOG_TOPIC("2a4dd", DEBUG, Logger::FIXME)
         << "ExecContext::CURRENT->user() is empty."
         << "Database will be created without any user having permissions";
      return Result();
