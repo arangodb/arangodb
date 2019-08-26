@@ -60,6 +60,8 @@ class GraphNode : public ExecutionNode {
             std::vector<TRI_edge_direction_e> const& directions,
             std::unique_ptr<graph::BaseOptions> options);
 
+  std::string const& collectionToShardName(std::string const& collName) const;
+
  public:
   virtual ~GraphNode();
 

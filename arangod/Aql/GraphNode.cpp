@@ -401,6 +401,16 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 
 GraphNode::~GraphNode() {}
 
+std::string const& GraphNode::collectionToShardName(std::string const& collName) const {
+  if(_collectionToShard.empty()){
+    return collName;
+  };
+
+  auto found = _collectionToShard.find(collName);
+  TRI_ASSERT(found != _collectionToShard.cend());
+  return found->second;
+}
+
 void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                    std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
@@ -436,7 +446,7 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& e : _edgeColls) {
-      nodes.add(VPackValue(e->name()));
+      nodes.add(VPackValue(collectionToShardName(e->name())));
     }
   }
 
@@ -444,7 +454,7 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& v : _vertexColls) {
-      nodes.add(VPackValue(v->name()));
+      nodes.add(VPackValue(collectionToShardName(v->name())));
     }
   }
 
