@@ -745,7 +745,7 @@ function IResearchAqlTestSuite(args) {
 
       assertEqual(result.length, 8);
       result.forEach(function(res) {
-        assertTrue(res.c == 1 || res.c == 3);
+        assertTrue(res.c === 1 || res.c === 3);
       });
     },
     testAttributeNotInArray : function () {
@@ -753,7 +753,7 @@ function IResearchAqlTestSuite(args) {
 
       assertEqual(result.length, 20);
       result.forEach(function(res) {
-        assertTrue(res.c === undefined || res.c != 1 && res.c != 3);
+        assertTrue(res.c === undefined || res.c !== 1 && res.c !== 3);
       });
     },
     testAttributeInExpression : function () {
@@ -761,7 +761,7 @@ function IResearchAqlTestSuite(args) {
 
       assertEqual(result.length, 15);
       result.forEach(function(res) {
-        assertTrue(res.a == 'foo' || res.a == 'bar');
+        assertTrue(res.a === 'foo' || res.a === 'bar');
       });
     },
     testAttributeNotInExpression: function () {
@@ -769,7 +769,7 @@ function IResearchAqlTestSuite(args) {
 
       assertEqual(result.length, 13);
       result.forEach(function(res) {
-        assertTrue(res.a === undefined || res.a != 'foo' && res.a != 'bar');
+        assertTrue(res.a === undefined || res.a !== 'foo' && res.a !== 'bar');
       });
     },
 
