@@ -596,7 +596,13 @@ function getProcessStats(pid) {
   let processStats = statisticsExternal(pid);
   if (platform === 'linux') {
     let pidStr = "" + pid;
-    let ioraw = fs.readBuffer(fs.join('/', 'proc', pidStr, 'io'));
+    let ioraw;
+    try {
+      ioraw = fs.readBuffer(fs.join('/', 'proc', pidStr, 'io'));
+    } catch (x) {
+      print(x.stack);
+      throw x;
+    }
     let lineStart = 0;
     let maxBuffer = ioraw.length;
     for (let j = 0; j < maxBuffer; j++) {
@@ -1123,7 +1129,12 @@ function abortSurvivors(arangod, options) {
 }
 
 function checkInstanceAlive (instanceInfo, options) {
-  if (options.activefailover && instanceInfo.hasOwnProperty('authOpts')) {
+  if (options.activefailover &&
+      instanceInfo.hasOwnProperty('authOpts') &&
+      (instanceInfo.url !== instanceInfo.agencyUrl)
+     ) {
+    // only detect a leader after we actually know one has been started.
+    // the agency won't tell us anything about leaders.
     let d = detectCurrentLeader(instanceInfo);
     if (instanceInfo.endpoint !== d.endpoint) {
       print(Date() + ' failover has happened, leader is no more! Marking Crashy!');
@@ -1356,7 +1367,8 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
 
   if (options.cluster && instanceInfo.hasOwnProperty('clusterHealthMonitor')) {
     try {
-      killExternal(instanceInfo.clusterHealthMonitor.pid);
+      instanceInfo.clusterHealthMonitor['kill'] = killExternal(instanceInfo.clusterHealthMonitor.pid);
+      instanceInfo.clusterHealthMonitor['statusExternal'] = statusExternal(instanceInfo.clusterHealthMonitor.pid, true);
     }
     catch (x) {
       print(x);
@@ -1524,7 +1536,6 @@ function detectCurrentLeader(instanceInfo) {
       throw "Leader is not selected";
     }
   }
-
   opts['method'] = 'GET';
   reply = download(instanceInfo.url + '/_api/cluster/endpoints', '', opts);
   let res;
@@ -1615,8 +1626,10 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
     }
   });
 
-  if ((options.cluster || options.agency) && !options.disableClusterMonitor) {
-   print("spawning cluster health inspector");
+  if ((options.cluster || options.agency) &&
+      !instanceInfo.hasOwnProperty('clusterHealthMonitor') &&
+      !options.disableClusterMonitor) {
+    print("spawning cluster health inspector");
     internal.env.INSTANCEINFO = JSON.stringify(instanceInfo);
     internal.env.OPTIONS = JSON.stringify(options);
     let args = makeArgsArangosh(options);
