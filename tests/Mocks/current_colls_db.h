@@ -1,3 +1,7 @@
+// How to regenerate: Take an empty cluster, create a new database "db"
+// and dump the agency: This is the object under /arango/Current/Collections/db
+// The JSON has been reformatted with jq, then par and then spaces have
+// been removed. The idea is to have relatively few lines and bytes.
 R"=(
 {"10077":{"s10084":{"servers":[
 "PRMR-ab4cdcec-bae6-4998-af25-a93c0b4a3ada",
