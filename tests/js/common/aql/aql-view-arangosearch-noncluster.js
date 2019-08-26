@@ -782,20 +782,26 @@ function iResearchAqlTestSuite () {
       });
     },
     testAttributeInExpression : function () {
-      var result = db._query("FOR doc IN UnitTestsView OPTIONS { waitForSync : true }  FILTER doc.a IN NOOPT([ 'foo', 'bar' ]) RETURN doc").toArray();
+      var result = db._query("FOR c IN [[[1, 3]]] FOR doc IN UnitTestsView  SEARCH 1 IN FLATTEN(c) OPTIONS { waitForSync : true } RETURN doc").toArray();
 
-      assertEqual(result.length, 15);
-      result.forEach(function(res) {
-        assertTrue(res.a === 'foo' || res.a === 'bar');
-      });
+      assertEqual(result.length, db.UnitTestsCollection.toArray().length);
+
     },
     testAttributeNotInExpression: function () {
-      var result = db._query("FOR doc IN UnitTestsView OPTIONS { waitForSync : true }  FILTER doc.a NOT IN NOOPT([ 'foo', 'bar' ]) RETURN doc").toArray();
+      var result = db._query("FOR c IN [[[1, 3]]] FOR doc IN UnitTestsView  SEARCH 1 NOT IN FLATTEN(c) OPTIONS { waitForSync : true } RETURN doc").toArray();
 
-      assertEqual(result.length, 13);
-      result.forEach(function(res) {
-        assertTrue(res.a === undefined || res.a !== 'foo' && res.a !== 'bar');
-      });
+      assertEqual(result.length, 0);
+    },
+    testAttributeInExpressionNonDet : function () {
+      var result = db._query("FOR c IN [[[1, 3]]] FOR doc IN UnitTestsView  SEARCH 1 IN NOOPT(FLATTEN(c)) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, db.UnitTestsCollection.toArray().length);
+
+    },
+    testAttributeNotInExpressionNonDet: function () {
+      var result = db._query("FOR c IN [[[1, 3]]] FOR doc IN UnitTestsView  SEARCH 1 NOT IN NOOPT(FLATTEN(c)) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 0);
     },
     testViewWithInterruptedInserts : function() {
       let docsCollectionName = "docs";
