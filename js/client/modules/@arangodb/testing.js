@@ -112,6 +112,8 @@ let optionsDocumentation = [
   '   - `dumpAgencyOnError`: if we should create an agency dump if an error occurs',
   '   - `prefix`:    prefix for the tests in the xml reports',
   '',
+  '   - `disableClusterMonitor`: if set to false, an arangosh is started that will send',
+  '                              keepalive requests to all cluster instances, and report on error',
   '   - `disableMonitor`: if set to true on windows, procdump will not be attached.',
   '   - `rr`: if set to true arangod instances are run with rr',
   '   - `exceptionFilter`: on windows you can use this to abort tests on specific exceptions',
@@ -211,6 +213,7 @@ const optionsDefaults = {
   'testFailureText': 'testfailures.txt',
   'testCase': undefined,
   'disableMonitor': false,
+  'disableClusterMonitor': true,
   'sleepBeforeStart' : 0,
 };
 

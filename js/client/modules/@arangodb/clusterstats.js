@@ -55,7 +55,7 @@ while(true) {
     instanceInfo.arangods.forEach(arangod => {
       let serverId = arangod.role + '_' + arangod.port;
       let beforeCall = time();
-      let procStats = pu.getProcessStats(arangod.pid)
+      let procStats = pu.getProcessStats(arangod.pid);
       if (arangod.role === "agent") {
         let reply = download(arangod.url + '/_api/version', '', opts);
         if (reply.hasOwnProperty('error') || reply.code !== 200) {

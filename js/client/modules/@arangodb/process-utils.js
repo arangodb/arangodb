@@ -230,6 +230,7 @@ function setupBinaries (builddir, buildType, configDir) {
       };
     }
   }
+
   BIN_DIR = fs.join(builddir, 'bin');
   if (!fs.exists(BIN_DIR)) {
     BIN_DIR = fs.join(TOP_DIR, BIN_DIR);
@@ -1614,8 +1615,8 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
     }
   });
 
-  if (options.cluster || options.agency) {
-    print("spawning cluster health inspector");
+  if ((options.cluster || options.agency) && !options.disableClusterMonitor) {
+   print("spawning cluster health inspector");
     internal.env.INSTANCEINFO = JSON.stringify(instanceInfo);
     internal.env.OPTIONS = JSON.stringify(options);
     let args = makeArgsArangosh(options);
