@@ -486,55 +486,29 @@ set(LIB_ARANGO_V8SERVER_SOURCES
   V8Server/v8-vocindex.cpp
 )
 
-set(ARANGOD_SOURCES_PART1
-  Actions/actions.cpp
-  Auth/Common.cpp
-  Cluster/ActionDescription.cpp
-  Cluster/ClusterCollectionCreationInfo.cpp
-  Cluster/ClusterHelpers.cpp
-  Cluster/ClusterTypes.cpp
-  Cluster/TakeoverShardLeadership.cpp
-  GeneralServer/Acceptor.cpp
-  GeneralServer/AcceptorTcp.cpp
-  GeneralServer/CommTask.cpp
-  GeneralServer/GeneralCommTask.cpp
-  GeneralServer/GeneralServer.cpp
-  GeneralServer/HttpCommTask.cpp
-  GeneralServer/IoContext.cpp
-  GeneralServer/RestHandlerFactory.cpp
-  GeneralServer/VstCommTask.cpp
-  Network/ConnectionPool.cpp
-  Network/Methods.cpp
-  Network/NetworkFeature.cpp
-  Network/Utils.cpp
-  RestServer/DatabasePathFeature.cpp
-  RestServer/EndpointFeature.cpp
-  RestServer/ServerIdFeature.cpp
-  RestServer/VocbaseContext.cpp
-  Scheduler/Scheduler.cpp
-  Statistics/ServerStatistics.cpp
-  Transaction/CountCache.cpp
-  Transaction/Options.cpp
-  Transaction/Status.cpp
-)
-
-set(ARANGOD_SOURCES_PART2
+set(ARANGOSERVER_SOURCES
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
+  Actions/actions.cpp
+  Auth/Common.cpp
   Auth/TokenCache.cpp
   Auth/User.cpp
   Auth/UserManager.cpp
   Cluster/Action.cpp
   Cluster/ActionBase.cpp
+  Cluster/ActionDescription.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
+  Cluster/ClusterCollectionCreationInfo.cpp
   Cluster/ClusterComm.cpp
   Cluster/ClusterFeature.cpp
+  Cluster/ClusterHelpers.cpp
   Cluster/ClusterInfo.cpp
   Cluster/ClusterMethods.cpp
   Cluster/ClusterRepairDistributeShardsLike.cpp
   Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTrxMethods.cpp
+  Cluster/ClusterTypes.cpp
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
   Cluster/CriticalThread.cpp
@@ -557,13 +531,28 @@ set(ARANGOD_SOURCES_PART2
   Cluster/RestClusterHandler.cpp
   Cluster/ServerState.cpp
   Cluster/SynchronizeShard.cpp
+  Cluster/TakeoverShardLeadership.cpp
   Cluster/UpdateCollection.cpp
   Cluster/v8-cluster.cpp
+  GeneralServer/Acceptor.cpp
+  GeneralServer/AcceptorTcp.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
+  GeneralServer/CommTask.cpp
+  GeneralServer/GeneralCommTask.cpp
+  GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
+  GeneralServer/HttpCommTask.cpp
+  GeneralServer/IoContext.cpp
   GeneralServer/RestHandler.cpp
+  GeneralServer/RestHandlerFactory.cpp
   GeneralServer/ServerSecurityFeature.cpp
+  GeneralServer/Task.cpp
+  GeneralServer/VstCommTask.cpp
+  Network/ConnectionPool.cpp
+  Network/Methods.cpp
+  Network/NetworkFeature.cpp
+  Network/Utils.cpp
   RestHandler/RestAdminDatabaseHandler.cpp
   RestHandler/RestAdminExecuteHandler.cpp
   RestHandler/RestAdminLogHandler.cpp
@@ -610,15 +599,29 @@ set(ARANGOD_SOURCES_PART2
   RestHandler/RestWalAccessHandler.cpp
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
+  RestServer/CheckVersionFeature.cpp
+  RestServer/ConsoleFeature.cpp
+  RestServer/ConsoleThread.cpp
   RestServer/DatabaseFeature.cpp
+  RestServer/DatabasePathFeature.cpp
+  RestServer/EndpointFeature.cpp
+  RestServer/FileDescriptorsFeature.cpp
   RestServer/FlushFeature.cpp
+  RestServer/FortuneFeature.cpp
+  RestServer/FrontendFeature.cpp
   RestServer/InitDatabaseFeature.cpp
+  RestServer/LanguageCheckFeature.cpp
+  RestServer/LockfileFeature.cpp
   RestServer/QueryRegistryFeature.cpp
+  RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
+  RestServer/ServerIdFeature.cpp
   RestServer/SystemDatabaseFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/ViewTypesFeature.cpp
+  RestServer/VocbaseContext.cpp
+  Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp
   Scheduler/SupervisedScheduler.cpp
   Sharding/ShardDistributionReporter.cpp
@@ -629,50 +632,35 @@ set(ARANGOD_SOURCES_PART2
   Statistics/ConnectionStatistics.cpp
   Statistics/Descriptions.cpp
   Statistics/RequestStatistics.cpp
+  Statistics/ServerStatistics.cpp
   Statistics/StatisticsFeature.cpp
   Statistics/StatisticsWorker.cpp
   Transaction/ClusterUtils.cpp
   Transaction/Context.cpp
+  Transaction/CountCache.cpp
   Transaction/Helpers.cpp
   Transaction/Manager.cpp
   Transaction/ManagerFeature.cpp
   Transaction/Methods.cpp
+  Transaction/Options.cpp
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
+  Transaction/Status.cpp
   Transaction/V8Context.cpp
 )
 
-set(ARANGOD_SOURCES_PART3
-  GeneralServer/Task.cpp
-  RestServer/CheckVersionFeature.cpp
-  RestServer/ConsoleFeature.cpp
-  RestServer/ConsoleThread.cpp
-  RestServer/FileDescriptorsFeature.cpp
-  RestServer/FortuneFeature.cpp
-  RestServer/FrontendFeature.cpp
-  RestServer/LanguageCheckFeature.cpp
-  RestServer/LockfileFeature.cpp
-  RestServer/ScriptFeature.cpp
-)
-
 if (USE_MAINTAINER_MODE)
-  set(ARANGOD_SOURCES_PART2 ${ARANGOD_SOURCES_PART2} RestHandler/RestTestHandler.cpp)
+  set(ARANGOSERVER_SOURCES ${ARANGOSERVER_SOURCES} RestHandler/RestTestHandler.cpp)
 endif()
 
 if (NOT MSVC)
-  set(ARANGOD_SOURCES_PART1 ${ARANGOD_SOURCES_PART1} GeneralServer/AcceptorUnixDomain.cpp)
+  set(ARANGOSERVER_SOURCES ${ARANGOSERVER_SOURCES} GeneralServer/AcceptorUnixDomain.cpp)
 endif()
 
 include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
 include(MMFiles/CMakeLists.txt)
 
-
-add_library(arangoserver STATIC
-  # Just so it isn't empty, and we can still use "arangoserver" for now
-  empty.cpp
-  ${ProductVersionFiles}
-)
 
 add_library(arango_graph STATIC
   ${LIB_ARANGO_GRAPH_SOURCES}
@@ -721,19 +709,10 @@ add_library(arango_agency STATIC
   ${LIB_ARANGO_AGENCY_SOURCES}
 )
 
-add_library(arangoserver_part1 STATIC
-  ${ARANGOD_SOURCES_PART1}
-  ${ADDITIONAL_LIB_ARANGOSERVER_PART1_SOURCES}
-)
-
-add_library(arangoserver_part2 STATIC
-  ${ARANGOD_SOURCES_PART2}
-  ${ADDITIONAL_LIB_ARANGOSERVER_PART2_SOURCES}
-)
-
-add_library(arangoserver_part3 STATIC
-  ${ARANGOD_SOURCES_PART3}
-  ${ADDITIONAL_LIB_ARANGOSERVER_PART3_SOURCES}
+add_library(arangoserver STATIC
+  ${ARANGOSERVER_SOURCES}
+  ${ADDITIONAL_LIB_ARANGOSERVER_SOURCES}
+  ${ProductVersionFiles}
 )
 
 add_library(arango_mmfiles STATIC
@@ -754,12 +733,6 @@ add_library(llhttp STATIC
 )
 
 target_include_directories(llhttp PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
-
-target_link_libraries(arangoserver
-  arangoserver_part1
-  arangoserver_part2
-  arangoserver_part3
-)
 
 # Note that arango_geo publicly exports the /J compile option for MSVC, because
 # s2 requires /J to be set on Windows.
@@ -841,36 +814,34 @@ target_link_libraries(arango_vocbase arango_indexes)
 target_link_libraries(arango_vocbase arango_replication)
 target_link_libraries(arango_vocbase boost_system)
 
-target_link_libraries(arangoserver_part1 arango_agency)
-target_link_libraries(arangoserver_part1 arango_geo)
-target_link_libraries(arangoserver_part1 arango_graph)
-target_link_libraries(arangoserver_part1 arango_iresearch)
-target_link_libraries(arangoserver_part1 arango_replication)
-target_link_libraries(arangoserver_part1 arango_storage_engine)
-target_link_libraries(arangoserver_part1 arango_v8server)
-target_link_libraries(arangoserver_part1 arango_vocbase)
-target_link_libraries(arangoserver_part1 boost_boost)
-target_link_libraries(arangoserver_part1 fuerte)
-target_link_libraries(arangoserver_part1 llhttp)
+target_link_libraries(arangoserver arango_agency)
+target_link_libraries(arangoserver arango_geo)
+target_link_libraries(arangoserver arango_graph)
+target_link_libraries(arangoserver arango_iresearch)
+target_link_libraries(arangoserver arango_replication)
+target_link_libraries(arangoserver arango_storage_engine)
+target_link_libraries(arangoserver arango_v8server)
+target_link_libraries(arangoserver arango_vocbase)
+target_link_libraries(arangoserver boost_boost)
+target_link_libraries(arangoserver fuerte)
+target_link_libraries(arangoserver llhttp)
 
-target_link_libraries(arangoserver_part2 arango_agency)
-target_link_libraries(arangoserver_part2 arango_aql)
-target_link_libraries(arangoserver_part2 arango_geo)
-target_link_libraries(arangoserver_part2 arango_indexes)
-target_link_libraries(arangoserver_part2 arango_iresearch)
-target_link_libraries(arangoserver_part2 arango_pregel)
-target_link_libraries(arangoserver_part2 arango_replication)
-target_link_libraries(arangoserver_part2 arango_storage_engine)
-target_link_libraries(arangoserver_part2 arango_utils)
-target_link_libraries(arangoserver_part2 arango_v8server)
-target_link_libraries(arangoserver_part2 arango_vocbase)
-target_link_libraries(arangoserver_part2 arangoserver_part1)
-target_link_libraries(arangoserver_part2 boost_boost)
+target_link_libraries(arangoserver arango_agency)
+target_link_libraries(arangoserver arango_aql)
+target_link_libraries(arangoserver arango_geo)
+target_link_libraries(arangoserver arango_indexes)
+target_link_libraries(arangoserver arango_iresearch)
+target_link_libraries(arangoserver arango_pregel)
+target_link_libraries(arangoserver arango_replication)
+target_link_libraries(arangoserver arango_storage_engine)
+target_link_libraries(arangoserver arango_utils)
+target_link_libraries(arangoserver arango_v8server)
+target_link_libraries(arangoserver arango_vocbase)
+target_link_libraries(arangoserver boost_boost)
 
-target_link_libraries(arangoserver_part3 arango_geo)
-target_link_libraries(arangoserver_part3 arango_vocbase)
-target_link_libraries(arangoserver_part3 arangoserver_part1 arangoserver_part2)
-target_link_libraries(arangoserver_part3 boost_boost)
+target_link_libraries(arangoserver arango_geo)
+target_link_libraries(arangoserver arango_vocbase)
+target_link_libraries(arangoserver boost_boost)
 
 target_link_libraries(arangoserver
   ${LINENOISE_LIBS} # Is this ever anything but empty?
@@ -935,9 +906,7 @@ foreach(TARGET
   arango_indexes
   arango_cache
   arango_replication
-  arangoserver_part1
-  arangoserver_part2
-  arangoserver_part3
+  arangoserver
   arango_mmfiles
   arango_rocksdb
   arango_cluster_engine
