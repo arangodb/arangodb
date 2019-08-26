@@ -166,7 +166,7 @@ class RDBNearIterator final : public IndexIterator {
       RocksDBKeyBounds bds =
           RocksDBKeyBounds::GeoIndex(_index->objectId(), it.range_min.id(),
                                      it.range_max.id());
-
+      
       // intervals are sorted and likely consecutive, try to avoid seeks
       // by checking whether we are in the range already
       bool seek = true;
@@ -197,9 +197,8 @@ class RDBNearIterator final : public IndexIterator {
       }
 
       while (_iter->Valid() && cmp->Compare(_iter->key(), bds.end()) <= 0) {
-        LocalDocumentId documentId =
-            RocksDBKey::indexDocumentId(RocksDBEntryType::GeoIndexValue, _iter->key());
-        _near.reportFound(documentId, RocksDBValue::centroid(_iter->value()));
+        _near.reportFound(RocksDBKey::indexDocumentId(_iter->key()),
+                          RocksDBValue::centroid(_iter->value()));
         _iter->Next();
       }
     

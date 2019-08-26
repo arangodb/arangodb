@@ -36,6 +36,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
+#include "Statistics/ServerStatistics.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -125,18 +126,20 @@ Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
     // all valid
     if (nestingLevel() == 0) {
       updateStatus(transaction::Status::RUNNING);
-
+      ServerStatistics::statistics()._transactionsStatistics._transactionsStarted++;
       // defer writing of the begin marker until necessary!
     }
   } else {
     // something is wrong
     if (nestingLevel() == 0) {
       updateStatus(transaction::Status::ABORTED);
+      ServerStatistics::statistics()._transactionsStatistics._transactionsAborted++;
     }
 
     // free what we have got so far
     unuseCollections(nestingLevel());
   }
+
 
   return result;
 }
@@ -171,6 +174,7 @@ Result MMFilesTransactionState::commitTransaction(transaction::Methods* activeTr
     }
 
     updateStatus(transaction::Status::COMMITTED);
+    ServerStatistics::statistics()._transactionsStatistics._transactionsCommitted++;
 
     // if a write query, clear the query cache for the participating collections
     if (AccessMode::isWriteOrExclusive(_type) && !_collections.empty() &&
@@ -199,6 +203,7 @@ Result MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx
     result.reset(res);
 
     updateStatus(transaction::Status::ABORTED);
+    ServerStatistics::statistics()._transactionsStatistics._transactionsAborted++;
 
     if (_hasOperations) {
       // must clean up the query cache because the transaction
