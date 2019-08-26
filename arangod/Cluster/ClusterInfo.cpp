@@ -1736,6 +1736,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
     std::string const& name,                  // database name
     double timeout                            // request timeout
 ) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
   if (name == TRI_VOC_SYSTEM_DATABASE) {
     return Result(TRI_ERROR_FORBIDDEN);
   }
@@ -1833,6 +1834,7 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
     velocypack::Slice const& json,  // collection definition
     double timeout,                 // request timeout,
     bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
   std::vector<ClusterCollectionCreationInfo> infos{
       ClusterCollectionCreationInfo{collectionID, numberOfShards, replicationFactor,
                                     minReplicationFactor, waitForReplication, json}};
@@ -1900,6 +1902,7 @@ Result ClusterInfo::createCollectionsCoordinator(
     std::string const& databaseName, std::vector<ClusterCollectionCreationInfo>& infos,
     double endTime, bool isNewDatabase,
     std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
   using arangodb::velocypack::Slice;
 
   double const interval = getPollInterval();
@@ -2310,6 +2313,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     std::string const& collectionID,
     double timeout  // request timeout
 ) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
   if (dbName.empty() || (dbName[0] > '0' && dbName[0] < '9')) {
     events::DropCollection(dbName, collectionID, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
@@ -2487,6 +2491,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databaseName,
                                                        std::string const& collectionID,
                                                        LogicalCollection const* info) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -2544,6 +2549,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
     std::string const& viewID,
     velocypack::Slice json  // view definition
 ) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
   // FIXME TODO is this check required?
   auto const typeSlice = json.get(arangodb::StaticStrings::DataSourceType);
 
@@ -2657,6 +2663,7 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
     std::string const& databaseName,      // database name
     std::string const& viewID             // view identifier
 ) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
   // Transact to agency
   AgencyWriteTransaction const trans{
       // operations
@@ -2705,6 +2712,7 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
 Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName,
                                                  std::string const& viewID,
                                                  VPackSlice const& json) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
   AgencyComm ac;
 
   auto res = ac.getValues("Plan/Views/" + databaseName + "/" + viewID);
@@ -2748,6 +2756,7 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
 Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseName,
                                                    std::string const& collectionID,
                                                    TRI_vocbase_col_status_e status) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -2815,6 +2824,7 @@ Result ClusterInfo::ensureIndexCoordinator(
     VPackSlice const& slice,
     bool create, VPackBuilder& resultBuilder,
     double timeout) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
   // check index id
   uint64_t iid = 0;
   VPackSlice const idSlice = slice.get(StaticStrings::IndexId);
@@ -3269,6 +3279,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
     std::string const& collectionID, TRI_idx_iid_t iid,
     double timeout  // request timeout
 ) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
   AgencyComm ac;
 
   double const realTimeout = getTimeout(timeout);
