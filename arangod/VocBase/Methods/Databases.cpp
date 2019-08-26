@@ -280,6 +280,7 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
 
 // Create database on cluster;
 Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
   Result res;
 
   // This operation enters the database as isBuilding into the agency
