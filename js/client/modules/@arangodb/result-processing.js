@@ -180,7 +180,7 @@ function locateFailState(options, results) {
     failCount: 0,
     thisFailedTestCount: 0,
     runFailedTestCount: 0,
-    currentSucces: true,
+    currentSuccess: true,
     failedTests: {},
     thisFailedTests: []
   };
@@ -359,7 +359,7 @@ function unitTestPrettyPrintResults (options, results) {
     failCount: 0,
     thisFailedTestCount: 0,
     runFailedTestCount: 0,
-    currentSucces: true,
+    currentSuccess: true,
     failedTests: {},
     thisFailedTests: []
   };
@@ -513,7 +513,7 @@ function locateLongRunning(options, results) {
     failCount: 0,
     thisFailedTestCount: 0,
     runFailedTestCount: 0,
-    currentSucces: true,
+    currentSuccess: true,
     failedTests: {},
     thisFailedTests: []
   };
@@ -656,7 +656,7 @@ function locateShortServerLife(options, results) {
     failCount: 0,
     thisFailedTestCount: 0,
     runFailedTestCount: 0,
-    currentSucces: true,
+    currentSuccess: true,
     failedTests: {},
     thisFailedTests: []
   };
