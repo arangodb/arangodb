@@ -77,6 +77,7 @@ class Manager final {
     MetaType type;            /// managed, AQL or tombstone
     double usedTimeSecs;      /// last time used
     TransactionState* state;  /// Transaction, may be nullptr
+    std::string user;         /// user owning the transaction
     /// @brief  final TRX state that is valid if this is a tombstone
     /// necessary to avoid getting error on a 'diamond' commit or accidantally
     /// repeated commit / abort messages
