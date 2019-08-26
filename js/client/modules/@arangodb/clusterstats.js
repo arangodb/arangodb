@@ -41,15 +41,15 @@ const opts = Object.assign(pu.makeAuthorizationHeaders(options),
                            { method: 'GET' });
 
 while(true) {
-  const before = time();
   let state = {
     state: true,
-    before: before,
+    before: time(),
     delta: [],
     fails: []
   };
   let results = [];
   for (let i = 0; i < 60; i++) {
+  const before = time();
     let oneSet = { state: true };
     results.push(oneSet);
     instanceInfo.arangods.forEach(arangod => {
