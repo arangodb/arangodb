@@ -91,7 +91,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
 
   // check the access rights to collections
   ExecContext const& exec = ExecContext::current();
-  if (exec.isSuperuser()) {
+  if (!exec.isSuperuser()) {
     TRI_ASSERT(params.isObject());
     VPackSlice storeSlice = params.get("store");
     bool storeResults = !storeSlice.isBool() || storeSlice.getBool();

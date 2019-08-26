@@ -41,6 +41,18 @@ ExecContext ExecContext::Superuser(ExecContext::Type::Internal, /*name*/"", /*db
   return ExecContext::Superuser;
 }
 
+ExecContext::ExecContext(ExecContext::Type type, std::string const& user,
+            std::string const& database, auth::Level systemLevel, auth::Level dbLevel)
+: _type(type),
+  _user(user),
+  _database(database),
+  _canceled(false),
+  _systemDbAuthLevel(systemLevel),
+  _databaseAuthLevel(dbLevel) {
+    TRI_ASSERT(_systemDbAuthLevel != auth::Level::UNDEFINED);
+    TRI_ASSERT(_databaseAuthLevel != auth::Level::UNDEFINED);
+  }
+
 
 bool ExecContext::isAuthEnabled() {
   AuthenticationFeature* af = AuthenticationFeature::instance();

@@ -352,7 +352,7 @@ arangodb::Result modifyLinks( // modify links
     return arangodb::Result(); // nothing to update
   }
 
-  arangodb::ExecContextScope scope(&arangodb::ExecContext::superuser()); // required to remove links from non-RW collections
+  arangodb::ExecContextSuperuserScope scope; // required to remove links from non-RW collections
 
   {
     std::unordered_set<TRI_voc_cid_t> collectionsToRemove; // track removal for potential reindex

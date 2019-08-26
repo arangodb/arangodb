@@ -479,7 +479,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
   TRI_ASSERT(coll != nullptr);
   ExecContext const& exec = ExecContext::current();
   bool canRead = exec.canUseCollection(coll->name(), auth::Level::RO);
-  if (exec.databaseAuthLevel() == auth::Level::NONE || !canRead) {
+  if (!canRead || exec.databaseAuthLevel() == auth::Level::NONE) {
     return Result(TRI_ERROR_FORBIDDEN, "cannot access " + coll->name());
   }
 
@@ -515,7 +515,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
   ExecContext const& exec = ExecContext::current();
   bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
 
-  if ((exec.databaseAuthLevel() != auth::Level::RW || !canModify)) {
+  if (!canModify || !exec.canUseDatabase(auth::Level::RW)) {
     return TRI_ERROR_FORBIDDEN;
   }
 

@@ -24,9 +24,10 @@
 #define ARANGOD_UTILS_EXECCONTEXT_H 1
 
 #include "Auth/Common.h"
-#include "Basics/Common.h"
-#include "Basics/debugging.h"
 #include "Rest/RequestContext.h"
+
+#include <memory>
+#include <string>
 
 namespace arangodb {
 namespace transaction {
@@ -45,13 +46,7 @@ class ExecContext : public RequestContext {
   enum class Type { Default, Internal };
 
   ExecContext(ExecContext::Type type, std::string const& user,
-              std::string const& database, auth::Level systemLevel, auth::Level dbLevel)
-      : _type(type),
-        _user(user),
-        _database(database),
-        _canceled(false),
-        _systemDbAuthLevel(systemLevel),
-        _databaseAuthLevel(dbLevel) {}
+              std::string const& database, auth::Level systemLevel, auth::Level dbLevel);
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
 
@@ -100,7 +95,6 @@ class ExecContext : public RequestContext {
   // std::string const& database() const { return _database; }
   /// @brief authentication level on _system. Always RW for superuser
   auth::Level systemAuthLevel() const {
-    TRI_ASSERT(_systemDbAuthLevel != auth::Level::UNDEFINED);
     return _systemDbAuthLevel;
   };
 
@@ -108,13 +102,12 @@ class ExecContext : public RequestContext {
   ///        request scope. Should almost always contain something,
   ///        if this thread originated in v8 or from HTTP / VST
   auth::Level databaseAuthLevel() const {
-    TRI_ASSERT(_databaseAuthLevel != auth::Level::UNDEFINED);
     return _databaseAuthLevel;
   };
 
   /// @brief returns true if auth level is above or equal `requested`
   bool canUseDatabase(auth::Level requested) const {
-    return canUseDatabase(_database, requested);
+    return requested <= _databaseAuthLevel;
   }
   /// @brief returns true if auth level is above or equal `requested`
   bool canUseDatabase(std::string const& db, auth::Level requested) const;
@@ -170,7 +163,7 @@ struct ExecContextSuperuserScope {
     ExecContext::CURRENT = &ExecContext::Superuser;
   }
   
-  ExecContextSuperuserScope(bool cond) : _old(ExecContext::CURRENT) {
+  explicit ExecContextSuperuserScope(bool cond) : _old(ExecContext::CURRENT) {
     if (cond) {
       ExecContext::CURRENT = &ExecContext::Superuser;
     }
