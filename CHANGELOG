@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Don't create temporary directories named "arangosh_XXXXXX" anymore.
+
 * Upgraded version of bundled curl library to 7.65.3.
 
 * Don't retry persisting follower information for collections/shards already
