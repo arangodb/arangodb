@@ -45,6 +45,7 @@ while(true) {
   let state = {
     state: true,
     before: before,
+    delta: [],
     fails: []
   };
   let results = [];
@@ -64,14 +65,14 @@ while(true) {
           state.state = false;
           oneSet.state = false;
           oneSet[serverId] = {
-            oneSet: false,
+            error: true,
             start: beforeCall,
             delta: time() - beforeCall
           };
         } else {
           let statisticsReply = JSON.parse(reply.body);
           oneSet[serverId] = {
-            oneSet: true,
+            error: false,
             start: beforeCall,
             delta: time() - beforeCall
           };
@@ -85,14 +86,14 @@ while(true) {
           state.state = false;
           oneSet.state = false;
           oneSet[serverId] = {
-            oneSet: false,
+            error: true,
             start: beforeCall,
             delta: time() - beforeCall
           };
         } else {
           let statisticsReply = JSON.parse(reply.body);
           oneSet[serverId] = {
-            oneSet: true,
+            error: false,
             start: beforeCall,
             delta: time() - beforeCall,
             uptime: statisticsReply.server.uptime
@@ -100,7 +101,7 @@ while(true) {
         }
       }
     });
-    state['delta'] = time() - before;
+    state['delta'].push(time() - before);
     if (state.delta > 1000) {
       print("marking FAIL since it took to long");
       state.state = false;
