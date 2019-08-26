@@ -5,6 +5,8 @@ v3.5.1 (XXXX-XX-XX)
   dropped. The previous implementation retried (unsuccessfully in this case)
   for up to 2 hours, occupying one scheduler thread.
 
+* Fixed internal issue #4407: remove storage engine warning.
+
 * Agents to remove callback entries when responded to with code 404.
 
 * Fixed internal issue #622: Analyzer cache is now invalidated for dropped database.

@@ -38,9 +38,33 @@
 #include "Transaction/SmartContext.h"
 #include "Transaction/Status.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+
+namespace {
+bool authorized(std::string const& user) {
+  auto context = arangodb::ExecContext::CURRENT;
+  if (context == nullptr || !arangodb::ExecContext::isAuthEnabled()) {
+    return true;
+  }
+
+  if (context->isSuperuser()) {
+    return true;
+  }
+
+  return (user == context->user());
+}
+
+std::string currentUser() {
+  auto context = arangodb::ExecContext::CURRENT;
+  if (context == nullptr || !arangodb::ExecContext::isAuthEnabled()) {
+    return "";
+  }
+  return context->user();
+}
+}  // namespace
 
 namespace arangodb {
 namespace transaction {
@@ -163,6 +187,7 @@ Manager::ManagedTrx::ManagedTrx(MetaType t, TransactionState* st)
     : type(t),
       usedTimeSecs(TRI_microtime()),
       state(st),
+      user(::currentUser()),
       finalStatus(Status::UNDEFINED),
       rwlock() {}
 
@@ -431,7 +456,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
     auto it = _transactions[bucket]._managed.find(tid);
-    if (it == _transactions[bucket]._managed.end()) {
+    if (it == _transactions[bucket]._managed.end() || !::authorized(it->second.user)) {
       return nullptr;
     }
 
@@ -487,7 +512,7 @@ void Manager::returnManagedTrx(TRI_voc_tid_t tid, AccessMode::Type mode) noexcep
   WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
   auto it = _transactions[bucket]._managed.find(tid);
-  if (it == _transactions[bucket]._managed.end()) {
+  if (it == _transactions[bucket]._managed.end() || !::authorized(it->second.user)) {
     LOG_TOPIC("1d5b0", WARN, Logger::TRANSACTIONS)
         << "managed transaction was not found";
     TRI_ASSERT(false);
@@ -524,7 +549,7 @@ transaction::Status Manager::getManagedTrxStatus(TRI_voc_tid_t tid) const {
   READ_LOCKER(writeLocker, _transactions[bucket]._lock);
 
   auto it = _transactions[bucket]._managed.find(tid);
-  if (it == _transactions[bucket]._managed.end()) {
+  if (it == _transactions[bucket]._managed.end() || !::authorized(it->second.user)) {
     return transaction::Status::UNDEFINED;
   }
 
@@ -566,7 +591,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
 
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
-    if (it == buck._managed.end()) {
+    if (it == buck._managed.end() || !::authorized(it->second.user)) {
       return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND);
     }
 
@@ -844,10 +869,12 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
 
   // merge with local transactions
   iterateManagedTrx([&builder](TRI_voc_tid_t tid, ManagedTrx const& trx) {
-    builder.openObject(true);
-    builder.add("id", VPackValue(std::to_string(tid)));
-    builder.add("state", VPackValue(transaction::statusString(trx.state->status())));
-    builder.close();
+    if (::authorized(trx.user)) {
+      builder.openObject(true);
+      builder.add("id", VPackValue(std::to_string(tid)));
+      builder.add("state", VPackValue(transaction::statusString(trx.state->status())));
+      builder.close();
+    }
   });
 }
 
