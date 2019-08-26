@@ -33,8 +33,11 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Basics/files.h"
+#include "Cluster/ActionDescription.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/CreateDatabase.h"
+#include "Cluster/Maintenance.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
@@ -446,6 +449,7 @@ MockRestServer::MockRestServer() : MockServer() {
                     false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
+  SetupV8Phase(_features, _server);
   startFeatures();
 }
 
@@ -535,6 +539,7 @@ void MockClusterServer::agencyCreateDatabase(std::string const& name) {
 MockDBServer::MockDBServer() : MockClusterServer() {
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
   _features.emplace(new arangodb::FlushFeature(_server), false);  // do not start the thread
+  _features.emplace(new arangodb::MaintenanceFeature(_server), false); // do not start the thread
   startFeatures();
 }
 
@@ -546,6 +551,16 @@ TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
   TRI_ASSERT(ci != nullptr);
   ci->loadPlan();
   ci->loadCurrent();
+
+  // Now we must run a maintenance action to create the database locally:
+  maintenance::ActionDescription ad(
+      {{std::string(maintenance::NAME), std::string(maintenance::CREATE_DATABASE)},
+       {std::string(maintenance::DATABASE), std::string(name)}},
+       maintenance::HIGHER_PRIORITY);
+  auto* mf = arangodb::application_features::ApplicationServer::lookupFeature<arangodb::MaintenanceFeature>("Maintenance");
+  maintenance::CreateDatabase cd(*mf, ad);
+  cd.first();   // Does the job
+
   auto* databaseFeature = arangodb::DatabaseFeature::DATABASE;
   TRI_ASSERT(databaseFeature != nullptr);
   auto vocbase = databaseFeature->lookupDatabase(name);
