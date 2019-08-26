@@ -669,8 +669,8 @@ if (USE_ENTERPRISE)
     )
   else()
     target_link_libraries(arangoserver
-      ${LDAP_LIB}
-      ${LBAR_LIB}
+      ldap
+      lber
       ${OPENSSL_LIBRARIES}
     )
   endif()
