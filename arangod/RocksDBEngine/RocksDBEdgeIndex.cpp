@@ -315,12 +315,10 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     for (_iterator->Seek(_bounds.start());
          _iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0);
          _iterator->Next()) {
-      LocalDocumentId const documentId =
-      RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue,
-                                  _iterator->key());
+      LocalDocumentId const docId = RocksDBKey::edgeDocumentId(_iterator->key());
       
       // adding documentId and _from or _to value
-      _builder.add(VPackValue(documentId.id()));
+      _builder.add(VPackValue(docId.id()));
       VPackStringRef vertexId = RocksDBValue::vertexId(_iterator->value());
       _builder.add(VPackValuePair(vertexId.data(), vertexId.size(), VPackValueType::String));
     }
@@ -769,8 +767,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
       }
     }
     if (needsInsert) {
-      LocalDocumentId const docId =
-      RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue, key);
+      LocalDocumentId const docId = RocksDBKey::edgeDocumentId(key);
       if (!rocksColl->readDocument(trx, docId, mdr)) {
         // Data Inconsistency. revision id without a document...
         TRI_ASSERT(false);
