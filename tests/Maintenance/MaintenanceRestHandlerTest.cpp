@@ -30,13 +30,13 @@
 
 #include <map>
 
-#include <velocypack/velocypack-aliases.h>
-#include <velocypack/vpack.h>
-
 #include "Basics/StringBuffer.h"
 #include "Cluster/MaintenanceRestHandler.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 // GeneralResponse only has a "protected" constructor.
 class TestResponse : public arangodb::HttpResponse {

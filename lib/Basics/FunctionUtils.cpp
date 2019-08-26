@@ -48,7 +48,7 @@ bool retryUntilTimeout(std::function<bool()> fn, LogTopic& topic,
     if (success) {
       break;
     }
-    LOG_TOPIC("18d0b", WARN, topic) << "Failed to " << message << ", waiting to retry...";
+    LOG_TOPIC("18d0b", INFO, topic) << "Failed to " << message << ", waiting to retry...";
     std::this_thread::sleep_for(retryInterval);
   }
   return success;
