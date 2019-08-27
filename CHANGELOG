@@ -1,6 +1,8 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Issue #9798: Limit with offset results in an infinite query that can't be cancelled.
+
 * Agents to remove callback entries when responded to with code 404
 
 * Show query string length and cacheability information in query explain output.
