@@ -80,9 +80,6 @@ class MMFilesEngine final : public StorageEngine {
   // flush wal wait for collector
   void stop() override;
 
-  // minimum timeout for the synchronous replication
-  double minimumSyncReplicationTimeout() const override { return 0.5; }
-
   bool supportsDfdb() const override { return true; }
 
   bool useRawDocumentPointers() override { return true; }

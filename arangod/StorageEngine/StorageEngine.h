@@ -115,9 +115,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual std::unique_ptr<PhysicalCollection> createPhysicalCollection(
       LogicalCollection& collection, velocypack::Slice const& info) = 0;
 
-  // minimum timeout for the synchronous replication
-  virtual double minimumSyncReplicationTimeout() const = 0;
-
   // status functionality
   // --------------------
 

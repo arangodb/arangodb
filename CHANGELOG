@@ -1,7 +1,32 @@
 devel
 -----
 
-* Agents to remove callback entries when responded to with code 404
+* Added support for TLS 1.3 for the arangod server and the client tools. 
+
+  The default TLS protocol for the arangod server is now TLS 1.3 as well, in
+  contrast to TLS 1.2 in previous versions.
+
+  The arangod server can be started with option `--ssl.protocol 5` to make it use
+  TLS 1.2 again.
+  
+  All client tools also support TLS 1.3, by using the `--ssl.protocol 6` option when
+  invoking them. The client tools will use TLS 1.2 by default, in order to be
+  compatible with older versions of ArangoDB that may be contacted by these tools.
+
+  To configure the TLS version for arangod instances started by the ArangoDB starter,
+  one can use the `--all.ssl.protocol=VALUE` startup option for the ArangoDB starter,
+  where VALUE is one of the following:
+
+  - 4 = TLSv1
+  - 5 = TLSv1.2
+  - 6 = TLSv1.3
+
+* Fixed internal issue #4407: remove storage engine warning
+
+* Added TransactionStatistics to ServerStatistics (transactions started /
+  aborted / committed and number of intermediate commits).
+
+* Agents to remove callback entries when responded to with code 404.
 
 * Added AQL function DATE_ROUND to bin a date/time into a set of equal-distance
   buckets.
