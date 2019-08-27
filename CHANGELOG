@@ -3,7 +3,18 @@ v3.4.8 (XXXX-XX-XX)
 
 * Issue #9798: Limit with offset results in an infinite query that can't be cancelled.
 
-* Agents to remove callback entries when responded to with code 404
+* Agents to remove callback entries when responded to with code 404.
+
+* Make minimum timeout for synchronous replication configurable via parameter
+  (--cluster.synchronous-replication-timeout-minimum) and increase default value
+  to prevent dropping followers unnecessarily.
+
+* Fixed issue #9795: fix AQL `NOT IN` clause in SEARCH operations for ArangoSearch
+  views.
+
+* Don't retry persisting follower information for collections/shards already
+  dropped. The previous implementation retried (unsuccessfully in this case)
+  for up to 2 hours, occupying one scheduler thread.
 
 * Show query string length and cacheability information in query explain output.
 
@@ -73,7 +84,7 @@ v3.4.8 (XXXX-XX-XX)
 * Fixed recovery of arangosearch remove operations with the RocksDB storage engine.
 
 * Fixed some races in cluster collection creation, which allowed collections with the
-  same name to be created in parallel under some rare conditions.
+  same name to be created in parallel under some rare conditions (Internal Issue #4296).
 
 * arangoimport would not stop, much less report, communications errors.  Add CSV reporting
   of line numbers that are impacted during such errors.
