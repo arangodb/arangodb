@@ -40,6 +40,7 @@
 #include "Cluster/DropDatabase.h"
 #include "Cluster/Maintenance.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -503,7 +504,8 @@ MockClusterServer::MockClusterServer()
   // Add features
   SetupAqlPhase(_features, _server);
 
-  _features.emplace(new arangodb::UpgradeFeature(_server, nullptr, {}), true);
+  _features.emplace(new arangodb::UpgradeFeature(_server, nullptr, {}), false);
+  _features.emplace(new arangodb::ServerSecurityFeature(_server), false);
 }
 
 MockClusterServer::~MockClusterServer() {
