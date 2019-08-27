@@ -1,7 +1,9 @@
 devel
 -----
 
-* Fixed internal issue #4407: remove storage engine warning
+* Upgraded bundled jemalloc library to version 5.2.1.
+
+* Fixed internal issue #4407: remove storage engine warning.
 
 * Added TransactionStatistics to ServerStatistics (transactions started /
   aborted / committed and number of intermediate commits).
