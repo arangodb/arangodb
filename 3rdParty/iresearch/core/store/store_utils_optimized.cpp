@@ -47,7 +47,7 @@ NS_LOCAL
 bool all_equal(
     const uint32_t* RESTRICT begin,
     const uint32_t* RESTRICT end
-) NOEXCEPT {
+) noexcept {
 #ifdef IRESEARCH_SSE4_2
   assert(0 == (std::distance(begin, end) % SIMDBlockSize));
 
@@ -78,7 +78,7 @@ void fill(
     uint32_t* RESTRICT begin,
     uint32_t* RESTRICT end,
     const uint32_t value
-) NOEXCEPT {
+) noexcept {
   assert(0 == (std::distance(begin, end) % SIMDBlockSize));
 
   auto* mmbegin = reinterpret_cast<__m128i*>(begin);

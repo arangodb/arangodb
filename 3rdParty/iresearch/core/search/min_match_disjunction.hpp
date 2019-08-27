@@ -45,16 +45,16 @@ NS_ROOT
 class min_match_disjunction : public doc_iterator_base {
  public:
   struct cost_iterator_adapter : score_iterator_adapter {
-    cost_iterator_adapter(irs::doc_iterator::ptr&& it) NOEXCEPT
+    cost_iterator_adapter(irs::doc_iterator::ptr&& it) noexcept
       : score_iterator_adapter(std::move(it)) {
       est = cost::extract(this->it->attributes(), cost::MAX);
     }
 
-    cost_iterator_adapter(cost_iterator_adapter&& rhs) NOEXCEPT
+    cost_iterator_adapter(cost_iterator_adapter&& rhs) noexcept
       : score_iterator_adapter(std::move(rhs)), est(rhs.est) {
     }
 
-    cost_iterator_adapter& operator=(cost_iterator_adapter&& rhs) NOEXCEPT {
+    cost_iterator_adapter& operator=(cost_iterator_adapter&& rhs) noexcept {
       if (this != &rhs) {
         score_iterator_adapter::operator=(std::move(rhs));
         est = rhs.est;
@@ -244,7 +244,7 @@ class min_match_disjunction : public doc_iterator_base {
   template<typename Iterator>
   inline void push(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
-    std::push_heap(begin, end, [this](const size_t lhs, const size_t rhs) NOEXCEPT {
+    std::push_heap(begin, end, [this](const size_t lhs, const size_t rhs) noexcept {
       assert(lhs < itrs_.size());
       assert(rhs < itrs_.size());
       const auto& lhs_it = itrs_[lhs];
@@ -258,7 +258,7 @@ class min_match_disjunction : public doc_iterator_base {
   template<typename Iterator>
   inline void pop(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
-    detail::pop_heap(begin, end, [this](const size_t lhs, const size_t rhs) NOEXCEPT {
+    detail::pop_heap(begin, end, [this](const size_t lhs, const size_t rhs) noexcept {
       assert(lhs < itrs_.size());
       assert(rhs < itrs_.size());
       const auto& lhs_it = itrs_[lhs];

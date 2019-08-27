@@ -42,7 +42,7 @@ class delimited_token_stream: public analyzer, util::noncopyable {
   DECLARE_FACTORY(const string_ref& delimiter);
 
   delimited_token_stream(const irs::string_ref& delimiter);
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
   static void init(); // for trigering registration in a static build

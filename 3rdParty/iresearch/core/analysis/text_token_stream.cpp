@@ -267,7 +267,7 @@ irs::analysis::analyzer::ptr construct(
   static auto generator = [](
       const irs::hashed_string_ref& key,
       cached_options_t& value
-  ) NOEXCEPT {
+  ) noexcept {
     if (key.null()) {
       return key;
     }

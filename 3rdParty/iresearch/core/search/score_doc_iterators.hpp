@@ -36,7 +36,7 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API doc_iterator_base : public doc_iterator {
  public:
-  virtual const attribute_view& attributes() const NOEXCEPT override final {
+  virtual const attribute_view& attributes() const noexcept override final {
     return attrs_;
   }
 
@@ -98,9 +98,9 @@ class basic_doc_iterator final : public basic_doc_iterator_base {
      doc_iterator::ptr&& it,
      const order::prepared& ord,
      cost::cost_t estimation,
-     boost_t boost) NOEXCEPT;
+     boost_t boost) noexcept;
 
-  virtual doc_id_t value() const NOEXCEPT override {
+  virtual doc_id_t value() const noexcept override {
     // this function is executed very frequently, to avoid expensive virtual call
     // and optimize it, we directly access document attribute of wrapped iterator
     assert(doc_);

@@ -512,7 +512,7 @@ by_granular_range& by_granular_range::field(std::string fld) {
   return *this;
 }
 
-size_t by_granular_range::hash() const NOEXCEPT {
+size_t by_granular_range::hash() const noexcept {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   ::boost::hash_combine(seed, fld_);
@@ -659,7 +659,7 @@ filter::prepared::ptr by_granular_range::prepare(
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
-bool by_granular_range::equals(const filter& rhs) const NOEXCEPT {
+bool by_granular_range::equals(const filter& rhs) const noexcept {
   const by_granular_range& trhs = static_cast<const by_granular_range&>(rhs);
   return filter::equals(rhs) && fld_ == trhs.fld_ && rng_ == trhs.rng_;
 }

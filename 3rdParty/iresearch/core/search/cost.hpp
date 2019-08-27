@@ -44,7 +44,7 @@ class IRESEARCH_API cost : public attribute {
   /// @returns a value of the "cost" attribute in the specified "src"
   /// collection, or "def" value if there is no "cost" attribute in "src"
   //////////////////////////////////////////////////////////////////////////////
-  static cost_t extract(const attribute_view& src, cost_t def = MAX) NOEXCEPT {
+  static cost_t extract(const attribute_view& src, cost_t def = MAX) noexcept {
     cost::cost_t est = def;
     auto& attr = src.get<iresearch::cost>();
     if (attr) {

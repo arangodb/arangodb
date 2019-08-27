@@ -39,24 +39,24 @@ class IRESEARCH_API score : public attribute {
 
   DECLARE_ATTRIBUTE_TYPE();
 
-  static const irs::score& no_score() NOEXCEPT;
+  static const irs::score& no_score() noexcept;
 
-  static const irs::score& extract(const attribute_view& attrs) NOEXCEPT {
+  static const irs::score& extract(const attribute_view& attrs) noexcept {
     const irs::score* score = attrs.get<irs::score>().get();
     return score ? *score : no_score();
   }
 
-  score() NOEXCEPT;
+  score() noexcept;
 
-  const byte_type* c_str() const NOEXCEPT {
+  const byte_type* c_str() const noexcept {
     return value_.c_str();
   }
 
-  const bstring& value() const NOEXCEPT {
+  const bstring& value() const noexcept {
     return value_;
   }
 
-  bool empty() const NOEXCEPT {
+  bool empty() const noexcept {
     return value_.empty();
   }
 
@@ -83,7 +83,7 @@ class IRESEARCH_API score : public attribute {
   }
 
  private:
-  byte_type* leak() const NOEXCEPT {
+  byte_type* leak() const noexcept {
     return const_cast<byte_type*>(&(value_[0]));
   }
 

@@ -114,7 +114,7 @@ class basic_disjunction final : public doc_iterator_base {
     estimate(est);
   }
 
-  virtual doc_id_t value() const NOEXCEPT override {
+  virtual doc_id_t value() const noexcept override {
     return doc_.value;
   }
 
@@ -251,7 +251,7 @@ class small_disjunction : public doc_iterator_base {
     });
   }
 
-  virtual doc_id_t value() const NOEXCEPT override {
+  virtual doc_id_t value() const noexcept override {
     return doc_.value;
   }
 
@@ -432,7 +432,7 @@ class disjunction : public doc_iterator_base {
     });
   }
 
-  virtual doc_id_t value() const NOEXCEPT override {
+  virtual doc_id_t value() const noexcept override {
     return doc_.value;
   }
 
@@ -511,7 +511,7 @@ class disjunction : public doc_iterator_base {
   template<typename Iterator>
   inline void push(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
-    std::push_heap(begin, end, [this](const size_t lhs, const size_t rhs) NOEXCEPT {
+    std::push_heap(begin, end, [this](const size_t lhs, const size_t rhs) noexcept {
       assert(lhs < itrs_.size());
       assert(rhs < itrs_.size());
       return itrs_[lhs].value() > itrs_[rhs].value();
@@ -521,7 +521,7 @@ class disjunction : public doc_iterator_base {
   template<typename Iterator>
   inline void pop(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
-    detail::pop_heap(begin, end, [this](const size_t lhs, const size_t rhs) NOEXCEPT {
+    detail::pop_heap(begin, end, [this](const size_t lhs, const size_t rhs) noexcept {
       assert(lhs < itrs_.size());
       assert(rhs < itrs_.size());
       return itrs_[lhs].value() > itrs_[rhs].value();
@@ -550,13 +550,13 @@ class disjunction : public doc_iterator_base {
     pop(begin, end);
   }
 
-  inline doc_iterator_t& lead() NOEXCEPT {
+  inline doc_iterator_t& lead() noexcept {
     assert(!heap_.empty());
     assert(heap_.back() < itrs_.size());
     return itrs_[heap_.back()];
   }
 
-  inline doc_iterator_t& top() NOEXCEPT {
+  inline doc_iterator_t& top() noexcept {
     assert(!heap_.empty());
     assert(heap_.front() < itrs_.size());
     return itrs_[heap_.front()];

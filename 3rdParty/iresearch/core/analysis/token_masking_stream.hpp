@@ -42,7 +42,7 @@ class token_masking_stream: public analyzer, util::noncopyable {
   DECLARE_FACTORY(const string_ref& mask);
 
   token_masking_stream(std::unordered_set<irs::bstring>&& mask);
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
   static void init(); // for trigering registration in a static build

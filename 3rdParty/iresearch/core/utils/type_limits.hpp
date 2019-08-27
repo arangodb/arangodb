@@ -50,26 +50,26 @@ NS_END // type_t
 template<typename TYPE> struct type_limits;
 
 template<> struct type_limits<type_t::address_t> {
-  CONSTEXPR static uint64_t invalid() NOEXCEPT {
+  constexpr static uint64_t invalid() noexcept {
     return integer_traits<uint64_t>::const_max;
   }
-  CONSTEXPR static bool valid(uint64_t addr) NOEXCEPT {
+  constexpr static bool valid(uint64_t addr) noexcept {
     return invalid() != addr;
   }
 };
 
 template<> struct type_limits<type_t::doc_id_t> {
-  CONSTEXPR static doc_id_t eof() NOEXCEPT {
+  constexpr static doc_id_t eof() noexcept {
     return integer_traits<doc_id_t>::const_max;
   }
-  CONSTEXPR static bool eof(doc_id_t id) NOEXCEPT {
+  constexpr static bool eof(doc_id_t id) noexcept {
     return eof() == id;
   }
-  CONSTEXPR static doc_id_t invalid() NOEXCEPT { return 0; }
-  CONSTEXPR static doc_id_t (min)() NOEXCEPT {
+  constexpr static doc_id_t invalid() noexcept { return 0; }
+  constexpr static doc_id_t (min)() noexcept {
     return 1; // +1 because INVALID_DOC == 0
   }
-  CONSTEXPR static bool valid(doc_id_t id) NOEXCEPT {
+  constexpr static bool valid(doc_id_t id) noexcept {
     return invalid() != id;
   }
 };
@@ -77,10 +77,10 @@ template<> struct type_limits<type_t::doc_id_t> {
 typedef irs::type_limits<irs::type_t::doc_id_t> doc_limits;
 
 template<> struct type_limits<type_t::field_id_t> {
-  CONSTEXPR static field_id invalid() NOEXCEPT {
+  constexpr static field_id invalid() noexcept {
     return integer_traits<field_id>::const_max;
   }
-  CONSTEXPR static bool valid(field_id id) NOEXCEPT {
+  constexpr static bool valid(field_id id) noexcept {
     return invalid() != id;
   }
 };
@@ -88,24 +88,24 @@ template<> struct type_limits<type_t::field_id_t> {
 typedef irs::type_limits<irs::type_t::field_id_t> field_limits;
 
 template<> struct type_limits<type_t::index_gen_t> {
-  CONSTEXPR static uint64_t invalid() NOEXCEPT {
+  constexpr static uint64_t invalid() noexcept {
     return integer_traits<field_id>::const_max;
   }
-  CONSTEXPR static bool valid(uint64_t id) NOEXCEPT {
+  constexpr static bool valid(uint64_t id) noexcept {
     return invalid() != id;
   }
 };
 
 template<> struct type_limits<type_t::pos_t> {
-  CONSTEXPR static uint32_t invalid() NOEXCEPT {
+  constexpr static uint32_t invalid() noexcept {
     return 0;
   }
-  CONSTEXPR static bool valid(uint32_t pos) NOEXCEPT {
+  constexpr static bool valid(uint32_t pos) noexcept {
     return invalid() != pos;
   }
-  CONSTEXPR static uint32_t eof() NOEXCEPT { return integer_traits<uint32_t>::const_max; }
-  CONSTEXPR static bool eof(uint32_t pos) NOEXCEPT { return eof() == pos; }
-  CONSTEXPR static uint32_t (min)() NOEXCEPT { return 1; }
+  constexpr static uint32_t eof() noexcept { return integer_traits<uint32_t>::const_max; }
+  constexpr static bool eof(uint32_t pos) noexcept { return eof() == pos; }
+  constexpr static uint32_t (min)() noexcept { return 1; }
 };
 
 typedef irs::type_limits<irs::type_t::pos_t> pos_limits;

@@ -226,7 +226,7 @@ struct term_collector final: public irs::sort::term_collector {
   }
 };
 
-FORCE_INLINE float_t tfidf(float_t freq, float_t idf) NOEXCEPT {
+FORCE_INLINE float_t tfidf(float_t freq, float_t idf) noexcept {
   static_assert(
     std::is_same<decltype(std::sqrt(freq)), float_t>::value,
     "float_t expected"
@@ -250,7 +250,7 @@ struct idf final : attribute {
 typedef tfidf_sort::score_t score_t;
 
 struct const_score_ctx final : public irs::sort::score_ctx {
-  explicit const_score_ctx(irs::boost_t boost) NOEXCEPT
+  explicit const_score_ctx(irs::boost_t boost) noexcept
     : boost_(boost) {
   }
 
@@ -261,7 +261,7 @@ struct score_ctx : public irs::sort::score_ctx {
   score_ctx(
       irs::boost_t boost,
       const tfidf::idf& idf,
-      const frequency* freq) NOEXCEPT
+      const frequency* freq) noexcept
     : idf_(boost * idf.value),
       freq_(freq ? freq : &EMPTY_FREQ) {
     assert(freq_);
@@ -276,7 +276,7 @@ struct norm_score_ctx final : public score_ctx {
       irs::norm&& norm,
       irs::boost_t boost,
       const tfidf::idf& idf,
-      const frequency* freq) NOEXCEPT
+      const frequency* freq) noexcept
     : score_ctx(boost, idf, freq),
       norm_(std::move(norm)) {
   }
@@ -288,7 +288,7 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
  public:
   DEFINE_FACTORY_INLINE(prepared)
 
-  explicit sort(bool normalize) NOEXCEPT
+  explicit sort(bool normalize) noexcept
     : normalize_(normalize) {
   }
 
@@ -342,7 +342,18 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
     auto& freq = doc_attrs.get<frequency>();
 
     if (!freq) {
-      return { nullptr, nullptr };
+      if (0.f == boost) {
+        return { nullptr, nullptr };
+      }
+
+      // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
+      return {
+        memory::make_unique<tfidf::const_score_ctx>(boost),
+        [](const void* ctx, byte_type* score_buf) noexcept {
+          auto& state = *static_cast<const tfidf::const_score_ctx*>(ctx);
+          irs::sort::score_cast<tfidf::score_t>(score_buf) = state.boost_;
+        }
+      };
     }
 
     auto& stats = stats_cast(stats_buf);
@@ -361,7 +372,7 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
       if (norm.reset(segment, field.meta().norm, *doc)) {
         return {
           memory::make_unique<tfidf::norm_score_ctx>(std::move(norm), boost, stats, freq.get()),
-          [](const void* ctx, byte_type* score_buf) NOEXCEPT {
+          [](const void* ctx, byte_type* score_buf) noexcept {
             auto& state = *static_cast<const tfidf::norm_score_ctx*>(ctx);
             irs::sort::score_cast<tfidf::score_t>(score_buf) = ::tfidf(state.freq_->value, state.idf_)*state.norm_.read();
           }
@@ -372,7 +383,7 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
 
     return {
       memory::make_unique<tfidf::score_ctx>(boost, stats, freq.get()),
-      [](const void* ctx, byte_type* score_buf) NOEXCEPT {
+      [](const void* ctx, byte_type* score_buf) noexcept {
         auto& state = *static_cast<const tfidf::score_ctx*>(ctx);
         irs::sort::score_cast<score_t>(score_buf) = ::tfidf(state.freq_->value, state.idf_);
       }
@@ -392,7 +403,7 @@ NS_END // tfidf
 DEFINE_SORT_TYPE_NAMED(irs::tfidf_sort, "tfidf")
 DEFINE_FACTORY_DEFAULT(irs::tfidf_sort)
 
-tfidf_sort::tfidf_sort(bool normalize) NOEXCEPT
+tfidf_sort::tfidf_sort(bool normalize) noexcept
   : sort(tfidf_sort::type()),
     normalize_(normalize) {
 }

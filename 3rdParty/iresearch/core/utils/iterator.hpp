@@ -74,16 +74,16 @@ template<
       end_(end) {
   }
 
-  const_reference value() const NOEXCEPT override {
+  const_reference value() const noexcept override {
     return *cur_;
   }
 
-  bool seek(const key_type& key) NOEXCEPT override {
+  bool seek(const key_type& key) noexcept override {
     begin_ = std::lower_bound(cur_, end_, key, comparer_t::get());
     return next();
   }
 
-  bool next() NOEXCEPT override {
+  bool next() noexcept override {
     if (begin_ == end_) {
       cur_ = begin_; // seal iterator
       return false;

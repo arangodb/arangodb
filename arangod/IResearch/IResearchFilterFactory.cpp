@@ -39,6 +39,7 @@
 #include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
+#include "search/wildcard_filter.hpp"
 
 #include "Aql/Ast.h"
 #include "Aql/Function.h"
@@ -1924,6 +1925,90 @@ arangodb::Result fromFuncInRange(irs::boolean_filter* filter, QueryContext const
   return {};
 }
 
+// Analyze(<filter-expression>, analyzer)
+arangodb::Result fromFuncLike(
+    irs::boolean_filter* filter, QueryContext const& ctx,
+    FilterContext const& filterCtx, arangodb::aql::AstNode const& args) {
+  if (!args.isDeterministic()) {
+    auto message = "Unable to handle non-deterministic arguments for 'LIKE' function";
+    LOG_TOPIC("dff15", WARN, arangodb::iresearch::TOPIC) << message;
+    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message}; // nondeterministic
+  }
+
+  auto const argc = args.numMembers();
+
+  if (argc < 2 || argc > 3) {
+    auto message = "'LIKE' AQL function: Invalid number of arguments passed (should be 2..3)";
+    LOG_TOPIC("2f1a8", WARN, arangodb::iresearch::TOPIC) << message;
+    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+  }
+
+  // 1st argument defines a field
+  auto const* field =
+      arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
+
+  if (!field) {
+    auto message = "'LIKE' AQL function: Unable to parse 1st argument as an attribute identifier";
+    LOG_TOPIC("7c51a", WARN, arangodb::iresearch::TOPIC) << message;
+    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+  }
+
+  // 2nd argument defines a matching pattern
+  auto const* patternArg = args.getMemberUnchecked(1);
+
+  if (!patternArg) {
+    auto message = "'LIKE' AQL function: 2nd argument is invalid";
+    LOG_TOPIC("6f501", WARN, arangodb::iresearch::TOPIC) << message;
+    return {TRI_ERROR_BAD_PARAMETER, message};
+  }
+
+  irs::string_ref pattern;
+  const size_t scoringLimit = 128;  // FIXME make configurable
+
+  ScopedAqlValue patternValue(*patternArg);
+
+  if (filter || patternValue.isConstant()) {
+    if (!patternValue.execute(ctx)) {
+      auto message = "'LIKE' AQL function: Failed to evaluate 2nd argument";
+      LOG_TOPIC("e196b", WARN, arangodb::iresearch::TOPIC) << message;
+      return {TRI_ERROR_BAD_PARAMETER, message};
+    }
+
+    if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != patternValue.type()) {
+      auto message = "'LIKE' AQL function: 2nd argument has invalid type '"s + ScopedAqlValue::typeString(patternValue.type()).c_str() + "' (string expected)";
+      LOG_TOPIC("bd9c1", WARN, arangodb::iresearch::TOPIC) << message;
+      return {TRI_ERROR_BAD_PARAMETER, message};
+    }
+
+    if (!patternValue.getString(pattern)) {
+      auto message = "'LIKE' AQL function: Unable to parse 2nd argument as string";
+      LOG_TOPIC("e1ebc", WARN, arangodb::iresearch::TOPIC) << message;
+      return {TRI_ERROR_BAD_PARAMETER, message};
+    }
+  }
+
+  if (filter) {
+    std::string name;
+
+    if (!nameFromAttributeAccess(name, *field, ctx)) {
+      auto message = "'LIKE' AQL function: Failed to generate field name from the 1st argument";
+      LOG_TOPIC("91861", WARN, arangodb::iresearch::TOPIC) << message;
+      return {TRI_ERROR_BAD_PARAMETER, message};
+    }
+
+    TRI_ASSERT(filterCtx.analyzer);
+    kludge::mangleStringField(name, filterCtx.analyzer);
+
+    auto& wildcardFilter = filter->add<irs::by_wildcard>();
+    wildcardFilter.scored_terms_limit(scoringLimit);
+    wildcardFilter.field(std::move(name));
+    wildcardFilter.boost(filterCtx.boost);
+    wildcardFilter.term(pattern);
+  }
+
+  return {};
+}
+
 std::map<irs::string_ref, ConvertionHandler> const FCallUserConvertionHandlers;
 
 arangodb::Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
@@ -1969,7 +2054,7 @@ std::map<std::string, ConvertionHandler> const FCallSystemConvertionHandlers{
     {"PHRASE", fromFuncPhrase},     {"STARTS_WITH", fromFuncStartsWith},
     {"EXISTS", fromFuncExists},     {"BOOST", fromFuncBoost},
     {"ANALYZER", fromFuncAnalyzer}, {"MIN_MATCH", fromFuncMinMatch},
-    {"IN_RANGE", fromFuncInRange}
+    {"IN_RANGE", fromFuncInRange},  {"LIKE", fromFuncLike }
 };
 
 arangodb::Result fromFCall(irs::boolean_filter* filter, QueryContext const& ctx,

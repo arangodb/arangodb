@@ -77,7 +77,7 @@ NS_ROOT
 // --SECTION--                                         sub_reader implementation
 // -----------------------------------------------------------------------------
 
-/*static*/ const sub_reader& sub_reader::empty() NOEXCEPT {
+/*static*/ const sub_reader& sub_reader::empty() noexcept {
   return empty_sub_reader::instance();
 }
 

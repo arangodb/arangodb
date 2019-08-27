@@ -276,9 +276,9 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
       auto pid = fork();
 
       if (!pid) {
-        CONSTEXPR const size_t pid_size = sizeof(pid_t)*3 + 1; // aproximately 3 chars per byte +1 for \0
-        CONSTEXPR const char PROC_EXE[] = { "/proc//exe" };
-        CONSTEXPR const size_t name_size = IRESEARCH_COUNTOF(PROC_EXE) + pid_size + 1; // +1 for \0
+        constexpr const size_t pid_size = sizeof(pid_t)*3 + 1; // aproximately 3 chars per byte +1 for \0
+        constexpr const char PROC_EXE[] = { "/proc//exe" };
+        constexpr const size_t name_size = IRESEARCH_COUNTOF(PROC_EXE) + pid_size + 1; // +1 for \0
         char pid_buf[pid_size];
         char name_buf[name_size];
         auto ppid = getppid();
@@ -323,7 +323,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
       auto pid = fork();
 
       if (!pid) {
-        CONSTEXPR const size_t pid_size = sizeof(pid_t)*3 + 1; // approximately 3 chars per byte +1 for \0
+        constexpr const size_t pid_size = sizeof(pid_t)*3 + 1; // approximately 3 chars per byte +1 for \0
         char pid_buf[pid_size];
         char name_buf[PROC_PIDPATHINFO_MAXSIZE]; // buffer size requirement for proc_pidpath(...)
         auto ppid = getppid();
@@ -351,9 +351,9 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
       auto pid = fork();
 
       if (!pid) {
-        CONSTEXPR const size_t pid_size = sizeof(pid_t)*3 + 1; // approximately 3 chars per byte +1 for \0
-        CONSTEXPR const char PROC_EXE[] = { "/proc//exe" };
-        CONSTEXPR const size_t name_size = IRESEARCH_COUNTOF(PROC_EXE) + pid_size + 1; // +1 for \0
+        constexpr const size_t pid_size = sizeof(pid_t)*3 + 1; // approximately 3 chars per byte +1 for \0
+        constexpr const char PROC_EXE[] = { "/proc//exe" };
+        constexpr const size_t name_size = IRESEARCH_COUNTOF(PROC_EXE) + pid_size + 1; // +1 for \0
         char pid_buf[pid_size];
         char name_buf[name_size];
         auto ppid = getppid();
@@ -377,7 +377,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
 
   void stack_trace_posix(iresearch::logger::level_t level) {
     auto* out = output(level);
-    CONSTEXPR const size_t frames_max = 128; // arbitrary size
+    constexpr const size_t frames_max = 128; // arbitrary size
     void* frames_buf[frames_max];
     auto frames_count = backtrace(frames_buf, frames_max);
 
@@ -398,7 +398,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
     }
 
     size_t buf_len = 0;
-    CONSTEXPR const size_t buf_size = 1024; // arbitrary size
+    constexpr const size_t buf_size = 1024; // arbitrary size
     char buf[buf_size];
     std::thread thread([&pipefd, level, out, &buf, &buf_len, buf_size]()->void {
       for (char ch; read(pipefd[0], &ch, 1) > 0;) {
@@ -542,7 +542,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
       return false;
     }
 
-    CONSTEXPR const size_t symbols_size = 1048576; // arbitrary size (4K proved too small)
+    constexpr const size_t symbols_size = 1048576; // arbitrary size (4K proved too small)
     auto symbol_bytes = bfd_get_symtab_upper_bound(file_bfd);
 
     if (symbol_bytes <= 0 || symbols_size < size_t(symbol_bytes)) {
@@ -677,7 +677,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
         continue;
       }
 
-      CONSTEXPR const size_t proc_size = 1024; // arbitrary size
+      constexpr const size_t proc_size = 1024; // arbitrary size
       char proc_buf[proc_size];
       unw_word_t offset;
 
@@ -781,7 +781,7 @@ void stack_trace(level_t level, const std::exception_ptr& eptr) {
       return; // skip generating trace if logging is disabled for this level altogether
     }
 
-    CONSTEXPR const size_t frames_max = 128; // arbitrary size
+    constexpr const size_t frames_max = 128; // arbitrary size
     void* frames_buf[frames_max];
     auto frames_count = backtrace(frames_buf, frames_max);
 

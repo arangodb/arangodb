@@ -34,7 +34,7 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class exclusion final : public doc_iterator {
  public:
-  exclusion(doc_iterator::ptr&& incl, doc_iterator::ptr&& excl) NOEXCEPT
+  exclusion(doc_iterator::ptr&& incl, doc_iterator::ptr&& excl) noexcept
     : incl_(std::move(incl)), excl_(std::move(excl)) {
     assert(incl_);
     assert(excl_);
@@ -68,7 +68,7 @@ class exclusion final : public doc_iterator {
     return next(target);
   }
 
-  virtual const attribute_view& attributes() const NOEXCEPT override {
+  virtual const attribute_view& attributes() const noexcept override {
     return incl_->attributes();
   }
 

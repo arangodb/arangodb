@@ -43,10 +43,10 @@ NS_BEGIN(container_utils)
 //////////////////////////////////////////////////////////////////////////////
 template<typename T, size_t Size>
 class array
-  : private irs::memory::aligned_storage<sizeof(T)*Size, ALIGNOF(T)>,
+  : private irs::memory::aligned_storage<sizeof(T)*Size, alignof(T)>,
     private util::noncopyable {
  private:
-  typedef irs::memory::aligned_storage<sizeof(T)*Size, ALIGNOF(T)> buffer_t;
+  typedef irs::memory::aligned_storage<sizeof(T)*Size, alignof(T)> buffer_t;
 
  public:
   typedef T value_type;
@@ -69,7 +69,7 @@ class array
     }
   }
 
-  ~array() NOEXCEPT {
+  ~array() noexcept {
     auto begin = this->begin();
     auto end = this->end();
 
@@ -81,9 +81,9 @@ class array
 #if IRESEARCH_CXX > IRESEARCH_CXX_11
   // before c++14 constexpr member function
   // gets const implicitly
-  CONSTEXPR
+  constexpr
 #endif
-  reference operator[](size_t i) NOEXCEPT {
+  reference operator[](size_t i) noexcept {
     assert(i < Size);
     return *(begin() + i);
   }
@@ -91,95 +91,95 @@ class array
 #if IRESEARCH_CXX > IRESEARCH_CXX_11
   // before c++14 constexpr member function
   // gets const implicitly
-  CONSTEXPR
+  constexpr
 #endif
-  const_reference operator[](size_t i) const NOEXCEPT {
+  const_reference operator[](size_t i) const noexcept {
     return const_cast<array&>(*this)[i];
   }
 
 #if IRESEARCH_CXX > IRESEARCH_CXX_11
   // before c++14 constexpr member function
   // gets const implicitly
-  CONSTEXPR
+  constexpr
 #endif
-  reference back() NOEXCEPT {
+  reference back() noexcept {
     return *(end()-1);
   }
 
-  CONSTEXPR const_reference back() const NOEXCEPT {
+  constexpr const_reference back() const noexcept {
     return const_cast<array*>(this)->back();
   }
 
 #if IRESEARCH_CXX > IRESEARCH_CXX_11
   // before c++14 constexpr member function
   // gets const implicitly
-  CONSTEXPR
+  constexpr
 #endif
-  reference front() NOEXCEPT {
+  reference front() noexcept {
     return *begin();
   }
 
-  CONSTEXPR const_reference front() const NOEXCEPT {
+  constexpr const_reference front() const noexcept {
     return const_cast<array*>(this)->front();
   }
 
 #if IRESEARCH_CXX > IRESEARCH_CXX_11
   // before c++14 constexpr member function
   // gets const implicitly
-  CONSTEXPR
+  constexpr
 #endif
-  iterator begin() NOEXCEPT {
+  iterator begin() noexcept {
     return reinterpret_cast<T*>(buffer_t::data);
   }
 
 #if IRESEARCH_CXX > IRESEARCH_CXX_11
   // before c++14 constexpr member function
   // gets const implicitly
-  CONSTEXPR
+  constexpr
 #endif
-  iterator end() NOEXCEPT {
+  iterator end() noexcept {
     return this->begin() + Size;
   }
 
-  CONSTEXPR const_iterator begin() const NOEXCEPT {
+  constexpr const_iterator begin() const noexcept {
     return const_cast<array*>(this)->begin();
   }
 
-  CONSTEXPR const_iterator end() const NOEXCEPT {
+  constexpr const_iterator end() const noexcept {
     return const_cast<array*>(this)->end();
   }
 
 #if IRESEARCH_CXX > IRESEARCH_CXX_11
   // before c++14 constexpr member function
   // gets const implicitly
-  CONSTEXPR
+  constexpr
 #endif
-  reverse_iterator rbegin() NOEXCEPT {
+  reverse_iterator rbegin() noexcept {
     return reverse_iterator(end());
   }
 
 #if IRESEARCH_CXX > IRESEARCH_CXX_11
   // before c++14 constexpr member function
   // gets const implicitly
-  CONSTEXPR
+  constexpr
 #endif
-  reverse_iterator rend() NOEXCEPT {
+  reverse_iterator rend() noexcept {
     return reverse_iterator(begin());
   }
 
-  CONSTEXPR const_reverse_iterator rbegin() const NOEXCEPT {
+  constexpr const_reverse_iterator rbegin() const noexcept {
     return const_reverse_iterator(end());
   }
 
-  CONSTEXPR const_reverse_iterator rend() const NOEXCEPT {
+  constexpr const_reverse_iterator rend() const noexcept {
     return const_reverse_iterator(begin());
   }
 
-  CONSTEXPR size_t size() const NOEXCEPT {
+  constexpr size_t size() const noexcept {
     return Size;
   }
 
-  CONSTEXPR bool empty() const NOEXCEPT {
+  constexpr bool empty() const noexcept {
     return 0 == size();
   }
 }; // array
@@ -202,13 +202,13 @@ MSVC_ONLY(__pragma(warning(disable:4127))) // constexp conditionals are intended
 template<size_t NumBuckets, size_t SkipBits>
 class bucket_meta {
  public:
-  static const std::array<bucket_size_t, NumBuckets>& get() NOEXCEPT {
+  static const std::array<bucket_size_t, NumBuckets>& get() noexcept {
     static const bucket_meta buckets;
     return buckets.buckets_;
   }
 
  private:
-  bucket_meta() NOEXCEPT {
+  bucket_meta() noexcept {
     if (buckets_.empty()) {
       return;
     }
@@ -279,7 +279,7 @@ NS_END // memory
 ///        the number of bits from a 'position' value to place into 1st bucket
 //////////////////////////////////////////////////////////////////////////////
 template<size_t SkipBits>
-size_t compute_bucket_offset(size_t position) NOEXCEPT {
+size_t compute_bucket_offset(size_t position) noexcept {
   // 63 == 64 bits per size_t - 1 for allignment, +1 == align first value to start of bucket
   return 63 - math::clz64((position >> SkipBits) + 1);
 }
@@ -298,32 +298,32 @@ class raw_block_vector_base
     size_t size; // total buffer size
   };
 
-  explicit raw_block_vector_base(const Allocator& alloc) NOEXCEPT
+  explicit raw_block_vector_base(const Allocator& alloc) noexcept
     : allocator_ref_t(alloc) {
   }
 
-  raw_block_vector_base(raw_block_vector_base&& rhs) NOEXCEPT
+  raw_block_vector_base(raw_block_vector_base&& rhs) noexcept
     : allocator_ref_t(std::move((allocator_ref_t&)rhs)),
       buffers_(std::move(rhs.buffers_)) {
   }
 
-  FORCE_INLINE size_t buffer_count() const NOEXCEPT {
+  FORCE_INLINE size_t buffer_count() const noexcept {
     return buffers_.size();
   }
 
-  FORCE_INLINE bool empty() const NOEXCEPT {
+  FORCE_INLINE bool empty() const noexcept {
     return buffers_.empty();
   }
 
-  FORCE_INLINE void clear() NOEXCEPT {
+  FORCE_INLINE void clear() noexcept {
     buffers_.clear();
   }
 
-  FORCE_INLINE const buffer_t& get_buffer(size_t i) const NOEXCEPT {
+  FORCE_INLINE const buffer_t& get_buffer(size_t i) const noexcept {
     return buffers_[i];
   }
 
-  FORCE_INLINE buffer_t& get_buffer(size_t i) NOEXCEPT {
+  FORCE_INLINE buffer_t& get_buffer(size_t i) noexcept {
     return buffers_[i];
   }
 
@@ -336,14 +336,14 @@ class raw_block_vector_base
     buffer_entry_t(
         size_t bucket_offset,
         size_t bucket_size,
-        typename Allocator::value_type&& ptr) NOEXCEPT
+        typename Allocator::value_type&& ptr) noexcept
       : ptr(std::move(ptr)) {
       buffer_t::data = this->ptr.get();
       buffer_t::offset = bucket_offset;
       buffer_t::size = bucket_size;
     }
 
-    buffer_entry_t(buffer_entry_t&& other) NOEXCEPT
+    buffer_entry_t(buffer_entry_t&& other) noexcept
       : buffer_t(std::move(other)),
         ptr(std::move(other.ptr)) {
     }
@@ -379,15 +379,15 @@ template<
   typedef typename base_t::allocator_ref_t allocator_ref_t;
   typedef typename base_t::allocator_type allocator_type;
 
-  explicit raw_block_vector(const Allocator& alloc /*= Allocator()*/) NOEXCEPT // MSVC fails to build 'shared' if the allocator does not define a no-arg constructor
+  explicit raw_block_vector(const Allocator& alloc /*= Allocator()*/) noexcept // MSVC fails to build 'shared' if the allocator does not define a no-arg constructor
     : base_t(alloc) {
   }
 
-  raw_block_vector(raw_block_vector&& other) NOEXCEPT
+  raw_block_vector(raw_block_vector&& other) noexcept
     : base_t(std::move(other)) {
   }
 
-  FORCE_INLINE size_t buffer_offset(size_t position) const NOEXCEPT {
+  FORCE_INLINE size_t buffer_offset(size_t position) const noexcept {
     // non-precomputed bucket size is the same as the last precomputed bucket size
     return position < LAST_BUFFER.offset
       ? compute_bucket_offset<SkipBits>(position)

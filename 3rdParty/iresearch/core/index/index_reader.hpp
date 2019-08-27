@@ -50,7 +50,7 @@ struct IRESEARCH_API index_reader {
     typedef std::iterator<std::forward_iterator_tag, const sub_reader> iterator_t;
 
     iterator_t::reference operator*() const {
-      // can't mark NOEXCEPT because of virtual operator[]
+      // can't mark noexcept because of virtual operator[]
       assert(i_ < reader_->size());
       return (*reader_)[i_];
     }
@@ -59,23 +59,23 @@ struct IRESEARCH_API index_reader {
       return &(**this);
     }
 
-    reader_iterator& operator++() NOEXCEPT {
+    reader_iterator& operator++() noexcept {
       ++i_;
       return *this;
     }
 
-    reader_iterator operator++(int) NOEXCEPT {
+    reader_iterator operator++(int) noexcept {
       auto it = *this;
       ++(*this);
       return it;
     }
 
-    bool operator==(const reader_iterator& rhs) const NOEXCEPT {
+    bool operator==(const reader_iterator& rhs) const noexcept {
       assert(reader_ == rhs.reader_);
       return i_ == rhs.i_;
     }
 
-    bool operator!=(const reader_iterator& rhs) const NOEXCEPT {
+    bool operator!=(const reader_iterator& rhs) const noexcept {
       return !(*this == rhs);
     }
 
@@ -85,7 +85,7 @@ struct IRESEARCH_API index_reader {
     explicit reader_iterator(
         const index_reader& reader,
         size_t i = 0
-    ) NOEXCEPT
+    ) noexcept
       : reader_(&reader), i_(i) {
     }
 
@@ -129,7 +129,7 @@ struct IRESEARCH_API sub_reader : index_reader {
   DECLARE_SHARED_PTR(const sub_reader);
   DEFINE_FACTORY_INLINE(sub_reader)
 
-  static const sub_reader& empty() NOEXCEPT;
+  static const sub_reader& empty() noexcept;
 
   // returns iterator over the live documents in current segment
   virtual doc_iterator::ptr docs_iterator() const = 0;

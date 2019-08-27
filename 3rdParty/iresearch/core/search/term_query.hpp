@@ -40,7 +40,7 @@ struct term_reader;
 struct reader_term_state {
   reader_term_state() = default;
 
-  reader_term_state(reader_term_state&& rhs) NOEXCEPT
+  reader_term_state(reader_term_state&& rhs) noexcept
     : reader(rhs.reader),
       cookie(std::move(rhs.cookie)),
       estimation(rhs.estimation) {

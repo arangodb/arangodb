@@ -41,30 +41,30 @@ class IRESEARCH_API segment_reader final
   typedef segment_reader ptr; // pointer to self
 
   template<typename T>
-  static bool has(const segment_meta& meta) NOEXCEPT;
+  static bool has(const segment_meta& meta) noexcept;
 
   static segment_reader open(const directory& dir, const segment_meta& meta);
 
   segment_reader() = default; // required for context<segment_reader>
-  segment_reader(const segment_reader& other) NOEXCEPT;
-  segment_reader& operator=(const segment_reader& other) NOEXCEPT;
+  segment_reader(const segment_reader& other) noexcept;
+  segment_reader& operator=(const segment_reader& other) noexcept;
 
-  explicit operator bool() const NOEXCEPT { return bool(impl_); }
+  explicit operator bool() const noexcept { return bool(impl_); }
 
-  bool operator==(const segment_reader& rhs) const NOEXCEPT {
+  bool operator==(const segment_reader& rhs) const noexcept {
     return impl_ == rhs.impl_;
   }
 
-  bool operator!=(const segment_reader& rhs) const NOEXCEPT {
+  bool operator!=(const segment_reader& rhs) const noexcept {
     return !(*this == rhs);
   }
 
-  segment_reader& operator*() NOEXCEPT { return *this; }
-  const segment_reader& operator*() const NOEXCEPT { return *this; }
-  segment_reader* operator->() NOEXCEPT { return this; }
-  const segment_reader* operator->() const NOEXCEPT { return this; }
+  segment_reader& operator*() noexcept { return *this; }
+  const segment_reader& operator*() const noexcept { return *this; }
+  segment_reader* operator->() noexcept { return this; }
+  const segment_reader* operator->() const noexcept { return this; }
 
-  virtual const sub_reader& operator[](size_t i) const NOEXCEPT override {
+  virtual const sub_reader& operator[](size_t i) const noexcept override {
     assert(!i);
     UNUSED(i);
     return *this;
@@ -106,7 +106,7 @@ class IRESEARCH_API segment_reader final
 
   segment_reader reopen(const segment_meta& meta) const;
 
-  void reset() NOEXCEPT {
+  void reset() noexcept {
     impl_.reset();
   }
 
@@ -127,7 +127,7 @@ class IRESEARCH_API segment_reader final
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief converts current 'segment_reader' to 'sub_reader::ptr'
   ////////////////////////////////////////////////////////////////////////////////
-  explicit operator sub_reader::ptr() const NOEXCEPT {
+  explicit operator sub_reader::ptr() const noexcept {
     return impl_;
   }
 
@@ -138,18 +138,18 @@ class IRESEARCH_API segment_reader final
   impl_ptr impl_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 
-  segment_reader(impl_ptr&& impl) NOEXCEPT;
+  segment_reader(impl_ptr&& impl) noexcept;
 }; // segment_reade
 
 template<>
 /*static*/ IRESEARCH_API bool segment_reader::has<columnstore_reader>(
     const segment_meta& meta
-) NOEXCEPT;
+) noexcept;
 
 template<>
 /*static*/ IRESEARCH_API bool segment_reader::has<document_mask_reader>(
     const segment_meta& meta
-) NOEXCEPT;
+) noexcept;
 
 NS_END
 

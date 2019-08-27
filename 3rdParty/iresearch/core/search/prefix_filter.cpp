@@ -42,51 +42,52 @@ filter::prepared::ptr by_prefix::prepare(
 
   auto& prefix = term();
 
-  /* iterate over the segments */
+  // iterate over the segments
   const string_ref field = this->field();
   for (const auto& sr : rdr ) {
-    /* get term dictionary for field */
-    const term_reader* tr = sr.field(field);
-    if (!tr) {
+    // get term dictionary for field
+    const term_reader* reader = sr.field(field);
+
+    if (!reader) {
       continue;
     }
 
-    seek_term_iterator::ptr terms = tr->iterator();
+    seek_term_iterator::ptr terms = reader->iterator();
 
-    /* seek to prefix */
+    // seek to prefix
     if (SeekResult::END == terms->seek_ge(prefix)) {
       continue;
     }
 
-    /* get term metadata */
-    auto& meta = terms->attributes().get<term_meta>();
+    auto& value = terms->value();
 
-    if (starts_with(terms->value(), prefix)) {
+    // get term metadata
+    auto& meta = terms->attributes().get<term_meta>();
+    const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
+    const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
+
+    if (starts_with(value, prefix)) {
       terms->read();
 
-      /* get state for current segment */
+      // get state for current segment
       auto& state = states.insert(sr);
-      state.reader = tr;
-      state.min_term = terms->value();
+      state.reader = reader;
+      state.min_term = value;
       state.min_cookie = terms->cookie();
       state.unscored_docs.reset((type_limits<type_t::doc_id_t>::min)() + sr.docs_count()); // highest valid doc_id in reader
 
       do {
         // fill scoring candidates
-        scorer.collect(meta ? meta->docs_count : 0, state.count, state, sr, *terms);
+        scorer.collect(docs_count, state.count, state, sr, *terms);
         ++state.count;
-
-        /* collect cost */
-        if (meta) {
-          state.estimation += meta->docs_count;
-        }
+        state.estimation += docs_count; // collect cost
 
         if (!terms->next()) {
           break;
         }
 
         terms->read();
-      } while (starts_with(terms->value(), prefix));
+      } while (starts_with(value, prefix));
     }
   }
 
@@ -98,20 +99,18 @@ filter::prepared::ptr by_prefix::prepare(
 DEFINE_FILTER_TYPE(by_prefix)
 DEFINE_FACTORY_DEFAULT(by_prefix)
 
-by_prefix::by_prefix() NOEXCEPT
-  : by_term(by_prefix::type()) {
-}
+by_prefix::by_prefix() noexcept : by_prefix(by_prefix::type()) { }
 
-size_t by_prefix::hash() const NOEXCEPT {
+size_t by_prefix::hash() const noexcept {
   size_t seed = 0;
   ::boost::hash_combine(seed, by_term::hash());
   ::boost::hash_combine(seed, scored_terms_limit_);
   return seed;
 }
 
-bool by_prefix::equals(const filter& rhs) const NOEXCEPT {
-  const auto& trhs = static_cast<const by_prefix&>(rhs);
-  return by_term::equals(rhs) && scored_terms_limit_ == trhs.scored_terms_limit_;
+bool by_prefix::equals(const filter& rhs) const noexcept {
+  const auto& impl = static_cast<const by_prefix&>(rhs);
+  return by_term::equals(rhs) && scored_terms_limit_ == impl.scored_terms_limit_;
 }
 
 NS_END // ROOT

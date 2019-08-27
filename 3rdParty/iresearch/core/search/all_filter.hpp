@@ -37,7 +37,7 @@ class IRESEARCH_API all: public filter {
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  all() NOEXCEPT;
+  all() noexcept;
 
   using filter::prepare;
 

@@ -37,15 +37,15 @@ class column_info {
  public:
   column_info(const compression::type_id& compression,
               const compression::options& options,
-              bool encryption) NOEXCEPT
+              bool encryption) noexcept
     : compression_(&compression),
       options_(options),
       encryption_(encryption) {
   }
 
-  const compression::type_id& compression() const NOEXCEPT { return *compression_; }
-  const compression::options& options() const NOEXCEPT { return options_; }
-  bool encryption() const NOEXCEPT { return encryption_; }
+  const compression::type_id& compression() const noexcept { return *compression_; }
+  const compression::options& options() const noexcept { return options_; }
+  bool encryption() const noexcept { return encryption_; }
 
  private:
   const compression::type_id* compression_;

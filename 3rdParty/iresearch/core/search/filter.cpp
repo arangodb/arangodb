@@ -50,7 +50,7 @@ NS_ROOT
 // --SECTION--                                                            filter
 // -----------------------------------------------------------------------------
 
-filter::filter(const type_id& type) NOEXCEPT
+filter::filter(const type_id& type) noexcept
   : boost_(irs::no_boost()), type_(&type) {
 }
 

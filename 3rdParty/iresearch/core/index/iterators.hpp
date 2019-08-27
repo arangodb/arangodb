@@ -123,7 +123,7 @@ enum class SeekResult {
 };
 
 struct IRESEARCH_API seek_term_iterator : term_iterator {
-  DECLARE_UNIQUE_PTR(seek_term_iterator);
+  DECLARE_MANAGED_PTR(seek_term_iterator);
   DEFINE_FACTORY_INLINE(seek_term_iterator)
 
   //////////////////////////////////////////////////////////////////////////////
@@ -134,6 +134,8 @@ struct IRESEARCH_API seek_term_iterator : term_iterator {
     virtual ~seek_cookie() = default;
   }; // seek_cookie
 
+  static seek_term_iterator::ptr empty();
+
   typedef seek_cookie::ptr cookie_ptr;
 
   virtual SeekResult seek_ge(const bytes_ref& value) = 0;
@@ -142,6 +144,7 @@ struct IRESEARCH_API seek_term_iterator : term_iterator {
   virtual bool seek(
     const bytes_ref& term,
     const seek_cookie& cookie) = 0;
+
   virtual seek_cookie::ptr cookie() const = 0;
 };
 

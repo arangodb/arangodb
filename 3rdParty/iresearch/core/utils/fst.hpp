@@ -200,7 +200,7 @@ class fst_builder : util::noncopyable {
         label(label) {
     }
 
-    arc(arc&& rhs) NOEXCEPT
+    arc(arc&& rhs) noexcept
       : target(rhs.target),
         label(rhs.label),
         out(std::move(rhs.out)) {
@@ -235,7 +235,7 @@ class fst_builder : util::noncopyable {
   struct state : private util::noncopyable {
     state() = default;
 
-    state(state&& rhs) NOEXCEPT
+    state(state&& rhs) noexcept
       : arcs(std::move(rhs.arcs)),
         out(std::move(rhs.out)),
         final(rhs.final) {

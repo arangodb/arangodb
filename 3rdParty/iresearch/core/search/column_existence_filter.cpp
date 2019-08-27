@@ -75,7 +75,7 @@ class column_existence_iterator final : public irs::basic_doc_iterator_base {
     return value();
   }
 
-  virtual irs::doc_id_t value() const NOEXCEPT override {
+  virtual irs::doc_id_t value() const noexcept override {
     return doc_->value;
   }
 
@@ -186,11 +186,11 @@ NS_ROOT
 DEFINE_FILTER_TYPE(by_column_existence)
 DEFINE_FACTORY_DEFAULT(by_column_existence)
 
-by_column_existence::by_column_existence() NOEXCEPT
+by_column_existence::by_column_existence() noexcept
   : filter(by_column_existence::type()) {
 }
 
-bool by_column_existence::equals(const filter& rhs) const NOEXCEPT {
+bool by_column_existence::equals(const filter& rhs) const noexcept {
   const auto& trhs = static_cast<const by_column_existence&>(rhs);
 
   return filter::equals(rhs)
@@ -198,7 +198,7 @@ bool by_column_existence::equals(const filter& rhs) const NOEXCEPT {
     && prefix_match_ == trhs.prefix_match_;
 }
 
-size_t by_column_existence::hash() const NOEXCEPT {
+size_t by_column_existence::hash() const noexcept {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   ::boost::hash_combine(seed, field_);

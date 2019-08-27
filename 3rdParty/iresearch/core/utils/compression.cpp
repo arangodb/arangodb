@@ -40,16 +40,16 @@ struct value{
       decompressor_factory_(decompressor_factory) {
   }
 
-  bool empty() const NOEXCEPT {
+  bool empty() const noexcept {
     return !compressor_factory_ || !decompressor_factory_;
   }
 
-  bool operator==(const value& other) const NOEXCEPT {
+  bool operator==(const value& other) const noexcept {
     return compressor_factory_ == other.compressor_factory_ &&
            decompressor_factory_ == other.decompressor_factory_;
   }
 
-  bool operator!=(const value& other) const NOEXCEPT {
+  bool operator!=(const value& other) const noexcept {
     return !(*this == other);
   }
 
@@ -142,7 +142,7 @@ bool exists(const string_ref& name, bool load_library /*= true*/ ) {
 compressor::ptr get_compressor(
     const string_ref& name,
     const options& opts,
-    bool load_library /*= true*/) NOEXCEPT {
+    bool load_library /*= true*/) noexcept {
   try {
     auto* factory = compression_register::instance().get(name, load_library).compressor_factory_;
 
@@ -155,7 +155,7 @@ compressor::ptr get_compressor(
   return nullptr;
 }
 
-decompressor::ptr get_decompressor(const string_ref& name, bool load_library /*= true*/) NOEXCEPT {
+decompressor::ptr get_decompressor(const string_ref& name, bool load_library /*= true*/) noexcept {
   try {
     auto* factory = compression_register::instance().get(name, load_library).decompressor_factory_;
 

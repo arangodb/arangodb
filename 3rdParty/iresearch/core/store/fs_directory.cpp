@@ -39,7 +39,7 @@
 
 NS_LOCAL
 
-inline size_t buffer_size(FILE* file) NOEXCEPT {
+inline size_t buffer_size(FILE* file) noexcept {
   UNUSED(file);
   return 1024;
 //  auto block_size = irs::file_utils::block_size(file_no(file));
@@ -132,7 +132,7 @@ class fs_lock : public index_lock {
     return handle_ != nullptr;
   }
 
-  virtual bool is_locked(bool& result) const NOEXCEPT override {
+  virtual bool is_locked(bool& result) const noexcept override {
     if (handle_ != nullptr) {
       result = true;
       return true;
@@ -152,7 +152,7 @@ class fs_lock : public index_lock {
     return false;
   }
 
-  virtual bool unlock() NOEXCEPT override {
+  virtual bool unlock() noexcept override {
     if (handle_ != nullptr) {
       handle_ = nullptr;
 #ifdef _WIN32
@@ -177,7 +177,7 @@ class fs_lock : public index_lock {
 //////////////////////////////////////////////////////////////////////////////
 class fs_index_output : public buffered_index_output {
  public:
-  static index_output::ptr open(const file_path_t name) NOEXCEPT {
+  static index_output::ptr open(const file_path_t name) noexcept {
     assert(name);
 
     file_utils::handle_t handle(file_open(name, "wb"));
@@ -237,7 +237,7 @@ class fs_index_output : public buffered_index_output {
  private:
   DEFINE_FACTORY_INLINE(index_output)
 
-  fs_index_output(file_utils::handle_t&& handle, size_t buf_size) NOEXCEPT
+  fs_index_output(file_utils::handle_t&& handle, size_t buf_size) noexcept
     : buffered_index_output(buf_size),
       handle(std::move(handle)) {
   }
@@ -276,7 +276,7 @@ class fs_index_input : public buffered_index_input {
 
   static index_input::ptr open(
     const file_path_t name, size_t pool_size, IOAdvice /*advice*/
-  ) NOEXCEPT {
+  ) noexcept {
     // FIXME honor IOAdvice
     // FIXME On Windows use FILE_FLAG_SEQUENTIAL_SCAN in CreateFile
 
@@ -415,7 +415,7 @@ class fs_index_input : public buffered_index_input {
   fs_index_input(
       file_handle::ptr&& handle,
       size_t buffer_size,
-      size_t pool_size) NOEXCEPT
+      size_t pool_size) noexcept
     : buffered_index_input(buffer_size),
       handle_(std::move(handle)),
       pool_size_(pool_size),
@@ -438,7 +438,7 @@ class pooled_fs_index_input final : public fs_index_input {
   DECLARE_UNIQUE_PTR(pooled_fs_index_input); // allow private construction
 
   explicit pooled_fs_index_input(const fs_index_input& in);
-  virtual ~pooled_fs_index_input() NOEXCEPT;
+  virtual ~pooled_fs_index_input() noexcept;
   virtual index_input::ptr dup() const override {
     return index_input::make<pooled_fs_index_input>(*this);
   }
@@ -462,7 +462,7 @@ pooled_fs_index_input::pooled_fs_index_input(const fs_index_input& in)
   handle_ = reopen(*handle_);
 }
 
-pooled_fs_index_input::~pooled_fs_index_input() NOEXCEPT {
+pooled_fs_index_input::~pooled_fs_index_input() noexcept {
   handle_.reset(); // release handle before the fs_pool_ is deallocated
 }
 
@@ -516,11 +516,11 @@ fs_directory::fs_directory(const std::string& dir)
   : dir_(dir) {
 }
 
-attribute_store& fs_directory::attributes() NOEXCEPT {
+attribute_store& fs_directory::attributes() noexcept {
   return attributes_;
 }
 
-index_output::ptr fs_directory::create(const std::string& name) NOEXCEPT {
+index_output::ptr fs_directory::create(const std::string& name) noexcept {
   try {
     utf8_path path;
 
@@ -540,33 +540,33 @@ index_output::ptr fs_directory::create(const std::string& name) NOEXCEPT {
   return nullptr;
 }
 
-const std::string& fs_directory::directory() const NOEXCEPT {
+const std::string& fs_directory::directory() const noexcept {
   return dir_;
 }
 
 bool fs_directory::exists(
   bool& result, const std::string& name
-) const NOEXCEPT {
+) const noexcept {
   return ((utf8_path()/=dir_)/=name).exists(result);
 }
 
 bool fs_directory::length(
   uint64_t& result, const std::string& name
-) const NOEXCEPT {
+) const noexcept {
   return ((utf8_path()/=dir_)/=name).file_size(result);
 }
 
-index_lock::ptr fs_directory::make_lock(const std::string& name) NOEXCEPT {
+index_lock::ptr fs_directory::make_lock(const std::string& name) noexcept {
   return index_lock::make<fs_lock>(dir_, name);
 }
 
 bool fs_directory::mtime(
   std::time_t& result, const std::string& name
-) const NOEXCEPT {
+) const noexcept {
   return ((utf8_path()/=dir_)/=name).mtime(result);
 }
 
-bool fs_directory::remove(const std::string& name) NOEXCEPT {
+bool fs_directory::remove(const std::string& name) noexcept {
   try {
     utf8_path path;
 
@@ -582,7 +582,7 @@ bool fs_directory::remove(const std::string& name) NOEXCEPT {
 
 index_input::ptr fs_directory::open(
     const std::string& name,
-    IOAdvice advice) const NOEXCEPT {
+    IOAdvice advice) const noexcept {
   try {
     utf8_path path;
     auto pool_size =
@@ -600,7 +600,7 @@ index_input::ptr fs_directory::open(
 
 bool fs_directory::rename(
   const std::string& src, const std::string& dst
-) NOEXCEPT {
+) noexcept {
   try {
     utf8_path src_path;
     utf8_path dst_path;
@@ -644,7 +644,7 @@ bool fs_directory::visit(const directory::visitor_f& visitor) const {
   return file_utils::visit_directory(directory.c_str(), dir_visitor, false);
 }
 
-bool fs_directory::sync(const std::string& name) NOEXCEPT {
+bool fs_directory::sync(const std::string& name) noexcept {
   try {
     utf8_path path;
 

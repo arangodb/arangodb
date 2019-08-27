@@ -98,19 +98,19 @@ struct block_meta {
   // 2 - is floor block
 
   // block has terms
-  static bool terms(byte_type mask) NOEXCEPT { return check_bit<ET_TERM>(mask); }
+  static bool terms(byte_type mask) noexcept { return check_bit<ET_TERM>(mask); }
 
   // block has sub-blocks
-  static bool blocks(byte_type mask) NOEXCEPT { return check_bit<ET_BLOCK>(mask); }
+  static bool blocks(byte_type mask) noexcept { return check_bit<ET_BLOCK>(mask); }
 
-  static void type(byte_type& mask, EntryType type) NOEXCEPT { set_bit(mask, type); }
+  static void type(byte_type& mask, EntryType type) noexcept { set_bit(mask, type); }
 
   // block is floor block
-  static bool floor(byte_type mask) NOEXCEPT { return check_bit<ET_INVALID>(mask); }
-  static void floor(byte_type& mask, bool b) NOEXCEPT { set_bit<ET_INVALID>(b, mask); }
+  static bool floor(byte_type mask) noexcept { return check_bit<ET_INVALID>(mask); }
+  static void floor(byte_type& mask, bool b) noexcept { set_bit<ET_INVALID>(b, mask); }
 
   // resets block meta
-  static void reset(byte_type mask) NOEXCEPT {
+  static void reset(byte_type mask) noexcept {
     unset_bit<ET_TERM>(mask);
     unset_bit<ET_BLOCK>(mask);
   }
@@ -256,7 +256,7 @@ const fst::FstReadOptions& fst_read_options() {
 }
 
 // mininum size of string weight we store in FST
-CONSTEXPR const size_t MIN_WEIGHT_SIZE = 2;
+constexpr const size_t MIN_WEIGHT_SIZE = 2;
 
 void merge_blocks(std::list<irs::burst_trie::detail::entry>& blocks) {
   assert(!blocks.empty());
@@ -374,13 +374,13 @@ entry::entry(
   mem_.construct<block_t>(block_start, meta, label);
 }
 
-entry::entry(entry&& rhs) NOEXCEPT
+entry::entry(entry&& rhs) noexcept
   : data_(std::move(rhs.data_)),
     type_(rhs.type_) {
   move_union(std::move(rhs));
 }
 
-entry& entry::operator=(entry&& rhs) NOEXCEPT{
+entry& entry::operator=(entry&& rhs) noexcept{
   if (this != &rhs) {
     data_ = std::move(rhs.data_);
     type_ = rhs.type_;
@@ -391,7 +391,7 @@ entry& entry::operator=(entry&& rhs) NOEXCEPT{
   return *this;
 }
 
-void entry::move_union(entry&& rhs) NOEXCEPT {
+void entry::move_union(entry&& rhs) noexcept {
   switch (rhs.type_) {
     case ET_TERM  : mem_.construct<irs::postings_writer::state>(std::move(rhs.term())); break;
     case ET_BLOCK : mem_.construct<block_t>(std::move(rhs.block())); break;
@@ -402,7 +402,7 @@ void entry::move_union(entry&& rhs) NOEXCEPT {
   rhs.type_ = ET_INVALID;
 }
 
-void entry::destroy() NOEXCEPT {
+void entry::destroy() noexcept {
   switch (type_) {
     case ET_TERM  : mem_.destroy<irs::postings_writer::state>(); break;
     case ET_BLOCK : mem_.destroy<block_t>(); break;
@@ -410,7 +410,7 @@ void entry::destroy() NOEXCEPT {
   }
 }
 
-entry::~entry() NOEXCEPT {
+entry::~entry() noexcept {
   destroy();
 }
 
@@ -505,7 +505,7 @@ class term_iterator final : public irs::seek_term_iterator {
 
   virtual void read() override;
   virtual bool next() override;
-  const irs::attribute_view& attributes() const NOEXCEPT override {
+  const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
   const bytes_ref& value() const override { return term_; }
@@ -546,7 +546,7 @@ class term_iterator final : public irs::seek_term_iterator {
 
   index_input& terms_input() const;
 
-  irs::encryption::stream* terms_cipher() const NOEXCEPT {
+  irs::encryption::stream* terms_cipher() const noexcept {
     return owner_->owner_->terms_in_cipher_.get();
   }
 
@@ -562,7 +562,7 @@ class term_iterator final : public irs::seek_term_iterator {
 
     arc() : block{} { }
 
-    arc(arc&& rhs) NOEXCEPT
+    arc(arc&& rhs) noexcept
       : state(rhs.state), 
         weight(std::move(rhs.weight)),
         block(rhs.block) {
@@ -995,7 +995,7 @@ void block_iterator::reset() {
 
 term_iterator::term_iterator(const term_reader* owner)
   : owner_(owner),
-    matcher_(*owner->fst_, fst::MATCH_INPUT),
+    matcher_(owner->fst_, fst::MATCH_INPUT), // pass pointer to avoid copying FST
     attrs_(2), // version10::term_meta + frequency
     cur_block_(nullptr) {
   assert(owner_);
@@ -1289,7 +1289,7 @@ index_input& term_iterator::terms_input() const {
 // --SECTION--                                        term_reader implementation
 // -----------------------------------------------------------------------------
 
-term_reader::term_reader(term_reader&& rhs) NOEXCEPT
+term_reader::term_reader(term_reader&& rhs) noexcept
   : min_term_(std::move(rhs.min_term_)),
     max_term_(std::move(rhs.max_term_)),
     terms_count_(rhs.terms_count_),
@@ -1318,7 +1318,11 @@ term_reader::~term_reader() {
 seek_term_iterator::ptr term_reader::iterator() const {
   return seek_term_iterator::make<detail::term_iterator>( this );
 }
-  
+
+seek_term_iterator::ptr term_reader::iterator(const automaton& a) const {
+  return nullptr;
+}
+
 void term_reader::prepare(
     std::istream& in, 
     const feature_map_t& feature_map,
@@ -1866,7 +1870,7 @@ void field_reader::prepare(
     &checksum
   );
 
-  CONSTEXPR const size_t FOOTER_LEN =
+  constexpr const size_t FOOTER_LEN =
       sizeof(uint64_t) // fields count
     + format_utils::FOOTER_LEN;
 
@@ -1938,7 +1942,7 @@ void field_reader::prepare(
   }
 
   // ensure that fields are sorted properly
-  auto less = [] (const term_reader& lhs, const term_reader& rhs) NOEXCEPT {
+  auto less = [] (const term_reader& lhs, const term_reader& rhs) noexcept {
       return lhs.meta().name < rhs.meta().name;
   };
 
@@ -1997,7 +2001,7 @@ irs::field_iterator::ptr field_reader::iterator() const {
   struct less {
     bool operator()(
         const irs::term_reader& lhs,
-        const string_ref& rhs) const NOEXCEPT {
+        const string_ref& rhs) const noexcept {
       return lhs.meta().name < rhs;
     }
   }; // less

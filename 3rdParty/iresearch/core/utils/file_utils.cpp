@@ -242,7 +242,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
   return handle;
 }
 
-bool file_sync(const file_path_t file) NOEXCEPT {
+bool file_sync(const file_path_t file) noexcept {
   HANDLE handle = ::CreateFileW(
     file, GENERIC_WRITE,
     FILE_SHARE_WRITE, NULL,
@@ -289,7 +289,7 @@ bool file_sync(const file_path_t file) NOEXCEPT {
   return res;
 }
 
-bool file_sync(int fd) NOEXCEPT {
+bool file_sync(int fd) noexcept {
   // Attempt to convert file descriptor into an operating system file handle
   HANDLE handle = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
 
@@ -427,7 +427,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
   return handle;
 }
 
-bool file_sync(const file_path_t file) NOEXCEPT {
+bool file_sync(const file_path_t file) noexcept {
   const int handle = ::open(file, O_WRONLY, S_IRWXU);
   if (handle < 0) {
     return false;
@@ -438,7 +438,7 @@ bool file_sync(const file_path_t file) NOEXCEPT {
   return res;
 }
 
-bool file_sync(int fd) NOEXCEPT {
+bool file_sync(int fd) noexcept {
   return 0 == fsync(fd);
 }
 
@@ -448,7 +448,7 @@ bool file_sync(int fd) NOEXCEPT {
 // --SECTION--                                                             stats
 // -----------------------------------------------------------------------------
 
-bool absolute(bool& result, const file_path_t path) NOEXCEPT {
+bool absolute(bool& result, const file_path_t path) noexcept {
   if (!path) {
     return false;
   }
@@ -470,7 +470,7 @@ bool absolute(bool& result, const file_path_t path) NOEXCEPT {
   return true;
 }
 
-bool block_size(file_blksize_t& result, const file_path_t file) NOEXCEPT {
+bool block_size(file_blksize_t& result, const file_path_t file) noexcept {
   assert(file != nullptr);
 #ifdef _WIN32
   // TODO FIXME find a workaround
@@ -491,7 +491,7 @@ bool block_size(file_blksize_t& result, const file_path_t file) NOEXCEPT {
 #endif // _WIN32
 }
 
-bool block_size(file_blksize_t& result, int fd) NOEXCEPT {
+bool block_size(file_blksize_t& result, int fd) noexcept {
 #ifdef _WIN32
   // TODO FIXME find a workaround
   UNUSED(fd);
@@ -511,7 +511,7 @@ bool block_size(file_blksize_t& result, int fd) NOEXCEPT {
 #endif // _WIN32
 }
 
-bool byte_size(uint64_t& result, const file_path_t file) NOEXCEPT {
+bool byte_size(uint64_t& result, const file_path_t file) noexcept {
   assert(file != nullptr);
   file_stat_t info;
 
@@ -524,7 +524,7 @@ bool byte_size(uint64_t& result, const file_path_t file) NOEXCEPT {
   return true;
 }
 
-bool byte_size(uint64_t& result, int fd) NOEXCEPT {
+bool byte_size(uint64_t& result, int fd) noexcept {
   file_stat_t info;
 
   if (0 != file_fstat(fd, &info)) {
@@ -536,7 +536,7 @@ bool byte_size(uint64_t& result, int fd) NOEXCEPT {
   return true;
 }
 
-bool exists(bool& result, const file_path_t file) NOEXCEPT {
+bool exists(bool& result, const file_path_t file) noexcept {
   assert(file != nullptr);
   file_stat_t info;
 
@@ -554,7 +554,7 @@ bool exists(bool& result, const file_path_t file) NOEXCEPT {
   return true;
 }
 
-bool exists_directory(bool& result, const file_path_t name) NOEXCEPT {
+bool exists_directory(bool& result, const file_path_t name) noexcept {
   assert(name != nullptr);
   file_stat_t info;
 
@@ -578,7 +578,7 @@ bool exists_directory(bool& result, const file_path_t name) NOEXCEPT {
   return true;
 }
 
-bool exists_file(bool& result, const file_path_t name) NOEXCEPT {
+bool exists_file(bool& result, const file_path_t name) noexcept {
   assert(name != nullptr);
   file_stat_t info;
 
@@ -602,7 +602,7 @@ bool exists_file(bool& result, const file_path_t name) NOEXCEPT {
   return true;
 }
 
-bool mtime(time_t& result, const file_path_t file) NOEXCEPT {
+bool mtime(time_t& result, const file_path_t file) noexcept {
   assert(file != nullptr);
   file_stat_t info;
 
@@ -615,7 +615,7 @@ bool mtime(time_t& result, const file_path_t file) NOEXCEPT {
   return true;
 }
 
-bool mtime(time_t& result, int fd) NOEXCEPT {
+bool mtime(time_t& result, int fd) noexcept {
   file_stat_t info;
 
   if (0 != file_fstat(fd, &info)) {
@@ -631,7 +631,7 @@ bool mtime(time_t& result, int fd) NOEXCEPT {
 // --SECTION--                                                         open file
 // -----------------------------------------------------------------------------
 
-handle_t open(const file_path_t path, const file_path_t mode) NOEXCEPT {
+handle_t open(const file_path_t path, const file_path_t mode) noexcept {
   #ifdef _WIN32
     #pragma warning(disable: 4996) // '_wfopen': This function or variable may be unsafe.
     handle_t handle(::_wfopen(path ? path : IR_WSTR("NUL:"), mode));
@@ -649,7 +649,7 @@ handle_t open(const file_path_t path, const file_path_t mode) NOEXCEPT {
   return handle;
 }
 
-handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
+handle_t open(FILE* file, const file_path_t mode) noexcept {
   #ifdef _WIN32
     // win32 approach is to get the original filename of the handle and open it again
     // due to a bug from the 1980's the file name is garanteed to not change while the file is open
@@ -732,7 +732,7 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
 // --SECTION--                                                        path utils
 // -----------------------------------------------------------------------------
 
-bool mkdir(const file_path_t path, bool createNew) NOEXCEPT {
+bool mkdir(const file_path_t path, bool createNew) noexcept {
   bool result;
 
   if (!exists_directory(result, path)) {
@@ -814,7 +814,7 @@ bool mkdir(const file_path_t path, bool createNew) NOEXCEPT {
   return true;
 }
 
-bool move(const file_path_t src_path, const file_path_t dst_path) NOEXCEPT {
+bool move(const file_path_t src_path, const file_path_t dst_path) noexcept {
   // FIXME TODO ensure both functions lead to the same result in all cases @see utf8_path_tests::rename() tests
   #ifdef _WIN32
     return 0 != ::MoveFileExW(src_path, dst_path, MOVEFILE_REPLACE_EXISTING|MOVEFILE_COPY_ALLOWED);
@@ -823,7 +823,7 @@ bool move(const file_path_t src_path, const file_path_t dst_path) NOEXCEPT {
   #endif
 }
 
-path_parts_t path_parts(const file_path_t path) NOEXCEPT {
+path_parts_t path_parts(const file_path_t path) noexcept {
   if (!path) {
     return path_parts_t();
   }
@@ -888,7 +888,7 @@ path_parts_t path_parts(const file_path_t path) NOEXCEPT {
 
 bool read_cwd(
     std::basic_string<std::remove_pointer<file_path_t>::type>& result
-) NOEXCEPT {
+) noexcept {
   try {
     #ifdef _WIN32
       auto size = GetCurrentDirectory(0, nullptr);
@@ -967,7 +967,7 @@ bool read_cwd(
   return false;
 }
 
-bool remove(const file_path_t path) NOEXCEPT {
+bool remove(const file_path_t path) noexcept {
   try {
     // a reusable buffer for a full path used during recursive removal
     std::basic_string<std::remove_pointer<file_path_t>::type> buf;
@@ -1055,7 +1055,7 @@ bool remove(const file_path_t path) NOEXCEPT {
   return true;
 }
 
-bool set_cwd(const file_path_t path) NOEXCEPT {
+bool set_cwd(const file_path_t path) noexcept {
   #ifdef _WIN32
     bool abs;
 

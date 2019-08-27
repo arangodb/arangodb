@@ -200,12 +200,12 @@ by_same_position::by_same_position()
   : filter(by_same_position::type()) {
 }
 
-bool by_same_position::equals(const filter& rhs) const NOEXCEPT {
+bool by_same_position::equals(const filter& rhs) const noexcept {
   const auto& trhs = static_cast<const by_same_position&>(rhs);
   return filter::equals(rhs) && terms_ == trhs.terms_;
 }
 
-size_t by_same_position::hash() const NOEXCEPT {
+size_t by_same_position::hash() const noexcept {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   for (auto& term : terms_) {

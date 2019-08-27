@@ -187,18 +187,18 @@ class features {
 
   features() = default;
 
-  explicit features(const irs::flags& in) NOEXCEPT {
+  explicit features(const irs::flags& in) noexcept {
     irs::set_bit<0>(in.check<irs::frequency>(), mask_);
     irs::set_bit<1>(in.check<irs::position>(), mask_);
     irs::set_bit<2>(in.check<irs::offset>(), mask_);
     irs::set_bit<3>(in.check<irs::payload>(), mask_);
   }
 
-  features operator&(const irs::flags& in) const NOEXCEPT {
+  features operator&(const irs::flags& in) const noexcept {
     return features(*this) &= in;
   }
 
-  features& operator&=(const irs::flags& in) NOEXCEPT {
+  features& operator&=(const irs::flags& in) noexcept {
     irs::unset_bit<0>(!in.check<irs::frequency>(), mask_);
     irs::unset_bit<1>(!in.check<irs::position>(), mask_);
     irs::unset_bit<2>(!in.check<irs::offset>(), mask_);
@@ -206,17 +206,17 @@ class features {
     return *this;
   }
 
-  bool freq() const NOEXCEPT { return irs::check_bit<0>(mask_); }
-  bool position() const NOEXCEPT { return irs::check_bit<1>(mask_); }
-  bool offset() const NOEXCEPT { return irs::check_bit<2>(mask_); }
-  bool payload() const NOEXCEPT { return irs::check_bit<3>(mask_); }
-  operator Mask() const NOEXCEPT { return static_cast<Mask>(mask_); }
+  bool freq() const noexcept { return irs::check_bit<0>(mask_); }
+  bool position() const noexcept { return irs::check_bit<1>(mask_); }
+  bool offset() const noexcept { return irs::check_bit<2>(mask_); }
+  bool payload() const noexcept { return irs::check_bit<3>(mask_); }
+  operator Mask() const noexcept { return static_cast<Mask>(mask_); }
 
-  bool any(Mask mask) const NOEXCEPT {
+  bool any(Mask mask) const noexcept {
     return Mask(0) != (mask_ & mask);
   }
 
-  bool all(Mask mask) const NOEXCEPT {
+  bool all(Mask mask) const noexcept {
     return mask != (mask_ & mask);
   }
 
@@ -318,7 +318,7 @@ class postings_writer final: public irs::postings_writer {
   // const_attributes_provider
   // ------------------------------------------
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override final {
+  virtual const irs::attribute_view& attributes() const noexcept override final {
     return attrs_;
   }
 
@@ -334,7 +334,7 @@ class postings_writer final: public irs::postings_writer {
   virtual void end() override;
 
  protected:
-  virtual void release(irs::term_meta *meta) NOEXCEPT override;
+  virtual void release(irs::term_meta *meta) noexcept override;
 
  private:
   struct stream {
@@ -641,7 +641,7 @@ irs::postings_writer::state postings_writer::write(irs::doc_iterator& docs) {
   return make_state(*meta.release());
 }
 
-void postings_writer::release(irs::term_meta *meta) NOEXCEPT {
+void postings_writer::release(irs::term_meta *meta) noexcept {
 #ifdef IRESEARCH_DEBUG
   auto* state = dynamic_cast<version10::term_meta*>(meta);
 #else
@@ -1009,7 +1009,7 @@ class doc_iterator : public irs::doc_iterator {
  public:
   DECLARE_SHARED_PTR(doc_iterator);
 
-  doc_iterator() NOEXCEPT
+  doc_iterator() noexcept
     : skip_levels_(1),
       skip_(postings_writer::BLOCK_SIZE, postings_writer::SKIP_N) {
     std::fill(docs_, docs_ + postings_writer::BLOCK_SIZE, doc_limits::invalid());
@@ -1085,7 +1085,7 @@ class doc_iterator : public irs::doc_iterator {
     return doc_.value;
   }
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
 
@@ -1144,7 +1144,7 @@ class doc_iterator : public irs::doc_iterator {
   void seek_to_block(doc_id_t target);
 
   // returns current position in the document block 'docs_'
-  size_t relative_pos() NOEXCEPT {
+  size_t relative_pos() noexcept {
     assert(begin_ >= docs_);
     return begin_ - docs_;
   }
@@ -2034,7 +2034,7 @@ struct index_meta_writer final: public irs::index_meta_writer {
 
   enum { HAS_PAYLOAD = 1 };
 
-  explicit index_meta_writer(int32_t version) NOEXCEPT
+  explicit index_meta_writer(int32_t version) noexcept
     : version_(version) {
     assert(version_ >= FORMAT_MIN && version <= FORMAT_MAX);
   }
@@ -2043,7 +2043,7 @@ struct index_meta_writer final: public irs::index_meta_writer {
   using irs::index_meta_writer::prepare;
   virtual bool prepare(directory& dir, index_meta& meta) override;
   virtual bool commit() override;
-  virtual void rollback() NOEXCEPT override;
+  virtual void rollback() noexcept override;
 
  private:
   directory* dir_ = nullptr;
@@ -2170,7 +2170,7 @@ bool index_meta_writer::commit() {
   return true;
 }
 
-void index_meta_writer::rollback() NOEXCEPT {
+void index_meta_writer::rollback() noexcept {
   if (!meta_) {
     return;
   }
@@ -2310,7 +2310,7 @@ struct segment_meta_writer final : public irs::segment_meta_writer{
     SORTED = 2
   };
 
-  explicit segment_meta_writer(int32_t version) NOEXCEPT
+  explicit segment_meta_writer(int32_t version) noexcept
     : version_(version) {
     assert(version_ >= FORMAT_MIN && version <= FORMAT_MAX);
   }
@@ -2631,7 +2631,7 @@ class meta_writer final : public irs::column_meta_writer {
   static const int32_t FORMAT_MIN = 0;
   static const int32_t FORMAT_MAX = 1;
 
-  explicit meta_writer(int32_t version) NOEXCEPT
+  explicit meta_writer(int32_t version) noexcept
     : version_(version) {
     assert(version >= FORMAT_MIN && version <= FORMAT_MAX);
   }
@@ -2771,7 +2771,7 @@ bool meta_reader::prepare(
 
   const auto checksum = format_utils::checksum(*in_);
 
-  CONSTEXPR const size_t FOOTER_LEN =
+  constexpr const size_t FOOTER_LEN =
       sizeof(uint64_t) // count
     + sizeof(field_id) // max id
     + format_utils::FOOTER_LEN;
@@ -2874,7 +2874,7 @@ enum ColumnProperty : uint32_t {
 
 ENABLE_BITMASK_ENUM(ColumnProperty);
 
-bool is_good_compression_ratio(size_t raw_size, size_t compressed_size) NOEXCEPT {
+bool is_good_compression_ratio(size_t raw_size, size_t compressed_size) noexcept {
   // check if compressed is less than 12.5%
   return compressed_size < raw_size - (raw_size / 8U);
 }
@@ -2985,7 +2985,7 @@ class index_block {
  public:
   static const size_t SIZE = Size;
 
-  void push_back(doc_id_t key, uint64_t offset) NOEXCEPT {
+  void push_back(doc_id_t key, uint64_t offset) noexcept {
     assert(key_ >= keys_);
     assert(key_ < keys_ + Size);
     *key_++ = key;
@@ -2996,7 +2996,7 @@ class index_block {
     assert(offset >= offset_[-1]);
   }
 
-  void pop_back() NOEXCEPT {
+  void pop_back() noexcept {
     assert(key_ > keys_);
     *key_-- = 0;
     assert(offset_ > offsets_);
@@ -3004,40 +3004,40 @@ class index_block {
   }
 
   // returns total number of items
-  uint32_t total() const NOEXCEPT {
+  uint32_t total() const noexcept {
     return flushed()+ size();
   }
 
   // returns total number of flushed items
-  uint32_t flushed() const NOEXCEPT {
+  uint32_t flushed() const noexcept {
     return flushed_;
   }
 
   // returns number of items to be flushed
-  uint32_t size() const NOEXCEPT {
+  uint32_t size() const noexcept {
     assert(key_ >= keys_);
     return uint32_t(key_ - keys_);
   }
 
-  bool empty() const NOEXCEPT {
+  bool empty() const noexcept {
     return keys_ == key_;
   }
 
-  bool full() const NOEXCEPT {
+  bool full() const noexcept {
     return key_ == std::end(keys_);
   }
 
-  doc_id_t min_key() const NOEXCEPT {
+  doc_id_t min_key() const noexcept {
     return *keys_;
   }
 
-  doc_id_t max_key() const NOEXCEPT {
+  doc_id_t max_key() const noexcept {
     // if this->empty(), will point to last offset
     // value which is 0 in this case
     return *(key_-1);
   }
 
-  uint64_t max_offset() const NOEXCEPT {
+  uint64_t max_offset() const noexcept {
     assert(offset_ > offsets_);
     return *(offset_-1);
   }
@@ -3120,7 +3120,7 @@ class writer final : public irs::columnstore_writer {
   static const string_ref FORMAT_NAME;
   static const string_ref FORMAT_EXT;
 
-  explicit writer(int32_t version) NOEXCEPT
+  explicit writer(int32_t version) noexcept
     : buf_(2*MAX_DATA_BLOCK_SIZE, 0),
       version_(version) {
     static_assert(
@@ -3134,7 +3134,7 @@ class writer final : public irs::columnstore_writer {
   virtual void prepare(directory& dir, const segment_meta& meta) override;
   virtual column_t push_column(const column_info& info) override;
   virtual bool commit() override;
-  virtual void rollback() NOEXCEPT override;
+  virtual void rollback() noexcept override;
 
  private:
   class column final : public irs::columnstore_writer::column_output {
@@ -3169,7 +3169,7 @@ class writer final : public irs::columnstore_writer {
       block_index_.push_back(key, block_buf_.size());
     }
 
-    bool empty() const NOEXCEPT {
+    bool empty() const noexcept {
       return !block_index_.total();
     }
 
@@ -3436,7 +3436,7 @@ bool writer::commit() {
   return true;
 }
 
-void writer::rollback() NOEXCEPT {
+void writer::rollback() noexcept {
   filename_.clear();
   dir_ = nullptr;
   data_out_.reset(); // close output
@@ -3449,7 +3449,7 @@ class block_cache : irs::util::noncopyable {
   block_cache(const Allocator& alloc = Allocator())
     : cache_(alloc) {
   }
-  block_cache(block_cache&& rhs) NOEXCEPT
+  block_cache(block_cache&& rhs) noexcept
     : cache_(std::move(rhs.cache_)) {
   }
 
@@ -3459,7 +3459,7 @@ class block_cache : irs::util::noncopyable {
     return cache_.back();
   }
 
-  void pop_back() NOEXCEPT {
+  void pop_back() noexcept {
     cache_.pop_back();
   }
 
@@ -3488,7 +3488,7 @@ class sparse_block : util::noncopyable {
  public:
   class iterator {
    public:
-    bool seek(doc_id_t doc) NOEXCEPT {
+    bool seek(doc_id_t doc) noexcept {
       next_ = std::lower_bound(
         begin_, end_, doc,
         [](const ref& lhs, doc_id_t rhs) {
@@ -3498,9 +3498,9 @@ class sparse_block : util::noncopyable {
       return next();
     }
 
-    const irs::doc_id_t& value() const NOEXCEPT { return value_; }
+    const irs::doc_id_t& value() const noexcept { return value_; }
 
-    bool next() NOEXCEPT {
+    bool next() noexcept {
       if (next_ == end_) {
         return false;
       }
@@ -3521,13 +3521,13 @@ class sparse_block : util::noncopyable {
       return true;
     }
 
-    void seal() NOEXCEPT {
+    void seal() noexcept {
       value_ = doc_limits::eof();
       payload_ = &DUMMY;
       next_ = begin_ = end_;
     }
 
-    void reset(const sparse_block& block, irs::payload& payload) NOEXCEPT {
+    void reset(const sparse_block& block, irs::payload& payload) noexcept {
       value_ = doc_limits::invalid();
       payload.clear();
       payload_ = &payload.value;
@@ -3542,11 +3542,11 @@ class sparse_block : util::noncopyable {
       }));
     }
 
-    bool operator==(const sparse_block& rhs) const NOEXCEPT {
+    bool operator==(const sparse_block& rhs) const noexcept {
       return data_ == &rhs.data_;
     }
 
-    bool operator!=(const sparse_block& rhs) const NOEXCEPT {
+    bool operator!=(const sparse_block& rhs) const noexcept {
       return !(*this == rhs);
     }
 
@@ -3672,7 +3672,7 @@ class dense_block : util::noncopyable {
  public:
   class iterator {
    public:
-    bool seek(doc_id_t doc) NOEXCEPT {
+    bool seek(doc_id_t doc) noexcept {
       // before the current element
       if (doc <= value_) {
         doc = value_;
@@ -3684,9 +3684,9 @@ class dense_block : util::noncopyable {
       return next();
     }
 
-    const irs::doc_id_t& value() const NOEXCEPT { return value_; }
+    const irs::doc_id_t& value() const noexcept { return value_; }
 
-    bool next() NOEXCEPT {
+    bool next() noexcept {
       if (it_ >= end_) {
         // after the last element
         return false;
@@ -3698,13 +3698,13 @@ class dense_block : util::noncopyable {
       return true;
     }
 
-    void seal() NOEXCEPT {
+    void seal() noexcept {
       value_ = doc_limits::eof();
       payload_ = &DUMMY;
       it_ = begin_ = end_;
     }
 
-    void reset(const dense_block& block, irs::payload& payload) NOEXCEPT {
+    void reset(const dense_block& block, irs::payload& payload) noexcept {
       value_ = block.base_;
       payload.clear();
       payload_ = &payload.value;
@@ -3714,17 +3714,17 @@ class dense_block : util::noncopyable {
       base_ = block.base_;
     }
 
-    bool operator==(const dense_block& rhs) const NOEXCEPT {
+    bool operator==(const dense_block& rhs) const noexcept {
       return data_ == &rhs.data_;
     }
 
-    bool operator!=(const dense_block& rhs) const NOEXCEPT {
+    bool operator!=(const dense_block& rhs) const noexcept {
       return !(*this == rhs);
     }
 
    private:
     // note that function increments 'it_'
-    void next_value() NOEXCEPT {
+    void next_value() noexcept {
       const auto vbegin = *it_;
       const auto vend = (++it_ == end_ ? data_->size() : *it_);
 
@@ -3850,7 +3850,7 @@ class dense_fixed_offset_block : util::noncopyable {
  public:
   class iterator {
    public:
-    bool seek(doc_id_t doc) NOEXCEPT {
+    bool seek(doc_id_t doc) noexcept {
       if (doc < value_next_) {
         if (!doc_limits::valid(value_)) {
           return next();
@@ -3864,11 +3864,11 @@ class dense_fixed_offset_block : util::noncopyable {
       return next();
     }
 
-    const doc_id_t& value() const NOEXCEPT {
+    const doc_id_t& value() const noexcept {
       return value_;
     }
 
-    bool next() NOEXCEPT {
+    bool next() noexcept {
       if (value_next_ >= value_end_) {
         seal();
         return false;
@@ -3886,7 +3886,7 @@ class dense_fixed_offset_block : util::noncopyable {
       return true;
     }
 
-    void seal() NOEXCEPT {
+    void seal() noexcept {
       value_ = doc_limits::eof();
       value_next_ = doc_limits::eof();
       value_min_ = doc_limits::eof();
@@ -3894,7 +3894,7 @@ class dense_fixed_offset_block : util::noncopyable {
       payload_ = &DUMMY;
     }
 
-    void reset(const dense_fixed_offset_block& block, irs::payload& payload) NOEXCEPT {
+    void reset(const dense_fixed_offset_block& block, irs::payload& payload) noexcept {
       avg_length_ = block.avg_length_;
       data_ = block.data_;
       payload.clear();
@@ -3906,11 +3906,11 @@ class dense_fixed_offset_block : util::noncopyable {
       value_back_ = value_end_ - 1;
     }
 
-    bool operator==(const dense_fixed_offset_block& rhs) const NOEXCEPT {
+    bool operator==(const dense_fixed_offset_block& rhs) const noexcept {
       return data_.c_str() == rhs.data_.c_str();
     }
 
-    bool operator!=(const dense_fixed_offset_block& rhs) const NOEXCEPT {
+    bool operator!=(const dense_fixed_offset_block& rhs) const noexcept {
       return !(*this == rhs);
     }
 
@@ -4014,15 +4014,15 @@ class sparse_mask_block : util::noncopyable {
  public:
   class iterator {
    public:
-    bool seek(doc_id_t doc) NOEXCEPT {
+    bool seek(doc_id_t doc) noexcept {
       it_ = std::lower_bound(begin_, end_, doc);
 
       return next();
     }
 
-    const irs::doc_id_t& value() const NOEXCEPT { return value_; }
+    const irs::doc_id_t& value() const noexcept { return value_; }
 
-    bool next() NOEXCEPT {
+    bool next() noexcept {
       if (it_ == end_) {
         return false;
       }
@@ -4032,12 +4032,12 @@ class sparse_mask_block : util::noncopyable {
       return true;
     }
 
-    void seal() NOEXCEPT {
+    void seal() noexcept {
       value_ = doc_limits::eof();
       it_ = begin_ = end_;
     }
 
-    void reset(const sparse_mask_block& block, irs::payload& payload) NOEXCEPT {
+    void reset(const sparse_mask_block& block, irs::payload& payload) noexcept {
       value_ = doc_limits::invalid();
       payload.clear(); // mask block doesn't have payload
       it_ = begin_ = std::begin(block.keys_);
@@ -4046,11 +4046,11 @@ class sparse_mask_block : util::noncopyable {
       assert(std::is_sorted(begin_, end_));
     }
 
-    bool operator==(const sparse_mask_block& rhs) const NOEXCEPT {
+    bool operator==(const sparse_mask_block& rhs) const noexcept {
       return end_ == (rhs.keys_ + rhs.size_);
     }
 
-    bool operator!=(const sparse_mask_block& rhs) const NOEXCEPT {
+    bool operator!=(const sparse_mask_block& rhs) const noexcept {
       return !(*this == rhs);
     }
 
@@ -4061,7 +4061,7 @@ class sparse_mask_block : util::noncopyable {
     const doc_id_t* end_{};
   }; // iterator
 
-  sparse_mask_block() NOEXCEPT {
+  sparse_mask_block() noexcept {
     std::fill(
       std::begin(keys_), std::end(keys_),
       doc_limits::eof()
@@ -4127,7 +4127,7 @@ class dense_mask_block {
  public:
   class iterator {
    public:
-    bool seek(doc_id_t doc) NOEXCEPT {
+    bool seek(doc_id_t doc) noexcept {
       if (doc < doc_) {
         if (!doc_limits::valid(value_)) {
           return next();
@@ -4141,11 +4141,11 @@ class dense_mask_block {
       return next();
     }
 
-    const irs::doc_id_t& value() const NOEXCEPT {
+    const irs::doc_id_t& value() const noexcept {
       return value_;
     }
 
-    bool next() NOEXCEPT {
+    bool next() noexcept {
       if (doc_ >= max_) {
         seal();
         return false;
@@ -4156,23 +4156,23 @@ class dense_mask_block {
       return true;
     }
 
-    void seal() NOEXCEPT {
+    void seal() noexcept {
       value_ = doc_limits::eof();
       doc_ = max_;
     }
 
-    void reset(const dense_mask_block& block, irs::payload& payload) NOEXCEPT {
+    void reset(const dense_mask_block& block, irs::payload& payload) noexcept {
       block_ = &block;
       payload.clear(); // mask block doesn't have payload
       doc_ = block.min_;
       max_ = block.max_;
     }
 
-    bool operator==(const dense_mask_block& rhs) const NOEXCEPT {
+    bool operator==(const dense_mask_block& rhs) const noexcept {
       return block_ == &rhs;
     }
 
-    bool operator!=(const dense_mask_block& rhs) const NOEXCEPT {
+    bool operator!=(const dense_mask_block& rhs) const noexcept {
       return !(*this == rhs);
     }
 
@@ -4183,7 +4183,7 @@ class dense_mask_block {
     doc_id_t max_{ doc_limits::invalid() };
   }; // iterator
 
-  dense_mask_block() NOEXCEPT
+  dense_mask_block() noexcept
     : min_(doc_limits::invalid()),
       max_(doc_limits::invalid()) {
   }
@@ -4215,7 +4215,7 @@ class dense_mask_block {
     max_ = min_ + size;
   }
 
-  bool value(doc_id_t key, bytes_ref& /*reader*/) const NOEXCEPT {
+  bool value(doc_id_t key, bytes_ref& /*reader*/) const noexcept {
     return min_ <= key && key < max_;
   }
 
@@ -4297,7 +4297,7 @@ class read_context
   }
 
   template<typename Block>
-  void pop_back() NOEXCEPT {
+  void pop_back() noexcept {
     typename block_cache_traits<Block, Allocator>::cache_t& cache = *this;
     cache.pop_back();
   }
@@ -4316,7 +4316,7 @@ class context_provider: private util::noncopyable {
     : pool_(std::max(size_t(1), max_pool_size)) {
   }
 
-  void prepare(index_input::ptr&& stream, encryption::stream::ptr&& cipher) NOEXCEPT {
+  void prepare(index_input::ptr&& stream, encryption::stream::ptr&& cipher) noexcept {
     assert(stream);
 
     stream_ = std::move(stream);
@@ -4398,7 +4398,7 @@ class column
  public:
   DECLARE_UNIQUE_PTR(column);
 
-  explicit column(ColumnProperty props) NOEXCEPT
+  explicit column(ColumnProperty props) noexcept
     : props_(props),
       encrypted_(0 != (props & CP_COLUMN_ENCRYPT)) {
   }
@@ -4416,18 +4416,18 @@ class column
     decomp_ = decomp;
   }
 
-  bool encrypted() const NOEXCEPT { return encrypted_; }
-  doc_id_t max() const NOEXCEPT { return max_; }
-  virtual size_t size() const NOEXCEPT override { return count_; }
-  bool empty() const NOEXCEPT { return 0 == size(); }
-  uint32_t avg_block_size() const NOEXCEPT { return avg_block_size_; }
-  uint32_t avg_block_count() const NOEXCEPT { return avg_block_count_; }
-  ColumnProperty props() const NOEXCEPT { return props_; }
-  compression::decompressor* decompressor() const NOEXCEPT { return decomp_.get(); }
+  bool encrypted() const noexcept { return encrypted_; }
+  doc_id_t max() const noexcept { return max_; }
+  virtual size_t size() const noexcept override { return count_; }
+  bool empty() const noexcept { return 0 == size(); }
+  uint32_t avg_block_size() const noexcept { return avg_block_size_; }
+  uint32_t avg_block_count() const noexcept { return avg_block_count_; }
+  ColumnProperty props() const noexcept { return props_; }
+  compression::decompressor* decompressor() const noexcept { return decomp_.get(); }
 
  protected:
   // same as size() but returns uint32_t to avoid type convertions
-  uint32_t count() const NOEXCEPT { return count_; }
+  uint32_t count() const noexcept { return count_; }
 
  private:
   compression::decompressor::ptr decomp_;
@@ -4459,11 +4459,11 @@ class column_iterator final: public irs::doc_iterator {
     attrs_.emplace(payload_);
   }
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
 
-  virtual doc_id_t value() const NOEXCEPT override {
+  virtual doc_id_t value() const noexcept override {
     return doc_.value;
   }
 
@@ -4686,7 +4686,7 @@ class sparse_column final : public column {
 
     block_ref() = default;
 
-    block_ref(block_ref&& other) NOEXCEPT
+    block_ref(block_ref&& other) noexcept
       : key(std::move(other.key)), offset(std::move(other.offset)) {
       pblock = other.pblock.exchange(nullptr); // no std::move(...) for std::atomic<...>
     }
@@ -4701,7 +4701,7 @@ class sparse_column final : public column {
   const block_ref* find_block(
       const block_ref* begin,
       const block_ref* end,
-      doc_id_t key) const NOEXCEPT {
+      doc_id_t key) const noexcept {
     UNUSED(end);
 
     if (key <= begin->key) {
@@ -4723,7 +4723,7 @@ class sparse_column final : public column {
     return it.base()-1;
   }
 
-  typename refs_t::const_iterator find_block(doc_id_t key) const NOEXCEPT {
+  typename refs_t::const_iterator find_block(doc_id_t key) const noexcept {
     if (key <= refs_.front().key) {
       return refs_.begin();
     }
@@ -4867,7 +4867,7 @@ class dense_fixed_offset_column final : public column {
 
     block_ref() = default;
 
-    block_ref(block_ref&& other) NOEXCEPT
+    block_ref(block_ref&& other) noexcept
       : offset(std::move(other.offset)) {
       pblock = other.pblock.exchange(nullptr); // no std::move(...) for std::atomic<...>
     }
@@ -4881,7 +4881,7 @@ class dense_fixed_offset_column final : public column {
   const block_ref* find_block(
       const block_ref* begin,
       const block_ref* end,
-      doc_id_t key) const NOEXCEPT {
+      doc_id_t key) const noexcept {
     const auto min  = min_ + this->avg_block_count() * std::distance(refs_.data(), begin);
 
     if (key < min) {
@@ -4898,7 +4898,7 @@ class dense_fixed_offset_column final : public column {
     return refs_.data() + block_idx;
   }
 
-  typename refs_t::const_iterator find_block(doc_id_t key) const NOEXCEPT {
+  typename refs_t::const_iterator find_block(doc_id_t key) const noexcept {
     if (key < min_) {
       return refs_.begin();
     }
@@ -4927,7 +4927,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     return memory::make_unique<column_t>(props);
   }
 
-  explicit dense_fixed_offset_column(ColumnProperty prop) NOEXCEPT
+  explicit dense_fixed_offset_column(ColumnProperty prop) noexcept
     : column(prop) {
   }
 
@@ -4975,7 +4975,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     min_ = this->max() - this->count();
   }
 
-  bool value(doc_id_t key, bytes_ref& value) const NOEXCEPT {
+  bool value(doc_id_t key, bytes_ref& value) const noexcept {
     value = bytes_ref::NIL;
     return key > min_ && key <= this->max();
   }
@@ -5003,22 +5003,22 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
  private:
   class column_iterator final: public irs::doc_iterator {
    public:
-    explicit column_iterator(const column_t& column) NOEXCEPT
+    explicit column_iterator(const column_t& column) noexcept
       : attrs_(1), // document
         min_(1 + column.min_),
         max_(column.max()) {
       attrs_.emplace(value_);
     }
 
-    virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+    virtual const irs::attribute_view& attributes() const noexcept override {
       return attrs_;
     }
 
-    virtual irs::doc_id_t value() const NOEXCEPT override {
+    virtual irs::doc_id_t value() const noexcept override {
       return value_.value;
     }
 
-    virtual irs::doc_id_t seek(irs::doc_id_t doc) NOEXCEPT override {
+    virtual irs::doc_id_t seek(irs::doc_id_t doc) noexcept override {
       if (doc < min_) {
         if (!doc_limits::valid(value_.value)) {
           next();
@@ -5033,7 +5033,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
       return value_.value;
     }
 
-    virtual bool next() NOEXCEPT override {
+    virtual bool next() noexcept override {
       if (min_ > max_) {
         value_.value = doc_limits::eof();
 
@@ -5106,7 +5106,7 @@ class reader final: public columnstore_reader, public context_provider {
 
   virtual const column_reader* column(field_id field) const override;
 
-  virtual size_t size() const NOEXCEPT override {
+  virtual size_t size() const noexcept override {
     return columns_.size();
   }
 
@@ -5460,7 +5460,7 @@ class format10 : public irs::version10::format {
   DECLARE_FORMAT_TYPE();
   DECLARE_FACTORY();
 
-  format10() NOEXCEPT : format10(format10::type()) { }
+  format10() noexcept : format10(format10::type()) { }
 
   virtual index_meta_writer::ptr get_index_meta_writer() const override;
   virtual index_meta_reader::ptr get_index_meta_reader() const override final;
@@ -5484,7 +5484,7 @@ class format10 : public irs::version10::format {
   virtual postings_reader::ptr get_postings_reader() const override;
 
  protected:
-  explicit format10(const irs::format::type_id& type) NOEXCEPT
+  explicit format10(const irs::format::type_id& type) noexcept
     : irs::version10::format(type) {
   }
 }; // format10
@@ -5591,7 +5591,7 @@ class format11 : public format10 {
   DECLARE_FORMAT_TYPE();
   DECLARE_FACTORY();
 
-  format11() NOEXCEPT : format10(format11::type()) { }
+  format11() noexcept : format10(format11::type()) { }
 
   virtual index_meta_writer::ptr get_index_meta_writer() const override final;
 
@@ -5602,7 +5602,7 @@ class format11 : public format10 {
   virtual column_meta_writer::ptr get_column_meta_writer() const override final;
 
  protected:
-  explicit format11(const irs::format::type_id& type) NOEXCEPT
+  explicit format11(const irs::format::type_id& type) noexcept
     : format10(type) {
   }
 }; // format11
@@ -5653,7 +5653,7 @@ class format12 final : public format11 {
   DECLARE_FORMAT_TYPE();
   DECLARE_FACTORY();
 
-  format12() NOEXCEPT : format11(format12::type()) { }
+  format12() noexcept : format11(format12::type()) { }
 
   virtual columnstore_writer::ptr get_columnstore_writer() const override final;
 }; // format12
@@ -5691,7 +5691,7 @@ void init() {
 // --SECTION--                                                           format
 // ----------------------------------------------------------------------------
 
-format::format(const irs::format::type_id& type) NOEXCEPT
+format::format(const irs::format::type_id& type) noexcept
   : irs::format(type) {
 }
 

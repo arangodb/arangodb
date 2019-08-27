@@ -34,7 +34,7 @@ NS_ROOT
 // --SECTION--                                        index_lock implementation
 // ----------------------------------------------------------------------------
 
-bool index_lock::try_lock(size_t wait_timeout /* = 1000 */) NOEXCEPT {
+bool index_lock::try_lock(size_t wait_timeout /* = 1000 */) noexcept {
   const size_t LOCK_POLL_INTERVAL = 1000;
 
   try {

@@ -118,11 +118,11 @@ struct IRESEARCH_API decompressor {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API type_id : public irs::type_id, private util::noncopyable {
  public:
-  type_id(const string_ref& name) NOEXCEPT
+  type_id(const string_ref& name) noexcept
     : name_(name) {
   }
-  operator const type_id*() const NOEXCEPT { return this; }
-  const string_ref& name() const NOEXCEPT { return name_; }
+  operator const type_id*() const noexcept { return this; }
+  const string_ref& name() const noexcept { return name_; }
 
  private:
   string_ref name_;
@@ -142,7 +142,7 @@ class IRESEARCH_API compression_registrar {
                          decompressor_factory_f decompressor_factory,
                          const char* source = nullptr);
 
-  operator bool() const NOEXCEPT {
+  operator bool() const noexcept {
     return registered_;
   }
 
@@ -161,7 +161,7 @@ IRESEARCH_API bool exists(const string_ref& name, bool load_library = true);
 IRESEARCH_API compressor::ptr get_compressor(
     const string_ref& name,
     const options& opts,
-    bool load_library = true) NOEXCEPT;
+    bool load_library = true) noexcept;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a compressor by name, or nullptr if not found
@@ -169,7 +169,7 @@ IRESEARCH_API compressor::ptr get_compressor(
 inline compressor::ptr get_compressor(
     const type_id& type,
     const options& opts,
-    bool load_library = true) NOEXCEPT {
+    bool load_library = true) noexcept {
   return get_compressor(type.name(), opts, load_library);
 }
 
@@ -178,14 +178,14 @@ inline compressor::ptr get_compressor(
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API decompressor::ptr get_decompressor(
     const string_ref& name,
-    bool load_library = true) NOEXCEPT;
+    bool load_library = true) noexcept;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a decompressor by name, or nullptr if not found
 ////////////////////////////////////////////////////////////////////////////////
 inline decompressor::ptr get_decompressor(
     const type_id& type,
-    bool load_library = true) NOEXCEPT {
+    bool load_library = true) noexcept {
   return get_decompressor(type.name(), load_library);
 }
 

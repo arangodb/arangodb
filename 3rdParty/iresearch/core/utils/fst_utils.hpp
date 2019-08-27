@@ -52,7 +52,7 @@ struct byte_weight_input final : data_input, private util::noncopyable {
  public:
   byte_weight_input() = default;
 
-  explicit byte_weight_input(byte_weight&& weight) NOEXCEPT
+  explicit byte_weight_input(byte_weight&& weight) noexcept
     : weight_(std::move(weight)),
       begin_(weight_.begin()),
       end_(weight_.end()) {

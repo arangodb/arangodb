@@ -62,7 +62,7 @@ struct phrase_state {
 
   phrase_state() = default;
 
-  phrase_state(phrase_state&& rhs) NOEXCEPT
+  phrase_state(phrase_state&& rhs) noexcept
     : terms(std::move(rhs.terms)),
       reader(rhs.reader) {
     rhs.reader = nullptr;
@@ -90,7 +90,7 @@ class phrase_query : public filter::prepared {
       positions_t&& positions,
       bstring&& stats,
       boost_t boost
-  ) NOEXCEPT
+  ) noexcept
     : prepared(std::move(stats), boost),
       states_(std::move(states)),
       positions_(std::move(positions)) {
@@ -177,12 +177,12 @@ DEFINE_FACTORY_DEFAULT(by_phrase)
 by_phrase::by_phrase(): filter(by_phrase::type()) {
 }
 
-bool by_phrase::equals(const filter& rhs) const NOEXCEPT {
+bool by_phrase::equals(const filter& rhs) const noexcept {
   const by_phrase& trhs = static_cast<const by_phrase&>(rhs);
   return filter::equals(rhs) && fld_ == trhs.fld_ && phrase_ == trhs.phrase_;
 }
 
-size_t by_phrase::hash() const NOEXCEPT {
+size_t by_phrase::hash() const noexcept {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   ::boost::hash_combine(seed, fld_);

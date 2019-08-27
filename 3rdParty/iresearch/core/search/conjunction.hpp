@@ -36,7 +36,7 @@ NS_ROOT
 /// @brief adapter to use doc_iterator with conjunction and disjunction
 ////////////////////////////////////////////////////////////////////////////////
 struct score_iterator_adapter {
-  score_iterator_adapter(doc_iterator::ptr&& it) NOEXCEPT
+  score_iterator_adapter(doc_iterator::ptr&& it) noexcept
     : it(std::move(it)) {
     auto& attrs = this->it->attributes();
     score = &irs::score::extract(attrs);
@@ -47,13 +47,13 @@ struct score_iterator_adapter {
   score_iterator_adapter(const score_iterator_adapter&) = default;
   score_iterator_adapter& operator=(const score_iterator_adapter&) = default;
 
-  score_iterator_adapter(score_iterator_adapter&& rhs) NOEXCEPT
+  score_iterator_adapter(score_iterator_adapter&& rhs) noexcept
     : it(std::move(rhs.it)),
       doc(rhs.doc),
       score(rhs.score) {
   }
 
-  score_iterator_adapter& operator=(score_iterator_adapter&& rhs) NOEXCEPT {
+  score_iterator_adapter& operator=(score_iterator_adapter&& rhs) noexcept {
     if (this != &rhs) {
       it = std::move(rhs.it);
       score = rhs.score;
@@ -62,16 +62,16 @@ struct score_iterator_adapter {
     return *this;
   }
 
-  doc_iterator* operator->() const NOEXCEPT {
+  doc_iterator* operator->() const noexcept {
     return it.get();
   }
 
-  operator doc_iterator::ptr&() NOEXCEPT {
+  operator doc_iterator::ptr&() noexcept {
     return it;
   }
 
   // access iterator value without virtual call
-  doc_id_t value() const NOEXCEPT {
+  doc_id_t value() const noexcept {
     return doc->value;
   }
 
@@ -144,11 +144,11 @@ class conjunction : public doc_iterator_base {
     }
   }
 
-  iterator begin() const NOEXCEPT { return itrs_.begin(); }
-  iterator end() const NOEXCEPT { return itrs_.end(); }
+  iterator begin() const noexcept { return itrs_.begin(); }
+  iterator end() const noexcept { return itrs_.end(); }
 
   // size of conjunction
-  size_t size() const NOEXCEPT { return itrs_.size(); }
+  size_t size() const noexcept { return itrs_.size(); }
 
   virtual doc_id_t value() const override final {
     return front_doc_->value;

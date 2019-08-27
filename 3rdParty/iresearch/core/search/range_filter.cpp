@@ -40,14 +40,16 @@ void collect_terms(
     irs::range_query::states_t& states,
     irs::limited_sample_scorer& scorer,
     Comparer cmp) {
-  if (cmp(terms)) {
+  auto& value = terms.value();
+
+  if (cmp(value)) {
     // read attributes
     terms.read();
 
     // get state for current segment
     auto& state = states.insert(segment);
     state.reader = &field;
-    state.min_term = terms.value();
+    state.min_term = value;
     state.min_cookie = terms.cookie();
     state.unscored_docs.reset(
       (irs::type_limits<irs::type_t::doc_id_t>::min)() + segment.docs_count()
@@ -55,15 +57,14 @@ void collect_terms(
 
     // get term metadata
     auto& meta = terms.attributes().get<irs::term_meta>();
+    const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
+    const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
 
     do {
       // fill scoring candidates
-      scorer.collect(meta ? meta->docs_count : 0, state.count, state, segment, terms);
+      scorer.collect(docs_count , state.count, state, segment, terms);
       ++state.count;
-
-      if (meta) {
-        state.estimation += meta->docs_count;
-      }
+      state.estimation += docs_count;
 
       if (!terms.next()) {
         break;
@@ -71,7 +72,7 @@ void collect_terms(
 
       // read attributes
       terms.read();
-    } while (cmp(terms));
+    } while (cmp(value));
   }
 }
 
@@ -82,16 +83,16 @@ NS_ROOT
 DEFINE_FILTER_TYPE(by_range)
 DEFINE_FACTORY_DEFAULT(by_range)
 
-by_range::by_range() NOEXCEPT
+by_range::by_range() noexcept
   : filter(by_range::type()) {
 }
 
-bool by_range::equals(const filter& rhs) const NOEXCEPT {
+bool by_range::equals(const filter& rhs) const noexcept {
   const by_range& trhs = static_cast<const by_range&>(rhs);
   return filter::equals(rhs) && fld_ == trhs.fld_ && rng_ == trhs.rng_;
 }
 
-size_t by_range::hash() const NOEXCEPT {
+size_t by_range::hash() const noexcept {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   ::boost::hash_combine(seed, fld_);
@@ -169,20 +170,20 @@ filter::prepared::ptr by_range::prepare(
     switch (rng_.max_type) {
       case Bound_Type::UNBOUNDED:
         ::collect_terms(
-          segment, *field, *terms, states, scorer, [](const term_iterator&) {
+          segment, *field, *terms, states, scorer, [](const bytes_ref&) {
             return true;
         });
         break;
       case Bound_Type::INCLUSIVE:
         ::collect_terms(
-          segment, *field, *terms, states, scorer, [max](const term_iterator& terms) {
-            return terms.value() <= max;
+          segment, *field, *terms, states, scorer, [max](const bytes_ref& term) {
+            return term <= max;
         });
         break;
       case Bound_Type::EXCLUSIVE:
         ::collect_terms(
-          segment, *field, *terms, states, scorer, [max](const term_iterator& terms) {
-            return terms.value() < max;
+          segment, *field, *terms, states, scorer, [max](const bytes_ref& term) {
+            return term < max;
         });
         break;
       default:

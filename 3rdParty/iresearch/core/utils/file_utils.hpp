@@ -105,43 +105,43 @@ bool verify_lock_file(const file_path_t file);
 // --SECTION--                                                             stats
 // -----------------------------------------------------------------------------
 
-bool absolute(bool& result, const file_path_t path) NOEXCEPT;
+bool absolute(bool& result, const file_path_t path) noexcept;
 
-bool block_size(file_blksize_t& result, const file_path_t file) NOEXCEPT;
-bool block_size(file_blksize_t& result, int fd) NOEXCEPT;
+bool block_size(file_blksize_t& result, const file_path_t file) noexcept;
+bool block_size(file_blksize_t& result, int fd) noexcept;
 
-bool byte_size(uint64_t& result, const file_path_t file) NOEXCEPT;
-bool byte_size(uint64_t& result, int fd) NOEXCEPT;
+bool byte_size(uint64_t& result, const file_path_t file) noexcept;
+bool byte_size(uint64_t& result, int fd) noexcept;
 
-bool exists(bool& result, const file_path_t file) NOEXCEPT;
-bool exists_directory(bool& result, const file_path_t file) NOEXCEPT;
-bool exists_file(bool& result, const file_path_t file) NOEXCEPT;
+bool exists(bool& result, const file_path_t file) noexcept;
+bool exists_directory(bool& result, const file_path_t file) noexcept;
+bool exists_file(bool& result, const file_path_t file) noexcept;
 
-bool mtime(time_t& result, const file_path_t file) NOEXCEPT;
-bool mtime(time_t& result, int fd) NOEXCEPT;
+bool mtime(time_t& result, const file_path_t file) noexcept;
+bool mtime(time_t& result, int fd) noexcept;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         open file
 // -----------------------------------------------------------------------------
 
 struct file_deleter {
-  void operator()(FILE* f) const NOEXCEPT {
+  void operator()(FILE* f) const noexcept {
     if (f) ::fclose(f);
   }
 }; // file_deleter
 
 typedef std::unique_ptr<FILE, file_deleter> handle_t;
 
-handle_t open(const file_path_t path, const file_path_t mode) NOEXCEPT;
-handle_t open(FILE* file, const file_path_t mode) NOEXCEPT;
+handle_t open(const file_path_t path, const file_path_t mode) noexcept;
+handle_t open(FILE* file, const file_path_t mode) noexcept;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        path utils
 // -----------------------------------------------------------------------------
 
-bool mkdir(const file_path_t path, bool createNew) NOEXCEPT;  // recursive directory creation
+bool mkdir(const file_path_t path, bool createNew) noexcept;  // recursive directory creation
 
-bool move(const file_path_t src_path, const file_path_t dst_path) NOEXCEPT;
+bool move(const file_path_t src_path, const file_path_t dst_path) noexcept;
 
 struct path_parts_t {
   typedef irs::basic_string_ref<std::remove_pointer<file_path_t>::type> ref_t;
@@ -151,15 +151,15 @@ struct path_parts_t {
   ref_t stem;      // basename without extension (ref_t::NIL if not present)
 };
 
-IRESEARCH_API path_parts_t path_parts(const file_path_t path) NOEXCEPT;
+IRESEARCH_API path_parts_t path_parts(const file_path_t path) noexcept;
 
 IRESEARCH_API bool read_cwd(
   std::basic_string<std::remove_pointer<file_path_t>::type>& result
-) NOEXCEPT;
+) noexcept;
 
-bool remove(const file_path_t path) NOEXCEPT;
+bool remove(const file_path_t path) noexcept;
 
-bool set_cwd(const file_path_t path) NOEXCEPT;
+bool set_cwd(const file_path_t path) noexcept;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   directory utils
@@ -175,8 +175,8 @@ bool visit_directory(
 // --SECTION--                                                              misc
 // -----------------------------------------------------------------------------
 
-bool file_sync(const file_path_t name) NOEXCEPT;
-bool file_sync(int fd) NOEXCEPT;
+bool file_sync(const file_path_t name) noexcept;
+bool file_sync(int fd) noexcept;
 
 NS_END
 NS_END

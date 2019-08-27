@@ -257,14 +257,14 @@ NS_END
 tracking_directory::tracking_directory(
     directory& impl,
     bool track_open /*= false*/
-) NOEXCEPT
+) noexcept
   : impl_(impl),
     track_open_(track_open) {
 }
 
 index_output::ptr tracking_directory::create(
   const std::string& name
-) NOEXCEPT {
+) noexcept {
   try {
     files_.emplace(name);
   } catch (...) {
@@ -289,7 +289,7 @@ index_output::ptr tracking_directory::create(
 index_input::ptr tracking_directory::open(
     const std::string& name,
     IOAdvice advice
-) const NOEXCEPT {
+) const noexcept {
   if (track_open_) {
     try {
       files_.emplace(name);
@@ -303,7 +303,7 @@ index_input::ptr tracking_directory::open(
   return impl_.open(name, advice);
 }
 
-bool tracking_directory::remove(const std::string& name) NOEXCEPT {
+bool tracking_directory::remove(const std::string& name) noexcept {
   if (!impl_.remove(name)) {
     return false;
   }
@@ -321,7 +321,7 @@ bool tracking_directory::remove(const std::string& name) NOEXCEPT {
 
 bool tracking_directory::rename(
   const std::string& src, const std::string& dst
-) NOEXCEPT {
+) noexcept {
   if (!impl_.rename(src, dst)) {
     return false;
   }
@@ -339,11 +339,11 @@ bool tracking_directory::rename(
   return false;
 }
 
-void tracking_directory::clear_tracked() NOEXCEPT {
+void tracking_directory::clear_tracked() noexcept {
   files_.clear();
 }
 
-void tracking_directory::flush_tracked(file_set& other) NOEXCEPT {
+void tracking_directory::flush_tracked(file_set& other) noexcept {
   other = std::move(files_);
 }
 
@@ -361,21 +361,21 @@ ref_tracking_directory::ref_tracking_directory(
 
 ref_tracking_directory::ref_tracking_directory(
     ref_tracking_directory&& other
-) NOEXCEPT
+) noexcept
   : attribute_(other.attribute_), // references do not require std::move(...)
     impl_(other.impl_), // references do not require std::move(...)
     refs_(std::move(other.refs_)),
     track_open_(std::move(other.track_open_)) {
 }
 
-void ref_tracking_directory::clear_refs() const NOEXCEPT {
+void ref_tracking_directory::clear_refs() const noexcept {
   SCOPED_LOCK(mutex_);
   refs_.clear();
 }
 
 index_output::ptr ref_tracking_directory::create(
   const std::string& name
-) NOEXCEPT {
+) noexcept {
   try {
     auto result = impl_.create(name);
 
@@ -398,7 +398,7 @@ index_output::ptr ref_tracking_directory::create(
 index_input::ptr ref_tracking_directory::open(
   const std::string& name,
   IOAdvice advice
-) const NOEXCEPT {
+) const noexcept {
   if (!track_open_) {
     return impl_.open(name, advice);
   }
@@ -422,7 +422,7 @@ index_input::ptr ref_tracking_directory::open(
   return result;
 }
 
-bool ref_tracking_directory::remove(const std::string& name) NOEXCEPT {
+bool ref_tracking_directory::remove(const std::string& name) noexcept {
   if (!impl_.remove(name)) {
     return false;
   }
@@ -450,7 +450,7 @@ bool ref_tracking_directory::remove(const std::string& name) NOEXCEPT {
 
 bool ref_tracking_directory::rename(
   const std::string& src, const std::string& dst
-) NOEXCEPT {
+) noexcept {
   if (!impl_.rename(src, dst)) {
     return false;
   }

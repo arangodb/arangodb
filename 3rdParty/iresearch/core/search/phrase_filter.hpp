@@ -109,10 +109,10 @@ class IRESEARCH_API by_phrase : public filter {
     const attribute_view& ctx
   ) const override;
 
-  virtual size_t hash() const NOEXCEPT override;
+  virtual size_t hash() const noexcept override;
 
  protected:
-  virtual bool equals(const filter& rhs) const NOEXCEPT override;
+  virtual bool equals(const filter& rhs) const noexcept override;
  
  private:
   size_t next_pos() const {

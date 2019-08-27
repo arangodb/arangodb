@@ -58,8 +58,6 @@ struct range {
 
 NS_END // detail
 
-class term_selector;
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_range
 /// @brief user-side term range filter
@@ -69,7 +67,7 @@ class IRESEARCH_API by_range : public filter {
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  by_range() NOEXCEPT;
+  by_range() noexcept;
 
   using filter::prepare;
 
@@ -149,10 +147,10 @@ class IRESEARCH_API by_range : public filter {
     return scored_terms_limit_;
   }
 
-  virtual size_t hash() const NOEXCEPT override;
+  virtual size_t hash() const noexcept override;
 
  protected:
-  virtual bool equals(const filter& rhs) const NOEXCEPT override;
+  virtual bool equals(const filter& rhs) const noexcept override;
 
  private: 
   typedef detail::range<bstring> range_t;

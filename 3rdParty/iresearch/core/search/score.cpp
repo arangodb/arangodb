@@ -38,11 +38,11 @@ NS_ROOT
 
 DEFINE_ATTRIBUTE_TYPE(iresearch::score)
 
-/*static*/ const irs::score& score::no_score() NOEXCEPT {
+/*static*/ const irs::score& score::no_score() noexcept {
   return EMPTY_SCORE;
 }
 
-score::score() NOEXCEPT
+score::score() noexcept
   : func_([](const void*, byte_type*){}) {
 }
 

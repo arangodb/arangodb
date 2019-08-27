@@ -218,7 +218,7 @@ ngram_token_stream::ngram_token_stream(
 }
 
 //FIXME UTF-8 support
-bool ngram_token_stream::next() NOEXCEPT {
+bool ngram_token_stream::next() noexcept {
   if (length_ < options_.min_gram) {
     ++begin_;
     inc_.value = 1;
@@ -251,7 +251,7 @@ bool ngram_token_stream::next() NOEXCEPT {
   return true;
 }
 
-bool ngram_token_stream::reset(const irs::string_ref& value) NOEXCEPT {
+bool ngram_token_stream::reset(const irs::string_ref& value) noexcept {
   if (value.size() > integer_traits<uint32_t>::const_max) {
     // can't handle data which is longer than integer_traits<uint32_t>::const_max
     return false;

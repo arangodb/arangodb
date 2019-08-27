@@ -57,12 +57,12 @@ class IRESEARCH_API memory_file
   > raw_block_vector_t;
 
  public:
-  memory_file(const memory_allocator& alloc) NOEXCEPT
+  memory_file(const memory_allocator& alloc) noexcept
     : raw_block_vector_t(alloc) {
     touch(meta_.mtime);
   }
 
-  memory_file(memory_file&& rhs) NOEXCEPT
+  memory_file(memory_file&& rhs) noexcept
     : raw_block_vector_t(std::move(rhs)),
       meta_(rhs.meta_),
       len_(rhs.len_) {
@@ -85,17 +85,17 @@ class IRESEARCH_API memory_file
     return *this;
   }
 
-  size_t length() const NOEXCEPT {
+  size_t length() const noexcept {
     return len_;
   }
 
-  void length(size_t length) NOEXCEPT {
+  void length(size_t length) noexcept {
     len_ = length; 
     touch(meta_.mtime);
   }
 
   // used length of the buffer based on total length
-  size_t buffer_length(size_t i) const NOEXCEPT {
+  size_t buffer_length(size_t i) const noexcept {
     auto last_buf = buffer_offset(len_);
 
     if (i == last_buf) {
@@ -108,21 +108,21 @@ class IRESEARCH_API memory_file
     return i < last_buf ? get_buffer(i).size : 0;
   }
 
-  std::time_t mtime() const NOEXCEPT {
+  std::time_t mtime() const noexcept {
     return meta_.mtime;
   }
 
-  void reset() NOEXCEPT {
+  void reset() noexcept {
     len_ = 0;
   }
 
-  void reset(const memory_allocator& alloc) NOEXCEPT {
+  void reset(const memory_allocator& alloc) noexcept {
     reset();
     // change internal allocator
     static_cast<allocator_ref_t&>(*this) = static_cast<allocator_type&>(alloc);
   }
 
-  void clear() NOEXCEPT {
+  void clear() noexcept {
     raw_block_vector_t::clear();
     reset();
   }
@@ -148,7 +148,7 @@ class IRESEARCH_API memory_file
     std::time_t mtime;
   };
 
-  static void touch(std::time_t& time) NOEXCEPT {
+  static void touch(std::time_t& time) noexcept {
     time = std::chrono::system_clock::to_time_t(
       std::chrono::system_clock::now()
     );
@@ -166,7 +166,7 @@ class IRESEARCH_API memory_index_input final : public index_input {
  public:
   DECLARE_UNIQUE_PTR(memory_index_input); // allow private construction
 
-  explicit memory_index_input(const memory_file& file) NOEXCEPT;
+  explicit memory_index_input(const memory_file& file) noexcept;
 
   virtual index_input::ptr dup() const override;
   virtual int64_t checksum(size_t offset) const override;
@@ -208,11 +208,11 @@ class IRESEARCH_API memory_index_input final : public index_input {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API memory_index_output : public index_output {
  public:
-  explicit memory_index_output(memory_file& file) NOEXCEPT;
+  explicit memory_index_output(memory_file& file) noexcept;
   memory_index_output(const memory_index_output&) = default; 
   memory_index_output& operator=(const memory_index_output&) = delete;
 
-  void reset() NOEXCEPT;
+  void reset() noexcept;
 
   // data_output
 
@@ -269,41 +269,41 @@ class IRESEARCH_API memory_directory final : public directory {
   // 0 == pool_size -> use global allocator, noexcept
   explicit memory_directory(size_t pool_size = 0);
 
-  virtual ~memory_directory() NOEXCEPT;
+  virtual ~memory_directory() noexcept;
 
   using directory::attributes;
 
-  virtual attribute_store& attributes() NOEXCEPT override;
+  virtual attribute_store& attributes() noexcept override;
 
-  virtual index_output::ptr create(const std::string& name) NOEXCEPT override;
+  virtual index_output::ptr create(const std::string& name) noexcept override;
 
   virtual bool exists(
     bool& result, const std::string& name
-  ) const NOEXCEPT override;
+  ) const noexcept override;
 
   virtual bool length(
     uint64_t& result, const std::string& name
-  ) const NOEXCEPT override;
+  ) const noexcept override;
 
-  virtual index_lock::ptr make_lock(const std::string& name) NOEXCEPT override;
+  virtual index_lock::ptr make_lock(const std::string& name) noexcept override;
 
   virtual bool mtime(
     std::time_t& result, const std::string& name
-  ) const NOEXCEPT override;
+  ) const noexcept override;
 
   virtual index_input::ptr open(
     const std::string& name,
     IOAdvice advice
-  ) const NOEXCEPT override;
+  ) const noexcept override;
 
-  virtual bool remove(const std::string& name) NOEXCEPT override;
+  virtual bool remove(const std::string& name) noexcept override;
 
   virtual bool rename(
     const std::string& src,
     const std::string& dst
-  ) NOEXCEPT override;
+  ) noexcept override;
 
-  virtual bool sync(const std::string& name) NOEXCEPT override;
+  virtual bool sync(const std::string& name) noexcept override;
 
   virtual bool visit(const visitor_f& visitor) const override;
 
@@ -327,20 +327,20 @@ class IRESEARCH_API memory_directory final : public directory {
 /// @brief memory_file + memory_stream
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API memory_output {
-  explicit memory_output(const memory_allocator& alloc) NOEXCEPT
+  explicit memory_output(const memory_allocator& alloc) noexcept
     : file(alloc) {
   }
 
-  memory_output(memory_output&& rhs) NOEXCEPT
+  memory_output(memory_output&& rhs) noexcept
     : file(std::move(rhs.file)) {
   }
 
-  void reset() NOEXCEPT {
+  void reset() noexcept {
     file.reset();
     stream.reset();
   }
 
-  void reset(const memory_allocator& alloc) NOEXCEPT {
+  void reset(const memory_allocator& alloc) noexcept {
     file.reset(alloc);
     stream.reset();
   }

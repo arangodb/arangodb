@@ -139,7 +139,7 @@ struct document_less_t {
 const document_less_t DOC_LESS;
 
 struct empty_seek_term_iterator: public irs::seek_term_iterator {
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const noexcept override {
     return irs::attribute_view::empty_instance();
   }
 
@@ -178,7 +178,7 @@ class store_reader_impl final: public irs::sub_reader {
 
   struct column_reader_t: public irs::columnstore_reader::column_reader {
     document_entries_t entries_;
-    column_reader_t(document_entries_t&& entries) NOEXCEPT
+    column_reader_t(document_entries_t&& entries) noexcept
       : entries_(std::move(entries)) {}
     virtual irs::doc_iterator::ptr iterator() const override;
     virtual size_t size() const override { return entries_.size(); }
@@ -222,8 +222,8 @@ class store_reader_impl final: public irs::sub_reader {
 
     term_reader_t(const irs::transaction_store::field_meta_builder::ptr& meta)
       : meta_(meta) { assert(meta_); }
-    term_reader_t(term_reader_t&& other) NOEXCEPT;
-    virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+    term_reader_t(term_reader_t&& other) noexcept;
+    virtual const irs::attribute_view& attributes() const noexcept override {
       return attrs_;
     }
     virtual uint64_t docs_count() const override { return doc_count_; }
@@ -326,7 +326,7 @@ class store_doc_iterator_base: public irs::doc_iterator {
     doc_.value = irs::type_limits<irs::type_t::doc_id_t>::invalid();
   }
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
 
@@ -607,7 +607,7 @@ class store_term_iterator: public irs::seek_term_iterator {
     }
   }
 
-  const irs::attribute_view& attributes() const NOEXCEPT override {
+  const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
 
@@ -799,7 +799,7 @@ bool store_reader_impl::column_reader_t::visit(
   return true;
 }
 
-store_reader_impl::term_reader_t::term_reader_t(term_reader_t&& other) NOEXCEPT
+store_reader_impl::term_reader_t::term_reader_t(term_reader_t&& other) noexcept
   : attrs_(std::move(other.attrs_)),
     doc_count_(std::move(other.doc_count_)),
     max_term_(std::move(other.max_term_)),
@@ -1001,15 +1001,15 @@ class transaction_store::store_reader_helper {
   }
 };
 
-store_reader::store_reader(impl_ptr&& impl) NOEXCEPT
+store_reader::store_reader(impl_ptr&& impl) noexcept
   : impl_(std::move(impl)) {
 }
 
-store_reader::store_reader(const store_reader& other) NOEXCEPT {
+store_reader::store_reader(const store_reader& other) noexcept {
   *this = other;
 }
 
-store_reader& store_reader::operator=(const store_reader& other) NOEXCEPT {
+store_reader& store_reader::operator=(const store_reader& other) noexcept {
   if (this != &other) {
     // make a copy
     impl_ptr impl = atomic_utils::atomic_load(&other.impl_);
@@ -1052,7 +1052,7 @@ void store_writer::bstring_output::write(const byte_type* value, size_t size) {
   write_bytes_block(*this, value, size);
 }
 
-store_writer::store_writer(transaction_store& store) NOEXCEPT
+store_writer::store_writer(transaction_store& store) noexcept
   : next_doc_id_(type_limits<type_t::doc_id_t>::min()), store_(store) {
   async_utils::read_write_mutex::write_mutex mutex(store_.mutex_);
   SCOPED_LOCK(mutex);
@@ -1260,7 +1260,7 @@ bool store_writer::index(
       static auto generator = [](
         const hashed_bytes_ref& key,
         const transaction_store::postings_t& value
-      ) NOEXCEPT ->hashed_bytes_ref {
+      ) noexcept ->hashed_bytes_ref {
         // reuse hash but point ref at value if buffer was allocated succesfully
         return value.name_ ? hashed_bytes_ref(key.hash(), *(value.name_)) : key;
       };
@@ -1632,7 +1632,7 @@ transaction_store::column_ref_t transaction_store::get_column(
   static auto generator = [](
     const hashed_string_ref& key,
     const transaction_store::column_named_t& value
-  ) NOEXCEPT ->hashed_string_ref {
+  ) noexcept ->hashed_string_ref {
     // reuse hash but point ref at value if buffer was allocated succesfully
     return value.meta_ ? hashed_string_ref(key.hash(), value.meta_->name) : key;
   };
@@ -1732,7 +1732,7 @@ transaction_store::field_ref_t transaction_store::get_field(
   static auto generator = [](
     const hashed_string_ref& key,
     const transaction_store::terms_t& value
-  ) NOEXCEPT ->hashed_string_ref {
+  ) noexcept ->hashed_string_ref {
     // reuse hash but point ref at value if buffer was allocated succesfully
     return value.meta_ ? hashed_string_ref(key.hash(), value.meta_->name) : key;
   };

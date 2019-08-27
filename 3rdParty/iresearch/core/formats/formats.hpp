@@ -36,6 +36,7 @@
 #include "utils/string.hpp"
 #include "utils/type_id.hpp"
 #include "utils/attributes_provider.hpp"
+#include "utils/fst_decl.hpp"
 
 NS_ROOT
 
@@ -79,11 +80,11 @@ struct IRESEARCH_API postings_writer : util::const_attribute_view_provider {
 
   class releaser {
    public:
-    explicit releaser(postings_writer* owner = nullptr) NOEXCEPT
+    explicit releaser(postings_writer* owner = nullptr) noexcept
       : owner_(owner) {
     }
 
-    inline void operator()(term_meta* meta) const NOEXCEPT;
+    inline void operator()(term_meta* meta) const noexcept;
 
    private:
     postings_writer* owner_;
@@ -100,21 +101,21 @@ struct IRESEARCH_API postings_writer : util::const_attribute_view_provider {
   virtual void encode(data_output& out, const term_meta& state) = 0;
   virtual void end() = 0;
 
-  virtual const attribute_view& attributes() const NOEXCEPT override {
+  virtual const attribute_view& attributes() const noexcept override {
     return attribute_view::empty_instance();
   }
 
  protected:
   friend struct term_meta;
 
-  state make_state(term_meta& meta) NOEXCEPT {
+  state make_state(term_meta& meta) noexcept {
     return state(&meta, releaser(this));
   }
 
-  virtual void release(term_meta* meta) NOEXCEPT = 0;
+  virtual void release(term_meta* meta) noexcept = 0;
 }; // postings_writer
 
-void postings_writer::releaser::operator()(term_meta* meta) const NOEXCEPT {
+void postings_writer::releaser::operator()(term_meta* meta) const noexcept {
   assert(owner_ && meta);
   owner_->release(meta);
 }
@@ -187,12 +188,16 @@ struct IRESEARCH_API basic_term_reader: public util::const_attribute_view_provid
 /// @struct term_reader
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
-  DECLARE_UNIQUE_PTR( term_reader);
+  DECLARE_UNIQUE_PTR(term_reader);
   DEFINE_FACTORY_INLINE(term_reader)
 
   virtual ~term_reader() = default;
 
+  // returns an iterator over terms for a field
   virtual seek_term_iterator::ptr iterator() const = 0;
+
+  // returns an intersection of a specified automaton and term reader
+  virtual seek_term_iterator::ptr iterator(const automaton& a) const = 0;
 
   // returns field metadata
   virtual const field_meta& meta() const = 0;
@@ -249,7 +254,7 @@ struct IRESEARCH_API columnstore_writer {
 
   virtual void prepare(directory& dir, const segment_meta& meta) = 0;
   virtual column_t push_column(const column_info& info) = 0;
-  virtual void rollback() NOEXCEPT = 0;
+  virtual void rollback() noexcept = 0;
   virtual bool commit() = 0; // @return was anything actually flushed
 }; // columnstore_writer
 
@@ -419,10 +424,10 @@ struct IRESEARCH_API index_meta_writer {
   virtual std::string filename(const index_meta& meta) const = 0;
   virtual bool prepare(directory& dir, index_meta& meta) = 0;
   virtual bool commit() = 0;
-  virtual void rollback() NOEXCEPT = 0;
+  virtual void rollback() noexcept = 0;
  protected:
-  static void complete(index_meta& meta) NOEXCEPT;
-  static void prepare(index_meta& meta) NOEXCEPT;
+  static void complete(index_meta& meta) noexcept;
+  static void prepare(index_meta& meta) noexcept;
 }; // index_meta_writer
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -473,7 +478,7 @@ class IRESEARCH_API format {
     string_ref name_;
   };
 
-  format(const type_id& type) NOEXCEPT : type_(&type) {}
+  format(const type_id& type) noexcept : type_(&type) {}
   virtual ~format() = default;
 
   virtual index_meta_writer::ptr get_index_meta_writer() const = 0;
@@ -539,7 +544,7 @@ class IRESEARCH_API formats {
   static format::ptr get(
     const string_ref& name,
     bool load_library = true
-  ) NOEXCEPT;
+  ) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief for static lib reference all known formats in lib
@@ -584,7 +589,7 @@ class IRESEARCH_API format_registrar {
     format::ptr(*factory)(),
     const char* source = nullptr
   );
-  operator bool() const NOEXCEPT;
+  operator bool() const noexcept;
  private:
   bool registered_;
 };

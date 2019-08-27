@@ -107,7 +107,7 @@ scoped_timer::scoped_timer(timer_stat_t& stat):
   ++(stat_.count);
 }
 
-scoped_timer::scoped_timer(scoped_timer&& other) NOEXCEPT
+scoped_timer::scoped_timer(scoped_timer&& other) noexcept
   : start_(other.start_), stat_(other.stat_) {
 }
 

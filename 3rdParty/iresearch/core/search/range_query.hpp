@@ -43,11 +43,11 @@ struct term_reader;
 struct range_state : private util::noncopyable {
   range_state() = default;
 
-  range_state(range_state&& rhs) NOEXCEPT {
+  range_state(range_state&& rhs) noexcept {
     *this = std::move(rhs);
   }
 
-  range_state& operator=(range_state&& other) NOEXCEPT {
+  range_state& operator=(range_state&& other) noexcept {
     if (this == &other) {
       return *this;
     }

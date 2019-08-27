@@ -92,7 +92,7 @@ basic_doc_iterator::basic_doc_iterator(
     doc_iterator::ptr&& it,
     const order::prepared& ord,
     cost::cost_t estimation,
-    boost_t boost) NOEXCEPT
+    boost_t boost) noexcept
   : it_(std::move(it)),
     stats_(stats) {
   assert(it_);

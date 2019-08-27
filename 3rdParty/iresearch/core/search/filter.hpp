@@ -40,11 +40,11 @@ public:
     states_.reserve(size);
   }
 
-  states_cache(states_cache&& rhs) NOEXCEPT
+  states_cache(states_cache&& rhs) noexcept
     : states_(std::move(rhs.states_)) {
   }
 
-  states_cache& operator=(states_cache&& rhs) NOEXCEPT {
+  states_cache& operator=(states_cache&& rhs) noexcept {
     if (this != &rhs) {
       states_ = std::move(rhs.states_);
     }
@@ -56,12 +56,12 @@ public:
     return it->second;    
   }
 
-  const State* find(const sub_reader& rdr) const {
+  const State* find(const sub_reader& rdr) const noexcept {
     auto it = states_.find(&rdr);
     return states_.end() == it ? nullptr : &(it->second);
   }
 
-  bool empty() const { return states_.empty(); }
+  bool empty() const noexcept { return states_.empty(); }
 
 private:
   typedef std::unordered_map<
@@ -90,10 +90,10 @@ class IRESEARCH_API filter {
 
     static prepared::ptr empty();
 
-    explicit prepared(boost_t boost = no_boost()) NOEXCEPT
+    explicit prepared(boost_t boost = no_boost()) noexcept
       : boost_(boost) {
     }
-    prepared(bstring&& stats, boost_t boost = no_boost()) NOEXCEPT
+    prepared(bstring&& stats, boost_t boost = no_boost()) noexcept
       : stats_(std::move(stats)), boost_(boost) {
     }
     virtual ~prepared() = default;
@@ -115,11 +115,11 @@ class IRESEARCH_API filter {
       const attribute_view& ctx
     ) const = 0;
 
-    boost_t boost() const NOEXCEPT { return boost_; }
+    boost_t boost() const noexcept { return boost_; }
 
    protected:
-    const byte_type* stats() const NOEXCEPT { return stats_.c_str(); }
-    void boost(boost_t boost) NOEXCEPT { boost_ *= boost; }
+    const byte_type* stats() const noexcept { return stats_.c_str(); }
+    void boost(boost_t boost) noexcept { boost_ *= boost; }
 
    private:
     bstring stats_;
@@ -129,23 +129,23 @@ class IRESEARCH_API filter {
   DECLARE_UNIQUE_PTR(filter);
   DEFINE_FACTORY_INLINE(filter)
 
-  filter(const type_id& type) NOEXCEPT;
+  explicit filter(const type_id& type) noexcept;
   virtual ~filter() = default;
 
-  virtual size_t hash() const NOEXCEPT {
+  virtual size_t hash() const noexcept {
     return std::hash<const type_id*>()(type_);
   }
 
-  bool operator==(const filter& rhs) const NOEXCEPT {
+  bool operator==(const filter& rhs) const noexcept {
     return equals(rhs);
   }
 
-  bool operator!=(const filter& rhs) const NOEXCEPT {
+  bool operator!=(const filter& rhs) const noexcept {
     return !(*this == rhs);
   }
 
   // boost::hash_combile support
-  friend size_t hash_value(const filter& q) NOEXCEPT {
+  friend size_t hash_value(const filter& q) noexcept {
     return q.hash();
   }
 
@@ -181,17 +181,17 @@ class IRESEARCH_API filter {
     return prepare(rdr, order::prepared::unordered());
   }
 
-  boost_t boost() const NOEXCEPT { return boost_; }
+  boost_t boost() const noexcept { return boost_; }
 
-  filter& boost(boost_t boost) NOEXCEPT {
+  filter& boost(boost_t boost) noexcept {
     boost_ = boost;
     return *this;
   }
 
-  const type_id& type() const NOEXCEPT { return *type_; }
+  const type_id& type() const noexcept { return *type_; }
 
  protected:
-  virtual bool equals(const filter& rhs) const NOEXCEPT {
+  virtual bool equals(const filter& rhs) const noexcept {
     return type_ == rhs.type_;
   }
 

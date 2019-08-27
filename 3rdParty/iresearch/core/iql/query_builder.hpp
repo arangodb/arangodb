@@ -48,7 +48,7 @@ namespace iresearch {
         return static_cast<type&>(*filter_);
       }
 
-      virtual size_t hash() const NOEXCEPT override {
+      virtual size_t hash() const noexcept override {
         return !filter_ ? 0 : filter_->hash();
       }
       virtual iresearch::filter::prepared::ptr prepare(
@@ -61,7 +61,7 @@ namespace iresearch {
       };
 
      protected:
-      virtual bool equals(const iresearch::filter& rhs) const NOEXCEPT override {
+      virtual bool equals(const iresearch::filter& rhs) const noexcept override {
         const auto& typed_rhs =
           static_cast<const iresearch::iql::proxy_filter_t<PTR>&>(rhs);
 

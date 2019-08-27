@@ -54,7 +54,7 @@ NS_ROOT
 /*static*/ const attribute::type_id* attribute::type_id::get(
     const string_ref& name,
     bool load_library /*= true*/
-) NOEXCEPT {
+) noexcept {
   try {
     return attribute_register::instance().get(name, load_library);
   } catch (...) {
@@ -76,11 +76,11 @@ const flags& flags::empty_instance() {
 
 flags::flags() { }
 
-flags::flags(flags&& rhs) NOEXCEPT
+flags::flags(flags&& rhs) noexcept
   : map_(std::move(rhs.map_)) {
 }
 
-flags& flags::operator=(flags&& rhs) NOEXCEPT {
+flags& flags::operator=(flags&& rhs) noexcept {
   if (this != &rhs) {
     map_ = std::move(rhs.map_);
   }
@@ -156,7 +156,7 @@ attribute_registrar::attribute_registrar(
   }
 }
 
-attribute_registrar::operator bool() const NOEXCEPT {
+attribute_registrar::operator bool() const noexcept {
   return registered_;
 }
 

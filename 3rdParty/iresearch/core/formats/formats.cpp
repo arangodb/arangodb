@@ -31,6 +31,7 @@
 
 #include "formats.hpp"
 #include "utils/type_limits.hpp"
+#include "utils/automaton.hpp"
 
 NS_LOCAL
 
@@ -71,10 +72,10 @@ DEFINE_ATTRIBUTE_TYPE(iresearch::term_meta)
   return INVALID_COLUMN;
 }
 
-/* static */void index_meta_writer::complete(index_meta& meta) NOEXCEPT {
+/* static */void index_meta_writer::complete(index_meta& meta) noexcept {
   meta.last_gen_ = meta.gen_;
 }
-/* static */ void index_meta_writer::prepare(index_meta& meta) NOEXCEPT {
+/* static */ void index_meta_writer::prepare(index_meta& meta) noexcept {
   meta.gen_ = meta.next_generation();
 }
 
@@ -106,7 +107,7 @@ DEFINE_ATTRIBUTE_TYPE(iresearch::term_meta)
 /*static*/ format::ptr formats::get(
     const string_ref& name,
     bool load_library /*= true*/
-) NOEXCEPT {
+) noexcept {
   try {
     auto* factory = format_register::instance().get(name, load_library);
 
@@ -186,7 +187,7 @@ format_registrar::format_registrar(
   }
 }
 
-format_registrar::operator bool() const NOEXCEPT {
+format_registrar::operator bool() const noexcept {
   return registered_;
 }
 

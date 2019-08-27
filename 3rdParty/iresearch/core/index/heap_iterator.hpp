@@ -94,7 +94,7 @@ class external_heap_iterator : private compact<0, Context> {
     return true;
   }
 
-  size_t value() const NOEXCEPT {
+  size_t value() const noexcept {
     assert(!heap_.empty());
     return heap_.back();
   }
@@ -108,7 +108,7 @@ class external_heap_iterator : private compact<0, Context> {
     return !heap_.empty();
   }
 
-  const context_t& context() const NOEXCEPT {
+  const context_t& context() const noexcept {
     return context_store_t::get();
   }
 

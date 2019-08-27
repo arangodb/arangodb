@@ -254,7 +254,7 @@ struct term_collector final: public irs::sort::term_collector {
   }
 };
 
-FORCE_INLINE float_t tf(float_t freq) NOEXCEPT {
+FORCE_INLINE float_t tf(float_t freq) noexcept {
   static_assert(
     std::is_same<decltype(std::sqrt(freq)), float_t>::value,
     "float_t expected"
@@ -298,7 +298,7 @@ typedef bm25_sort::score_t score_t;
 
 struct const_score_ctx final : public irs::sort::score_ctx {
  public:
-  explicit const_score_ctx(irs::boost_t boost) NOEXCEPT
+  explicit const_score_ctx(irs::boost_t boost) noexcept
     : boost_(boost) {
   }
 
@@ -311,7 +311,7 @@ struct score_ctx : public irs::sort::score_ctx {
       float_t k, 
       irs::boost_t boost,
       const bm25::stats& stats,
-      const frequency* freq) NOEXCEPT
+      const frequency* freq) noexcept
     : freq_(freq ? freq : &EMPTY_FREQ),
       num_(boost * (k + 1) * stats.idf),
       norm_const_(k) {
@@ -330,7 +330,7 @@ struct norm_score_ctx final : public score_ctx {
       irs::boost_t boost,
       const bm25::stats& stats,
       const frequency* freq,
-      irs::norm&& norm) NOEXCEPT
+      irs::norm&& norm) noexcept
     : score_ctx(k, boost, stats, freq),
       norm_(std::move(norm)) {
     // if there is no norms, assume that b==0
@@ -348,7 +348,7 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
  public:
   DEFINE_FACTORY_INLINE(prepared)
 
-  sort(float_t k, float_t b) NOEXCEPT
+  sort(float_t k, float_t b) noexcept
     : k_(k), b_(b) {
   }
 
@@ -420,7 +420,18 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
     auto& freq = doc_attrs.get<frequency>();
 
     if (!freq) {
-      return { nullptr, nullptr };
+      if (0.f == boost) {
+        return { nullptr, nullptr };
+      }
+
+      // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
+      return {
+        memory::make_unique<bm25::const_score_ctx>(boost),
+        [](const void* ctx, byte_type* score_buf) noexcept {
+          auto& state = *static_cast<const bm25::const_score_ctx*>(ctx);
+          irs::sort::score_cast<score_t>(score_buf) = state.boost_;
+        }
+      };
     }
 
     auto& stats = stats_cast(query_stats);
@@ -438,7 +449,7 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
       if (norm.reset(segment, field.meta().norm, *doc)) {
         return { 
           memory::make_unique<bm25::norm_score_ctx>(k_, boost, stats, freq.get(), std::move(norm)),
-          [](const void* ctx, byte_type* score_buf) NOEXCEPT {
+          [](const void* ctx, byte_type* score_buf) noexcept {
             auto& state = *static_cast<const bm25::norm_score_ctx*>(ctx);
 
             const float_t tf = ::tf(state.freq_->value);
@@ -451,7 +462,7 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
     // BM11
     return { 
       memory::make_unique<bm25::score_ctx>(k_, boost, stats, freq.get()),
-      [](const void* ctx, byte_type* score_buf) NOEXCEPT {
+      [](const void* ctx, byte_type* score_buf) noexcept {
         auto& state = *static_cast<const bm25::score_ctx*>(ctx);
 
         const float_t tf = ::tf(state.freq_->value);
@@ -477,7 +488,7 @@ DEFINE_FACTORY_DEFAULT(irs::bm25_sort)
 bm25_sort::bm25_sort(
     float_t k /*= 1.2f*/,
     float_t b /*= 0.75f*/
-) NOEXCEPT
+) noexcept
   : sort(bm25_sort::type()),
     k_(k),
     b_(b) {

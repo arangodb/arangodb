@@ -111,8 +111,8 @@ class explicit_matcher final : public MatcherBase<typename MatcherImpl::FST::Arc
   // not explicit, checks next ones.
   void CheckArc() {
     for (; !matcher_.Done(); matcher_.Next()) {
-      const auto label = match_type_ == MATCH_INPUT ? matcher_.Value().ilabel
-                                                    : matcher_.Value().olabel;
+      const auto& label = match_type_ == MATCH_INPUT ? matcher_.Value().ilabel
+                                                     : matcher_.Value().olabel;
       if (label != kNoLabel) return;
     }
   }

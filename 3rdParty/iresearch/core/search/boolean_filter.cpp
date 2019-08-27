@@ -139,7 +139,7 @@ class boolean_query : public filter::prepared {
   DECLARE_SHARED_PTR(boolean_query);
   DEFINE_FACTORY_INLINE(boolean_query)
 
-  boolean_query() NOEXCEPT : excl_(0) { }
+  boolean_query() noexcept : excl_(0) { }
 
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
@@ -349,11 +349,11 @@ class min_match_query final : public boolean_query {
 // --SECTION--                                                   boolean_filter
 // ----------------------------------------------------------------------------
 
-boolean_filter::boolean_filter(const type_id& type) NOEXCEPT
+boolean_filter::boolean_filter(const type_id& type) noexcept
   : filter(type) {
 }
 
-size_t boolean_filter::hash() const NOEXCEPT {
+size_t boolean_filter::hash() const noexcept {
   size_t seed = 0; 
 
   ::boost::hash_combine(seed, filter::hash());
@@ -366,7 +366,7 @@ size_t boolean_filter::hash() const NOEXCEPT {
   return seed;
 }
 
-bool boolean_filter::equals(const filter& rhs) const NOEXCEPT {
+bool boolean_filter::equals(const filter& rhs) const noexcept {
   const boolean_filter& typed_rhs = static_cast< const boolean_filter& >( rhs );
 
   return filter::equals(rhs)
@@ -445,7 +445,7 @@ void boolean_filter::group_filters(
 DEFINE_FILTER_TYPE(And)
 DEFINE_FACTORY_DEFAULT(And)
 
-And::And() NOEXCEPT
+And::And() noexcept
   : boolean_filter(And::type()) {
 }
 
@@ -500,7 +500,7 @@ filter::prepared::ptr And::prepare(
 DEFINE_FILTER_TYPE(Or)
 DEFINE_FACTORY_DEFAULT(Or)
 
-Or::Or() NOEXCEPT
+Or::Or() noexcept
   : boolean_filter(Or::type()),
     min_match_count_(1) {
 }
@@ -534,7 +534,7 @@ filter::prepared::ptr Or::prepare(
 DEFINE_FILTER_TYPE(Not)
 DEFINE_FACTORY_DEFAULT(Not)
 
-Not::Not() NOEXCEPT
+Not::Not() noexcept
   : irs::filter(Not::type()) {
 }
 
@@ -565,7 +565,7 @@ filter::prepared::ptr Not::prepare(
   return res.first->prepare(rdr, ord, boost, ctx);
 }
 
-size_t Not::hash() const NOEXCEPT {
+size_t Not::hash() const noexcept {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   if (filter_) {
@@ -574,7 +574,7 @@ size_t Not::hash() const NOEXCEPT {
   return seed;
 }
 
-bool Not::equals(const irs::filter& rhs) const NOEXCEPT {
+bool Not::equals(const irs::filter& rhs) const noexcept {
   const Not& typed_rhs = static_cast<const Not&>(rhs);
   return filter::equals(rhs)
     && ((!empty() && !typed_rhs.empty() && *filter_ == *typed_rhs.filter_)

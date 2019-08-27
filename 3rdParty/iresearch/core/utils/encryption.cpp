@@ -312,7 +312,7 @@ encrypted_input::encrypted_input(
   managed_in_ = std::move(in);
 }
 
-encrypted_input::encrypted_input(const encrypted_input& rhs, index_input::ptr&& in) NOEXCEPT
+encrypted_input::encrypted_input(const encrypted_input& rhs, index_input::ptr&& in) noexcept
   : buffered_index_input(rhs.buffer_size()),
     managed_in_(std::move(in)),
     in_(managed_in_.get()),

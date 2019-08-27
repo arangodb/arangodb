@@ -62,16 +62,16 @@ class ngram_token_stream: public analyzer, util::noncopyable {
 
   ngram_token_stream(const options_t& options);
 
-  virtual const attribute_view& attributes() const NOEXCEPT override {
+  virtual const attribute_view& attributes() const noexcept override {
     return attrs_;
   }
 
-  virtual bool next() NOEXCEPT override;
-  virtual bool reset(const string_ref& data) NOEXCEPT override;
+  virtual bool next() noexcept override;
+  virtual bool reset(const string_ref& data) noexcept override;
 
-  size_t min_gram() const NOEXCEPT { return options_.min_gram; }
-  size_t max_gram() const NOEXCEPT { return options_.max_gram; }
-  bool preserve_original() const NOEXCEPT { return options_.preserve_original; }
+  size_t min_gram() const noexcept { return options_.min_gram; }
+  size_t max_gram() const noexcept { return options_.max_gram; }
+  bool preserve_original() const noexcept { return options_.preserve_original; }
 
  private:
   class term_attribute final: public irs::term_attribute {

@@ -61,25 +61,25 @@ class IRESEARCH_API utf8_path {
   utf8_path& operator/=(const irs::basic_string_ref<wchar_t>& ucs2_name);
   utf8_path& operator/=(const std::wstring& ucs2_name);
 
-  bool absolute(bool& result) const NOEXCEPT;
-  bool chdir() const NOEXCEPT;
-  bool exists(bool& result) const NOEXCEPT;
-  bool exists_directory(bool& result) const NOEXCEPT;
-  bool exists_file(bool& result) const NOEXCEPT;
-  bool file_size(uint64_t& result) const NOEXCEPT;
+  bool absolute(bool& result) const noexcept;
+  bool chdir() const noexcept;
+  bool exists(bool& result) const noexcept;
+  bool exists_directory(bool& result) const noexcept;
+  bool exists_file(bool& result) const noexcept;
+  bool file_size(uint64_t& result) const noexcept;
   /// @brief creates path 
   /// @param createNew requires at least last segment of path to be actually created or error will be detected
-  bool mkdir(bool createNew  = true) const NOEXCEPT;
-  bool mtime(time_t& result) const NOEXCEPT;
-  bool remove() const NOEXCEPT;
-  bool rename(const utf8_path& destination) const NOEXCEPT;
+  bool mkdir(bool createNew  = true) const noexcept;
+  bool mtime(time_t& result) const noexcept;
+  bool remove() const noexcept;
+  bool rename(const utf8_path& destination) const noexcept;
   bool visit_directory(
     const directory_visitor& visitor,
     bool include_dot_dir = true
   );
 
-  const native_char_t* c_str() const NOEXCEPT;
-  const native_str_t& native() const NOEXCEPT;
+  const native_char_t* c_str() const noexcept;
+  const native_str_t& native() const noexcept;
   std::string utf8() const;
 
   //////////////////////////////////////////////////////////////////////////////

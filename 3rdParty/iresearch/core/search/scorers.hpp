@@ -53,7 +53,7 @@ class IRESEARCH_API scorer_registrar {
     sort::ptr(*factory)(const irs::string_ref& args),
     const char* source = nullptr
   );
-  operator bool() const NOEXCEPT;
+  operator bool() const noexcept;
  private:
   bool registered_;
 };
@@ -93,7 +93,7 @@ class IRESEARCH_API scorers {
     const irs::text_format::type_id& args_format,
     const string_ref& args,
     bool load_library = true
-  ) NOEXCEPT;
+  ) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief for static lib reference all known scorers in lib
