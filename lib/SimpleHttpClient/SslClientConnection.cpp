@@ -242,18 +242,14 @@ void SslClientConnection::init(uint64_t sslProtocol) {
 #endif
       break;
 
-    case TLS_V13:
       // TLS 1.3, only supported from OpenSSL 1.1.1 onwards
 
       // openssl version number format is
       // MNNFFPPS: major minor fix patch status
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
+    case TLS_V13:
       meth = TLS_client_method();
       break;
-#else
-      // no TLS 1.3 support
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                     "TLS 1.3 is not supported in this build");
 #endif
 
     case SSL_UNKNOWN:
@@ -319,7 +315,9 @@ bool SslClientConnection::connectSocket() {
   switch (SslProtocol(_sslProtocol)) {
     case TLS_V1:
     case TLS_V12:
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
     case TLS_V13:
+#endif
     default:
       SSL_set_tlsext_host_name(_ssl, _endpoint->host().c_str());
   }
