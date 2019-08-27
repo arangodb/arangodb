@@ -1,5 +1,6 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
+* Fixed issue #9795. Fixed NOT IN clause in ArangoSearch
 
 * Agents to remove callback entries when responded to with code 404
 
