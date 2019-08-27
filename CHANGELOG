@@ -1,6 +1,9 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Changed log level for message "keep alive timeout - closing stream!" from INFO to
+  DEBUG.
+
 * Don't create temporary directories named "arangosh_XXXXXX" anymore.
 
 * Add TransactionStatistics to ServerStatistics (transactions started /
