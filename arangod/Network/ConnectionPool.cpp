@@ -159,7 +159,6 @@ void ConnectionPool::pruneConnections() {
       }
       it++;
     }
-    LOG_DEVEL << "remaining connections " << list.connections.size();
   }
 }
   
