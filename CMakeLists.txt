@@ -259,16 +259,17 @@ endif ()
 # required for clang completion in editors - must be set after creating project
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+#TODO: re-enable this?
 # Static executables:
-option(STATIC_EXECUTABLES "produce static executables" OFF)
-if (STATIC_EXECUTABLES)
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
-  if (WINDOWS)
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
-  else ()
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-  endif ()
-endif()
+#option(STATIC_EXECUTABLES "produce static executables" OFF)
+#if (STATIC_EXECUTABLES)
+#  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+#  if (WINDOWS)
+#    set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
+#  else ()
+#    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+#  endif ()
+#endif()
 
 # enable enterprise features
 set(ENTERPRISE_INCLUDE_DIR "enterprise")
