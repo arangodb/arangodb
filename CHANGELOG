@@ -1,5 +1,6 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
+* Fixed issue #9795. Fixed NOT IN clause in ArangoSearch
 
 * Don't retry persisting follower information for collections/shards already
   dropped. The previous implementation retried (unsuccessfully in this case)
