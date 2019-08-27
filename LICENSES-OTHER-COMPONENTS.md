@@ -150,7 +150,7 @@
 ### jemalloc
 
 * Name: jemalloc
-* Version: 5.2.0
+* Version: 5.2.1
 * Project Home: https://github.com/jemalloc/jemalloc
 * License: https://raw.githubusercontent.com/jemalloc/jemalloc/dev/COPYING
 * License Comment: free as-is license
