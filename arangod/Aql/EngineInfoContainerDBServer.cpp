@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EngineInfoContainerDBServer.h"
+
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
@@ -126,8 +127,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
       TRI_ASSERT(_type == ExecutionNode::MAX_NODE_TYPE_VALUE);
       auto ecNode = ExecutionNode::castTo<EnumerateCollectionNode*>(node);
       if (ecNode->isRestricted()) {
-        TRI_ASSERT(_restrictedShard.empty());
-        _restrictedShard = ecNode->restrictedShard();
+        _restrictedShards.emplace(ecNode->restrictedShard());
       }
 
       // do not set '_type' of the engine here,
@@ -140,8 +140,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
       TRI_ASSERT(_type == ExecutionNode::MAX_NODE_TYPE_VALUE);
       auto idxNode = ExecutionNode::castTo<IndexNode*>(node);
       if (idxNode->isRestricted()) {
-        TRI_ASSERT(_restrictedShard.empty());
-        _restrictedShard = idxNode->restrictedShard();
+        _restrictedShards.emplace(idxNode->restrictedShard());
       }
 
       // do not set '_type' of the engine here,
@@ -172,8 +171,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
       TRI_ASSERT(_type == ExecutionNode::MAX_NODE_TYPE_VALUE);
       auto modNode = ExecutionNode::castTo<ModificationNode*>(node);
       if (modNode->isRestricted()) {
-        TRI_ASSERT(_restrictedShard.empty());
-        _restrictedShard = modNode->restrictedShard();
+        _restrictedShards.emplace(modNode->restrictedShard());
       }
       break;
     }
@@ -255,8 +253,8 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     Query& query, const ShardID& id, VPackBuilder& infoBuilder,
     bool isResponsibleForInitializeCursor) const {
-  if (!_restrictedShard.empty()) {
-    if (id != _restrictedShard) {
+  if (!_restrictedShards.empty()) {
+    if (_restrictedShards.find(id) == _restrictedShards.end()) {
       return;
     }
     // We only have one shard it has to be responsible!
@@ -530,7 +528,7 @@ void EngineInfoContainerDBServer::DBServerInfo::addShardLock(AccessMode::Type co
 }
 
 void EngineInfoContainerDBServer::DBServerInfo::addEngine(
-    std::shared_ptr<EngineInfoContainerDBServer::EngineInfo> info, ShardID const& id) {
+    std::shared_ptr<EngineInfoContainerDBServer::EngineInfo> const& info, ShardID const& id) {
   _engineInfos[info].emplace_back(id);
 }
 
@@ -731,7 +729,7 @@ void EngineInfoContainerDBServer::DBServerInfo::combineTraverserEngines(ServerID
 
 void EngineInfoContainerDBServer::DBServerInfo::addTraverserEngine(GraphNode* node,
                                                                    TraverserEngineShardLists&& shards) {
-  _traverserEngineInfos.push_back(std::make_pair(node, std::move(shards)));
+  _traverserEngineInfos.emplace_back(std::make_pair(node, std::move(shards)));
 }
 
 std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> EngineInfoContainerDBServer::createDBServerMapping(
@@ -741,6 +739,26 @@ std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> EngineInfoContaine
 
   std::map<ServerID, DBServerInfo> dbServerMapping;
 
+  // Only one remote block of each remote node is responsible for forwarding the
+  // initializeCursor and shutDown requests.
+  // For simplicity, we always use the first remote block if we have more
+  // than one.
+  using ExecutionNodeId = size_t;
+  std::unordered_map<ExecutionNodeId, std::pair<ServerID, ShardID>> responsibleForShutdown{};
+  auto const chooseResponsibleSnippet =
+      [&responsibleForShutdown](EngineInfo const& engineInfo,
+                                ServerID const& dbServerId, ShardID const& shardId) {
+        for (auto const& node : engineInfo.nodes()) {
+          if (node->getType() == ExecutionNode::NodeType::REMOTE) {
+            // Try to emplace. We explicitly want to ignore duplicate inserts
+            // here, as we want one snippet per query!
+            std::ignore =
+                responsibleForShutdown.emplace(node->id(),
+                                               std::make_pair(dbServerId, shardId));
+          }
+        }
+      };
+
   for (auto const& it : _collectionInfos) {
     // it.first => Collection const*
     // it.second.lockType => Lock Type
@@ -748,34 +766,26 @@ std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> EngineInfoContaine
     // it.second.usedShards => All shards of this collection releveant for this query
     auto const& colInfo = it.second;
 
-    // only one of the remote blocks is responsible for forwarding the
-    // initializeCursor and shutDown requests
-    // for simplicity, we always use the first remote block if we have more
-    // than one
-    bool isResponsibleForInitializeCursor = true;
-    for (auto const& s : colInfo.usedShards) {
-      lockedShards.emplace(s);
+    for (auto const& shardId : colInfo.usedShards) {
+      lockedShards.emplace(shardId);
 
-      auto const servers = ci->getResponsibleServer(s);
+      auto const servers = ci->getResponsibleServer(shardId);
 
       if (!servers || servers->empty()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
-            "Could not find responsible server for shard " + s);
+            "Could not find responsible server for shard " + shardId);
       }
 
-      auto& responsible = (*servers)[0];
-      auto& mapping = dbServerMapping[responsible];
+      auto const& dbServerId = (*servers)[0];
 
-      if (isResponsibleForInitializeCursor) {
-        mapping.setShardAsResponsibleForInitializeCursor(s);
-        isResponsibleForInitializeCursor = false;
-      }
+      auto& mapping = dbServerMapping[dbServerId];
 
-      mapping.addShardLock(colInfo.lockType, s);
+      mapping.addShardLock(colInfo.lockType, shardId);
 
-      for (auto& e : colInfo.engines) {
-        mapping.addEngine(e, s);
+      for (auto const& e : colInfo.engines) {
+        mapping.addEngine(e, shardId);
+        chooseResponsibleSnippet(*e, dbServerId, shardId);
       }
 
       for (auto const* view : colInfo.views) {
@@ -786,10 +796,18 @@ std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> EngineInfoContaine
         }
 
         for (auto const& viewEngine : viewInfo->second.engines) {
-          mapping.addEngine(viewEngine, s);
+          mapping.addEngine(viewEngine, shardId);
+          chooseResponsibleSnippet(*viewEngine, dbServerId, shardId);
         }
       }
     }
+  }
+
+  // Set one DBServer snippet to be responsible for each coordinator query snippet
+  for (auto const& it : responsibleForShutdown) {
+    ServerID const& serverId = it.second.first;
+    ShardID const& shardId = it.second.second;
+    dbServerMapping[serverId].setShardAsResponsibleForInitializeCursor(shardId);
   }
 
 #ifdef USE_ENTERPRISE

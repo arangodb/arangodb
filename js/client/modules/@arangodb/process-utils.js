@@ -67,11 +67,11 @@ class ConfigBuilder {
     this.type = type;
     switch (type) {
       case 'restore':
-        this.config.configuration = fs.join(CONFIG_DIR, 'arangorestore.conf'); 
+        this.config.configuration = fs.join(CONFIG_DIR, 'arangorestore.conf');
         this.executable = ARANGORESTORE_BIN;
         break;
       case 'dump':
-        this.config.configuration = fs.join(CONFIG_DIR, 'arangodump.conf'); 
+        this.config.configuration = fs.join(CONFIG_DIR, 'arangodump.conf');
         this.executable = ARANGODUMP_BIN;
         break;
       default:
@@ -114,7 +114,7 @@ class ConfigBuilder {
     }
     this.config['maskings'] = fs.join(TOP_DIR, "tests/js/common/test-data/maskings", dir);
   }
-  activateEncryption() { this.config['encription.keyfile'] = fs.join(this.rootDir, 'secret-key'); }
+  activateEncryption() { this.config['encryption.keyfile'] = fs.join(this.rootDir, 'secret-key'); }
   setRootDir(dir) { this.rootDir = dir; }
   restrictToCollection(collection) {
     if (this.type !== 'restore' && this.type !== 'dump') {
@@ -583,7 +583,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
       cmd = TOP_DIR + '/scripts/disable-cores.sh';
     }
   }
-  
+
   if (options.extremeVerbosity) {
     print(Date() + ' executeAndWait: cmd =', cmd, 'args =', args);
   }
@@ -608,7 +608,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
     if (runProcdump(options, instanceInfo, rootDir, res.pid)) {
-      Object.assign(instanceInfo.exitStatus, 
+      Object.assign(instanceInfo.exitStatus,
                     statusExternal(res.pid, true));
       stopProcdump(options, instanceInfo);
     } else {
@@ -806,7 +806,7 @@ function runArangoDumpRestoreCfg (config, options, rootDir, coreCheck) {
 function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, dumpDir = 'dump', includeSystem = true, coreCheck = false) {
   const cfg = createBaseConfigBuilder(which, options, instanceInfo, database);
   cfg.setIncludeSystem(includeSystem);
-  if (rootDir) { cfg.setRootDir(rootDir); } 
+  if (rootDir) { cfg.setRootDir(rootDir); }
 
   if (which === 'dump') {
     cfg.setOutputDirectory(dumpDir);
@@ -944,7 +944,7 @@ function checkInstanceAlive (instanceInfo, options) {
       return false;
     }
   }
-  
+
   let rc = instanceInfo.arangods.reduce((previous, arangod) => {
     return previous && checkArangoAlive(arangod, options);
   }, true);
@@ -1171,7 +1171,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
 
   let nonAgenciesCount = instanceInfo.arangods
       .filter(arangod => {
-        if (arangod.hasOwnProperty('exitStatus') && 
+        if (arangod.hasOwnProperty('exitStatus') &&
             (arangod.exitStatus.status !== 'RUNNING')) {
           return false;
         }
@@ -1258,11 +1258,11 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     });
     if (toShutdown.length > 0) {
       let roles = {};
-      toShutdown.forEach(arangod => { 
+      toShutdown.forEach(arangod => {
         if (!roles.hasOwnProperty(arangod.role)) {
           roles[arangod.role] = 0;
-        } 
-        ++roles[arangod.role]; 
+        }
+        ++roles[arangod.role];
       });
       let roleNames = [];
       for (let r in roles) {
@@ -1701,7 +1701,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
   const startTime = time();
   try {
     if (options.hasOwnProperty('server')) {
-      let rc = { 
+      let rc = {
                  endpoint: options.server,
                  rootDir: options.serverRoot,
                  url: options.server.replace('tcp', 'http'),
@@ -1735,7 +1735,7 @@ function reStartInstance(options, instanceInfo, moreArgs) {
       oneInstanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(oneInstanceInfo.args), options).pid;
     } catch (x) {
       print(Date() + ' failed to run arangod - ' + JSON.stringify(x));
-      
+
       throw x;
     }
     if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
@@ -1748,7 +1748,7 @@ function reStartInstance(options, instanceInfo, moreArgs) {
       }
     }
   };
-  
+
   const startTime = time();
 
   instanceInfo.arangods.forEach(function (oneInstance, i) {
@@ -1756,7 +1756,7 @@ function reStartInstance(options, instanceInfo, moreArgs) {
     delete(oneInstance.pid);
     oneInstance.upAndRunning = false;
   });
-  
+
   if (options.cluster) {
     let agencyInstance = {arangods: []};
     instanceInfo.arangods.forEach(function (oneInstance, i) {

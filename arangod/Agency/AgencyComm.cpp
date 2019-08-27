@@ -366,6 +366,38 @@ AgencyCommResult::AgencyCommResult(int code, std::string const& message,
       _statusCode(code),
       _connected(false),
       _sent(false) {}
+  
+AgencyCommResult::AgencyCommResult(AgencyCommResult&& other) noexcept
+    : _location(std::move(other._location)),
+      _message(std::move(other._message)),
+      _body(std::move(other._body)),
+      _values(std::move(other._values)),
+      _statusCode(other._statusCode),
+      _connected(other._connected),
+      _sent(other._sent),
+      _vpack(std::move(other._vpack)) {
+  other._statusCode = 0;
+  other._connected = false;
+  other._sent = false;
+}
+
+AgencyCommResult& AgencyCommResult::operator=(AgencyCommResult&& other) noexcept {
+  if (this != &other) {
+    _location = std::move(other._location);
+    _message = std::move(other._message);
+    _body = std::move(other._body);
+    _values = std::move(other._values);
+    _statusCode = other._statusCode;
+    _connected = other._connected;
+    _sent = other._sent;
+    _vpack = std::move(other._vpack);
+    
+    other._statusCode = 0;
+    other._connected = false;
+    other._sent = false;
+  }
+  return *this;
+}
 
 void AgencyCommResult::set(int code, std::string const& message) {
   _message = message;
@@ -449,6 +481,44 @@ void AgencyCommResult::clear() {
 }
 
 VPackSlice AgencyCommResult::slice() const { return _vpack->slice(); }
+
+void AgencyCommResult::toVelocyPack(VPackBuilder& builder) const {
+  { VPackObjectBuilder dump(&builder);
+    builder.add("location", VPackValue(_location));
+    builder.add("message", VPackValue(_message));
+    builder.add("sent", VPackValue(_sent));
+    builder.add("body", VPackValue(_body));
+    if (_vpack != nullptr) {
+      if (_vpack->isClosed()) {
+        builder.add("vpack", _vpack->slice());
+      }
+    }
+    builder.add("statusCode", VPackValue(_statusCode));
+    builder.add(VPackValue("values"));
+    { VPackObjectBuilder v(&builder);
+      for (auto const& value : _values) {
+        builder.add(VPackValue(value.first));
+        auto const& entry = value.second;
+        { VPackObjectBuilder vv(&builder);
+          builder.add("index", VPackValue(entry._index));
+          builder.add("isDir", VPackValue(entry._isDir));
+          if (entry._vpack != nullptr && entry._vpack->isClosed()) {
+            builder.add("vpack", entry._vpack->slice());
+          }}}
+    }}
+}
+
+VPackBuilder AgencyCommResult::toVelocyPack() const {
+  VPackBuilder builder;
+  toVelocyPack(builder);
+  return builder;
+}
+
+namespace std {
+ostream& operator<< (ostream& out, AgencyCommResult const& a) {
+  out << a.toVelocyPack().toJson();
+  return out;
+}}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 AgencyCommManager

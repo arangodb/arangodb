@@ -105,5 +105,11 @@ int main(int argc, char* argv[]) {
   arangodb::Logger::shutdown();
   // global clean-up...
   free(subargv);
-  return ( result < 0xff ? result : 0xff );
+
+  if (result != 0 ) {
+    exit(1);
+  }
+  else {
+    exit(0);
+  }
 }

@@ -163,13 +163,13 @@ struct IResearchViewDBServerSetup {
     arangodb::application_features::ApplicationServer::server = nullptr;
 
     // destroy application features
-    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) {
       if (features.at((*f)->name()).second) {
         (*f)->stop();
       }
     }
 
-    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) {
       (*f)->unprepare();
     }
 
@@ -212,6 +212,7 @@ SECTION("test_drop") {
     CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL == vocbase->type());
     CHECK(1 == vocbase->id());
 
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
       vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
     ));
@@ -348,6 +349,7 @@ SECTION("test_drop_database") {
   TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
   REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
   REQUIRE((nullptr != vocbase));
+  CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
   REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
   auto logicalCollection = vocbase->createCollection(collectionJson->slice());
   REQUIRE((false == !logicalCollection));
@@ -591,6 +593,8 @@ SECTION("test_query") {
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
+
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     std::vector<std::string> collections{ logicalCollection->name() };
@@ -692,6 +696,7 @@ SECTION("test_query") {
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), "42", createJson->slice(), error)));
@@ -1041,6 +1046,7 @@ SECTION("test_updateProperties") {
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     CHECK((nullptr != logicalCollection));
@@ -1131,6 +1137,7 @@ SECTION("test_updateProperties") {
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     CHECK((nullptr != logicalCollection));
@@ -1221,6 +1228,7 @@ SECTION("test_updateProperties") {
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     CHECK((nullptr != logicalCollection));
@@ -1314,6 +1322,7 @@ SECTION("test_updateProperties") {
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
     auto logicalCollection0 = vocbase->createCollection(collection0Json->slice());
     CHECK((nullptr != logicalCollection0));

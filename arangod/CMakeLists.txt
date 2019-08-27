@@ -162,6 +162,7 @@ SET(ARANGOD_SOURCES
   Agency/MoveShard.cpp
   Agency/Node.cpp
   Agency/RemoveFollower.cpp
+  Agency/ResignLeadership.cpp
   Agency/RestAgencyHandler.cpp
   Agency/RestAgencyPrivHandler.cpp
   Agency/State.cpp
@@ -281,8 +282,8 @@ SET(ARANGOD_SOURCES
   Cache/TransactionalBucket.cpp
   Cache/TransactionalCache.cpp
   Cache/TransactionManager.cpp
-  Cluster/ActionBase.cpp
   Cluster/Action.cpp
+  Cluster/ActionBase.cpp
   Cluster/ActionDescription.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
@@ -299,12 +300,12 @@ SET(ARANGOD_SOURCES
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
   Cluster/CriticalThread.cpp
-  Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/DropCollection.cpp
   Cluster/DropDatabase.cpp
   Cluster/DropIndex.cpp
   Cluster/EnsureIndex.cpp
+  Cluster/FollowerInfo.cpp
   Cluster/FollowerInfo.cpp
   Cluster/HeartbeatThread.cpp
   Cluster/Maintenance.cpp
@@ -318,6 +319,7 @@ SET(ARANGOD_SOURCES
   Cluster/RestClusterHandler.cpp
   Cluster/ServerState.cpp
   Cluster/SynchronizeShard.cpp
+  Cluster/TakeoverShardLeadership.cpp
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
   Cluster/UpdateCollection.cpp
@@ -331,6 +333,7 @@ SET(ARANGOD_SOURCES
   GeneralServer/HttpCommTask.cpp
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
+  GeneralServer/ServerSecurityFeature.cpp
   GeneralServer/VstCommTask.cpp
   GeoIndex/Index.cpp
   GeoIndex/Near.cpp
@@ -593,8 +596,8 @@ if (USE_ENTERPRISE)
     )
   else()
     target_link_libraries(arangoserver
-      ldap
-      lber
+      ${LDAP_LIB}
+      ${LBER_LIB}
       ${OPENSSL_LIBRARIES}
     )
   endif()

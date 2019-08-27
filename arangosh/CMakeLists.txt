@@ -126,6 +126,8 @@ add_executable(${BIN_ARANGOEXPORT}
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
   V8Client/ArangoClientHelper.cpp
+  Utils/ManagedDirectory.cpp
+  ${ADDITIONAL_BIN_ARANGOEXPORT_SOURCES}
 )
 
 target_link_libraries(${BIN_ARANGOEXPORT}
@@ -177,7 +179,9 @@ add_executable(${BIN_ARANGOIMPORT}
   Import/arangoimport.cpp
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
+  Utils/ManagedDirectory.cpp
   V8Client/ArangoClientHelper.cpp
+  ${ADDITIONAL_BIN_ARANGOIMPORT_SOURCES}
 )
 
 target_link_libraries(${BIN_ARANGOIMPORT}
@@ -287,7 +291,9 @@ add_executable(${BIN_ARANGOSH}
   Shell/V8ClientConnection.cpp
   Shell/V8ShellFeature.cpp
   Shell/arangosh.cpp
+  Utils/ManagedDirectory.cpp
   V8Client/ArangoClientHelper.cpp
+  ${ADDITIONAL_BIN_ARANGOSH_SOURCES}
 )
 
 target_link_libraries(${BIN_ARANGOSH}

@@ -22,7 +22,20 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
+const internal = require('internal');
+const { context } = require('@arangodb/locals');
+const { ArangoError, errors } = require('@arangodb');
+
 module.context.use(require('./aardvark'));
-module.context.use('/foxxes', require('./foxxes'));
+if (internal.isFoxxApiDisabled()) {
+  context.service.router.all('/foxxes/*', (_req, res) => {
+    res.throw(403, new ArangoError({
+      errorNum: errors.ERROR_SERVICE_API_DISABLED.code,
+      errorMessage: errors.ERROR_SERVICE_API_DISABLED.message
+    }));
+  });
+} else {
+  module.context.use('/foxxes', require('./foxxes'));
+}
 module.context.use('/cluster', require('./cluster'));
 module.context.use('/statistics', require('./statistics'));

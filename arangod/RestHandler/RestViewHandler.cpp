@@ -30,6 +30,7 @@
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/Events.h"
 #include "VocBase/LogicalView.h"
 
 #include <velocypack/velocypack-aliases.h>
@@ -160,17 +161,13 @@ void RestViewHandler::createView() {
   VPackSlice const body = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {
+    events::CreateView("", TRI_ERROR_BAD_PARAMETER);
     return;
   }
 
-  auto badParamError = [&]() -> void {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                  "expecting body to be of the form {name: <string>, type: "
-                  "<string>, properties: <object>}");
-  };
-
   if (!body.isObject()) {
-    badParamError();
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "request body is not an object");
 
     return;
   }
@@ -178,9 +175,19 @@ void RestViewHandler::createView() {
   auto nameSlice = body.get(StaticStrings::DataSourceName);
   auto typeSlice = body.get(StaticStrings::DataSourceType);
 
-  if (!nameSlice.isString() || !typeSlice.isString()) {
-    badParamError();
+  if (!nameSlice.isString()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "expecting name parameter to be of the form of \"name: "
+                  "<string>\"");
+    events::CreateView("", TRI_ERROR_BAD_PARAMETER);
+    return;
+  }
 
+  if (!typeSlice.isString()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "expecting type parameter to be of the form of \"type: "
+                  "<string>\"");
+    events::CreateView(nameSlice.copyString(), TRI_ERROR_BAD_PARAMETER);
     return;
   }
 

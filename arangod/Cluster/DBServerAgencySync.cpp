@@ -217,6 +217,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC(TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
 
+    mfeature->increaseCurrentCounter();
+
     local.clear();
     glc = getLocalCollections(local);
     // We intentionally refetch local collections here, such that phase 2
@@ -264,14 +266,14 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
                 AgencyPrecondition(
                   precondition.keyAt(0).copyString(), AgencyPrecondition::Type::VALUE, precondition.valueAt(0)));
             }
-            
+
             if (op == "set") {
               auto const value = ao.value.get("payload");
               operations.push_back(AgencyOperation(key, AgencyValueOperationType::SET, value));
             } else if (op == "delete") {
               operations.push_back(AgencyOperation(key, AgencySimpleOperationType::DELETE_OP));
             }
-            
+
           }
           operations.push_back(AgencyOperation("Current/Version",
                                                AgencySimpleOperationType::INCREMENT_OP));
