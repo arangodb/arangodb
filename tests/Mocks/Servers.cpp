@@ -456,15 +456,7 @@ MockRestServer::MockRestServer() : MockServer() {
                                   arangodb::LogLevel::FATAL);
   irs::logger::output_le(::iresearch::logger::IRL_FATAL, stderr);
 
-  _features.emplace(new arangodb::AuthenticationFeature(_server), false);
-  _features.emplace(new arangodb::DatabaseFeature(_server), false);
   _features.emplace(new arangodb::QueryRegistryFeature(_server), false);
-  _features.emplace(new arangodb::SystemDatabaseFeature(_server), false);
-  // This is needed because loadDatabases calls into iterateDatabases
-  _features.emplace(new arangodb::V8DealerFeature(_server), false);
-  _features.emplace(new arangodb::ClusterFeature(_server), false);
-  _features.emplace(new arangodb::DatabasePathFeature(_server), false);
-  _features.emplace(new arangodb::SchedulerFeature(_server), true);
 
 #if USE_ENTERPRISE
   _features.emplace(new arangodb::LdapFeature(_server),
