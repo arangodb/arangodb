@@ -2,7 +2,7 @@
 /* global fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ArangoTransaction sTests
+// / @brief ArangoTransaction tests for graphs
 // /
 // /
 // / DISCLAIMER
@@ -23,13 +23,10 @@
 // /
 // / Copyright holder is triAGENS GmbH, Cologne, Germany
 // /
-// / @author Simon Grätzer
+// / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
-// tests for streaming transactions
-
 var jsunity = require('jsunity');
-var internal = require('internal');
 var arangodb = require('@arangodb');
 var ERRORS = arangodb.errors;
 var Graph = require('@arangodb/general-graph');
@@ -169,6 +166,42 @@ function transactionGraphSuite () {
         
       try {
         db._collection(vertex).document("test");
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+      }
+    },
+    
+    // / @brief test: remove edge
+    testEdgeRemove: function () {
+      arango.POST("/_api/gharial/" + graph + "/vertex/" + vertex, { _key: "1" });
+      arango.POST("/_api/gharial/" + graph + "/vertex/" + vertex, { _key: "2" });
+      arango.POST("/_api/gharial/" + graph + "/edge/" + edge, { _key: "test", value: "test", _from: vertex + "/1", _to: vertex + "/2" });
+
+      let trx = db._createTransaction({
+        collections: { write: [ edge ] }
+      });
+
+      let headers = { "x-arango-trx-id" : trx.id() };
+      let result = arango.DELETE("/_api/gharial/" + graph + "/edge/" + edge + "/test", null, headers);
+      assertFalse(result.error);
+      assertEqual(202, result.code);
+
+      result = db._collection(edge).document("test");
+      assertEqual("test", result._key);
+      assertEqual("test", result.value);
+      
+      try {
+        trx.collection(edge).document("test");
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+      }
+
+      trx.commit();
+        
+      try {
+        db._collection(edge).document("test");
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);

@@ -632,8 +632,6 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createAQLTransacti
     }
   }
 
-  LOG_DEVEL << "LEASING TRX: " << tid;
-  
   auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
   if (!ctx) {
     LOG_TOPIC("2cfed", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
