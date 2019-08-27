@@ -306,7 +306,8 @@ static void JS_AddEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& arg
   }
   TRI_ASSERT(graph.get() != nullptr);
 
-  GraphOperations gops{*graph.get(), vocbase};
+  auto ctx = transaction::V8Context::Create(vocbase, true);
+  GraphOperations gops{*graph.get(), vocbase, ctx};
   OperationResult r = gops.addEdgeDefinition(edgeDefinition.slice(), false);
 
   if (r.fail()) {
@@ -354,7 +355,8 @@ static void JS_EditEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& ar
   }
   TRI_ASSERT(graph.get() != nullptr);
 
-  GraphOperations gops{*(graph.get()), vocbase};
+  auto ctx = transaction::V8Context::Create(vocbase, true);
+  GraphOperations gops{*graph.get(), vocbase, ctx};
   OperationResult r =
       gops.editEdgeDefinition(edgeDefinition.slice(), false,
                               edgeDefinition.slice().get("collection").copyString());
@@ -420,7 +422,8 @@ static void JS_RemoveVertexCollection(v8::FunctionCallbackInfo<v8::Value> const&
   builder.add("collection", VPackValue(vertexName));
   builder.close();
 
-  GraphOperations gops{*(graph.get()), vocbase};
+  auto ctx = transaction::V8Context::Create(vocbase, true);
+  GraphOperations gops{*graph.get(), vocbase, ctx};
   OperationResult r = gops.eraseOrphanCollection(false, vertexName, dropCollection);
 
   if (r.fail()) {
@@ -472,7 +475,7 @@ static void JS_AddVertexCollection(v8::FunctionCallbackInfo<v8::Value> const& ar
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  auto ctx = transaction::V8Context::Create(vocbase, false);
+  auto ctx = transaction::V8Context::Create(vocbase, true);
 
   GraphManager gmngr{vocbase};
   auto graph = gmngr.lookupGraphByName(graphName);
@@ -481,7 +484,7 @@ static void JS_AddVertexCollection(v8::FunctionCallbackInfo<v8::Value> const& ar
   }
   TRI_ASSERT(graph.get() != nullptr);
 
-  GraphOperations gops{*(graph.get()), vocbase};
+  GraphOperations gops{*graph.get(), vocbase, ctx};
 
   VPackBuilder builder;
   builder.openObject();
@@ -548,7 +551,8 @@ static void JS_DropEdgeDefinition(v8::FunctionCallbackInfo<v8::Value> const& arg
   }
   TRI_ASSERT(graph.get() != nullptr);
 
-  GraphOperations gops{*(graph.get()), vocbase};
+  auto ctx = transaction::V8Context::Create(vocbase, true);
+  GraphOperations gops{*graph.get(), vocbase, ctx};
   OperationResult r = gops.eraseEdgeDefinition(false, edgeDefinitionName, dropCollections);
 
   if (r.fail()) {

@@ -547,7 +547,7 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
 }
 
 std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTransaction(
-    std::string const& name, AccessMode::Type type) const {
+    std::string const& collectionName, AccessMode::Type type) const {
   bool found = false;
   std::string value = _request->header(StaticStrings::TransactionId, found);
   if (found) {
@@ -584,10 +584,10 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
       LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NOT_FOUND);
     }
-    return std::make_unique<SingleCollectionTransaction>(ctx, name, type);
+    return std::make_unique<SingleCollectionTransaction>(ctx, collectionName, type);
   } else {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    return std::make_unique<SingleCollectionTransaction>(ctx, name, type);
+    return std::make_unique<SingleCollectionTransaction>(ctx, collectionName, type);
   }
 }
 
@@ -631,6 +631,8 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createAQLTransacti
       }
     }
   }
+
+  LOG_DEVEL << "LEASING TRX: " << tid;
   
   auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
   if (!ctx) {

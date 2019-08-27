@@ -251,7 +251,6 @@ Result RestGraphHandler::edgeAction(Graph& graph, const std::string& edgeDefinit
       return edgeActionRemove(graph, edgeDefinitionName, edgeKey);
     case RequestType::PATCH:
       return edgeActionUpdate(graph, edgeDefinitionName, edgeKey);
-      break;
     case RequestType::PUT:
       return edgeActionReplace(graph, edgeDefinitionName, edgeKey);
     default:;
@@ -259,6 +258,7 @@ Result RestGraphHandler::edgeAction(Graph& graph, const std::string& edgeDefinit
   return {TRI_ERROR_HTTP_METHOD_NOT_ALLOWED};
 }
 
+// TODO TRX
 void RestGraphHandler::vertexActionRead(Graph& graph, std::string const& collectionName,
                                         std::string const& key) {
   // check for an etag
@@ -270,7 +270,8 @@ void RestGraphHandler::vertexActionRead(Graph& graph, std::string const& collect
 
   auto maybeRev = handleRevision();
 
-  GraphOperations gops{graph, _vocbase};
+  auto ctx = createAQLTransactionContext();
+  GraphOperations gops{graph, _vocbase, ctx};
   OperationResult result = gops.getVertex(collectionName, key, maybeRev);
 
   if (!result.ok()) {
@@ -292,7 +293,6 @@ void RestGraphHandler::vertexActionRead(Graph& graph, std::string const& collect
     }
   }
 
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   // use default options
   generateVertexRead(result.slice(), *ctx->getVPackOptionsForDump());
 }
@@ -522,6 +522,7 @@ void RestGraphHandler::generateResultMergedWithObject(VPackSlice obj,
 }
 
 // TODO this is nearly exactly the same as vertexActionRead. reuse somehow?
+// TODO TRX
 void RestGraphHandler::edgeActionRead(Graph& graph, const std::string& definitionName,
                                       const std::string& key) {
   // check for an etag
@@ -533,7 +534,8 @@ void RestGraphHandler::edgeActionRead(Graph& graph, const std::string& definitio
 
   auto maybeRev = handleRevision();
 
-  GraphOperations gops{graph, _vocbase};
+  auto ctx = createAQLTransactionContext();
+  GraphOperations gops{graph, _vocbase, ctx};
   OperationResult result = gops.getEdge(definitionName, key, maybeRev);
 
   if (result.fail()) {
@@ -549,7 +551,6 @@ void RestGraphHandler::edgeActionRead(Graph& graph, const std::string& definitio
     }
   }
 
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   generateEdgeRead(result.slice(), *ctx->getVPackOptionsForDump());
 }
 
@@ -567,6 +568,7 @@ std::unique_ptr<Graph> RestGraphHandler::getGraph(const std::string& graphName) 
 // TODO The tests check that, if "returnOld: true" is passed,  the result
 // contains the old value in the field "old". This is not documented in
 // HTTP/Gharial!
+// TODO TRX
 Result RestGraphHandler::edgeActionRemove(Graph& graph, const std::string& definitionName,
                                           const std::string& key) {
   bool waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
@@ -575,7 +577,8 @@ Result RestGraphHandler::edgeActionRemove(Graph& graph, const std::string& defin
 
   auto maybeRev = handleRevision();
 
-  GraphOperations gops{graph, _vocbase};
+  auto ctx = createAQLTransactionContext();
+  GraphOperations gops{graph, _vocbase, ctx};
 
   OperationResult result =
       gops.removeEdge(definitionName, key, maybeRev, waitForSync, returnOld);
@@ -585,7 +588,6 @@ Result RestGraphHandler::edgeActionRemove(Graph& graph, const std::string& defin
     return result.result;
   }
 
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   generateRemoved(true, result._options.waitForSync, result.slice().get("old"),
                   *ctx->getVPackOptionsForDump());
 
@@ -673,7 +675,8 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph, EdgeDefinitio
   bool waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
   bool dropCollections = _request->parsedValue(StaticStrings::GraphDropCollections, false);
 
-  GraphOperations gops{graph, _vocbase};
+  auto ctx = createAQLTransactionContext();
+  GraphOperations gops{graph, _vocbase, ctx};
   OperationResult result;
 
   if (action == EdgeDefinitionAction::CREATE) {
@@ -693,8 +696,6 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph, EdgeDefinitio
     generateTransactionError(result);
     return result.result;
   }
-
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   auto newGraph = getGraph(graph.name());
   TRI_ASSERT(newGraph != nullptr);
@@ -724,7 +725,8 @@ Result RestGraphHandler::modifyVertexDefinition(graph::Graph& graph,
   bool createCollection =
       _request->parsedValue(StaticStrings::GraphCreateCollection, true);
 
-  GraphOperations gops{graph, _vocbase};
+  auto ctx = createAQLTransactionContext();
+  GraphOperations gops{graph, _vocbase, ctx};
   OperationResult result;
 
   if (action == VertexDefinitionAction::CREATE) {
@@ -739,8 +741,6 @@ Result RestGraphHandler::modifyVertexDefinition(graph::Graph& graph,
     generateTransactionError(result);
     return result.result;
   }
-
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   auto newGraph = getGraph(graph.name());
   TRI_ASSERT(newGraph != nullptr);
@@ -785,7 +785,8 @@ Result RestGraphHandler::documentModify(graph::Graph& graph, const std::string& 
   std::unique_ptr<VPackBuilder> builder;
   auto maybeRev = handleRevision();
 
-  GraphOperations gops{graph, _vocbase};
+  auto ctx = createAQLTransactionContext();
+  GraphOperations gops{graph, _vocbase, ctx};
 
   OperationResult result;
   // TODO get rid of this branching, rather use several functions and reuse the
@@ -811,7 +812,6 @@ Result RestGraphHandler::documentModify(graph::Graph& graph, const std::string& 
     return result.result;
   }
 
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   switch (colType) {
     case TRI_COL_TYPE_DOCUMENT:
       generateVertexModified(result._options.waitForSync, result.slice(),
@@ -828,7 +828,8 @@ Result RestGraphHandler::documentModify(graph::Graph& graph, const std::string& 
   return TRI_ERROR_NO_ERROR;
 }
 
-Result RestGraphHandler::documentCreate(graph::Graph& graph, const std::string& collectionName,
+// TODO TRX
+Result RestGraphHandler::documentCreate(graph::Graph& graph, std::string const& collectionName,
                                         TRI_col_type_e colType) {
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
@@ -839,7 +840,8 @@ Result RestGraphHandler::documentCreate(graph::Graph& graph, const std::string& 
   bool waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
   bool returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
 
-  GraphOperations gops{graph, _vocbase};
+  auto ctx = createAQLTransactionContext();
+  GraphOperations gops{graph, _vocbase, ctx};
 
   OperationResult result;
   if (colType == TRI_COL_TYPE_DOCUMENT) {
@@ -853,26 +855,25 @@ Result RestGraphHandler::documentCreate(graph::Graph& graph, const std::string& 
   if (result.fail()) {
     // need to call more detailed constructor here
     generateTransactionError(collectionName, result, "", 0);
-    return result.result;
-  }
-
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
-  switch (colType) {
-    case TRI_COL_TYPE_DOCUMENT:
-      generateVertexCreated(result._options.waitForSync, result.slice(),
+  } else {
+    switch (colType) {
+      case TRI_COL_TYPE_DOCUMENT:
+        generateVertexCreated(result._options.waitForSync, result.slice(),
+                              *ctx->getVPackOptionsForDump());
+        break;
+      case TRI_COL_TYPE_EDGE:
+        generateEdgeCreated(result._options.waitForSync, result.slice(),
                             *ctx->getVPackOptionsForDump());
-      break;
-    case TRI_COL_TYPE_EDGE:
-      generateEdgeCreated(result._options.waitForSync, result.slice(),
-                          *ctx->getVPackOptionsForDump());
-      break;
-    default:
-      TRI_ASSERT(false);
+        break;
+      default:
+        TRI_ASSERT(false);
+    }
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return result.result;
 }
 
+// TODO TRX
 Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
                                             const std::string& collectionName,
                                             const std::string& key) {
@@ -882,7 +883,8 @@ Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
 
   auto maybeRev = handleRevision();
 
-  GraphOperations gops{graph, _vocbase};
+  auto ctx = createAQLTransactionContext();
+  GraphOperations gops{graph, _vocbase, ctx};
 
   OperationResult result =
       gops.removeVertex(collectionName, key, maybeRev, waitForSync, returnOld);
@@ -892,7 +894,6 @@ Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
     return result.result;
   }
 
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   generateRemoved(true, result._options.waitForSync, result.slice().get("old"),
                   *ctx->getVPackOptionsForDump());
 

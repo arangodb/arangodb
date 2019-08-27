@@ -54,9 +54,12 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-std::shared_ptr<transaction::Context> GraphOperations::ctx() const {
-  return transaction::StandaloneContext::Create(_vocbase);
-};
+std::shared_ptr<transaction::Context> GraphOperations::ctx() {
+  if (!_ctx) {
+    _ctx = std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
+  }
+  return _ctx;
+}
 
 void GraphOperations::checkForUsedEdgeCollections(const Graph& graph,
                                                   const std::string& collectionName,
@@ -871,10 +874,10 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
     edgeCollections.emplace(it);  // but also to edgeCollections for later iteration
   }
 
-  auto ctx = std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
+ // auto ctx = std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
-  transaction::Methods trx{ctx, {}, trxCollections, {}, trxOptions};
+  transaction::Methods trx{ctx(), {}, trxCollections, {}, trxOptions};
 
   res = trx.begin();
 
@@ -902,7 +905,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
 
       arangodb::aql::Query query(false, _vocbase, queryString, bindVars,
                                  nullptr, arangodb::aql::PART_DEPENDENT);
-      query.setTransactionContext(ctx);  // hack to share  the same transaction
+      query.setTransactionContext(_ctx);  // hack to share the same transaction
 
       auto queryResult = query.executeSync(QueryRegistryFeature::registry());
 
