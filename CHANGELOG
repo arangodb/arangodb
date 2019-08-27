@@ -1,6 +1,10 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Issue #9798: Limit with offset results in an infinite query that can't be cancelled.
+
+* Agents to remove callback entries when responded to with code 404.
+
 * Make minimum timeout for synchronous replication configurable via parameter
   (--cluster.synchronous-replication-timeout-minimum) and increase default value
   to prevent dropping followers unnecessarily.
@@ -11,8 +15,6 @@ v3.4.8 (XXXX-XX-XX)
 * Don't retry persisting follower information for collections/shards already
   dropped. The previous implementation retried (unsuccessfully in this case)
   for up to 2 hours, occupying one scheduler thread.
-
-* Agents to remove callback entries when responded to with code 404.
 
 * Show query string length and cacheability information in query explain output.
 
