@@ -1,6 +1,10 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Make minimum timeout for synchronous replication configurable via parameter
+  (--cluster.synchronous-replication-timeout-minimum) and increase default value
+  to prevent dropping followers unnecessarily.
+
 * Fixed issue #9795: fix AQL `NOT IN` clause in SEARCH operations for ArangoSearch
   views.
 
