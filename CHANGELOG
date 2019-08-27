@@ -3,6 +3,9 @@ v3.4.8 (XXXX-XX-XX)
 
 * The keep alive timeout specified via --http.keep-alive-timeout is now being honored.
 
+* Fixed issue #9795: fix AQL `NOT IN` clause in SEARCH operations for ArangoSearch
+  views.
+
 * Don't retry persisting follower information for collections/shards already
   dropped. The previous implementation retried (unsuccessfully in this case)
   for up to 2 hours, occupying one scheduler thread.
