@@ -108,9 +108,10 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
 /// @brief creates a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> createDocumentOnCoordinator(
-  transaction::Methods const& trx, LogicalCollection&,
-  OperationOptions const& options, VPackSlice const& slice);
+futures::Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& trx,
+                                                             LogicalCollection&,
+                                                             OperationOptions const& options,
+                                                             VPackSlice slice);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document in a coordinator

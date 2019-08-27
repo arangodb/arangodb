@@ -1543,18 +1543,15 @@ Future<OperationResult> transaction::Methods::insertF(std::string const& cname,
     return emptyResult(options);
   }
 
-  // Validate Edges
-  OperationOptions optionsCopy = options;
-
   if (_state->isCoordinator()) {
-    return insertCoordinator(cname, value, optionsCopy)
-    .thenValue([this, value, cname](OperationResult&& opres) {
+    return insertCoordinator(cname, value, options).thenValue([this, value, cname](OperationResult&& opres) {
       events::CreateDocument(vocbase().name(), cname,
                              (opres.ok() && opres._options.returnNew) ? opres.slice() : value,
                              opres._options, opres.errorNumber());
       return std::move(opres);
     });
   }
+  OperationOptions optionsCopy = options;
   return insertLocal(cname, value, optionsCopy);
 }
 
@@ -1564,7 +1561,7 @@ Future<OperationResult> transaction::Methods::insertF(std::string const& cname,
 #ifndef USE_ENTERPRISE
 Future<OperationResult> transaction::Methods::insertCoordinator(std::string const& collectionName,
                                                                 VPackSlice const value,
-                                                                OperationOptions& options) {
+                                                                OperationOptions const& options) {
   ClusterInfo* ci = ClusterInfo::instance();
   auto colptr = ci->getCollectionNT(vocbase().name(), collectionName);
   if (colptr == nullptr) {

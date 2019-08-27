@@ -1202,15 +1202,10 @@ static void collectResponsesFromAllShards(
 /// for their documents.
 ////////////////////////////////////////////////////////////////////////////////
 
-Future<OperationResult> createDocumentOnCoordinator(
-    transaction::Methods const& trx, LogicalCollection& coll,
-    arangodb::OperationOptions const& options, VPackSlice const& slice) {
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr should only happen during controlled shutdown
-    return makeFuture(OperationResult(TRI_ERROR_SHUTTING_DOWN));
-  }
-
+Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& trx,
+                                                    LogicalCollection& coll,
+                                                    arangodb::OperationOptions const& options,
+                                                    VPackSlice slice) {
   ClusterInfo* ci = ClusterInfo::instance();
   TRI_ASSERT(ci != nullptr);
 
@@ -1254,8 +1249,6 @@ Future<OperationResult> createDocumentOnCoordinator(
     }
   }
   
-  VPackBuffer<uint8_t> reqBuffer;
-  VPackBuilder reqBuilder(reqBuffer);
   std::vector<Future<network::Response>> futures;
 
   std::string const baseUrl =
@@ -1270,6 +1263,9 @@ Future<OperationResult> createDocumentOnCoordinator(
 
   // Now prepare the requests:
   for (auto const& it : shardMap) {
+    VPackBuffer<uint8_t> reqBuffer;
+    VPackBuilder reqBuilder(reqBuffer);
+
     if (!useMultiple) {
       TRI_ASSERT(it.second.size() == 1);
       auto idx = it.second.front();
@@ -1305,23 +1301,13 @@ Future<OperationResult> createDocumentOnCoordinator(
                                             std::move(reqBuffer), network::Timeout(CL_DEFAULT_LONG_TIMEOUT),
                                             headers, /*retryNotFound*/true);
     futures.emplace_back(std::move(future));
-
-//    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-//    addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first, *headers);
-//    requests.emplace_back("shard:" + it.first, arangodb::rest::RequestType::POST,
-//                          baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
-//                          body, std::move(headers));
   }
 
-  // Perform the requests
-//  cc->performRequests(requests, CL_DEFAULT_LONG_TIMEOUT, Logger::COMMUNICATION,
-//                      /*retryOnCollNotFound*/ true, /*retryOnBackUnavai*/ !isManaged);
-
-  // Now listen to the results:
-  if (!useMultiple) {
+  // Now compute the result
+  if (!useMultiple) {  // single-shard fast track
     TRI_ASSERT(futures.size() == 1);
-    
-    auto cb = [=](network::Response&& res) -> OperationResult {
+
+    auto cb = [options](network::Response&& res) -> OperationResult {
       int commError = network::fuerteToArangoErrorCode(res);
       if (commError != TRI_ERROR_NO_ERROR) {
         return OperationResult(commError);
