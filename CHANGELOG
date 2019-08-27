@@ -5,6 +5,9 @@ v3.4.8 (XXXX-XX-XX)
   (--cluster.synchronous-replication-timeout-minimum) and increase default value
   to prevent dropping followers unnecessarily.
 
+* Fixed issue #9795: fix AQL `NOT IN` clause in SEARCH operations for ArangoSearch
+  views.
+
 * Don't retry persisting follower information for collections/shards already
   dropped. The previous implementation retried (unsuccessfully in this case)
   for up to 2 hours, occupying one scheduler thread.

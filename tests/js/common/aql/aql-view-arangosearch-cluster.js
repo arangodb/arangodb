@@ -708,6 +708,76 @@ function IResearchAqlTestSuite(args) {
         assertTrue(res.c >= 1 && res.c <= 3);
       });
     },
+    testAttributeNotInRangeOpenInterval : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH NOT(IN_RANGE(doc.c, 1, 3, false, false)) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 24);
+      result.forEach(function(res) {
+        assertTrue(res.c === undefined || res.c <= 1 || res.c >= 3);
+      });
+    },
+    testAttributeNotInRangeClosedInterval : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH NOT(IN_RANGE(doc.c, 1, 3, true, true)) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 16);
+      result.forEach(function(res) {
+        assertTrue(res.c === undefined || res.c < 1 || res.c > 3);
+      });
+    },
+    testAttributeInRange : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH doc.c IN 1..3 OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 12);
+      result.forEach(function(res) {
+        assertTrue(res.c >= 1 || res.c <= 3);
+      });
+    },
+    testAttributeNotInRange : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH doc.c NOT IN 1..3 OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 16);
+      result.forEach(function(res) {
+        assertTrue(res.c === undefined || res.c < 1 || res.c > 3);
+      });
+    },
+    testAttributeInArray : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH doc.c IN [ 1, 3 ] OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 8);
+      result.forEach(function(res) {
+        assertTrue(res.c === 1 || res.c === 3);
+      });
+    },
+    testAttributeNotInArray : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH doc.c NOT IN [ 1, 3 ] OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 20);
+      result.forEach(function(res) {
+        assertTrue(res.c === undefined || res.c !== 1 && res.c !== 3);
+      });
+    },
+    testAttributeInExpression : function () {
+      var result = db._query("FOR c IN [[[1, 3]]] FOR doc IN UnitTestsView  SEARCH 1 IN FLATTEN(c) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, db.UnitTestsCollection.toArray().length);
+
+    },
+    testAttributeNotInExpression: function () {
+      var result = db._query("FOR c IN [[[1, 3]]] FOR doc IN UnitTestsView  SEARCH 1 NOT IN FLATTEN(c) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 0);
+    },
+    testAttributeInExpressionNonDet : function () {
+      var result = db._query("FOR c IN [[[1, 3]]] FOR doc IN UnitTestsView  SEARCH 1 IN NOOPT(FLATTEN(c)) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, db.UnitTestsCollection.toArray().length);
+
+    },
+    testAttributeNotInExpressionNonDet: function () {
+      var result = db._query("FOR c IN [[[1, 3]]] FOR doc IN UnitTestsView  SEARCH 1 NOT IN NOOPT(FLATTEN(c)) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 0);
+    },
 
     testViewWithInterruptedInserts : function() {
       let docsCollectionName = "docs";
