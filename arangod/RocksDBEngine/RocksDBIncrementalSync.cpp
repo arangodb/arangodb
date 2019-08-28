@@ -509,7 +509,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
             }
             // fall-through
           } else {
-            int errorNumber = opRes.errorNumber();
+            int errorNumber = res.errorNumber();
             res.reset(errorNumber, std::string(TRI_errno_string(errorNumber)) + ": " + res.errorMessage());
             return res;
           }
