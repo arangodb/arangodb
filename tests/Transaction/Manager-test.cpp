@@ -104,7 +104,7 @@ TEST_F(TransactionManagerTest, parsing_errors) {
 }
 
 TEST_F(TransactionManagerTest, collection_not_found) {
-  arangodb::ExecContextScope execContextScope(arangodb::ExecContext::superuser());
+  arangodb::ExecContextSuperuserScope exeScope;
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"33\"]}}");
