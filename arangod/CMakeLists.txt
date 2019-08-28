@@ -767,6 +767,7 @@ target_link_libraries(arango_indexes arango_geo)
 target_link_libraries(arango_indexes boost_boost)
 
 target_link_libraries(arango_iresearch arango_indexes)
+target_link_libraries(arango_iresearch arango_cluster_engine)
 
 target_link_libraries(arango_mmfiles arango_geo)
 target_link_libraries(arango_mmfiles arango_indexes)
@@ -792,6 +793,7 @@ target_link_libraries(arango_rocksdb ${ROCKSDB_LIBS})
 
 target_link_libraries(arango_storage_engine arango_mmfiles)
 target_link_libraries(arango_storage_engine arango_rocksdb)
+target_link_libraries(arango_storage_engine arango_cluster_engine)
 
 target_link_libraries(arango_v8server arango_agency)
 target_link_libraries(arango_v8server arango_replication)
@@ -803,20 +805,10 @@ target_link_libraries(arango_vocbase arango_replication)
 target_link_libraries(arango_vocbase boost_system)
 
 target_link_libraries(arangoserver arango_agency)
+target_link_libraries(arangoserver arango_aql)
+target_link_libraries(arangoserver arango_cluster_engine)
 target_link_libraries(arangoserver arango_geo)
 target_link_libraries(arangoserver arango_graph)
-target_link_libraries(arangoserver arango_iresearch)
-target_link_libraries(arangoserver arango_replication)
-target_link_libraries(arangoserver arango_storage_engine)
-target_link_libraries(arangoserver arango_v8server)
-target_link_libraries(arangoserver arango_vocbase)
-target_link_libraries(arangoserver boost_boost)
-target_link_libraries(arangoserver fuerte)
-target_link_libraries(arangoserver llhttp)
-
-target_link_libraries(arangoserver arango_agency)
-target_link_libraries(arangoserver arango_aql)
-target_link_libraries(arangoserver arango_geo)
 target_link_libraries(arangoserver arango_indexes)
 target_link_libraries(arangoserver arango_iresearch)
 target_link_libraries(arangoserver arango_pregel)
@@ -826,10 +818,8 @@ target_link_libraries(arangoserver arango_utils)
 target_link_libraries(arangoserver arango_v8server)
 target_link_libraries(arangoserver arango_vocbase)
 target_link_libraries(arangoserver boost_boost)
-
-target_link_libraries(arangoserver arango_geo)
-target_link_libraries(arangoserver arango_vocbase)
-target_link_libraries(arangoserver boost_boost)
+target_link_libraries(arangoserver fuerte)
+target_link_libraries(arangoserver llhttp)
 
 target_link_libraries(arangoserver
   ${LINENOISE_LIBS} # Is this ever anything but empty?
