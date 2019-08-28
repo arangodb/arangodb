@@ -1,6 +1,9 @@
 devel
 -----
 
+* The graph viewer of the web interface now tries to find a vertex document of
+  all available vertex collections before it aborts.
+
 * Upgraded bundled jemalloc library to version 5.2.1.
 
 * Fixed internal issue #4407: remove storage engine warning.
