@@ -27,8 +27,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/Common.h"
-
 #include "Rest/GeneralRequest.h"
 #include "Utils/ExecContext.h"
 
