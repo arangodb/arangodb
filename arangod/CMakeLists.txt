@@ -779,16 +779,13 @@ target_link_libraries(arango_aql arango_iresearch)
 
 target_link_libraries(arango_cache boost_system)
 
-target_link_libraries(arango_cluster_engine arango_common_rest_handler)
 target_link_libraries(arango_cluster_engine arango_indexes)
 target_link_libraries(arango_cluster_engine boost_boost)
 
 target_link_libraries(arango_cluster_methods arango)
 
 target_link_libraries(arango_common_rest_handler arango_cluster_methods)
-target_link_libraries(arango_common_rest_handler arango_storage_engine)
 target_link_libraries(arango_common_rest_handler arango_utils)
-target_link_libraries(arango_common_rest_handler arango_vocbase)
 
 target_link_libraries(arango_graph arango_cache)
 target_link_libraries(arango_graph arango_vocbase)
