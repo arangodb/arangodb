@@ -325,7 +325,7 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
     // just trigger a sleep here. The client test will create the db async
     // and directly fetch the state of creation. The DB is not allowed to be
     // visible to the outside world.
-    std::this_thread::sleep_for(std::chrono::microseconds(5000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
   }
 
   TRI_IF_FAILURE("UpgradeTasks::FatalExitDuringDatabaseCreation") {
