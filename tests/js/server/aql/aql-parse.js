@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 7000 */
-/*global assertEqual, assertTrue, assertMatch, fail, AQL_EXECUTE */
+/*global assertEqual, assertTrue, assertMatch, fail, AQL_EXECUTE, AQL_PARSE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, PARSE function
@@ -351,6 +351,83 @@ function ahuacatlParseTestSuite () {
           assertEqual(query[1][1], column);
         }
       });
+    },
+
+    testPrecedenceOfNotIn : function() {
+      let result = AQL_PARSE("RETURN 3..4 NOT IN 1..2").ast;
+
+      assertEqual("root", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("return", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("compare not in", result[0].type);
+      let sub = result[0].subNodes;
+      assertEqual("range", sub[0].type);
+      assertEqual("value", sub[0].subNodes[0].type);
+      assertEqual(3, sub[0].subNodes[0].value);
+      assertEqual("value", sub[0].subNodes[1].type);
+      assertEqual(4, sub[0].subNodes[1].value);
+      
+      assertEqual("range", sub[1].type);
+      assertEqual("value", sub[1].subNodes[0].type);
+      assertEqual(1, sub[1].subNodes[0].value);
+      assertEqual("value", sub[1].subNodes[1].type);
+      assertEqual(2, sub[1].subNodes[1].value);
+     
+
+      result = AQL_PARSE("RETURN 3..(4 NOT IN 1)..2").ast;
+
+      assertEqual("root", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("return", result[0].type);
+      result = result[0].subNodes;
+      
+      assertEqual("range", result[0].type);
+      sub = result[0].subNodes;
+
+      assertEqual("range", sub[0].type);
+      assertEqual("value", sub[0].subNodes[0].type);
+      assertEqual(3, sub[0].subNodes[0].value);
+      assertEqual("compare not in", sub[0].subNodes[1].type);
+      assertEqual("value", sub[0].subNodes[1].subNodes[0].type);
+      assertEqual(4, sub[0].subNodes[1].subNodes[0].value);
+      assertEqual("value", sub[0].subNodes[1].subNodes[1].type);
+      assertEqual(1, sub[0].subNodes[1].subNodes[1].value);
+      assertEqual("value", sub[1].type);
+      assertEqual(2, sub[1].value);
+    },
+    
+    testPrecedenceOfNestedNotIn : function() {
+      let result = AQL_PARSE("RETURN 3..4 NOT IN 1..2 NOT IN 7..8").ast;
+
+      assertEqual("root", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("return", result[0].type);
+      result = result[0].subNodes;
+      
+      assertEqual("compare not in", result[0].type);
+      let sub = result[0].subNodes;
+      assertEqual("compare not in", sub[0].type);
+      assertEqual("range", sub[0].subNodes[0].type);
+      assertEqual("value", sub[0].subNodes[0].subNodes[0].type);
+      assertEqual(3, sub[0].subNodes[0].subNodes[0].value);
+      assertEqual("value", sub[0].subNodes[0].subNodes[1].type);
+      assertEqual(4, sub[0].subNodes[0].subNodes[1].value);
+      assertEqual("range", sub[0].subNodes[1].type);
+      assertEqual("value", sub[0].subNodes[1].subNodes[0].type);
+      assertEqual(1, sub[0].subNodes[1].subNodes[0].value);
+      assertEqual("value", sub[0].subNodes[1].subNodes[1].type);
+      assertEqual(2, sub[0].subNodes[1].subNodes[1].value);
+      
+      assertEqual("range", sub[1].type);
+      assertEqual("value", sub[1].subNodes[0].type);
+      assertEqual(7, sub[1].subNodes[0].value);
+      assertEqual("value", sub[1].subNodes[1].type);
+      assertEqual(8, sub[1].subNodes[1].value);
     }
 
   };
