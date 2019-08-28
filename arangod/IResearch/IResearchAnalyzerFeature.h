@@ -265,6 +265,12 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   bool visit(std::function<bool(AnalyzerPool::ptr const& analyzer)> const& visitor,
              TRI_vocbase_t const* vocbase) const;
 
+  ///////////////////////////////////////////////////////////////////////////////
+  // @brief removes analyzers for specified database from cache
+  // @param vocbase  database to invalidate analyzers
+  ///////////////////////////////////////////////////////////////////////////////
+  void invalidate(const TRI_vocbase_t& vocbase);
+
  private:
   // map of caches of irs::analysis::analyzer pools indexed by analyzer name and
   // their associated metas
@@ -327,6 +333,12 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   arangodb::Result loadAnalyzers( // load analyzers
       irs::string_ref const& database = irs::string_ref::NIL // database to load
   );
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// removes analyzers for database from feature cache
+  /// Write lock must be acquired by caller
+  /// @param database the database to cleanup analyzers for 
+  void cleanupAnalyzers(irs::string_ref const& database);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief store the definition for the speicifed pool in the corresponding

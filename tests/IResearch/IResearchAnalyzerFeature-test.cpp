@@ -68,7 +68,6 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -524,9 +523,7 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
   }
 
   std::unique_ptr<arangodb::ExecContext> getLoggedInContext() const {
-    std::unique_ptr<arangodb::ExecContext> res;
-    res.reset(arangodb::ExecContext::create("testUser", "testVocbase"));
-    return res;
+    return arangodb::ExecContext::create("testUser", "testVocbase");
   }
 
   std::string analyzerName() const {

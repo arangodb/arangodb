@@ -99,12 +99,9 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_GLOBALS();
 
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    if (exec->databaseAuthLevel() != auth::Level::RW) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                     "registerTask() needs db RW permissions");
-    }
+  if (ExecContext::current().databaseAuthLevel() != auth::Level::RW) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "registerTask() needs db RW permissions");
   }
 
   v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
@@ -180,13 +177,10 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // only the superroot is allowed to run tasks as an arbitrary user
-  TRI_ASSERT(exec == ExecContext::CURRENT);
-  if (exec != nullptr) {
-    if (runAsUser.empty()) {  // execute task as the same user
-      runAsUser = exec->user();
-    } else if (exec->user() != runAsUser) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
+  if (runAsUser.empty()) {  // execute task as the same user
+    runAsUser = ExecContext::current().user();
+  } else if (ExecContext::current().user() != runAsUser) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
   // extract the command
@@ -277,12 +271,9 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("unregister(<id>)");
   }
 
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    if (exec->databaseAuthLevel() != auth::Level::RW) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                     "registerTask() needs db RW permissions");
-    }
+  if (ExecContext::current().databaseAuthLevel() != auth::Level::RW) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "registerTask() needs db RW permissions");
   }
 
   int res = Task::unregisterTask(GetTaskId(isolate, args[0]), true);
@@ -339,19 +330,15 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("createQueue(<id>, <maxWorkers>)");
   }
 
-  std::string runAsUser;
-  ExecContext const* exec = ExecContext::CURRENT;
-
-  if (exec != nullptr) {
-    if (exec->databaseAuthLevel() != auth::Level::RW) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                     "createQueue() needs db RW permissions");
-    }
-
-    runAsUser = exec->user();
-    TRI_ASSERT(exec->isAdminUser() || !runAsUser.empty());
+  auto const& exec = ExecContext::current();
+  if (exec.databaseAuthLevel() != auth::Level::RW) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "createQueue() needs db RW permissions");
   }
 
+  const std::string runAsUser = exec.user();
+  TRI_ASSERT(exec.isAdminUser() || !runAsUser.empty());
+  
   std::string key = TRI_ObjectToString(isolate, args[0]);
   uint64_t maxWorkers =
       std::min(TRI_ObjectToUInt64(isolate, args[1], false), (uint64_t)64);
@@ -365,7 +352,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   doc.close();
 
   LOG_TOPIC("aeb56", TRACE, Logger::FIXME) << "Adding queue " << key;
-  ExecContextScope exscope(ExecContext::superuser());
+  ExecContextSuperuserScope exscope;
   auto ctx = transaction::V8Context::Create(*vocbase, true);
   SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::EXCLUSIVE);
   Result res = trx.begin();
@@ -410,15 +397,13 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder doc;
   doc(VPackValue(VPackValueType::Object))(StaticStrings::KeyString, VPackValue(key))();
 
-  ExecContext const* exec = ExecContext::CURRENT;
-
-  if (exec != nullptr && exec->databaseAuthLevel() != auth::Level::RW) {
+  if (ExecContext::current().databaseAuthLevel() != auth::Level::RW) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "deleteQueue() needs db RW permissions");
   }
 
   LOG_TOPIC("2cef9", TRACE, Logger::FIXME) << "Removing queue " << key;
-  ExecContextScope exscope(ExecContext::superuser());
+  ExecContextSuperuserScope exscope;
   auto ctx = transaction::V8Context::Create(*vocbase, true);
   SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);

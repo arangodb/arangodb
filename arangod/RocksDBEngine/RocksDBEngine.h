@@ -144,9 +144,6 @@ class RocksDBEngine final : public StorageEngine {
   void stop() override;
   void unprepare() override;
 
-  // minimum timeout for the synchronous replication
-  double minimumSyncReplicationTimeout() const override { return 1.0; }
-
   bool supportsDfdb() const override { return false; }
   bool useRawDocumentPointers() override { return false; }
 

@@ -296,7 +296,7 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& 
   TRI_ASSERT(clusterFlag != 0 && dbFlag != 0);
   TRI_ASSERT(!_tasks.empty());  // forgot to call registerTask!!
   // needs to run in superuser scope, otherwise we get errors
-  ExecContextScope scope(ExecContext::superuser());
+  ExecContextSuperuserScope scope;
   // only local should actually write a VERSION file
   bool isLocal = clusterFlag == CLUSTER_NONE || clusterFlag == CLUSTER_LOCAL || clusterFlag == CLUSTER_DB_SERVER_LOCAL;
 
