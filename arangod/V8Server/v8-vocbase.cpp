@@ -93,6 +93,7 @@
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/Kerberos/KerberosFeature.h"
 #endif
 
 using namespace arangodb;
@@ -1731,6 +1732,23 @@ static void JS_LdapEnabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_KerberosEnabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+#ifdef USE_ENTERPRISE
+  auto kerberos =
+      application_features::ApplicationServer::getFeature<KerberosFeature>("Kerberos");
+  TRI_ASSERT(kerberos != nullptr);
+  TRI_V8_RETURN(v8::Boolean::New(isolate, kerberos->isEnabled()));
+#else
+  // Kerberos only enabled in enterprise mode
+  TRI_V8_RETURN(v8::False(isolate));
+#endif
+
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief decode a _rev time stamp
 ////////////////////////////////////////////////////////////////////////////////
@@ -2018,6 +2036,10 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "LDAP_ENABLED"),
                                JS_LdapEnabled, true);
+
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "KERBEROS_ENABLED"),
+                               JS_KerberosEnabled, true);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "TRUSTED_PROXIES"),

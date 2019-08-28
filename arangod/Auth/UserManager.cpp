@@ -112,6 +112,13 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
       continue;
     }
 
+    if (s.hasKey("source") && s.get("source").isString() &&
+        s.get("source").copyString() == "KERBEROS") {
+      LOG_TOPIC("18ee9", TRACE, arangodb::Logger::CONFIG)
+          << "KERBEROS: skip user in collection _users: " << s.get("user").copyString();
+      continue;
+    }
+
     // we also need to insert inactive users into the cache here
     // otherwise all following update/replace/remove operations on the
     // user will fail

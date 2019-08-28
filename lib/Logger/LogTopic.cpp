@@ -35,6 +35,7 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Audit/AuditFeature.h"
 #include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/Kerberos/KerberosFeature.h"
 #endif
 
 using namespace arangodb;
@@ -154,6 +155,7 @@ LogTopic Logger::VIEWS("views", LogLevel::FATAL);
 
 #ifdef USE_ENTERPRISE
 LogTopic LdapFeature::LDAP("ldap", LogLevel::INFO);
+LogTopic KerberosFeature::KERBEROS("kerberos", LogLevel::INFO);
 
 LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication", LogLevel::DEBUG);
 LogTopic AuditFeature::AUDIT_AUTHORIZATION("audit-authorization", LogLevel::INFO);

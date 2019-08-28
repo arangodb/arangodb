@@ -661,6 +661,7 @@ target_link_libraries(arangoserver
 )
 
 if (USE_ENTERPRISE)
+  target_link_directories(arangoserver PUBLIC ${GSS_LINK_DIRECTORIES})
   target_compile_definitions(arangoserver PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
   if (MSVC)

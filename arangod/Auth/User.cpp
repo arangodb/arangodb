@@ -102,6 +102,9 @@ static void AddSource(VPackBuilder& builder, auth::Source source) {
     case auth::Source::LDAP:
       builder.add("source", VPackValue("LDAP"));
       break;
+    case auth::Source::KERBEROS:
+      builder.add("source", VPackValue("KERBEROS"));
+      break;
     default:
       TRI_ASSERT(false);
   }

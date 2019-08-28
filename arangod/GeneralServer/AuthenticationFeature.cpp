@@ -39,6 +39,8 @@
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapAuthenticationHandler.h"
 #include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/Kerberos/KerberosAuthenticationHandler.h"
+#include "Enterprise/Kerberos/KerberosFeature.h"
 #endif
 
 using namespace arangodb::options;
@@ -62,6 +64,7 @@ AuthenticationFeature::AuthenticationFeature(application_features::ApplicationSe
 
 #ifdef USE_ENTERPRISE
   startsAfter("Ldap");
+  startsAfter("Kerberos");
 #endif
 }
 
@@ -154,11 +157,16 @@ void AuthenticationFeature::prepare() {
   TRI_ASSERT(role != ServerState::RoleEnum::ROLE_UNDEFINED);
   if (ServerState::isSingleServer(role) || ServerState::isCoordinator(role)) {
 #if USE_ENTERPRISE
-    if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")->isEnabled()) {
+    if (application_features::ApplicationServer::getFeature<KerberosFeature>("Kerberos")->isEnabled()) {
       _userManager.reset(
-          new auth::UserManager(std::make_unique<LdapAuthenticationHandler>()));
+          new auth::UserManager(std::make_unique<KerberosAuthenticationHandler>()));
     } else {
-      _userManager.reset(new auth::UserManager());
+      if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")->isEnabled()) {
+        _userManager.reset(
+                           new auth::UserManager(std::make_unique<LdapAuthenticationHandler>()));
+      } else {
+        _userManager.reset(new auth::UserManager());
+      }
     }
 #else
     _userManager.reset(new auth::UserManager());
