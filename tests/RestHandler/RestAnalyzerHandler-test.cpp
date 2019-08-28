@@ -271,27 +271,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create_no_name) {
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_create_no_permission) {
-  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
-
-  {
-    const auto name =
-        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
-    auto res = analyzers
-                    ->emplace(result, name, "identity",
-                              VPackParser::fromJson("{\"args\":\"abc\"}")->slice());
-    ASSERT_TRUE(res.ok());
-  }
-
-  {
-    const auto name =
-        arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
-    ASSERT_TRUE(analyzers
-                    ->emplace(result, name, "rest-analyzer-empty",
-                              VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
-                              irs::flags{irs::frequency::type()})
-                    .ok());
-  }
+  createAnalyzers();
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
@@ -351,27 +332,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create_no_permission) {
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_create_invalid_symbols) {
-  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
-
-  {
-    const auto name =
-        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
-    auto res = analyzers
-                    ->emplace(result, name, "identity",
-                              VPackParser::fromJson("{\"args\":\"abc\"}")->slice());
-    ASSERT_TRUE(res.ok());
-  }
-
-  {
-    const auto name =
-        arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
-    ASSERT_TRUE(analyzers
-                    ->emplace(result, name, "rest-analyzer-empty",
-                              VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
-                              irs::flags{irs::frequency::type()})
-                    .ok());
-  }
+  createAnalyzers();
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
@@ -434,27 +396,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_invalid_symbols) {
 
 // TODO: is this the smae test as above?
 TEST_F(RestAnalyzerHandlerTest, test_create_invalid_symbols_2) {
-  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-
-
-  {
-    const auto name =
-        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
-    auto res = analyzers
-                    ->emplace(result, name, "identity",
-                              VPackParser::fromJson("{\"args\":\"abc\"}")->slice());
-    ASSERT_TRUE(res.ok());
-  }
-
-  {
-    const auto name =
-        arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
-    ASSERT_TRUE(analyzers
-                    ->emplace(result, name, "rest-analyzer-empty",
-                              VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
-                              irs::flags{irs::frequency::type()})
-                    .ok());
-  }
+  createAnalyzers();
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
@@ -514,26 +456,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_invalid_symbols_2) {
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_create_name_collision) {
-  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-
-  {
-    const auto name =
-        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
-    auto res = analyzers
-                    ->emplace(result, name, "identity",
-                              VPackParser::fromJson("{\"args\":\"abc\"}")->slice());
-    ASSERT_TRUE(res.ok());
-  }
-
-  {
-    const auto name =
-        arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
-    ASSERT_TRUE(analyzers
-                    ->emplace(result, name, "rest-analyzer-empty",
-                              VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
-                              irs::flags{irs::frequency::type()})
-                    .ok());
-  }
+  createAnalyzers();
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
@@ -595,26 +518,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_name_collision) {
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_create_duplicate_matching) {
-  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-
-  {
-    const auto name =
-        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
-    auto res = analyzers
-                    ->emplace(result, name, "identity",
-                              VPackParser::fromJson("{\"args\":\"abc\"}")->slice());
-    ASSERT_TRUE(res.ok());
-  }
-
-  {
-    const auto name =
-        arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
-    ASSERT_TRUE(analyzers
-                    ->emplace(result, name, "rest-analyzer-empty",
-                              VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
-                              irs::flags{irs::frequency::type()})
-                    .ok());
-  }
+  createAnalyzers();
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
@@ -672,26 +576,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_duplicate_matching) {
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_create_not_authorized) {
-  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-
-  {
-    const auto name =
-        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
-    auto res = analyzers
-                    ->emplace(result, name, "identity",
-                              VPackParser::fromJson("{\"args\":\"abc\"}")->slice());
-    ASSERT_TRUE(res.ok());
-  }
-
-  {
-    const auto name =
-        arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
-    ASSERT_TRUE(analyzers
-                    ->emplace(result, name, "rest-analyzer-empty",
-                              VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
-                              irs::flags{irs::frequency::type()})
-                    .ok());
-  }
+  createAnalyzers();
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
@@ -751,26 +636,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_not_authorized) {
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_create_success) {
-  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-
-  {
-    const auto name =
-        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
-    auto res = analyzers
-                    ->emplace(result, name, "identity",
-                              VPackParser::fromJson("{\"args\":\"abc\"}")->slice());
-    ASSERT_TRUE(res.ok());
-  }
-
-  {
-    const auto name =
-        arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
-    ASSERT_TRUE(analyzers
-                    ->emplace(result, name, "rest-analyzer-empty",
-                              VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
-                              irs::flags{irs::frequency::type()})
-                    .ok());
-  }
+  createAnalyzers();
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
