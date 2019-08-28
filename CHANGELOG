@@ -1,7 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
-* Fixed issue #9795. Fixed NOT IN clause in ArangoSearch.
+* Fixed issue #9795: fix AQL `NOT IN` clause in SEARCH operations for ArangoSearch
+  views.
 
 * Make minimum timeout for synchronous replication configurable via parameter
   (--cluster.synchronous-replication-timeout-minimum) and increase default value
