@@ -371,6 +371,15 @@ SET(ARANGOD_SOURCES
   Cluster/TraverserEngineRegistry.cpp
   Cluster/UpdateCollection.cpp
   Cluster/v8-cluster.cpp
+  FeaturePhases/AgencyFeaturePhase.cpp
+  FeaturePhases/AqlFeaturePhase.cpp
+  FeaturePhases/BasicFeaturePhaseServer.cpp
+  FeaturePhases/ClusterFeaturePhase.cpp
+  FeaturePhases/DatabaseFeaturePhase.cpp
+  FeaturePhases/FinalFeaturePhase.cpp
+  FeaturePhases/FoxxFeaturePhase.cpp
+  FeaturePhases/ServerFeaturePhase.cpp
+  FeaturePhases/V8FeaturePhase.cpp
   GeneralServer/Acceptor.cpp
   GeneralServer/AcceptorTcp.cpp
   GeneralServer/AsyncJobManager.cpp
@@ -384,6 +393,7 @@ SET(ARANGOD_SOURCES
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/ServerSecurityFeature.cpp
+  GeneralServer/SslServerFeature.cpp
   GeneralServer/Task.cpp
   GeneralServer/VstCommTask.cpp
   GeoIndex/Index.cpp
@@ -554,6 +564,7 @@ SET(ARANGOD_SOURCES
   StorageEngine/EngineSelectorFeature.cpp
   StorageEngine/HotBackup.cpp
   StorageEngine/PhysicalCollection.cpp
+  StorageEngine/RocksDBOptionFeature.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp
   StorageEngine/WalAccess.cpp
