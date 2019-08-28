@@ -284,10 +284,6 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
   std::shared_ptr<LogicalCollection> def;
 
   OperationResult result;
-  VPackBuilder collectionsOptions;
-  collectionsOptions.openObject();
-  _graph.createCollectionOptions(collectionsOptions, waitForSync);
-  collectionsOptions.close();
 
   if (_graph.hasVertexCollection(collectionName)) {
     if (_graph.hasOrphanCollection(collectionName)) {
@@ -300,7 +296,7 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
   }
 
   // add orphan collection to graph
-  _graph.addOrphanCollection(std::move(collectionName));
+  _graph.addOrphanCollection(std::string(collectionName));
 
   def = GraphManager::getCollectionByName(_vocbase, collectionName);
   Result res;
