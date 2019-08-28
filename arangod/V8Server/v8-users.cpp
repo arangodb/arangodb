@@ -86,18 +86,13 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 static bool IsAdminUser() {
-  if (ExecContext::CURRENT != nullptr) {
-    return ExecContext::CURRENT->isAdminUser();
-  }
-  return true;
+  return ExecContext::current().isAdminUser();
 }
 
 /// check ExecContext if system use
 static bool CanAccessUser(std::string const& user) {
-  if (ExecContext::CURRENT != nullptr) {
-    return IsAdminUser() || user == ExecContext::CURRENT->user();
-  }
-  return true;
+  auto const& exec = ExecContext::current();
+  return exec.isAdminUser() || exec.user() == user;
 }
 
 void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
@@ -584,8 +579,8 @@ static void JS_CurrentUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("currentUser()");
   }
-  if (ExecContext::CURRENT != nullptr) {
-    TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, ExecContext::CURRENT->user()));
+  if (!ExecContext::current().user().empty()) {
+    TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, ExecContext::current().user()));
   }
   TRI_V8_RETURN_NULL();
   TRI_V8_TRY_CATCH_END

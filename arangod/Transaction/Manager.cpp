@@ -48,24 +48,15 @@
 
 namespace {
 bool authorized(std::string const& user) {
-  auto context = arangodb::ExecContext::CURRENT;
-  if (context == nullptr || !arangodb::ExecContext::isAuthEnabled()) {
+  auto const& exec = arangodb::ExecContext::current();
+  if (exec.isSuperuser()) {
     return true;
   }
-
-  if (context->isSuperuser()) {
-    return true;
-  }
-
-  return (user == context->user());
+  return (user == exec.user());
 }
 
 std::string currentUser() {
-  auto context = arangodb::ExecContext::CURRENT;
-  if (context == nullptr || !arangodb::ExecContext::isAuthEnabled()) {
-    return "";
-  }
-  return context->user();
+  return arangodb::ExecContext::current().user();
 }
 }  // namespace
 
