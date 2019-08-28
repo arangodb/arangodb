@@ -20,20 +20,31 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_DATABASE_FEATURE_PHASE_H
-#define ARANGODB_APPLICATION_FEATURES_DATABASE_FEATURE_PHASE_H 1
+#include "BasicFeaturePhaseClient.h"
 
-#include "ApplicationFeaturePhase.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Shell/ClientFeature.h"
+#include "Ssl/SslFeature.h"
+
+#ifdef USE_ENTERPRISE
+#include "Encryption/EncryptionFeature.h"
+#endif
 
 namespace arangodb {
 namespace application_features {
 
-class DatabaseFeaturePhase : public ApplicationFeaturePhase {
- public:
-  explicit DatabaseFeaturePhase(ApplicationServer& server);
-};
+BasicFeaturePhaseClient::BasicFeaturePhaseClient(ApplicationServer& server)
+    : ApplicationFeaturePhase(server, "BasicsPhase") {
+  setOptional(false);
+  startsAfter<GreetingsFeaturePhase>();
+
+#ifdef USE_ENTERPRISE
+  startsAfter<EncryptionFeature>();
+#endif
+  startsAfter<SslFeature>();
+
+  startsAfter<ClientFeature>();
+}
 
 }  // namespace application_features
 }  // namespace arangodb
-
-#endif

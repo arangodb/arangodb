@@ -20,22 +20,26 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ServerPhase.h"
+#include "V8ShellFeaturePhase.h"
+
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "ApplicationFeatures/V8PlatformFeature.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "Shell/ConsoleFeature.h"
+#include "Shell/V8ShellFeature.h"
 
 namespace arangodb {
 namespace application_features {
 
-ServerFeaturePhase::ServerFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "ServerPhase") {
+V8ShellFeaturePhase::V8ShellFeaturePhase(ApplicationServer& server)
+    : ApplicationFeaturePhase(server, "V8ShellPhase") {
   setOptional(false);
-  startsAfter("AQLPhase");
+  startsAfter<GreetingsFeaturePhase>();
 
-  startsAfter("Endpoint");
-  startsAfter("GeneralServer");
-  startsAfter("Server");
-  startsAfter("SslServer");
-  startsAfter("Statistics");
-  startsAfter("Upgrade");
+  startsAfter<ConsoleFeature>();
+  startsAfter<V8ShellFeature>();
+  startsAfter<V8PlatformFeature>();
+  startsAfter<V8SecurityFeature>();
 }
 
 }  // namespace application_features

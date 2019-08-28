@@ -20,42 +20,28 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicPhase.h"
+#include "ClusterFeaturePhase.h"
+
+#include "ApplicationFeatures/V8PlatformFeature.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/MaintenanceFeature.h"
+#include "Cluster/ReplicationTimeoutFeature.h"
+#include "FeaturePhases/DatabaseFeaturePhase.h"
 
 namespace arangodb {
 namespace application_features {
 
-BasicFeaturePhase::BasicFeaturePhase(ApplicationServer& server, bool isClient)
-    : ApplicationFeaturePhase(server, "BasicsPhase") {
+ClusterFeaturePhase::ClusterFeaturePhase(ApplicationServer& server)
+    : ApplicationFeaturePhase(server, "ClusterPhase") {
   setOptional(false);
-  startsAfter("GreetingsPhase");
-  startsAfter("Sharding");
+  startsAfter<DatabaseFeaturePhase>();
 
-#ifdef USE_ENTERPRISE
-  startsAfter("Encryption");
-#endif
-  startsAfter("Ssl");
+  startsAfter<ClusterFeature>();
+  startsAfter<MaintenanceFeature>();
+  startsAfter<ReplicationTimeoutFeature>();
 
-  if (isClient) {
-    startsAfter("Client");
-  }
-
-  if (!isClient) {
-    startsAfter("Audit");
-    startsAfter("Daemon");
-    startsAfter("DatabasePath");
-    startsAfter("Environment");
-    startsAfter("FileDescriptors");
-    startsAfter("Language");
-    startsAfter("MaxMapCount");
-    startsAfter("Nonce");
-    startsAfter("PageSize");
-    startsAfter("Privilege");
-    startsAfter("Scheduler");
-    startsAfter("Supervisor");
-    startsAfter("Temp");
-    startsAfter("WindowsService");
-  }
+  // use before here since platform feature is in lib
+  startsBefore<V8PlatformFeature>();
 }
 
 }  // namespace application_features

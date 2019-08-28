@@ -43,6 +43,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -67,10 +68,11 @@ SslServerFeature::SslServerFeature(application_features::ApplicationServer& serv
       _sessionCache(false),
       _cipherList("HIGH:!EXPORT:!aNULL@STRENGTH"),
       _sslProtocol(TLS_V12),
-      _sslOptions(asio_ns::ssl::context::default_workarounds | asio_ns::ssl::context::single_dh_use),
+      _sslOptions(asio_ns::ssl::context::default_workarounds |
+                  asio_ns::ssl::context::single_dh_use),
       _ecdhCurve("prime256v1") {
   setOptional(true);
-  startsAfter("AQLPhase");
+  startsAfter<AqlFeaturePhase>();
 }
 
 void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -174,7 +176,8 @@ void SslServerFeature::verifySslOptions() {
   try {
     createSslContext();
   } catch (...) {
-    LOG_TOPIC("997d2", FATAL, arangodb::Logger::SSL) << "cannot create SSL context";
+    LOG_TOPIC("997d2", FATAL, arangodb::Logger::SSL)
+        << "cannot create SSL context";
     FATAL_ERROR_EXIT();
   }
 }
@@ -204,7 +207,8 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
                                                                 : SSL_SESS_CACHE_OFF);
 
     if (_sessionCache) {
-      LOG_TOPIC("af2f4", TRACE, arangodb::Logger::SSL) << "using SSL session caching";
+      LOG_TOPIC("af2f4", TRACE, arangodb::Logger::SSL)
+          << "using SSL session caching";
     }
 
     // set options
@@ -212,8 +216,9 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
 
     if (!_cipherList.empty()) {
       if (SSL_CTX_set_cipher_list(nativeContext, _cipherList.c_str()) != 1) {
-        LOG_TOPIC("c6981", ERR, arangodb::Logger::SSL) << "cannot set SSL cipher list '" << _cipherList
-                                              << "': " << lastSSLError();
+        LOG_TOPIC("c6981", ERR, arangodb::Logger::SSL)
+            << "cannot set SSL cipher list '" << _cipherList
+            << "': " << lastSSLError();
         throw std::runtime_error("cannot create SSL context");
       }
     }
@@ -223,8 +228,8 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
       int sslEcdhNid = OBJ_sn2nid(_ecdhCurve.c_str());
 
       if (sslEcdhNid == 0) {
-        LOG_TOPIC("40292", ERR, arangodb::Logger::SSL) << "SSL error: " << lastSSLError()
-                                              << " Unknown curve name: " << _ecdhCurve;
+        LOG_TOPIC("40292", ERR, arangodb::Logger::SSL)
+            << "SSL error: " << lastSSLError() << " Unknown curve name: " << _ecdhCurve;
         throw std::runtime_error("cannot create SSL context");
       }
 
@@ -299,7 +304,8 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
             char* r;
             long len = BIO_get_mem_data(bout._bio, &r);
 
-            LOG_TOPIC("b8ebd", TRACE, arangodb::Logger::SSL) << "name: " << std::string(r, len);
+            LOG_TOPIC("b8ebd", TRACE, arangodb::Logger::SSL)
+                << "name: " << std::string(r, len);
           }
         }
       }

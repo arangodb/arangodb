@@ -20,7 +20,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/RocksDBOptionFeature.h"
+#include "ClusterEngine.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Result.h"
@@ -30,7 +30,6 @@
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/build.h"
-#include "ClusterEngine.h"
 #include "ClusterEngine/ClusterCollection.h"
 #include "ClusterEngine/ClusterIndexFactory.h"
 #include "ClusterEngine/ClusterRestHandlers.h"
@@ -49,6 +48,7 @@
 #include "RestServer/ServerIdFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
+#include "StorageEngine/RocksDBOptionFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/ContextData.h"
 #include "Transaction/Manager.h"

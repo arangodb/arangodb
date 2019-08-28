@@ -23,7 +23,6 @@
 
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 
-#include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"
@@ -35,6 +34,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "StorageEngine/RocksDBOptionFeature.h"
 
 #include <rocksdb/convenience.h>
 #include <rocksdb/db.h>

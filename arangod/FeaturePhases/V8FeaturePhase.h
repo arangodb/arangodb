@@ -20,42 +20,20 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DatabasePhase.h"
+#ifndef ARANGODB_APPLICATION_FEATURES_V8_FEATURE_PHASE_H
+#define ARANGODB_APPLICATION_FEATURES_V8_FEATURE_PHASE_H 1
+
+#include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
 namespace arangodb {
 namespace application_features {
 
-DatabaseFeaturePhase::DatabaseFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "DatabasePhase") {
-  setOptional(false);
-  startsAfter("BasicsPhase");
-
-  startsAfter("Authentication");
-  startsAfter("CacheManager");
-  startsAfter("CheckVersion");
-  startsAfter("Database");
-  startsAfter("EngineSelector");
-  startsAfter("Flush");
-  startsAfter("InitDatabase");
-#ifdef USE_ENTERPRISE
-  startsAfter("Ldap");
-#endif
-  startsAfter("Lockfile");
-  startsAfter("MMFilesCompaction");
-  startsAfter("MMFilesEngine");
-  startsAfter("MMFilesLogfileManager");
-  startsAfter("MMFilesPersistentIndex");
-  startsAfter("MMFilesWalRecovery");
-  startsAfter("Replication");
-  startsAfter("RocksDBEngine");
-  startsAfter("RocksDBOption");
-  startsAfter("RocksDBRecoveryManager");
-  startsAfter("ServerId");
-  startsAfter("StorageEngine");
-  startsAfter("SystemDatabase");
-  startsAfter("TransactionManager");
-  startsAfter("ViewTypes");
-}
+class V8FeaturePhase : public ApplicationFeaturePhase {
+ public:
+  explicit V8FeaturePhase(ApplicationServer& server);
+};
 
 }  // namespace application_features
 }  // namespace arangodb
+
+#endif

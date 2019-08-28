@@ -28,7 +28,12 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Cache/CacheManagerFeature.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Indexes/IndexFactory.h"
+#include "RestServer/ViewTypesFeature.h"
+#include "StorageEngineFeature.h"
+#include "Transaction/ManagerFeature.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -89,12 +94,12 @@ class StorageEngine : public application_features::ApplicationFeature {
     // startup
     setOptional(true);
     // storage engines must not use elevated privileges for files etc
+    startsAfter<application_features::BasicFeaturePhaseServer>();
 
-    startsAfter("BasicsPhase");
-    startsAfter("CacheManager");
-    startsBefore("StorageEngine");
-    startsAfter("TransactionManager");
-    startsAfter("ViewTypes");
+    startsAfter<CacheManagerFeature>();
+    startsBefore<StorageEngineFeature>();
+    startsAfter<transaction::ManagerFeature>();
+    startsAfter<ViewTypesFeature>();
   }
 
   virtual bool supportsDfdb() const = 0;

@@ -27,6 +27,7 @@
 
 #include <stddef.h>
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -102,6 +103,26 @@ std::string join(C const& source, char delim = ',') {
     }
 
     result += c;
+  }
+
+  return result;
+}
+
+/// @brief joins a string
+template <typename C, typename T>
+std::string join(C const& source, std::string const& delim,
+                 std::function<std::string(T const&)> cb) {
+  std::string result;
+  bool first = true;
+
+  for (auto const& c : source) {
+    if (first) {
+      first = false;
+    } else {
+      result += delim;
+    }
+
+    result += cb(c);
   }
 
   return result;

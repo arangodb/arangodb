@@ -78,21 +78,20 @@ ClientManager::~ClientManager() {}
 Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpClient>& httpClient,
                                          bool force, bool logServerVersion,
                                          bool logDatabaseNotFound, bool quiet) {
-  ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>(
-      "Client");
-  TRI_ASSERT(client);
+  auto& server = application_features::ApplicationServer::server();
+  ClientFeature& client = server.getFeature<ClientFeature>();
 
   try {
-    httpClient = client->createHttpClient();
+    httpClient = client.createHttpClient();
   } catch (...) {
     LOG_TOPIC("2b5fd", FATAL, _topic) << "cannot create server connection, giving up!";
     return {TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT};
   }
 
   // set client parameters
-  std::string dbName = client->databaseName();
-  httpClient->params().setLocationRewriter(static_cast<void*>(client), &rewriteLocation);
-  httpClient->params().setUserNamePassword("/", client->username(), client->password());
+  std::string dbName = client.databaseName();
+  httpClient->params().setLocationRewriter(static_cast<void*>(&client), &rewriteLocation);
+  httpClient->params().setUserNamePassword("/", client.username(), client.password());
 
   // now connect by retrieving version
   int errorCode;
@@ -101,9 +100,9 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
     if (!quiet && (TRI_ERROR_ARANGO_DATABASE_NOT_FOUND != errorCode || logDatabaseNotFound)) {
       // arangorestore does not log "database not found" errors in case
       // it tries to create the database...
-      LOG_TOPIC("775bd", ERR, _topic) << "Could not connect to endpoint '"
-                             << client->endpoint() << "', database: '" << dbName
-                             << "', username: '" << client->username() << "'";
+      LOG_TOPIC("775bd", ERR, _topic)
+          << "Could not connect to endpoint '" << client.endpoint() << "', database: '"
+          << dbName << "', username: '" << client.username() << "'";
       LOG_TOPIC("b1ad6", ERR, _topic) << "Error message: '" << httpClient->getErrorMessage() << "'";
     }
 

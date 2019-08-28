@@ -40,6 +40,8 @@
 #include "LoggerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/ShellColorsFeature.h"
+#include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/conversions.h"
@@ -66,8 +68,8 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server, bo
     _threaded(threaded) {
   setOptional(false);
 
-  startsAfter("ShellColors");
-  startsAfter("Version");
+  startsAfter<ShellColorsFeature>();
+  startsAfter<VersionFeature>();
 
   _levels.push_back("info");
 
@@ -309,9 +311,9 @@ void LoggerFeature::prepare() {
   }
 
   if (_forceDirect || _supervisor) {
-    Logger::initialize(false);
+    Logger::initialize(server(), false);
   } else {
-    Logger::initialize(_threaded);
+    Logger::initialize(server(), _threaded);
   }
 }
 

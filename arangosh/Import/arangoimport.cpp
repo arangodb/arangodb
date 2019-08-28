@@ -24,15 +24,15 @@
 #include "Basics/Common.h"
 #include "Basics/directories.h"
 
-#include "ApplicationFeatures/BasicPhase.h"
-#include "ApplicationFeatures/CommunicationPhase.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/GreetingsPhase.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Import/ImportFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -62,19 +62,26 @@ int main(int argc, char* argv[]) {
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;
 
-    server.addFeature(new application_features::BasicFeaturePhase(server, true));
-    server.addFeature(new application_features::CommunicationFeaturePhase(server));
-    server.addFeature(new application_features::GreetingsFeaturePhase(server, true));
-    server.addFeature(new ClientFeature(server, false));
-    server.addFeature(new ConfigFeature(server, "arangoimport"));
-    server.addFeature(new ImportFeature(server, &ret));
-    server.addFeature(new LoggerFeature(server, false));
-    server.addFeature(new RandomFeature(server));
-    server.addFeature(new ShellColorsFeature(server));
-    server.addFeature(new ShutdownFeature(server, {"Import"}));
-    server.addFeature(new SslFeature(server));
-    server.addFeature(new TempFeature(server, "arangoimport"));
-    server.addFeature(new VersionFeature(server));
+    server.addFeature<BasicFeaturePhaseClient>(
+        std::make_unique<BasicFeaturePhaseClient>(server));
+    server.addFeature<CommunicationFeaturePhase>(
+        std::make_unique<CommunicationFeaturePhase>(server));
+    server.addFeature<GreetingsFeaturePhase>(
+        std::make_unique<GreetingsFeaturePhase>(server, true));
+
+    server.addFeature<ClientFeature>(std::make_unique<ClientFeature>(server, false));
+    server.addFeature<ConfigFeature>(
+        std::make_unique<ConfigFeature>(server, "arangoimport"));
+    server.addFeature<ImportFeature>(std::make_unique<ImportFeature>(server, &ret));
+    server.addFeature<LoggerFeature>(std::make_unique<LoggerFeature>(server, false));
+    server.addFeature<RandomFeature>(std::make_unique<RandomFeature>(server));
+    server.addFeature<ShellColorsFeature>(std::make_unique<ShellColorsFeature>(server));
+    server.addFeature<ShutdownFeature>(std::make_unique<ShutdownFeature>(
+        server, std::vector<std::type_index>{typeid(ImportFeature)}));
+    server.addFeature<SslFeature>(std::make_unique<SslFeature>(server));
+    server.addFeature<TempFeature>(
+        std::make_unique<TempFeature>(server, "arangoimport"));
+    server.addFeature<VersionFeature>(std::make_unique<VersionFeature>(server));
 
 #ifdef USE_ENTERPRISE
     server.addFeature(new EncryptionFeature(server));

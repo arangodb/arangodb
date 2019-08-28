@@ -20,28 +20,20 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GreetingsPhase.h"
+#include "AgencyPhase.h"
+
+#include "Agency/AgencyFeature.h"
+#include "FeaturePhases/FoxxFeaturePhase.h"
 
 namespace arangodb {
 namespace application_features {
 
-GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer& server, bool isClient)
-    : ApplicationFeaturePhase(server, "GreetingsPhase") {
+AgencyFeaturePhase::AgencyFeaturePhase(ApplicationServer& server)
+    : ApplicationFeaturePhase(server, "AgencyPhase") {
   setOptional(false);
+  startsAfter<FoxxFeaturePhase>();
 
-  startsAfter("Config");
-  startsAfter("Logger");
-  startsAfter("Random");
-  startsAfter("ShellColors");
-  startsAfter("Version");
-  startsAfter("WorkMonitor");
-
-  if (!isClient) {
-    // These are server only features
-    startsAfter("Greetings");
-    startsAfter("Jemalloc");
-    startsAfter("LoggerBuffer");
-  }
+  startsAfter<AgencyFeature>();
 }
 
 }  // namespace application_features

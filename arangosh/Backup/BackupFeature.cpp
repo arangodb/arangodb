@@ -649,7 +649,7 @@ BackupFeature::BackupFeature(application_features::ApplicationServer& server, in
     : ApplicationFeature(server, BackupFeature::featureName()), _clientManager{Logger::BACKUP}, _exitCode{exitCode} {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("Client");
+  startsAfter<ClientFeature>();
 };
 
 std::string BackupFeature::featureName() { return ::FeatureName; }
@@ -752,9 +752,9 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   using namespace arangodb::application_features;
 
   auto const& positionals = options->processingResult()._positionals;
-  auto client = ApplicationServer::getFeature<arangodb::ClientFeature>("Client");
+  auto& client = server().getFeature<ClientFeature>();
 
-  if (client->databaseName() != "_system") {
+  if (client.databaseName() != "_system") {
     LOG_TOPIC("6b53c", FATAL, Logger::BACKUP)
       << "hot backups are global and must be performed on the _system database with super user privileges";
     FATAL_ERROR_EXIT();

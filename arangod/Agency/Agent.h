@@ -46,7 +46,7 @@ namespace consensus {
 class Agent final : public arangodb::Thread, public AgentInterface {
  public:
   /// @brief Construct with program options
-  explicit Agent(config_t const&);
+  explicit Agent(application_features::ApplicationServer& server, config_t const&);
 
   /// @brief Clean up
   ~Agent();
@@ -328,6 +328,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
  private:
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
+
+  /// @brief underlying application server
+  application_features::ApplicationServer& _server;
 
   /// @brief Leader election delegate
   Constituent _constituent;

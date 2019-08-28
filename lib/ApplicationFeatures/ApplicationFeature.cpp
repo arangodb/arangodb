@@ -82,23 +82,26 @@ void ApplicationFeature::stop() {}
 void ApplicationFeature::unprepare() {}
 
 // determine all direct and indirect ancestors of a feature
-std::unordered_set<std::string> ApplicationFeature::ancestors() const {
+std::unordered_set<std::type_index> ApplicationFeature::ancestors() const {
   TRI_ASSERT(_ancestorsDetermined);
   return _ancestors;
 }
 
-// whether the feature starts before another
-bool ApplicationFeature::doesStartBefore(std::string const& other) const {
-  auto otherAncestors = _server.feature(other)->ancestors();
+void ApplicationFeature::startsAfter(std::type_index const& type) {
+  _startsAfter.emplace(type);
+}
 
-  if (otherAncestors.find(_name) != otherAncestors.end()) {
+bool ApplicationFeature::doesStartBefore(std::type_index const& type) const {
+  auto otherAncestors = _server.getFeature(type).ancestors();
+
+  if (otherAncestors.find(typeid(*this)) != otherAncestors.end()) {
     // we are an ancestor of the other feature
     return true;
   }
 
   auto ourAncestors = ancestors();
 
-  if (ourAncestors.find(other) != ourAncestors.end()) {
+  if (ourAncestors.find(type) != ourAncestors.end()) {
     // the other feature is an ancestor of us
     return false;
   }
@@ -113,37 +116,39 @@ void ApplicationFeature::determineAncestors() {
     return;
   }
 
-  std::vector<std::string> path;
+  std::vector<std::type_index> path;
 
-  std::function<void(std::string const&)> build = [this, &build,
-                                                   &path](std::string const& name) {
-    // lookup the feature first. it may not exist
-    if (!this->server()->exists(name)) {
-      // feature not found. no worries
-      return;
-    }
-
-    ApplicationFeature* other = this->server()->lookupFeature(name);
-
-    if (other != nullptr) {
-      path.emplace_back(name);
-      for (auto& ancestor : other->startsAfter()) {
-        if (_ancestors.emplace(ancestor).second) {
-          if (ancestor == _name) {
-            path.emplace_back(ancestor);
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_INTERNAL,
-                "dependencies for feature '" + _name + "' are cyclic: " +
-                    arangodb::basics::StringUtils::join(path, " <= "));
-          }
-          build(ancestor);
+  std::function<void(std::type_index const&)> build =
+      [this, &build, &path](std::type_index const& type) {
+        // lookup the feature first. it may not exist
+        if (!this->server().hasFeature(type)) {
+          // feature not found. no worries
+          return;
         }
-      }
-      path.pop_back();
-    }
-  };
 
-  build(_name);
+        ApplicationFeature& other = this->server().getFeature(type);
+
+        path.emplace_back(type);
+        for (auto& ancestor : other.startsAfter()) {
+          if (_ancestors.emplace(ancestor).second) {
+            if (ancestor == typeid(*this)) {
+              path.emplace_back(ancestor);
+              std::function<std::string(std::type_index const&)> cb =
+                  [](std::type_index const& type) -> std::string {
+                return type.name();
+              };
+              THROW_ARANGO_EXCEPTION_MESSAGE(
+                  TRI_ERROR_INTERNAL,
+                  "dependencies for feature '" + _name +
+                      "' are cyclic: " + basics::StringUtils::join(path, " <= ", cb));
+            }
+            build(ancestor);
+          }
+          path.pop_back();
+        }
+      };
+
+  build(typeid(*this));
   _ancestorsDetermined = true;
 }
 

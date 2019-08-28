@@ -54,8 +54,9 @@ std::string const privApiPrefix("/_api/agency_priv/");
 std::string const NO_LEADER("");
 
 /// Agent configuration
-Agent::Agent(config_t const& config)
-    : Thread("Agent"),
+Agent::Agent(ApplicationServer& server, config_t const& config)
+    : Thread(server, "Agent"),
+      _server(server),
       _config(config),
       _commitIndex(0),
       _spearhead(this),
@@ -786,10 +787,10 @@ void Agent::activateAgency() {
 
 /// Load persistent state called once
 void Agent::load() {
-  auto* sysDbFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
   arangodb::SystemDatabaseFeature::ptr vocbase =
-      sysDbFeature ? sysDbFeature->use() : nullptr;
+      _server.hasFeature<SystemDatabaseFeature>()
+          ? _server.getFeature<SystemDatabaseFeature>().use()
+          : nullptr;
   auto queryRegistry = QueryRegistryFeature::registry();
 
   if (vocbase == nullptr) {

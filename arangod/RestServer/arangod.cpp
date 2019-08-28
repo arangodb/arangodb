@@ -46,7 +46,6 @@
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
-#include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "ApplicationFeatures/ServerPhase.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
@@ -102,6 +101,7 @@
 #include "Ssl/SslServerFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/RocksDBOptionFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/ManagerFeature.h"
 #include "V8Server/FoxxQueuesFeature.h"
@@ -177,7 +177,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature(new ConsoleFeature(server));
     server.addFeature(new DatabaseFeature(server));
     server.addFeature(new DatabasePathFeature(server));
-    server.addFeature(new EndpointFeature(server));
+    server.addFeature(new EndpointFeature(server));  // TODO cast as HttpEndpointProvider
     server.addFeature(new EngineSelectorFeature(server));
     server.addFeature(new EnvironmentFeature(server));
     server.addFeature(new FileDescriptorsFeature(server));

@@ -20,21 +20,24 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "V8Phase.h"
+#include "FoxxFeaturePhase.h"
+
+#include "FeaturePhases/ServerFeaturePhase.h"
+#include "RestServer/BootstrapFeature.h"
+#include "RestServer/FrontendFeature.h"
+#include "V8Server/FoxxQueuesFeature.h"
 
 namespace arangodb {
 namespace application_features {
 
-V8FeaturePhase::V8FeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "V8Phase") {
+FoxxFeaturePhase::FoxxFeaturePhase(ApplicationServer& server)
+    : ApplicationFeaturePhase(server, "FoxxPhase") {
   setOptional(false);
-  startsAfter("ClusterPhase");
+  startsAfter<ServerFeaturePhase>();
 
-  startsAfter("Action");
-  startsAfter("V8Dealer");
-  startsAfter("V8Platform");
-  startsAfter("ServerSecurity");
-  startsAfter("V8Security");
+  startsAfter<BootstrapFeature>("Bootstrap");
+  startsAfter<FoxxQueuesFeature>("FoxxQueues");
+  startsAfter<FrontendFeature>("Frontend");
 }
 
 }  // namespace application_features

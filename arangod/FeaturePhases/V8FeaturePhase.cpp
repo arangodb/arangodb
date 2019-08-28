@@ -20,20 +20,29 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_FINAL_FEATURE_PHASE_H
-#define ARANGODB_APPLICATION_FEATURES_FINAL_FEATURE_PHASE_H 1
+#include "V8FeaturePhase.h"
 
-#include "ApplicationFeaturePhase.h"
+#include "Actions/ActionFeature.h"
+#include "ApplicationFeatures/V8PlatformFeature.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "FeaturePhases/ClusterFeature.h"
+#include "GeneralServer/ServerSecurityFeature.h"
+#include "V8Server/V8DealerFeature.h"
 
 namespace arangodb {
 namespace application_features {
 
-class FinalFeaturePhase : public ApplicationFeaturePhase {
- public:
-  explicit FinalFeaturePhase(ApplicationServer& server);
-};
+V8FeaturePhase::V8FeaturePhase(ApplicationServer& server)
+    : ApplicationFeaturePhase(server, "V8Phase") {
+  setOptional(false);
+  startsAfter<ClusterFeaturePhase>();
+
+  startsAfter<ActionFeature>();
+  startsAfter<ServerSecurityFeature>();
+  startsAfter<V8DealerFeature>();
+  startsAfter<V8PlatformFeature>();
+  startsAfter<V8SecurityFeature>();
+}
 
 }  // namespace application_features
 }  // namespace arangodb
-
-#endif

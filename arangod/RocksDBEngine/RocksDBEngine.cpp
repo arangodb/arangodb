@@ -24,7 +24,6 @@
 
 #include "RocksDBEngine.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
@@ -81,6 +80,7 @@
 #include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
+#include "StorageEngine/RocksDBOptionFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/ContextData.h"
 #include "Transaction/Manager.h"

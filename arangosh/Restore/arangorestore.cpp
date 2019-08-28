@@ -24,15 +24,15 @@
 #include "Basics/Common.h"
 #include "Basics/directories.h"
 
-#include "ApplicationFeatures/BasicPhase.h"
-#include "ApplicationFeatures/CommunicationPhase.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/GreetingsPhase.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
@@ -59,22 +59,29 @@ int main(int argc, char* argv[]) {
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;
 
-    server.addFeature(new application_features::BasicFeaturePhase(server, true));
-    server.addFeature(new application_features::CommunicationFeaturePhase(server));
-    server.addFeature(new application_features::GreetingsFeaturePhase(server, true));
-    server.addFeature(new ClientFeature(server, false));
-    server.addFeature(new ConfigFeature(server, "arangorestore"));
-    server.addFeature(new LoggerFeature(server, false));
-    server.addFeature(new RandomFeature(server));
-    server.addFeature(new RestoreFeature(server, ret));
-    server.addFeature(new ShellColorsFeature(server));
-    server.addFeature(new ShutdownFeature(server, {"Restore"}));
-    server.addFeature(new SslFeature(server));
-    server.addFeature(new TempFeature(server, "arangorestore"));
-    server.addFeature(new VersionFeature(server));
+    server.addFeature<BasicFeaturePhaseClient>(
+        std::make_unique<BasicFeaturePhaseClient>(server));
+    server.addFeature<CommunicationFeaturePhase>(
+        std::make_unique<CommunicationFeaturePhase>(server));
+    server.addFeature<GreetingsFeaturePhase>(
+        std::make_unique<GreetingsFeaturePhase>(server, true));
+
+    server.addFeature<ClientFeature>(std::make_unique<ClientFeature>(server, false));
+    server.addFeature<ConfigFeature>(
+        std::make_unique<ConfigFeature>(server, "arangorestore"));
+    server.addFeature<LoggerFeature>(std::make_unique<LoggerFeature>(server, false));
+    server.addFeature<RandomFeature>(std::make_unique<RandomFeature>(server));
+    server.addFeature<RestoreFeature>(std::make_unique<RestoreFeature>(server, ret));
+    server.addFeature<ShellColorsFeature>(std::make_unique<ShellColorsFeature>(server));
+    server.addFeature<ShutdownFeature>(std::make_unique<ShutdownFeature>(
+        server, std::vector<std::type_index>{typeid(RestoreFeature)}));
+    server.addFeature<SslFeature>(std::make_unique<SslFeature>(server));
+    server.addFeature<TempFeature>(
+        std::make_unique<TempFeature>(server, "arangorestore"));
+    server.addFeature<VersionFeature>(std::make_unique<VersionFeature>(server));
 
 #ifdef USE_ENTERPRISE
-    server.addFeature(new EncryptionFeature(server));
+    server.addFeature<EncryptionFeature>(std::make_unique<EncryptionFeature>(server));
 #endif
 
     try {

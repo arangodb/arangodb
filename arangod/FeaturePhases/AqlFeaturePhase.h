@@ -20,17 +20,17 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_BASIC_FEATURE_PHASE_H
-#define ARANGODB_APPLICATION_FEATURES_BASIC_FEATURE_PHASE_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_AQL_FEATURE_PHASE_H
+#define ARANGODB_APPLICATION_FEATURES_AQL_FEATURE_PHASE_H 1
 
-#include "ApplicationFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
 namespace arangodb {
 namespace application_features {
 
-class BasicFeaturePhase : public ApplicationFeaturePhase {
+class AQLFeaturePhase : public ApplicationFeaturePhase {
  public:
-  explicit BasicFeaturePhase(ApplicationServer& server, bool isClient);
+  explicit AQLFeaturePhase(ApplicationServer& server);
 };
 
 }  // namespace application_features

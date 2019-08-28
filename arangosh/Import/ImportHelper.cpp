@@ -137,6 +137,9 @@ static bool IsDecimal(char const* field, size_t fieldLength) {
 namespace arangodb {
 namespace import {
 
+ImportStatistics::ImportStatistics(application_features::ApplicationServer& server)
+    : _histogram(server) {}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// initialize step value for progress reports
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,10 +157,10 @@ unsigned const ImportHelper::MaxBatchSize = 768 * 1024 * 1024;
 /// constructor and destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ImportHelper::ImportHelper(ClientFeature const* client, std::string const& endpoint,
+ImportHelper::ImportHelper(ClientFeature const& client, std::string const& endpoint,
                            httpclient::SimpleHttpClientParams const& params,
                            uint64_t maxUploadSize, uint32_t threadCount, bool autoUploadSize)
-    : _httpClient(client->createHttpClient(endpoint, params)),
+    : _httpClient(client.createHttpClient(endpoint, params)),
       _maxUploadSize(maxUploadSize),
       _periodByteCount(0),
       _autoUploadSize(autoUploadSize),
@@ -174,6 +177,7 @@ ImportHelper::ImportHelper(ClientFeature const* client, std::string const& endpo
       _firstChunk(true),
       _ignoreMissing(false),
       _numberLines(0),
+      _stats(client.server()),
       _rowsRead(0),
       _rowOffset(0),
       _rowsToSkip(0),
@@ -186,17 +190,18 @@ ImportHelper::ImportHelper(ClientFeature const* client, std::string const& endpo
       _columnNames(),
       _hasError(false) {
   for (uint32_t i = 0; i < threadCount; i++) {
-    auto http = client->createHttpClient(endpoint, params);
-    _senderThreads.emplace_back(new SenderThread(std::move(http), &_stats, [this]() {
-      CONDITION_LOCKER(guard, _threadsCondition);
-      guard.signal();
-    }));
+    auto http = client.createHttpClient(endpoint, params);
+    _senderThreads.emplace_back(
+        new SenderThread(client.server(), std::move(http), &_stats, [this]() {
+          CONDITION_LOCKER(guard, _threadsCondition);
+          guard.signal();
+        }));
     _senderThreads.back()->start();
   }
 
   // should self tuning code activate?
   if (_autoUploadSize) {
-    _autoTuneThread.reset(new AutoTuneThread(*this));
+    _autoTuneThread.reset(new AutoTuneThread(client.server(), *this));
     _autoTuneThread->start();
   }  // if
 

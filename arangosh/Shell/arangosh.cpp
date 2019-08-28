@@ -24,19 +24,19 @@
 #include "Basics/Common.h"
 #include "Basics/directories.h"
 
-#include "ApplicationFeatures/BasicPhase.h"
-#include "ApplicationFeatures/CommunicationPhase.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/GreetingsPhase.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
-#include "ApplicationFeatures/V8ShellPhase.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
+#include "FeaturePhases/V8ShellFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
@@ -70,29 +70,33 @@ int main(int argc, char* argv[]) {
     int ret = EXIT_SUCCESS;
 
     try {
-      server.addFeature(new application_features::BasicFeaturePhase(server, true));
-      server.addFeature(new application_features::CommunicationFeaturePhase(server));
-      server.addFeature(new application_features::GreetingsFeaturePhase(server, true));
-      server.addFeature(new application_features::V8ShellFeaturePhase(server));
+      server.addFeature<BasicFeaturePhaseClient>(
+          std::make_unique<BasicFeaturePhaseClient>(server));
+      server.addFeature<CommunicationFeaturePhase>(
+          std::make_unique<CommunicationFeaturePhase>(server));
+      server.addFeature<GreetingsFeaturePhase>(
+          std::make_unique<GreetingsFeaturePhase>(server, true));
+      server.addFeature<V8ShellFeaturePhase>(std::make_unique<V8ShellFeaturePhase>(server));
 
-      server.addFeature(new ClientFeature(server, true));
-      server.addFeature(new ConfigFeature(server, name));
-      server.addFeature(new ConsoleFeature(server));
-      server.addFeature(new LanguageFeature(server));
-      server.addFeature(new LoggerFeature(server, false));
-      server.addFeature(new RandomFeature(server));
-      server.addFeature(new ShellColorsFeature(server));
-      server.addFeature(new ShellFeature(server, &ret));
-      server.addFeature(new ShutdownFeature(server, {"Shell"}));
-      server.addFeature(new SslFeature(server));
-      server.addFeature(new TempFeature(server, name));
-      server.addFeature(new V8PlatformFeature(server));
-      server.addFeature(new V8SecurityFeature(server));
-      server.addFeature(new V8ShellFeature(server, name));
-      server.addFeature(new VersionFeature(server));
+      server.addFeature<ClientFeature>(std::make_unique<ClientFeature>(server, true));
+      server.addFeature<ConfigFeature>(std::make_unique<ConfigFeature>(server, name));
+      server.addFeature<ConsoleFeature>(std::make_unique<ConsoleFeature>(server));
+      server.addFeature<LanguageFeature>(std::make_unique<LanguageFeature>(server));
+      server.addFeature<LoggerFeature>(std::make_unique<LoggerFeature>(server, false));
+      server.addFeature<RandomFeature>(std::make_unique<RandomFeature>(server));
+      server.addFeature<ShellColorsFeature>(std::make_unique<ShellColorsFeature>(server));
+      server.addFeature<ShellFeature>(std::make_unique<ShellFeature>(server, &ret));
+      server.addFeature<ShutdownFeature>(std::make_unique<ShutdownFeature>(
+          server, std::vector<std::type_index>{typeid(ShellFeature)}));
+      server.addFeature<SslFeature>(std::make_unique<SslFeature>(server));
+      server.addFeature<TempFeature>(std::make_unique<TempFeature>(server, name));
+      server.addFeature<V8PlatformFeature>(std::make_unique<V8PlatformFeature>(server));
+      server.addFeature<V8SecurityFeature>(std::make_unique<V8SecurityFeature>(server));
+      server.addFeature<V8ShellFeature>(std::make_unique<V8ShellFeature>(server, name));
+      server.addFeature<VersionFeature>(std::make_unique<VersionFeature>(server));
 
 #ifdef USE_ENTERPRISE
-    server.addFeature(new EncryptionFeature(server));
+      server.addFeature<EncryptionFeature>(std::make_unique<EncryptionFeature>(server));
 #endif
 
       server.run(argc, argv);

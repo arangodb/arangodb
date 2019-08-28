@@ -20,38 +20,31 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_COMM_FEATURE_PHASE_H
-#define ARANGODB_APPLICATION_FEATURES_COMM_FEATURE_PHASE_H 1
+#include "ServerFeaturePhase.h"
 
-#include "ApplicationFeaturePhase.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
+#include "GeneralServer/GeneralServerFeature.h"
+#include "RestServer/EndpointFeature.h"
+#include "RestServer/ServerFeature.h"
+#include "RestServer/UpgradeFeature.h"
+#include "Ssl/SslServerFeature.h"
+#include "Statistics/Statistics/Feature.h"
 
 namespace arangodb {
 namespace application_features {
 
-class CommunicationFeaturePhase : public ApplicationFeaturePhase {
- public:
-  explicit CommunicationFeaturePhase(ApplicationServer& server);
-  /**
-   * @brief decide whether we may freely communicate or not.
-   */
-  bool getCommAllowed() {
-    switch (state()) {
-      case ApplicationFeature::State::UNINITIALIZED:
-      case ApplicationFeature::State::INITIALIZED:
-      case ApplicationFeature::State::VALIDATED:
-      case ApplicationFeature::State::PREPARED:
-      case ApplicationFeature::State::STARTED:
-      case ApplicationFeature::State::STOPPED:
-        return true;
-      case ApplicationFeature::State::UNPREPARED:
-        break; 
-    }
+ServerFeaturePhase::ServerFeaturePhase(ApplicationServer& server)
+    : ApplicationFeaturePhase(server, "ServerPhase") {
+  setOptional(false);
+  startsAfter<AqlFeaturePhase>();
 
-    return false;
-  }
-};
+  startsAfter<EndpointFeature>();
+  startsAfter<GeneralServerFeature>();
+  startsAfter<ServerFeature>();
+  startsAfter<SslServerFeature>();
+  startsAfter<StatisticsFeature>();
+  startsAfter<UpgradeFeature>();
+}
 
 }  // namespace application_features
 }  // namespace arangodb
-
-#endif

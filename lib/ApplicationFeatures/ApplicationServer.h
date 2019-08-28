@@ -28,6 +28,7 @@
 #include <memory>
 #include <string>
 #include <type_traits>
+#include <typeindex>
 #include <unordered_map>
 #include <vector>
 
@@ -124,242 +125,254 @@ class ApplicationServer {
     std::function<void(State, std::string const& featureName)> _feature;
    };
 
-  static ApplicationServer* server;
+   static ApplicationServer& server();
 
-  /// @brief whether or not the server has made it as least as far as the IN_START state
-  static bool isPrepared();
+  public:
+   ApplicationServer(std::shared_ptr<options::ProgramOptions>, char const* binaryPath);
 
-  /// @brief whether or not the server has made it as least as far as the IN_SHUTDOWN state
-  static bool isStopping();
+   TEST_VIRTUAL ~ApplicationServer();
 
-  /// @brief whether or not state is the shutting down state or further (i.e. stopped, aborted etc.)
-  static bool isStoppingState(State state);
+   std::string helpSection() const { return _helpSection; }
+   bool helpShown() const { return !_helpSection.empty(); }
 
-  // returns the feature with the given name if known
-  // throws otherwise
-  template <typename T>
-  static T* getFeature(std::string const& name) {
-    T* feature =
-        dynamic_cast<T*>(application_features::ApplicationServer::lookupFeature(name));
-    if (feature == nullptr) {
-      throwFeatureNotFoundException(name);
-    }
-    return feature;
-  }
+   /// @brief stringify the internal state
+   char const* stringifyState() const;
 
-  template <typename T>
-  static T* getFeature() {
-    return getFeature<T>(T::name());
-  }
+   // return whether or not a feature is enabled
+   // will throw when called for a non-existing feature
+   template <typename T>
+   bool isEnabled() const {
+     return getFeature<T>().isEnabled();
+   }
 
-  // returns the feature with the given name if known and enabled
-  // throws otherwise
-  template <typename T>
-  static T* getEnabledFeature(std::string const& name) {
-    T* feature = getFeature<T>(name);
-    if (!feature->isEnabled()) {
-      throwFeatureNotEnabledException(name);
-    }
-    return feature;
-  }
+   // return whether or not a feature is optional
+   // will throw when called for a non-existing feature
+   template <typename T>
+   bool isOptional() const {
+     return getFeature<T>().isOptional();
+   }
 
-  static void disableFeatures(std::vector<std::string> const&);
-  static void forceDisableFeatures(std::vector<std::string> const&);
+   // return whether or not a feature is required
+   // will throw when called for a non-existing feature
+   template <typename T>
+   bool isRequired() const {
+     return getFeature<T>().isRequired();
+   }
 
- public:
-  ApplicationServer(std::shared_ptr<options::ProgramOptions>, char const* binaryPath);
+   /// @brief whether or not the server has made it as least as far as the IN_START state
+   bool isPrepared();
 
-  TEST_VIRTUAL ~ApplicationServer();
+   /// @brief whether or not the server has made it as least as far as the IN_SHUTDOWN state
+   bool isStopping();
 
-  std::string helpSection() const { return _helpSection; }
-  bool helpShown() const { return !_helpSection.empty(); }
+   /// @brief whether or not state is the shutting down state or further (i.e. stopped, aborted etc.)
+   bool isStoppingState(State state);
 
-  /// @brief stringify the internal state
-  char const* stringifyState() const;
+   // this method will initialize and validate options
+   // of all feature, start them and wait for a shutdown
+   // signal. after that, it will shutdown all features
+   void run(int argc, char* argv[]);
 
-  // adds a feature to the application server. the application server
-  // will take ownership of the feature object and destroy it in its
-  // destructor
-  void addFeature(ApplicationFeature*);
+   // signal the server to shut down
+   void beginShutdown();
 
-  // checks for the existence of a named feature. will not throw when used for
-  // a non-existing feature
-  bool exists(std::string const&) const;
+   // report that we are going down by fatal error
+   void shutdownFatalError();
 
-  // returns a pointer to a named feature. will throw when used for
-  // a non-existing feature
-  ApplicationFeature* feature(std::string const&) const;
+   // return VPack options, with optional filters applied to filter
+   // out specific options. the filter function is expected to return true
+   // for any options that should become part of the result
+   velocypack::Builder options(std::function<bool(std::string const&)> const& filter) const;
 
-  // return whether or not a feature is enabled
-  // will throw when called for a non-existing feature
-  bool isEnabled(std::string const&) const;
+   // return the program options object
+   std::shared_ptr<options::ProgramOptions> options() const { return _options; }
 
-  // return whether or not a feature is optional
-  // will throw when called for a non-existing feature
-  bool isOptional(std::string const&) const;
+   // return the server state
+   TEST_VIRTUAL State state() const { return _state; }
 
-  // return whether or not a feature is required
-  // will throw when called for a non-existing feature
-  bool isRequired(std::string const&) const;
+   void addReporter(ProgressHandler reporter) {
+     _progressReports.emplace_back(reporter);
+   }
 
-  // this method will initialize and validate options
-  // of all feature, start them and wait for a shutdown
-  // signal. after that, it will shutdown all features
-  void run(int argc, char* argv[]);
+   char const* getBinaryPath() const { return _binaryPath; }
 
-  // signal the server to shut down
-  void beginShutdown();
+   void registerStartupCallback(std::function<void()> const& callback) {
+     _startupCallbacks.emplace_back(callback);
+   }
 
-  // report that we are going down by fatal error
-  void shutdownFatalError();
+   void registerFailCallback(std::function<void(std::string const&)> const& callback) {
+     fail = callback;
+   }
 
-  // return VPack options, with optional filters applied to filter
-  // out specific options. the filter function is expected to return true
-  // for any options that should become part of the result
-  velocypack::Builder options(std::function<bool(std::string const&)> const& filter) const;
+   // setup and validate all feature dependencies, determine feature order
+   void setupDependencies(bool failOnMissing);
 
-  // return the program options object
-  std::shared_ptr<options::ProgramOptions> options() const { return _options; }
+   std::vector<std::reference_wrapper<ApplicationFeature>> const& getOrderedFeatures() {
+     return _orderedFeatures;
+   }
 
-  // return the server state
-  TEST_VIRTUAL State state() const { return _state; }
-
-  void addReporter(ProgressHandler reporter) {
-    _progressReports.emplace_back(reporter);
-  }
-
-  // look up a feature and return a pointer to it. may be nullptr
-  static ApplicationFeature* lookupFeature(std::string const&);
-
-  template <typename T>
-  static T* lookupFeature(std::string const& name) {
-    typedef typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, T>::type type;
-    return dynamic_cast<type*>(lookupFeature(name));
-  }
-
-  template <typename T>
-  static T* lookupFeature() {
-    return lookupFeature<T>(T::name());
-  }
-
-  char const* getBinaryPath() const { return _binaryPath; }
-
-  void registerStartupCallback(std::function<void()> const& callback) {
-    _startupCallbacks.emplace_back(callback);
-  }
-
-  void registerFailCallback(std::function<void(std::string const&)> const& callback) {
-    fail = callback;
-  }
-
-  // setup and validate all feature dependencies, determine feature order
-  void setupDependencies(bool failOnMissing);
-
-  std::vector<ApplicationFeature*> const& getOrderedFeatures() {
-    return _orderedFeatures;
-  }
-  
 #ifdef TEST_VIRTUAL
-  static void setStateUnsafe(State ss) {
-    server->_state = ss;
-  }
+   void setStateUnsafe(State ss) { server()._state = ss; }
 #endif
 
- private:
-  // throws an exception that a requested feature was not found
-  [[noreturn]] static void throwFeatureNotFoundException(std::string const& name);
+   // adds a feature to the application server. the application server
+   // will take ownership of the feature object and destroy it in its
+   // destructor
+   template <typename T, typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, int>::type = 0>
+   void addFeature(std::unique_ptr<T>&& feature) {
+     // TODO TRI_ASSERT(feature->state() == ApplicationFeature::State::UNINITIALIZED);
+     _features.emplace(typeid(T), std::move(feature));
+   }
 
-  // throws an exception that a requested feature is not enabled
-  [[noreturn]] static void throwFeatureNotEnabledException(std::string const& name);
+   // checks for the existence of a feature by type. will not throw when used
+   // for a non-existing feature
+   bool hasFeature(std::type_index const& type) {
+     return (_features.find(type) != _features.end());
+   }
 
-  static void disableFeatures(std::vector<std::string> const& names, bool force);
+   // checks for the existence of a feature. will not throw when used for
+   // a non-existing feature
+   template <typename T, typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, int>::type = 0>
+   bool hasFeature() {
+     return hasFeature(typeid(T));
+   }
 
-  // walks over all features and runs a callback function for them
-  void apply(std::function<void(ApplicationFeature*)>, bool enabledOnly);
+   // bool hasFeatureWithName(std::string const&);
 
-  // collects the program options from all features,
-  // without validating them
-  void collectOptions();
+   // returns a reference to a feature given the type. will throw when used for
+   // a non-existing feature
+   ApplicationFeature& getFeature(std::type_index const& type) {
+     auto it = _features.find(type);
+     if (it == _features.end()) {
+       throwFeatureNotFoundException(type.name());
+     }
+     return *it->second;
+   }
 
-  // parse options
-  void parseOptions(int argc, char* argv[]);
+   // returns a reference to a feature. will throw when used for
+   // a non-existing feature
+   template <typename T, typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, int>::type = 0>
+   T& getFeature() {
+     auto it = _features.find(typeid(T));
+     if (it == _features.end()) {
+       throwFeatureNotFoundException(typeid(T).name());
+     }
+     return *dynamic_cast<T*>(it->second.get());
+   }
 
-  // allows features to cross-validate their program options
-  void validateOptions();
+   // ApplicationFeature* getFeatureByName(std::string const&);
 
-  // allows process control
-  void daemonize();
+   // returns the feature with the given name if known and enabled
+   // throws otherwise
+   template <typename T, typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, int>::type = 0>
+   T& getEnabledFeature() {
+     T& feature = getFeature<T>();
+     if (!feature->isEnabled()) {
+       throwFeatureNotEnabledException(typeid(T).name());
+     }
+     return feature;
+   }
 
-  // disables all features that depend on other features, which, themselves
-  // are disabled
-  void disableDependentFeatures();
+   void disableFeatures(std::vector<std::type_index> const&);
+   void forceDisableFeatures(std::vector<std::type_index> const&);
 
-  // allows features to prepare themselves
-  void prepare();
+  private:
+   // throws an exception that a requested feature was not found
+   [[noreturn]] static void throwFeatureNotFoundException(std::string const&);
 
-  // starts features
-  void start();
+   // throws an exception that a requested feature is not enabled
+   [[noreturn]] static void throwFeatureNotEnabledException(std::string const&);
 
-  // stops features
-  void stop();
+   void disableFeatures(std::vector<std::type_index> const& types, bool force);
 
-  // destroys features
-  void unprepare();
+   // walks over all features and runs a callback function for them
+   void apply(std::function<void(ApplicationFeature&)>, bool enabledOnly);
 
-  // after start, the server will wait in this method until
-  // beginShutdown is called
-  void wait();
+   // collects the program options from all features,
+   // without validating them
+   void collectOptions();
 
-  void raisePrivilegesTemporarily();
-  void dropPrivilegesTemporarily();
-  void dropPrivilegesPermanently();
+   // parse options
+   void parseOptions(int argc, char* argv[]);
 
-  void reportServerProgress(State);
-  void reportFeatureProgress(State, std::string const&);
+   // allows features to cross-validate their program options
+   void validateOptions();
 
- private:
-  // the current state
-  std::atomic<State> _state;
+   // allows process control
+   void daemonize();
 
-  // the shared program options
-  std::shared_ptr<options::ProgramOptions> _options;
+   // disables all features that depend on other features, which, themselves
+   // are disabled
+   void disableDependentFeatures();
 
-  // map of feature names to features
-  std::unordered_map<std::string, ApplicationFeature*> _features;
+   // allows features to prepare themselves
+   void prepare();
 
-  // features order for prepare/start
-  std::vector<ApplicationFeature*> _orderedFeatures;
+   // starts features
+   void start();
 
-  // will be signaled when the application server is asked to shut down
-  basics::ConditionVariable _shutdownCondition;
+   // stops features
+   void stop();
 
-  /// @brief the condition variable protects access to this flag
-  /// the flag is set to true when beginShutdown finishes
-  bool _abortWaiting = false;
+   // destroys features
+   void unprepare();
 
-  // whether or not privileges have been dropped permanently
-  bool _privilegesDropped = false;
+   // after start, the server will wait in this method until
+   // beginShutdown is called
+   void wait();
 
-  // whether or not to dump dependencies
-  bool _dumpDependencies = false;
+   void raisePrivilegesTemporarily();
+   void dropPrivilegesTemporarily();
+   void dropPrivilegesPermanently();
 
-  // whether or not to dump configuration options
-  bool _dumpOptions = false;
+   void reportServerProgress(State);
+   void reportFeatureProgress(State, std::string const&);
 
-  // reporter for progress
-  std::vector<ProgressHandler> _progressReports;
+  private:
+   static ApplicationServer* INSTANCE;
 
-  // callbacks that are called after start
-  std::vector<std::function<void()>> _startupCallbacks;
+   // the current state
+   std::atomic<State> _state;
 
-  // help section displayed
-  std::string _helpSection;
+   // the shared program options
+   std::shared_ptr<options::ProgramOptions> _options;
 
-  // the install directory of this program:
-  char const* _binaryPath;
+   // map of feature names to features
+   std::unordered_map<std::type_index, std::unique_ptr<ApplicationFeature>> _features;
 
-  // fail callback
-  std::function<void(std::string const&)> fail;
+   // features order for prepare/start
+   std::vector<std::reference_wrapper<ApplicationFeature>> _orderedFeatures;
+
+   // will be signaled when the application server is asked to shut down
+   basics::ConditionVariable _shutdownCondition;
+
+   /// @brief the condition variable protects access to this flag
+   /// the flag is set to true when beginShutdown finishes
+   bool _abortWaiting = false;
+
+   // whether or not privileges have been dropped permanently
+   bool _privilegesDropped = false;
+
+   // whether or not to dump dependencies
+   bool _dumpDependencies = false;
+
+   // whether or not to dump configuration options
+   bool _dumpOptions = false;
+
+   // reporter for progress
+   std::vector<ProgressHandler> _progressReports;
+
+   // callbacks that are called after start
+   std::vector<std::function<void()>> _startupCallbacks;
+
+   // help section displayed
+   std::string _helpSection;
+
+   // the install directory of this program:
+   char const* _binaryPath;
+
+   // fail callback
+   std::function<void(std::string const&)> fail;
 };
 
 }  // namespace application_features

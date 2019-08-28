@@ -20,20 +20,20 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "FoxxPhase.h"
+#ifndef ARANGODB_APPLICATION_FEATURES_SERVER_FEATURE_PHASE_H
+#define ARANGODB_APPLICATION_FEATURES_SERVER_FEATURE_PHASE_H 1
+
+#include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
 namespace arangodb {
 namespace application_features {
 
-FoxxFeaturePhase::FoxxFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "FoxxPhase") {
-  setOptional(false);
-  startsAfter("ServerPhase");
-
-  startsAfter("Bootstrap");
-  startsAfter("FoxxQueues");
-  startsAfter("Frontend");
-}
+class ServerFeaturePhase : public ApplicationFeaturePhase {
+ public:
+  explicit ServerFeaturePhase(ApplicationServer& server);
+};
 
 }  // namespace application_features
 }  // namespace arangodb
+
+#endif
