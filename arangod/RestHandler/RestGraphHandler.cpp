@@ -258,7 +258,6 @@ Result RestGraphHandler::edgeAction(Graph& graph, const std::string& edgeDefinit
   return {TRI_ERROR_HTTP_METHOD_NOT_ALLOWED};
 }
 
-// TODO TRX
 void RestGraphHandler::vertexActionRead(Graph& graph, std::string const& collectionName,
                                         std::string const& key) {
   // check for an etag
@@ -522,7 +521,6 @@ void RestGraphHandler::generateResultMergedWithObject(VPackSlice obj,
 }
 
 // TODO this is nearly exactly the same as vertexActionRead. reuse somehow?
-// TODO TRX
 void RestGraphHandler::edgeActionRead(Graph& graph, const std::string& definitionName,
                                       const std::string& key) {
   // check for an etag
@@ -568,7 +566,6 @@ std::unique_ptr<Graph> RestGraphHandler::getGraph(const std::string& graphName) 
 // TODO The tests check that, if "returnOld: true" is passed,  the result
 // contains the old value in the field "old". This is not documented in
 // HTTP/Gharial!
-// TODO TRX
 Result RestGraphHandler::edgeActionRemove(Graph& graph, const std::string& definitionName,
                                           const std::string& key) {
   bool waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
@@ -828,7 +825,6 @@ Result RestGraphHandler::documentModify(graph::Graph& graph, const std::string& 
   return TRI_ERROR_NO_ERROR;
 }
 
-// TODO TRX
 Result RestGraphHandler::documentCreate(graph::Graph& graph, std::string const& collectionName,
                                         TRI_col_type_e colType) {
   bool parseSuccess = false;
@@ -873,7 +869,6 @@ Result RestGraphHandler::documentCreate(graph::Graph& graph, std::string const& 
   return result.result;
 }
 
-// TODO TRX
 Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
                                             const std::string& collectionName,
                                             const std::string& key) {

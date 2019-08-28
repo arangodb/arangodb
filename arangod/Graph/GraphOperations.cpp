@@ -463,7 +463,7 @@ OperationResult GraphOperations::addEdgeDefinition(VPackSlice edgeDefinitionSlic
 
   // finally save the graph
   return gmngr.storeGraph(_graph, waitForSync, true);
-};
+}
 
 // vertices
 
@@ -473,7 +473,7 @@ OperationResult GraphOperations::getVertex(std::string const& collectionName,
                                            std::string const& key,
                                            boost::optional<TRI_voc_rid_t> rev) {
   return getDocument(collectionName, key, std::move(rev));
-};
+}
 
 // TODO check if definitionName is an edge collection in _graph?
 OperationResult GraphOperations::getEdge(const std::string& definitionName,

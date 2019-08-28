@@ -172,6 +172,80 @@ function transactionGraphSuite () {
       }
     },
     
+    // / @brief test: remove vertex with dependencies
+    testVertexRemoveWithDependencies: function () {
+      arango.POST("/_api/gharial/" + graph + "/vertex/" + vertex, { _key: "1" });
+      arango.POST("/_api/gharial/" + graph + "/vertex/" + vertex, { _key: "2" });
+      arango.POST("/_api/gharial/" + graph + "/edge/" + edge, { _key: "test", value: "test", _from: vertex + "/1", _to: vertex + "/2" });
+
+      let trx = db._createTransaction({
+        collections: { write: [ vertex, edge ] }
+      });
+
+      let headers = { "x-arango-trx-id" : trx.id() };
+      let result = arango.DELETE("/_api/gharial/" + graph + "/vertex/" + vertex + "/1", null, headers);
+      assertFalse(result.error);
+      assertEqual(202, result.code);
+
+      result = db._collection(vertex).document("1");
+      assertEqual("1", result._key);
+      result = db._collection(edge).document("test");
+      assertEqual("test", result.value);
+      
+      try {
+        trx.collection(vertex).document("1");
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+      }
+      
+      try {
+        trx.collection(edge).document("test");
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+      }
+
+      trx.commit();
+        
+      try {
+        db._collection(vertex).document("1");
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+      }
+      
+      try {
+        db._collection(edge).document("test");
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+      }
+    },
+    
+    // / @brief test: remove vertex with dependencies
+    testVertexRemoveWithDependenciesUndeclaredVertexCollection: function () {
+      arango.POST("/_api/gharial/" + graph + "/vertex/" + vertex, { _key: "1" });
+      arango.POST("/_api/gharial/" + graph + "/vertex/" + vertex, { _key: "2" });
+      arango.POST("/_api/gharial/" + graph + "/edge/" + edge, { _key: "test", value: "test", _from: vertex + "/1", _to: vertex + "/2" });
+
+      let trx = db._createTransaction({
+        collections: { write: [ edge ] }
+      });
+
+      let headers = { "x-arango-trx-id" : trx.id() };
+      let result = arango.DELETE("/_api/gharial/" + graph + "/vertex/" + vertex + "/1", null, headers);
+      assertTrue(result.error);
+      assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, result.errorNum);
+
+      trx.abort();
+      
+      result = db._collection(vertex).document("1");
+      assertEqual("1", result._key);
+      result = db._collection(edge).document("test");
+      assertEqual("test", result.value);
+    },
+    
     // / @brief test: remove edge
     testEdgeRemove: function () {
       arango.POST("/_api/gharial/" + graph + "/vertex/" + vertex, { _key: "1" });
@@ -206,6 +280,122 @@ function transactionGraphSuite () {
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
       }
+    },
+    
+    // / @brief test: update vertex
+    testVertexUpdate: function () {
+      arango.POST("/_api/gharial/" + graph + "/vertex/" + vertex, { _key: "1" });
+      arango.POST("/_api/gharial/" + graph + "/vertex/" + vertex, { _key: "2" });
+      arango.POST("/_api/gharial/" + graph + "/edge/" + edge, { _key: "test", value: "test", _from: vertex + "/1", _to: vertex + "/2" });
+
+      let trx = db._createTransaction({
+        collections: { write: [ vertex, edge ] }
+      });
+
+      let headers = { "x-arango-trx-id" : trx.id() };
+      let result = arango.PATCH("/_api/gharial/" + graph + "/edge/" + edge + "/test", { value: "meow" }, headers);
+      assertFalse(result.error);
+      assertEqual(202, result.code);
+
+      result = db._collection(edge).document("test");
+      assertEqual("test", result._key);
+      assertEqual("test", result.value);
+      
+      result = trx.collection(edge).document("test");
+      assertEqual("test", result._key);
+      assertEqual("meow", result.value);
+
+      trx.commit();
+        
+      result = db._collection(edge).document("test");
+      assertEqual("test", result._key);
+      assertEqual("meow", result.value);
+    },
+    
+    // / @brief test: update edge
+    testEdgeUpdate: function () {
+      arango.POST("/_api/gharial/" + graph + "/vertex/" + vertex, { _key: "test", value: "test" });
+
+      let trx = db._createTransaction({
+        collections: { write: [ vertex, edge ] }
+      });
+
+      let headers = { "x-arango-trx-id" : trx.id() };
+      let result = arango.PATCH("/_api/gharial/" + graph + "/vertex/" + vertex + "/test", { value: "meow" }, headers);
+      assertFalse(result.error);
+      assertEqual(202, result.code);
+
+      result = db._collection(vertex).document("test");
+      assertEqual("test", result._key);
+      assertEqual("test", result.value);
+      
+      result = trx.collection(vertex).document("test");
+      assertEqual("test", result._key);
+      assertEqual("meow", result.value);
+
+      trx.commit();
+        
+      result = db._collection(vertex).document("test");
+      assertEqual("test", result._key);
+      assertEqual("meow", result.value);
+    },
+    
+    // / @brief test: replace vertex
+    testVertexReplace: function () {
+      arango.POST("/_api/gharial/" + graph + "/vertex/" + vertex, { _key: "1" });
+      arango.POST("/_api/gharial/" + graph + "/vertex/" + vertex, { _key: "2" });
+      arango.POST("/_api/gharial/" + graph + "/edge/" + edge, { _key: "test", value: "test", _from: vertex + "/1", _to: vertex + "/2" });
+
+      let trx = db._createTransaction({
+        collections: { write: [ vertex, edge ] }
+      });
+
+      let headers = { "x-arango-trx-id" : trx.id() };
+      let result = arango.PUT("/_api/gharial/" + graph + "/edge/" + edge + "/test", { value: "meow", _from: vertex + "/1", _to: vertex + "/2" }, headers);
+      assertFalse(result.error);
+      assertEqual(202, result.code);
+
+      result = db._collection(edge).document("test");
+      assertEqual("test", result._key);
+      assertEqual("test", result.value);
+      
+      result = trx.collection(edge).document("test");
+      assertEqual("test", result._key);
+      assertEqual("meow", result.value);
+
+      trx.commit();
+        
+      result = db._collection(edge).document("test");
+      assertEqual("test", result._key);
+      assertEqual("meow", result.value);
+    },
+    
+    // / @brief test: replace edge
+    testEdgeReplace: function () {
+      arango.POST("/_api/gharial/" + graph + "/vertex/" + vertex, { _key: "test", value: "test" });
+
+      let trx = db._createTransaction({
+        collections: { write: [ vertex, edge ] }
+      });
+
+      let headers = { "x-arango-trx-id" : trx.id() };
+      let result = arango.PUT("/_api/gharial/" + graph + "/vertex/" + vertex + "/test", { value: "meow" }, headers);
+      assertFalse(result.error);
+      assertEqual(202, result.code);
+
+      result = db._collection(vertex).document("test");
+      assertEqual("test", result._key);
+      assertEqual("test", result.value);
+      
+      result = trx.collection(vertex).document("test");
+      assertEqual("test", result._key);
+      assertEqual("meow", result.value);
+
+      trx.commit();
+        
+      result = db._collection(vertex).document("test");
+      assertEqual("test", result._key);
+      assertEqual("meow", result.value);
     },
   };
 }
