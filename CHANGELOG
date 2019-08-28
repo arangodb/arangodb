@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed issue #9795. Fixed NOT IN clause in ArangoSearch.
+
 * The graph viewer of the web interface now tries to find a vertex document of
   all available vertex collections before it aborts.
 
