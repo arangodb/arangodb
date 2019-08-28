@@ -547,8 +547,10 @@ TEST_F(RestAnalyzerHandlerTest, test_get_static_unknown) {
 
   auto requestPtr = std::make_unique<GeneralRequestMock>(_system_vocbase);
   TRI_ASSERT(requestPtr != nullptr);
+  auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   TRI_ASSERT(responcePtr != nullptr);
+  auto& response = *responcePtr;
   arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
                                                    responcePtr.release());
   requestPtr->setRequestType(arangodb::rest::RequestType::GET);
@@ -556,8 +558,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get_static_unknown) {
 
   auto status = handler.execute();
   EXPECT_TRUE((arangodb::RestStatus::DONE == status));
-  EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND, responcePtr->responseCode());
-  auto slice = responcePtr->_payload.slice();
+  EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND, responce.responseCode());
+  auto slice = responce._payload.slice();
   EXPECT_TRUE((slice.isObject()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
                slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
