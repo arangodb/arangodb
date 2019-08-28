@@ -1453,12 +1453,10 @@ std::vector<index_t> State::inquire(query_t const& query) const {
 
     auto ret = _clientIdLookupTable.equal_range(i.copyString());
     index_t index = 0;
+    // Look for the maximum index:
     for (auto it = ret.first; it != ret.second; ++it) {
-      if (it->second < _log[0].index) {
-        continue;
-      }
-      if (index < _log.at(it->second - _cur).index) {
-        index = _log.at(it->second - _cur).index;
+      if (it->second > index) {
+        index = it->second;
       }
     }
     result.push_back(index);
