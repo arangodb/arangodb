@@ -455,16 +455,20 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
           if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
               opRes.errorMessage() > keySlice.copyString()) {
             // remove conflict and retry
+            options.indexOperationMode = Index::OperationMode::normal;
             auto inner = removeConflict(opRes.errorMessage());
             if (inner.fail()) {
               return opRes.result;
             }
             opRes = trx->insert(collectionName, it, options);
+            options.indexOperationMode = Index::OperationMode::internal;
             if (opRes.fail()) {
               return opRes.result;
             }
             // fall-through
           } else {
+            int errorNumber = opRes.errorNumber();
+            opRes.result.reset(errorNumber, std::string(TRI_errno_string(errorNumber)) + ": " + opRes.errorMessage());
             return opRes.result;
           }
         }
@@ -479,16 +483,20 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
           if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
               opRes.errorMessage() > keySlice.copyString()) {
             // remove conflict and retry
+            options.indexOperationMode = Index::OperationMode::normal;
             auto inner = removeConflict(opRes.errorMessage());
             if (inner.fail()) {
               return opRes.result;
             }
             opRes = trx->replace(collectionName, it, options);
+            options.indexOperationMode = Index::OperationMode::internal;
             if (opRes.fail()) {
               return opRes.result;
             }
             // fall-through
           } else {
+            int errorNumber = opRes.errorNumber();
+            opRes.result.reset(errorNumber, std::string(TRI_errno_string(errorNumber)) + ": " + opRes.errorMessage());
             return opRes.result;
           }
         }
