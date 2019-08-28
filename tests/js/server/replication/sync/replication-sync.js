@@ -1671,7 +1671,7 @@ function ReplicationOtherDBSuite () {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief test suite for incremental
+// / @brief test suite for key conflicts in incremental sync
 // //////////////////////////////////////////////////////////////////////////////
 
 function ReplicationIncrementalKeyConflict () {
@@ -1700,7 +1700,7 @@ function ReplicationIncrementalKeyConflict () {
       db._drop(cn);
     },
 
-    testKeyConflicts: function () {
+    testKeyConflictsIncremental: function () {
       var c = db._create(cn);
       c.ensureIndex({
         type: 'hash',
@@ -1770,7 +1770,7 @@ function ReplicationIncrementalKeyConflict () {
       assertTrue(c.getIndexes()[1].unique);
     },
 
-    testKeyConflictsManyDocuments: function () {
+    testKeyConflictsIncrementalManyDocuments: function () {
       var c = db._create(cn);
       var i;
       c.ensureIndex({
@@ -1846,11 +1846,181 @@ function ReplicationIncrementalKeyConflict () {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite for key conflicts in non-incremental sync
+// //////////////////////////////////////////////////////////////////////////////
+
+function ReplicationNonIncrementalKeyConflict () {
+  'use strict';
+
+  return {
+
+    setUp: function () {
+      connectToMaster();
+      db._drop(cn);
+    },
+
+    tearDown: function () {
+      connectToMaster();
+      db._drop(cn);
+
+      connectToSlave();
+      db._drop(cn);
+    },
+
+    testKeyConflictsNonIncremental: function () {
+      var c = db._create(cn);
+      c.ensureIndex({
+        type: 'hash',
+        fields: ['value'],
+        unique: true
+      });
+
+      c.insert({
+        _key: 'x',
+        value: 1
+      });
+      c.insert({
+        _key: 'y',
+        value: 2
+      });
+      c.insert({
+        _key: 'z',
+        value: 3
+      });
+
+      connectToSlave();
+      replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true
+      });
+      db._flushCache();
+      c = db._collection(cn);
+
+      assertEqual(3, c.count());
+      assertEqual(1, c.document('x').value);
+      assertEqual(2, c.document('y').value);
+      assertEqual(3, c.document('z').value);
+
+      assertEqual('hash', c.getIndexes()[1].type);
+      assertTrue(c.getIndexes()[1].unique);
+
+      connectToMaster();
+      db._flushCache();
+      c = db._collection(cn);
+      c.remove('z');
+      c.insert({
+        _key: 'w',
+        value: 3
+      });
+
+      assertEqual(3, c.count());
+      assertEqual(3, c.document('w').value);
+      assertEqual(1, c.document('x').value);
+      assertEqual(2, c.document('y').value);
+
+      connectToSlave();
+      replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true,
+        incremental: false,
+        skipCreateDrop: true
+      });
+
+      db._flushCache();
+
+      c = db._collection(cn);
+      assertEqual(3, c.count());
+      assertEqual(3, c.document('w').value);
+      assertEqual(1, c.document('x').value);
+      assertEqual(2, c.document('y').value);
+
+      assertEqual('hash', c.getIndexes()[1].type);
+      assertTrue(c.getIndexes()[1].unique);
+    },
+    
+    testKeyConflictsNonIncrementalManyDocuments: function () {
+      var c = db._create(cn);
+      var i;
+      c.ensureIndex({
+        type: 'hash',
+        fields: ['value'],
+        unique: true
+      });
+
+      for (i = 0; i < 10000; ++i) {
+        c.insert({
+          _key: 'test' + i,
+          value: i
+        });
+      }
+
+      connectToSlave();
+      replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true
+      });
+      db._flushCache();
+      c = db._collection(cn);
+
+      assertEqual(10000, c.count());
+
+      assertEqual('hash', c.getIndexes()[1].type);
+      assertTrue(c.getIndexes()[1].unique);
+
+      connectToMaster();
+      db._flushCache();
+      c = db._collection(cn);
+
+      c.remove('test0');
+      c.remove('test1');
+      c.remove('test9998');
+      c.remove('test9999');
+
+      c.insert({
+        _key: 'test0',
+        value: 9999
+      });
+      c.insert({
+        _key: 'test1',
+        value: 9998
+      });
+      c.insert({
+        _key: 'test9998',
+        value: 1
+      });
+      c.insert({
+        _key: 'test9999',
+        value: 0
+      });
+
+      assertEqual(10000, c.count());
+
+      connectToSlave();
+      replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true,
+        incremental: false,
+        skipCreateDrop: true
+      });
+
+      db._flushCache();
+
+      c = db._collection(cn);
+      assertEqual(10000, c.count());
+
+      assertEqual('hash', c.getIndexes()[1].type);
+      assertTrue(c.getIndexes()[1].unique);
+    }
+  };
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ReplicationSuite);
 jsunity.run(ReplicationOtherDBSuite);
 jsunity.run(ReplicationIncrementalKeyConflict);
+jsunity.run(ReplicationNonIncrementalKeyConflict);
 
 return jsunity.done();

@@ -410,6 +410,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
 
         VPackSlice marker(p);
         Result r = parseCollectionDumpMarker(trx, coll, marker);
+        TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
         if (r.fail()) {
           r.reset(r.errorNumber(),
                   std::string("received invalid dump data for collection '") +
@@ -456,6 +457,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
       p = q + 1;
 
       Result r = parseCollectionDumpMarker(trx, coll, builder.slice());
+      TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
       if (r.fail()) {
         return r;
       }
