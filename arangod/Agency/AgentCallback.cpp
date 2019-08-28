@@ -90,7 +90,7 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
         << "comm_status(" << res->status << "), last(" << _last << "), follower("
         << _slaveID << "), time(" << TRI_microtime() - _startTime << ")";
   } else {
-    if (!ApplicationServer::isStopping() && (_agent == nullptr || !_agent->isStopping())) {
+    if (_agent == nullptr || !_agent->server().isStopping() || !_agent->isStopping()) {
       // Do not warn if we are already shutting down:
       LOG_TOPIC("2c712", WARN, Logger::AGENCY)
           << "Got bad callback from AppendEntriesRPC: "

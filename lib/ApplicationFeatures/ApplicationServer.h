@@ -249,6 +249,13 @@ class ApplicationServer {
      return *it->second;
    }
 
+   // returns a const reference to a feature. will throw when used for
+   // a non-existing feature
+   template <typename T, typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, int>::type = 0>
+   T const& getFeature() const {
+     return getFeature<T>();
+   }
+
    // returns a reference to a feature. will throw when used for
    // a non-existing feature
    template <typename T, typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, int>::type = 0>
@@ -267,7 +274,7 @@ class ApplicationServer {
    template <typename T, typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, int>::type = 0>
    T& getEnabledFeature() {
      T& feature = getFeature<T>();
-     if (!feature->isEnabled()) {
+     if (!feature.isEnabled()) {
        throwFeatureNotEnabledException(typeid(T).name());
      }
      return feature;

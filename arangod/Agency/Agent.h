@@ -51,6 +51,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Clean up
   ~Agent();
 
+  /// @brief the underlying application server
+  application_features::ApplicationServer& server();
+
   /// @brief bring down threads, can be called multiple times.
   void waitForThreadsStop();
 

@@ -20,12 +20,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "OptimizerRulesFeature.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IResearchViewOptimizerRules.h"
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
-#include "OptimizerRulesFeature.h"
+#include "FeaturePhases/V8FeaturePhase.h"
+#include "RestServer/AqlFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -45,8 +47,9 @@ std::unordered_map<std::string, std::pair<int, bool>> OptimizerRulesFeature::_ru
 OptimizerRulesFeature::OptimizerRulesFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "OptimizerRules") {
   setOptional(false);
-  startsAfter("V8Phase");
-  startsAfter("Aql");
+  startsAfter<V8FeaturePhase>();
+
+  startsAfter<AqlFeature>();
 }
 
 void OptimizerRulesFeature::prepare() { addRules(); }

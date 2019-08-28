@@ -57,6 +57,8 @@ std::string const NO_LEADER("");
 Agent::Agent(ApplicationServer& server, config_t const& config)
     : Thread(server, "Agent"),
       _server(server),
+      _constituent(server),
+      _supervision(server),
       _config(config),
       _commitIndex(0),
       _spearhead(this),
@@ -69,11 +71,14 @@ Agent::Agent(ApplicationServer& server, config_t const& config)
   _state.configure(this);
   _constituent.configure(this);
   if (size() > 1) {
-    _inception = std::make_unique<Inception>(this);
+    _inception = std::make_unique<Inception>(*this);
   } else {
     _leaderSince = 0;
   }
 }
+
+/// @brief the underlying application server
+application_features::ApplicationServer& Agent::server() { return _server; }
 
 /// This agent's id
 std::string Agent::id() const { return _config.id(); }

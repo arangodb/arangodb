@@ -4186,13 +4186,14 @@ AqlValue Functions::Sleep(ExpressionContext* expressionContext,
   }
 
   double const until = TRI_microtime() + value.toDouble();
+  auto& server = application_features::ApplicationServer::server();
 
   while (TRI_microtime() < until) {
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
     if (expressionContext->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-    } else if (application_features::ApplicationServer::isStopping()) {
+    } else if (server.isStopping()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
   }

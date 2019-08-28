@@ -36,9 +36,8 @@
 
 using namespace arangodb::consensus;
 
-Inception::Inception() : Thread("Inception"), _agent(nullptr) {}
-
-Inception::Inception(Agent* agent) : Thread("Inception"), _agent(agent) {}
+Inception::Inception(Agent& agent)
+    : Thread(agent.server(), "Inception"), _agent(agent) {}
 
 // Shutdown if not already
 Inception::~Inception() {
@@ -50,7 +49,7 @@ Inception::~Inception() {
 /// - Create outgoing gossip.
 /// - Send to all peers
 void Inception::gossip() {
-  if (this->isStopping() || _agent->isStopping()) {
+  if (this->isStopping() || _agent.isStopping()) {
     return;
   }
 
@@ -70,8 +69,8 @@ void Inception::gossip() {
 
   CONDITION_LOCKER(guard, _cv);
 
-  while (!this->isStopping() && !_agent->isStopping()) {
-    auto const config = _agent->config();  // get a copy of conf
+  while (!this->isStopping() && !_agent.isStopping()) {
+    auto const config = _agent.config();  // get a copy of conf
     auto const version = config.version();
 
     // Build gossip message
@@ -100,20 +99,20 @@ void Inception::gossip() {
         }
         LOG_TOPIC("cc3fd", DEBUG, Logger::AGENCY)
             << "Sending gossip message 1: " << out->toJson() << " to peer " << p;
-        if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
+        if (this->isStopping() || _agent.isStopping() || cc == nullptr) {
           return;
         }
         CoordTransactionID coordTrxId = TRI_NewTickServer();
         std::unordered_map<std::string, std::string> hf;
         cc->asyncRequest(coordTrxId, p, rest::RequestType::POST, path,
                          std::make_shared<std::string>(out->toJson()), hf,
-                         std::make_shared<GossipCallback>(_agent, version), 1.0,
-                         true, 0.5);
+                         std::make_shared<GossipCallback>(&_agent, version),
+                         1.0, true, 0.5);
       }
     }
 
     if (config.poolComplete()) {
-      _agent->activateAgency();
+      _agent.activateAgency();
       return;
     }
 
@@ -131,15 +130,15 @@ void Inception::gossip() {
         LOG_TOPIC("07338", DEBUG, Logger::AGENCY)
             << "Sending gossip message 2: " << out->toJson()
             << " to pool member " << pair.second;
-        if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
+        if (this->isStopping() || _agent.isStopping() || cc == nullptr) {
           return;
         }
         CoordTransactionID coordTrxId = TRI_NewTickServer();
         std::unordered_map<std::string, std::string> hf;
         cc->asyncRequest(coordTrxId, pair.second, rest::RequestType::POST, path,
                          std::make_shared<std::string>(out->toJson()), hf,
-                         std::make_shared<GossipCallback>(_agent, version), 1.0,
-                         true, 0.5);
+                         std::make_shared<GossipCallback>(&_agent, version),
+                         1.0, true, 0.5);
       }
     }
 
@@ -149,7 +148,7 @@ void Inception::gossip() {
         LOG_TOPIC("d04d7", INFO, Logger::AGENCY)
             << "Agent pool completed. Stopping "
                "active gossipping. Starting RAFT process.";
-        _agent->activateAgency();
+        _agent.activateAgency();
         break;
       }
     }
@@ -178,7 +177,7 @@ void Inception::gossip() {
 }
 
 bool Inception::restartingActiveAgent() {
-  if (this->isStopping() || _agent->isStopping()) {
+  if (this->isStopping() || _agent.isStopping()) {
     return false;
   }
 
@@ -194,7 +193,7 @@ bool Inception::restartingActiveAgent() {
   using namespace std::chrono;
 
   auto const path = pubApiPrefix + "config";
-  auto const myConfig = _agent->config();
+  auto const myConfig = _agent.config();
   auto const startTime = steady_clock::now();
   auto active = myConfig.active();
   auto const& clientId = myConfig.id();
@@ -215,7 +214,7 @@ bool Inception::restartingActiveAgent() {
 
   active.erase(std::remove(active.begin(), active.end(), myConfig.id()), active.end());
 
-  while (!this->isStopping() && !_agent->isStopping()) {
+  while (!this->isStopping() && !_agent.isStopping()) {
     active.erase(std::remove(active.begin(), active.end(), ""), active.end());
 
     if (active.size() < majority) {
@@ -230,7 +229,7 @@ bool Inception::restartingActiveAgent() {
     CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
 
     for (auto const& p : gp) {
-      if (this->isStopping() && _agent->isStopping() && cc == nullptr) {
+      if (this->isStopping() && _agent.isStopping() && cc == nullptr) {
         return false;
       }
       auto comres = cc->syncRequest(coordinatorTransactionID, p,
@@ -251,19 +250,19 @@ bool Inception::restartingActiveAgent() {
         }
         auto const& theirId = tcc.get("id").copyString();
 
-        _agent->updatePeerEndpoint(theirId, p);
+        _agent.updatePeerEndpoint(theirId, p);
         informed.push_back(p);
       }
     }
 
-    auto pool = _agent->config().pool();
+    auto pool = _agent.config().pool();
     for (auto const& i : informed) {
       active.erase(std::remove(active.begin(), active.end(), i), active.end());
     }
 
     for (auto& p : pool) {
       if (p.first != myConfig.id() && p.first != "") {
-        if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
+        if (this->isStopping() || _agent.isStopping() || cc == nullptr) {
           return false;
         }
 
@@ -292,7 +291,7 @@ bool Inception::restartingActiveAgent() {
 
               // Contact leader to update endpoint
               if (theirLeaderId != theirId) {
-                if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
+                if (this->isStopping() || _agent.isStopping() || cc == nullptr) {
                   return false;
                 }
                 comres =
@@ -318,7 +317,7 @@ bool Inception::restartingActiveAgent() {
                 agency->add("max ping", lcc.get("max ping"));
                 agency->add("timeoutMult", lcc.get("timeoutMult"));
               }
-              _agent->notify(agency);
+              _agent.notify(agency);
               return true;
             }
 
@@ -408,20 +407,20 @@ void Inception::reportVersionForEp(std::string const& endpoint, size_t version) 
 // @brief Thread main
 void Inception::run() {
   auto server = ServerState::instance();
-  while (server->isMaintenance() && !this->isStopping() && !_agent->isStopping()) {
+  while (server->isMaintenance() && !this->isStopping() && !_agent.isStopping()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     LOG_TOPIC("1b613", DEBUG, Logger::AGENCY)
         << "Waiting for RestHandlerFactory to exit maintenance mode before we "
            " start gossip protocol...";
   }
 
-  config_t config = _agent->config();
+  config_t config = _agent.config();
 
   // Are we starting from persisted pool?
   if (config.startup() == "persistence") {
     if (restartingActiveAgent()) {
-      LOG_TOPIC("79fd7", INFO, Logger::AGENCY) << "Activating agent.";
-      _agent->ready(true);
+      LOG_TOPIC("79fd7", INFO, Logger::AGENCY) << "Activating _agent.";
+      _agent.ready(true);
     } else {
       if (!this->isStopping()) {
         LOG_TOPIC("27391", FATAL, Logger::AGENCY)
@@ -436,8 +435,8 @@ void Inception::run() {
   gossip();
 
   // No complete pool after gossip?
-  config = _agent->config();
-  if (!_agent->ready() && !config.poolComplete()) {
+  config = _agent.config();
+  if (!_agent.ready() && !config.poolComplete()) {
     if (!this->isStopping()) {
       LOG_TOPIC("68763", FATAL, Logger::AGENCY)
           << "Failed to build environment for RAFT algorithm. Bailing out!";
@@ -445,8 +444,8 @@ void Inception::run() {
     }
   }
 
-  LOG_TOPIC("c1d8f", INFO, Logger::AGENCY) << "Activating agent.";
-  _agent->ready(true);
+  LOG_TOPIC("c1d8f", INFO, Logger::AGENCY) << "Activating _agent.";
+  _agent.ready(true);
 }
 
 // @brief Graceful shutdown

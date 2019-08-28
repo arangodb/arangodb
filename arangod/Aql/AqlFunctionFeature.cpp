@@ -23,6 +23,8 @@
 #include "AqlFunctionFeature.h"
 #include "Aql/AstNode.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/V8FeaturePhase.h"
+#include "RestServer/AqlFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -38,8 +40,9 @@ AqlFunctionFeature* AqlFunctionFeature::AQLFUNCTIONS = nullptr;
 AqlFunctionFeature::AqlFunctionFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "AQLFunctions") {
   setOptional(false);
-  startsAfter("V8Phase");
-  startsAfter("Aql");
+  startsAfter<V8FeaturePhase>();
+
+  startsAfter<AqlFeature>();
 }
 
 // This feature does not have any options

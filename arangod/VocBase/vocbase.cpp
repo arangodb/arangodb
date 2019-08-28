@@ -1699,7 +1699,9 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
       _isOwnAppsDirectory(true),
       _deadlockDetector(false),
       _userStructures(nullptr) {
-  _queries.reset(new arangodb::aql::QueryList(this));
+  auto& server = application_features::ApplicationServer::server();
+  auto& queryRegistry = server.getFeature<QueryRegistryFeature>();
+  _queries.reset(new arangodb::aql::QueryList(queryRegistry, this));
   _cursorRepository.reset(new arangodb::CursorRepository(*this));
   _collectionKeys.reset(new arangodb::CollectionKeysRepository());
   _replicationClients.reset(new arangodb::ReplicationClientsProgressTracker());
