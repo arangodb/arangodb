@@ -48,7 +48,9 @@ enum SslProtocol {
   SSL_V3 = 3,
   TLS_V1 = 4,
   TLS_V12 = 5,
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
   TLS_V13 = 6,
+#endif
 
   SSL_LAST
 };
