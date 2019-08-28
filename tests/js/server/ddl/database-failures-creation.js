@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 400 */
-/*global fail, assertEqual, AQL_EXECUTE */
+/*global fail, assertEqual, AQL_EXECUTE, instanceInfo */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure scenarios
@@ -34,6 +34,7 @@ var db = arangodb.db;
 var internal = require("internal");
 const request = require('@arangodb/request');
 const expect = require('chai').expect;
+const wait = internal.wait;
 
 let coordinator = instanceInfo.arangods.filter(arangod => {
   return arangod.role === 'coordinator';
