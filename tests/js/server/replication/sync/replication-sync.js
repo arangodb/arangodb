@@ -1888,14 +1888,14 @@ function ReplicationIncrementalKeyConflict () {
       });
       db._flushCache();
       c = db._collection(cn);
+      
+      assertEqual('hash', c.getIndexes()[1].type);
+      assertTrue(c.getIndexes()[1].unique);
 
       assertEqual(3, c.count());
       assertEqual(1, c.document('x').value);
       assertEqual(2, c.document('y').value);
       assertEqual(3, c.document('z').value);
-
-      assertEqual('hash', c.getIndexes()[1].type);
-      assertTrue(c.getIndexes()[1].unique);
 
       connectToMaster();
       db._flushCache();
@@ -1920,16 +1920,156 @@ function ReplicationIncrementalKeyConflict () {
 
       db._flushCache();
 
+      assertEqual('hash', c.getIndexes()[1].type);
+      assertTrue(c.getIndexes()[1].unique);
+
       c = db._collection(cn);
       assertEqual(3, c.count());
       assertEqual(3, c.document('w').value);
       assertEqual(1, c.document('x').value);
       assertEqual(2, c.document('y').value);
 
+      
+      connectToMaster();
+      db._flushCache();
+      c = db._collection(cn);
+
+      c.remove('w');
+      c.insert({
+        _key: 'z',
+        value: 3
+      });
+      
+      assertEqual(3, c.count());
+      assertEqual(1, c.document('x').value);
+      assertEqual(2, c.document('y').value);
+      assertEqual(3, c.document('z').value);
+
+      connectToSlave();
+      replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+
+      c = db._collection(cn);
+      assertEqual(3, c.count());
+      assertEqual(1, c.document('x').value);
+      assertEqual(2, c.document('y').value);
+      assertEqual(3, c.document('z').value);
+    },
+    
+    testKeyConflictsRandom: function () {
+      var c = db._create(cn);
+      c.ensureIndex({
+        type: 'hash',
+        fields: ['value'],
+        unique: true
+      });
+
+      connectToSlave();
+      replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true
+      });
+      db._flushCache();
+      c = db._collection(cn);
+     
+      let keys = [];
+      for (let i = 0; i < 1000; ++i) {
+        keys.push(internal.genRandomAlphaNumbers(10));
+      }
+
+      keys.forEach(function(key, i) {
+        c.insert({ _key: key, value: i });
+      });
+
+      connectToMaster();
+      db._flushCache();
+      c = db._collection(cn);
+     
+      function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+        }
+      }
+      shuffle(keys);
+
+      keys.forEach(function(key, i) {
+        c.insert({ _key: key, value: i });
+      });
+      
+      assertEqual(1000, c.count());
+      let checksum = collectionChecksum(c.name());
+
+      connectToSlave();
+      replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+
       assertEqual('hash', c.getIndexes()[1].type);
       assertTrue(c.getIndexes()[1].unique);
-    },
 
+      c = db._collection(cn);
+      assertEqual(1000, c.count());
+      assertEqual(checksum, collectionChecksum(c.name()));
+    },
+    
+    testKeyConflictsRandomDiverged: function () {
+      var c = db._create(cn);
+      c.ensureIndex({
+        type: 'hash',
+        fields: ['value'],
+        unique: true
+      });
+
+      connectToSlave();
+      replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true
+      });
+      db._flushCache();
+      c = db._collection(cn);
+     
+      for (let i = 0; i < 1000; ++i) {
+        c.insert({ _key: internal.genRandomAlphaNumbers(10), value: i });
+      }
+
+      connectToMaster();
+      db._flushCache();
+      c = db._collection(cn);
+      
+      for (let i = 0; i < 1000; ++i) {
+        c.insert({ _key: internal.genRandomAlphaNumbers(10), value: i });
+      }
+     
+      assertEqual(1000, c.count());
+      let checksum = collectionChecksum(c.name());
+
+      connectToSlave();
+      replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+
+      assertEqual('hash', c.getIndexes()[1].type);
+      assertTrue(c.getIndexes()[1].unique);
+
+      c = db._collection(cn);
+      assertEqual(1000, c.count());
+      assertEqual(checksum, collectionChecksum(c.name()));
+    },
+    
     testKeyConflictsIncrementalManyDocuments: function () {
       var c = db._create(cn);
       var i;

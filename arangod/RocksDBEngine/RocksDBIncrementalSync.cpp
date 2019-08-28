@@ -501,13 +501,17 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
               return res;
             }
 
+            options.indexOperationMode = Index::OperationMode::normal;
             res = physical->insert(trx, it, mdr, options,
                                    /*lock*/false, nullptr, nullptr);
+            options.indexOperationMode = Index::OperationMode::internal;
             if (res.fail()) {
               return res;
             }
             // fall-through
           } else {
+            int errorNumber = opRes.errorNumber();
+            res.reset(errorNumber, std::string(TRI_errno_string(errorNumber)) + ": " + res.errorMessage());
             return res;
           }
         }
@@ -528,13 +532,17 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
             if (inner.fail()) {
               return res;
             }
+            options.indexOperationMode = Index::OperationMode::normal;
             res = physical->replace(trx, it, mdr, options,
                                     /*lock*/false, previous);
+            options.indexOperationMode = Index::OperationMode::internal;
             if (res.fail()) {
               return res;
             }
             // fall-through
           } else {
+            int errorNumber = res.errorNumber();
+            res.reset(errorNumber, std::string(TRI_errno_string(errorNumber)) + ": " + res.errorMessage());
             return res;
           }
         }

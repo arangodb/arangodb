@@ -2058,7 +2058,6 @@ void RestReplicationHandler::handleCommandSync() {
   // will throw if invalid
   config.validate();
 
-  //TRI_ASSERT(!config._skipCreateDrop);
   std::shared_ptr<InitialSyncer> syncer;
 
   if (isGlobal) {

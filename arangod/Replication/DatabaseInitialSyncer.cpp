@@ -386,6 +386,8 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
                                                   LogicalCollection* coll,
                                                   httpclient::SimpleHttpResult* response,
                                                   uint64_t& markersProcessed) {
+  TRI_ASSERT(!trx.isSingleOperationTransaction());
+
   basics::StringBuffer const& data = response->getBody();
   char const* p = data.begin();
   char const* end = p + data.length();
@@ -410,6 +412,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
 
         VPackSlice marker(reinterpret_cast<uint8_t const*>(p));
         Result r = parseCollectionDumpMarker(trx, coll, marker);
+        
         TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
         if (r.fail()) {
           r.reset(r.errorNumber(),
@@ -773,9 +776,11 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     trx.pinData(coll->id());  // will throw when it fails
 
     double t = TRI_microtime();
+    TRI_ASSERT(!trx.isSingleOperationTransaction());
     res = parseCollectionDump(trx, coll, dumpResponse.get(), markersProcessed);
 
     if (res.fail()) {
+      TRI_ASSERT(!res.is(TRI_ERROR_ARANGO_TRY_AGAIN));
       return res;
     }
 
