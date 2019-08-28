@@ -763,6 +763,7 @@ target_link_libraries(arango_graph arango_cache)
 target_link_libraries(arango_graph arango_vocbase)
 target_link_libraries(arango_graph boost_boost)
 
+target_link_libraries(arango_indexes arango_geo)
 target_link_libraries(arango_indexes boost_boost)
 
 target_link_libraries(arango_iresearch arango_indexes)
