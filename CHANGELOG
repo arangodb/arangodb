@@ -1,6 +1,10 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed parsing of "NOT IN" in AQL, which previously didn't correctly parse
+  "NOT IN_RANGE(...)" because it checked if the "NOT" token was followed by
+  whitespace and then the two letters "IN".
+
 * Changed log level for message "keep alive timeout - closing stream!" from INFO to
   DEBUG.
 
