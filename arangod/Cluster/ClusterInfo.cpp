@@ -636,7 +636,7 @@ void ClusterInfo::loadPlan() {
       // We create the database object on the coordinator here, because
       // it is used further down to create LogicalCollection instances further
       // down in this function.
-      if (ServerState::instance()->isCoordinator() and
+      if (ServerState::instance()->isCoordinator() &&
           !database.value.hasKey(StaticStrings::DatabaseIsBuilding)) {
         TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
         if (vocbase == nullptr) {
@@ -656,7 +656,7 @@ void ClusterInfo::loadPlan() {
       }
 
       // On a coordinator we can only see databases that have been fully created
-      if (!(ServerState::instance()->isCoordinator() and
+      if (!(ServerState::instance()->isCoordinator() &&
             database.value.hasKey(StaticStrings::DatabaseIsBuilding))) {
         newDatabases.emplace(std::move(name), database.value);
       } else {

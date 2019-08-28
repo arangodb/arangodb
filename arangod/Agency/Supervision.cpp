@@ -1284,13 +1284,19 @@ void Supervision::workJobs() {
 bool Supervision::verifyCoordinatorRebootID(std::string coordinatorID, uint64_t wantedRebootID) {
   // check if the coordinator exists in health
   std::string const& health = serverHealth(coordinatorID);
+  LOG_TOPIC("44432", DEBUG, Logger::SUPERVISION)
+    << "verifyCoordinatorRebootID: coordinatorID="
+    << coordinatorID << " health=" << health;
   // if the server is not found, health is an empty string
   if (health != "GOOD" && health != "BAD") {
     return false;
   }
 
   // now lookup reboot id
-  std::pair<uint64_t, bool> rebootID = _snapshot.hasAsUInt(curServersKnown + coordinatorID + "/" + StaticStrings::DatabaseCoordinatorRebootId);
+  std::pair<uint64_t, bool> rebootID = _snapshot.hasAsUInt(curServersKnown + coordinatorID + "/" + StaticStrings::RebootId);
+  LOG_TOPIC("54326", DEBUG, Logger::SUPERVISION)
+    << "verifyCoordinatorRebootID: rebootId=" << rebootID.first
+    << " bool=" << rebootID.second;
   return rebootID.second && rebootID.first == wantedRebootID;
 }
 
@@ -1352,19 +1358,22 @@ void Supervision::checkBrokenCreatedDatabases() {
   for (auto const& dbpair : databases.first.children()) {
     std::shared_ptr<Node> const& db = dbpair.second;
 
+    LOG_TOPIC("24152", DEBUG, Logger::SUPERVISION)
+      << "checkBrokenDbs: " << *db;
+
     // check if isBuilding is set and it is true
     std::pair<bool, bool> isBuilding = db->hasAsBool(StaticStrings::DatabaseIsBuilding);
     if (isBuilding.first && isBuilding.second) {
 
-      // this database is currently beeing built
+      // this database is currently being built
       //  check if the coordinator exists and its reboot is the same as specified
       std::pair<uint64_t, bool> rebootID = db->hasAsUInt(StaticStrings::DatabaseCoordinatorRebootId);
       std::pair<std::string, bool> coordinatorID = db->hasAsString(StaticStrings::DatabaseCoordinator);
 
-      bool deleteDatabase = true;
+      bool keepDatabase = true;
 
       if (rebootID.second && coordinatorID.second) {
-        deleteDatabase = verifyCoordinatorRebootID(coordinatorID.first, rebootID.first);
+        keepDatabase = verifyCoordinatorRebootID(coordinatorID.first, rebootID.first);
         // incomplete data, should not happen
       } else {
         //          v---- Please note this awesome log-id
@@ -1373,7 +1382,9 @@ void Supervision::checkBrokenCreatedDatabases() {
       }
 
       // check if the server is still able to finish the initalisation
-      if (deleteDatabase) {
+      if (!keepDatabase) {
+        LOG_TOPIC("fe522", INFO, Logger::SUPERVISION)
+          << "checkBrokenCreatedDatabases: removing skeleton database with name " << dbpair.first;
         // delete this database and all of its collections
         deleteBrokenDatabase(dbpair.first, coordinatorID.first, rebootID.first);
       }
