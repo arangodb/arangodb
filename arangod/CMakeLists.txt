@@ -77,7 +77,6 @@ add_library(arango_iresearch
   IResearch/ExpressionFilter.cpp IResearch/ExpressionFilter.h
   IResearch/AqlHelper.cpp IResearch/AqlHelper.h
   RestHandler/RestAnalyzerHandler.cpp RestHandler/RestAnalyzerHandler.h
-  V8Server/v8-analyzers.cpp V8Server/v8-analyzers.h
 )
 
 target_compile_definitions(arango_iresearch
@@ -380,6 +379,9 @@ set(LIB_ARANGO_STORAGE_ENGINE_SOURCES
   StorageEngine/PhysicalCollection.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp
+)
+
+set(LIB_ARANGO_STORAGE_ENGINE_COMMON_SOURCES
   StorageEngine/WalAccess.cpp
 )
 
@@ -464,11 +466,12 @@ set(LIB_ARANGO_AGENCY_SOURCES
 )
 
 set(LIB_ARANGO_V8SERVER_SOURCES
-  V8Server/v8-user-structures.cpp
+  Transaction/V8Context.cpp
   V8Server/FoxxQueuesFeature.cpp
   V8Server/V8Context.cpp
   V8Server/V8DealerFeature.cpp
   V8Server/v8-actions.cpp
+  V8Server/v8-analyzers.cpp
   V8Server/v8-collection-util.cpp
   V8Server/v8-collection.cpp
   V8Server/v8-dispatcher.cpp
@@ -478,6 +481,7 @@ set(LIB_ARANGO_V8SERVER_SOURCES
   V8Server/v8-statistics.cpp
   V8Server/v8-ttl.cpp
   V8Server/v8-user-functions.cpp
+  V8Server/v8-user-structures.cpp
   V8Server/v8-users.cpp
   V8Server/v8-util.cpp
   V8Server/v8-views.cpp
@@ -486,7 +490,7 @@ set(LIB_ARANGO_V8SERVER_SOURCES
   V8Server/v8-vocindex.cpp
 )
 
-set(ARANGOSERVER_SOURCES
+set(LIB_ARANGOSERVER_SOURCES
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
@@ -504,7 +508,6 @@ set(ARANGOSERVER_SOURCES
   Cluster/ClusterFeature.cpp
   Cluster/ClusterHelpers.cpp
   Cluster/ClusterInfo.cpp
-  Cluster/ClusterMethods.cpp
   Cluster/ClusterRepairDistributeShardsLike.cpp
   Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTrxMethods.cpp
@@ -566,7 +569,6 @@ set(ARANGOSERVER_SOURCES
   RestHandler/RestAuthReloadHandler.cpp
   RestHandler/RestBaseHandler.cpp
   RestHandler/RestBatchHandler.cpp
-  RestHandler/RestCollectionHandler.cpp
   RestHandler/RestCursorHandler.cpp
   RestHandler/RestDatabaseHandler.cpp
   RestHandler/RestDebugHandler.cpp
@@ -582,7 +584,6 @@ set(ARANGOSERVER_SOURCES
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
   RestHandler/RestRepairHandler.cpp
-  RestHandler/RestReplicationHandler.cpp
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
@@ -646,21 +647,28 @@ set(ARANGOSERVER_SOURCES
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp
-  Transaction/V8Context.cpp
+)
+
+set(LIB_ARANGO_COMMON_REST_HANDLER_SOURCES
+  RestHandler/RestCollectionHandler.cpp
+  RestHandler/RestReplicationHandler.cpp
+)
+
+set(LIB_ARANGO_CLUSTER_METHODS_SOURCES
+  Cluster/ClusterMethods.cpp
 )
 
 if (USE_MAINTAINER_MODE)
-  set(ARANGOSERVER_SOURCES ${ARANGOSERVER_SOURCES} RestHandler/RestTestHandler.cpp)
+  set(LIB_ARANGOSERVER_SOURCES ${LIB_ARANGOSERVER_SOURCES} RestHandler/RestTestHandler.cpp)
 endif()
 
 if (NOT MSVC)
-  set(ARANGOSERVER_SOURCES ${ARANGOSERVER_SOURCES} GeneralServer/AcceptorUnixDomain.cpp)
+  set(LIB_ARANGOSERVER_SOURCES ${LIB_ARANGOSERVER_SOURCES} GeneralServer/AcceptorUnixDomain.cpp)
 endif()
 
 include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
 include(MMFiles/CMakeLists.txt)
-
 
 add_library(arango_graph STATIC
   ${LIB_ARANGO_GRAPH_SOURCES}
@@ -693,6 +701,12 @@ add_library(arango_storage_engine STATIC
   ${LIB_ARANGO_STORAGE_ENGINE_SOURCES}
 )
 
+# arango_storage_engine uses arango_mmfiles and arango_rocksdb.
+# In turn, arango_storage_engine_common provides something for both.
+add_library(arango_storage_engine_common STATIC
+  ${LIB_ARANGO_STORAGE_ENGINE_COMMON_SOURCES}
+)
+
 add_library(arango_indexes STATIC
   ${LIB_ARANGO_INDEXES_SOURCES}
 )
@@ -710,7 +724,7 @@ add_library(arango_agency STATIC
 )
 
 add_library(arangoserver STATIC
-  ${ARANGOSERVER_SOURCES}
+  ${LIB_ARANGOSERVER_SOURCES}
   ${ADDITIONAL_LIB_ARANGOSERVER_SOURCES}
   ${ProductVersionFiles}
 )
@@ -726,6 +740,15 @@ add_library(arango_rocksdb STATIC
 
 add_library(arango_cluster_engine STATIC
   ${CLUSTER_ENGINE_SOURCES}
+)
+
+add_library(arango_common_rest_handler STATIC
+  ${LIB_ARANGO_COMMON_REST_HANDLER_SOURCES}
+)
+
+add_library(arango_cluster_methods STATIC
+  ${LIB_ARANGO_CLUSTER_METHODS_SOURCES}
+  ${ADDITIONAL_LIB_ARANGO_CLUSTER_METHODS_SOURCES}
 )
 
 add_library(llhttp STATIC
@@ -756,8 +779,16 @@ target_link_libraries(arango_aql arango_iresearch)
 
 target_link_libraries(arango_cache boost_system)
 
+target_link_libraries(arango_cluster_engine arango_common_rest_handler)
 target_link_libraries(arango_cluster_engine arango_indexes)
 target_link_libraries(arango_cluster_engine boost_boost)
+
+target_link_libraries(arango_cluster_methods arango)
+
+target_link_libraries(arango_common_rest_handler arango_cluster_methods)
+target_link_libraries(arango_common_rest_handler arango_storage_engine)
+target_link_libraries(arango_common_rest_handler arango_utils)
+target_link_libraries(arango_common_rest_handler arango_vocbase)
 
 target_link_libraries(arango_graph arango_cache)
 target_link_libraries(arango_graph arango_vocbase)
@@ -771,7 +802,8 @@ target_link_libraries(arango_iresearch arango_cluster_engine)
 
 target_link_libraries(arango_mmfiles arango_geo)
 target_link_libraries(arango_mmfiles arango_indexes)
-target_link_libraries(arango_mmfiles arango_replication)
+target_link_libraries(arango_mmfiles arango_storage_engine_common)
+target_link_libraries(arango_mmfiles arango_utils)
 target_link_libraries(arango_mmfiles boost_boost)
 target_link_libraries(arango_mmfiles boost_system)
 target_link_libraries(arango_mmfiles llhttp)
@@ -780,22 +812,26 @@ target_link_libraries(arango_pregel arango_agency)
 target_link_libraries(arango_pregel boost_boost)
 target_link_libraries(arango_pregel boost_system)
 
+target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)
+
+target_link_libraries(arango_rocksdb ${ROCKSDB_LIBS})
+target_link_libraries(arango_rocksdb arango_cache)
+target_link_libraries(arango_rocksdb arango_common_rest_handler)
+target_link_libraries(arango_rocksdb arango_geo)
+target_link_libraries(arango_rocksdb arango_indexes)
+target_link_libraries(arango_rocksdb arango_storage_engine_common)
+target_link_libraries(arango_rocksdb boost_boost)
+
+target_link_libraries(arango_storage_engine arango_cluster_engine)
+target_link_libraries(arango_storage_engine arango_cluster_methods)
+target_link_libraries(arango_storage_engine arango_mmfiles)
+target_link_libraries(arango_storage_engine arango_rocksdb)
 
 target_link_libraries(arango_utils boost_boost)
 
-target_link_libraries(arango_rocksdb arango_cache)
-target_link_libraries(arango_rocksdb arango_geo)
-target_link_libraries(arango_rocksdb arango_indexes)
-target_link_libraries(arango_rocksdb arango_replication)
-target_link_libraries(arango_rocksdb boost_boost)
-target_link_libraries(arango_rocksdb ${ROCKSDB_LIBS})
-
-target_link_libraries(arango_storage_engine arango_mmfiles)
-target_link_libraries(arango_storage_engine arango_rocksdb)
-target_link_libraries(arango_storage_engine arango_cluster_engine)
-
 target_link_libraries(arango_v8server arango_agency)
+target_link_libraries(arango_v8server arango_iresearch)
 target_link_libraries(arango_v8server arango_replication)
 target_link_libraries(arango_v8server arango_v8 ${V8_LIBS})
 
@@ -807,6 +843,8 @@ target_link_libraries(arango_vocbase boost_system)
 target_link_libraries(arangoserver arango_agency)
 target_link_libraries(arangoserver arango_aql)
 target_link_libraries(arangoserver arango_cluster_engine)
+target_link_libraries(arangoserver arango_cluster_methods)
+target_link_libraries(arangoserver arango_common_rest_handler)
 target_link_libraries(arangoserver arango_geo)
 target_link_libraries(arangoserver arango_graph)
 target_link_libraries(arangoserver arango_indexes)
@@ -825,6 +863,16 @@ target_link_libraries(arangoserver
   ${LINENOISE_LIBS} # Is this ever anything but empty?
   ${MSVC_LIBS}
 )
+
+if (USE_ENTERPRISE)
+  add_library(arango_rclone STATIC
+    ${LIB_RCLONE_SOURCES}
+  )
+
+  target_link_libraries(arango_rclone arango)
+
+  target_link_libraries(arango_rocksdb arango_rclone)
+endif()
 
 if (USE_ENTERPRISE)
   add_definitions(-DUSE_ENTERPRISE=1)
@@ -847,9 +895,6 @@ add_executable(${BIN_ARANGOD}
 )
 
 target_link_libraries(${BIN_ARANGOD}
-  arango_mmfiles
-  arango_rocksdb
-  arango_cluster_engine
   arangoserver
 )
 
@@ -873,22 +918,21 @@ if (USE_JEMALLOC)
 endif ()
 
 foreach(TARGET
-  arangoserver
-  arango_graph
-  arango_pregel
   arango_aql
-  arango_vocbase
-  arango_v8server
-  arango_utils
-  arango_storage_engine
-  arango_indexes
   arango_cache
-  arango_replication
-  arangoserver
-  arango_mmfiles
-  arango_rocksdb
   arango_cluster_engine
+  arango_graph
+  arango_indexes
+  arango_mmfiles
+  arango_pregel
+  arango_replication
+  arango_rocksdb
+  arango_storage_engine
+  arango_utils
+  arango_v8server
+  arango_vocbase
   arangod
+  arangoserver
 )
   target_include_directories(${TARGET} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
