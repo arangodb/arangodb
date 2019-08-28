@@ -129,34 +129,33 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                     arangodb::LogLevel::DEFAULT);
   }
+
+  // Creates the analyzers that are used in all the tests
+  void createAnalyzers() {
+    arangodb::Result res;
+    std::string name;
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+
+    name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
+    res = analyzers->emplace(result, name, "identity",
+                             VPackParser::fromJson("{\"args\":\"abc\"}")->slice());
+    ASSERT_TRUE(res.ok());
+
+    name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
+    res = analyzers->emplace(result, name, "rest-analyzer-empty",
+                             VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
+                             irs::flags{irs::frequency::type()});
+    ASSERT_TRUE(res.ok());
+  };
 };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(RestAnalyzerHandlerTest, test_create) {
-  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+TEST_F(RestAnalyzerHandlerTest, test_create_non_object_body) {
 
-
-  {
-    const auto name =
-        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
-    auto res = analyzers
-                    ->emplace(result, name, "identity",
-                              VPackParser::fromJson("{\"args\":\"abc\"}")->slice());
-    ASSERT_TRUE(res.ok());
-  }
-
-  {
-    const auto name =
-        arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
-    ASSERT_TRUE(analyzers
-                    ->emplace(result, name, "rest-analyzer-empty",
-                              VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
-                              irs::flags{irs::frequency::type()})
-                    .ok());
-  }
+  createAnalyzers();
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
@@ -169,11 +168,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
   auto* userManager = authFeature->userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
   userManager->setQueryRegistry(&queryRegistry);
-  auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-      userManager,
-      [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
 
-  // invalid params (non-object body)
+    // invalid params (non-object body)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                           arangodb::StaticStrings::SystemDatabase);
@@ -212,6 +208,23 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                  TRI_ERROR_BAD_PARAMETER ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
   }
+}
+
+TEST_F(RestAnalyzerHandlerTest, test_create_no_name) {
+  createAnalyzers();
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
+
 
   // invalid params (no name)
   {
@@ -255,6 +268,43 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                  TRI_ERROR_BAD_PARAMETER ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
   }
+}
+
+TEST_F(RestAnalyzerHandlerTest, test_create_no_permission) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+
+
+  {
+    const auto name =
+        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
+    auto res = analyzers
+                    ->emplace(result, name, "identity",
+                              VPackParser::fromJson("{\"args\":\"abc\"}")->slice());
+    ASSERT_TRUE(res.ok());
+  }
+
+  {
+    const auto name =
+        arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
+    ASSERT_TRUE(analyzers
+                    ->emplace(result, name, "rest-analyzer-empty",
+                              VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
+                              irs::flags{irs::frequency::type()})
+                    .ok());
+  }
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
+
 
   // invalid params (no permission to access the analyzer given in name)
   {
@@ -298,6 +348,44 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                  TRI_ERROR_FORBIDDEN ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
   }
+}
+
+TEST_F(RestAnalyzerHandlerTest, test_create_invalid_symbols) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+
+
+  {
+    const auto name =
+        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
+    auto res = analyzers
+                    ->emplace(result, name, "identity",
+                              VPackParser::fromJson("{\"args\":\"abc\"}")->slice());
+    ASSERT_TRUE(res.ok());
+  }
+
+  {
+    const auto name =
+        arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
+    ASSERT_TRUE(analyzers
+                    ->emplace(result, name, "rest-analyzer-empty",
+                              VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
+                              irs::flags{irs::frequency::type()})
+                    .ok());
+  }
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
+
+
 
   // invalid params (name contains invalid symbols)
   {
@@ -342,6 +430,44 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                  TRI_ERROR_BAD_PARAMETER ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
   }
+}
+
+// TODO: is this the smae test as above?
+TEST_F(RestAnalyzerHandlerTest, test_create_invalid_symbols_2) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+
+
+  {
+    const auto name =
+        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
+    auto res = analyzers
+                    ->emplace(result, name, "identity",
+                              VPackParser::fromJson("{\"args\":\"abc\"}")->slice());
+    ASSERT_TRUE(res.ok());
+  }
+
+  {
+    const auto name =
+        arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
+    ASSERT_TRUE(analyzers
+                    ->emplace(result, name, "rest-analyzer-empty",
+                              VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
+                              irs::flags{irs::frequency::type()})
+                    .ok());
+  }
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
+
 
   // invalid params (name contains invalid symbols)
   {
@@ -385,6 +511,42 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                  TRI_ERROR_BAD_PARAMETER ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
   }
+}
+
+TEST_F(RestAnalyzerHandlerTest, test_create_name_collision) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+
+  {
+    const auto name =
+        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
+    auto res = analyzers
+                    ->emplace(result, name, "identity",
+                              VPackParser::fromJson("{\"args\":\"abc\"}")->slice());
+    ASSERT_TRUE(res.ok());
+  }
+
+  {
+    const auto name =
+        arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
+    ASSERT_TRUE(analyzers
+                    ->emplace(result, name, "rest-analyzer-empty",
+                              VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
+                              irs::flags{irs::frequency::type()})
+                    .ok());
+  }
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
+
 
   // name collision
   {
@@ -430,6 +592,42 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                  TRI_ERROR_BAD_PARAMETER ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
   }
+}
+
+TEST_F(RestAnalyzerHandlerTest, test_create_duplicate_matching) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+
+  {
+    const auto name =
+        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
+    auto res = analyzers
+                    ->emplace(result, name, "identity",
+                              VPackParser::fromJson("{\"args\":\"abc\"}")->slice());
+    ASSERT_TRUE(res.ok());
+  }
+
+  {
+    const auto name =
+        arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
+    ASSERT_TRUE(analyzers
+                    ->emplace(result, name, "rest-analyzer-empty",
+                              VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
+                              irs::flags{irs::frequency::type()})
+                    .ok());
+  }
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
+
 
   // duplicate matching
   {
@@ -471,6 +669,41 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                                    "::testAnalyzer1");
     EXPECT_TRUE((false == !analyzer));
   }
+}
+
+TEST_F(RestAnalyzerHandlerTest, test_create_not_authorized) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+
+  {
+    const auto name =
+        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
+    auto res = analyzers
+                    ->emplace(result, name, "identity",
+                              VPackParser::fromJson("{\"args\":\"abc\"}")->slice());
+    ASSERT_TRUE(res.ok());
+  }
+
+  {
+    const auto name =
+        arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
+    ASSERT_TRUE(analyzers
+                    ->emplace(result, name, "rest-analyzer-empty",
+                              VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
+                              irs::flags{irs::frequency::type()})
+                    .ok());
+  }
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
 
   // not authorised
   {
@@ -515,6 +748,41 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                  TRI_ERROR_FORBIDDEN ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
   }
+}
+
+TEST_F(RestAnalyzerHandlerTest, test_create_success) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+
+  {
+    const auto name =
+        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
+    auto res = analyzers
+                    ->emplace(result, name, "identity",
+                              VPackParser::fromJson("{\"args\":\"abc\"}")->slice());
+    ASSERT_TRUE(res.ok());
+  }
+
+  {
+    const auto name =
+        arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
+    ASSERT_TRUE(analyzers
+                    ->emplace(result, name, "rest-analyzer-empty",
+                              VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
+                              irs::flags{irs::frequency::type()})
+                    .ok());
+  }
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
 
   // successful creation
   {
@@ -559,7 +827,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
   }
 }
 
-TEST_F(RestAnalyzerHandlerTest, test_get) {
+TEST_F(RestAnalyzerHandlerTest, test_get_static_known) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
@@ -578,10 +846,6 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
   auto* userManager = authFeature->userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
   userManager->setQueryRegistry(&queryRegistry);
-  auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-      userManager,
-      [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
-
   // get static (known analyzer)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
@@ -621,6 +885,27 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
     EXPECT_TRUE(slice.hasKey("properties") && slice.get("properties").isObject());
     EXPECT_TRUE((slice.hasKey("features") && slice.get("features").isArray()));
   }
+}
+
+TEST_F(RestAnalyzerHandlerTest, test_get_static_unknown) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                             "identity",
+                             VPackSlice::noneSlice())  // Empty VPack for nullptr
+                   .ok()));
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
 
   // get static (unknown analyzer)
   {
@@ -660,6 +945,28 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
                  TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
   }
+}
+
+TEST_F(RestAnalyzerHandlerTest, test_get_known) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                             "identity",
+                             VPackSlice::noneSlice())  // Empty VPack for nullptr
+                   .ok()));
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
+
 
   // get custom (known analyzer) authorized
   {
@@ -702,7 +1009,27 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
     EXPECT_TRUE(slice.hasKey("properties") && slice.get("properties").isObject());
     EXPECT_TRUE((slice.hasKey("features") && slice.get("features").isArray()));
   }
+}
 
+TEST_F(RestAnalyzerHandlerTest, test_get_custom) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                             "identity",
+                             VPackSlice::noneSlice())  // Empty VPack for nullptr
+                   .ok()));
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
   // get custom (known analyzer) authorized but from different db
   {
     auto const databases = arangodb::velocypack::Parser::fromJson(
@@ -783,6 +1110,28 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
       EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
     }
   }
+}
+
+TEST_F(RestAnalyzerHandlerTest, test_get_known_not_authorized) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                             "identity",
+                             VPackSlice::noneSlice())  // Empty VPack for nullptr
+                   .ok()));
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
+
   // get custom (known analyzer) not authorized
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
@@ -821,6 +1170,28 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
                  TRI_ERROR_FORBIDDEN ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
   }
+}
+
+TEST_F(RestAnalyzerHandlerTest, test_get_unknown_authorized) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                             "identity",
+                             VPackSlice::noneSlice())  // Empty VPack for nullptr
+                   .ok()));
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
+
 
   // get custom (unknown analyzer) authorized
   {
@@ -860,6 +1231,29 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
                  TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
   }
+}
+
+TEST_F(RestAnalyzerHandlerTest, test_get_unknown_not_authorized) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                             "identity",
+                             VPackSlice::noneSlice())  // Empty VPack for nullptr
+                   .ok()));
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
+
+
 
   // get custom (unknown analyzer) not authorized
   {
@@ -899,7 +1293,27 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
                  TRI_ERROR_FORBIDDEN ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
   }
+}
 
+TEST_F(RestAnalyzerHandlerTest, test_get_unknown_analyzer_unknown_vocbase_authorized) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                             "identity",
+                             VPackSlice::noneSlice())  // Empty VPack for nullptr
+                   .ok()));
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
   // get custom (unknown analyzer, unknown vocbase) authorized
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
@@ -938,6 +1352,27 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
                  TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
   }
+}
+
+TEST_F(RestAnalyzerHandlerTest, test_get_unknown_analyzer_unknown_vocbase_not_authorized) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                             "identity",
+                             VPackSlice::noneSlice())  // Empty VPack for nullptr
+                   .ok()));
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
 
   // get custom (unknown analyzer, unknown vocbase) not authorized
   {
@@ -979,7 +1414,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
   }
 }
 
-TEST_F(RestAnalyzerHandlerTest, test_list) {
+TEST_F(RestAnalyzerHandlerTest, test_list_system_database) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
   auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -1021,10 +1456,6 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
                                 arangodb::auth::Level::NONE) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
-
-  auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-      userManager,
-      [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
 
   // system database (authorised)
   {
@@ -1084,6 +1515,52 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
 
     EXPECT_TRUE((true == expected.empty()));
   }
+}
+
+
+TEST_F(RestAnalyzerHandlerTest, test_list_system_database_not_authorized) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
+
+  auto const databases = arangodb::velocypack::Parser::fromJson(
+    std::string("[ { \"name\": \"testVocbase\" } ]"));
+
+  ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+
+  arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+  auto& user =
+    userMap
+    .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+    .first->second;
+  user.grantDatabase("testVocbase", arangodb::auth::Level::RW);
+  user.grantDatabase(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO);
+  userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
+  arangodb::Result res;
+  std::tie(res, std::ignore) = arangodb::methods::Collections::createSystem(
+    *dbFeature->useDatabase("testVocbase"), arangodb::tests::AnalyzerCollectionName, false);
+  ASSERT_TRUE(res.ok());
+
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                             "identity", VPackSlice::noneSlice())
+                   .ok()));
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, "testVocbase::testAnalyzer2", "identity",
+                             VPackSlice::noneSlice())
+                   .ok()));
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+
 
   // system database (not authorised)
   {
@@ -1139,6 +1616,50 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
 
     EXPECT_TRUE((true == expected.empty()));
   }
+}
+
+TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_authorized) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
+
+  auto const databases = arangodb::velocypack::Parser::fromJson(
+    std::string("[ { \"name\": \"testVocbase\" } ]"));
+
+  ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+
+  arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+  auto& user =
+    userMap
+    .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+    .first->second;
+  user.grantDatabase("testVocbase", arangodb::auth::Level::RW);
+  user.grantDatabase(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO);
+  userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
+  arangodb::Result res;
+  std::tie(res, std::ignore) = arangodb::methods::Collections::createSystem(
+    *dbFeature->useDatabase("testVocbase"), arangodb::tests::AnalyzerCollectionName, false);
+  ASSERT_TRUE(res.ok());
+
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                             "identity", VPackSlice::noneSlice())
+                   .ok()));
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, "testVocbase::testAnalyzer2", "identity",
+                             VPackSlice::noneSlice())
+                   .ok()));
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
 
   // non-system database (authorised, system authorised)
   {
@@ -1207,6 +1728,51 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
 
     EXPECT_TRUE((true == expected.empty()));
   }
+}
+
+TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_not_authorized) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
+
+  auto const databases = arangodb::velocypack::Parser::fromJson(
+    std::string("[ { \"name\": \"testVocbase\" } ]"));
+
+  ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+
+  arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+  auto& user =
+    userMap
+    .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+    .first->second;
+  user.grantDatabase("testVocbase", arangodb::auth::Level::RW);
+  user.grantDatabase(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO);
+  userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
+  arangodb::Result res;
+  std::tie(res, std::ignore) = arangodb::methods::Collections::createSystem(
+    *dbFeature->useDatabase("testVocbase"), arangodb::tests::AnalyzerCollectionName, false);
+  ASSERT_TRUE(res.ok());
+
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                             "identity", VPackSlice::noneSlice())
+                   .ok()));
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, "testVocbase::testAnalyzer2", "identity",
+                             VPackSlice::noneSlice())
+                   .ok()));
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+
 
   // non-system database (not authorised, system authorised)
   {
@@ -1267,6 +1833,50 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
 
     EXPECT_TRUE((true == expected.empty()));
   }
+}
+
+TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_system_not_authorized) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
+
+  auto const databases = arangodb::velocypack::Parser::fromJson(
+    std::string("[ { \"name\": \"testVocbase\" } ]"));
+
+  ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+
+  arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+  auto& user =
+    userMap
+    .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+    .first->second;
+  user.grantDatabase("testVocbase", arangodb::auth::Level::RW);
+  user.grantDatabase(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO);
+  userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
+  arangodb::Result res;
+  std::tie(res, std::ignore) = arangodb::methods::Collections::createSystem(
+    *dbFeature->useDatabase("testVocbase"), arangodb::tests::AnalyzerCollectionName, false);
+  ASSERT_TRUE(res.ok());
+
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                             "identity", VPackSlice::noneSlice())
+                   .ok()));
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, "testVocbase::testAnalyzer2", "identity",
+                             VPackSlice::noneSlice())
+                   .ok()));
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
 
   // non-system database (authorised, system not authorised)
   {
@@ -1327,6 +1937,51 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
 
     EXPECT_TRUE((true == expected.empty()));
   }
+}
+
+TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_system_not_authorized_not_authorized) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+  userManager->setQueryRegistry(&queryRegistry);
+
+  auto const databases = arangodb::velocypack::Parser::fromJson(
+    std::string("[ { \"name\": \"testVocbase\" } ]"));
+
+  ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+
+  arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+  auto& user =
+    userMap
+    .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+    .first->second;
+  user.grantDatabase("testVocbase", arangodb::auth::Level::RW);
+  user.grantDatabase(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO);
+  userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
+  arangodb::Result res;
+  std::tie(res, std::ignore) = arangodb::methods::Collections::createSystem(
+    *dbFeature->useDatabase("testVocbase"), arangodb::tests::AnalyzerCollectionName, false);
+  ASSERT_TRUE(res.ok());
+
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                             "identity", VPackSlice::noneSlice())
+                   .ok()));
+  ASSERT_TRUE((analyzers
+                   ->emplace(result, "testVocbase::testAnalyzer2", "identity",
+                             VPackSlice::noneSlice())
+                   .ok()));
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+
 
   // non-system database (not authorised, system not authorised)
   {
@@ -1408,9 +2063,6 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_invalid_params) {
   auto* userManager = authFeature->userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
   userManager->setQueryRegistry(&queryRegistry);
-  auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-      userManager,
-      [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
 
   TRI_vocbase_t& vocbase = server.getSystemDatabase();
 
@@ -1473,10 +2125,6 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_unknown_analyzer) {
   auto* userManager = authFeature->userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
   userManager->setQueryRegistry(&queryRegistry);
-  auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-      userManager,
-      [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
-
   TRI_vocbase_t& vocbase = server.getSystemDatabase();
 
   {
@@ -1539,10 +2187,6 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_not_authorized) {
   auto* userManager = authFeature->userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
   userManager->setQueryRegistry(&queryRegistry);
-  auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-      userManager,
-      [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
-
   TRI_vocbase_t& vocbase = server.getSystemDatabase();
 
 
@@ -1610,10 +2254,6 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use) {
   auto* userManager = authFeature->userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
   userManager->setQueryRegistry(&queryRegistry);
-  auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-      userManager,
-      [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
-
   TRI_vocbase_t& vocbase = server.getSystemDatabase();
 
 
@@ -1684,10 +2324,6 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use_force) {
   auto* userManager = authFeature->userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
   userManager->setQueryRegistry(&queryRegistry);
-  auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-      userManager,
-      [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
-
   TRI_vocbase_t& vocbase = server.getSystemDatabase();
 
   {
@@ -1756,10 +2392,6 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_invalid_name) {
   auto* userManager = authFeature->userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
   userManager->setQueryRegistry(&queryRegistry);
-  auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-      userManager,
-      [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
-
   TRI_vocbase_t& vocbase = server.getSystemDatabase();
 
   {
@@ -1812,10 +2444,6 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_success) {
   auto* userManager = authFeature->userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
   userManager->setQueryRegistry(&queryRegistry);
-  auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-      userManager,
-      [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
-
   TRI_vocbase_t& vocbase = server.getSystemDatabase();
 
 
