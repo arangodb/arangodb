@@ -554,13 +554,11 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
   VPackBuilder builder;
   builder.add(VPackValue("none"));
 
-  AgencyCommResult createResult;
-
   AgencyCommResult result = comm.getValues("Plan/" + agencyListKey);
   if (!result.successful()) {
     LOG_TOPIC("0f327", FATAL, Logger::STARTUP)
         << "Couldn't fetch Plan/" << agencyListKey << " from agency. "
-        << " Agency is not initialized?";
+        << " Agency is not initialized? " << result.errorMessage();
     return false;
   }
 
@@ -580,13 +578,24 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
        AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
       AgencyPrecondition(planUrl, AgencyPrecondition::Type::EMPTY, true));
   // ok to fail..if it failed we are already registered
-  comm.sendTransactionWithFailover(preg, 0.0);
+  AgencyCommResult pregResult = comm.sendTransactionWithFailover(preg, 0.0);
+  if (!pregResult.successful()) {
+    LOG_TOPIC("cd1d0", TRACE, Logger::CLUSTER) 
+      << "unable to initially register in agency. " 
+      << pregResult.errorMessage(); 
+  }
+
   AgencyWriteTransaction creg(
       {AgencyOperation(currentUrl, AgencyValueOperationType::SET, builder.slice()),
        AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP)},
       AgencyPrecondition(currentUrl, AgencyPrecondition::Type::EMPTY, true));
   // ok to fail..if it failed we are already registered
-  AgencyCommResult res = comm.sendTransactionWithFailover(creg, 0.0);
+  AgencyCommResult cregResult = comm.sendTransactionWithFailover(creg, 0.0);
+  if (!cregResult.successful()) {
+    LOG_TOPIC("fe96a", TRACE, Logger::CLUSTER) 
+      << "unable to initially register in agency. " 
+      << cregResult.errorMessage(); 
+  }
 
   // coordinator is already/still registered from an previous unclean shutdown;
   // must establish a new short ID

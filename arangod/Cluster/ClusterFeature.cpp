@@ -501,6 +501,7 @@ void ClusterFeature::unprepare() {
 
   // Remove from role list
   ServerState::RoleEnum role = ServerState::instance()->getRole();
+  // nice variable name :S
   std::string alk = ServerState::roleToAgencyListKey(role);
   std::string me = ServerState::instance()->getId();
 
@@ -512,9 +513,34 @@ void ClusterFeature::unprepare() {
                                              AgencySimpleOperationType::DELETE_OP));
   unreg.operations.push_back(
       AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP));
-  comm.sendTransactionWithFailover(unreg, 120.0);
+ 
+  constexpr int maxTries = 10;
+  int tries = 0;
+  while (true) {
+    AgencyCommResult res = comm.sendTransactionWithFailover(unreg, 120.0);
+    if (res.successful()) {
+      break;
+    }
+    
+    if (++tries < maxTries) {
+      // try again
+      LOG_TOPIC("c7af5", ERR, Logger::CLUSTER) 
+        << "unable to unregister server from agency " 
+        << " (attempt " << tries << " of " << maxTries << "): "
+        << res.errorMessage(); 
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    } else {
+      // give up
+      LOG_TOPIC("c8fc4", ERR, Logger::CLUSTER) << 
+        "giving up unregistering server from agency: " 
+        << res.errorMessage();
+      break;
+    }
+  }
 
-  while (_heartbeatThread->isRunning()) {
+  TRI_ASSERT(tries <= maxTries);
+
+  while (_heartbeatThread != nullptr && _heartbeatThread->isRunning()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
 

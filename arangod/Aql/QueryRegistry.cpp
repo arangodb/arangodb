@@ -236,7 +236,11 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id, int errorCod
   // the debugging counters for transactions:
   if (errorCode == TRI_ERROR_NO_ERROR) {
     // commit the operation
-    queryInfo->_query->trx()->commit();
+    Result res = queryInfo->_query->trx()->commit();
+    if (res.fail()) {
+      // not much we can do here except logging the error
+      LOG_TOPIC("440a1", ERR, arangodb::Logger::AQL) << "unable to commit query with id " << id << ": " << res.errorMessage();
+    }
   }
   LOG_TOPIC("6756c", DEBUG, arangodb::Logger::AQL) << "query with id " << id << " is now destroyed";
 }
