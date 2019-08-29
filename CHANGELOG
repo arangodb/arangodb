@@ -1,5 +1,5 @@
-v.3.4.9 (XXX-XX-XX)
--------------------
+v3.4.9 (XXX-XX-XX)
+------------------
 
 * The graph viewer of the web interface now tries to find a vertex document of
   all available vertex collections before it aborts.
