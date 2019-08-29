@@ -1970,9 +1970,10 @@ void Agent::emptyCbTrashBin() {
   LOG_TOPIC("12ad3", DEBUG, Logger::AGENCY) << "scheduling unobserve: " << envelope->toJson();
 
   // This is a best effort attempt. If either the queueing or the write fail,
-  // while above _callbackTrashBin has been cleaned, entries, will repopulate with
+  // while above _callbackTrashBin has been cleaned, entries will repopulate with
   // future 404 errors, when they are triggered again. So either way these attempts
-  // are repeated until such time, when the callbacks are gone.
+  // are repeated until such time, when the callbacks are gone successfully through 
+  // queue + write.
   auto* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler != nullptr) {
     scheduler->queue(RequestLane::INTERNAL_LOW, [envelope = std::move(envelope)] {
