@@ -189,7 +189,8 @@ static void JS_GetGraphs(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (!result.isEmpty()) {
-    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice().get("graphs")));
+    auto ctx = std::make_shared<transaction::StandaloneContext>(vocbase);
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice().get("graphs"), ctx->getVPackOptionsForDump()));
   }
 
   TRI_V8_RETURN_UNDEFINED();
