@@ -1967,7 +1967,7 @@ void Agent::emptyCbTrashBin() {
   std::shared_ptr<Agent> agent = this->shared_from_this();
   if (scheduler != nullptr) {
     scheduler->queue(
-      RequestPriority::LOW, [=](bool) {
+      RequestPriority::LOW, [agent, envelope](bool) {
                               agent->write(envelope);
                               return true;
                             });
