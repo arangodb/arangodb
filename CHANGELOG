@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed adding an orphan collections as the first collection in a SmartGraph.
+
 * Fixed issue #9795: fix AQL `NOT IN` clause in SEARCH operations for ArangoSearch
   views.
 
