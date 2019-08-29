@@ -232,7 +232,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
                                                                  AccessMode::Type mode) const;
   
   /// @brief create proper transaction context, including the proper IDs
-  std::shared_ptr<transaction::Context> createAQLTransactionContext() const;
+  std::shared_ptr<transaction::Context> createTransactionContext() const;
 
  protected:
   /// @brief request context

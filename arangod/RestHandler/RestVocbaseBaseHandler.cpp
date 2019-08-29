@@ -592,7 +592,7 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
 }
 
 /// @brief create proper transaction context, inclusing the proper IDs
-std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createAQLTransactionContext() const {
+std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionContext() const {
   bool found = false;
   std::string value = _request->header(StaticStrings::TransactionId, found);
   if (!found) {
