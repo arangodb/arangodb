@@ -3855,7 +3855,7 @@ arangodb::Result hotBackupDBServers(
     builder.add("label", VPackValue(backupId));
     builder.add("agency-dump", agencyDump);
     builder.add("timestamp", VPackValue(timeStamp));
-    builder.add("forceBackup", VPackValue(force));
+    builder.add("allowInconsistent", VPackValue(force));
   }
   auto body = std::make_shared<std::string>(builder.toJson());
 
@@ -4026,11 +4026,11 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
         (!payload.isObject() ||
          (payload.hasKey("label") && !payload.get("label").isString()) ||
          (payload.hasKey("timeout") && !payload.get("timeout").isNumber()) ||
-         (payload.hasKey("forceBackup") && !payload.get("forceBackup").isBoolean()))) {
+         (payload.hasKey("allowInconsistent") && !payload.get("allowInconsistent").isBoolean()))) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, BAD_PARAMS_CREATE);
     }
 
-    bool force = !payload.isNone() && payload.get("forceBackup").isTrue();
+    bool force = !payload.isNone() && payload.get("allowInconsistent").isTrue();
 
     std::string const backupId =
       (payload.isObject() && payload.hasKey("label")) ?
@@ -4172,7 +4172,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       VPackObjectBuilder o(&report);
       report.add("id", VPackValue(timeStamp + "_" + backupId));
       if (!gotLocks) {
-        report.add("forced", VPackValue(true));
+        report.add("potentiallyInconsistent", VPackValue(true));
       }
     }
 
