@@ -129,8 +129,10 @@ char lower(char c) { return (unsigned char)(c | 0x20); }
 bool is_alpha(char c) { return (lower(c) >= 'a' && lower(c) <= 'z'); }
 bool is_num(char c) { return ((c) >= '0' && (c) <= '9'); }
 bool is_alphanum(char c) { return is_num(c) || is_alpha(c); }
-bool is_host_char(char c) { return (is_alphanum(c) || (c) == '.' || (c) == '-'); }
+bool is_host_char(char c) {
+  return (is_alphanum(c) || (c) == '.' || (c) == '-');
 }
+}  // namespace
 
 ConnectionBuilder& ConnectionBuilder::endpoint(std::string const& spec) {
   if (spec.empty()) {
@@ -158,7 +160,7 @@ ConnectionBuilder& ConnectionBuilder::endpoint(std::string const& spec) {
   if (spec[pos] == '[') { // ipv6 addresses contain colons
     pos++; // do not include '[' in actual address
     while (spec[x] != '\0' && spec[x] != ']') {
-      if (is_invalid(spec[x])) { // we could validate this better
+      if (is_invalid(spec[x])) {  // we could validate this better
         throw std::runtime_error(std::string("invalid ipv6 address: ") + spec);
       }
       x++;

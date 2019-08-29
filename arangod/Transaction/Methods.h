@@ -304,7 +304,8 @@ class Methods {
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
   Future<OperationResult> insertAsync(std::string const& collectionName,
-                                      VPackSlice const value, OperationOptions const& options);
+                                      VPackSlice const value,
+                                      OperationOptions const& options);
 
   /// @brief update/patch one or multiple documents in a collecti  Result
   /// the single-document variant of this operation will either succeed or,
@@ -566,11 +567,11 @@ class Methods {
     std::string name;
   } _collectionCache;
 
-  Future<Result> replicateOperations(std::shared_ptr<LogicalCollection> const& collection,
-                                     std::shared_ptr<const std::vector<std::string>> const& followers,
-                                     OperationOptions const& options, VPackSlice value,
-                                     TRI_voc_document_operation_e operation,
-                                     std::shared_ptr<velocypack::Buffer<uint8_t>> const& ops);
+  Future<Result> replicateOperations(
+      std::shared_ptr<LogicalCollection> const& collection,
+      std::shared_ptr<const std::vector<std::string>> const& followers,
+      OperationOptions const& options, VPackSlice value, TRI_voc_document_operation_e operation,
+      std::shared_ptr<velocypack::Buffer<uint8_t>> const& ops);
 };
 
 }  // namespace transaction

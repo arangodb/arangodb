@@ -181,27 +181,28 @@ RestStatus RestDocumentHandler::insertDocument() {
     return RestStatus::DONE;
   }
 
-  return waitForFuture(_activeTrx->insertAsync(cname, body, opOptions)
-                       .thenValue([=, cname = std::move(cname)](OperationResult&& opres) {
-    // Will commit if no error occured.
-    // or abort if an error occured.
-    // result stays valid!
-    Result res = _activeTrx->finish(opres.result);
-    if (opres.fail()) {
-      generateTransactionError(opres);
-      return;
-    }
-    
-    if (res.fail()) {
-      generateTransactionError(cname, res, "");
-      return;
-    }
-    
-    generateSaved(opres, cname,
-                  TRI_col_type_e(_activeTrx->getCollectionType(cname)),
-                  _activeTrx->transactionContextPtr()->getVPackOptionsForDump(),
-                  isMultiple);
-  }));
+  return waitForFuture(
+      _activeTrx->insertAsync(cname, body, opOptions)
+          .thenValue([=, cname = std::move(cname)](OperationResult&& opres) {
+            // Will commit if no error occured.
+            // or abort if an error occured.
+            // result stays valid!
+            Result res = _activeTrx->finish(opres.result);
+            if (opres.fail()) {
+              generateTransactionError(opres);
+              return;
+            }
+
+            if (res.fail()) {
+              generateTransactionError(cname, res, "");
+              return;
+            }
+
+            generateSaved(opres, cname,
+                          TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+                          _activeTrx->transactionContextPtr()->getVPackOptionsForDump(),
+                          isMultiple);
+          }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

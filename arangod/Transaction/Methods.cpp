@@ -1797,7 +1797,8 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
                            options, res.errorNumber());
     // Now replicate the good operations on all followers:
     return replicateOperations(collection, followers, options, value,
-                               TRI_VOC_DOCUMENT_OPERATION_INSERT, resDocs).thenValue(std::move(cb));
+                               TRI_VOC_DOCUMENT_OPERATION_INSERT, resDocs)
+        .thenValue(std::move(cb));
   }
   if (options.silent && countErrorCodes.empty()) {
     // We needed the results, but do not want to report:
@@ -2067,8 +2068,9 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
         TRI_ASSERT(previous.revisionId() != 0);
         arangodb::velocypack::StringRef key(newVal.get(StaticStrings::KeyString));
-        buildDocumentIdentity(collection.get(), resultBuilder, cid, key, previous.revisionId(),
-                              0, options.returnOld ? &previous : nullptr, nullptr);
+        buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
+                              previous.revisionId(), 0,
+                              options.returnOld ? &previous : nullptr, nullptr);
       }
       return res;
     }
@@ -2079,8 +2081,9 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
       TRI_ASSERT(result.revisionId() != 0 && previous.revisionId() != 0);
 
       arangodb::velocypack::StringRef key(newVal.get(StaticStrings::KeyString));
-      buildDocumentIdentity(collection.get(), resultBuilder, cid, key, result.revisionId(),
-                            previous.revisionId(), options.returnOld ? &previous : nullptr,
+      buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
+                            result.revisionId(), previous.revisionId(),
+                            options.returnOld ? &previous : nullptr,
                             options.returnNew ? &result : nullptr);
     }
 
@@ -2126,8 +2129,8 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
     // in case of an error.
 
     // Now replicate the good operations on all followers:
-    res = replicateOperations(collection, followers, options, newValue,
-                              operation, resDocs).get();
+    res = replicateOperations(collection, followers, options, newValue, operation, resDocs)
+              .get();
 
     if (!res.ok()) {
       return OperationResult{std::move(res), options};
@@ -2342,8 +2345,9 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
         TRI_ASSERT(previous.revisionId() != 0);
-        buildDocumentIdentity(collection.get(), resultBuilder, cid, key, previous.revisionId(),
-                              0, options.returnOld ? &previous : nullptr, nullptr);
+        buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
+                              previous.revisionId(), 0,
+                              options.returnOld ? &previous : nullptr, nullptr);
       }
       return res;
     }
@@ -2351,8 +2355,9 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
     if (!options.silent) {
       TRI_ASSERT(!options.returnOld || !previous.empty());
       TRI_ASSERT(previous.revisionId() != 0);
-      buildDocumentIdentity(collection.get(), resultBuilder, cid, key, previous.revisionId(),
-                            0, options.returnOld ? &previous : nullptr, nullptr);
+      buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
+                            previous.revisionId(), 0,
+                            options.returnOld ? &previous : nullptr, nullptr);
     }
 
     return res;
@@ -2386,7 +2391,8 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
 
     // Now replicate the good operations on all followers:
     res = replicateOperations(collection, followers, options, value,
-                              TRI_VOC_DOCUMENT_OPERATION_REMOVE, resDocs).get();
+                              TRI_VOC_DOCUMENT_OPERATION_REMOVE, resDocs)
+              .get();
 
     if (!res.ok()) {
       return OperationResult{std::move(res), options};
@@ -2952,7 +2958,7 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "unable to determine transaction collection");
   }
-  std::shared_ptr<LogicalCollection> const&  logical = trxColl->collection();
+  std::shared_ptr<LogicalCollection> const& logical = trxColl->collection();
   TRI_ASSERT(logical != nullptr);
 
   // will throw when it fails
@@ -3232,11 +3238,12 @@ Result transaction::Methods::resolveId(char const* handle, size_t length,
 
 // Unified replication of operations. May be inserts (with or without
 // overwrite), removes, or modifies (updates/replaces).
-Future<Result> Methods::replicateOperations(std::shared_ptr<LogicalCollection> const& collection,
-                                            std::shared_ptr<const std::vector<std::string>> const& followers,
-                                            OperationOptions const& options, VPackSlice const value,
-                                            TRI_voc_document_operation_e const operation,
-                                            std::shared_ptr<VPackBuffer<uint8_t>> const& ops) {
+Future<Result> Methods::replicateOperations(
+    std::shared_ptr<LogicalCollection> const& collection,
+    std::shared_ptr<const std::vector<std::string>> const& followers,
+    OperationOptions const& options, VPackSlice const value,
+    TRI_voc_document_operation_e const operation,
+    std::shared_ptr<VPackBuffer<uint8_t>> const& ops) {
   TRI_ASSERT(followers != nullptr);
 
   Result res;
@@ -3337,7 +3344,7 @@ Future<Result> Methods::replicateOperations(std::shared_ptr<LogicalCollection> c
   
   // assuming this trx lives, the followers will live
   auto* finfo = collection->followers().get();
-  
+
   // If any would-be-follower refused to follow there are two possiblities:
   // (1) there is a new leader in the meantime, or
   // (2) the follower was restarted and forgot that it is a follower.
@@ -3377,12 +3384,13 @@ Future<Result> Methods::replicateOperations(std::shared_ptr<LogicalCollection> c
           // TODO: what happens if a server is re-added during a transaction ?
           _state->removeKnownServer((*followers)[i]);
           LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
-          << "synchronous replication: dropping follower " << (*followers)[i]
-          << " for shard " << collection->name();
+              << "synchronous replication: dropping follower "
+              << (*followers)[i] << " for shard " << collection->name();
         } else {
           LOG_TOPIC("db473", ERR, Logger::REPLICATION)
-          << "synchronous replication: could not drop follower " << (*followers)[i]
-          << " for shard " << collection->name() << ": " << res.errorMessage();
+              << "synchronous replication: could not drop follower "
+              << (*followers)[i] << " for shard " << collection->name() << ": "
+              << res.errorMessage();
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
         }
       }
