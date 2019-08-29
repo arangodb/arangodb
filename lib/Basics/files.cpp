@@ -2327,9 +2327,16 @@ std::string TRI_GetTempPath() {
         try {
           long systemError;
           std::string systemErrorStr;
-          TRI_CreateRecursiveDirectory(SystemTempPath.get(), systemError, systemErrorStr);
+          std::string baseDirectory = TRI_Dirname(SystemTempPath.get());
+          if (baseDirectory.size() <= 1) {
+            baseDirectory = SystemTempPath.get();
+          }
+          // create base directory if it does not yet exist
+          TRI_CreateRecursiveDirectory(baseDirectory.data(), systemError, systemErrorStr);
         } catch (...) {}
 
+        // fill template string (XXXXXX) with some pseudo-random value and create
+        // the directory
         res = mkDTemp(SystemTempPath.get(), system.size() + 1);
       }
 

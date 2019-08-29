@@ -1160,21 +1160,17 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_feature
     TRI_vocbase_t const& vocbase, // analyzer vocbase
     arangodb::auth::Level const& level // access level
 ) {
-  auto* ctx = arangodb::ExecContext::CURRENT;
-
-  return !ctx // authentication not enabled
-    || (ctx->canUseDatabase(vocbase.name(), level) // can use vocbase
-        && (ctx->canUseCollection(vocbase.name(), ANALYZER_COLLECTION_NAME, level)) // can use analyzers
-       );
+  auto& ctx = arangodb::ExecContext::current();
+  return ctx.canUseDatabase(vocbase.name(), level) && // can use vocbase
+         ctx.canUseCollection(vocbase.name(), ANALYZER_COLLECTION_NAME, level); // can use analyzers
 }
 
 /*static*/ bool IResearchAnalyzerFeature::canUse( // check permissions
   irs::string_ref const& name, // analyzer name (already normalized)
   arangodb::auth::Level const& level // access level
 ) {
-  auto* ctx = arangodb::ExecContext::CURRENT;
-
-  if (!ctx) {
+  auto& ctx = arangodb::ExecContext::current();
+  if (ctx.isAdminUser()) {
     return true; // authentication not enabled
   }
 
@@ -1187,8 +1183,8 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_feature
   auto split = splitAnalyzerName(name);
 
   return split.first.null() // static analyzer (always allowed)
-    || (ctx->canUseDatabase(split.first, level) // can use vocbase
-        && ctx->canUseCollection(split.first, ANALYZER_COLLECTION_NAME, level) // can use analyzers
+    || (ctx.canUseDatabase(split.first, level) // can use vocbase
+        && ctx.canUseCollection(split.first, ANALYZER_COLLECTION_NAME, level) // can use analyzers
        );
 }
 

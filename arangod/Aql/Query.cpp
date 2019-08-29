@@ -583,14 +583,14 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
 
           if (cacheEntry != nullptr) {
             bool hasPermissions = true;
-            ExecContext const* exe = ExecContext::CURRENT;
+            ExecContext const& exec = ExecContext::current();
 
             // got a result from the query cache
-            if (exe != nullptr) {
+            if (!exec.isSuperuser()) {
               for (auto& dataSource : cacheEntry->_dataSources) {
                 auto const& dataSourceName = dataSource.second;
 
-                if (!exe->canUseCollection(dataSourceName, auth::Level::RO)) {
+                if (!exec.canUseCollection(dataSourceName, auth::Level::RO)) {
                   // cannot use query cache result because of permissions
                   hasPermissions = false;
                   break;
@@ -790,14 +790,14 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
       if (cacheEntry != nullptr) {
         bool hasPermissions = true;
         auto ctx = transaction::StandaloneContext::Create(_vocbase);
-        ExecContext const* exe = ExecContext::CURRENT;
+        ExecContext const& exec = ExecContext::current();
 
         // got a result from the query cache
-        if (exe != nullptr) {
+        if (!exec.isSuperuser()) {
           for (auto const& dataSource : cacheEntry->_dataSources) {
             auto const& dataSourceName = dataSource.second;
 
-            if (!exe->canUseCollection(dataSourceName, auth::Level::RO)) {
+            if (!exec.canUseCollection(dataSourceName, auth::Level::RO)) {
               // cannot use query cache result because of permissions
               hasPermissions = false;
               break;
