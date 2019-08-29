@@ -1,3 +1,9 @@
+v3.4.9 (XXXX-XX-XX)
+-------------------
+
+* Fixed adding an orphan collections as the first collection in a SmartGraph.
+
+
 v3.4.8 (2019-08-29)
 -------------------
 
