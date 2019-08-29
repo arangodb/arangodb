@@ -37,7 +37,7 @@
 #include "Basics/WriteLocker.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "Scheduler/SchedulerFeature.cpp"
+#include "Scheduler/SchedulerFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
