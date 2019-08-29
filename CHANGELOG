@@ -1,3 +1,13 @@
+v3.4.9 (XXXX-XX-XX)
+-------------------
+
+* Fixed output of `_listObjects()` function of "general-graph" and "smart-graph" 
+  modules, which did not print the `_id` values of the return graphs correctly
+
+* Fixed undefined behavior in single server mode when trying to create a smart 
+  graph.
+
+
 v3.4.8 (2019-08-29)
 -------------------
 
