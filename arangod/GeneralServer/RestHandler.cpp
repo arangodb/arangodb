@@ -26,6 +26,7 @@
 #include <velocypack/Exception.h>
 
 #include "Basics/StringUtils.h"
+#include "Basics/RecursiveLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -311,7 +312,7 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
 
 void RestHandler::runHandlerStateMachine() {
   TRI_ASSERT(_callback);
-  MUTEX_LOCKER(locker, _executionMutex);
+  RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
 
   while (true) {
     switch (_state) {
@@ -412,7 +413,7 @@ void RestHandler::prepareEngine() {
 void RestHandler::continueHandlerExecution() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
-    MUTEX_LOCKER(locker, _executionMutex);
+    RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
     TRI_ASSERT(_state == HandlerState::PAUSED);
   }
 #endif

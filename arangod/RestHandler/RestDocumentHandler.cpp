@@ -188,7 +188,7 @@ RestStatus RestDocumentHandler::insertDocument() {
   if (!wasReady) {
     self = shared_from_this();
   }
-  std::move(f).thenValue([cname = std::move(cname), this, isMultiple](OperationResult&& opres) {
+  auto ff = std::move(f).thenValue([cname = std::move(cname), this, isMultiple](OperationResult&& opres) {
     // Will commit if no error occured.
     // or abort if an error occured.
     // result stays valid!
@@ -207,15 +207,17 @@ RestStatus RestDocumentHandler::insertDocument() {
                   TRI_col_type_e(_activeTrx->getCollectionType(cname)),
                   _activeTrx->transactionContextPtr()->getVPackOptionsForDump(),
                   isMultiple);
-  }).thenFinal([self, this, wasReady](futures::Try<futures::Unit> t) {
-    if (t.hasException()) {
-      handleExceptionPtr(t.exception());
-    }
-    if (!wasReady) {
-      this->continueHandlerExecution();
-    }
   });
-  return wasReady ? RestStatus::DONE : RestStatus::WAITING;
+//  .thenFinal([self, this, wasReady](futures::Try<futures::Unit> t) {
+//    if (t.hasException()) {
+//      handleExceptionPtr(t.exception());
+//    }
+//    if (!wasReady) {
+//      this->continueHandlerExecution();
+//    }
+//  });
+  return waitForFuture(std::move(ff));
+//  return wasReady ? RestStatus::DONE : RestStatus::WAITING;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
