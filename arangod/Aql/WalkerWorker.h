@@ -37,12 +37,14 @@ class WalkerWorker {
 
   virtual ~WalkerWorker() = default;
 
+  /// @brief return true to abort walking, false otherwise
   virtual bool before(T*) {
     return false;  // true to abort the whole walking process
   }
 
   virtual void after(T*) {}
 
+  /// @brief return true to enter subqueries, false otherwise
   virtual bool enterSubquery(T*, T*) {  // super, sub
     return true;
   }

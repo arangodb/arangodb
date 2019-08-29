@@ -38,27 +38,8 @@ class OptimizerRulesFeature;
 struct QueryOptions;
 
 class Optimizer {
- public:
-  /// @brief optimizer statistics
-  struct Stats {
-    int64_t rulesExecuted = 0;
-    int64_t rulesSkipped = 0;
-    int64_t plansCreated = 1;  // 1 for the initial plan
-
-    void toVelocyPack(velocypack::Builder& b) const {
-      velocypack::ObjectBuilder guard(&b, true);
-      b.add("rulesExecuted", velocypack::Value(rulesExecuted));
-      b.add("rulesSkipped", velocypack::Value(rulesSkipped));
-      b.add("plansCreated", velocypack::Value(plansCreated));
-    }
-  };
-
- public:
-  struct Rule {
-    OptimizerRule& rule;
-    bool enabled;
-  };
-  using RuleMap = std::map<int, Rule>;
+ private:
+  using RuleMap = std::map<int, OptimizerRule&>;
 
   /// @brief the following struct keeps a list (deque) of ExecutionPlan*
   /// and has some automatic convenience functions.
@@ -113,12 +94,30 @@ class Optimizer {
   };
 
  public:
+  /// @brief optimizer statistics
+  struct Stats {
+    int64_t rulesExecuted = 0;
+    int64_t rulesSkipped = 0;
+    int64_t plansCreated = 1;  // 1 for the initial plan
+
+    void toVelocyPack(velocypack::Builder& b) const {
+      velocypack::ObjectBuilder guard(&b, true);
+      b.add("rulesExecuted", velocypack::Value(rulesExecuted));
+      b.add("rulesSkipped", velocypack::Value(rulesSkipped));
+      b.add("plansCreated", velocypack::Value(plansCreated));
+    }
+  };
+
   /// @brief constructor, this will initialize the rules database
   /// the .cpp file includes Aql/OptimizerRules.h
   /// and add all methods there to the rules database
   explicit Optimizer(size_t maxNumberOfPlans);
 
   ~Optimizer() {}
+
+  /// @brief disable rules in the given plan, using the predicate function
+  void disableRules(ExecutionPlan* plan,
+                    std::function<bool(OptimizerRule const&)> const& predicate);
 
   /// @brief do the optimization, this does the optimization, the resulting
   /// plans are all estimated, sorted by that estimate and can then be got
@@ -133,24 +132,6 @@ class Optimizer {
 
   /// @brief add a plan to the optimizer
   void addPlan(std::unique_ptr<ExecutionPlan>, OptimizerRule const&, bool wasModified, int newLevel = 0);
-
-  /// @brief disable a specific rule
-  void disableRule(int rule);
-  
-  /// @brief disable a specific rule, by name
-  void disableRule(std::string const& name); 
-  
-  /// @brief enable a specific rule
-  void enableRule(int rule);
-  
-  /// @brief enable a specific rule, by name
-  void enableRule(std::string const& name);
-
-  /// @brief check if a specific rule is disabled
-  bool isDisabled(int rule) const;
-
-  /// @brief disable all rules for which the predicate returns true
-  void disableRules(std::function<bool(OptimizerRule const&)> const&);
 
   /// @brief getPlans, ownership of the plans remains with the optimizer
   RollingVector<PlanList::Entry>& getPlans() { return _plans.list; }
@@ -172,6 +153,19 @@ class Optimizer {
   /// this should be called from rules, it will consider those that the
   /// current rules has already added
   size_t numberOfPlans() { return _plans.size() + _newPlans.size() + 1; }
+ 
+ private:
+  /// @brief disable a specific rule
+  void disableRule(ExecutionPlan* plan, int rule);
+  
+  /// @brief disable a specific rule, by name
+  void disableRule(ExecutionPlan* plan, std::string const& name); 
+  
+  /// @brief enable a specific rule
+  void enableRule(ExecutionPlan* plan, int rule);
+  
+  /// @brief enable a specific rule, by name
+  void enableRule(ExecutionPlan* plan, std::string const& name);
 
  public:
   /// @brief optimizer statistics

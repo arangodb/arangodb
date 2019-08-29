@@ -265,14 +265,11 @@ void OptimizerRulesFeature::addRules() {
   registerRule("sort-limit", sortLimitRule, OptimizerRule::applySortLimitRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
-#if 0
-  // rule is not yet finished, so it is disabled
 #ifdef USE_ENTERPRISE
   // must be the first cluster optimizer rule
   registerRule("cluster-one-shard", clusterOneShardRule,
                OptimizerRule::clusterOneShardRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled, OptimizerRule::Flags::DisabledByDefault, OptimizerRule::Flags::ClusterOnly));
-#endif
 #endif
 
   registerRule("optimize-cluster-single-document-operations",
