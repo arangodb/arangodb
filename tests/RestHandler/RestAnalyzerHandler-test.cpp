@@ -986,7 +986,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_authorized) {
 
   arangodb::auth::UserMap userMap;
 
-  grantOnDb( { {"testVocbase", arangodb::auth::Level::RW },
+  grantOnDb( { {"testVocbase"s, arangodb::auth::Level::RW },
              { arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO } });
 
   TRI_vocbase_t& vocbase = *dbFeature->useDatabase("testVocbase");
@@ -998,7 +998,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_authorized) {
   arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
-  grantOnDb( { {"testVocbase", arangodb::auth::Level::RO },
+  grantOnDb( { {"testVocbase"s, arangodb::auth::Level::RO },
                { arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO } });
   std::set<std::string> expected = {
       "identity",
@@ -1064,7 +1064,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_not_authorized) {
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
 
-  grantOnDb({{"testVocbase", arangodb::auth::Level::NONE},
+  grantOnDb({{"testVocbase"s, arangodb::auth::Level::NONE},
              {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO}});
 
   std::set<std::string> expected = {
@@ -1128,7 +1128,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_system_not_authori
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
 
-  grantOnDb({{"testVocbase", arangodb::auth::Level::RO},
+  grantOnDb({{"testVocbase"s, arangodb::auth::Level::RO},
              {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE}});
 
   std::set<std::string> expected = {
@@ -1185,7 +1185,7 @@ TEST_F(RestAnalyzerHandlerTest,
   request.setRequestType(arangodb::rest::RequestType::GET);
 
   grantOnDb({{arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE},
-             {"testVocbase", arangodb::auth::Level::NONE}});
+             {"testVocbase"s, arangodb::auth::Level::NONE}});
 
   std::set<std::string> expected = {
       "identity", "text_de", "text_en", "text_es", "text_fi",
