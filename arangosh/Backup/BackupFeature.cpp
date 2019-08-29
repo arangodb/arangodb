@@ -302,14 +302,14 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
   }
   TRI_ASSERT(identifier.isString());
 
-  VPackSlice const forced = resultObject.get("allowInconsistent");
+  VPackSlice const forced = resultObject.get("potentiallyInconsistent");
   if (forced.isTrue()) {
     LOG_TOPIC(WARN, arangodb::Logger::BACKUP)
         << "Failed to get write lock before proceeding with backup. Backup may "
            "contain some inconsistencies.";
   } else if (!forced.isBoolean() && !forced.isNone()) {
     result.reset(TRI_ERROR_INTERNAL,
-                 "expected 'result.potentiallyInconsistent'' to be an boolean");
+                 "expected 'result.potentiallyInconsistent' to be an boolean");
     return result;
   }
 
