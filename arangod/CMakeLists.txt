@@ -777,6 +777,7 @@ target_link_libraries(arango_aql arango_graph)
 target_link_libraries(arango_aql arango_indexes)
 target_link_libraries(arango_aql arango_iresearch)
 
+target_link_libraries(arango_cache arango)
 target_link_libraries(arango_cache boost_system)
 
 target_link_libraries(arango_cluster_engine arango_indexes)
