@@ -1969,7 +1969,6 @@ void Agent::emptyCbTrashBin() {
     scheduler->queue(
       RequestPriority::LOW, [agent, envelope](bool) {
                               agent->write(envelope);
-                              return true;
                             });
   }
 
