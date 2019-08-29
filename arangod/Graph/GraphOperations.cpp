@@ -904,7 +904,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
 
       arangodb::aql::Query query(false, _vocbase, queryString, bindVars,
                                  nullptr, arangodb::aql::PART_DEPENDENT);
-      query.setTransactionContext(_ctx);  // hack to share the same transaction
+      query.setTransactionContext(ctx());  // hack to share the same transaction
 
       auto queryResult = query.executeSync(QueryRegistryFeature::registry());
 
