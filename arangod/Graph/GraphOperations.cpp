@@ -947,13 +947,13 @@ bool GraphOperations::hasPermissionsFor(std::string const& collection, auth::Lev
                << " permissions for " << databaseName << "." << collection << ": ";
   std::string const logprefix = stringstream.str();
 
-  ExecContext const* execContext = ExecContext::CURRENT;
-  if (execContext == nullptr) {
+  ExecContext const& execContext = ExecContext::current();
+  if (!ExecContext::isAuthEnabled()) {
     LOG_TOPIC("08e1f", DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
     return true;
   }
 
-  if (execContext->canUseCollection(collection, level)) {
+  if (execContext.canUseCollection(collection, level)) {
     return true;
   }
 
@@ -970,8 +970,8 @@ Result GraphOperations::checkEdgeDefinitionPermissions(EdgeDefinition const& edg
                << "." << graph().name() << "`: ";
   std::string const logprefix = stringstream.str();
 
-  ExecContext const* execContext = ExecContext::CURRENT;
-  if (execContext == nullptr) {
+  ExecContext const& execContext = ExecContext::current();
+  if (!ExecContext::isAuthEnabled()) {
     LOG_TOPIC("18e8e", DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
     return TRI_ERROR_NO_ERROR;
   }
@@ -982,11 +982,11 @@ Result GraphOperations::checkEdgeDefinitionPermissions(EdgeDefinition const& edg
   setUnion(graphCollections, edgeDefinition.getTo());
   graphCollections.emplace(edgeDefinition.getName());
 
-  bool canUseDatabaseRW = execContext->canUseDatabase(auth::Level::RW);
+  bool canUseDatabaseRW = execContext.canUseDatabase(auth::Level::RW);
   for (auto const& col : graphCollections) {
     // We need RO on all collections. And, in case any collection does not
     // exist, we need RW on the database.
-    if (!execContext->canUseCollection(col, auth::Level::RO)) {
+    if (!execContext.canUseCollection(col, auth::Level::RO)) {
       LOG_TOPIC("e8a53", DEBUG, Logger::GRAPHS)
           << logprefix << "No read access to " << databaseName << "." << col;
       return TRI_ERROR_FORBIDDEN;

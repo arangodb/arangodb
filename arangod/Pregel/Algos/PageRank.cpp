@@ -40,10 +40,12 @@ struct PRWorkerContext : public WorkerContext {
 
   float commonProb = 0;
   void preGlobalSuperstep(uint64_t gss) override {
-    if (gss == 0) {
-      commonProb = 1.0f / vertexCount();
-    } else {
-      commonProb = 0.15f / vertexCount();
+    if (vertexCount() > 0) {
+      if (gss == 0) {
+        commonProb = 1.0f / vertexCount();
+      } else {
+        commonProb = 0.15f / vertexCount();
+      }
     }
   }
 };
