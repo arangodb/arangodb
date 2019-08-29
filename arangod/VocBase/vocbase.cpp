@@ -1689,9 +1689,11 @@ arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem
 }
 
 /// @brief create a vocbase object
-TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
+TRI_vocbase_t::TRI_vocbase_t(application_features::ApplicationServer& server,
+                             TRI_vocbase_type_e type, TRI_voc_tick_t id,
                              std::string const& name)
-    : _id(id),
+    : _server(server),
+      _id(id),
       _name(name),
       _type(type),
       _refCount(0),

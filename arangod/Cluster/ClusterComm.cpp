@@ -271,8 +271,9 @@ char const* ClusterCommResult::stringifyStatus(ClusterCommOpStatus status) {
 /// @brief ClusterComm constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterComm::ClusterComm()
-    : _roundRobin(0),
+ClusterComm::ClusterComm(application_features::ApplicationServer& server)
+    : _server(server),
+      _roundRobin(0),
       _logConnectionErrors(false),
       _authenticationEnabled(false),
       _jwtAuthorization("") {
@@ -287,8 +288,9 @@ ClusterComm::ClusterComm()
 }
 
 /// @brief Unit test constructor
-ClusterComm::ClusterComm(bool ignored)
-    : _roundRobin(0),
+ClusterComm::ClusterComm(application_features::ApplicationServer& server, bool ignored)
+    : _server(server),
+      _roundRobin(0),
       _logConnectionErrors(false),
       _authenticationEnabled(false),
       _jwtAuthorization("") {}  // ClusterComm::ClusterComm(bool)
@@ -319,7 +321,8 @@ std::shared_ptr<ClusterComm> ClusterComm::instance() {
     if (state == 0) {
       // we must initialize (cannot use std::make_shared here because
       // constructor is private), if we throw here, everything is broken:
-      ClusterComm* cc = new ClusterComm();
+      auto& server = application_features::ApplicationServer::server();
+      ClusterComm* cc = new ClusterComm(server);
       _theInstance = std::shared_ptr<ClusterComm>(cc);
       _theInstanceInit = 2;
     } else if (state == 1) {
@@ -365,7 +368,7 @@ void ClusterComm::cleanup() {
 
 void ClusterComm::startBackgroundThreads() {
   for (unsigned loop = 0; loop < (TRI_numberProcessors() / 8 + 1); ++loop) {
-    ClusterCommThread* thread = new ClusterCommThread();
+    ClusterCommThread* thread = new ClusterCommThread(_server);
 
     if (thread->start()) {
       _backgroundThreads.push_back(thread);
@@ -670,8 +673,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
   // can't move callbacks here
   communicator()->addRequest(std::move(newRequest));
 
-  while (!sharedData->wasSignaled
-         && !application_features::ApplicationServer::isStopping()) {
+  while (!sharedData->wasSignaled && !_server.isStopping()) {
     sharedData->cv.wait(100000);
   } // while
 
@@ -908,7 +910,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
    size_t nrDone = 0;
     while (true) {
       now = TRI_microtime();
-      if (now > endTime || application_features::ApplicationServer::isStopping()) {
+      if (now > endTime || _server.isStopping()) {
         break;
       }
       if (nrDone >= requests.size()) {
@@ -1173,7 +1175,8 @@ void ClusterComm::logConnectionError(bool useErrorLogLevel, ClusterCommResult co
 /// Cluster Comm Thread
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {
+ClusterCommThread::ClusterCommThread(application_features::ApplicationServer& server)
+    : Thread(server, "ClusterComm"), _cc(nullptr) {
   _cc = ClusterComm::instance().get();
   _communicator = std::make_shared<communicator::Communicator>();
 }
@@ -1212,7 +1215,7 @@ void ClusterCommThread::run() {
   TRI_ASSERT(_communicator != nullptr);
   LOG_TOPIC("74eda", DEBUG, Logger::CLUSTER) << "starting ClusterComm thread";
   auto lastAbortCheck = std::chrono::steady_clock::now();
-  while (!application_features::ApplicationServer::isStopping()) {
+  while (!_server.isStopping()) {
     try {
       if (std::chrono::steady_clock::now() - lastAbortCheck >
           std::chrono::duration<double>(3.0)) {

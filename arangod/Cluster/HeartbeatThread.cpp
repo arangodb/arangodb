@@ -80,8 +80,9 @@ namespace arangodb {
 
 class HeartbeatBackgroundJobThread : public Thread {
  public:
-  explicit HeartbeatBackgroundJobThread(HeartbeatThread* heartbeatThread)
-      : Thread("Maintenance"),
+  explicit HeartbeatBackgroundJobThread(application_features::ApplicationServer& server,
+                                        HeartbeatThread* heartbeatThread)
+      : Thread(server, "Maintenance"),
         _heartbeatThread(heartbeatThread),
         _stop(false),
         _sleeping(false),
@@ -139,7 +140,7 @@ class HeartbeatBackgroundJobThread : public Thread {
       uint64_t jobNr = ++_backgroundJobsLaunched;
       LOG_TOPIC("9ec42", DEBUG, Logger::HEARTBEAT) << "sync callback started " << jobNr;
       {
-        DBServerAgencySync job(_heartbeatThread);
+        DBServerAgencySync job(_server, _heartbeatThread);
         job.work();
       }
       LOG_TOPIC("71f07", DEBUG, Logger::HEARTBEAT) << "sync callback ended " << jobNr;
@@ -184,9 +185,10 @@ class HeartbeatBackgroundJobThread : public Thread {
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
-HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
+HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server,
+                                 AgencyCallbackRegistry* agencyCallbackRegistry,
                                  std::chrono::microseconds interval, uint64_t maxFailsBeforeWarning)
-    : CriticalThread("Heartbeat"),
+    : CriticalThread(server, "Heartbeat"),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(std::make_shared<Mutex>()),
       _agency(),
@@ -275,7 +277,7 @@ void HeartbeatThread::run() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::runDBServer() {
-  _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(this);
+  _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(_server, this);
   if (!_maintenanceThread->start()) {
     // WHAT TO DO NOW?
     LOG_TOPIC("12cee", ERR, Logger::HEARTBEAT)
@@ -402,7 +404,7 @@ void HeartbeatThread::runDBServer() {
 
         AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
         if (!result.successful()) {
-          if (!application_features::ApplicationServer::isStopping()) {
+          if (!_server.isStopping()) {
             LOG_TOPIC("17c99", WARN, Logger::HEARTBEAT)
                 << "Heartbeat: Could not read from agency!";
           }
@@ -414,7 +416,7 @@ void HeartbeatThread::runDBServer() {
               {AgencyCommManager::path(), "Shutdown"}));
 
           if (shutdownSlice.isBool() && shutdownSlice.getBool()) {
-            ApplicationServer::server->beginShutdown();
+            _server.beginShutdown();
             break;
           }
 
@@ -532,9 +534,7 @@ void HeartbeatThread::runSingleServer() {
   ClusterInfo* ci = ClusterInfo::instance();
   TRI_ASSERT(applier != nullptr && ci != nullptr);
 
-  TtlFeature* ttlFeature =
-      application_features::ApplicationServer::getFeature<TtlFeature>("Ttl");
-  TRI_ASSERT(ttlFeature != nullptr);
+  TtlFeature& ttlFeature = _server.getFeature<TtlFeature>();
 
   std::string const leaderPath = "Plan/AsyncReplication/Leader";
   std::string const transientPath = "AsyncReplication/" + _myId;
@@ -593,7 +593,7 @@ void HeartbeatThread::runSingleServer() {
            AgencyCommManager::path("Plan/AsyncReplication"), "/.agency"}));
       AgencyCommResult result = _agency.sendTransactionWithFailover(trx, timeout);
       if (!result.successful()) {
-        if (!application_features::ApplicationServer::isStopping()) {
+        if (!_server.isStopping()) {
           LOG_TOPIC("229fd", WARN, Logger::HEARTBEAT)
               << "Heartbeat: Could not read from agency! status code: "
               << result._statusCode << ", incriminating body: " << result.bodyRef()
@@ -614,7 +614,7 @@ void HeartbeatThread::runSingleServer() {
       VPackSlice shutdownSlice =
           response.get<std::string>({AgencyCommManager::path(), "Shutdown"});
       if (shutdownSlice.isBool() && shutdownSlice.getBool()) {
-        ApplicationServer::server->beginShutdown();
+        _server.beginShutdown();
         break;
       }
 
@@ -702,7 +702,7 @@ void HeartbeatThread::runSingleServer() {
         }
 
         // server is now responsible for expiring outdated documents
-        ttlFeature->allowRunning(true);
+        ttlFeature.allowRunning(true);
         continue;  // nothing more to do
       }
 
@@ -712,7 +712,7 @@ void HeartbeatThread::runSingleServer() {
       LOG_TOPIC("aeb38", TRACE, Logger::HEARTBEAT) << "Following: " << leaderStr;
 
       // server is not responsible anymore for expiring outdated documents
-      ttlFeature->allowRunning(false);
+      ttlFeature.allowRunning(false);
 
       ServerState::instance()->setFoxxmaster(leaderStr);  // leader is foxxmater
       ServerState::instance()->setReadOnly(true);  // Disable writes with dirty-read header
@@ -835,10 +835,7 @@ void HeartbeatThread::updateServerMode(VPackSlice const& readOnlySlice) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::runCoordinator() {
-  AuthenticationFeature* af =
-      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-          "Authentication");
-  TRI_ASSERT(af != nullptr);
+  AuthenticationFeature& af = _server.getFeature<AuthenticationFeature>();
 
   // invalidate coordinators every 2nd call
   bool invalidateCoordinators = true;
@@ -873,7 +870,7 @@ void HeartbeatThread::runCoordinator() {
       AgencyCommResult result = _agency.sendTransactionWithFailover(trx, timeout);
 
       if (!result.successful()) {
-        if (!application_features::ApplicationServer::isStopping()) {
+        if (!_server.isStopping()) {
           LOG_TOPIC("539fc", WARN, Logger::HEARTBEAT)
               << "Heartbeat: Could not read from agency! status code: "
               << result._statusCode << ", incriminating body: " << result.bodyRef()
@@ -887,7 +884,7 @@ void HeartbeatThread::runCoordinator() {
             std::vector<std::string>({AgencyCommManager::path(), "Shutdown"}));
 
         if (shutdownSlice.isBool() && shutdownSlice.getBool()) {
-          ApplicationServer::server->beginShutdown();
+          _server.beginShutdown();
           break;
         }
 
@@ -961,8 +958,8 @@ void HeartbeatThread::runCoordinator() {
           }
 
           if (userVersion > 0) {
-            if (af->isActive() && af->userManager() != nullptr) {
-              af->userManager()->setGlobalVersion(userVersion);
+            if (af.isActive() && af.userManager() != nullptr) {
+              af.userManager()->setGlobalVersion(userVersion);
             }
           }
         }
@@ -1115,9 +1112,7 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
 
 static std::string const prefixPlanChangeCoordinator = "Plan/Databases";
 bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
+  DatabaseFeature& databaseFeature = _server.getFeature<DatabaseFeature>();
 
   LOG_TOPIC("eda7d", TRACE, Logger::HEARTBEAT) << "found a plan update";
   AgencyCommResult result = _agency.getValues(prefixPlanChangeCoordinator);
@@ -1166,12 +1161,12 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       // known plan IDs
       ids.push_back(id);
 
-      TRI_vocbase_t* vocbase = databaseFeature->useDatabase(name);
+      TRI_vocbase_t* vocbase = databaseFeature.useDatabase(name);
       if (vocbase == nullptr) {
         // database does not yet exist, create it now
 
         // create a local database object...
-        int res = databaseFeature->createDatabase(id, name, vocbase);
+        int res = databaseFeature.createDatabase(id, name, vocbase);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_TOPIC("ca877", ERR, arangodb::Logger::HEARTBEAT)
@@ -1192,14 +1187,14 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
     }
 
     // get the list of databases that we know about locally
-    std::vector<TRI_voc_tick_t> localIds = databaseFeature->getDatabaseIds(false);
+    std::vector<TRI_voc_tick_t> localIds = databaseFeature.getDatabaseIds(false);
 
     for (auto id : localIds) {
       auto r = std::find(ids.begin(), ids.end(), id);
 
       if (r == ids.end()) {
         // local database not found in the plan...
-        databaseFeature->dropDatabase(id, false, true);
+        databaseFeature.dropDatabase(id, false, true);
       }
     }
 

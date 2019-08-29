@@ -178,8 +178,9 @@ CollectionInfoCurrent::~CollectionInfoCurrent() {}
 /// @brief create the clusterinfo instance
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterInfo::createInstance(AgencyCallbackRegistry* agencyCallbackRegistry) {
-  _instance.reset(new ClusterInfo(agencyCallbackRegistry));
+void ClusterInfo::createInstance(application_features::ApplicationServer& server,
+                                 AgencyCallbackRegistry* agencyCallbackRegistry) {
+  _instance.reset(new ClusterInfo(server, agencyCallbackRegistry));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,8 +193,10 @@ ClusterInfo* ClusterInfo::instance() { return _instance.get(); }
 /// @brief creates a cluster info object
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterInfo::ClusterInfo(AgencyCallbackRegistry* agencyCallbackRegistry)
-    : _agency(),
+ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
+                         AgencyCallbackRegistry* agencyCallbackRegistry)
+    : _server(server),
+      _agency(),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _rebootTracker(SchedulerFeature::SCHEDULER),
       _planVersion(0),
@@ -489,9 +492,7 @@ void ClusterInfo::loadClusterId() {
 static std::string const prefixPlan = "Plan";
 
 void ClusterInfo::loadPlan() {
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
+  DatabaseFeature& databaseFeature = _server.getFeature<DatabaseFeature>();
 
   ++_planProt.wantedVersion;  // Indicate that after *NOW* somebody has to
                               // reread from the agency!
@@ -670,7 +671,7 @@ void ClusterInfo::loadPlan() {
       }
 
       auto const databaseName = databasePairSlice.key.copyString();
-      auto* vocbase = databaseFeature->lookupDatabase(databaseName);
+      auto* vocbase = databaseFeature.lookupDatabase(databaseName);
 
       if (!vocbase) {
         // No database with this name found.
@@ -825,7 +826,7 @@ void ClusterInfo::loadPlan() {
 
       DatabaseCollections databaseCollections;
       auto const databaseName = databasePairSlice.key.copyString();
-      auto* vocbase = databaseFeature->lookupDatabase(databaseName);
+      auto* vocbase = databaseFeature.lookupDatabase(databaseName);
 
       if (!vocbase) {
         // No database with this name found.
@@ -1566,7 +1567,7 @@ Result ClusterInfo::createDatabaseCoordinator(  // create database
 
       agencyCallback->executeByCallbackOrTimeout(getReloadServerListTimeout() / interval);
 
-      if (application_features::ApplicationServer::isStopping()) {
+      if (_server.isStopping()) {
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }
@@ -1661,7 +1662,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
 
       agencyCallback->executeByCallbackOrTimeout(interval);
 
-      if (application_features::ApplicationServer::isStopping()) {
+      if (_server.isStopping()) {
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }
@@ -2084,7 +2085,7 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     // If we get here we have not tried anything.
     // Wait on callbacks.
 
-    if (application_features::ApplicationServer::isStopping()) {
+    if (_server.isStopping()) {
       // Report shutdown on all collections
       for (auto const& info : infos) {
         events::CreateCollection(databaseName, info.name, TRI_ERROR_SHUTTING_DOWN);
@@ -2116,10 +2117,10 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
       }
     }
 
-  } while (!application_features::ApplicationServer::isStopping());
+  } while (!_server.isStopping());
   // If we get here we are not allowed to retry.
   // The loop above does not contain a break
-  TRI_ASSERT(application_features::ApplicationServer::isStopping());
+  TRI_ASSERT(_server.isStopping());
   for (auto const& info : infos) {
     events::CreateCollection(databaseName, info.name, TRI_ERROR_SHUTTING_DOWN);
   }
@@ -2298,7 +2299,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
       agencyCallback->executeByCallbackOrTimeout(interval);
 
-      if (application_features::ApplicationServer::isStopping()) {
+      if (_server.isStopping()) {
         events::DropCollection(dbName, collectionID, TRI_ERROR_CLUSTER_TIMEOUT);
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
@@ -2700,7 +2701,7 @@ Result ClusterInfo::ensureIndexCoordinator(  // create index
   //   - some other error
   // There is nothing more to do here.
 
-  if (!application_features::ApplicationServer::isStopping()) {
+  if (!_server.isStopping()) {
     loadPlan();
   }
 
@@ -2924,7 +2925,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
   }
 
   {
-    while (!application_features::ApplicationServer::isStopping()) {
+    while (!_server.isStopping()) {
       int tmpRes = dbServerResult->load(std::memory_order_acquire);
 
       if (tmpRes < 0) {
@@ -3287,7 +3288,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 
       agencyCallback->executeByCallbackOrTimeout(interval);
 
-      if (application_features::ApplicationServer::isStopping()) {
+      if (_server.isStopping()) {
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }
@@ -3871,7 +3872,7 @@ std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(std::un
     // reset everything we found so far for the next round
     result.clear();
 
-    if (++tries >= 2 || application_features::ApplicationServer::isStopping()) {
+    if (++tries >= 2 || _server.isStopping()) {
       break;
     }
 
@@ -4335,9 +4336,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
   }
 
   double wait = 0.1;
-  while (!application_features::ApplicationServer::isStopping() &&
-         std::chrono::steady_clock::now() < endTime) {
-
+  while (!_server.isStopping() && std::chrono::steady_clock::now() < endTime) {
     result = _agency.getValues("Supervision/State/Mode");
     if (result.successful()) {
       if (!result.slice().isArray() || result.slice().length() != 1) {
@@ -4430,9 +4429,7 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(
   }
 
   double wait = 0.1;
-  while (!application_features::ApplicationServer::isStopping() &&
-         std::chrono::steady_clock::now() < endTime) {
-
+  while (!_server.isStopping() && std::chrono::steady_clock::now() < endTime) {
     result = _agency.getValues("/arango/Supervision/State/Mode");
     if (result.successful()) {
       if (!result.slice().isArray() || result.slice().length() != 1 ||

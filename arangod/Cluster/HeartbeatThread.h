@@ -36,6 +36,9 @@
 #include <chrono>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 struct AgencyVersions {
   uint64_t plan;
@@ -54,8 +57,8 @@ class HeartbeatBackgroundJobThread;
 class HeartbeatThread : public CriticalThread,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
-  HeartbeatThread(AgencyCallbackRegistry*, std::chrono::microseconds,
-                  uint64_t maxFailsBeforeWarning);
+  HeartbeatThread(application_features::ApplicationServer&, AgencyCallbackRegistry*,
+                  std::chrono::microseconds, uint64_t maxFailsBeforeWarning);
   ~HeartbeatThread();
 
  public:

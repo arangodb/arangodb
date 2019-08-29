@@ -23,6 +23,7 @@
 
 #include "ClusterFeature.h"
 
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
@@ -31,6 +32,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Endpoint/Endpoint.h"
+#include "FeaturePhases/DatabaseFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -54,8 +56,8 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
       _agencyCallbackRegistry(nullptr),
       _requestedRole(ServerState::RoleEnum::ROLE_UNDEFINED) {
   setOptional(true);
-  startsAfter("DatabasePhase");
-  startsAfter("CommunicationPhase");
+  startsAfter<CommunicationFeaturePhase>();
+  startsAfter<DatabaseFeaturePhase>();
 }
 
 ClusterFeature::~ClusterFeature() {
@@ -271,7 +273,7 @@ void ClusterFeature::prepare() {
   _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(agencyCallbacksPath()));
 
   // Initialize ClusterInfo library:
-  ClusterInfo::createInstance(_agencyCallbackRegistry.get());
+  ClusterInfo::createInstance(server(), _agencyCallbackRegistry.get());
 
   // create an instance (this will not yet create a thread)
   ClusterComm::instance();
@@ -532,7 +534,7 @@ void ClusterFeature::startHeartbeatThread(AgencyCallbackRegistry* agencyCallback
                                           uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
                                           const std::string& endpoints) {
   _heartbeatThread =
-      std::make_shared<HeartbeatThread>(agencyCallbackRegistry,
+      std::make_shared<HeartbeatThread>(server(), agencyCallbackRegistry,
                                         std::chrono::microseconds(interval_ms * 1000),
                                         maxFailsBeforeWarning);
 

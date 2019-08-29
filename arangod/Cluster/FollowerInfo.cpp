@@ -146,7 +146,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
             "unable to remove follower"};
   }
 
-  if (application_features::ApplicationServer::isStopping()) {
+  if (_docColl->vocbase().server().isStopping()) {
     // If we are already shutting down, we cannot be trusted any more with
     // such an important decision like dropping a follower.
     return {TRI_ERROR_SHUTTING_DOWN};
@@ -400,7 +400,7 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
     }
     using namespace std::chrono_literals;
     std::this_thread::sleep_for(500ms);
-  } while (!application_features::ApplicationServer::isStopping());
+  } while (!_docColl->vocbase().server().isStopping());
   return TRI_ERROR_SHUTTING_DOWN;
 }
 

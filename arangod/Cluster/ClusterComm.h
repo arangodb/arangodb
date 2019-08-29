@@ -47,6 +47,9 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 class ClusterCommThread;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -434,7 +437,7 @@ class ClusterComm {
   /// new instances or copy them, except we ourselves.
   //////////////////////////////////////////////////////////////////////////////
 
-  ClusterComm();
+  ClusterComm(application_features::ApplicationServer&);
   ClusterComm(ClusterComm const&);     // not implemented
   void operator=(ClusterComm const&);  // not implemented
 
@@ -580,7 +583,7 @@ class ClusterComm {
 
  protected:  // protected members are for unit test purposes
   /// @brief Constructor for test cases.
-  explicit ClusterComm(bool);
+  explicit ClusterComm(application_features::ApplicationServer&, bool);
 
   std::string createCommunicatorDestination(std::string const& destination,
                                             std::string const& path) const;
@@ -655,6 +658,9 @@ class ClusterComm {
   static void logConnectionError(bool useErrorLogLevel, ClusterCommResult const* result,
                                  double timeout, int line);
 
+  /// underlying application server
+  application_features::ApplicationServer& _server;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our background communications thread
   //////////////////////////////////////////////////////////////////////////////
@@ -684,7 +690,7 @@ class ClusterCommThread : public Thread {
   ClusterCommThread& operator=(ClusterCommThread const&);
 
  public:
-  ClusterCommThread();
+  ClusterCommThread(application_features::ApplicationServer&);
   ~ClusterCommThread();
  public:
   void beginShutdown() override;
