@@ -874,7 +874,6 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
     edgeCollections.emplace(it);  // but also to edgeCollections for later iteration
   }
 
- // auto ctx = std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
   transaction::Methods trx{ctx(), {}, trxCollections, {}, trxOptions};
