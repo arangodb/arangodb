@@ -4,6 +4,9 @@ v3.5.1 (XXXX-XX-XX)
 * The graph viewer of the web interface now tries to find a vertex document of
   all available vertex collections before it aborts.
 
+* Fixed issue #9795: fix AQL `NOT IN` clause in SEARCH operations for ArangoSearch
+  views.
+
 * Make minimum timeout for synchronous replication configurable via parameter
   (--cluster.synchronous-replication-timeout-minimum) and increase default value
   to prevent dropping followers unnecessarily.
