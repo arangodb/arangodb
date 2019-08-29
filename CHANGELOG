@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed creation of a smart join collection in the web ui.
+
 * Geo functions will now have better error reporting on invalid input.
 
 * Fixed issue #9795. Fixed NOT IN clause in ArangoSearch.
