@@ -454,9 +454,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   // read lock
   // check if the collection is already loaded
   {
-    ExecContext const* exec = ExecContext::CURRENT;
-    if (exec != nullptr &&
-        !exec->canUseCollection(_name, collection->name(), auth::Level::RO)) {
+    if (!ExecContext::current().canUseCollection(_name, collection->name(), auth::Level::RO)) {
       return TRI_set_errno(TRI_ERROR_FORBIDDEN);
     }
 
@@ -898,7 +896,7 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
               });
   }
 
-  ExecContext const* exec = ExecContext::CURRENT;
+  ExecContext const& exec = ExecContext::current();
   result.add("collections", VPackValue(VPackValueType::Array));
   for (auto& collection : collections) {
     READ_LOCKER(readLocker, collection->_lock);
@@ -920,8 +918,7 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
       continue;
     }
 
-    if (exec != nullptr &&
-        !exec->canUseCollection(_name, collection->name(), auth::Level::RO)) {
+    if (!exec.canUseCollection(_name, collection->name(), auth::Level::RO)) {
       continue;
     }
 

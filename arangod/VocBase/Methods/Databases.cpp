@@ -87,12 +87,10 @@ std::vector<std::string> Databases::list(std::string const& user) {
 arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& inUsers,
                                    VPackSlice const& inOptions) {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    if (!exec->isAdminUser()) {
-      events::CreateDatabase(dbName, TRI_ERROR_FORBIDDEN);
-      return TRI_ERROR_FORBIDDEN;
-    }
+  ExecContext const& exec = ExecContext::current();
+  if (!exec.isAdminUser()) {
+    events::CreateDatabase(dbName, TRI_ERROR_FORBIDDEN);
+    return TRI_ERROR_FORBIDDEN;
   }
 
   VPackSlice options = inOptions;
@@ -214,9 +212,10 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     TRI_ASSERT(vocbase->name() == dbName);
 
     // we need to add the permissions before running the upgrade script
-    if (ExecContext::CURRENT != nullptr && um != nullptr) {
+    ExecContext const& exec = ExecContext::current();
+    if (!exec.isSuperuser() && um != nullptr) {
       // ignore errors here Result r =
-      um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
+      um->updateUser(exec.user(), [&](auth::User& entry) {
         entry.grantDatabase(dbName, auth::Level::RW);
         entry.grantCollection(dbName, "*", auth::Level::RW);
         return TRI_ERROR_NO_ERROR;
@@ -246,9 +245,10 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     TRI_DEFER(vocbase->release());
 
     // we need to add the permissions before running the upgrade script
-    if (ExecContext::CURRENT != nullptr && um != nullptr) {
+    ExecContext const& exec = ExecContext::current();
+    if (!exec.isSuperuser() && um != nullptr) {
       // ignore errors here Result r =
-      um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
+      um->updateUser(exec.user(), [&](auth::User& entry) {
         entry.grantDatabase(dbName, auth::Level::RW);
         entry.grantCollection(dbName, "*", auth::Level::RW);
         return TRI_ERROR_NO_ERROR;
@@ -327,12 +327,10 @@ const std::string dropError = "Error when dropping Datbase";
 
 arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    if (exec->systemAuthLevel() != auth::Level::RW) {
-      events::DropDatabase(dbName, TRI_ERROR_FORBIDDEN);
-      return TRI_ERROR_FORBIDDEN;
-    }
+  ExecContext const& exec = ExecContext::current();
+  if (exec.systemAuthLevel() != auth::Level::RW) {
+    events::DropDatabase(dbName, TRI_ERROR_FORBIDDEN);
+    return TRI_ERROR_FORBIDDEN;
   }
 
   Result res;
