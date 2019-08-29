@@ -872,6 +872,8 @@ void ClusterInfo::loadPlan() {
             << "invalid information will be repaired. VelocyPack: "
             << collectionsSlice.toJson();
         planValid &= !collectionsSlice.length();  // cannot find vocbase for defined collections (allow empty collections for missing vocbase)
+
+        continue;
       }
 
       for (auto const& collectionPairSlice : velocypack::ObjectIterator(collectionsSlice)) {
