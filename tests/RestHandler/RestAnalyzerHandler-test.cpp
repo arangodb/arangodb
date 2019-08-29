@@ -54,7 +54,9 @@
 
 #include "Logger/LogMacros.h"
 
-#define ASSERT_ARANGO_OK(x) { ASSERT_TRUE(res.ok()) << res.errorMessage(); }
+#define ASSERT_ARANGO_OK(x) { ASSERT_TRUE(x.ok()) << x.errorMessage(); }
+
+using namespace std::literals::string_literals;
 
 namespace {
 
@@ -176,45 +178,45 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
 
     name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
 
-    analyzers->emplace(result, name, "identity",
-                       VPackParser::fromJson("{\"args\":\"abc\"}")->slice());
+    ASSERT_ARANGO_OK(analyzers->emplace(result, name, "identity",
+                                        VPackParser::fromJson("{\"args\":\"abc\"}")->slice()));
 
     name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2";
-    analyzers->emplace(result, name, "identity",
-                                        VPackParser::fromJson("{\"args\":\"abc\"}")->slice());
+    ASSERT_ARANGO_OK(analyzers->emplace(result, name, "identity",
+                                        VPackParser::fromJson("{\"args\":\"abc\"}")->slice()));
 
     name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
-    res = analyzers->emplace(result, name, "rest-analyzer-empty",
+    ASSERT_ARANGO_OK(analyzers->emplace(result, name, "rest-analyzer-empty",
                              VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
-                             irs::flags{irs::frequency::type()});
-    ASSERT_TRUE(res.ok()) << res.errorMessage();
+                                        irs::flags{irs::frequency::type()}));
   };
 
-  void createVocbase(std::string const& name) {
+  // Creates a new database
+  void createDatabase(std::string const& name) {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     auto const databases = arangodb::velocypack::Parser::fromJson(
       std::string("[ { \"name\": \"" + name + "\" } ]"));
     ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
 
-    grantOnDb( { {"testVocbase", arangodb::auth::Level::RW },
+    grantOnDb( { { name, arangodb::auth::Level::RW },
                  { arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW } });
 
     arangodb::Result res;
     std::tie(res, std::ignore) = arangodb::methods::Collections::createSystem(
-      *dbFeature->useDatabase("testVocbase"), arangodb::tests::AnalyzerCollectionName, false);
+      *dbFeature->useDatabase(name), arangodb::tests::AnalyzerCollectionName, false);
 
     ASSERT_TRUE(res.ok());
 
-    ASSERT_TRUE((analyzers
+    ASSERT_ARANGO_OK(analyzers
                  ->emplace(result, name + "::testAnalyzer1",
-                           "identity", VPackSlice::noneSlice())
-                 .ok()));
-    ASSERT_TRUE((analyzers
+                           "identity", VPackSlice::noneSlice()));
+    ASSERT_ARANGO_OK(analyzers
                  ->emplace(result, name + "::testAnalyzer2", "identity",
-                           VPackSlice::noneSlice())
-                 .ok()));
+                           VPackSlice::noneSlice()));
   }
 
+  // Grant permissions on one DB
+  // NOTE that permissions are always overwritten.
   void grantOnDb(std::string const& dbName, arangodb::auth::Level const& level) {
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
     auto& user =
@@ -227,8 +229,11 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
     // set user map to avoid loading configuration from system database
     userManager->setAuthInfo(userMap);
   }
+
+  // Grant permissions on multiple DBs
+  // NOTE that permissions are always overwritten.
   void grantOnDb(std::vector<std::pair<std::string const&, arangodb::auth::Level const&>> grants) {
-    arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    arangodb::auth::UserMap userMap;
     auto& user =
       userMap
       .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
@@ -239,7 +244,6 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
     }
     userManager->setAuthInfo(userMap);
   }
-
 };
 
 // -----------------------------------------------------------------------------
@@ -659,38 +663,18 @@ TEST_F(RestAnalyzerHandlerTest, test_get_known) {
   EXPECT_TRUE((slice.hasKey("features") && slice.get("features").isArray()));
 }
 
+// TODO: This test needs some love (i.e. probably splitting)
 TEST_F(RestAnalyzerHandlerTest, test_get_custom) {
-  auto const databases = arangodb::velocypack::Parser::fromJson(
-    std::string("[ { \"name\": \"FooDb\" }, { \"name\": \"FooDb2\" } ]"));
+  createDatabase("FooDb");
+  createDatabase("FooDb2");
 
-  ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
-
-  arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-  auto& user =
-    userMap
-    .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
-    .first->second;
-  user.grantDatabase("FooDb", arangodb::auth::Level::RW);
-  user.grantDatabase("FooDb2", arangodb::auth::Level::RW);
-  user.grantDatabase(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO);
-  userManager->setAuthInfo(userMap);
-
-  arangodb::Result res;
-  std::tie(res, std::ignore) = arangodb::methods::Collections::createSystem(
-    *dbFeature->useDatabase("FooDb"), arangodb::tests::AnalyzerCollectionName, false);
-  ASSERT_TRUE(res.ok());
-
-  std::tie(res, std::ignore) = arangodb::methods::Collections::createSystem(
-    *dbFeature->useDatabase("FooDb2"), arangodb::tests::AnalyzerCollectionName, false);
-  ASSERT_TRUE(res.ok());
-
-  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-  ASSERT_TRUE((analyzers->emplace(result, "FooDb::testAnalyzer1", "identity",
-                                  VPackSlice::noneSlice()).ok()));  // Empty VPack for nullptr
+  grantOnDb({
+      { "FooDb"s, arangodb::auth::Level::RW },
+      { "FooDb2"s, arangodb::auth::Level::RW },
+      { arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO } });
 
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "FooDb2");
+    TRI_vocbase_t& vocbase = *dbFeature->useDatabase("FooDb2");
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -706,8 +690,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get_custom) {
     EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
   }
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "FooDb2");
+    TRI_vocbase_t& vocbase = *dbFeature->useDatabase("FooDb2");
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -723,8 +706,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get_custom) {
     EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
   }
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "FooDb2");
+    TRI_vocbase_t& vocbase = *dbFeature->useDatabase("FooDb2");
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1000,7 +982,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list_system_database_not_authorized) {
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_authorized) {
-  createVocbase("testVocbase");
+  createDatabase("testVocbase");
 
   arangodb::auth::UserMap userMap;
 
@@ -1071,7 +1053,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_authorized) {
 TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_not_authorized) {
   grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW);
 
-  createVocbase("testVocbase");
+  createDatabase("testVocbase");
 
   TRI_vocbase_t& vocbase = *dbFeature->useDatabase("testVocbase");
   auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
@@ -1134,7 +1116,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_not_authorized) {
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_system_not_authorized) {
-  createVocbase("testVocbase");
+  createDatabase("testVocbase");
 
   TRI_vocbase_t& vocbase = *dbFeature->useDatabase("testVocbase");
   auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
@@ -1189,7 +1171,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_system_not_authori
 
 TEST_F(RestAnalyzerHandlerTest,
        test_list_non_system_database_system_not_authorized_not_authorized) {
-  createVocbase("testVocbase");
+  createDatabase("testVocbase");
 
   TRI_vocbase_t& vocbase = *dbFeature->useDatabase("testVocbase");
 
