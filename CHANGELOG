@@ -3,6 +3,11 @@ v3.5.1 (XXXX-XX-XX)
 
 * Fixed creation of a smart join collection in the web ui.
 
+* Geo functions will now have better error reporting on invalid input.
+
+* The graph viewer of the web interface now tries to find a vertex document of
+  all available vertex collections before it aborts.
+
 * Fixed issue #9795: fix AQL `NOT IN` clause in SEARCH operations for ArangoSearch
   views.
 
