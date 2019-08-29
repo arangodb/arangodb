@@ -1098,7 +1098,8 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_not_authorized) {
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
   EXPECT_TRUE((slice.hasKey("result") && slice.get("result").isArray() &&
-               expected.size() == slice.get("result").length()));
+               expected.size() == slice.get("result").length()))
+    << "expected: " << expected <<  " got: " << slice.toJson();
 
   for (arangodb::velocypack::ArrayIterator itr(slice.get("result")); itr.valid(); ++itr) {
     auto subSlice = *itr;
