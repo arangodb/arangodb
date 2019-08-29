@@ -297,14 +297,14 @@ class Methods {
   OperationResult insert(std::string const& cname,
                          VPackSlice const value,
                          OperationOptions const& options) {
-    return this->insertF(cname, value, options).get();
+    return this->insertAsync(cname, value, options).get();
   }
 
   /// @brief create one or multiple documents in a collection
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
-  Future<OperationResult> insertF(std::string const& collectionName,
-                                  VPackSlice const value, OperationOptions const& options);
+  Future<OperationResult> insertAsync(std::string const& collectionName,
+                                      VPackSlice const value, OperationOptions const& options);
 
   /// @brief update/patch one or multiple documents in a collecti  Result
   /// the single-document variant of this operation will either succeed or,
@@ -495,9 +495,6 @@ class Methods {
 
   OperationResult countLocal(std::string const& collectionName, CountType type);
 
-  /// @brief return the collection
-  arangodb::LogicalCollection* documentCollection(TransactionCollection const*) const;
-
   /// @brief add a collection by id, with the name supplied
   ENTERPRISE_VIRT Result addCollection(TRI_voc_cid_t, std::string const&, AccessMode::Type);
 
@@ -569,7 +566,7 @@ class Methods {
     std::string name;
   } _collectionCache;
 
-  Future<Result> replicateOperations(LogicalCollection const& collection,
+  Future<Result> replicateOperations(std::shared_ptr<LogicalCollection> const& collection,
                                      std::shared_ptr<const std::vector<std::string>> const& followers,
                                      OperationOptions const& options, VPackSlice value,
                                      TRI_voc_document_operation_e operation,

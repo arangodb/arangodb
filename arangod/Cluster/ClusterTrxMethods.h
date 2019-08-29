@@ -35,8 +35,6 @@ struct OperationOptions;
 class TransactionState;
 
 namespace ClusterTrxMethods {
-// wrapper Class for static functions.
-// Cannot be instanciated.
 
 /// @brief begin a transaction on all followers
 arangodb::Result beginTransactionOnLeaders(TransactionState&,

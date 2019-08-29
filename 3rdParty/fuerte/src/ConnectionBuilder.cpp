@@ -123,13 +123,15 @@ void parseSchema(std::string const& schema,
   }
 }
 
-#define IS_INVALID(c) (c == ' ' || c == '\r' || c == '\n')
-#define LOWER(c)            (unsigned char)(c | 0x20)
-#define IS_ALPHA(c)         (LOWER(c) >= 'a' && LOWER(c) <= 'z')
-#define IS_NUM(c)           ((c) >= '0' && (c) <= '9')
-#define IS_ALPHANUM(c)      (IS_ALPHA(c) || IS_NUM(c))
-#define IS_HOST_CHAR(c)     (IS_ALPHANUM(c) || (c) == '.' || (c) == '-')
-  
+namespace {
+bool is_invalid(char c) { return c == ' ' || c == '\r' || c == '\n'; }
+char lower(char c) { return (unsigned char)(c | 0x20); }
+bool is_alpha(char c) { return (lower(c) >= 'a' && lower(c) <= 'z'); }
+bool is_num(char c) { return ((c) >= '0' && (c) <= '9'); }
+bool is_alphanum(char c) { return is_num(c) || is_alpha(c); }
+bool is_host_char(char c) { return (is_alphanum(c) || (c) == '.' || (c) == '-'); }
+}
+
 ConnectionBuilder& ConnectionBuilder::endpoint(std::string const& spec) {
   if (spec.empty()) {
     throw std::runtime_error("invalid empty endpoint spec");
@@ -156,7 +158,7 @@ ConnectionBuilder& ConnectionBuilder::endpoint(std::string const& spec) {
   if (spec[pos] == '[') { // ipv6 addresses contain colons
     pos++; // do not include '[' in actual address
     while (spec[x] != '\0' && spec[x] != ']') {
-      if (IS_INVALID(spec[x])) { // we could validate this better
+      if (is_invalid(spec[x])) { // we could validate this better
         throw std::runtime_error(std::string("invalid ipv6 address: ") + spec);
       }
       x++;
@@ -167,7 +169,7 @@ ConnectionBuilder& ConnectionBuilder::endpoint(std::string const& spec) {
     _conf._host = spec.substr(pos, ++x - pos - 1); // do not include ']'
   } else {
     while (spec[x] != '\0' && spec[x] != '/' && spec[x] != ':') {
-      if (!IS_HOST_CHAR(spec[x])) {
+      if (!is_host_char(spec[x])) {
         throw std::runtime_error(std::string("invalid host in spec: ") + spec);
       }
       x++;
@@ -181,7 +183,7 @@ ConnectionBuilder& ConnectionBuilder::endpoint(std::string const& spec) {
   if (spec[x] == ':') {
     pos = ++x;
     while (spec[x] != '\0' && spec[x] != '/' && spec[x] != '?') {
-      if (!IS_NUM(spec[x])) {
+      if (!is_num(spec[x])) {
         throw std::runtime_error(std::string("invalid port in spec: ") + spec);
       }
       x++;

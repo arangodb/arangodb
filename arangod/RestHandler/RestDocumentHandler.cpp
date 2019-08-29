@@ -181,14 +181,8 @@ RestStatus RestDocumentHandler::insertDocument() {
     return RestStatus::DONE;
   }
 
-  futures::Future<OperationResult> f = _activeTrx->insertF(cname, body, opOptions);
-
-  const bool wasReady = f.isReady();
-  std::shared_ptr<RestHandler> self;
-  if (!wasReady) {
-    self = shared_from_this();
-  }
-  auto ff = std::move(f).thenValue([cname = std::move(cname), this, isMultiple](OperationResult&& opres) {
+  return waitForFuture(_activeTrx->insertAsync(cname, body, opOptions)
+                       .thenValue([=, cname = std::move(cname)](OperationResult&& opres) {
     // Will commit if no error occured.
     // or abort if an error occured.
     // result stays valid!
@@ -207,17 +201,7 @@ RestStatus RestDocumentHandler::insertDocument() {
                   TRI_col_type_e(_activeTrx->getCollectionType(cname)),
                   _activeTrx->transactionContextPtr()->getVPackOptionsForDump(),
                   isMultiple);
-  });
-//  .thenFinal([self, this, wasReady](futures::Try<futures::Unit> t) {
-//    if (t.hasException()) {
-//      handleExceptionPtr(t.exception());
-//    }
-//    if (!wasReady) {
-//      this->continueHandlerExecution();
-//    }
-//  });
-  return waitForFuture(std::move(ff));
-//  return wasReady ? RestStatus::DONE : RestStatus::WAITING;
+  }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

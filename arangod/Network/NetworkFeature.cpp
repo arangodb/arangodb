@@ -70,6 +70,7 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
       _verifyHosts(false) {
   setOptional(true);
   startsAfter("Server");
+  startsAfter("Scheduler");
 }
 
 void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {

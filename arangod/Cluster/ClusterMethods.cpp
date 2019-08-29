@@ -1250,6 +1250,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
   }
   
   std::vector<Future<network::Response>> futures;
+  futures.reserve(shardMap.size());
 
   std::string const baseUrl =
       "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document?collection=";
