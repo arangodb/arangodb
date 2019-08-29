@@ -1,6 +1,16 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Check for duplicate server endpoints registered in the agency in sub-keys of
+  `/Current/ServersRegistered`.
+
+  Duplicate endpoints will be registered if more than one arangod instance is 
+  started with the same value for startup option `--cluster.my-address`. This can 
+  happen unintentionally due to typos in the configuration, copy&paste remainders etc.
+
+  In case a duplicate endpoint is detected on startup, a warning will be written 
+  to the log, indicating which other server has already "acquired" the same endpoint.
+
 * Geo functions will now have better error reporting on invalid input.
 
 * The graph viewer of the web interface now tries to find a vertex document of
