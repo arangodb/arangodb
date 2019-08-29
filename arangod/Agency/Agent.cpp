@@ -31,6 +31,7 @@
 
 #include "Agency/AgentCallback.h"
 #include "Agency/GossipCallback.h"
+#include "Agency/AgencyFeature.cpp"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
@@ -1964,11 +1965,14 @@ void Agent::emptyCbTrashBin() {
   // Best effort. Will be retried otherwise.
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "scheduling unobserve: " << envelope->toJson();
   auto* scheduler = SchedulerFeature::SCHEDULER;
-  std::shared_ptr<Agent> agent = this->shared_from_this();
+  
   if (scheduler != nullptr) {
     scheduler->queue(
-      RequestPriority::LOW, [agent, envelope](bool) {
-                              agent->write(envelope);
+      RequestPriority::LOW, [envelope](bool) {
+                              auto* agent = AgencyFeature::AGENT;
+                              if (agent) {
+                                agent->write(envelope);
+                              }
                             });
   }
 

@@ -43,8 +43,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 namespace consensus {
 
-class Agent final : public arangodb::Thread, public AgentInterface,
-                    public std::enable_shared_from_this<Agent> {
+class Agent final : public arangodb::Thread, public AgentInterface {
  public:
   /// @brief Construct with program options
   explicit Agent(config_t const&);
