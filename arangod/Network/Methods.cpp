@@ -254,18 +254,18 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
   void callResponse(Error err, std::unique_ptr<fuerte::Response> res) {
     Scheduler* sch = SchedulerFeature::SCHEDULER;
     if (ADB_UNLIKELY(sch == nullptr)) {  // mostly relevant for testing
-      _promise.setValue(Response{_destination, err, std::move(res)});
+      _promise.setValue(Response{std::move(_destination), err, std::move(res)});
       return;
     }
 
     _response = std::move(res);
     bool queued =
         sch->queue(RequestLane::CLUSTER_INTERNAL, [self = shared_from_this(), err]() {
-          self->_promise.setValue(
-              Response{self->_destination, err, std::move(self->_response)});
+          self->_promise.setValue(Response{std::move(self->_destination), err,
+                                           std::move(self->_response)});
         });
     if (!queued) {
-      _promise.setValue(Response{_destination, err, std::move(res)});
+      _promise.setValue(Response{std::move(_destination), err, std::move(res)});
     }
   }
 
