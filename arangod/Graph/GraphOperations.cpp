@@ -290,10 +290,6 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
   std::shared_ptr<LogicalCollection> def;
 
   OperationResult result;
-  VPackBuilder collectionsOptions;
-  collectionsOptions.openObject();
-  _graph.createCollectionOptions(collectionsOptions, waitForSync);
-  collectionsOptions.close();
 
   if (_graph.hasVertexCollection(collectionName)) {
     if (_graph.hasOrphanCollection(collectionName)) {
@@ -305,13 +301,19 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
                    std::string{TRI_errno_string(TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF)}));
   }
 
+  // add orphan collection to graph
+  _graph.addOrphanCollection(std::string(collectionName));
+
   def = GraphManager::getCollectionByName(_vocbase, collectionName);
+  Result res;
+
   if (def == nullptr) {
     if (createCollection) {
-      result = gmngr.createVertexCollection(collectionName, waitForSync,
-                                            collectionsOptions.slice());
-      if (result.fail()) {
-        return result;
+      // ensure that all collections are available
+      res = gmngr.ensureCollections(&_graph, waitForSync);
+
+      if (res.fail()) {
+        return OperationResult{std::move(res)};
       }
     } else {
       return OperationResult(
@@ -323,13 +325,11 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
     if (def->type() != TRI_COL_TYPE_DOCUMENT) {
       return OperationResult(TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX);
     }
-    auto res = _graph.validateCollection(*(def.get()));
+    res = _graph.validateCollection(*(def.get()));
     if (res.fail()) {
       return OperationResult{std::move(res)};
     }
   }
-  // add orphan collection to graph
-  _graph.addOrphanCollection(std::move(collectionName));
 
   VPackBuilder builder;
   builder.openObject();
@@ -339,10 +339,9 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::WRITE);
 
-  Result res = trx.begin();
+  res = trx.begin();
 
   if (!res.ok()) {
-    trx.finish(TRI_ERROR_NO_ERROR);
     return OperationResult(res);
   }
 
