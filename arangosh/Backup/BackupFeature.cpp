@@ -310,7 +310,7 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
            "contain some inconsistencies.";
   } else if (!forced.isBoolean() && !forced.isNone()) {
     result.reset(TRI_ERROR_INTERNAL,
-                 "expected 'result.potentiallyInconsistent'' to be an boolean");
+                 "expected 'result.potentiallyInconsistent' to be an boolean");
     return result;
   }
 
