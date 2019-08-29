@@ -361,7 +361,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
     }
   }
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   // extract collection
   TRI_voc_cid_t cid = 0;
@@ -590,7 +590,7 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
     DatabaseFeature::DATABASE->inventory(builder, tick, nameFilter);
   } else {
     // add collections and views
-    grantTemporaryRights();
+    ExecContextSuperuserScope scope(ExecContext::current().isAdminUser());
     _vocbase.inventory(builder, tick, nameFilter);
     TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
   }
@@ -916,7 +916,7 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
   bool includeSystem = _request->parsedValue("includeSystem", true);
   bool withTicks = _request->parsedValue("ticks", true);
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   auto c = _vocbase.lookupCollection(collection);
 
@@ -925,9 +925,8 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     return;
   }
 
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr &&
-      !exec->canUseCollection(_vocbase.name(), c->name(), auth::Level::RO)) {
+  ExecContext const& execContext = ExecContext::current();
+  if (!execContext.canUseCollection(_vocbase.name(), c->name(), auth::Level::RO)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return;
   }

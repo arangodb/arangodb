@@ -221,10 +221,10 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
   // collections
   if (!hasFlag(flags, Serialize::ForPersistence)) {
     // verify that the current user has access on all linked collections
-    auto* exec = ExecContext::CURRENT;
-    if (exec) {
+    ExecContext const& exec = ExecContext::current();
+    if (!exec.isSuperuser()) {
       for (auto& entry : _collections) {
-        if (!exec->canUseCollection(vocbase().name(), entry.second.first, auth::Level::RO)) {
+        if (!exec.canUseCollection(vocbase().name(), entry.second.first, auth::Level::RO)) {
           return Result(TRI_ERROR_FORBIDDEN);
         }
       }
@@ -356,15 +356,15 @@ arangodb::Result IResearchViewCoordinator::properties(velocypack::Slice const& s
     }
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (arangodb::ExecContext::CURRENT) {
+    ExecContext const& exe = ExecContext::current();
+    if (!exe.isSuperuser()) {
       // check existing links
       for (auto& entry : _collections) {
         auto collection =
             engine->getCollection(vocbase().name(), std::to_string(entry.first));
 
         if (collection &&
-            !arangodb::ExecContext::CURRENT->canUseCollection(
-                vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
+            !exe.canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
           return arangodb::Result(
               TRI_ERROR_FORBIDDEN,
               std::string("while updating arangosearch definition, error: "
@@ -498,13 +498,13 @@ Result IResearchViewCoordinator::dropImpl() {
     });
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (arangodb::ExecContext::CURRENT) {
+    ExecContext const& exe = ExecContext::current();
+    if (!exe.isSuperuser()) {
       for (auto& entry : currentCids) {
         auto collection = engine->getCollection(vocbase().name(), std::to_string(entry));
 
         if (collection &&
-            !arangodb::ExecContext::CURRENT->canUseCollection(
-                vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
+            !exe.canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
           return arangodb::Result(TRI_ERROR_FORBIDDEN);
         }
       }

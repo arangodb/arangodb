@@ -884,7 +884,7 @@ void transaction::Methods::buildDocumentIdentity(
 
   // append / and key part
   temp.push_back('/');
-  temp.append(key.begin(), key.size());
+  temp.append(key.data(), key.size());
 
   builder.openObject();
   builder.add(StaticStrings::IdString, VPackValue(temp));
@@ -943,10 +943,10 @@ Result transaction::Methods::commit() {
                      "transaction not running on commit");
   }
 
-  ExecContext const* exe = ExecContext::CURRENT;
-  if (exe != nullptr && !_state->isReadOnlyTransaction()) {
-    bool cancelRW = ServerState::readOnly() && !exe->isSuperuser();
-    if (exe->isCanceled() || cancelRW) {
+  auto const& exec = ExecContext::current();
+  if (!_state->isReadOnlyTransaction()) {
+    bool cancelRW = ServerState::readOnly() && !exec.isSuperuser();
+    if (exec.isCanceled() || cancelRW) {
       return res.reset(TRI_ERROR_ARANGO_READ_ONLY,
                        "server is in read-only mode");
     }

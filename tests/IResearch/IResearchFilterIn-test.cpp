@@ -2563,7 +2563,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
   // simple attribute
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
     root.add<irs::by_term>().field(mangleStringIdentity("a")).term("2");
     root.add<irs::by_term>().field(mangleStringIdentity("a")).term("3");
@@ -2577,7 +2577,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
   // simple offset
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("1");
     root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("2");
     root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("3");
@@ -2589,7 +2589,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
   // complex attribute name
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("2");
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
@@ -2609,7 +2609,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
   // complex attribute name, offset
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>()
         .field(mangleStringIdentity("a.b.c[323].e.f"))
         .term("1");
@@ -2637,7 +2637,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
   // complex attribute name, offset
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(1.5);
     root.add<irs::by_term>()
         .field(mangleStringIdentity("a.b.c[323].e.f"))
@@ -2666,7 +2666,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
   // complex attribute name, offset, analyzer
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>()
         .field(mangleString("a.b.c[323].e.f", "test_analyzer"))
         .term("1");
@@ -2694,7 +2694,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
   // complex attribute name, offset, analyzer, boost
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(2.5);
     root.add<irs::by_term>()
         .field(mangleString("a.b.c[323].e.f", "test_analyzer"))
@@ -2723,7 +2723,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
   // heterogeneous array values
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>()
         .field(mangleStringIdentity("quick.brown.fox"))
         .term("1");
@@ -2755,7 +2755,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
   // heterogeneous array values, analyzer
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>()
         .field(mangleString("quick.brown.fox", "test_analyzer"))
         .term("1");
@@ -2783,7 +2783,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
   // heterogeneous array values, analyzer, boost
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(1.5);
     root.add<irs::by_term>()
         .field(mangleString("quick.brown.fox", "test_analyzer"))
@@ -2829,7 +2829,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>()
         .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
         .term("1");
@@ -2915,7 +2915,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     ctx.vars.emplace("x", value);
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
@@ -2945,7 +2945,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     ctx.vars.emplace("x", value);
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>()
         .field(mangleString("a.b.c.e.f", "test_analyzer"))
         .term("1");
@@ -2975,7 +2975,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     ctx.vars.emplace("x", value);
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(3.5);
     root.add<irs::by_term>()
         .field(mangleString("a.b.c.e.f", "test_analyzer"))
@@ -3010,7 +3010,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     ctx.vars.emplace(var.name, value);
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
     root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
@@ -3039,7 +3039,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     ctx.vars.emplace(var.name, value);
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>()
         .field(mangleString("a.b.c.e.f", "test_analyzer"))
         .term("1");
@@ -3072,7 +3072,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     ctx.vars.emplace(var.name, value);
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(1.5);
     root.add<irs::by_term>()
         .field(mangleString("a.b.c.e.f", "test_analyzer"))
@@ -3172,12 +3172,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
         EXPECT_TRUE(irs::Not::type() == notNode.type());
 
-        auto const* andNode = dynamic_cast<irs::And const*>(notNode.filter());
-        EXPECT_TRUE(andNode);
-        EXPECT_TRUE(irs::And::type() == andNode->type());
-        EXPECT_TRUE(3 == andNode->size());
+        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
+        EXPECT_TRUE(orNode);
+        EXPECT_TRUE(irs::Or::type() == orNode->type());
+        EXPECT_TRUE(3 == orNode->size());
 
-        auto begin = andNode->begin();
+        auto begin = orNode->begin();
 
         // 1st filter
         {
@@ -3202,7 +3202,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           EXPECT_TRUE(expected == *begin);
         }
 
-        EXPECT_TRUE(andNode->end() == ++begin);
+        EXPECT_TRUE(orNode->end() == ++begin);
       }
     }
   }
@@ -3282,12 +3282,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
         EXPECT_TRUE(irs::Not::type() == notNode.type());
 
-        auto const* andNode = dynamic_cast<irs::And const*>(notNode.filter());
-        EXPECT_TRUE(andNode);
-        EXPECT_TRUE(irs::And::type() == andNode->type());
-        EXPECT_TRUE(3 == andNode->size());
+        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
+        EXPECT_TRUE(orNode);
+        EXPECT_TRUE(irs::Or::type() == orNode->type());
+        EXPECT_TRUE(3 == orNode->size());
 
-        auto begin = andNode->begin();
+        auto begin = orNode->begin();
 
         // 1st filter
         {
@@ -3312,7 +3312,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           EXPECT_TRUE(expected == *begin);
         }
 
-        EXPECT_TRUE(andNode->end() == ++begin);
+        EXPECT_TRUE(orNode->end() == ++begin);
       }
     }
   }
@@ -3392,12 +3392,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
         EXPECT_TRUE(irs::Not::type() == notNode.type());
 
-        auto const* andNode = dynamic_cast<irs::And const*>(notNode.filter());
-        EXPECT_TRUE(andNode);
-        EXPECT_TRUE(irs::And::type() == andNode->type());
-        EXPECT_TRUE(3 == andNode->size());
+        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
+        EXPECT_TRUE(orNode);
+        EXPECT_TRUE(irs::Or::type() == orNode->type());
+        EXPECT_TRUE(3 == orNode->size());
 
-        auto begin = andNode->begin();
+        auto begin = orNode->begin();
 
         // 1st filter
         {
@@ -3422,7 +3422,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           EXPECT_TRUE(expected == *begin);
         }
 
-        EXPECT_TRUE(andNode->end() == ++begin);
+        EXPECT_TRUE(orNode->end() == ++begin);
       }
     }
   }
@@ -3502,13 +3502,13 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
         EXPECT_TRUE(irs::Not::type() == notNode.type());
 
-        auto const* andNode = dynamic_cast<irs::And const*>(notNode.filter());
-        EXPECT_TRUE(andNode);
-        EXPECT_TRUE(irs::And::type() == andNode->type());
-        EXPECT_TRUE(3 == andNode->size());
-        EXPECT_TRUE(1.5f == andNode->boost());
+        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
+        EXPECT_TRUE(orNode);
+        EXPECT_TRUE(irs::Or::type() == orNode->type());
+        EXPECT_TRUE(3 == orNode->size());
+        EXPECT_TRUE(1.5f == orNode->boost());
 
-        auto begin = andNode->begin();
+        auto begin = orNode->begin();
 
         // 1st filter
         {
@@ -3533,7 +3533,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           EXPECT_TRUE(expected == *begin);
         }
 
-        EXPECT_TRUE(andNode->end() == ++begin);
+        EXPECT_TRUE(orNode->end() == ++begin);
       }
     }
   }
@@ -3613,12 +3613,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
         EXPECT_TRUE(irs::Not::type() == notNode.type());
 
-        auto const* andNode = dynamic_cast<irs::And const*>(notNode.filter());
-        EXPECT_TRUE(andNode);
-        EXPECT_TRUE(irs::And::type() == andNode->type());
-        EXPECT_TRUE(3 == andNode->size());
+        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
+        EXPECT_TRUE(orNode);
+        EXPECT_TRUE(irs::Or::type() == orNode->type());
+        EXPECT_TRUE(3 == orNode->size());
 
-        auto begin = andNode->begin();
+        auto begin = orNode->begin();
 
         // 1st filter
         {
@@ -3643,7 +3643,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                       dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
         }
 
-        EXPECT_TRUE(andNode->end() == ++begin);
+        EXPECT_TRUE(orNode->end() == ++begin);
       }
     }
   }
@@ -3721,11 +3721,11 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         EXPECT_TRUE(1 == actual.size());
         auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
         EXPECT_TRUE(irs::Not::type() == notNode.type());
-        auto const* andNode = dynamic_cast<irs::And const*>(notNode.filter());
-        EXPECT_TRUE(andNode);
-        EXPECT_TRUE(irs::And::type() == andNode->type());
-        EXPECT_TRUE(3 == andNode->size());
-        auto begin = andNode->begin();
+        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
+        EXPECT_TRUE(orNode);
+        EXPECT_TRUE(irs::Or::type() == orNode->type());
+        EXPECT_TRUE(3 == orNode->size());
+        auto begin = orNode->begin();
 
         // 1st filter
         { EXPECT_TRUE(irs::empty() == *begin); }
@@ -3741,7 +3741,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         // 3rd filter
         { EXPECT_TRUE(irs::all() == *++begin); }
 
-        EXPECT_TRUE(andNode->end() == ++begin);
+        EXPECT_TRUE(orNode->end() == ++begin);
       }
     }
   }
@@ -3820,12 +3820,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         auto& notNode = dynamic_cast<irs::Not&>(*actual.begin());
         EXPECT_TRUE(irs::Not::type() == notNode.type());
 
-        auto const* andNode = dynamic_cast<irs::And const*>(notNode.filter());
-        EXPECT_TRUE(andNode);
-        EXPECT_TRUE(irs::And::type() == andNode->type());
-        EXPECT_TRUE(3 == andNode->size());
+        auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
+        EXPECT_TRUE(orNode);
+        EXPECT_TRUE(irs::Or::type() == orNode->type());
+        EXPECT_TRUE(3 == orNode->size());
 
-        auto begin = andNode->begin();
+        auto begin = orNode->begin();
 
         // 1st filter
         { EXPECT_TRUE(irs::empty() == *begin); }
@@ -3845,7 +3845,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         // 3rd filter
         { EXPECT_TRUE(irs::all() == *++begin); }
 
-        EXPECT_TRUE(andNode->end() == ++begin);
+        EXPECT_TRUE(orNode->end() == ++begin);
       }
     }
   }
@@ -3868,7 +3868,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     auto& term = stream.attributes().get<irs::term_attribute>();
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
     root.add<irs::by_term>()
         .field(mangleStringIdentity("a.b.c.e.f"))
@@ -3902,7 +3902,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     auto& term = stream.attributes().get<irs::term_attribute>();
 
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(2.5);
     root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
     root.add<irs::by_term>()

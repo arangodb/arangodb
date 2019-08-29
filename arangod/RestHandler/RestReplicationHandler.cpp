@@ -614,7 +614,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   configuration.validate();
 
   // allow access to _users if appropriate
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   // forget about any existing replication applier configuration
   applier->forget();
@@ -985,7 +985,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     return Result();
   }
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   auto* col = _vocbase.lookupCollection(name).get();
 
@@ -1038,13 +1038,12 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
   }
 
   // might be also called on dbservers
-  ExecContext const* exe = ExecContext::CURRENT;
-  if (name[0] != '_' && exe != nullptr && !exe->isSuperuser() &&
+  if (name[0] != '_' && !ExecContext::current().isSuperuser() &&
       ServerState::instance()->isSingleServer()) {
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
     TRI_ASSERT(um != nullptr);  // should not get here
     if (um != nullptr) {
-      um->updateUser(exe->user(), [&](auth::User& entry) {
+      um->updateUser(ExecContext::current().user(), [&](auth::User& entry) {
         entry.grantCollection(_vocbase.name(), col->name(), auth::Level::RW);
         return TRI_ERROR_NO_ERROR;
       });
@@ -1297,16 +1296,16 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
             ->createWaitsForSyncReplication();
     // in the replication case enforcing the replication factor is absolutely
     // not desired, so it is hardcoded to false
-    auto cols = ClusterMethods::createCollectionOnCoordinator(_vocbase, merged, ignoreDistributeShardsLikeErrors,
-                                                              createWaitsForSyncReplication,
-                                                              false, false, nullptr);
-    ExecContext const* exe = ExecContext::CURRENT;
+    auto cols =
+        ClusterMethods::createCollectionOnCoordinator(_vocbase, merged, ignoreDistributeShardsLikeErrors,
+                                                      createWaitsForSyncReplication, false);
+    ExecContext const& exec = ExecContext::current();
     TRI_ASSERT(cols.size() == 1);
-    if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
+    if (name[0] != '_' && !exec.isSuperuser()) {
       auth::UserManager* um = AuthenticationFeature::instance()->userManager();
       TRI_ASSERT(um != nullptr);  // should not get here
       if (um != nullptr) {
-        um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
+        um->updateUser(exec.user(), [&](auth::User& entry) {
           for (auto const& col : cols) {
             TRI_ASSERT(col != nullptr);
             entry.grantCollection(dbName, col->name(), auth::Level::RW);
@@ -1337,7 +1336,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   }
 #endif
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   if (colName == TRI_COL_NAME_USERS) {
     // We need to handle the _users in a special way
@@ -1790,7 +1789,7 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
 
   Result fres;
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
   READ_LOCKER(readLocker, _vocbase._inventoryLock);
 
   // look up the collection
@@ -2931,18 +2930,6 @@ uint64_t RestReplicationHandler::determineChunkSize() const {
   return chunkSize;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief Grant temporary restore rights
-//////////////////////////////////////////////////////////////////////////////
-void RestReplicationHandler::grantTemporaryRights() {
-  if (ExecContext::CURRENT != nullptr) {
-    if (ExecContext::CURRENT->databaseAuthLevel() == auth::Level::RW) {
-      // If you have administrative access on this database,
-      // we grant you everything for restore.
-      ExecContext::CURRENT = nullptr;
-    }
-  }
-}
 
 ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
   global = _request->parsedValue("global", false);

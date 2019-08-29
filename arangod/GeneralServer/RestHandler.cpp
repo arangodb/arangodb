@@ -378,7 +378,6 @@ void RestHandler::shutdownEngine() {
 }
 
 void RestHandler::executeEngine(bool isContinue) {
-  TRI_ASSERT(ExecContext::CURRENT == nullptr);
   ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
   ExecContextScope scope(exec);
 
