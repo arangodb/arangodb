@@ -390,9 +390,7 @@
               return 0;
             }
             shardKeys = _.pluck($('#new-collection-shardKeys').select2('data'), 'text');
-            if (shardKeys.length === 0) {
-              shardKeys.push('_key');
-            } else {
+            if (shardKeys.length !== 0) {
               _.each(shardKeys, function (element, index) { shardKeys[index] = arangoHelper.escapeHtml(element); });
             }
           }
