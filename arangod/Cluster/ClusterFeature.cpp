@@ -556,3 +556,7 @@ void ClusterFeature::syncDBServerStatusQuo() {
     _heartbeatThread->syncDBServerStatusQuo(true);
   }
 }
+
+std::shared_ptr<HeartbeatThread> ClusterFeature::heartbeatThread() {
+  return _heartbeatThread;
+}

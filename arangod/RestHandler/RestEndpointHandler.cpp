@@ -54,8 +54,7 @@ RestStatus RestEndpointHandler::execute() {
 }
 
 void RestEndpointHandler::retrieveEndpoints() {
-  auto server = application_features::ApplicationServer::getFeature<HttpEndpointProvider>(
-      "Endpoint");
+  auto& server = _vocbase.server().getFeature<HttpEndpointProvider>();
 
   if (!_vocbase.isSystem()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
@@ -65,7 +64,7 @@ void RestEndpointHandler::retrieveEndpoints() {
   VPackBuilder result;
   result.openArray();
 
-  for (auto const& it : server->httpEndpoints()) {
+  for (auto const& it : server.httpEndpoints()) {
     result.openObject();
     result.add("endpoint", VPackValue(it));
     result.close();

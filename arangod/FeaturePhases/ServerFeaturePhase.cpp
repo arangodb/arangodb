@@ -24,11 +24,11 @@
 
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/SslServerFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/UpgradeFeature.h"
-#include "Ssl/SslServerFeature.h"
-#include "Statistics/Statistics/Feature.h"
+#include "Statistics/StatisticsFeature.h"
 
 namespace arangodb {
 namespace application_features {

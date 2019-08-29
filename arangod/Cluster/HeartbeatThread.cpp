@@ -140,7 +140,7 @@ class HeartbeatBackgroundJobThread : public Thread {
       uint64_t jobNr = ++_backgroundJobsLaunched;
       LOG_TOPIC("9ec42", DEBUG, Logger::HEARTBEAT) << "sync callback started " << jobNr;
       {
-        DBServerAgencySync job(_server, _heartbeatThread);
+        auto& job = _heartbeatThread->agencySync();
         job.work();
       }
       LOG_TOPIC("71f07", DEBUG, Logger::HEARTBEAT) << "sync callback ended " << jobNr;
@@ -206,7 +206,8 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
       _backgroundJobsPosted(0),
       _lastSyncTime(0),
       _maintenanceThread(nullptr),
-      _failedVersionUpdates(0) {}
+      _failedVersionUpdates(0),
+      _agencySync(_server, this) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread
@@ -271,6 +272,8 @@ void HeartbeatThread::run() {
   LOG_TOPIC("eab40", TRACE, Logger::HEARTBEAT)
       << "stopped heartbeat thread (" << role << ")";
 }
+
+DBServerAgencySync& HeartbeatThread::agencySync() { return _agencySync; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop, dbserver version

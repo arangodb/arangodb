@@ -20,7 +20,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AgencyPhase.h"
+#include "AgencyFeaturePhase.h"
 
 #include "Agency/AgencyFeature.h"
 #include "FeaturePhases/FoxxFeaturePhase.h"

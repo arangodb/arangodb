@@ -459,10 +459,9 @@ void mkdir(std::string const& path) {
 }
 
 std::string ServerState::getUuidFilename() {
-  auto dbpath = application_features::ApplicationServer::getFeature<DatabasePathFeature>(
-      "DatabasePath");
-  TRI_ASSERT(dbpath != nullptr);
-  return FileUtils::buildFilename(dbpath->directory(), "UUID");
+  auto& server = application_features::ApplicationServer::server();
+  auto& dbpath = server.getFeature<DatabasePathFeature>();
+  return FileUtils::buildFilename(dbpath.directory(), "UUID");
 }
 
 bool ServerState::hasPersistedId() {
@@ -682,7 +681,8 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
 bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersistedId) {
   TRI_ASSERT(!_id.empty() && !_myEndpoint.empty());
 
-  while (!application_features::ApplicationServer::isStopping()) {
+  auto& server = application_features::ApplicationServer::server();
+  while (!server.isStopping()) {
     std::string serverRegistrationPath = currentServersRegisteredPref + _id;
     std::string rebootIdPath = "/Current/ServersKnown/" + _id + "/rebootId";
 
@@ -730,7 +730,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
 
   // if we left the above retry loop because the server is stopping
   // we'll skip this and return false right away.
-  while (!application_features::ApplicationServer::isStopping()) {
+  while (!server.isStopping()) {
     auto result = readRebootIdFromAgency(comm);
 
     if (result) {

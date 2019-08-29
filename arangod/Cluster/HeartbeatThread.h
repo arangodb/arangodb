@@ -114,6 +114,9 @@ class HeartbeatThread : public CriticalThread,
 
   static void logThreadDeaths(bool force = false);
 
+  /// @brief Reference to agency sync job
+  DBServerAgencySync& agencySync();
+
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief heartbeat main loop
@@ -289,6 +292,9 @@ class HeartbeatThread : public CriticalThread,
   /// @brief number of subsequent failed version updates
   //////////////////////////////////////////////////////////////////////////////
   uint64_t _failedVersionUpdates;
+
+  /// @brief Sync job
+  DBServerAgencySync _agencySync;
 };
 }  // namespace arangodb
 

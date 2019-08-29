@@ -28,9 +28,9 @@
 namespace arangodb {
 namespace application_features {
 
-class AQLFeaturePhase : public ApplicationFeaturePhase {
+class AqlFeaturePhase : public ApplicationFeaturePhase {
  public:
-  explicit AQLFeaturePhase(ApplicationServer& server);
+  explicit AqlFeaturePhase(ApplicationServer& server);
 };
 
 }  // namespace application_features

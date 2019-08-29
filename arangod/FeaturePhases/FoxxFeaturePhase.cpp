@@ -35,9 +35,9 @@ FoxxFeaturePhase::FoxxFeaturePhase(ApplicationServer& server)
   setOptional(false);
   startsAfter<ServerFeaturePhase>();
 
-  startsAfter<BootstrapFeature>("Bootstrap");
-  startsAfter<FoxxQueuesFeature>("FoxxQueues");
-  startsAfter<FrontendFeature>("Frontend");
+  startsAfter<BootstrapFeature>();
+  startsAfter<FoxxQueuesFeature>();
+  startsAfter<FrontendFeature>();
 }
 
 }  // namespace application_features

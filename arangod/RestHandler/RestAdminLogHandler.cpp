@@ -40,12 +40,10 @@ RestAdminLogHandler::RestAdminLogHandler(GeneralRequest* request, GeneralRespons
     : RestBaseHandler(request, response) {}
 
 RestStatus RestAdminLogHandler::execute() {
-  ServerSecurityFeature* security =
-    application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
-        "ServerSecurity");
-  TRI_ASSERT(security != nullptr);
+  auto& server = application_features::ApplicationServer::server();
+  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
 
-  if (!security->canAccessHardenedApi()) {
+  if (!security.canAccessHardenedApi()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;
   }

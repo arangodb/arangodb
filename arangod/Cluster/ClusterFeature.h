@@ -92,6 +92,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
 
   void stop() override final;
 
+  std::shared_ptr<HeartbeatThread> heartbeatThread();
+
  private:
   bool _unregisterOnShutdown;
   bool _enableCluster;

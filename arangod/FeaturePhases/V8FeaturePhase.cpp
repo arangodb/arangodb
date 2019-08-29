@@ -25,7 +25,7 @@
 #include "Actions/ActionFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
-#include "FeaturePhases/ClusterFeature.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "V8Server/V8DealerFeature.h"
 

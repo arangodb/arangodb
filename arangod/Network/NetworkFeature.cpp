@@ -29,6 +29,7 @@
 #include "Network/ConnectionPool.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 
 namespace {
@@ -70,7 +71,7 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
       _connectionTtlMilli(5 * 60 * 1000),
       _verifyHosts(false) {
   setOptional(true);
-  startsAfter("Server");
+  startsAfter<ServerFeature>();
 }
 
 void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -101,8 +102,8 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
         _pool->cancelConnections(f);
       }
     }
-    
-    if (!application_features::ApplicationServer::isStopping() && !canceled) {
+
+    if (!server().isStopping() && !canceled) {
       auto off = std::chrono::seconds(3);
       ::queueGarbageCollection(shared_from_this(), _workItemMutex, _workItem, _gcfunc, off);
     }

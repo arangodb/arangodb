@@ -35,8 +35,9 @@
 using namespace arangodb;
 
 /// @brief construct the configuration with default values
-ReplicationApplierConfiguration::ReplicationApplierConfiguration()
-    : _endpoint(),
+ReplicationApplierConfiguration::ReplicationApplierConfiguration(application_features::ApplicationServer& server)
+    : _server(server),
+      _endpoint(),
       _database(),
       _username(),
       _password(),
@@ -64,6 +65,41 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration()
       _incremental(false),
       _verbose(false),
       _restrictType(RestrictType::None) {}
+
+/// @brief construct the configuration with default values
+ReplicationApplierConfiguration& ReplicationApplierConfiguration::operator=(
+    ReplicationApplierConfiguration const& other) {
+  _endpoint = other._endpoint;
+  _database = other._database;
+  _username = other._username;
+  _password = other._password;
+  _jwt = other._jwt;
+  _requestTimeout = other._requestTimeout;
+  _connectTimeout = other._connectTimeout;
+  _ignoreErrors = other._ignoreErrors;
+  _maxConnectRetries = other._maxConnectRetries;
+  _lockTimeoutRetries = other._lockTimeoutRetries;
+  _chunkSize = other._chunkSize;
+  _connectionRetryWaitTime = other._connectionRetryWaitTime;
+  _idleMinWaitTime = other._idleMinWaitTime;
+  _idleMaxWaitTime = other._idleMaxWaitTime;
+  _initialSyncMaxWaitTime = other._initialSyncMaxWaitTime;
+  _autoResyncRetries = other._autoResyncRetries;
+  _maxPacketSize = other._maxPacketSize;
+  _sslProtocol = other._sslProtocol;
+  _skipCreateDrop = other._skipCreateDrop;
+  _autoStart = other._autoStart;
+  _adaptivePolling = other._adaptivePolling;
+  _autoResync = other._autoResync;
+  _includeSystem = other._includeSystem;
+  _includeFoxxQueues = other._includeFoxxQueues;
+  _requireFromPresent = other._requireFromPresent;
+  _incremental = other._incremental;
+  _verbose = other._verbose;
+  _restrictType = other._restrictType;
+
+  return *this;
+}
 
 /// @brief reset the configuration to defaults
 void ReplicationApplierConfiguration::reset() {
@@ -166,8 +202,9 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool i
 
 /// @brief create a configuration object from velocypack
 ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
-    VPackSlice slice, std::string const& databaseName) {
-  return fromVelocyPack(ReplicationApplierConfiguration(), slice, databaseName);
+    application_features::ApplicationServer& server, VPackSlice slice,
+    std::string const& databaseName) {
+  return fromVelocyPack(ReplicationApplierConfiguration(server), slice, databaseName);
 }
 
 /// @brief create a configuration object from velocypack, merging it with an
@@ -205,13 +242,11 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
       configuration._jwt = value.copyString();
     } else {
       // use internal JWT token in any cluster setup
-      auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>(
-          "Cluster");
-      if (cluster->isEnabled()) {
-        auto af = AuthenticationFeature::instance();
-        if (af != nullptr) {
-          // nullptr happens only during controlled shutdown
-          configuration._jwt = af->tokenCache().jwtToken();
+      auto& cluster = existing._server.getFeature<ClusterFeature>();
+      if (cluster.isEnabled()) {
+        if (existing._server.hasFeature<AuthenticationFeature>()) {
+          configuration._jwt =
+              existing._server.getFeature<AuthenticationFeature>().tokenCache().jwtToken();
         }
       }
     }

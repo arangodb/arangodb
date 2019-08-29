@@ -159,8 +159,9 @@ class RequestsState : public std::enable_shared_from_this<RequestsState> {
   
   // scheduler requests that are due
   void startRequest() {
+    auto& server = application_features::ApplicationServer::server();
     auto now = std::chrono::steady_clock::now();
-    if (now > _endTime || application_features::ApplicationServer::isStopping()) {
+    if (now > _endTime || server.isStopping()) {
       callResponse(Error::Timeout, nullptr);
       return;  // we are done
     }

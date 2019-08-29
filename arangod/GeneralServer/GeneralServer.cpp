@@ -32,12 +32,12 @@
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/CommTask.h"
 #include "GeneralServer/GeneralDefinitions.h"
+#include "GeneralServer/SslServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Ssl/SslServerFeature.h"
 
 #include <chrono>
 #include <thread>
@@ -50,12 +50,18 @@ using namespace arangodb::rest;
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 GeneralServer::GeneralServer(uint64_t numIoThreads)
-    : _endpointList(nullptr), _contexts(numIoThreads) {}
+    : _endpointList(nullptr), _contexts() {
+  auto& server = application_features::ApplicationServer::server();
+  for (size_t i = 0; i < numIoThreads; ++i) {
+    _contexts.emplace_back(server);
+  }
+}
 
 GeneralServer::~GeneralServer() {}
 
 void GeneralServer::registerTask(std::shared_ptr<CommTask> task) {
-  if (application_features::ApplicationServer::isStopping()) {
+  auto& server = application_features::ApplicationServer::server();
+  if (server.isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
   auto* t = task.get();

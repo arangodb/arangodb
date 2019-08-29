@@ -409,7 +409,8 @@ static arangodb::Result cancelBarrier(std::string const& endpoint,
 }
 
 static inline bool isStopping() {
-  return application_features::ApplicationServer::isStopping();
+  auto& server = application_features::ApplicationServer::server();
+  return server.isStopping();
 }
 
 arangodb::Result SynchronizeShard::getReadLock(std::string const& endpoint,
@@ -549,7 +550,7 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   }
 
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(config, database);
+      ReplicationApplierConfiguration::fromVelocyPack(vocbase.server(), config, database);
   configuration.setClientInfo(clientInfoString);
   configuration.validate();
 
@@ -629,8 +630,9 @@ static arangodb::Result replicationSynchronizeCatchup(VPackSlice const& conf, do
   auto const leaderId = conf.get(LEADER_ID).copyString();
   auto const fromTick = conf.get("from").getNumber<uint64_t>();
 
+  auto& server = application_features::ApplicationServer::server();
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(conf, database);
+      ReplicationApplierConfiguration::fromVelocyPack(server, conf, database);
   // will throw if invalid
   configuration.validate();
 
@@ -666,8 +668,9 @@ static arangodb::Result replicationSynchronizeFinalize(VPackSlice const& conf) {
   auto const leaderId = conf.get(LEADER_ID).copyString();
   auto const fromTick = conf.get("from").getNumber<uint64_t>();
 
+  auto& server = application_features::ApplicationServer::server();
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(conf, database);
+      ReplicationApplierConfiguration::fromVelocyPack(server, conf, database);
   // will throw if invalid
   configuration.validate();
 

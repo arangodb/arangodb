@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
+#include "ApplicationFeatures/PageSizeFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
@@ -52,7 +53,7 @@ namespace application_features {
 BasicFeaturePhaseServer::BasicFeaturePhaseServer(ApplicationServer& server)
     : ApplicationFeaturePhase(server, "BasicsPhase") {
   setOptional(false);
-  startsAfter<GreetingFeaturePhase>();
+  startsAfter<GreetingsFeaturePhase>();
 
   startsAfter<DaemonFeature>();
   startsAfter<DatabasePathFeature>();
@@ -64,7 +65,7 @@ BasicFeaturePhaseServer::BasicFeaturePhaseServer(ApplicationServer& server)
   startsAfter<PageSizeFeature>();
   startsAfter<PrivilegeFeature>();
   startsAfter<SchedulerFeature>();
-  startsAfter<ShardingFeature>;
+  startsAfter<ShardingFeature>();
   startsAfter<SslFeature>();
   startsAfter<SupervisorFeature>();
   startsAfter<TempFeature>();

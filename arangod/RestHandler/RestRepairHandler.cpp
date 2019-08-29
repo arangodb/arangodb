@@ -50,7 +50,8 @@ RestRepairHandler::RestRepairHandler(GeneralRequest* request, GeneralResponse* r
     : RestBaseHandler(request, response) {}
 
 RestStatus RestRepairHandler::execute() {
-  if (application_features::ApplicationServer::isStopping()) {
+  auto& server = application_features::ApplicationServer::server();
+  if (server.isStopping()) {
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_SHUTTING_DOWN);
     return RestStatus::DONE;
   }

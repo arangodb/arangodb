@@ -56,20 +56,20 @@ namespace application_features {
 DatabaseFeaturePhase::DatabaseFeaturePhase(ApplicationServer& server)
     : ApplicationFeaturePhase(server, "DatabasePhase") {
   setOptional(false);
-  startsAfter<ServerBasicFeaturePhase>();
+  startsAfter<BasicFeaturePhaseServer>();
 
   startsAfter<AuthenticationFeature>();
   startsAfter<CacheManagerFeature>();
   startsAfter<CheckVersionFeature>();
   startsAfter<DatabaseFeature>();
   startsAfter<EngineSelectorFeature>();
-  startsAfter<Flush>();
+  startsAfter<FlushFeature>();
   startsAfter<InitDatabaseFeature>();
   startsAfter<LockfileFeature>();
   startsAfter<MMFilesCompactionFeature>();
   startsAfter<MMFilesEngine>();
   startsAfter<MMFilesLogfileManager>();
-  startsAfter<MMFilesPersistentIndexFeature>("MMFilesPersistentIndex");
+  startsAfter<MMFilesPersistentIndexFeature>();
   startsAfter<MMFilesWalRecoveryFeature>();
   startsAfter<ReplicationFeature>();
   startsAfter<RocksDBEngine>();

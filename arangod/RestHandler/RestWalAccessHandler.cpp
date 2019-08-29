@@ -239,14 +239,12 @@ void RestWalAccessHandler::handleCommandLastTick(WalAccess const* wal) {
 
 void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   // track the number of parallel invocations of the tailing API
-  auto* rf = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
+  auto& rf = _vocbase.server().getFeature<ReplicationFeature>();
   // this may throw when too many threads are going into tailing
-  rf->trackTailingStart();
-  
-  auto guard = scopeGuard([rf]() {
-    rf->trackTailingEnd();
-  });
-      
+  rf.trackTailingStart();
+
+  auto guard = scopeGuard([&rf]() { rf.trackTailingEnd(); });
+
   bool const useVst = (_request->transportType() == Endpoint::TransportType::VST);
 
   WalAccess::Filter filter;

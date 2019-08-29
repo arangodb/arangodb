@@ -29,6 +29,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/V8FeaturePhase.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/Recovery.h"
@@ -223,7 +224,7 @@ uint64_t PregelFeature::createExecutionNumber() {
 PregelFeature::PregelFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "Pregel") {
   setOptional(true);
-  startsAfter("V8Phase");
+  startsAfter<application_features::V8FeaturePhase>();
 }
 
 PregelFeature::~PregelFeature() {
@@ -332,9 +333,11 @@ void PregelFeature::cleanupAll() {
   std::this_thread::sleep_for(std::chrono::milliseconds(100));  // 100ms to send out cancel calls
 }
 
-void PregelFeature::handleConductorRequest(std::string const& path, VPackSlice const& body,
-                                           VPackBuilder& outBuilder) {
-  if (application_features::ApplicationServer::isStopping()) {
+/* static */ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
+                                                        std::string const& path,
+                                                        VPackSlice const& body,
+                                                        VPackBuilder& outBuilder) {
+  if (vocbase.server().isStopping()) {
     return;  // shutdown ongoing
   }
 
@@ -370,7 +373,7 @@ void PregelFeature::handleConductorRequest(std::string const& path, VPackSlice c
                                                    std::string const& path,
                                                    VPackSlice const& body,
                                                    VPackBuilder& outBuilder) {
-  if (application_features::ApplicationServer::isStopping()) {
+  if (vocbase.server().isStopping()) {
     return;  // shutdown ongoing
   }
 

@@ -314,12 +314,11 @@ RestStatus RestReplicationHandler::execute() {
         return RestStatus::DONE;
       }
       // track the number of parallel invocations of the tailing API
-      auto* rf = application_features::ApplicationServer::getFeature<ReplicationFeature>(
-          "Replication");
+      auto& rf = _vocbase.server().getFeature<ReplicationFeature>();
       // this may throw when too many threads are going into tailing
-      rf->trackTailingStart();
+      rf.trackTailingStart();
 
-      auto guard = scopeGuard([rf]() { rf->trackTailingEnd(); });
+      auto guard = scopeGuard([&rf]() { rf.trackTailingEnd(); });
 
       handleCommandLoggerFollow();
     } else if (command == OpenTransactions) {
@@ -611,7 +610,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   }
 
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(body, databaseName);
+      ReplicationApplierConfiguration::fromVelocyPack(_vocbase.server(), body, databaseName);
   configuration._skipCreateDrop = false;
 
   // will throw if invalid
@@ -627,7 +626,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 
   while (applier->isInitializing()) {  // wait for initial sync
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    if (application_features::ApplicationServer::isStopping()) {
+    if (_vocbase.server().isStopping()) {
       generateError(Result(TRI_ERROR_SHUTTING_DOWN));
       return;
     }
@@ -1255,10 +1254,9 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   s = parameters.get(StaticStrings::ReplicationFactor);
   if (s.isString() && s.copyString() == "satellite") {
     // set "satellite" replicationFactor to the default replication factor
-    ClusterFeature* cl = application_features::ApplicationServer::getFeature<ClusterFeature>(
-        "Cluster");
+    ClusterFeature& cl = _vocbase.server().getFeature<ClusterFeature>();
 
-    uint32_t replicationFactor = cl->systemReplicationFactor();
+    uint32_t replicationFactor = cl.systemReplicationFactor();
     toMerge.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
     changes.push_back(
         std::string("changed 'replicationFactor' attribute value to ") +
@@ -1296,9 +1294,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   try {
     bool createWaitsForSyncReplication =
-        application_features::ApplicationServer::getFeature<ClusterFeature>(
-            "Cluster")
-            ->createWaitsForSyncReplication();
+        _vocbase.server().getFeature<ClusterFeature>().createWaitsForSyncReplication();
     // in the replication case enforcing the replication factor is absolutely
     // not desired, so it is hardcoded to false
     auto cols =
@@ -1903,8 +1899,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
 
   TRI_ASSERT(col != nullptr);
 
-  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>(
-      "Cluster");
+  auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
 
   Result res;
 
@@ -1920,7 +1915,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
 
     res = ci->ensureIndexCoordinator(  // result
         dbName, std::to_string(col->id()), idxDef, true, tmp,
-        cluster->indexCreationTimeout());
+        cluster.indexCreationTimeout());
 
     if (res.fail()) {
       return res.reset(res.errorNumber(), "could not create index: " + res.errorMessage());
@@ -2053,7 +2048,8 @@ void RestReplicationHandler::handleCommandSync() {
   }
 
   std::string dbname = isGlobal ? "" : _vocbase.name();
-  auto config = ReplicationApplierConfiguration::fromVelocyPack(body, dbname);
+  auto config =
+      ReplicationApplierConfiguration::fromVelocyPack(_vocbase.server(), body, dbname);
 
   // will throw if invalid
   config.validate();
@@ -2235,14 +2231,12 @@ void RestReplicationHandler::handleCommandApplierGetStateAll() {
         "global inventory can only be fetched from within _system database");
     return;
   }
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
+  DatabaseFeature& databaseFeature = _vocbase.server().getFeature<DatabaseFeature>();
 
   VPackBuilder builder;
   builder.openObject();
-  for (auto& name : databaseFeature->getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+  for (auto& name : databaseFeature.getDatabaseNames()) {
+    TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
 
     if (vocbase == nullptr) {
       continue;
@@ -2960,10 +2954,8 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
   }
 
   if (global) {
-    auto replicationFeature =
-        application_features::ApplicationServer::getFeature<ReplicationFeature>(
-            "Replication");
-    return replicationFeature->globalReplicationApplier();
+    auto& replicationFeature = _vocbase.server().getFeature<ReplicationFeature>();
+    return replicationFeature.globalReplicationApplier();
   } else {
     return _vocbase.replicationApplier();
   }

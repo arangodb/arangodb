@@ -281,11 +281,10 @@ void RestCollectionHandler::handleCommandPost() {
     return;
   }
 
-  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>(
-      "Cluster");
+  auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
   bool waitForSyncReplication =
       _request->parsedValue("waitForSyncReplication",
-                            cluster->createWaitsForSyncReplication());
+                            cluster.createWaitsForSyncReplication());
 
   bool enforceReplicationFactor =
       _request->parsedValue("enforceReplicationFactor", true);

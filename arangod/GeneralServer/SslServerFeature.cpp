@@ -72,7 +72,7 @@ SslServerFeature::SslServerFeature(application_features::ApplicationServer& serv
                   asio_ns::ssl::context::single_dh_use),
       _ecdhCurve("prime256v1") {
   setOptional(true);
-  startsAfter<AqlFeaturePhase>();
+  startsAfter<application_features::AqlFeaturePhase>();
 }
 
 void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

@@ -23,9 +23,9 @@
 #include "AqlFeaturePhase.h"
 
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "ApplicationFeatures/V8FeaturePhase.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "FeaturePhases/V8FeaturePhase.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
 #include "Pregel/PregelFeature.h"
@@ -37,7 +37,7 @@
 namespace arangodb {
 namespace application_features {
 
-AQLFeaturePhase::AQLFeaturePhase(ApplicationServer& server)
+AqlFeaturePhase::AqlFeaturePhase(ApplicationServer& server)
     : ApplicationFeaturePhase(server, "AQLPhase") {
   setOptional(false);
   startsAfter<CommunicationFeaturePhase>();

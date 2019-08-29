@@ -158,7 +158,8 @@ bool resolveRequestContext(GeneralRequest& req) {
 
 CommTask::Flow CommTask::prepareExecution(GeneralRequest& req) {
   // Step 1: In the shutdown phase we simply return 503:
-  if (application_features::ApplicationServer::isStopping()) {
+  auto& server = application_features::ApplicationServer::server();
+  if (server.isStopping()) {
     addErrorResponse(ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
                      req.messageId(), TRI_ERROR_SHUTTING_DOWN);
     return Flow::Abort;
@@ -498,7 +499,8 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 // handle a request which came in with the x-arango-async header
 bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
                                   uint64_t* jobId) {
-  if (application_features::ApplicationServer::isStopping()) {
+  auto& server = application_features::ApplicationServer::server();
+  if (server.isStopping()) {
     return false;
   }
 
