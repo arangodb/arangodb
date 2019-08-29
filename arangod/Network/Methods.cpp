@@ -264,7 +264,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
           self->_promise.setValue(Response{std::move(self->_destination), err,
                                            std::move(self->_response)});
         });
-    if (!queued) {
+    if (ADB_UNLIKELY(!queued)) {
       _promise.setValue(Response{std::move(_destination), err, std::move(res)});
     }
   }
