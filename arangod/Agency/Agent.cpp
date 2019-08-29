@@ -31,6 +31,7 @@
 
 #include "Agency/AgentCallback.h"
 #include "Agency/GossipCallback.h"
+#include "Agency/AgencyFeature.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
@@ -38,6 +39,7 @@
 #include "Basics/application-exit.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "Scheduler/Scheduler.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
