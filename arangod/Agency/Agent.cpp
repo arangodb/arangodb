@@ -30,6 +30,7 @@
 #include <thread>
 
 #include "Agency/AgentCallback.h"
+#include "Agency/AgencyFeature.h"
 #include "Agency/GossipCallback.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
@@ -37,6 +38,7 @@
 #include "Basics/ScopeGuard.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "Scheduler/Scheduler.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
@@ -1966,6 +1968,18 @@ void Agent::emptyCbTrashBin() {
   }
 
   LOG_TOPIC("12ad3", DEBUG, Logger::AGENCY) << "unobserving: " << envelope->toJson();
+
+  auto* scheduler = SchedulerFeature::SCHEDULER;
+
+  
+  if (scheduler != nullptr) {
+    scheduler->queue(RequestLane::INTERNAL_LOW, [envelope = std::move(envelope)] {
+        auto* agent = AgencyFeature::AGENT;
+        if (!application_features::ApplicationServer::isStopping() && agent) {
+          agent->write(envelope);
+        }
+      });
+  }
 
   // Best effort. Will be retried anyway
   auto wres = write(envelope);
