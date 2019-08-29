@@ -31,7 +31,7 @@
 
 #include "Agency/AgentCallback.h"
 #include "Agency/GossipCallback.h"
-#include "Agency/AgencyFeature.cpp"
+#include "Agency/AgencyFeature.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
@@ -1970,7 +1970,7 @@ void Agent::emptyCbTrashBin() {
     scheduler->queue(
       RequestPriority::LOW, [envelope](bool) {
                               auto* agent = AgencyFeature::AGENT;
-                              if (agent) {
+                              if (!application_features::ApplicationServer::isStopping() && agent) {
                                 agent->write(envelope);
                               }
                             });
