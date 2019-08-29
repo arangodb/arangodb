@@ -333,7 +333,6 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
   res = trx.begin();
 
   if (!res.ok()) {
-    trx.finish(TRI_ERROR_NO_ERROR);
     return OperationResult(res);
   }
 
