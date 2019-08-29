@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed creation of a smart join collection in the web ui.
+
 * Fixed issue #9795: fix AQL `NOT IN` clause in SEARCH operations for ArangoSearch
   views.
 
