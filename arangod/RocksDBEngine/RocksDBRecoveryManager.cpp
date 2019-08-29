@@ -262,7 +262,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       if (idx) {
         KeyGenerator* keyGen = idx->collection().keyGenerator();
         if (keyGen) {
-          keyGen->track(ref.begin(), ref.size());
+          keyGen->track(ref.data(), ref.size());
         }
       }
 

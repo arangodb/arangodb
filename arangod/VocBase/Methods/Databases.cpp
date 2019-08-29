@@ -257,19 +257,20 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
 arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
 
-  if (ExecContext::CURRENT != nullptr && um != nullptr) {
+  ExecContext const& exec = ExecContext::current();
+  if (um != nullptr) {
     // If the current user is empty (which happens if a Maintenance job
     // called us, or when authentication is off), granting rights
     // will fail. We hence ignore it here, but issue a warning below
-    if (ExecContext::CURRENT->user() != "") {
-      return um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
+    if (!exec.isSuperuser()) {
+      return um->updateUser(exec.user(), [&](auth::User& entry) {
         entry.grantDatabase(info.getName(), auth::Level::RW);
         entry.grantCollection(info.getName(), "*", auth::Level::RW);
         return TRI_ERROR_NO_ERROR;
       });
     } else {
       LOG_TOPIC("2a4dd", DEBUG, Logger::FIXME)
-        << "ExecContext::CURRENT->user() is empty."
+        << "current ExecContext's user() is empty."
         << "Database will be created without any user having permissions";
      return Result();
     }
@@ -384,12 +385,10 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   arangodb::Result res;
 
   // Only admin users are permitted to create databases
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    if (!exec->isAdminUser()) {
-      events::CreateDatabase(dbName, TRI_ERROR_FORBIDDEN);
-      return Result(TRI_ERROR_FORBIDDEN);
-    }
+  ExecContext const& exec = ExecContext::current();
+  if (!exec.isAdminUser()) {
+    events::CreateDatabase(dbName, TRI_ERROR_FORBIDDEN);
+    return Result(TRI_ERROR_FORBIDDEN);
   }
 
   // Encapsulate and sanitize the input
@@ -484,12 +483,10 @@ const std::string dropError = "Error when dropping Datbase";
 
 arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    if (exec->systemAuthLevel() != auth::Level::RW) {
-      events::DropDatabase(dbName, TRI_ERROR_FORBIDDEN);
-      return TRI_ERROR_FORBIDDEN;
-    }
+  ExecContext const& exec = ExecContext::current();
+  if (exec.systemAuthLevel() != auth::Level::RW) {
+    events::DropDatabase(dbName, TRI_ERROR_FORBIDDEN);
+    return TRI_ERROR_FORBIDDEN;
   }
 
   Result res;

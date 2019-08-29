@@ -141,10 +141,8 @@ static void JS_RecalculateCounts(v8::FunctionCallbackInfo<v8::Value> const& args
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  if (ExecContext::CURRENT != nullptr) {
-    if (!ExecContext::CURRENT->canUseCollection(collection->name(), auth::Level::RW)) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
+  if (!ExecContext::current().canUseCollection(collection->name(), auth::Level::RW)) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
   auto* physical = toRocksDBCollection(*collection);

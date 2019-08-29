@@ -86,11 +86,7 @@ RestStatus RestTransactionHandler::execute() {
 void RestTransactionHandler::executeGetState() {
   if (_request->suffixes().empty()) {
     // no transaction id given - so list all the transactions
-    auto context = arangodb::ExecContext::CURRENT;
-    std::string user;
-    if (context != nullptr || arangodb::ExecContext::isAuthEnabled()) {
-      user = context->user();
-    }
+    ExecContext const& exec = ExecContext::current();
 
     VPackBuilder builder;
     builder.openObject();
@@ -99,7 +95,7 @@ void RestTransactionHandler::executeGetState() {
     bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
-    mgr->toVelocyPack(builder, _vocbase.name(), user, fanout);
+    mgr->toVelocyPack(builder, _vocbase.name(), exec.user(), fanout);
  
     builder.close(); // array
     builder.close(); // object

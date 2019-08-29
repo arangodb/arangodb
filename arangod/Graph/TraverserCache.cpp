@@ -140,7 +140,7 @@ arangodb::velocypack::StringRef TraverserCache::persistString(arangodb::velocypa
   if (it != _persistedStrings.end()) {
     return *it;
   }
-  arangodb::velocypack::StringRef res = _stringHeap->registerString(idString.begin(), idString.length());
+  arangodb::velocypack::StringRef res = _stringHeap->registerString(idString.data(), idString.length());
   _persistedStrings.emplace(res);
   return res;
 }

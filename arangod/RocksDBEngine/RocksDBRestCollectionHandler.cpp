@@ -38,10 +38,8 @@ Result RocksDBRestCollectionHandler::handleExtraCommandPut(LogicalCollection& co
                                                            std::string const& suffix,
                                                            velocypack::Builder& builder) {
   if (suffix == "recalculateCount") {
-    if (ExecContext::CURRENT != nullptr) {
-      if (!ExecContext::CURRENT->canUseCollection(coll.name(), auth::Level::RW)) {
-        return Result(TRI_ERROR_FORBIDDEN);
-      }
+    if (!ExecContext::current().canUseCollection(coll.name(), auth::Level::RW)) {
+      return Result(TRI_ERROR_FORBIDDEN);
     }
 
     auto physical = toRocksDBCollection(coll.getPhysical());
