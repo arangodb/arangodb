@@ -1964,10 +1964,11 @@ void Agent::emptyCbTrashBin() {
   // Best effort. Will be retried otherwise.
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "scheduling unobserve: " << envelope->toJson();
   auto* scheduler = SchedulerFeature::SCHEDULER;
+  std::shared_ptr<Agent> agent = this->shared_from_this();
   if (scheduler != nullptr) {
     scheduler->queue(
-      RequestPriority::LOW, [this, envelope](bool) {
-                              write(envelope);
+      RequestPriority::LOW, [=](bool) {
+                              agent->write(envelope);
                               return true;
                             });
   }
