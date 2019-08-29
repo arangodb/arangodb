@@ -1148,8 +1148,8 @@ void ClusterComm::disable() {
   }
 }
 
-void ClusterComm::scheduleMe(std::function<void()> task) {
-  arangodb::SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL, std::move(task));
+bool ClusterComm::scheduleMe(std::function<void()> task) {
+  return arangodb::SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL, std::move(task));
 }
 
 
