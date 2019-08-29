@@ -1962,18 +1962,20 @@ void Agent::emptyCbTrashBin() {
     _callbackLastPurged = std::chrono::steady_clock::now();
   }
 
-  // Best effort. Will be retried otherwise.
+  // This is a best effort attempt. If either the queueing or the write fail,
+  // while above _callbackTrashBin has been cleaned, entries, will repopulate with
+  // future 404 errors, when they are triggered again. So either way these attempts
+  // are repeated until such time, when the callbacks are gone.
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "scheduling unobserve: " << envelope->toJson();
-  auto* scheduler = SchedulerFeature::SCHEDULER;
-  
+  auto* scheduler = SchedulerFeature::SCHEDULER;  
   if (scheduler != nullptr) {
     scheduler->queue(
       RequestPriority::LOW, [envelope](bool) {
-                              auto* agent = AgencyFeature::AGENT;
-                              if (!application_features::ApplicationServer::isStopping() && agent) {
-                                agent->write(envelope);
-                              }
-                            });
+        auto* agent = AgencyFeature::AGENT;
+        if (!application_features::ApplicationServer::isStopping() && agent) {
+          agent->write(envelope);
+        }
+      });
   }
 
 }
