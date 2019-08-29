@@ -640,7 +640,7 @@ add_library(arangoserver STATIC
   ${LLHTTP_SOURCES}
 )
 
-target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
+target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include" ${GSS_INCLUDE_DIR})
 
 target_link_libraries(arangoserver
   ${LIB_ARANGO_FE}
@@ -657,6 +657,7 @@ target_link_libraries(arangoserver
   boost_boost
   boost_system
   snappy
+  ${GSS_LIBRARIES}
   ${SYSTEM_LIBRARIES}
 )
 
