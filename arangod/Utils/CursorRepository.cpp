@@ -37,16 +37,11 @@
 
 namespace {
 bool authorized(std::pair<arangodb::Cursor*, std::string> const& cursor) {
-  auto context = arangodb::ExecContext::CURRENT;
-  if (context == nullptr || !arangodb::ExecContext::isAuthEnabled()) {
+  auto const& exec = arangodb::ExecContext::current();
+  if (exec.isSuperuser()) {
     return true;
   }
-
-  if (context->isSuperuser()) {
-    return true;
-  }
-
-  return (cursor.second == context->user());
+  return (cursor.second == exec.user());
 }
 }  // namespace
 
@@ -114,7 +109,7 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
   TRI_ASSERT(cursor->isUsed());
 
   CursorId const id = cursor->id();
-  std::string user = ExecContext::CURRENT ? ExecContext::CURRENT->user() : "";
+  std::string user = ExecContext::current().user();
 
   {
     MUTEX_LOCKER(mutexLocker, _lock);

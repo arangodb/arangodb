@@ -34,14 +34,6 @@
 #include <utility>
 #include <vector>
 
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/detail/classification.hpp>
-#include <boost/algorithm/string/split.hpp>
-#include <boost/algorithm/string/trim.hpp>
-#include <boost/iterator/iterator_facade.hpp>
-#include <boost/range/distance.hpp>
-#include <boost/type_index/type_index_facade.hpp>
-
 #include <date/date.h>
 #include <date/iso_week.h>
 
