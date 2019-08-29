@@ -76,8 +76,6 @@ void QuerySnippet::addNode(ExecutionNode* node) {
       break;
     }
     default:
-      LOG_DEVEL << "QuerySnippet::addNode Node Type "
-                << node->getTypeString(node->getType());
       // do nothing
       break;
   }
