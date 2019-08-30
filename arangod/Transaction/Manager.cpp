@@ -105,7 +105,12 @@ void Manager::unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> con
 }
 
 void Manager::registerTransaction(TRI_voc_tid_t transactionId,
-                                  std::unique_ptr<TransactionData> data) {
+                                  std::unique_ptr<TransactionData> data,
+                                  bool isReadOnlyTransaction) {
+  if (!isReadOnlyTransaction) {
+    _rwLock.readLock();
+  }
+
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
 
   if (_keepTransactionData) {
@@ -125,7 +130,7 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
 }
 
 // unregisters a transaction
-void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed) {
+void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed, bool isReadOnlyTransaction) {
   uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
   TRI_ASSERT(r > 0);
 
@@ -139,6 +144,9 @@ void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFail
     if (markAsFailed) {
       _transactions[bucket]._failedTransactions.emplace(transactionId);
     }
+  }
+  if (!isReadOnlyTransaction) {
+    _rwLock.unlockRead();
   }
 }
 
@@ -238,21 +246,22 @@ void Manager::registerAQLTrx(TransactionState* state) {
   if (_disallowInserts.load(std::memory_order_acquire)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
-  
+
   TRI_ASSERT(state != nullptr);
   const size_t bucket = getBucket(state->id());
   {
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
-    
+
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(state->id());
     if (it != buck._managed.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
                                      "transaction ID already used");
     }
-    
-    buck._managed.emplace(std::piecewise_construct, std::forward_as_tuple(state->id()),
+
+    buck._managed.emplace(std::piecewise_construct,
+                          std::forward_as_tuple(state->id()),
                           std::forward_as_tuple(MetaType::StandaloneAQL, state));
   }
 }
@@ -447,7 +456,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return nullptr;
   }
-  
+
   const size_t bucket = getBucket(tid);
   int i = 0;
   TransactionState* state = nullptr;
