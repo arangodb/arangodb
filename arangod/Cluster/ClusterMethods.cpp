@@ -292,6 +292,11 @@ static void mergeResults(std::vector<std::pair<ShardID, VPackValueLength>> const
 ///        well
 ////////////////////////////////////////////////////////////////////////////////
 
+namespace {
+static const char* notFoundSlice = "\x14\x16\x45\x65\x72\x72\x6f\x72\x1a"
+"\x48\x65\x72\x72\x6f\x72\x4e\x75\x6d\x29\xb2\x04\x02";
+}
+
 static void mergeResultsAllShards(std::vector<std::shared_ptr<VPackBuilder>> const& results,
                                   std::shared_ptr<VPackBuilder>& resultBody,
                                   std::unordered_map<int, size_t>& errorCounter,
@@ -300,12 +305,7 @@ static void mergeResultsAllShards(std::vector<std::shared_ptr<VPackBuilder>> con
   TRI_ASSERT(errorCounter.find(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ==
              errorCounter.end());
   size_t realNotFound = 0;
-  VPackBuilder cmp;
-  cmp.openObject();
-  cmp.add(StaticStrings::Error, VPackValue(true));
-  cmp.add(StaticStrings::ErrorNum, VPackValue(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND));
-  cmp.close();
-  VPackSlice notFound = cmp.slice();
+  
   resultBody->clear();
   resultBody->openArray();
   for (VPackValueLength currentIndex = 0; currentIndex < expectedResults; ++currentIndex) {
@@ -314,7 +314,7 @@ static void mergeResultsAllShards(std::vector<std::shared_ptr<VPackBuilder>> con
       VPackSlice oneRes = it->slice();
       TRI_ASSERT(oneRes.isArray());
       oneRes = oneRes.at(currentIndex);
-      if (basics::VelocyPackHelper::compare(oneRes, notFound, false) != 0) {
+      if (oneRes.hasKey(StaticStrings::KeyString)) {
         // This is the correct result
         // Use it
         resultBody->add(oneRes);
@@ -324,7 +324,7 @@ static void mergeResultsAllShards(std::vector<std::shared_ptr<VPackBuilder>> con
     }
     if (!foundRes) {
       // Found none, use NOT_FOUND
-      resultBody->add(notFound);
+      resultBody->add(VPackSlice(reinterpret_cast<uint8_t const*>(::notFoundSlice)));
       realNotFound++;
     }
   }
