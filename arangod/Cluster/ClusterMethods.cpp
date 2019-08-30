@@ -1161,54 +1161,6 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
 
   return TRI_ERROR_NO_ERROR;
 }
-  
-  
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Collect the results from all shards (fastpath variant)
-///        All result bodies are stored in resultMap
-////////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-static void collectResponsesFromAllShards(
-      std::unordered_map<ShardID, std::vector<T>> const& shardMap,
-      std::vector<futures::Try<arangodb::network::Response>>& responses,
-      std::unordered_map<int, size_t>& errorCounter,
-      std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>>& resultMap) {
-  // If none of the shards responds we return a SERVER_ERROR;
-  for (Try<arangodb::network::Response> const& tryRes : responses) {
-    tryRes.throwIfFailed(); // just throw the error upwards
-    
-    network::Response const& res = tryRes.get();
-    ShardID sId = res.destination.substr(6);
-    
-    int commError = network::fuerteToArangoErrorCode(res);
-    if (commError != TRI_ERROR_NO_ERROR) {
-      auto tmpBuilder = std::make_shared<VPackBuilder>();
-      // If there was no answer whatsoever, we cannot rely on the shardId
-      // being present in the result struct:
-      
-      auto weSend = shardMap.find(sId);
-      TRI_ASSERT(weSend != shardMap.end());  // We send sth there earlier.
-      size_t count = weSend->second.size();
-      for (size_t i = 0; i < count; ++i) {
-        tmpBuilder->openObject();
-        tmpBuilder->add(StaticStrings::Error, VPackValue(true));
-        tmpBuilder->add(StaticStrings::ErrorNum, VPackValue(commError));
-        tmpBuilder->close();
-      }
-      resultMap.emplace(sId, std::move(tmpBuilder));
-    } else {
-      std::vector<VPackSlice> const& slices = res.response->slices();
-      auto tmpBuilder = std::make_shared<VPackBuilder>();
-      if (!slices.empty()) {
-        tmpBuilder->add(slices[0]);
-      }
-      
-      resultMap.emplace(sId, std::move(tmpBuilder));
-      network::errorCodesFromHeaders(res.response->header.meta, errorCounter, true);
-    }
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates one or many documents in a coordinator
