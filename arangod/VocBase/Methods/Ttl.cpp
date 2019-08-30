@@ -33,34 +33,31 @@
 using namespace arangodb;
 using namespace arangodb::methods;
 
-Result Ttl::getStatistics(VPackBuilder& out) {
+Result Ttl::getStatistics(TtlFeature& feature, VPackBuilder& out) {
   if (ServerState::instance()->isCoordinator()) {
     TtlStatistics stats;
     Result res = getTtlStatisticsFromAllDBServers(stats);
     stats.toVelocyPack(out);
     return res;
-  } 
+  }
 
-  auto ttlFeature = arangodb::application_features::ApplicationServer::getFeature<TtlFeature>("Ttl");
-  ttlFeature->statsToVelocyPack(out);
+  feature.statsToVelocyPack(out);
   return Result();
 }
 
-Result Ttl::getProperties(VPackBuilder& out) {
+Result Ttl::getProperties(TtlFeature& feature, VPackBuilder& out) {
   if (ServerState::instance()->isCoordinator()) {
     return getTtlPropertiesFromAllDBServers(out);
-  } 
+  }
 
-  auto ttlFeature = arangodb::application_features::ApplicationServer::getFeature<TtlFeature>("Ttl");
-  ttlFeature->propertiesToVelocyPack(out);
+  feature.propertiesToVelocyPack(out);
   return Result();
 }
 
-Result Ttl::setProperties(VPackSlice properties, VPackBuilder& out) {
+Result Ttl::setProperties(TtlFeature& feature, VPackSlice properties, VPackBuilder& out) {
   if (ServerState::instance()->isCoordinator()) {
     return setTtlPropertiesOnAllDBServers(properties, out);
-  } 
+  }
 
-  auto ttlFeature = arangodb::application_features::ApplicationServer::getFeature<TtlFeature>("Ttl");
-  return ttlFeature->propertiesFromVelocyPack(properties, out);
+  return feature.propertiesFromVelocyPack(properties, out);
 }

@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/TtlFeature.h"
 #include "VocBase/Methods/Ttl.h"
 
 #include <velocypack/Builder.h>
@@ -62,7 +63,8 @@ RestStatus RestTtlHandler::handleProperties() {
   rest::RequestType const type = _request->requestType();
   if (type == rest::RequestType::GET) {
     VPackBuilder builder;
-    Result result = methods::Ttl::getProperties(builder);
+    Result result =
+        methods::Ttl::getProperties(_vocbase.server().getFeature<TtlFeature>(), builder);
 
     if (result.fail()) {
       generateError(result);
@@ -81,7 +83,8 @@ RestStatus RestTtlHandler::handleProperties() {
     }
     
     VPackBuilder builder;
-    Result result = methods::Ttl::setProperties(body, builder);
+    Result result =
+        methods::Ttl::setProperties(_vocbase.server().getFeature<TtlFeature>(), body, builder);
 
     if (result.fail()) {
       generateError(result);
@@ -101,7 +104,8 @@ RestStatus RestTtlHandler::handleStatistics() {
   rest::RequestType const type = _request->requestType();
   if (type == rest::RequestType::GET) {
     VPackBuilder builder;
-    Result result = methods::Ttl::getStatistics(builder);
+    Result result =
+        methods::Ttl::getStatistics(_vocbase.server().getFeature<TtlFeature>(), builder);
 
     if (result.fail()) {
       generateError(result);

@@ -92,7 +92,7 @@ void ApplicationFeature::startsAfter(std::type_index const& type) {
 }
 
 bool ApplicationFeature::doesStartBefore(std::type_index const& type) const {
-  auto otherAncestors = _server.getFeature(type).ancestors();
+  auto otherAncestors = _server.getFeature<ApplicationFeature>(type).ancestors();
 
   if (otherAncestors.find(typeid(*this)) != otherAncestors.end()) {
     // we are an ancestor of the other feature
@@ -126,7 +126,7 @@ void ApplicationFeature::determineAncestors() {
           return;
         }
 
-        ApplicationFeature& other = this->server().getFeature(type);
+        auto& other = this->server().getFeature<ApplicationFeature>(type);
 
         path.emplace_back(type);
         for (auto& ancestor : other.startsAfter()) {

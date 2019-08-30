@@ -108,10 +108,7 @@ bool LogicalView::canUse(arangodb::auth::Level const& level) {
 
 /*static*/ Result LogicalView::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
                                       velocypack::Slice definition) {
-  auto* viewTypes =
-      application_features::ApplicationServer::lookupFeature<ViewTypesFeature>();
-
-  if (!viewTypes) {
+  if (!vocbase.server().hasFeature<ViewTypesFeature>()) {
     std::string name;
     if (definition.isObject()) {
       name = basics::VelocyPackHelper::getStringValue(definition, StaticStrings::DataSourceName,
@@ -122,11 +119,12 @@ bool LogicalView::canUse(arangodb::auth::Level const& level) {
         TRI_ERROR_INTERNAL,
         "Failure to get 'ViewTypes' feature while creating LogicalView");
   }
+  auto& viewTypes = vocbase.server().getFeature<ViewTypesFeature>();
 
   auto type =
       basics::VelocyPackHelper::getStringRef(definition, StaticStrings::DataSourceType,
                                              velocypack::StringRef(nullptr, 0));
-  auto& factory = viewTypes->factory(LogicalDataSource::Type::emplace(type));
+  auto& factory = viewTypes.factory(LogicalDataSource::Type::emplace(type));
 
   return factory.create(view, vocbase, definition);
 }
@@ -192,19 +190,17 @@ Result LogicalView::drop() {
 /*static*/ Result LogicalView::instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
                                            velocypack::Slice definition, uint64_t planVersion /*= 0*/
 ) {
-  auto* viewTypes =
-      application_features::ApplicationServer::lookupFeature<ViewTypesFeature>();
-
-  if (!viewTypes) {
+  if (!vocbase.server().hasFeature<ViewTypesFeature>()) {
     return Result(
         TRI_ERROR_INTERNAL,
         "Failure to get 'ViewTypes' feature while creating LogicalView");
   }
+  auto& viewTypes = vocbase.server().getFeature<ViewTypesFeature>();
 
   auto type =
       basics::VelocyPackHelper::getStringRef(definition, StaticStrings::DataSourceType,
                                              velocypack::StringRef(nullptr, 0));
-  auto& factory = viewTypes->factory(LogicalDataSource::Type::emplace(type));
+  auto& factory = viewTypes.factory(LogicalDataSource::Type::emplace(type));
 
   return factory.instantiate(view, vocbase, definition, planVersion);
 }
@@ -484,35 +480,32 @@ Result LogicalView::rename(std::string&& newName) {
 
 /*static*/ Result LogicalViewHelperStorageEngine::properties(LogicalView const& view) noexcept {
   try {
-    auto* databaseFeature =
-        application_features::ApplicationServer::lookupFeature<DatabaseFeature>(
-            "Database");
-
-    if (!databaseFeature) {
+    if (!view.vocbase().server().hasFeature<DatabaseFeature>()) {
       return Result(TRI_ERROR_INTERNAL,
                     std::string("failed to find feature 'Database' while "
                                 "updating definition of view '") +
                         view.name() + "' in database '" +
                         view.vocbase().name() + "'");
     }
+    auto& databaseFeature = view.vocbase().server().getFeature<DatabaseFeature>();
 
-    auto* engine = EngineSelectorFeature::ENGINE;
-
-    if (!engine) {
+    if (!view.vocbase().server().hasFeature<EngineSelectorFeature>() ||
+        !view.vocbase().server().getFeature<EngineSelectorFeature>().selected()) {
       return Result(TRI_ERROR_INTERNAL,
                     std::string("failed to find a storage engine while "
                                 "updating definition of view '") +
                         view.name() + "' in database '" +
                         view.vocbase().name() + "'");
     }
+    auto& engine = view.vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
-    auto doSync = databaseFeature->forceSyncProperties();
+    auto doSync = databaseFeature.forceSyncProperties();
 
-    if (engine->inRecovery()) {
+    if (engine.inRecovery()) {
       return Result();  // do not modify engine while in recovery
     }
 
-    return engine->changeView(view.vocbase(), view, doSync);
+    return engine.changeView(view.vocbase(), view, doSync);
   } catch (basics::Exception const& e) {
     return Result(e.code());  // noexcept constructor
   } catch (...) {

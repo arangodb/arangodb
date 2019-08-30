@@ -114,23 +114,6 @@ bool ApplicationServer::isStoppingState(State state) {
          state == State::ABORTED; 
 }
 
-/*ApplicationFeature* ApplicationServer::hasFeatureWithName(std::string const& name) {
-  auto it = std::find_if(_features.begin(), _features.end(), [&name](std::pair<std::type_index, std::string> const& p) -> bool {
-    return (p.second == name);
-  };
-  return (it == _features.end());
-}
-
-ApplicationFeature* ApplicationServer::getFeatureByName(std::string const& name) {
-  auto it = std::find_if(_features.begin(), _features.end(), [&name](std::pair<std::type_index, std::string> const& p) -> bool {
-    return (p.second == name);
-  };
-  if (it == _features.end()) {
-    return nullptr;
-  }
-  return it->first.get();
-}*/
-
 void ApplicationServer::throwFeatureNotFoundException(std::string const& name) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "unknown feature '" + name + "'");
@@ -152,7 +135,7 @@ void ApplicationServer::forceDisableFeatures(std::vector<std::type_index> const&
 void ApplicationServer::disableFeatures(std::vector<std::type_index> const& types, bool force) {
   for (auto const& type : types) {
     if (hasFeature(type)) {
-      auto& feature = getFeature(type);
+      auto& feature = getFeature<ApplicationFeature>(type);
       if (force) {
         feature.forceDisable();
       } else {
@@ -371,7 +354,7 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
       for (auto before : feature.second->startsAfter()) {
         std::string depName = before.name();
         if (hasFeature(before)) {
-          depName = getFeature(before).name();
+          depName = getFeature<ApplicationFeature>(before).name();
         }
         std::cout << "  " << feature.second->name() << " -> " << depName << ";\n";
       }
@@ -436,7 +419,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
         }
         continue;
       }
-      getFeature(other).startsAfter(typeid(*it.second));
+      getFeature<ApplicationFeature>(other).startsAfter(typeid(*it.second));
     }
   }
 
@@ -454,9 +437,10 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
               fail("feature '" + feature.name() +
                    "' depends on unknown feature '" + other.name() + "'");
             }
-            if (!getFeature(other).isEnabled()) {
+            if (!getFeature<ApplicationFeature>(other).isEnabled()) {
               fail("enabled feature '" + feature.name() +
-                   "' depends on other feature '" + getFeature(other).name() +
+                   "' depends on other feature '" +
+                   getFeature<ApplicationFeature>(other).name() +
                    "', which is disabled");
             }
           }
@@ -553,7 +537,7 @@ void ApplicationServer::disableDependentFeatures() {
         feature.disable();
         break;
       }
-      ApplicationFeature& f = getFeature(other);
+      ApplicationFeature& f = getFeature<ApplicationFeature>(other);
       if (!f.isEnabled()) {
         LOG_TOPIC("58e0e", TRACE, Logger::STARTUP)
             << "turning off feature '" << feature.name()

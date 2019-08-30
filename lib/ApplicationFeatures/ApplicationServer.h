@@ -239,16 +239,15 @@ class ApplicationServer {
      return hasFeature(typeid(T));
    }
 
-   // bool hasFeatureWithName(std::string const&);
-
    // returns a reference to a feature given the type. will throw when used for
    // a non-existing feature
-   ApplicationFeature& getFeature(std::type_index const& type) {
+   template <typename T, typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, int>::type = 0>
+   T& getFeature(std::type_index const& type) {
      auto it = _features.find(type);
      if (it == _features.end()) {
        throwFeatureNotFoundException(type.name());
      }
-     return *it->second;
+     return *dynamic_cast<T*>(it->second.get());
    }
 
    // returns a const reference to a feature. will throw when used for
@@ -268,8 +267,6 @@ class ApplicationServer {
      }
      return *dynamic_cast<T*>(it->second.get());
    }
-
-   // ApplicationFeature* getFeatureByName(std::string const&);
 
    // returns the feature with the given name if known and enabled
    // throws otherwise

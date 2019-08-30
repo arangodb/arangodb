@@ -328,11 +328,10 @@ Result Indexes::ensureIndexCoordinator(arangodb::LogicalCollection const* collec
   TRI_ASSERT(collection != nullptr);
   auto& dbName = collection->vocbase().name();
   auto cid = std::to_string(collection->id());
-  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>(
-      "Cluster");
+  auto& cluster = collection->vocbase().server().getFeature<ClusterFeature>();
 
   return ClusterInfo::instance()->ensureIndexCoordinator(  // create index
-      dbName, cid, indexDef, create, resultBuilder, cluster->indexCreationTimeout()  // args
+      dbName, cid, indexDef, create, resultBuilder, cluster.indexCreationTimeout()  // args
   );
 }
 

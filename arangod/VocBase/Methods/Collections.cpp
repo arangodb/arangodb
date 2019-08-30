@@ -249,11 +249,8 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   }
 
   TRI_ASSERT(!vocbase.isDangling());
-  ShardingFeature* feature = nullptr;
-  if (ServerState::instance()->isCoordinator()) {
-    feature = application_features::ApplicationServer::getFeature<ShardingFeature>(
-        "Sharding");
-  }
+  bool haveShardingFeature = ServerState::instance()->isCoordinator() &&
+                             vocbase.server().hasFeature<ShardingFeature>();
   VPackBuilder builder;
   VPackBuilder helper;
   builder.openArray();
@@ -277,14 +274,15 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     VPackBuilder merged =
         VPackCollection::merge(info.properties, helper.slice(), false, true);
 
-    if (feature != nullptr && !info.properties.get("shardingStrategy").isString()) {
+    if (haveShardingFeature && !info.properties.get("shardingStrategy").isString()) {
       // NOTE: We need to do this in a second merge as the geature call requires to have the
       // DataSourceType set in the JSON, which has just been done by the call above.
       helper.clear();
       helper.openObject();
       TRI_ASSERT(ServerState::instance()->isCoordinator());
-      helper.add("shardingStrategy", VPackValue(feature->getDefaultShardingStrategyForNewCollection(
-                                         merged.slice())));
+      helper.add("shardingStrategy",
+                 VPackValue(vocbase.server().getFeature<ShardingFeature>().getDefaultShardingStrategyForNewCollection(
+                     merged.slice())));
       helper.close();
       merged = VPackCollection::merge(merged.slice(), helper.slice(), false, true);
     }
@@ -400,11 +398,9 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     uint32_t defaultReplFactor = 1;
     uint32_t defaultMinReplFactor = 1;
 
-    auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>(
-        "Cluster");
-
-    if (cl != nullptr) {
-      defaultReplFactor = cl->systemReplicationFactor();
+    if (vocbase.server().hasFeature<ClusterFeature>()) {
+      defaultReplFactor =
+          vocbase.server().getFeature<ClusterFeature>().systemReplicationFactor();
     }
 
     VPackBuilder bb;

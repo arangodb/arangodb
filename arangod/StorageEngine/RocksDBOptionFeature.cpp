@@ -31,7 +31,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
-#include "FeaturePhases/BasicsFeaturePhaseServer.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -120,7 +120,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
   }
 
   setOptional(true);
-  startsAfter<BasicsFeaturePhaseServer>();
+  startsAfter<BasicFeaturePhaseServer>();
 }
 
 void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

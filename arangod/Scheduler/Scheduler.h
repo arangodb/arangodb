@@ -126,6 +126,9 @@ class Scheduler {
     Scheduler* _scheduler;
   };
 
+ protected:
+  application_features::ApplicationServer& _server;
+
   // ---------------------------------------------------------------------------
   // CronThread and delayed tasks
   // ---------------------------------------------------------------------------
@@ -153,8 +156,6 @@ class Scheduler {
       return right.first < left.first;
     }
   };
-
-  application_features::ApplicationServer& _server;
 
   std::priority_queue<CronWorkItem, std::vector<CronWorkItem>, CronWorkItemCompare> _cronQueue;
 

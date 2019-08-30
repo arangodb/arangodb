@@ -166,7 +166,7 @@ void FlushFeature::prepare() {
 void FlushFeature::start() {
   {
     WRITE_LOCKER(lock, _threadLock);
-    _flushThread.reset(new FlushThread(_flushInterval));
+    _flushThread.reset(new FlushThread(*this, _flushInterval));
   }
   DatabaseFeature* dbFeature = DatabaseFeature::DATABASE;
   dbFeature->registerPostRecoveryCallback([this]() -> Result {

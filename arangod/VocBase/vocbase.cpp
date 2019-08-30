@@ -64,6 +64,7 @@
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationClients.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -541,10 +542,8 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
       }
 
       // only throw this particular error if the server is configured to do so
-      auto databaseFeature =
-          application_features::ApplicationServer::getFeature<DatabaseFeature>(
-              "Database");
-      if (databaseFeature->throwCollectionNotLoadedError()) {
+      auto& databaseFeature = server().getFeature<DatabaseFeature>();
+      if (databaseFeature.throwCollectionNotLoadedError()) {
         return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED;
       }
 
@@ -685,9 +684,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       // collection is unloaded
       StorageEngine* engine = EngineSelectorFeature::ENGINE;
       bool doSync = !engine->inRecovery() &&
-                    application_features::ApplicationServer::getFeature<DatabaseFeature>(
-                        "Database")
-                        ->forceSyncProperties();
+                    server().getFeature<DatabaseFeature>().forceSyncProperties();
 
       if (!collection->deleted()) {
         collection->deleted(true);
@@ -1272,25 +1269,22 @@ arangodb::Result TRI_vocbase_t::renameView(TRI_voc_cid_t cid, std::string const&
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  auto* databaseFeature =
-      application_features::ApplicationServer::lookupFeature<DatabaseFeature>(
-          "Database");
-
-  if (!databaseFeature) {
+  if (!server().hasFeature<DatabaseFeature>()) {
     return Result(
         TRI_ERROR_INTERNAL,
         std::string("failed to find feature 'Database' while renaming view '") +
             view->name() + "' in database '" + name() + "'");
   }
+  auto& databaseFeature = server().getFeature<DatabaseFeature>();
 
-  auto* engine = EngineSelectorFeature::ENGINE;
-
-  if (!engine) {
+  if (!server().hasFeature<EngineSelectorFeature>() ||
+      !server().getFeature<EngineSelectorFeature>().selected()) {
     return arangodb::Result(
         TRI_ERROR_INTERNAL,
         std::string("failed to find StorageEngine while renaming view '") +
             view->name() + "' in database '" + name() + "'");
   }
+  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
 
   // lock collection because we are going to copy its current name
   auto newName = view->name();
@@ -1328,11 +1322,11 @@ arangodb::Result TRI_vocbase_t::renameView(TRI_voc_cid_t cid, std::string const&
 
   TRI_ASSERT(std::dynamic_pointer_cast<arangodb::LogicalView>(itr1->second));
 
-  auto doSync = databaseFeature->forceSyncProperties();
-  auto res = engine->inRecovery()
+  auto doSync = databaseFeature.forceSyncProperties();
+  auto res = engine.inRecovery()
                  ? arangodb::Result()  // skip persistence while in recovery
                                        // since definition already from engine
-                 : engine->changeView(*this, *view, doSync);
+                 : engine.changeView(*this, *view, doSync);
 
   if (!res.ok()) {
     return res;
@@ -1701,7 +1695,6 @@ TRI_vocbase_t::TRI_vocbase_t(application_features::ApplicationServer& server,
       _isOwnAppsDirectory(true),
       _deadlockDetector(false),
       _userStructures(nullptr) {
-  auto& server = application_features::ApplicationServer::server();
   auto& queryRegistry = server.getFeature<QueryRegistryFeature>();
   _queries.reset(new arangodb::aql::QueryList(queryRegistry, this));
   _cursorRepository.reset(new arangodb::CursorRepository(*this));

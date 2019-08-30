@@ -221,8 +221,8 @@ std::unique_ptr<TRI_vocbase_t> ClusterEngine::createDatabase(
     TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) {
   status = TRI_ERROR_NO_ERROR;
 
-  return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, id,
-                                         args.get("name").copyString());
+  return std::make_unique<TRI_vocbase_t>(server(), TRI_VOCBASE_TYPE_COORDINATOR,
+                                         id, args.get("name").copyString());
 }
 
 int ClusterEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
@@ -361,7 +361,7 @@ void ClusterEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) 
 /// @brief open an existing database. internal function
 std::unique_ptr<TRI_vocbase_t> ClusterEngine::openExistingDatabase(
     TRI_voc_tick_t id, std::string const& name, bool wasCleanShutdown, bool isUpgrade) {
-  return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, id, name);
+  return std::make_unique<TRI_vocbase_t>(server(), TRI_VOCBASE_TYPE_COORDINATOR, id, name);
 }
 
 // -----------------------------------------------------------------------------

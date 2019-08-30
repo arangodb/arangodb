@@ -89,16 +89,16 @@ std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const&
 
     return nullptr;
   }
-  
-  if (application_features::ApplicationServer::isStopping()) {
+
+  TRI_ASSERT(nullptr != vocbase);  // this check was previously in the
+  // DatabaseGuard constructor which on failure
+  // would fail Task constructor
+
+  if (vocbase->server().isStopping()) {
     ec = TRI_ERROR_SHUTTING_DOWN;
     return nullptr;
   }
   
-  TRI_ASSERT(nullptr != vocbase);  // this check was previously in the
-                                   // DatabaseGuard constructor which on failure
-                                   // would fail Task constructor
-
   std::string user = ExecContext::CURRENT ? ExecContext::CURRENT->user() : "";
   auto task = std::make_shared<Task>(id, name, *vocbase, command, allowUseDatabase);
   
@@ -294,7 +294,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     }
 
     // permissions might have changed since starting this task
-    if (application_features::ApplicationServer::isStopping() || !allowContinue) {
+    if (_dbGuard->database().server().isStopping() || !allowContinue) {
       Task::unregisterTask(_id, true);
       return;
     }
@@ -307,7 +307,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
                                                  : execContext.get());
             work(execContext.get());
 
-            if (_periodic.load() && !application_features::ApplicationServer::isStopping()) {
+            if (_periodic.load() && !_dbGuard->database().server().isStopping()) {
               // requeue the task
               bool queued = basics::function_utils::retryUntilTimeout(
                   [this]() -> bool { return queue(_interval); }, Logger::FIXME,

@@ -62,12 +62,11 @@ TRI_vocbase_t* Databases::lookup(std::string const& dbname) {
 }
 
 std::vector<std::string> Databases::list(std::string const& user) {
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
-  if (databaseFeature == nullptr) {
+  auto& server = application_features::ApplicationServer::server();
+  if (!server.hasFeature<DatabaseFeature>()) {
     return std::vector<std::string>();
   }
+  DatabaseFeature& databaseFeature = server.getFeature<DatabaseFeature>();
 
   if (user.empty()) {
     if (ServerState::instance()->isCoordinator()) {
@@ -75,11 +74,11 @@ std::vector<std::string> Databases::list(std::string const& user) {
       return ci->databases(true);
     } else {
       // list of all databases
-      return databaseFeature->getDatabaseNames();
+      return databaseFeature.getDatabaseNames();
     }
   } else {
     // slow path for user case
-    return databaseFeature->getDatabaseNamesForUser(user);
+    return databaseFeature.getDatabaseNamesForUser(user);
   }
 }
 
@@ -197,11 +196,12 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   }
   sanitizedUsers.close();
 
-  DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
-  if (databaseFeature == nullptr) {
+  auto& server = application_features::ApplicationServer::server();
+  if (!server.hasFeature<DatabaseFeature>()) {
     events::CreateDatabase(dbName, TRI_ERROR_INTERNAL);
     return Result(TRI_ERROR_INTERNAL);
   }
+  DatabaseFeature& databaseFeature = server.getFeature<DatabaseFeature>();
 
   UpgradeResult upgradeRes;
   if (ServerState::instance()->isCoordinator()) {
@@ -237,7 +237,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     TRI_vocbase_t* vocbase = nullptr;
     int tries = 0;
     while (++tries <= 6000) {
-      vocbase = databaseFeature->useDatabase(id);
+      vocbase = databaseFeature.useDatabase(id);
       if (vocbase != nullptr) {
         break;
       }
@@ -273,7 +273,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     }
 
     TRI_vocbase_t* vocbase = nullptr;
-    int res = databaseFeature->createDatabase(id, dbName, vocbase);
+    int res = databaseFeature.createDatabase(id, dbName, vocbase);
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res);
     }
@@ -305,9 +305,8 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   // Entirely Foxx related:
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
     try {
-      auto* sysDbFeature =
-          arangodb::application_features::ApplicationServer::getFeature<arangodb::SystemDatabaseFeature>();
-      auto database = sysDbFeature->use();
+      auto& sysDbFeature = server.getFeature<arangodb::SystemDatabaseFeature>();
+      auto database = sysDbFeature.use();
 
       TRI_ExpireFoxxQueueDatabaseCache(database.get());
     } catch (...) {

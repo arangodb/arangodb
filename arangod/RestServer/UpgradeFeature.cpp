@@ -111,7 +111,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
 void UpgradeFeature::prepare() {
   // need to register tasks before creating any database
-  methods::Upgrade::registerTasks();
+  methods::Upgrade::registerTasks(*this);
 }
 
 void UpgradeFeature::start() {
