@@ -310,7 +310,14 @@ static void mergeResultsAllShards(std::vector<std::shared_ptr<VPackBuilder>> con
       VPackSlice oneRes = it->slice();
       TRI_ASSERT(oneRes.isArray());
       oneRes = oneRes.at(currentIndex);
-      if (oneRes.hasKey(StaticStrings::KeyString)) {
+      
+      int errorNum = TRI_ERROR_NO_ERROR;
+      VPackSlice errorNumSlice = oneRes.get(StaticStrings::ErrorNum);
+      if (errorNumSlice.isNumber()) {
+        errorNum = errorNumSlice.getNumber<int>();
+      }
+      if ((errorNum != TRI_ERROR_NO_ERROR && errorNum != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ||
+          oneRes.hasKey(StaticStrings::KeyString)) {
         // This is the correct result
         // Use it
         resultBody->add(oneRes);
