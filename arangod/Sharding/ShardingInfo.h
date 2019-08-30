@@ -79,6 +79,7 @@ class ShardingInfo {
   std::vector<std::string> const& shardKeys() const;
 
   std::shared_ptr<ShardMap> shardIds() const;
+  std::shared_ptr<std::vector<ShardID>> shardListAsShardID() const;
 
   // return a filtered list of the collection's shards
   std::shared_ptr<ShardMap> shardIds(std::unordered_set<std::string> const& includedShards) const;
