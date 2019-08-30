@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed adding an orphan collections as the first collection in a SmartGraph.
+
 * Geo functions will now have better error reporting on invalid input.
 
 * The graph viewer of the web interface now tries to find a vertex document of
