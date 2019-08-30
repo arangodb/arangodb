@@ -430,11 +430,13 @@ function TransactionGraphSuite () {
       assertFalse(result.error);
       assertEqual(202, result.code);
 
-      try {
-        db._collection(vertex).document("test");
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+      if (db._engine().name !== 'mmfiles') { 
+        try {
+          db._collection(vertex).document("test");
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+        }
       }
 
       trx.commit();
@@ -456,11 +458,13 @@ function TransactionGraphSuite () {
       assertFalse(result.error);
       assertEqual(202, result.code);
 
-      try {
-        db._collection(edge).document("test");
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+      if (db._engine().name !== 'mmfiles') { 
+        try {
+          db._collection(edge).document("test");
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+        }
       }
 
       trx.commit();
@@ -484,9 +488,11 @@ function TransactionGraphSuite () {
       assertFalse(result.error);
       assertEqual(202, result.code);
 
-      result = db._collection(vertex).document("test");
-      assertEqual("test", result._key);
-      assertEqual("test", result.value);
+      if (db._engine().name !== 'mmfiles') { 
+        result = db._collection(vertex).document("test");
+        assertEqual("test", result._key);
+        assertEqual("test", result.value);
+      }
       
       try {
         trx.collection(vertex).document("test");
@@ -520,16 +526,20 @@ function TransactionGraphSuite () {
       assertFalse(result.error);
       assertEqual(202, result.code);
 
-      result = db._collection(vertex).document("1");
-      assertEqual("1", result._key);
-      result = db._collection(edge).document("test");
-      assertEqual("test", result.value);
+      if (db._engine().name !== 'mmfiles') { 
+        result = db._collection(vertex).document("1");
+        assertEqual("1", result._key);
+        result = db._collection(edge).document("test");
+        assertEqual("test", result.value);
+      }
       
-      try {
-        trx.collection(vertex).document("1");
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+      if (db._engine().name !== 'mmfiles') { 
+        try {
+          trx.collection(vertex).document("1");
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+        }
       }
       
       try {
@@ -594,10 +604,12 @@ function TransactionGraphSuite () {
       assertFalse(result.error);
       assertEqual(202, result.code);
 
-      result = db._collection(edge).document("test");
-      assertEqual("test", result._key);
-      assertEqual("test", result.value);
-      
+      if (db._engine().name !== 'mmfiles') { 
+        result = db._collection(edge).document("test");
+        assertEqual("test", result._key);
+        assertEqual("test", result.value);
+      }
+
       try {
         trx.collection(edge).document("test");
         fail();
@@ -630,13 +642,15 @@ function TransactionGraphSuite () {
       assertFalse(result.error);
       assertEqual(202, result.code);
 
-      result = db._collection(edge).document("test");
-      assertEqual("test", result._key);
-      assertEqual("test", result.value);
+      if (db._engine().name !== 'mmfiles') { 
+        result = db._collection(edge).document("test");
+        assertEqual("test", result._key);
+        assertEqual("test", result.value);
       
-      result = trx.collection(edge).document("test");
-      assertEqual("test", result._key);
-      assertEqual("meow", result.value);
+        result = trx.collection(edge).document("test");
+        assertEqual("test", result._key);
+        assertEqual("meow", result.value);
+      }
 
       trx.commit();
         
@@ -658,13 +672,15 @@ function TransactionGraphSuite () {
       assertFalse(result.error);
       assertEqual(202, result.code);
 
-      result = db._collection(vertex).document("test");
-      assertEqual("test", result._key);
-      assertEqual("test", result.value);
+      if (db._engine().name !== 'mmfiles') { 
+        result = db._collection(vertex).document("test");
+        assertEqual("test", result._key);
+        assertEqual("test", result.value);
       
-      result = trx.collection(vertex).document("test");
-      assertEqual("test", result._key);
-      assertEqual("meow", result.value);
+        result = trx.collection(vertex).document("test");
+        assertEqual("test", result._key);
+        assertEqual("meow", result.value);
+      }
 
       trx.commit();
         
@@ -688,13 +704,15 @@ function TransactionGraphSuite () {
       assertFalse(result.error);
       assertEqual(202, result.code);
 
-      result = db._collection(edge).document("test");
-      assertEqual("test", result._key);
-      assertEqual("test", result.value);
+      if (db._engine().name !== 'mmfiles') { 
+        result = db._collection(edge).document("test");
+        assertEqual("test", result._key);
+        assertEqual("test", result.value);
       
-      result = trx.collection(edge).document("test");
-      assertEqual("test", result._key);
-      assertEqual("meow", result.value);
+        result = trx.collection(edge).document("test");
+        assertEqual("test", result._key);
+        assertEqual("meow", result.value);
+      }
 
       trx.commit();
         
@@ -716,13 +734,15 @@ function TransactionGraphSuite () {
       assertFalse(result.error);
       assertEqual(202, result.code);
 
-      result = db._collection(vertex).document("test");
-      assertEqual("test", result._key);
-      assertEqual("test", result.value);
+      if (db._engine().name !== 'mmfiles') { 
+        result = db._collection(vertex).document("test");
+        assertEqual("test", result._key);
+        assertEqual("test", result.value);
       
-      result = trx.collection(vertex).document("test");
-      assertEqual("test", result._key);
-      assertEqual("meow", result.value);
+        result = trx.collection(vertex).document("test");
+        assertEqual("test", result._key);
+        assertEqual("meow", result.value);
+      }
 
       trx.commit();
         
