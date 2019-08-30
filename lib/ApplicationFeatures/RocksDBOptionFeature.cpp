@@ -157,13 +157,10 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new UInt64Parameter(&_writeBufferSize));
 
   options->addOption("--rocksdb.max-write-buffer-number",
-                     "maximum number of write buffers that build up in memory. "
-                     "This option is ignored! There is a hardcoded maximum of "
-                     "number of column families + 2 (currently 9) write buffers "
-                     "based on performance research",
-                     new UInt64Parameter(&_maxWriteBufferNumber))
-                     .setDeprecatedIn(30408)
-                     .setDeprecatedIn(30500);
+                     "maximum number of write buffers that build up in memory "
+                     "(default: number of column families + 2 = 9 write buffers). "
+                     "You can increase the amount only",
+                     new UInt64Parameter(&_maxWriteBufferNumber));
 
   options->addOption("--rocksdb.max-total-wal-size",
                      "maximum total size of WAL files that will force flush "
