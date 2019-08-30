@@ -1976,12 +1976,13 @@ void Agent::emptyCbTrashBin() {
   // queue + write.
   auto* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler != nullptr) {
-    scheduler->queue(RequestLane::INTERNAL_LOW, [envelope = std::move(envelope)] {
+    bool ok = scheduler->queue(RequestLane::INTERNAL_LOW, [envelope = std::move(envelope)] {
         auto* agent = AgencyFeature::AGENT;
         if (!application_features::ApplicationServer::isStopping() && agent) {
           agent->write(envelope);
         }
       });
+    LOG_TOPIC_IF("52461", DEBUG, Logger::AGENCY, !ok) << "Could not schedule callback cleanup job.";
   }
 
 }
