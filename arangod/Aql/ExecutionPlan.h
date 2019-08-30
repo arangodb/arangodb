@@ -29,6 +29,7 @@
 #include "Aql/ModificationOptions.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/HashSet.h"
 #include "Basics/SmallVector.h"
 
 #include <array>
@@ -44,6 +45,7 @@ struct AstNode;
 class CalculationNode;
 class CollectNode;
 class ExecutionNode;
+struct OptimizerRule;
 class Query;
 
 class ExecutionPlan {
@@ -89,6 +91,15 @@ class ExecutionPlan {
   
   /// @brief check if a specific optimizer rule was applied
   bool hasAppliedRule(int level) const;
+  
+  /// @brief check if a specific rule is disabled
+  bool isDisabledRule(int rule) const;
+  
+  /// @brief enable a specific rule
+  void enableRule(int rule);
+
+  /// @brief disable a specific rule
+  void disableRule(int rule);
 
   /// @brief return the next value for a node id
   inline size_t nextId() { return ++_nextId; }
@@ -340,6 +351,9 @@ class ExecutionPlan {
 
   /// @brief which optimizer rules were applied for a plan
   std::vector<int> _appliedRules;
+  
+  /// @brief which optimizer rules were disabled for a plan
+  arangodb::HashSet<int> _disabledRules;
 
   /// @brief if the plan is supposed to be in a valid state
   /// this will always be true, except while a plan is handed to

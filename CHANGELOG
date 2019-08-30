@@ -16,6 +16,8 @@ devel
 * Add new server option `--cluster.default-replication-factor` that allows to set the
   default replication factor for non-system collections (default: 1).
 
+* Fixed adding an orphan collections as the first collection in a SmartGraph. 
+
 * Geo functions will now have better error reporting on invalid input.
 
 * Fixed issue #9795. Fixed NOT IN clause in ArangoSearch.

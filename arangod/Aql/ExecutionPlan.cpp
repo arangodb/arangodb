@@ -351,6 +351,7 @@ ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
   plan->_nextId = _nextId;
   plan->_root = _root->clone(plan.get(), true, false);
   plan->_appliedRules = _appliedRules;
+  plan->_disabledRules = _disabledRules;
   plan->_nestingLevel = _nestingLevel;
 
   return plan.release();
@@ -437,6 +438,18 @@ void ExecutionPlan::addAppliedRule(int level) {
 bool ExecutionPlan::hasAppliedRule(int level) const {
   return std::any_of(_appliedRules.begin(), _appliedRules.end(),
                      [level](int l) { return l == level; });
+}
+
+void ExecutionPlan::enableRule(int rule) {
+  _disabledRules.erase(rule);
+}
+
+void ExecutionPlan::disableRule(int rule) {
+  _disabledRules.emplace(rule);
+}
+
+bool ExecutionPlan::isDisabledRule(int rule) const {
+  return (_disabledRules.find(rule) != _disabledRules.end());
 }
 
 /// @brief get a node by its id

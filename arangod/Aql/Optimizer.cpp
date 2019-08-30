@@ -32,80 +32,17 @@
 
 using namespace arangodb::aql;
 
-// @brief constructor, this will initialize the rules database
+// @brief constructor
 Optimizer::Optimizer(size_t maxNumberOfPlans)
-    : _maxNumberOfPlans(maxNumberOfPlans), _runOnlyRequiredRules(false) {
-  for (auto& r : OptimizerRulesFeature::_rules) {
-    _rules.emplace(r.first, Rule{r.second, !r.second.isDisabledByDefault()});
-  }
-}
+    : _maxNumberOfPlans(maxNumberOfPlans), _runOnlyRequiredRules(false) {}
 
-void Optimizer::disableRule(int rule) {
-  auto it = _rules.find(rule);
-  if (it != _rules.end() && it->second.rule.canBeDisabled()) {
-    it->second.enabled = false;
-  }
-}
-
-void Optimizer::disableRule(std::string const& name) {
-  char const* p = name.data();
-  size_t size = name.size();
-
-  if (name[0] == '-') {
-    ++p;
-    --size;
-  }
-
-  if (arangodb::velocypack::StringRef(p, size) == "all") {
-    // disable all rules
-    for (auto& it : _rules) {
-      disableRule(it.first);
-    }
-  } else {
-    disableRule(OptimizerRulesFeature::translateRule(std::string(p, size)));
-  }
-}
-
-void Optimizer::enableRule(int rule) {
-  auto it = _rules.find(rule);
-  if (it != _rules.end()) {
-    it->second.enabled = true;
-  }
-}
-
-void Optimizer::enableRule(std::string const& name) {
-  char const* p = name.data();
-  size_t size = name.size();
-
-  if (name[0] == '+') {
-    ++p;
-    --size;
-  }
-
-  if (arangodb::velocypack::StringRef(p, size) == "all") {
-    // enable all rules
-    for (auto& it : _rules) {
-      enableRule(it.first);
-    }
-  } else {
-    enableRule(OptimizerRulesFeature::translateRule(std::string(p, size)));
-  }
-}
-
-void Optimizer::disableRules(std::function<bool(OptimizerRule const&)> const& predicate) {
+void Optimizer::disableRules(ExecutionPlan* plan,
+                             std::function<bool(OptimizerRule const&)> const& predicate) {
   for (auto& it : _rules) {
-    if (predicate(it.second.rule)) {
-      it.second.enabled = false;
+    if (predicate(it.second)) {
+      plan->disableRule(it.first);
     }
   }
-}
-
-bool Optimizer::isDisabled(int rule) const {
-  auto it = _rules.find(rule);
-  if (it == _rules.end()) {
-    return true;
-  }
-  return !it->second.enabled;
 }
 
 bool Optimizer::runOnlyRequiredRules(size_t extraPlans) const {
@@ -117,7 +54,8 @@ bool Optimizer::runOnlyRequiredRules(size_t extraPlans) const {
 void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan,
                         OptimizerRule const& rule, bool wasModified, int newLevel) {
   TRI_ASSERT(plan != nullptr);
-  TRI_ASSERT(_currentRule->second.rule.level == rule.level);
+  TRI_ASSERT(_currentRule->second.level == rule.level);
+  TRI_ASSERT(!_rules.empty());
 
   plan->setValidity(true);
 
@@ -154,6 +92,17 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
                             QueryOptions const& queryOptions, bool estimateAllPlans) {
   _runOnlyRequiredRules = false;
   ExecutionPlan* initialPlan = plan.get();
+  
+  if (ADB_LIKELY(_rules.empty())) {
+    for (auto& r : OptimizerRulesFeature::_rules) {
+      _rules.emplace(r.first, r.second);
+      if (r.second.isDisabledByDefault()) {
+        disableRule(initialPlan, r.first);
+      }
+    }
+  }
+
+  TRI_ASSERT(!_rules.empty());
 
   // _plans contains the previous optimization result
   _plans.clear();
@@ -174,21 +123,19 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
     return;
   }
 
-  TRI_ASSERT(!_rules.empty());
-
   // enable/disable rules as per user request
   for (auto const& name : queryOptions.optimizerRules) {
     if (name.empty()) {
       continue;
     }
     if (name[0] == '-') {
-      disableRule(name);
+      disableRule(initialPlan, name);
     } else {
-      enableRule(name);
+      enableRule(initialPlan, name);
     }
   }
   _newPlans.clear();
-
+  
   while (true) {
     // std::cout << "Have " << _plans.size() << " plans:" << std::endl;
     // for (auto const& p : _plans.list) {
@@ -204,19 +151,20 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
       std::tie(p, _currentRule) = _plans.pop_front();
 
       if (_currentRule == _rules.end()) {
-        _newPlans.push_back(std::move(p),
-                            _currentRule);  // nothing to do, just keep it
-      } else {                              // find next rule
+        // nothing to do, just keep it
+        _newPlans.push_back(std::move(p), _currentRule);
+      } else {                              
+        // find next rule
         auto it = _currentRule;
         TRI_ASSERT(it != _rules.end());
 
-        auto const& rule = it->second.rule;
-
+        auto const& rule = it->second;
+  
         // skip over rules if we should
         // however, we don't want to skip those rules that will not create
         // additional plans
-        if (!it->second.enabled || (_runOnlyRequiredRules && rule.canCreateAdditionalPlans() &&
-                                    rule.canBeDisabled())) {
+        if (p->isDisabledRule(it->first) || 
+            (_runOnlyRequiredRules && rule.canCreateAdditionalPlans() && rule.canBeDisabled())) {
           // we picked a disabled rule or we have reached the max number of
           // plans and just skip this rule
           ++it;  // move it to the next rule to be processed in the next
@@ -304,4 +252,58 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
 
   LOG_TOPIC("5b5f6", TRACE, Logger::FIXME)
       << "optimization ends with " << _plans.size() << " plans";
+}
+
+void Optimizer::disableRule(ExecutionPlan* plan, int rule) {
+  auto it = _rules.find(rule);
+  if (it != _rules.end() && it->second.canBeDisabled()) {
+    plan->disableRule(rule);
+  }
+}
+
+void Optimizer::disableRule(ExecutionPlan* plan, std::string const& name) {
+  char const* p = name.data();
+  size_t size = name.size();
+
+  if (name[0] == '-') {
+    ++p;
+    --size;
+  }
+
+  if (arangodb::velocypack::StringRef(p, size) == "all") {
+    // disable all rules
+    for (auto& it : _rules) {
+      disableRule(plan, it.first);
+    }
+  } else {
+    disableRule(plan, OptimizerRulesFeature::translateRule(std::string(p, size)));
+  }
+}
+
+void Optimizer::enableRule(ExecutionPlan* plan, int rule) {
+  auto it = _rules.find(rule);
+  if (it != _rules.end()) {
+    plan->enableRule(rule);
+  }
+}
+
+void Optimizer::enableRule(ExecutionPlan* plan, std::string const& name) {
+  char const* p = name.data();
+  size_t size = name.size();
+
+  if (name[0] == '+') {
+    ++p;
+    --size;
+  }
+
+  if (arangodb::velocypack::StringRef(p, size) == "all") {
+    // enable all rules
+    for (auto& it : _rules) {
+      if (!it.second.isDisabledByDefault()) {
+        enableRule(plan, it.first);
+      }
+    }
+  } else {
+    enableRule(plan, OptimizerRulesFeature::translateRule(std::string(p, size)));
+  }
 }

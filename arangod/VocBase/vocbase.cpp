@@ -620,7 +620,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
   state = DROP_EXIT;
   std::string const colName(collection->name());
 
-  double startTime = TRI_microtime();
+  double endTime = TRI_microtime() + timeout;
 
   // do not acquire these locks instantly
   RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock, _dataSourceLockWriteOwner,
@@ -648,8 +648,8 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     TRI_ASSERT(!writeLocker.isLocked());
     TRI_ASSERT(!locker.isLocked());
 
-    if (timeout >= 0.0 && TRI_microtime() > startTime + timeout) {
-      events::DropCollection(_name, colName, TRI_ERROR_LOCK_TIMEOUT);
+    if (timeout >= 0.0 && TRI_microtime() > endTime) {
+      events::DropCollection(name(), colName, TRI_ERROR_LOCK_TIMEOUT);
       return TRI_ERROR_LOCK_TIMEOUT;
     }
 
