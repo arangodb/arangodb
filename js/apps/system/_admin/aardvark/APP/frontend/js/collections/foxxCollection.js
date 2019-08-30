@@ -33,10 +33,14 @@
       if (options.legacy) {
         url += '&legacy=true';
       }
-      if (options.setup === false) {
+      if (options.setup === true) {
+        url += '&setup=true';
+      } else if (options.setup === false) {
         url += '&setup=false';
       }
-      if (options.teradown === false) {
+      if (options.teardown === true) {
+        url += '&teardown=true';
+      } else if (options.teardown === false) {
         url += '&teardown=false';
       }
       if (options.replace === true) {
