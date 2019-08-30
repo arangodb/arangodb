@@ -1,6 +1,12 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #9862: ServerException: RestHandler/RestCursorHandler.cpp:279
+
+  This fixes an issue with the RocksDB primary index IN iterator not resetting its
+  internal iterator after being rearmed with new lookup values (which only happens
+  if the IN iterator is called from an inner FOR loop).
+
 * Geo functions will now have better error reporting on invalid input.
 
 * The graph viewer of the web interface now tries to find a vertex document of
