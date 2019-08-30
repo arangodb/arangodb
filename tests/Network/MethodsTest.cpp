@@ -81,9 +81,9 @@ struct DummyPool : public network::ConnectionPool {
   std::shared_ptr<DummyConnection> _conn;
 };
 
-struct MethodsTest : public ::testing::Test {
+struct NetworkMethodsTest : public ::testing::Test {
   
-  MethodsTest() : pool(config()) {}
+  NetworkMethodsTest() : pool(config()) {}
   
 protected:
   
@@ -107,7 +107,7 @@ protected:
   DummyPool pool;
 };
 
-TEST_F(MethodsTest, simple_request) {
+TEST_F(NetworkMethodsTest, simple_request) {
   pool._conn->_err = fuerte::Error::NoError;
   
   fuerte::ResponseHeader header;
@@ -129,7 +129,7 @@ TEST_F(MethodsTest, simple_request) {
   ASSERT_EQ(res.response->statusCode(), fuerte::StatusAccepted);
 }
 
-TEST_F(MethodsTest, request_failure) {
+TEST_F(NetworkMethodsTest, request_failure) {
   pool._conn->_err = fuerte::Error::ConnectionClosed;
   
   VPackBuffer<uint8_t> buffer;
@@ -190,7 +190,7 @@ struct SchedulerTestSetup {
   std::vector<std::unique_ptr<arangodb::application_features::ApplicationFeature*>> features;
 };
 
-TEST_F(MethodsTest, request_with_retry_after_error) {
+TEST_F(NetworkMethodsTest, request_with_retry_after_error) {
   SchedulerTestSetup setup;
   
   // Step 1: Provoke a connection error
@@ -226,7 +226,7 @@ TEST_F(MethodsTest, request_with_retry_after_error) {
   ASSERT_EQ(res.response->statusCode(), fuerte::StatusAccepted);
 }
 
-TEST_F(MethodsTest, request_with_retry_after_not_found_error) {
+TEST_F(NetworkMethodsTest, request_with_retry_after_not_found_error) {
     SchedulerTestSetup setup;
     
     // Step 1: Provoke a data source not found error
