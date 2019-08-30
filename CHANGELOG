@@ -7,6 +7,8 @@ v3.5.1 (XXXX-XX-XX)
   internal iterator after being rearmed with new lookup values (which only happens
   if the IN iterator is called from an inner FOR loop).
 
+* Fixed adding an orphan collection as the first collection in a SmartGraph.
+
 * Geo functions will now have better error reporting on invalid input.
 
 * The graph viewer of the web interface now tries to find a vertex document of
