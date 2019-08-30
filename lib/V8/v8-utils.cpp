@@ -2884,13 +2884,12 @@ static void JS_Output(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ProcessStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ProcessStatisticsToV8(v8::FunctionCallbackInfo<v8::Value> const& args, ProcessInfo const& info) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  ProcessInfo info = TRI_ProcessInfoSelf();
   double rss = (double)info._residentSize;
   double rssp = 0;
 
@@ -2915,6 +2914,38 @@ static void JS_ProcessStatistics(v8::FunctionCallbackInfo<v8::Value> const& args
               v8::Number::New(isolate, (double)info._virtualSize));
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_ProcessStatisticsSelf(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  ProcessStatisticsToV8(args, TRI_ProcessInfoSelf());
+}
+
+static void JS_ProcessStatisticsExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "statisticsExternal(<external-identifier>)");
+  }
+
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToControlProcesses(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to execute or modify state of external processes");
+  }
+
+  ExternalId pid;
+
+  pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
+
+  ProcessStatisticsToV8(args, TRI_ProcessInfo(pid._pid));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -4446,11 +4477,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   ExternalId pid;
 
-#ifndef _WIN32
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
-#else
-  pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(isolate, args[0], true));
-#endif
   bool wait = false;
   if (args.Length() >= 2) {
     wait = TRI_ObjectToBoolean(isolate, args[1]);
@@ -4645,6 +4672,11 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #else
   pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(isolate, args[0], true));
 #endif
+  if (pid._pid == 0) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to kill 0");
+  }
 
   // return the result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -5650,6 +5682,11 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
+                                                   "SYS_PROCESS_STATISTICS_EXTERNAL"),
+                               JS_ProcessStatisticsExternal);
+
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_GET_EXTERNAL_SPAWNED"),
                                JS_GetExternalSpawned);
   TRI_AddGlobalFunctionVocbase(
@@ -5686,7 +5723,7 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_PROCESS_STATISTICS"),
-                               JS_ProcessStatistics);
+                               JS_ProcessStatisticsSelf);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_GET_PID"), JS_GetPid);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_RAND"), JS_Rand);
