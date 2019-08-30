@@ -3,6 +3,12 @@ devel
 
 * Fixed adding an orphan collections as the first collection in a SmartGraph. 
 
+* Fixed issue #9862: ServerException: RestHandler/RestCursorHandler.cpp:279
+
+  This fixes an issue with the RocksDB primary index IN iterator not resetting its
+  internal iterator after being rearmed with new lookup values (which only happens
+  if the IN iterator is called from an inner FOR loop).
+
 * Geo functions will now have better error reporting on invalid input.
 
 * Fixed issue #9795. Fixed NOT IN clause in ArangoSearch.
