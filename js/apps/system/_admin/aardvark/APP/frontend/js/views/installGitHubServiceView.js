@@ -101,7 +101,7 @@
         };
 
         options = arangoHelper.getFoxxFlags();
-        options.legacy = $('#github-app-islegacy')[0].checked;
+        options.legacy = Boolean($('#github-app-islegacy')[0].checked);
         this.collection.install('git', info, mount, options, this.installCallback.bind(this));
       }
     },

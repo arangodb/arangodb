@@ -86,7 +86,7 @@
         };
 
         options = arangoHelper.getFoxxFlags();
-        options.legacy = $('#zip-app-islegacy')[0].checked;
+        options.legacy = Boolean($('#zip-app-islegacy')[0].checked);
         this.collection.install('zip', info, mount, options, this.installCallback.bind(this));
       }
       window.modalView.hide();

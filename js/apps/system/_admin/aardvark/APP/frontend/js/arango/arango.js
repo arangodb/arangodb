@@ -1169,12 +1169,12 @@
 
       const $teardown = $('#new-app-flag-teardown')[0];
       if ($teardown) {
-        flags.teardown = Boolean($teardown.chcked);
+        flags.teardown = Boolean($teardown.checked);
       }
 
       const $setup = $('#new-app-flag-setup')[0];
       if ($setup) {
-        flags.setup = Boolean($setup.chcked);
+        flags.setup = Boolean($setup.checked);
       }
 
       return flags;
