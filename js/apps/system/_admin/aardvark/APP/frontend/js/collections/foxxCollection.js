@@ -28,7 +28,7 @@
       this.sortOptions.desc = val;
     },
 
-    install: function (info, mount, callback, mode, options) {
+    install: function (mode, info, mount, options, callback) {
       var url = arangoHelper.databaseUrl('/_admin/aardvark/foxxes/' + mode + '?mount=' + encodeURIComponent(mount));
       if (options.legacy) {
         url += '&legacy=true';
