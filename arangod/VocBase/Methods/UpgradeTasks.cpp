@@ -324,42 +324,6 @@ static void createIndex(std::string const name, Index::IndexType type,
   }
 }
 
-Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase,
-                                      std::vector<std::shared_ptr<LogicalCollection>>& collections) {
-  try {
-    if (vocbase.isSystem()) {
-      ::createIndex(StaticStrings::UsersCollection, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,
-                    {"user"}, true, true, collections);
-
-      if (StatisticsFeature::enabled()) {
-        ::createIndex(StaticStrings::StatisticsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                      false, false, collections);
-        ::createIndex(StaticStrings::Statistics15Collection,
-                      arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                      false, false, collections);
-        ::createIndex(StaticStrings::StatisticsRawCollection,
-                      arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                      false, false, collections);
-      }
-    }
-
-    upgradeGeoIndexes(vocbase);
-
-    ::createIndex(StaticStrings::AppsCollection, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,
-                  {"mount"}, true, true, collections);
-    ::createIndex(StaticStrings::JobsCollection, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-                  {"queue", "status", "delayUntil"}, false, false, collections);
-    ::createIndex(StaticStrings::JobsCollection, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-                  {"status", "queue", "delayUntil"}, false, false, collections);
-  } catch (Result res) {
-    return {res};
-  } catch (...) {
-    return {TRI_ERROR_INTERNAL};
-  }
-  return {TRI_ERROR_NO_ERROR};
-}
-
 Result createSystemStatisticsIndices(TRI_vocbase_t& vocbase,
                                      std::vector<std::shared_ptr<LogicalCollection>>& collections) {
   if (vocbase.isSystem() && StatisticsFeature::enabled()) {
@@ -378,6 +342,35 @@ Result createSystemStatisticsIndices(TRI_vocbase_t& vocbase,
     } catch (...) {
       return {TRI_ERROR_INTERNAL};
     }
+  }
+  return {TRI_ERROR_NO_ERROR};
+}
+
+Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase,
+                                      std::vector<std::shared_ptr<LogicalCollection>>& collections) {
+  try {
+    if (vocbase.isSystem()) {
+      ::createIndex(StaticStrings::UsersCollection, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,
+                    {"user"}, true, true, collections);
+
+      Result res = ::createSystemStatisticsIndices(vocbase, collections);
+      if (res.fail()) {
+        return {res};
+      }
+    }
+
+    upgradeGeoIndexes(vocbase);
+
+    ::createIndex(StaticStrings::AppsCollection, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,
+                  {"mount"}, true, true, collections);
+    ::createIndex(StaticStrings::JobsCollection, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                  {"queue", "status", "delayUntil"}, false, false, collections);
+    ::createIndex(StaticStrings::JobsCollection, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                  {"status", "queue", "delayUntil"}, false, false, collections);
+  } catch (Result res) {
+    return {res};
+  } catch (...) {
+    return {TRI_ERROR_INTERNAL};
   }
   return {TRI_ERROR_NO_ERROR};
 }
