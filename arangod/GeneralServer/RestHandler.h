@@ -28,11 +28,20 @@
 
 #include "GeneralServer/RequestLane.h"
 #include "Rest/GeneralResponse.h"
-#include "Scheduler/Scheduler.h"
+
+#include <atomic>
+#include <thread>
 
 namespace arangodb {
 namespace basics {
 class Exception;
+}
+  
+namespace futures {
+template<typename T>
+class Future;
+template<typename T>
+class Try;
 }
 
 class GeneralRequest;
@@ -84,6 +93,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   /// @brief forwards the request to the appropriate server
   bool forwardRequest();
+  
+  void handleExceptionPtr(std::exception_ptr) noexcept;
 
  public:
   // rest handler name for debugging and logging
@@ -136,6 +147,24 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   // generates an error
   void generateError(arangodb::Result const&);
+  
+  template<typename T>
+  RestStatus waitForFuture(futures::Future<T>&& f) {
+    if (f.isReady()) {  // fast-path out
+      f.result().throwIfFailed(); // just throw the error upwards
+      return RestStatus::DONE;
+    }
+    bool done = false;
+    auto self = shared_from_this();
+    std::move(f).thenFinal([self, this, &done](futures::Try<T>) -> void {
+      if (std::this_thread::get_id() == _executionMutexOwner.load()) {
+        done = true;
+      } else {
+        this->continueHandlerExecution();
+      }
+    });
+    return done ? RestStatus::DONE : RestStatus::WAITING;
+  }
 
  private:
   void runHandlerStateMachine();
@@ -174,6 +203,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::function<void(rest::RestHandler*)> _callback;
 
   mutable Mutex _executionMutex;
+  std::atomic<std::thread::id> _executionMutexOwner;
 };
 
 }  // namespace rest
