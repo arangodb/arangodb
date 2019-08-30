@@ -758,7 +758,6 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
       builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
       builder.add("versionString", VPackValue(rest::Version::getServerVersion()));
       builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
-      builder.add("timestamp", VPackValue(timepointToString(std::chrono::system_clock::now())));
     }
     
     AgencyWriteTransaction trx(
