@@ -192,7 +192,7 @@ class GraphNode : public ExecutionNode {
   /// @brief flag, if graph is smart (enterprise edition only!)
   bool _isSmart;
 
-  /// @brief list of shards involved, need this for the cluster
+  /// @brief list of shards involved, requried for one-shard-databases
   std::map<std::string, std::string> _collectionToShard;
 };
 

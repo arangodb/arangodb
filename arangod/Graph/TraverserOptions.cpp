@@ -503,7 +503,7 @@ EdgeCursor* arangodb::traverser::TraverserOptions::nextCursor(
   auto specific = _depthLookupInfo.find(depth);
   if (specific != _depthLookupInfo.end()) {
     return nextCursorLocal(vid, specific->second);
-  } 
+  }
   return nextCursorLocal(vid, _baseLookupInfos);
 }
 
