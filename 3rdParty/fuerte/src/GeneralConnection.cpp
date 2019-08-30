@@ -124,6 +124,7 @@ void GeneralConnection<ST>::tryConnect(unsigned retries) {
     if (retries > 0 && ec != asio_ns::error::operation_aborted) {
       tryConnect(retries - 1);
     } else {
+      _state.store(Connection::State::Failed, std::memory_order_release);
       shutdownConnection(Error::CouldNotConnect);
       drainQueue(Error::CouldNotConnect);
       onFailure(Error::CouldNotConnect, "connecting failed: " + ec.message());

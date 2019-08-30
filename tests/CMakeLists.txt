@@ -176,6 +176,9 @@ set(ARANGODB_TESTS_SOURCES
   ${RCFILE}
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp
+  Network/ConnectionPoolTest.cpp
+  Network/MethodsTest.cpp
+  Network/UtilsTest.cpp
   Pregel/typedbuffer.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
   RestHandler/RestAnalyzerHandler-test.cpp
