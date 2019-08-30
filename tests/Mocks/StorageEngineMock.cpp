@@ -500,8 +500,9 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   }
 
   asio_ns::io_context ioContext;
-  auto poster = [&ioContext](std::function<void()> fn) -> void {
+  auto poster = [&ioContext](std::function<void()> fn) -> bool {
     ioContext.post(fn);
+    return true;
   };
   arangodb::basics::LocalTaskQueue taskQueue(poster);
   std::shared_ptr<arangodb::basics::LocalTaskQueue> taskQueuePtr(

@@ -506,7 +506,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   // defensive code:  intentionally not passing "this".  There is a
   //   possibility that Scheduler will execute the code after Communicator
   //   object destroyed.  use shared_from_this() if ever essential.
-  rip->_newRequest->_callbacks._scheduleMe([curlHandle, handle, rc, rip] { 
+  bool queued = rip->_newRequest->_callbacks._scheduleMe([curlHandle, handle, rc, rip] { 
     double connectTime = 0.0;
     LOG_TOPIC("44845", TRACE, Logger::COMMUNICATION)
         << ::buildPrefix(rip->_newRequest->_ticketId) << "curl rc is : " << rc << " after "
@@ -588,6 +588,10 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
         break;
     }
   });
+
+  if (!queued) {
+    callErrorFn(rip, TRI_ERROR_QUEUE_FULL, {nullptr});
+  }
 }
 
 size_t Communicator::readBody(void* data, size_t size, size_t nitems, void* userp) {

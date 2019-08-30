@@ -144,7 +144,7 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
 
     analyzers = arangodb::application_features::ApplicationServer::server
                     ->lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
-                        "ArangoSearchAnalyzer");
+                        "ArangoSearchAnalyzer"s);
     TRI_ASSERT(analyzers != nullptr);
 
     // TODO: This should at the very least happen in the mock
@@ -178,16 +178,16 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
 
     name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
 
-    ASSERT_ARANGO_OK(analyzers->emplace(result, name, "identity",
-                                        VPackParser::fromJson("{\"args\":\"abc\"}")->slice()));
+    ASSERT_ARANGO_OK(analyzers->emplace(result, name, "identity"s,
+                                        VPackParser::fromJson("{\"args\":\"abc\"}"s)->slice()));
 
     name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2";
-    ASSERT_ARANGO_OK(analyzers->emplace(result, name, "identity",
-                                        VPackParser::fromJson("{\"args\":\"abc\"}")->slice()));
+    ASSERT_ARANGO_OK(analyzers->emplace(result, name, "identity"s,
+                                        VPackParser::fromJson("{\"args\":\"abc\"}"s)->slice()));
 
-    name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
-    ASSERT_ARANGO_OK(analyzers->emplace(result, name, "rest-analyzer-empty",
-                             VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
+    name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer"s;
+    ASSERT_ARANGO_OK(analyzers->emplace(result, name, "rest-analyzer-empty"s,
+                             VPackParser::fromJson("{\"args\":\"en\"}"s)->slice(),
                                         irs::flags{irs::frequency::type()}));
   };
 
@@ -209,9 +209,9 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
 
     ASSERT_ARANGO_OK(analyzers
                  ->emplace(result, name + "::testAnalyzer1",
-                           "identity", VPackSlice::noneSlice()));
+                           "identity"s, VPackSlice::noneSlice()));
     ASSERT_ARANGO_OK(analyzers
-                 ->emplace(result, name + "::testAnalyzer2", "identity",
+                 ->emplace(result, name + "::testAnalyzer2", "identity"s,
                            VPackSlice::noneSlice()));
   }
 
@@ -236,7 +236,7 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
     arangodb::auth::UserMap userMap;
     auto& user =
       userMap
-      .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+      .emplace("", arangodb::auth::User::newUser(""s, ""s, arangodb::auth::Source::LDAP))
       .first->second;
 
     for(auto& g : grants) {
@@ -665,8 +665,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get_known) {
 
 // TODO: This test needs some love (i.e. probably splitting)
 TEST_F(RestAnalyzerHandlerTest, test_get_custom) {
-  createDatabase("FooDb");
-  createDatabase("FooDb2");
+  createDatabase("FooDb"s);
+  createDatabase("FooDb2"s);
 
   grantOnDb({
       { "FooDb"s, arangodb::auth::Level::RW },
@@ -982,7 +982,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list_system_database_not_authorized) {
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_authorized) {
-  createDatabase("testVocbase");
+  createDatabase("testVocbase"s);
 
   arangodb::auth::UserMap userMap;
 
@@ -1053,7 +1053,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_authorized) {
 TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_not_authorized) {
   grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW);
 
-  createDatabase("testVocbase");
+  createDatabase("testVocbase"s);
 
   TRI_vocbase_t& vocbase = *dbFeature->useDatabase("testVocbase");
   auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
@@ -1117,7 +1117,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_not_authorized) {
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_system_not_authorized) {
-  createDatabase("testVocbase");
+  createDatabase("testVocbase"s);
 
   TRI_vocbase_t& vocbase = *dbFeature->useDatabase("testVocbase");
   auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
@@ -1172,7 +1172,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_system_not_authori
 
 TEST_F(RestAnalyzerHandlerTest,
        test_list_non_system_database_system_not_authorized_not_authorized) {
-  createDatabase("testVocbase");
+  createDatabase("testVocbase"s);
 
   TRI_vocbase_t& vocbase = *dbFeature->useDatabase("testVocbase");
 

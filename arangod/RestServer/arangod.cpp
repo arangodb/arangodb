@@ -70,6 +70,7 @@
 #include "Logger/LoggerBufferFeature.h"
 #include "Logger/LoggerFeature.h"
 #include "Pregel/PregelFeature.h"
+#include "Network/NetworkFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Replication/ReplicationFeature.h"
@@ -228,6 +229,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature(new aql::AqlFunctionFeature(server));
     server.addFeature(new aql::OptimizerRulesFeature(server));
     server.addFeature(new pregel::PregelFeature(server));
+    server.addFeature(new NetworkFeature(server));
 
 #ifdef ARANGODB_HAVE_FORK
     server.addFeature(new DaemonFeature(server));
