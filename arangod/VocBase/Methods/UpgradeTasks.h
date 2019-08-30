@@ -35,6 +35,8 @@ namespace methods {
 struct UpgradeTasks {
   static bool createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
                                                 velocypack::Slice const& slice);
+  static bool createStatisticsCollectionsAndIndices(TRI_vocbase_t& vocbase,
+                                                    velocypack::Slice const& slice);
   static bool addDefaultUserOther(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
   static bool persistLocalDocumentIds(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
   static bool renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,

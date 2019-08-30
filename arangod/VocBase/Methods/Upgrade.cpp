@@ -222,6 +222,12 @@ void methods::Upgrade::registerTasks() {
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::createSystemCollectionsAndIndices);
+  addTask("createSystemStatisticsDBServer",
+          "creates the statistics system collections including their indices",
+      /*system*/ Flags::DATABASE_SYSTEM,
+      /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
+      /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
+          &UpgradeTasks::createStatisticsCollectionsAndIndices);
   addTask("addDefaultUserOther", "add default users for a new database",
           /*system*/ Flags::DATABASE_EXCEPT_SYSTEM,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
