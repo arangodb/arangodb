@@ -187,14 +187,30 @@ arangodb::Result applyCollectionDumpMarkerInternal(
           }
         }
 
-        options.indexOperationMode = arangodb::Index::OperationMode::normal;
+        int tries = 0;
+        while (tries++ < 2) {
+          if (useReplace) {
+            // perform a replace
+            opRes = trx.replace(coll->name(), slice, options);
+          } else {
+            // perform a re-insert
+            opRes = trx.insert(coll->name(), slice, options);
+          }
 
-        if (useReplace) {
-          // perform a replace
-          opRes = trx.replace(coll->name(), slice, options);
-        } else {
-          // perform a re-insert
-          opRes = trx.insert(coll->name(), slice, options);
+          if (opRes.ok() || 
+              !opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
+              trx.isSingleOperationTransaction()) {
+            break;
+          }
+
+          // in case we get a unique constraint violation in a multi-document transaction,
+          // we can remove the conflicting document and try again
+          options.indexOperationMode = arangodb::Index::OperationMode::normal;
+
+          VPackBuilder tmp;
+          tmp.add(VPackValue(opRes.errorMessage()));
+
+          trx.remove(coll->name(), tmp.slice(), options);
         }
       }
 
