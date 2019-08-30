@@ -4500,6 +4500,21 @@ std::unordered_map<ServerID, RebootId> ClusterInfo::ServersKnown::rebootIds() co
   return rebootIds;
 }
 
+VPackSlice PlanCollectionReader::indexes() {
+  VPackSlice res = _collection.get("indexes");
+  if (res.isNone()) {
+    return VPackSlice::emptyArraySlice();
+  } else {
+    TRI_ASSERT(res.isArray());
+    return res;
+  }
+}
+
+CollectionWatcher::~CollectionWatcher() {
+  _agencyCallbackRegistry->unregisterCallback(_agencyCallback);
+};
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
