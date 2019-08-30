@@ -87,6 +87,8 @@ installer.use(function (req, res, next) {
   const options = {};
   const appInfo = req.body;
   options.legacy = req.queryParams.legacy;
+  options.setup = req.queryParams.setup;
+  options.teardown = req.queryParams.teardown;
   let service;
   try {
     if (upgrade) {
