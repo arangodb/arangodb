@@ -467,7 +467,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
         auto it2 = endpoints.emplace(endpointSlice.copyString(), serverId);
         if (!it2.second && it2.first->first != serverId) {
           // duplicate entry!
-          LOG_TOPIC("9a134", WARN, Logger::FIXME) 
+          LOG_TOPIC("9a134", WARN, Logger::CLUSTER) 
             << "found duplicate server entry for endpoint '" 
             << endpointSlice.copyString() << "', already used by other server " << it2.first->second
             << ". it looks like this is a (mis)configuration issue";
