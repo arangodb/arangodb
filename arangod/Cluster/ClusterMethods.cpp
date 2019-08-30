@@ -177,7 +177,7 @@ void recursiveAdd(VPackSlice const& value, std::shared_ptr<VPackBuilder>& builde
 /// @brief begin a transaction on some leader shards
 template <typename ShardDocsMap>
 Result beginTransactionOnSomeLeaders(TransactionState& state,
-                                     LogicalCollection const& coll,
+                                     std::shared_ptr<LogicalCollection> const& coll,
                                      ShardDocsMap const& shards) {
   TRI_ASSERT(state.isCoordinator());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
