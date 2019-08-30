@@ -28,6 +28,9 @@
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Cluster/TraverserEngineRegistry.h"
+#include "Futures/Future.h"
+#include "Rest/CommonDefines.h"
+#include "Utils/OperationResult.h"
 #include "Rest/GeneralResponse.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
@@ -39,11 +42,6 @@
 #include <map>
 
 namespace arangodb {
-namespace velocypack {
-template <typename T>
-class Buffer;
-class Builder;
-}  // namespace velocypack
 
 struct ClusterCommResult;
 struct OperationOptions;
@@ -110,12 +108,10 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
 /// @brief creates a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Result createDocumentOnCoordinator(transaction::Methods& trx, std::string const& collname,
-                                   OperationOptions const& options,
-                                   arangodb::velocypack::Slice const& slice,
-                                   arangodb::rest::ResponseCode& responseCode,
-                                   std::unordered_map<int, size_t>& errorCounters,
-                                   std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
+futures::Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& trx,
+                                                             LogicalCollection&,
+                                                             OperationOptions const& options,
+                                                             VPackSlice slice);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document in a coordinator

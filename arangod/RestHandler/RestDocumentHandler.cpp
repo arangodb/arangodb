@@ -35,6 +35,7 @@
 #include "VocBase/vocbase.h"
 
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -42,6 +43,8 @@ using namespace arangodb::rest;
 
 RestDocumentHandler::RestDocumentHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
+
+RestDocumentHandler::~RestDocumentHandler() = default;
 
 RestStatus RestDocumentHandler::execute() {
   // extract the sub-request type
@@ -59,8 +62,7 @@ RestStatus RestDocumentHandler::execute() {
       checkDocument();
       break;
     case rest::RequestType::POST:
-      insertDocument();
-      break;
+      return insertDocument();
     case rest::RequestType::PUT:
       replaceDocument();
       break;
@@ -122,36 +124,36 @@ uint32_t RestDocumentHandler::forwardingTarget() {
 /// @brief was docuBlock REST_DOCUMENT_CREATE
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::insertDocument() {
+RestStatus RestDocumentHandler::insertDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() > 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + DOCUMENT_PATH +
                       "?collection=<identifier>");
-    return false;
+    return RestStatus::DONE;
   }
 
   bool found;
-  std::string collectionName;
+  std::string cname;
   if (suffixes.size() == 1) {
-    collectionName = suffixes[0];
+    cname = suffixes[0];
     found = true;
   } else {
-    collectionName = _request->value("collection", found);
+    cname = _request->value("collection", found);
   }
 
-  if (!found || collectionName.empty()) {
+  if (!found || cname.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH +
                       "/<collectionname> or query parameter 'collection'");
-    return false;
+    return RestStatus::DONE;
   }
 
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    return false;
+    return RestStatus::DONE;
   }
 
   arangodb::OperationOptions opOptions;
@@ -166,39 +168,41 @@ bool RestDocumentHandler::insertDocument() {
                          opOptions.isSynchronousReplicationFrom);
 
   // find and load collection given by name or identifier
-  auto trx = createTransaction(collectionName, AccessMode::Type::WRITE);
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE);
   bool const isMultiple = body.isArray();
 
   if (!isMultiple && !opOptions.overwrite) {
-    trx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
-  Result res = trx->begin();
+  Result res = _activeTrx->begin();
   if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
-    return false;
+    generateTransactionError(cname, res, "");
+    return RestStatus::DONE;
   }
 
-  arangodb::OperationResult result = trx->insert(collectionName, body, opOptions);
+  return waitForFuture(
+      _activeTrx->insertAsync(cname, body, opOptions)
+          .thenValue([=, cname = std::move(cname)](OperationResult&& opres) {
+            // Will commit if no error occured.
+            // or abort if an error occured.
+            // result stays valid!
+            Result res = _activeTrx->finish(opres.result);
+            if (opres.fail()) {
+              generateTransactionError(opres);
+              return;
+            }
 
-  // Will commit if no error occured.
-  // or abort if an error occured.
-  // result stays valid!
-  res = trx->finish(result.result);
-  if (result.fail()) {
-    generateTransactionError(result);
-    return false;
-  }
+            if (res.fail()) {
+              generateTransactionError(cname, res, "");
+              return;
+            }
 
-  if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
-    return false;
-  }
-
-  generateSaved(result, collectionName,
-                TRI_col_type_e(trx->getCollectionType(collectionName)),
-                trx->transactionContextPtr()->getVPackOptionsForDump(), isMultiple);
-  return true;
+            generateSaved(opres, cname,
+                          TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+                          _activeTrx->transactionContextPtr()->getVPackOptionsForDump(),
+                          isMultiple);
+          }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

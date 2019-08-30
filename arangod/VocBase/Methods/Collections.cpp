@@ -780,12 +780,13 @@ Result Collections::warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll
     return res;
   }
 
-  auto idxs = coll.getIndexes();
-  auto poster = [](std::function<void()> fn) -> void {
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
+  auto poster = [](std::function<void()> fn) -> bool {
+    return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
   };
+  
   auto queue = std::make_shared<basics::LocalTaskQueue>(poster);
 
+  auto idxs = coll.getIndexes();
   for (auto& idx : idxs) {
     idx->warmup(&trx, queue);
   }

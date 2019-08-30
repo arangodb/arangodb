@@ -572,11 +572,10 @@ class ClusterComm {
   void disable();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief push all libcurl callback work to Scheduler threads.  It is a
-  ///  public static function that any object can use.
+  /// @brief push all libcurl callback work to Scheduler threads.
   //////////////////////////////////////////////////////////////////////////////
 
-  static void scheduleMe(std::function<void()> task);
+  static bool scheduleMe(std::function<void()> task);
 
  protected:  // protected members are for unit test purposes
   /// @brief Constructor for test cases.

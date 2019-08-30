@@ -34,8 +34,7 @@ namespace network {
 class ConnectionPool;
 }
 
-class NetworkFeature final : public std::enable_shared_from_this<NetworkFeature>,
-                             public application_features::ApplicationFeature {
+class NetworkFeature final : public application_features::ApplicationFeature {
  public:
   explicit NetworkFeature(application_features::ApplicationServer& server);
 
