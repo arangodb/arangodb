@@ -37,6 +37,9 @@
 #include "GeneralServer/RequestLane.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace velocypack {
 class Builder;
 }
@@ -47,7 +50,7 @@ class SchedulerCronThread;
 
 class Scheduler {
  public:
-  explicit Scheduler();
+  explicit Scheduler(application_features::ApplicationServer&);
   virtual ~Scheduler();
 
   // ---------------------------------------------------------------------------
@@ -150,6 +153,8 @@ class Scheduler {
       return right.first < left.first;
     }
   };
+
+  application_features::ApplicationServer& _server;
 
   std::priority_queue<CronWorkItem, std::vector<CronWorkItem>, CronWorkItemCompare> _cronQueue;
 

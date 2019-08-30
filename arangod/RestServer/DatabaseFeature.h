@@ -33,7 +33,9 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
+namespace application_features {
+class ApplicationServer;
+}
 class LogicalCollection;
 
 }
@@ -54,7 +56,7 @@ class DatabaseManagerThread final : public Thread {
   DatabaseManagerThread(DatabaseManagerThread const&) = delete;
   DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
 
-  DatabaseManagerThread();
+  DatabaseManagerThread(application_features::ApplicationServer&);
   ~DatabaseManagerThread();
 
   void run() override;

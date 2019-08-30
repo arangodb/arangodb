@@ -64,7 +64,9 @@ static void failCallback(std::string const& message) {
 }
 }  // namespace
 
-ApplicationServer* ApplicationServer::INSTANCE = nullptr;
+ApplicationServer* ApplicationServer::INSTANCE(nullptr);
+
+std::atomic<bool> ApplicationServer::CTRL_C(false);
 
 ApplicationServer& ApplicationServer::server() {
   TRI_ASSERT(INSTANCE);
@@ -766,9 +768,13 @@ void ApplicationServer::wait() {
 
   // wait here until beginShutdown has been called and finished
   while (true) {
+    if (CTRL_C.load()) {
+      beginShutdown();
+    }
+
     // wait until somebody calls beginShutdown and it finishes
     CONDITION_LOCKER(guard, _shutdownCondition);
-    
+
     if (_abortWaiting) {
       // yippieh!
       break;

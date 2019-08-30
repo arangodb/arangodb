@@ -127,6 +127,8 @@ class ApplicationServer {
 
    static ApplicationServer& server();
 
+   static std::atomic<bool> CTRL_C;
+
   public:
    ApplicationServer(std::shared_ptr<options::ProgramOptions>, char const* binaryPath);
 

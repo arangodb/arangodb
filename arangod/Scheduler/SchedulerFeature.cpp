@@ -27,6 +27,7 @@
 #include "SchedulerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
@@ -36,6 +37,7 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
@@ -74,8 +76,9 @@ SchedulerFeature::SchedulerFeature(application_features::ApplicationServer& serv
     : ApplicationFeature(server, "Scheduler"), 
       _scheduler(nullptr) {
   setOptional(false);
-  startsAfter("GreetingsPhase");
-  startsAfter("FileDescriptors");
+  startsAfter<GreetingsFeaturePhase>();
+
+  startsAfter<FileDescriptorsFeature>();
 }
 
 SchedulerFeature::~SchedulerFeature() {}
@@ -215,9 +218,9 @@ void SchedulerFeature::unprepare() {
 void SchedulerFeature::initV8Stuff() {
   // THIS CODE IS TOTALLY UNRELATED TO THE SCHEDULER!?!
   try {
-    auto* dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-    if (dealer->isEnabled()) {
-      dealer->defineContextUpdate(
+    auto& dealer = server().getFeature<V8DealerFeature>();
+    if (dealer.isEnabled()) {
+      dealer.defineContextUpdate(
           [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
             TRI_InitV8Dispatcher(isolate, context);
           },
@@ -361,9 +364,7 @@ extern "C" void c_exit_handler(int signal) {
       LOG_TOPIC("b4133", INFO, arangodb::Logger::FIXME)
           << "control-c received, beginning shut down sequence";
 
-      if (application_features::ApplicationServer::server != nullptr) {
-        application_features::ApplicationServer::server->beginShutdown();
-      }
+      application_features::ApplicationServer::CTRL_C.store(true);
 
       seen = true;
     } else {

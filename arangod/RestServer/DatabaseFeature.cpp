@@ -40,7 +40,9 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Cluster/v8-cluster.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -50,6 +52,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -65,7 +68,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
 
 #include <velocypack/velocypack-aliases.h>
 
@@ -84,14 +86,14 @@ DatabaseFeature* DatabaseFeature::DATABASE = nullptr;
 /// @brief database manager thread main loop
 /// the purpose of this thread is to physically remove directories of databases
 /// that have been dropped
-DatabaseManagerThread::DatabaseManagerThread() : Thread("DatabaseManager") {}
+DatabaseManagerThread::DatabaseManagerThread(ApplicationServer& server)
+    : Thread(server, "DatabaseManager") {}
 
 DatabaseManagerThread::~DatabaseManagerThread() { shutdown(); }
 
 void DatabaseManagerThread::run() {
-  auto databaseFeature =
-      ApplicationServer::getFeature<DatabaseFeature>("Database");
-  auto dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+  auto& databaseFeature = _server.getFeature<DatabaseFeature>();
+  auto& dealer = _server.getFeature<V8DealerFeature>();
   int cleanupCycles = 0;
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -102,8 +104,8 @@ void DatabaseManagerThread::run() {
       TRI_vocbase_t* database = nullptr;
 
       {
-        auto unuser(databaseFeature->_databasesProtector.use());
-        auto theLists = databaseFeature->_databasesLists.load();
+        auto unuser(databaseFeature._databasesProtector.use());
+        auto theLists = databaseFeature._databasesLists.load();
 
         for (TRI_vocbase_t* vocbase : theLists->_droppedDatabases) {
           if (!vocbase->isDangling()) {
@@ -119,10 +121,10 @@ void DatabaseManagerThread::run() {
       if (database != nullptr) {
         // found a database to delete, now remove it from the struct
         {
-          MUTEX_LOCKER(mutexLocker, databaseFeature->_databasesMutex);
+          MUTEX_LOCKER(mutexLocker, databaseFeature._databasesMutex);
 
           // Build the new value:
-          auto oldLists = databaseFeature->_databasesLists.load();
+          auto oldLists = databaseFeature._databasesLists.load();
           decltype(oldLists) newLists = nullptr;
           try {
             newLists = new DatabasesLists();
@@ -138,8 +140,8 @@ void DatabaseManagerThread::run() {
           }
 
           // Replace the old by the new:
-          databaseFeature->_databasesLists = newLists;
-          databaseFeature->_databasesProtector.scan();
+          databaseFeature._databasesLists = newLists;
+          databaseFeature._databasesProtector.scan();
           delete oldLists;
 
           // From now on no other thread can possibly see the old
@@ -156,7 +158,7 @@ void DatabaseManagerThread::run() {
           TRI_ASSERT(!database->isSystem());
 
           // remove apps directory for database
-          auto appPath = dealer->appPath();
+          auto appPath = dealer.appPath();
 
           if (database->isOwnAppsDirectory() && !appPath.empty()) {
             std::string path = arangodb::basics::FileUtils::buildFilename(
@@ -220,8 +222,8 @@ void DatabaseManagerThread::run() {
         if (++cleanupCycles >= 10) {
           cleanupCycles = 0;
 
-          auto unuser(databaseFeature->_databasesProtector.use());
-          auto theLists = databaseFeature->_databasesLists.load();
+          auto unuser(databaseFeature._databasesProtector.use());
+          auto theLists = databaseFeature._databasesLists.load();
 
           bool force = isStopping();
           for (auto& p : theLists->_databases) {
@@ -260,13 +262,13 @@ DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server
       _checkVersion(false),
       _upgrade(false) {
   setOptional(false);
-  startsAfter("BasicsPhase");
+  startsAfter<BasicFeaturePhaseServer>();
 
-  startsAfter("Authentication");
-  startsAfter("CacheManager");
-  startsAfter("EngineSelector");
-  startsAfter("InitDatabase");
-  startsAfter("StorageEngine");
+  startsAfter<AuthenticationFeature>();
+  startsAfter<CacheManagerFeature>();
+  startsAfter<EngineSelectorFeature>();
+  startsAfter<InitDatabaseFeature>();
+  startsAfter<StorageEngineFeature>();
 
   DATABASE = nullptr;
 }
@@ -378,7 +380,7 @@ void DatabaseFeature::start() {
   }
 
   // start database manager thread
-  _databaseManager.reset(new DatabaseManagerThread);
+  _databaseManager.reset(new DatabaseManagerThread(server()));
 
   if (!_databaseManager->start()) {
     LOG_TOPIC("7eb06", FATAL, arangodb::Logger::FIXME)
@@ -570,11 +572,8 @@ void DatabaseFeature::recoveryDone() {
     engine->recoveryDone(*vocbase);
 
     if (vocbase->replicationApplier()) {
-      ReplicationFeature* replicationFeature = static_cast<ReplicationFeature*>(
-          ApplicationServer::lookupFeature("Replication"));
-
-      if (replicationFeature != nullptr) {
-        replicationFeature->startApplier(vocbase);
+      if (server().hasFeature<ReplicationFeature>()) {
+        server().getFeature<ReplicationFeature>().startApplier(vocbase);
       }
     }
   }
@@ -665,9 +664,8 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
 
       // FIXME why do we not n this
       // create application directories
-      V8DealerFeature* dealer =
-          ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-      auto appPath = dealer->appPath();
+      V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
+      auto appPath = dealer.appPath();
 
       // create app directory for database if it does not exist
       int res = createApplicationDirectory(name, appPath);
@@ -683,10 +681,8 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
       engine->recoveryDone(*vocbase);
 
       if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL) {
-        ReplicationFeature* replicationFeature = static_cast<ReplicationFeature*>(
-            ApplicationServer::lookupFeature("Replication"));
-        if (replicationFeature != nullptr) {
-          replicationFeature->startApplier(vocbase.get());
+        if (server().hasFeature<ReplicationFeature>()) {
+          server().getFeature<ReplicationFeature>().startApplier(vocbase.get());
         }
       }
 
@@ -824,10 +820,8 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
 #endif
     arangodb::aql::QueryCache::instance()->invalidate(vocbase);
 
-    auto* analyzers = 
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    if (analyzers != nullptr) {
-      analyzers->invalidate(*vocbase);
+    if (server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
+      server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>().invalidate(*vocbase);
     }
 
     engine->prepareDropDatabase(*vocbase, !engine->inRecovery(), res);
@@ -1088,10 +1082,8 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t& vocba
 }
 
 void DatabaseFeature::updateContexts() {
-  V8DealerFeature* dealer =
-      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-
-  if (!dealer->isEnabled()) {
+  V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
+  if (!dealer.isEnabled()) {
     return;
   }
 
@@ -1101,7 +1093,7 @@ void DatabaseFeature::updateContexts() {
   auto queryRegistry = QueryRegistryFeature::registry();
   TRI_ASSERT(queryRegistry != nullptr);
 
-  dealer->defineContextUpdate(
+  dealer.defineContextUpdate(
       [queryRegistry, vocbase](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t i) {
         TRI_InitV8VocBridge(isolate, context, queryRegistry, *vocbase, i);
         TRI_InitV8Queries(isolate, context);
@@ -1117,12 +1109,11 @@ void DatabaseFeature::updateContexts() {
 
 void DatabaseFeature::stopAppliers() {
   // stop the replication appliers so all replication transactions can end
-  ReplicationFeature* replicationFeature = static_cast<ReplicationFeature*>(
-      ApplicationServer::lookupFeature("Replication"));
-
-  if (replicationFeature == nullptr) {
+  if (!server().hasFeature<ReplicationFeature>()) {
     return;
   }
+
+  ReplicationFeature& replicationFeature = server().getFeature<ReplicationFeature>();
 
   MUTEX_LOCKER(mutexLocker,
                _databasesMutex);  // Only one should do this at a time
@@ -1132,7 +1123,7 @@ void DatabaseFeature::stopAppliers() {
     TRI_vocbase_t* vocbase = p.second;
     TRI_ASSERT(vocbase != nullptr);
     if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL) {
-      replicationFeature->stopApplier(vocbase);
+      replicationFeature.stopApplier(vocbase);
     }
   }
 }
@@ -1239,9 +1230,8 @@ int DatabaseFeature::createApplicationDirectory(std::string const& name,
 
 /// @brief iterate over all databases in the databases directory and open them
 int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
-  V8DealerFeature* dealer =
-      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-  std::string const appPath = dealer->appPath();
+  V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
+  std::string const appPath = dealer.appPath();
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
@@ -1360,9 +1350,8 @@ void DatabaseFeature::closeDroppedDatabases() {
 
 void DatabaseFeature::verifyAppPaths() {
   // create shared application directory js/apps
-  V8DealerFeature* dealer =
-      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-  auto appPath = dealer->appPath();
+  V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
+  auto appPath = dealer.appPath();
 
   if (!appPath.empty() && !TRI_IsDirectory(appPath.c_str())) {
     long systemError;
