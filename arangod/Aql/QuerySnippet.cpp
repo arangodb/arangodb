@@ -335,7 +335,6 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
       graphNode->setCollectionToShard({}); //clear previous information
 
       for(auto* aqlCollection : graphNode->collections()) {
-        LOG_DEVEL << "collection in graph node " << aqlCollection->name();
         auto const& shards = aqlCollection->shardIds();
         TRI_ASSERT(!shards->empty());
         for (std::string const& shard : *shards) {
@@ -344,17 +343,10 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
             // provide a correct translation from collection to shard
             // to be used in toVelocyPack methods of classes derived
             // from GraphNode
-            LOG_DEVEL << "adding translation " << aqlCollection->name() << " " << shard;
             graphNode->addCollectionToShard(aqlCollection->name(), shard);
-          } else {
-            if(found != shardMapping.end()) {
-              LOG_DEVEL << "server did not match " << found->second << " != " << server;
-            }
-            LOG_DEVEL << "shard " << shard << " not found in mapping";
           }
         }
       }
-      LOG_DEVEL << "transaltions added";
 
       continue; // skip rest - there are no local expansions
     }

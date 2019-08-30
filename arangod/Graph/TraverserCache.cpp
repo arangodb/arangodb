@@ -103,13 +103,6 @@ VPackSlice TraverserCache::lookupInCollection(arangodb::velocypack::StringRef id
 
   auto const& map = _baseOptions->collectionToShard();
   if(!map.empty()) {
-    // TODO remove ////////////////////////////
-    LOG_DEVEL << "need to translate: '" << collectionName << "'";
-    for(auto o : map) {
-      LOG_DEVEL <<  o.first << " -> " << o.second;
-    }
-    LOG_DEVEL << "translations - end";
-    // TODO - end remove //////////////////////////
     auto found = map.find(collectionName);
     if ( found != map.end()) {
       collectionName = found->second;

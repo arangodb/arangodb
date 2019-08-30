@@ -340,7 +340,6 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   }
   for(auto const& item : VPackObjectIterator(currentSlice)) {
     _collectionToShard.insert({item.key.copyString(), item.value.copyString()});
-    LOG_DEVEL << "adding on db server " << item.key.copyString()  << " --> " << item.value.copyString();
   }
 
   // Out variables
@@ -479,7 +478,6 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   {
     VPackObjectBuilder guard(&nodes);
     for (auto const& item : _collectionToShard) {
-      LOG_DEVEL << "adding to vpack: " << item.first << " " << item.second;
       nodes.add(item.first, VPackValue(item.second));
     }
   }
@@ -616,7 +614,6 @@ void GraphNode::addEdgeCollection(std::string const& n, TRI_edge_direction_e dir
 }
 
 std::vector<aql::Collection const*> const GraphNode::collections() const {
-    LOG_DEVEL << "collections " << _edgeColls.size() << " + " << _vertexColls.size();
     std::vector<aql::Collection const*> rv{};
     for(auto const& collPointer : _edgeColls) {
       rv.push_back(collPointer.get());
