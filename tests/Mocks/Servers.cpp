@@ -297,7 +297,6 @@ MockServer::MockServer()
 MockServer::~MockServer() {
   stopFeatures();
   ClusterCommResetter::reset();
-  arangodb::application_features::ApplicationServer::setStateUnsafe(_oldApplicationServerState);
   arangodb::EngineSelectorFeature::ENGINE = nullptr;
   arangodb::application_features::ApplicationServer::server = nullptr;
   arangodb::AgencyCommManager::MANAGER.reset();
@@ -306,8 +305,6 @@ MockServer::~MockServer() {
 void MockServer::init() {
   _oldApplicationServerState = arangodb::application_features::ApplicationServer::server->state();
 
-  arangodb::application_features::ApplicationServer::setStateUnsafe(
-      arangodb::application_features::ApplicationServer::State::IN_WAIT);
   arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
 }
 
