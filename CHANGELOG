@@ -1,12 +1,12 @@
 v3.3.25 (2019-XX-XX)
 --------------------
 
-* fix cut'n'pasting code from the documentation into arangosh
+* Fixed cut'n'pasting code from the documentation into arangosh.
 
 * Correct rocksdb statistics to report sums from column families instead of
-  single value from default column family
+  single value from default column family.
 
-* disabled enforce-block-cache-size-limit because of bugs in RocksDB 5.6
+* Disabled enforce-block-cache-size-limit because of bugs in RocksDB 5.6.
 
 
 v3.3.24 (2019-08-09)
