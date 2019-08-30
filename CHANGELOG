@@ -11,6 +11,8 @@ v3.5.1 (XXXX-XX-XX)
   In case a duplicate endpoint is detected on startup, a warning will be written 
   to the log, indicating which other server has already "acquired" the same endpoint.
 
+* Fixed adding an orphan collection as the first collection in a SmartGraph.
+
 * Geo functions will now have better error reporting on invalid input.
 
 * The graph viewer of the web interface now tries to find a vertex document of

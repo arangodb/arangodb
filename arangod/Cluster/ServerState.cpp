@@ -349,8 +349,7 @@ bool ServerState::unregister() {
   return r.successful();
 }
 
-ResultT<uint64_t> ServerState::readRebootIdFromAgency(AgencyComm& comm)
-{
+ResultT<uint64_t> ServerState::readRebootIdFromAgency(AgencyComm& comm) {
   TRI_ASSERT(!_id.empty());
   std::string rebootIdPath = "Current/ServersKnown/" + _id + "/rebootId";
   AgencyCommResult result = comm.getValues(rebootIdPath);
@@ -359,7 +358,7 @@ ResultT<uint64_t> ServerState::readRebootIdFromAgency(AgencyComm& comm)
     LOG_TOPIC("762ed", WARN, Logger::CLUSTER)
       << "Could not read back " << rebootIdPath;
 
-    ResultT<uint64_t>::error(TRI_ERROR_INTERNAL, "could not read rebootId from agency");
+    return ResultT<uint64_t>::error(TRI_ERROR_INTERNAL, "could not read rebootId from agency");
   }
 
   auto slicePath = AgencyCommManager::slicePath(rebootIdPath);
