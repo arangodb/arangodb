@@ -212,10 +212,9 @@ void EngineInfoContainerDBServerServerBased::injectVertexColletions(GraphNode* g
 void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node) {
   TRI_ASSERT(node);
   TRI_ASSERT(!_snippetStack.empty());
+
   // Add the node to the open Snippet
   _snippetStack.top()->addNode(node);
-  // Upgrade CollectionLocks if necessary
-  _shardLocking.addNode(node, _snippetStack.top()->id());
 
   switch (node->getType()) {
     case ExecutionNode::TRAVERSAL:
@@ -228,6 +227,8 @@ void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node) {
       break;
   }
 
+  // Upgrade CollectionLocks if necessary
+  _shardLocking.addNode(node, _snippetStack.top()->id());
 }
 
 // Open a new snippet, which provides data for the given sink node (for now only RemoteNode allowed)

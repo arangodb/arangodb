@@ -337,7 +337,7 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
       for(auto* aqlCollection : graphNode->collections()) {
         LOG_DEVEL << "collection in graph node " << aqlCollection->name();
         auto const& shards = aqlCollection->shardIds();
-
+        TRI_ASSERT(!shards->empty());
         for (std::string const& shard : *shards) {
           auto found = shardMapping.find(shard);
           if (found != shardMapping.end() && found->second == server) {
@@ -346,9 +346,15 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
             // from GraphNode
             LOG_DEVEL << "adding translation " << aqlCollection->name() << " " << shard;
             graphNode->addCollectionToShard(aqlCollection->name(), shard);
+          } else {
+            if(found != shardMapping.end()) {
+              LOG_DEVEL << "server did not match " << found->second << " != " << server;
+            }
+            LOG_DEVEL << "shard " << shard << " not found in mapping";
           }
         }
       }
+      LOG_DEVEL << "transaltions added";
 
       continue; // skip rest - there are no local expansions
     }
