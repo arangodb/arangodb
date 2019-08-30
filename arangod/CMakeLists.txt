@@ -415,6 +415,10 @@ SET(ARANGOD_SOURCES
   Indexes/SimpleAttributeEqualityMatcher.cpp
   Indexes/SortedIndexAttributeMatcher.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
+  Network/ConnectionPool.cpp
+  Network/Methods.cpp
+  Network/NetworkFeature.cpp
+  Network/Utils.cpp
   Pregel/AggregatorHandler.cpp
   Pregel/AlgoRegistry.cpp
   Pregel/Algos/AsyncSCC.cpp
@@ -665,8 +669,8 @@ if (USE_ENTERPRISE)
     )
   else()
     target_link_libraries(arangoserver
-      ldap
-      lber
+      ${LDAP_LIB}
+      ${LBER_LIB}
       ${OPENSSL_LIBRARIES}
     )
   endif()

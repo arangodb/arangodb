@@ -497,8 +497,9 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   }
 
   asio_ns::io_context ioContext;
-  auto poster = [&ioContext](std::function<void()> fn) -> void {
+  auto poster = [&ioContext](std::function<void()> fn) -> bool {
     ioContext.post(fn);
+    return true;
   };
   arangodb::basics::LocalTaskQueue taskQueue(poster);
   std::shared_ptr<arangodb::basics::LocalTaskQueue> taskQueuePtr(
@@ -530,13 +531,13 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
     return nullptr;
   }
 
-  _indexes.emplace_back(std::move(index));
+  _indexes.insert(index);
   created = true;
 
   res = trx.commit();
   TRI_ASSERT(res.ok());
 
-  return _indexes.back();
+  return index;
 }
 
 void PhysicalCollectionMock::deferDropCollection(
@@ -702,7 +703,7 @@ bool PhysicalCollectionMock::addIndex(std::shared_ptr<arangodb::Index> idx) {
 
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
 
-  _indexes.emplace_back(idx);
+  _indexes.insert(idx);
   return true;
 }
 

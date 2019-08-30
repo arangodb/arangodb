@@ -58,7 +58,7 @@ class Methods;
 }
 
 class RocksDBVPackIndex : public RocksDBIndex {
-  friend class RocksDBVPackIndexIterator;
+  template<bool reverse> friend class RocksDBVPackIndexIterator;
 
  public:
   static uint64_t HashForKey(const rocksdb::Slice& key);

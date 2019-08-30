@@ -125,8 +125,6 @@ void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder,
                                         std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
-  builder.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(false));
-  builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(true));
   builder.add("minLength", VPackValue(_minWordLength));
   builder.close();
 }
@@ -473,8 +471,7 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
       return rocksutils::convertStatus(s);
     }
 
-    LocalDocumentId documentId =
-        RocksDBKey::indexDocumentId(RocksDBEntryType::FulltextIndexValue, iter->key());
+    LocalDocumentId documentId = RocksDBKey::indexDocumentId(iter->key());
     if (token.operation == FulltextQueryToken::AND) {
       intersect.insert(documentId);
     } else if (token.operation == FulltextQueryToken::OR) {

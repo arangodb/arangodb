@@ -127,7 +127,8 @@ static void sendLeaderChangeRequests(std::vector<ServerID> const& currentServers
     if (srv == sid) {
       continue; // ignore ourself
     }
-    LOG_DEVEL << "Sending " << bodyBuilder.toJson() << " to " << srv;
+    LOG_TOPIC("42516", DEBUG, Logger::MAINTENANCE)
+      << "Sending " << bodyBuilder.toJson() << " to " << srv;
     requests.emplace_back("server:" + srv, RequestType::PUT, url, body);
   }
 

@@ -207,9 +207,10 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     if (aap.value->isArray()) {
       _index->fillInLookupValues(_trx, *(_keys.get()), aap.value, opts.ascending,
                                  !_allowCoveringIndexOptimization);
+      _iterator = VPackArrayIterator(_keys->slice());
       return true;
     }
-
+      
     return false;
   }
 
@@ -275,6 +276,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
   bool const _allowCoveringIndexOptimization;
 };
 
+template<bool reverse>
 class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
  private:
   friend class RocksDBVPackIndex;
@@ -282,12 +284,11 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
  public:
   RocksDBPrimaryIndexRangeIterator(LogicalCollection* collection, transaction::Methods* trx,
                                    arangodb::RocksDBPrimaryIndex const* index,
-                                   bool reverse, RocksDBKeyBounds&& bounds,
+                                   RocksDBKeyBounds&& bounds,
                                    bool allowCoveringIndexOptimization)
       : IndexIterator(collection, trx),
         _index(index),
         _cmp(index->comparator()),
-        _reverse(reverse),
         _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
         _bounds(std::move(bounds)) {
     TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::primary());
@@ -335,7 +336,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       cb(RocksDBValue::documentId(_iterator->value()));
 
       --limit;
-      if (_reverse) {
+      if (reverse) {
         _iterator->Prev();
       } else {
         _iterator->Next();
@@ -370,7 +371,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       cb(documentId, builder->slice());
 
       --limit;
-      if (_reverse) {
+      if (reverse) {
         _iterator->Prev();
       } else {
         _iterator->Next();
@@ -395,7 +396,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
       --count;
       ++skipped;
-      if (_reverse) {
+      if (reverse) {
         _iterator->Prev();
       } else {
         _iterator->Next();
@@ -411,7 +412,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
   void reset() override {
     TRI_ASSERT(_trx->state()->isRunning());
 
-    if (_reverse) {
+    if (reverse) {
       _iterator->SeekForPrev(_bounds.end());
     } else {
       _iterator->Seek(_bounds.start());
@@ -425,7 +426,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
  private:
   bool outOfRange() const {
     TRI_ASSERT(_trx->state()->isRunning());
-    if (_reverse) {
+    if (reverse) {
       return (_cmp->Compare(_iterator->key(), _bounds.start()) < 0);
     } else {
       return (_cmp->Compare(_iterator->key(), _bounds.end()) > 0);
@@ -435,7 +436,6 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
   arangodb::RocksDBPrimaryIndex const* _index;
   rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
-  bool const _reverse;
   bool const _allowCoveringIndexOptimization;
   RocksDBKeyBounds _bounds;
   // used for iterate_upper_bound iterate_lower_bound
@@ -466,7 +466,7 @@ void RocksDBPrimaryIndex::load() {
   if (useCache()) {
     // FIXME: make the factor configurable
     RocksDBCollection* rdb = static_cast<RocksDBCollection*>(_collection.getPhysical());
-    uint64_t numDocs = rdb->numberDocuments();
+    uint64_t numDocs = rdb->meta().numberDocuments();
 
     if (numDocs > 0) {
       _cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
@@ -479,9 +479,6 @@ void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder,
                                        std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
-  // hard-coded
-  builder.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(true));
-  builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(false));
   builder.close();
 }
 
@@ -694,8 +691,15 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
   TRI_ASSERT(!isSorted() || opts.sorted);
   if (node == nullptr) {
     // full range scan
-    return std::make_unique<RocksDBPrimaryIndexRangeIterator>(
-        &_collection /*logical collection*/, trx, this, !opts.ascending /*reverse*/,
+    if (opts.ascending) {
+      // forward version
+      return std::make_unique<RocksDBPrimaryIndexRangeIterator<false>>(
+          &_collection /*logical collection*/, trx, this,
+          RocksDBKeyBounds::PrimaryIndex(_objectId, ::lowest, ::highest), opts.forceProjection);
+    }
+    // reverse version
+    return std::make_unique<RocksDBPrimaryIndexRangeIterator<true>>(
+        &_collection /*logical collection*/, trx, this,
         RocksDBKeyBounds::PrimaryIndex(_objectId, ::lowest, ::highest), opts.forceProjection);
   }
 
@@ -856,8 +860,15 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
   }
 
   if (lowerFound && upperFound) {
-    return std::make_unique<RocksDBPrimaryIndexRangeIterator>(
-        &_collection /*logical collection*/, trx, this, !opts.ascending /*reverse*/,
+    if (opts.ascending) {
+      // forward version
+      return std::make_unique<RocksDBPrimaryIndexRangeIterator<false>>(
+          &_collection /*logical collection*/, trx, this,
+          RocksDBKeyBounds::PrimaryIndex(_objectId, lower, upper), opts.forceProjection);
+    }
+    // reverse version
+    return std::make_unique<RocksDBPrimaryIndexRangeIterator<true>>(
+        &_collection /*logical collection*/, trx, this,
         RocksDBKeyBounds::PrimaryIndex(_objectId, lower, upper), opts.forceProjection);
   }
 

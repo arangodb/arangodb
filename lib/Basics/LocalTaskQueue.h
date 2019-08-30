@@ -87,7 +87,7 @@ class LocalCallbackTask : public std::enable_shared_from_this<LocalCallbackTask>
 
 class LocalTaskQueue {
  public:
-  typedef std::function<void(std::function<void()>)> PostFn;
+  typedef std::function<bool(std::function<void()>)> PostFn;
 
   LocalTaskQueue() = delete;
   LocalTaskQueue(LocalTaskQueue const&) = delete;
@@ -118,7 +118,7 @@ class LocalTaskQueue {
   /// by task dispatch.
   //////////////////////////////////////////////////////////////////////////////
 
-  void post(std::function<void()> fn);
+  void post(std::function<bool()> fn);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief join a single task. reduces the number of waiting tasks and wakes

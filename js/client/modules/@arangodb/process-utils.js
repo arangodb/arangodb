@@ -1145,7 +1145,7 @@ function executeArangod (cmd, args, options) {
     print(Date() + ' starting process ' + cmd + ' with arguments: ' + JSON.stringify(args));
   }
 
-  return executeExternal(cmd, args, coverageEnvironment());
+  return executeExternal(cmd, args, false, coverageEnvironment());
 }
 
 // //////////////////////////////////////////////////////////////////////////////
