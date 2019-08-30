@@ -3,6 +3,8 @@ devel
 
 * Allowing inconsistent rather than forcing hot backups
 
+* Fixed adding an orphan collections as the first collection in a SmartGraph. 
+
 * Geo functions will now have better error reporting on invalid input.
 
 * Fixed issue #9795. Fixed NOT IN clause in ArangoSearch.
