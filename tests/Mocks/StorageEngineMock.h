@@ -234,7 +234,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
                                       uint64_t tickStart, uint64_t tickEnd,
                                       std::shared_ptr<VPackBuilder>& builderSPtr) override;
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::velocypack::Slice const& args,
-                                                      bool isUpgrade, int& status) override;
+                                                      bool isUpgrade, bool isVersionCheck, int& status) override;
   virtual arangodb::Result persistCollection(TRI_vocbase_t& vocbase,
                                              arangodb::LogicalCollection const& collection) override;
   virtual void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker,
