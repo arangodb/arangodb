@@ -26,6 +26,7 @@
 
 #include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -2950,6 +2951,10 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
         } else {
           CollectionNameResolver resolver(col->vocbase());
           myColToDistributeLike = resolver.getCollection(distributeShardsLike);
+          if (myColToDistributeLike == nullptr) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+                                           "Collection not found: " + distributeShardsLike + " in database " + col->vocbase().name());
+          }
         }
 
         shards = CloneShardDistribution(ci, col, myColToDistributeLike);
