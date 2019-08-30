@@ -2228,6 +2228,14 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     for (auto const& stat : rocksdb::TickersNameMap) {
       builder.add(stat.second, VPackValue(_options.statistics->getTickerCount(stat.first)));
     }
+
+    uint64_t wal_write, flush_write, compaction_write, user_write;
+    wal_write = _options.statistics->getTickerCount(rocksdb::WAL_FILE_BYTES);
+    flush_write = _options.statistics->getTickerCount(rocksdb::FLUSH_WRITE_BYTES);
+    compaction_write = _options.statistics->getTickerCount(rocksdb::COMPACT_WRITE_BYTES);
+    user_write = _options.statistics->getTickerCount(rocksdb::BYTES_WRITTEN);
+    builder.add("rocksdbengine.write.amplification.x100",
+                VPackValue( (0 != user_write) ? ((wal_write+flush_write+compaction_write)*100)/user_write : 100));
   }
 
   cache::Manager* manager = CacheManagerFeature::MANAGER;
