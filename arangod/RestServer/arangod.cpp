@@ -28,30 +28,21 @@
 
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
-#include "ApplicationFeatures/AQLPhase.h"
-#include "ApplicationFeatures/AgencyPhase.h"
-#include "ApplicationFeatures/BasicPhase.h"
-#include "ApplicationFeatures/ClusterPhase.h"
-#include "ApplicationFeatures/CommunicationPhase.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
-#include "ApplicationFeatures/DatabasePhase.h"
 #include "ApplicationFeatures/EnvironmentFeature.h"
-#include "ApplicationFeatures/FinalPhase.h"
-#include "ApplicationFeatures/FoxxPhase.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
-#include "ApplicationFeatures/GreetingsPhase.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
-#include "ApplicationFeatures/ServerPhase.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/V8Phase.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
@@ -63,9 +54,19 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
+#include "FeaturePhases/AgencyFeaturePhase.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
+#include "FeaturePhases/DatabaseFeaturePhase.h"
+#include "FeaturePhases/FinalFeaturePhase.h"
+#include "FeaturePhases/FoxxFeaturePhase.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
+#include "FeaturePhases/V8FeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
+#include "GeneralServer/SslServerFeature.h"
 #include "Logger/LoggerBufferFeature.h"
 #include "Logger/LoggerFeature.h"
 #include "Pregel/PregelFeature.h"
@@ -98,7 +99,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "Ssl/SslFeature.h"
-#include "Ssl/SslServerFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/RocksDBOptionFeature.h"
@@ -129,6 +129,7 @@
 #endif
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
@@ -140,117 +141,134 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     auto options = std::make_shared<options::ProgramOptions>(
         argv[0], "Usage: " + name + " [<options>]", "For more information use:", SBIN_DIRECTORY);
 
-    application_features::ApplicationServer server(options, SBIN_DIRECTORY);
+    ApplicationServer server(options, SBIN_DIRECTORY);
 
-    std::vector<std::string> nonServerFeatures = {
-        "Action",        "Agency",    "Cluster",
-        "Daemon",        "Endpoint",  "FoxxQueues",
-        "GeneralServer", "Greetings", "LoggerBufferFeature",
-        "Server",        "SslServer", "Statistics",
-        "Supervisor"};
+    std::vector<std::type_index> nonServerFeatures = {
+        typeid(ActionFeature),       typeid(AgencyFeature),
+        typeid(ClusterFeature),      typeid(DaemonFeature),
+        typeid(FoxxQueuesFeature),   typeid(GeneralServerFeature),
+        typeid(GreetingsFeature),    typeid(HttpEndpointProvider),
+        typeid(LoggerBufferFeature), typeid(ServerFeature),
+        typeid(SslServerFeature),    typeid(StatisticsFeature),
+        typeid(SupervisorFeature)};
 
     int ret = EXIT_FAILURE;
 
     // Adding the Phases
-    server.addFeature(new application_features::AgencyFeaturePhase(server));
-    server.addFeature(new application_features::CommunicationFeaturePhase(server));
-    server.addFeature(new application_features::AQLFeaturePhase(server));
-    server.addFeature(new application_features::BasicFeaturePhase(server, false));
-    server.addFeature(new application_features::ClusterFeaturePhase(server));
-    server.addFeature(new application_features::DatabaseFeaturePhase(server));
-    server.addFeature(new application_features::FinalFeaturePhase(server));
-    server.addFeature(new application_features::FoxxFeaturePhase(server));
-    server.addFeature(new application_features::GreetingsFeaturePhase(server, false));
-    server.addFeature(new application_features::ServerFeaturePhase(server));
-    server.addFeature(new application_features::V8FeaturePhase(server));
+    server.addFeature<AgencyFeaturePhase>(std::make_unique<AgencyFeaturePhase>(server));
+    server.addFeature<CommunicationFeaturePhase>(
+        std::make_unique<CommunicationFeaturePhase>(server));
+    server.addFeature<AqlFeaturePhase>(std::make_unique<AqlFeaturePhase>(server));
+    server.addFeature<BasicFeaturePhaseServer>(
+        std::make_unique<BasicFeaturePhaseServer>(server));
+    server.addFeature<ClusterFeaturePhase>(std::make_unique<ClusterFeaturePhase>(server));
+    server.addFeature<DatabaseFeaturePhase>(std::make_unique<DatabaseFeaturePhase>(server));
+    server.addFeature<FinalFeaturePhase>(std::make_unique<FinalFeaturePhase>(server));
+    server.addFeature<FoxxFeaturePhase>(std::make_unique<FoxxFeaturePhase>(server));
+    server.addFeature<GreetingsFeaturePhase>(
+        std::make_unique<GreetingsFeaturePhase>(server, false));
+    server.addFeature<ServerFeaturePhase>(std::make_unique<ServerFeaturePhase>(server));
+    server.addFeature<V8FeaturePhase>(std::make_unique<V8FeaturePhase>(server));
 
     // Adding the features
-    server.addFeature(new ActionFeature(server));
-    server.addFeature(new AgencyFeature(server));
-    server.addFeature(new AqlFeature(server));
-    server.addFeature(new AuthenticationFeature(server));
-    server.addFeature(new BootstrapFeature(server));
-    server.addFeature(new CacheManagerFeature(server));
-    server.addFeature(new CheckVersionFeature(server, &ret, nonServerFeatures));
-    server.addFeature(new ClusterFeature(server));
-    server.addFeature(new ConfigFeature(server, name));
-    server.addFeature(new ConsoleFeature(server));
-    server.addFeature(new DatabaseFeature(server));
-    server.addFeature(new DatabasePathFeature(server));
-    server.addFeature(new EndpointFeature(server));  // TODO cast as HttpEndpointProvider
-    server.addFeature(new EngineSelectorFeature(server));
-    server.addFeature(new EnvironmentFeature(server));
-    server.addFeature(new FileDescriptorsFeature(server));
-    server.addFeature(new FlushFeature(server));
-    server.addFeature(new FortuneFeature(server));
-    server.addFeature(new FoxxQueuesFeature(server));
-    server.addFeature(new FrontendFeature(server));
-    server.addFeature(new GeneralServerFeature(server));
-    server.addFeature(new GreetingsFeature(server));
-    server.addFeature(new InitDatabaseFeature(server, nonServerFeatures));
-    server.addFeature(new LanguageCheckFeature(server));
-    server.addFeature(new LanguageFeature(server));
-    server.addFeature(new LockfileFeature(server));
-    server.addFeature(new LoggerBufferFeature(server));
-    server.addFeature(new LoggerFeature(server, true));
-    server.addFeature(new MaintenanceFeature(server));
-    server.addFeature(new MaxMapCountFeature(server));
-    server.addFeature(new NonceFeature(server));
-    server.addFeature(new PageSizeFeature(server));
-    server.addFeature(new PrivilegeFeature(server));
-    server.addFeature(new QueryRegistryFeature(server));
-    server.addFeature(new RandomFeature(server));
-    server.addFeature(new ReplicationFeature(server));
-    server.addFeature(new ReplicationTimeoutFeature(server));
-    server.addFeature(new RocksDBOptionFeature(server));
-    server.addFeature(new SchedulerFeature(server));
-    server.addFeature(new ScriptFeature(server, &ret));
-    server.addFeature(new ServerFeature(server, &ret));
-    server.addFeature(new ServerIdFeature(server));
-    server.addFeature(new ServerSecurityFeature(server));
-    server.addFeature(new ShardingFeature(server));
-    server.addFeature(new ShellColorsFeature(server));
-    server.addFeature(new ShutdownFeature(server, {"Script"}));
-    server.addFeature(new SslFeature(server));
-    server.addFeature(new StatisticsFeature(server));
-    server.addFeature(new StorageEngineFeature(server));
-    server.addFeature(new SystemDatabaseFeature(server));
-    server.addFeature(new TempFeature(server, name));
-    server.addFeature(new TraverserEngineRegistryFeature(server));
-    server.addFeature(new TtlFeature(server));
-    server.addFeature(new UpgradeFeature(server, &ret, nonServerFeatures));
-    server.addFeature(new V8DealerFeature(server));
-    server.addFeature(new V8PlatformFeature(server));
-    server.addFeature(new V8SecurityFeature(server));
-    server.addFeature(new transaction::ManagerFeature(server));
-    server.addFeature(new VersionFeature(server));
-    server.addFeature(new ViewTypesFeature(server));
-    server.addFeature(new aql::AqlFunctionFeature(server));
-    server.addFeature(new aql::OptimizerRulesFeature(server));
-    server.addFeature(new pregel::PregelFeature(server));
+    server.addFeature<ActionFeature>(std::make_unique<ActionFeature>(server));
+    server.addFeature<AgencyFeature>(std::make_unique<AgencyFeature>(server));
+    server.addFeature<AqlFeature>(std::make_unique<AqlFeature>(server));
+    server.addFeature<AuthenticationFeature>(std::make_unique<AuthenticationFeature>(server));
+    server.addFeature<BootstrapFeature>(std::make_unique<BootstrapFeature>(server));
+    server.addFeature<CacheManagerFeature>(std::make_unique<CacheManagerFeature>(server));
+    server.addFeature<CheckVersionFeature>(
+        std::make_unique<CheckVersionFeature>(server, &ret, nonServerFeatures));
+    server.addFeature<ClusterFeature>(std::make_unique<ClusterFeature>(server));
+    server.addFeature<ConfigFeature>(std::make_unique<ConfigFeature>(server, name));
+    server.addFeature<ConsoleFeature>(std::make_unique<ConsoleFeature>(server));
+    server.addFeature<DatabaseFeature>(std::make_unique<DatabaseFeature>(server));
+    server.addFeature<DatabasePathFeature>(std::make_unique<DatabasePathFeature>(server));
+    server.addFeature<HttpEndpointProvider>(std::make_unique<EndpointFeature>(server));
+    server.addFeature<EngineSelectorFeature>(std::make_unique<EngineSelectorFeature>(server));
+    server.addFeature<EnvironmentFeature>(std::make_unique<EnvironmentFeature>(server));
+    server.addFeature<FileDescriptorsFeature>(
+        std::make_unique<FileDescriptorsFeature>(server));
+    server.addFeature<FlushFeature>(std::make_unique<FlushFeature>(server));
+    server.addFeature<FortuneFeature>(std::make_unique<FortuneFeature>(server));
+    server.addFeature<FoxxQueuesFeature>(std::make_unique<FoxxQueuesFeature>(server));
+    server.addFeature<FrontendFeature>(std::make_unique<FrontendFeature>(server));
+    server.addFeature<GeneralServerFeature>(std::make_unique<GeneralServerFeature>(server));
+    server.addFeature<GreetingsFeature>(std::make_unique<GreetingsFeature>(server));
+    server.addFeature<InitDatabaseFeature>(
+        std::make_unique<InitDatabaseFeature>(server, nonServerFeatures));
+    server.addFeature<LanguageCheckFeature>(std::make_unique<LanguageCheckFeature>(server));
+    server.addFeature<LanguageFeature>(std::make_unique<LanguageFeature>(server));
+    server.addFeature<LockfileFeature>(std::make_unique<LockfileFeature>(server));
+    server.addFeature<LoggerBufferFeature>(std::make_unique<LoggerBufferFeature>(server));
+    server.addFeature<LoggerFeature>(std::make_unique<LoggerFeature>(server, true));
+    server.addFeature<MaintenanceFeature>(std::make_unique<MaintenanceFeature>(server));
+    server.addFeature<MaxMapCountFeature>(std::make_unique<MaxMapCountFeature>(server));
+    server.addFeature<NonceFeature>(std::make_unique<NonceFeature>(server));
+    server.addFeature<PageSizeFeature>(std::make_unique<PageSizeFeature>(server));
+    server.addFeature<PrivilegeFeature>(std::make_unique<PrivilegeFeature>(server));
+    server.addFeature<QueryRegistryFeature>(std::make_unique<QueryRegistryFeature>(server));
+    server.addFeature<RandomFeature>(std::make_unique<RandomFeature>(server));
+    server.addFeature<ReplicationFeature>(std::make_unique<ReplicationFeature>(server));
+    server.addFeature<ReplicationTimeoutFeature>(
+        std::make_unique<ReplicationTimeoutFeature>(server));
+    server.addFeature<RocksDBOptionFeature>(std::make_unique<RocksDBOptionFeature>(server));
+    server.addFeature<SchedulerFeature>(std::make_unique<SchedulerFeature>(server));
+    server.addFeature<ScriptFeature>(std::make_unique<ScriptFeature>(server, &ret));
+    server.addFeature<ServerFeature>(std::make_unique<ServerFeature>(server, &ret));
+    server.addFeature<ServerIdFeature>(std::make_unique<ServerIdFeature>(server));
+    server.addFeature<ServerSecurityFeature>(std::make_unique<ServerSecurityFeature>(server));
+    server.addFeature<ShardingFeature>(std::make_unique<ShardingFeature>(server));
+    server.addFeature<ShellColorsFeature>(std::make_unique<ShellColorsFeature>(server));
+    server.addFeature<ShutdownFeature>(std::make_unique<ShutdownFeature>(
+        server, std::vector<std::type_index>{typeid(ScriptFeature)}));
+    server.addFeature<SslFeature>(std::make_unique<SslFeature>(server));
+    server.addFeature<StatisticsFeature>(std::make_unique<StatisticsFeature>(server));
+    server.addFeature<StorageEngineFeature>(std::make_unique<StorageEngineFeature>(server));
+    server.addFeature<SystemDatabaseFeature>(std::make_unique<SystemDatabaseFeature>(server));
+    server.addFeature<TempFeature>(std::make_unique<TempFeature>(server, name));
+    server.addFeature<TraverserEngineRegistryFeature>(
+        std::make_unique<TraverserEngineRegistryFeature>(server));
+    server.addFeature<TtlFeature>(std::make_unique<TtlFeature>(server));
+    server.addFeature<UpgradeFeature>(
+        std::make_unique<UpgradeFeature>(server, &ret, nonServerFeatures));
+    server.addFeature<V8DealerFeature>(std::make_unique<V8DealerFeature>(server));
+    server.addFeature<V8PlatformFeature>(std::make_unique<V8PlatformFeature>(server));
+    server.addFeature<V8SecurityFeature>(std::make_unique<V8SecurityFeature>(server));
+    server.addFeature<transaction::ManagerFeature>(
+        std::make_unique<transaction::ManagerFeature>(server));
+    server.addFeature<VersionFeature>(std::make_unique<VersionFeature>(server));
+    server.addFeature<ViewTypesFeature>(std::make_unique<ViewTypesFeature>(server));
+    server.addFeature<aql::AqlFunctionFeature>(
+        std::make_unique<aql::AqlFunctionFeature>(server));
+    server.addFeature<aql::OptimizerRulesFeature>(
+        std::make_unique<aql::OptimizerRulesFeature>(server));
+    server.addFeature<pregel::PregelFeature>(std::make_unique<pregel::PregelFeature>(server));
 
 #ifdef ARANGODB_HAVE_FORK
-    server.addFeature(new DaemonFeature(server));
-    server.addFeature(new SupervisorFeature(server));
+    server.addFeature<DaemonFeature>(std::make_unique<DaemonFeature>(server));
+    server.addFeature<SupervisorFeature>(std::make_unique<SupervisorFeature>(server));
 #endif
 
 #ifdef _WIN32
-    server.addFeature(new WindowsServiceFeature(server));
+    server.addFeature<WindowsServiceFeature>(std::make_unique<WindowsServiceFeature>(server));
 #endif
 
 #ifdef USE_ENTERPRISE
     setupServerEE(server);
 #else
-    server.addFeature(new SslServerFeature(server));
+    server.addFeature<SslServerFeature>(std::make_unique<SslServerFeature>(server));
 #endif
 
-    server.addFeature(new arangodb::iresearch::IResearchAnalyzerFeature(server));
-    server.addFeature(new arangodb::iresearch::IResearchFeature(server));
+    server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
+        std::make_unique<arangodb::iresearch::IResearchAnalyzerFeature>(server));
+    server.addFeature<arangodb::iresearch::IResearchFeature>(
+        std::make_unique<arangodb::iresearch::IResearchFeature>(server));
 
     // storage engines
-    server.addFeature(new ClusterEngine(server));
-    server.addFeature(new MMFilesEngine(server));
-    server.addFeature(new RocksDBEngine(server));
+    server.addFeature<ClusterEngine>(std::make_unique<ClusterEngine>(server));
+    server.addFeature<MMFilesEngine>(std::make_unique<MMFilesEngine>(server));
+    server.addFeature<RocksDBEngine>(std::make_unique<RocksDBEngine>(server));
 
     try {
       server.run(argc, argv);
@@ -328,7 +346,7 @@ namespace arangodb {
 //
 // restartAction = new std::function<int()>();
 // *restartAction = myRestartAction;
-// arangodb::application_features::ApplicationServer::server->beginShutdown();
+// arangodb::ApplicationServer::server->beginShutdown();
 
 int main(int argc, char* argv[]) {
   std::string workdir(arangodb::basics::FileUtils::currentDirectory().result());

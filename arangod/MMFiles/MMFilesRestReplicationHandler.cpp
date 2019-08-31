@@ -418,9 +418,8 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
 
   // pull the latest state again, so that the last tick we hand out is always >=
   // the last included tick value in the results
-  while (state.lastCommittedTick < dump._lastFoundTick &&
-         !application_features::ApplicationServer::isStopping()) {
-    state = MMFilesLogfileManager::instance()->state();
+  while (state.lastCommittedTick < dump._lastFoundTick && !_vocbase.server().isStopping()) {
+    state = _vocbase.server().getFeature<MMFilesLogfileManager>().state();
     std::this_thread::sleep_for(std::chrono::microseconds(500));
   }
 

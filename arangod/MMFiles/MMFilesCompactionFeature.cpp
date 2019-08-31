@@ -51,7 +51,7 @@ MMFilesCompactionFeature::MMFilesCompactionFeature(application_features::Applica
       _deadSizeThreshold(128 * 1024),
       _deadShare(0.1) {
   setOptional(true);
-  onlyEnabledWith(typeid(MMFilesEngine));
+  onlyEnabledWith<MMFilesEngine>();
 
   startsAfter<BasicFeaturePhaseServer>();
 

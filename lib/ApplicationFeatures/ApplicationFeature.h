@@ -188,8 +188,9 @@ class ApplicationFeature {
   // determine all direct and indirect ancestors of a feature
   std::unordered_set<std::type_index> ancestors() const;
 
-  void onlyEnabledWith(std::type_index const& other) {
-    _onlyEnabledWith.emplace(other);
+  template <typename T>
+  void onlyEnabledWith() {
+    _onlyEnabledWith.emplace(typeid(T));
   }
 
   // return the list of other features that this feature depends on
