@@ -1179,7 +1179,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       << "Finish getting snapshot for view '" << view.name() << "'";
 
   bool const ordered = !_scorers.empty();
-
+  bool const materialized = _outNonMaterializedColPtr == nullptr;
   // We have one output register for documents, which is always the first after
   // the input registers.
   aql::RegisterId const firstOutputRegister = getNrInputRegisters();
@@ -1187,7 +1187,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   aql::RegisterId numDocumentRegs = 1;
   // Also we could be asked to produce only document/collection ids for later materialization
-  if(_outNonMaterializedColPtr != nullptr) {
+  if(!materialized) {
     numDocumentRegs += 2;
   }
 
@@ -1224,26 +1224,43 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                                 volatility(),
                                                 getRegisterPlan()->varInfo,
                                                 getDepth(),
-                                                _outNonMaterializedColPtr == nullptr};
+                                                materialized};
 
   if (_sort.first) {
     TRI_ASSERT(!_sort.first->empty()); // guaranteed by optimizer rule
-
-    if (!ordered) {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<false>>>(
+    if (materialized) {
+      if (!ordered) {
+        return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<false, true>>>(
           &engine, this, std::move(executorInfos));
+      }
+
+      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<true, true>>>(
+        &engine, this, std::move(executorInfos));
+    } else {
+      if (!ordered) {
+        return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<false, false>>>(
+          &engine, this, std::move(executorInfos));
+      }
+      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<true, false>>>(
+        &engine, this, std::move(executorInfos));
     }
-
-    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<true>>>(
-        &engine, this, std::move(executorInfos));
   }
-
-  if (!ordered) {
-    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false>>>(
+  if (materialized) {
+    if (!ordered) {
+      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false, true>>>(
         &engine, this, std::move(executorInfos));
-  }
-  return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true>>>(
+    }
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true, true>>>(
       &engine, this, std::move(executorInfos));
+  } else {
+    if (!ordered) {
+      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false, false>>>(
+        &engine, this, std::move(executorInfos));
+    }
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true, false>>>(
+      &engine, this, std::move(executorInfos));
+  }
+
 }
 
 }  // namespace iresearch

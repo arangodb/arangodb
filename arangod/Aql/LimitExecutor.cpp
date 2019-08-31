@@ -30,6 +30,8 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "VocBase/LogicalCollection.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Basics/Common.h"
 
 #include <lib/Logger/LogMacros.h>
@@ -45,35 +47,52 @@ LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId n
                                        // cppcheck-suppress passedByValue
                                        std::unordered_set<RegisterId> registersToKeep,
                                        size_t offset, size_t limit, bool fullCount,
-                                       RegisterId inNonMaterializedColRegId,
-                                       RegisterId inNonMaterializedDocRegId,
-                                       RegisterId outMaterializedDocumentRegId,
-                                       // cppcheck-suppress passedByValue
                                        std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-                                       // cppcheck-suppress passedByValue
-                                       std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-                                       Query* query
-                                       )
+                                       std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters)
     : ExecutorInfos(readableInputRegisters,
                     writeableOutputRegisters,
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _offset(offset),
       _limit(limit),
-      _fullCount(fullCount),
-      _inNonMaterializedColRegId(inNonMaterializedColRegId),
-      _inNonMaterializedDocRegId(inNonMaterializedDocRegId),
-      _outMaterializedDocumentRegId(outMaterializedDocumentRegId),
-      _query(query){}
+      _fullCount(fullCount) {}
 
-LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
+LimitLateMaterializedExecutorInfos::LimitLateMaterializedExecutorInfos(
+    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    // cppcheck-suppress passedByValue
+    std::unordered_set<RegisterId> registersToClear,
+    // cppcheck-suppress passedByValue
+    std::unordered_set<RegisterId> registersToKeep,
+    size_t offset, size_t limit, bool fullCount,
+    RegisterId inNonMaterializedColRegId,
+    RegisterId inNonMaterializedDocRegId,
+    RegisterId outMaterializedDocumentRegId,
+    // cppcheck-suppress passedByValue
+    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
+    // cppcheck-suppress passedByValue
+    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+    transaction::Methods* trx) 
+  : LimitExecutorInfos(nrInputRegisters, nrOutputRegisters, 
+                       std::move(registersToClear),
+                       std::move(registersToKeep),
+                       offset, limit, fullCount, 
+                       readableInputRegisters, 
+                       writeableOutputRegisters),
+    _inNonMaterializedColRegId(inNonMaterializedColRegId),
+    _inNonMaterializedDocRegId(inNonMaterializedDocRegId),
+    _outMaterializedDocumentRegId(outMaterializedDocumentRegId),
+    _trx(trx){}
+
+template<typename Impl, typename InfosType>
+LimitExecutorBase<Impl, InfosType>::LimitExecutorBase(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
       _lastRowToOutput(CreateInvalidInputRowHint{}),
       _stateOfLastRowToOutput(ExecutionState::HASMORE) {}
-LimitExecutor::~LimitExecutor() = default;
 
-std::pair<ExecutionState, LimitStats> LimitExecutor::skipOffset() {
+
+template<typename Impl, typename InfosType>
+std::pair<ExecutionState, LimitStats> LimitExecutorBase<Impl, InfosType>::skipOffset() {
   ExecutionState state;
   size_t skipped;
   std::tie(state, skipped) = _fetcher.skipRows(maxRowsLeftToSkip());
@@ -91,7 +110,8 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::skipOffset() {
   return {state, stats};
 }
 
-std::pair<ExecutionState, LimitStats> LimitExecutor::skipRestForFullCount() {
+template<typename Impl, typename InfosType>
+std::pair<ExecutionState, LimitStats> LimitExecutorBase<Impl, InfosType>::skipRestForFullCount() {
   ExecutionState state;
   size_t skipped;
   LimitStats stats{};
@@ -113,13 +133,12 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::skipRestForFullCount() {
   return {state, stats};
 }
 
-
-std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRow& output) {
+template<typename Impl, typename InfosType>
+std::pair<ExecutionState, LimitStats> LimitExecutorBase<Impl, InfosType>::produceRows(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("LimitExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
-
   ExecutionState state;
   LimitStats stats{};
 
@@ -131,7 +150,6 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
       return {state, stats};
     }
   }
-
   while (LimitState::RETURNING == currentState()) {
     std::tie(state, input) = _fetcher.fetchRow(maxRowsLeftToFetch());
 
@@ -151,25 +169,8 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
       stats.incrFullCount();
     }
 
-    auto cb = [&output, &input, this](LocalDocumentId /*id*/, VPackSlice doc) {
-       AqlValue a{AqlValueHintCopy(doc.begin())}; // BAD! Need to switch to generic implementation
-       bool mustDestroy = true;
-       AqlValueGuard guard{a, mustDestroy};
-       output.moveValueInto(infos().outputMaterializedDocumentRegId(),
-         input, guard);
-    };
-
     // Return one row
-    if(infos().doMaterialization()) {
-      auto collection = reinterpret_cast<LogicalCollection const*>(
-        input.getValue(infos().inputNonMaterializedColRegId()).toInt64());
-      TRI_ASSERT(collection != nullptr);
-      collection->readDocumentWithCallback(infos().getQuery()->trx(),
-        LocalDocumentId(input.getValue(infos().inputNonMaterializedDocRegId()).toInt64()),
-        cb);
-    } else {
-       output.copyRow(input);
-    }
+    static_cast<Impl*>(this)->outputRow(input, output);
     return {state, stats};
   }
 
@@ -223,26 +224,8 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
     if (infos().isFullCountEnabled()) {
       stats.incrFullCount();
     }
-
-
-    auto cb = [&output, &input, this](LocalDocumentId /*id*/, VPackSlice doc) {
-       AqlValue a{AqlValueHintCopy(doc.begin())}; // BAD! Need to switch to generic implementation
-       bool mustDestroy = true;
-       AqlValueGuard guard{a, mustDestroy};
-       output.moveValueInto(infos().outputMaterializedDocumentRegId(),
-         input, guard);
-    };
-
-    if(infos().doMaterialization()) {
-      auto collection = reinterpret_cast<LogicalCollection const*>(
-      input.getValue(infos().inputNonMaterializedColRegId()).toInt64());
-      TRI_ASSERT(collection != nullptr);
-      collection->readDocumentWithCallback(infos().getQuery()->trx(),
-        LocalDocumentId(input.getValue(infos().inputNonMaterializedDocRegId()).toInt64()),
-        cb);
-    } else {
-       output.copyRow(input);
-    }
+ 
+    static_cast<Impl*>(this)->outputRow(input, output);
     return {ExecutionState::DONE, stats};
   }
 
@@ -255,7 +238,8 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
   return {ExecutionState::DONE, stats};
 }
 
-std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fetchBlockForPassthrough(size_t atMost) {
+template<typename Impl, typename InfosType>
+std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutorBase<Impl, InfosType>::fetchBlockForPassthrough(size_t atMost) {
   switch (currentState()) {
     case LimitState::LIMIT_REACHED:
       // We are done with our rows!
@@ -305,7 +289,8 @@ std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fet
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
 }
 
-std::tuple<ExecutionState, LimitExecutor::Stats, size_t> LimitExecutor::skipRows(size_t const toSkipRequested) {
+template<typename Impl, typename InfosType>
+std::tuple<ExecutionState, LimitExecutor::Stats, size_t> LimitExecutorBase<Impl, InfosType>::skipRows(size_t const toSkipRequested) {
   // fullCount can only be enabled on the last top-level LIMIT block. Thus
   // skip cannot be called on it! If this requirement is changed for some
   // reason, the current implementation will not work.
@@ -340,3 +325,59 @@ std::tuple<ExecutionState, LimitExecutor::Stats, size_t> LimitExecutor::skipRows
 
   return std::make_tuple(state, LimitStats{}, reportSkipped);
 }
+
+void LimitLateMaterializedExecutor::outputRow(const InputAqlItemRow& input, OutputAqlItemRow& output) {
+    auto collection = reinterpret_cast<LogicalCollection const*>(
+        input.getValue(infos().inputNonMaterializedColRegId()).toInt64());
+    TRI_ASSERT(collection != nullptr);
+    _readDocumentContext.inputRow = &input;
+    _readDocumentContext.outputRow = &output;
+    collection->readDocumentWithCallback(infos().trx(),
+      LocalDocumentId(input.getValue(infos().inputNonMaterializedDocRegId()).toInt64()),
+      _readDocumentContext.callback);
+}
+
+
+IndexIterator::DocumentCallback
+LimitLateMaterializedExecutor::ReadContext::copyDocumentCallback(
+  LimitLateMaterializedExecutor::ReadContext& ctx) {
+  auto* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine);
+
+  typedef std::function<IndexIterator::DocumentCallback(ReadContext&)> CallbackFactory;
+
+  static CallbackFactory const callbackFactories[]{
+      [](ReadContext& ctx) {
+        // capture only one reference to potentially avoid heap allocation
+        return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
+          TRI_ASSERT(ctx.outputRow);
+          TRI_ASSERT(ctx.inputRow);
+          TRI_ASSERT(ctx.inputRow->isInitialized());
+          AqlValue a{AqlValueHintCopy(doc.begin())};
+          bool mustDestroy = true;
+          AqlValueGuard guard{a, mustDestroy};
+          ctx.outputRow->moveValueInto(ctx.docOutReg, *ctx.inputRow, guard);
+        };
+      },
+
+      [](ReadContext& ctx) {
+        // capture only one reference to potentially avoid heap allocation
+        return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
+          TRI_ASSERT(ctx.outputRow);
+          TRI_ASSERT(ctx.inputRow);
+          TRI_ASSERT(ctx.inputRow->isInitialized());
+          AqlValue a{AqlValueHintDocumentNoCopy(doc.begin())};
+          bool mustDestroy = true;
+          AqlValueGuard guard{a, mustDestroy};
+          ctx.outputRow->moveValueInto(ctx.docOutReg, *ctx.inputRow, guard);
+        };
+      }};
+  return callbackFactories[size_t(engine->useRawDocumentPointers())](ctx);
+}
+
+// template implicit instationation
+template class ::arangodb::aql::LimitExecutorBase<::arangodb::aql::LimitExecutor, arangodb::aql::LimitExecutorInfos>;
+template class ::arangodb::aql::LimitExecutorBase<::arangodb::aql::LimitLateMaterializedExecutor, 
+                                                  ::arangodb::aql::LimitLateMaterializedExecutorInfos>;
+
+

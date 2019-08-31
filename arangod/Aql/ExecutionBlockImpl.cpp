@@ -276,16 +276,24 @@ static SkipVariants constexpr skipType() {
 
   static_assert(useExecutor ==
                     (std::is_same<Executor, IndexExecutor>::value ||
-                     std::is_same<Executor, IResearchViewExecutor<false>>::value ||
-                     std::is_same<Executor, IResearchViewExecutor<true>>::value ||
-                     std::is_same<Executor, IResearchViewMergeExecutor<false>>::value ||
-                     std::is_same<Executor, IResearchViewMergeExecutor<true>>::value ||
+                     std::is_same<Executor, IResearchViewExecutor<false, true>>::value ||
+                     std::is_same<Executor, IResearchViewExecutor<true, true>>::value ||
+                     std::is_same<Executor, IResearchViewMergeExecutor<false, true>>::value ||
+                     std::is_same<Executor, IResearchViewMergeExecutor<true, true>>::value ||
+                     std::is_same<Executor, IResearchViewExecutor<false, false>>::value ||
+                     std::is_same<Executor, IResearchViewExecutor<true, false>>::value ||
+                     std::is_same<Executor, IResearchViewMergeExecutor<false, false>>::value ||
+                     std::is_same<Executor, IResearchViewMergeExecutor<true, false>>::value ||
                      std::is_same<Executor, EnumerateCollectionExecutor>::value ||
-                     std::is_same<Executor, LimitExecutor>::value),
+                     std::is_same<Executor, LimitExecutor>::value ||
+                     std::is_same<Executor, LimitLateMaterializedExecutor>::value),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
-  static_assert(!std::is_same<Executor, LimitExecutor>::value || useFetcher,
+  // FIXME for late materialized limit executor it may be possible to implement skipRows
+  static_assert(
+    (!std::is_same<Executor, LimitExecutor>::value && 
+     !std::is_same<Executor, LimitLateMaterializedExecutor>::value) || useFetcher,
       "LimitExecutor needs to implement skipRows() to work correctly");
 
   if (useExecutor) {
@@ -682,14 +690,19 @@ template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<SingleRowFetcher<true>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<LimitLateMaterializedExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert, AllRowsFetcher>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Remove, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;

@@ -32,7 +32,9 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/LimitStats.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/DocumentProducingHelper.h"
 #include "Aql/types.h"
+#include "Indexes/IndexIterator.h"
 
 #include <iosfwd>
 #include <memory>
@@ -50,23 +52,11 @@ class LimitExecutorInfos : public ExecutorInfos {
   LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                      std::unordered_set<RegisterId> registersToClear,
                      std::unordered_set<RegisterId> registersToKeep, size_t offset,
-                     size_t limit, bool fullCount, RegisterId inNonMaterializedColRegId,
-                     RegisterId inNonMaterializedDocRegId, RegisterId outMaterializedDocumentRegId,
-                     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-                     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-                     Query* query);
-
-  // Constructor for backward compatibility (!!!! Maybe delete and update tests?)
-  LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                     std::unordered_set<RegisterId> registersToClear,
-                     std::unordered_set<RegisterId> registersToKeep,
-                     size_t offset, size_t limit, bool fullCount)
-      : LimitExecutorInfos(nrInputRegisters, nrOutputRegisters,
-                           std::forward<std::unordered_set<RegisterId>>(registersToClear),
-                           std::forward<std::unordered_set<RegisterId>>(registersToKeep), 
-                          //!!!! find a way to go without passing shared pointers
-                           offset, limit, fullCount, 0, 0, 0, std::make_shared < std::unordered_set<RegisterId>>(),
-                           std::make_shared < std::unordered_set<RegisterId>>(), nullptr) {}
+                     size_t limit, bool fullCount, 
+                     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters = 
+                         std::make_shared < std::unordered_set<RegisterId>>(),
+                     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters = 
+                         std::make_shared < std::unordered_set<RegisterId>>());
 
   LimitExecutorInfos() = delete;
   LimitExecutorInfos(LimitExecutorInfos&&) = default;
@@ -77,11 +67,32 @@ class LimitExecutorInfos : public ExecutorInfos {
   size_t getLimit() const noexcept { return _limit; };
   size_t getLimitPlusOffset() const noexcept { return _offset + _limit; };
   bool isFullCountEnabled() const noexcept { return _fullCount; };
-  bool doMaterialization() const noexcept {
-    // If we need to do materialization, this two would be set
-    // different registers. If not - both will be zero
-    return _inNonMaterializedColRegId != _inNonMaterializedDocRegId;
-  }
+
+ private:
+  /// @brief the remaining offset
+  size_t const _offset;
+
+  /// @brief the limit
+  size_t const _limit;
+
+  /// @brief whether or not the node should fully count what it limits
+  bool const _fullCount;
+};
+
+class LimitLateMaterializedExecutorInfos : public LimitExecutorInfos {
+public:
+  LimitLateMaterializedExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                     std::unordered_set<RegisterId> registersToClear,
+                     std::unordered_set<RegisterId> registersToKeep, size_t offset,
+                     size_t limit, bool fullCount, RegisterId inNonMaterializedColRegId,
+                     RegisterId inNonMaterializedDocRegId, RegisterId outMaterializedDocumentRegId,
+                     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
+                     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+                     transaction::Methods* trx);
+
+  LimitLateMaterializedExecutorInfos(
+    LimitLateMaterializedExecutorInfos&&) = default;
+  ~LimitLateMaterializedExecutorInfos() = default;
 
   inline RegisterId inputNonMaterializedDocRegId() const noexcept {
     return _inNonMaterializedDocRegId;
@@ -95,31 +106,25 @@ class LimitExecutorInfos : public ExecutorInfos {
     return _outMaterializedDocumentRegId;
   }
 
-  Query* getQuery() const noexcept { return _query; }
+  transaction::Methods* trx() const noexcept { return _trx; }
 
- private:
-  /// @brief the remaining offset
-  size_t const _offset;
-
-  /// @brief the limit
-  size_t const _limit;
-
-  /// @brief whether or not the node should fully count what it limits
-  bool const _fullCount;
-
-  /// @brief variables to perform late document materialization
+private:
+  /// @brief register to store raw collection pointer
   RegisterId const _inNonMaterializedColRegId;
+  /// @brief register to store local document id
   RegisterId const _inNonMaterializedDocRegId;
+  /// @brief register to store materialized document
   RegisterId const _outMaterializedDocumentRegId;
-
-  Query* _query;
+  /// @brief AQL Query - need to perform materialization
+  transaction::Methods* _trx;
 };
+
 
 /**
  * @brief Implementation of Limit Node
  */
-
-class LimitExecutor {
+template<typename Impl, typename InfosType>
+class LimitExecutorBase {
  public:
   struct Properties {
     static const bool preservesOrder = true;
@@ -127,14 +132,14 @@ class LimitExecutor {
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = LimitExecutorInfos;
+  using Infos = InfosType;
   using Stats = LimitStats;
 
-  LimitExecutor() = delete;
-  LimitExecutor(LimitExecutor&&) = default;
-  LimitExecutor(LimitExecutor const&) = delete;
-  LimitExecutor(Fetcher& fetcher, Infos&);
-  ~LimitExecutor();
+  LimitExecutorBase() = delete;
+  LimitExecutorBase(LimitExecutorBase&&) = default;
+  LimitExecutorBase(LimitExecutorBase const&) = delete;
+  LimitExecutorBase(Fetcher& fetcher, Infos&);
+  virtual ~LimitExecutorBase() = default;
 
   /**
    * @brief produce the next Row of Aql Values.
@@ -155,8 +160,9 @@ class LimitExecutor {
 
   std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
- private:
+ protected:
   Infos const& infos() const noexcept { return _infos; };
+ private:
 
   size_t maxRowsLeftToFetch() const noexcept {
     // counter should never exceed this count!
@@ -220,6 +226,51 @@ class LimitExecutor {
   ExecutionState _stateOfLastRowToOutput;
   // Number of input lines seen
   size_t _counter = 0;
+};
+
+class LimitExecutor : 
+  public LimitExecutorBase<LimitExecutor, LimitExecutorInfos>
+{
+ public:
+  using Base = LimitExecutorBase<LimitExecutor, LimitExecutorInfos>;
+  using Infos = typename Base::Infos;
+  LimitExecutor(LimitExecutor&&) = default;
+  LimitExecutor(Fetcher& fetcher, Infos& infos) : Base(fetcher, infos) {}
+
+  inline void outputRow(const InputAqlItemRow& input, OutputAqlItemRow& output) {
+    output.copyRow(input);
+  } 
+};
+
+class LimitLateMaterializedExecutor : 
+  public LimitExecutorBase<LimitLateMaterializedExecutor, LimitLateMaterializedExecutorInfos>
+{
+ public:
+  using Base = LimitExecutorBase<LimitLateMaterializedExecutor, LimitLateMaterializedExecutorInfos>;
+  using Infos = Base::Infos;
+  LimitLateMaterializedExecutor(LimitLateMaterializedExecutor&&) = default;
+  LimitLateMaterializedExecutor(Fetcher& fetcher, Infos& infos) : Base(fetcher, infos),
+    _readDocumentContext(infos.outputMaterializedDocumentRegId()) {}
+
+  inline void outputRow(const InputAqlItemRow& input, OutputAqlItemRow& output);
+
+ protected:
+  class ReadContext {
+   public:
+    explicit ReadContext(aql::RegisterId docOutReg)
+        : docOutReg(docOutReg),
+          inputRow(nullptr),
+          outputRow(nullptr),
+          callback(copyDocumentCallback(*this)) {}
+
+    aql::RegisterId const docOutReg;
+    const InputAqlItemRow* inputRow;
+    OutputAqlItemRow* outputRow;
+    IndexIterator::DocumentCallback const callback;
+   private:
+    static IndexIterator::DocumentCallback copyDocumentCallback(ReadContext& ctx);
+  }; 
+  ReadContext _readDocumentContext;
 };
 
 }  // namespace aql

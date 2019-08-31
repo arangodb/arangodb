@@ -1516,12 +1516,16 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
 
   // Fullcount must only be enabled on the last limit node on the main level
   TRI_ASSERT(!_fullCount || !::isInSubQuery(this));
-  auto inputRegisters = std::make_shared < std::unordered_set<RegisterId>>();
-  auto outputRegisters = std::make_shared < std::unordered_set<RegisterId>>();
-  RegisterId inColRegId = 0;
-  RegisterId inDocRegId = 0;
-  RegisterId outDocRegId = 0;
-  if(_inNonMaterializedColPtr != nullptr) {
+
+  if (_inNonMaterializedColPtr != nullptr && 
+     // Coodrinators always works with late-materialized docs returned by DBServers
+     // so just ignore late materialization at this stage
+     !ServerState::instance()->isCoordinator()) { 
+    auto inputRegisters = std::make_shared < std::unordered_set<RegisterId>>();
+    auto outputRegisters = std::make_shared < std::unordered_set<RegisterId>>();
+    RegisterId inColRegId = 0;
+    RegisterId inDocRegId = 0;
+    RegisterId outDocRegId = 0;
     {
       auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedColPtr->id);
       TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
@@ -1540,15 +1544,18 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
       outDocRegId = it->second.registerId;
       outputRegisters->insert(outDocRegId);
     }
+    LimitLateMaterializedExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                                             getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                                             calcRegsToKeep(), _offset, _limit, _fullCount, 
+                                             inColRegId, inDocRegId, outDocRegId, inputRegisters,
+                                             outputRegisters,  engine.getQuery()->trx());
+    return std::make_unique<ExecutionBlockImpl<LimitLateMaterializedExecutor>>(&engine, this,
+                                                             std::move(infos));
   }
   LimitExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                           calcRegsToKeep(), _offset, _limit, _fullCount,
-                           inColRegId, inDocRegId,
-                           outDocRegId, inputRegisters, outputRegisters, 
-                           engine.getQuery());
-
-  return std::make_unique<ExecutionBlockImpl<LimitExecutor>>(&engine, this,
+    getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+    calcRegsToKeep(), _offset, _limit, _fullCount);
+    return std::make_unique<ExecutionBlockImpl<LimitExecutor>>(&engine, this,
                                                              std::move(infos));
 }
 
