@@ -79,11 +79,10 @@ class IResearchFilterInTest : public ::testing::Test {
  protected:
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   IResearchFilterInTest() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
-    arangodb::aql::AqlFunctionFeature* functions = nullptr;
 
     arangodb::tests::init();
 
@@ -98,55 +97,83 @@ class IResearchFilterInTest : public ::testing::Test {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(server), true);
-    features.emplace_back(new arangodb::DatabaseFeature(server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
-    features.emplace_back(new arangodb::V8DealerFeature(server),
-                          false);  // required for DatabaseFeature::createDatabase(...)
-    features.emplace_back(new arangodb::ViewTypesFeature(server), false);  // required for IResearchFeature
-    features.emplace_back(new arangodb::AqlFeature(server), true);
-    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(server),
+    server.addFeature<arangodb::AuthenticationFeature>(
+        std::make_unique<arangodb::AuthenticationFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::AuthenticationFeature>(), true);
+
+    server.addFeature<arangodb::DatabaseFeature>(
+        std::make_unique<arangodb::DatabaseFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::DatabaseFeature>(), false);
+
+    server.addFeature<arangodb::QueryRegistryFeature>(
+        std::make_unique<arangodb::QueryRegistryFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::QueryRegistryFeature>(), false);  // must be first
+
+    server.addFeature<arangodb::SystemDatabaseFeature>(
+        std::make_unique<arangodb::SystemDatabaseFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::SystemDatabaseFeature>(),
                           true);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
+
+    server.addFeature<arangodb::TraverserEngineRegistryFeature>(
+        std::make_unique<arangodb::TraverserEngineRegistryFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::TraverserEngineRegistryFeature>(),
+                          false);  // must be before AqlFeature
+
+    server.addFeature<arangodb::V8DealerFeature>(
+        std::make_unique<arangodb::V8DealerFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
+
+    server.addFeature<arangodb::ViewTypesFeature>(
+        std::make_unique<arangodb::ViewTypesFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::ViewTypesFeature>(), false);  // required for IResearchFeature
+
+    server.addFeature<arangodb::AqlFeature>(std::make_unique<arangodb::AqlFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::AqlFeature>(), true);
+
+    server.addFeature<arangodb::aql::AqlFunctionFeature>(
+        std::make_unique<arangodb::aql::AqlFunctionFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::aql::AqlFunctionFeature>(),
+                          true);  // required for IResearchAnalyzerFeature
+
+    server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
+        std::make_unique<arangodb::iresearch::IResearchAnalyzerFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>(),
+                          true);
+
+    server.addFeature<arangodb::iresearch::IResearchFeature>(
+        std::make_unique<arangodb::iresearch::IResearchFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::iresearch::IResearchFeature>(), true);
 
 #if USE_ENTERPRISE
-    features.emplace_back(new arangodb::LdapFeature(server),
-                          false);  // required for AuthenticationFeature with USE_ENTERPRISE
+    server.addFeature<arangodb::LdapFeature>(std::make_unique<arangodb::LdapFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
     // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        new arangodb::ClusterFeature(server));
+    server.addFeature<arangodb::ClusterFeature>(
+        std::make_unique<arangodb::ClusterFeature>(server));
+
+    arangodb::aql::AqlFunctionFeature& functions =
+        server.getFeature<arangodb::aql::AqlFunctionFeature>();
 
     for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
+      f.first.prepare();
     }
 
     auto const databases = arangodb::velocypack::Parser::fromJson(
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    auto* dbFeature =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
-            "Database");
-    dbFeature->loadDatabases(databases->slice());
+    auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
+    dbFeature.loadDatabases(databases->slice());
 
     for (auto& f : features) {
       if (f.second) {
-        f.first->start();
+        f.first.start();
       }
     }
 
     // register fake non-deterministic function in order to suppress optimizations
-    functions->add(arangodb::aql::Function{
+    functions.add(arangodb::aql::Function{
         "_NONDETERM_", ".",
         arangodb::aql::Function::makeFlags(
             // fake non-deterministic
@@ -158,7 +185,7 @@ class IResearchFilterInTest : public ::testing::Test {
         }});
 
     // register fake non-deterministic function in order to suppress optimizations
-    functions->add(arangodb::aql::Function{
+    functions.add(arangodb::aql::Function{
         "_FORWARD_", ".",
         arangodb::aql::Function::makeFlags(
             // fake deterministic
@@ -170,37 +197,31 @@ class IResearchFilterInTest : public ::testing::Test {
           return params[0];
         }});
 
-    auto* analyzers =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     TRI_vocbase_t* vocbase;
 
-    dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-    arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName);
-    analyzers->emplace(
-      result,
-      "testVocbase::test_analyzer",
-      "TestAnalyzer",
-      arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\" }")->slice());
+    dbFeature.createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName);
+    analyzers.emplace(
+        result, "testVocbase::test_analyzer", "TestAnalyzer",
+        arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")->slice());  // cache analyzer
   }
 
   ~IResearchFilterInTest() {
     arangodb::AqlFeature(server).stop();  // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
                                     arangodb::LogLevel::DEFAULT);
-    arangodb::application_features::ApplicationServer::server = nullptr;
 
     // destroy application features
     for (auto& f : features) {
       if (f.second) {
-        f.first->stop();
+        f.first.stop();
       }
     }
 
     for (auto& f : features) {
-      f.first->unprepare();
+      f.first.unprepare();
     }
 
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
@@ -731,8 +752,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         "d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, "testVocbase");
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -834,8 +855,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         "FOR d IN collection FILTER d.a.b.c.e.f in [ '1', d, '3' ] RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, "testVocbase");
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -938,8 +959,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         "RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, "testVocbase");
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -1042,8 +1063,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         "d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, "testVocbase");
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -1146,8 +1167,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         "RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, "testVocbase");
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -1240,8 +1261,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         "FOR d IN collection FILTER 4 in [ 1, d.b.a, 4 ] RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, "testVocbase");
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3104,8 +3125,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, "testVocbase");
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3214,8 +3235,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, "testVocbase");
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3324,8 +3345,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, "testVocbase");
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3434,8 +3455,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "], 1.5) RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, "testVocbase");
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3545,8 +3566,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "] RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, "testVocbase");
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3655,8 +3676,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, "testVocbase");
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3752,8 +3773,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         "FOR d IN collection FILTER 4 not in [ 1, d.b.a, 4 ] RETURN d";
     std::string const refName = "d";
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, "testVocbase");
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 

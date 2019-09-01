@@ -25,6 +25,7 @@
 
 //#include "catch.hpp"
 #include "Agency/AgencyComm.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
@@ -528,7 +529,8 @@ void assertExpressionFilter(
     std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const& expressionExtractor /*= &defaultExpressionExtractor*/,
     std::string const& refName /*= "d"*/
 ) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+  TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                         "testVocbase");
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), nullptr,
@@ -639,7 +641,8 @@ void assertFilter(bool parseOk, bool execOk, std::string const& queryString,
                   std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
                   std::string const& refName /*= "d"*/
 ) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+  TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                         "testVocbase");
 
   auto options = std::make_shared<arangodb::velocypack::Builder>();
@@ -741,7 +744,8 @@ void assertFilterExecutionFail(std::string const& queryString,
 void assertFilterParseFail(std::string const& queryString,
                            std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/
 ) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+  TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                         "testVocbase");
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),

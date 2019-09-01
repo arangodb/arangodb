@@ -77,7 +77,7 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
   arangodb::application_features::ApplicationServer server;
   StorageEngineMock storageEngine;
   bool storageEngineInitialized;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
   fakeit::Mock<TRI_vocbase_t> vocbaseMock;
   TRI_vocbase_t& vocbase;  // required to create collection
   std::shared_ptr<VPackBuilder> json;
@@ -125,9 +125,9 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
               coveringIndexAttributePositions, useRawPointers, random),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
     // setup required application features
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required by TRI_vocbase_t(...)
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
+    server.addFeature<arangodb::QueryRegistryFeature>(std::make_unique<arangodb::QueryRegistryFeature>(
+        server));  // need QueryRegistryFeature feature to be added now in order to create the system database
+    features.emplace_back(server.getFeature<arangodb::QueryRegistryFeature>(), false);  // required by TRI_vocbase_t(...)
 
     // fake indexScan
     fakeit::When(Method(mockTrx, indexScan))

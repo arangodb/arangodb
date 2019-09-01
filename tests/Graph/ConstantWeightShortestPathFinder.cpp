@@ -68,6 +68,7 @@ namespace graph {
 
 class ConstantWeightShortestPathFinderTest : public ::testing::Test {
  protected:
+  application_features::ApplicationServer server;
   GraphTestSetup s;
   MockGraphDatabase gdb;
 
@@ -76,7 +77,8 @@ class ConstantWeightShortestPathFinderTest : public ::testing::Test {
 
   ConstantWeightShortestPathFinder* finder;
 
-  ConstantWeightShortestPathFinderTest() : gdb("testVocbase") {
+  ConstantWeightShortestPathFinderTest()
+      : server(nullptr, nullptr), gdb(server, "testVocbase") {
     gdb.addVertexCollection("v", 100);
     gdb.addEdgeCollection("e", "v",
                           {{1, 2},   {2, 3},   {3, 4},   {5, 4},   {6, 5},

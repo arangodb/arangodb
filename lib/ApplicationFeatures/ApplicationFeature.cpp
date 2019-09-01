@@ -91,6 +91,10 @@ void ApplicationFeature::startsAfter(std::type_index const& type) {
   _startsAfter.emplace(type);
 }
 
+void ApplicationFeature::startsBefore(std::type_index const& type) {
+  _startsBefore.emplace(type);
+}
+
 bool ApplicationFeature::doesStartBefore(std::type_index const& type) const {
   auto otherAncestors = _server.getFeature<ApplicationFeature>(type).ancestors();
 

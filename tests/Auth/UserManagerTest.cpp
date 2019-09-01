@@ -29,6 +29,7 @@
 
 #include "fakeit.hpp"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryRegistry.h"
 #include "Auth/Handler.h"
 #include "Auth/User.h"
@@ -50,14 +51,9 @@ class TestQueryRegistry : public QueryRegistry {
   virtual ~TestQueryRegistry() {}
 };
 
-class TestDatabaseFeature : public DatabaseFeature {
- public:
-  TestDatabaseFeature(application_features::ApplicationServer& server)
-      : DatabaseFeature(server) {}
-};
-
 class UserManagerTest : public ::testing::Test {
  protected:
+  application_features::ApplicationServer server;
   TestQueryRegistry queryRegistry;
   ServerState* state;
   Mock<DatabaseFeature> databaseFeatureMock;
@@ -65,7 +61,10 @@ class UserManagerTest : public ::testing::Test {
   auth::UserManager um;
 
   UserManagerTest()
-      : state(ServerState::instance()), databaseFeature(databaseFeatureMock.get()) {
+      : server(nullptr, nullptr),
+        state(ServerState::instance()),
+        databaseFeature(databaseFeatureMock.get()),
+        um(server) {
     state->setRole(ServerState::ROLE_SINGLE);
     um.setQueryRegistry(&queryRegistry);
     DatabaseFeature::DATABASE = &databaseFeature;

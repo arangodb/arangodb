@@ -24,8 +24,6 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsPhase.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
 

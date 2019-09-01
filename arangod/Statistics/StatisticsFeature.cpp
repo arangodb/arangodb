@@ -82,7 +82,7 @@ StatisticsDistribution TRI_TotalTimeDistributionStatistics(TRI_RequestTimeDistri
 // --SECTION--                                                  StatisticsThread
 // -----------------------------------------------------------------------------
 
-class arangodb::StatisticsThread final : public Thread {
+class StatisticsThread final : public Thread {
  public:
   StatisticsThread(ApplicationServer& server) : Thread(server, "Statistics") {}
   ~StatisticsThread() { shutdown(); }

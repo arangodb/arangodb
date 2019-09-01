@@ -173,7 +173,7 @@ class ApplicationFeature {
   // register a start dependency upon another feature
   template <typename T>
   void startsAfter() {
-    _startsAfter.emplace(typeid(T));
+    startsAfter(typeid(T));
   }
 
   // register a start dependency upon another feature by typeid
@@ -182,8 +182,10 @@ class ApplicationFeature {
   // register a start dependency upon another feature
   template <typename T>
   void startsBefore() {
-    _startsBefore.emplace(typeid(T));
+    startsBefore(typeid(T));
   }
+
+  void startsBefore(std::type_index const& type);
 
   // determine all direct and indirect ancestors of a feature
   std::unordered_set<std::type_index> ancestors() const;
