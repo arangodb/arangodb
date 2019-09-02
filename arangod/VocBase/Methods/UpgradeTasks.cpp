@@ -171,6 +171,8 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   systemCollections.push_back(StaticStrings::JobsCollection);
   systemCollections.push_back(StaticStrings::AppsCollection);
   systemCollections.push_back(StaticStrings::AppBundlesCollection);
+  systemCollections.push_back(StaticStrings::FrontendCollection);
+  systemCollections.push_back(StaticStrings::ModulesCollection);
 
   TRI_IF_FAILURE("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions") {
     VPackBuilder testOptions;
@@ -297,7 +299,6 @@ Result createSystemStatisticsCollections(TRI_vocbase_t& vocbase,
         return res;
       }
     }
-    return {TRI_ERROR_NO_ERROR};
   }
   return {TRI_ERROR_NO_ERROR};
 }
@@ -324,42 +325,6 @@ static void createIndex(std::string const name, Index::IndexType type,
   }
 }
 
-Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase,
-                                      std::vector<std::shared_ptr<LogicalCollection>>& collections) {
-  try {
-    if (vocbase.isSystem()) {
-      ::createIndex(StaticStrings::UsersCollection, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,
-                    {"user"}, true, true, collections);
-
-      if (StatisticsFeature::enabled()) {
-        ::createIndex(StaticStrings::StatisticsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                      false, false, collections);
-        ::createIndex(StaticStrings::Statistics15Collection,
-                      arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                      false, false, collections);
-        ::createIndex(StaticStrings::StatisticsRawCollection,
-                      arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                      false, false, collections);
-      }
-    }
-
-    upgradeGeoIndexes(vocbase);
-
-    ::createIndex(StaticStrings::AppsCollection, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,
-                  {"mount"}, true, true, collections);
-    ::createIndex(StaticStrings::JobsCollection, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-                  {"queue", "status", "delayUntil"}, false, false, collections);
-    ::createIndex(StaticStrings::JobsCollection, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-                  {"status", "queue", "delayUntil"}, false, false, collections);
-  } catch (Result res) {
-    return {res};
-  } catch (...) {
-    return {TRI_ERROR_INTERNAL};
-  }
-  return {TRI_ERROR_NO_ERROR};
-}
-
 Result createSystemStatisticsIndices(TRI_vocbase_t& vocbase,
                                      std::vector<std::shared_ptr<LogicalCollection>>& collections) {
   if (vocbase.isSystem() && StatisticsFeature::enabled()) {
@@ -382,6 +347,35 @@ Result createSystemStatisticsIndices(TRI_vocbase_t& vocbase,
   return {TRI_ERROR_NO_ERROR};
 }
 
+Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase,
+                                      std::vector<std::shared_ptr<LogicalCollection>>& collections) {
+  try {
+    if (vocbase.isSystem()) {
+      ::createIndex(StaticStrings::UsersCollection, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,
+                    {"user"}, true, true, collections);
+
+      Result res = ::createSystemStatisticsIndices(vocbase, collections);
+      if (res.fail()) {
+        return {res};
+      }
+    }
+
+    upgradeGeoIndexes(vocbase);
+
+    ::createIndex(StaticStrings::AppsCollection, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,
+                  {"mount"}, true, true, collections);
+    ::createIndex(StaticStrings::JobsCollection, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                  {"queue", "status", "delayUntil"}, false, false, collections);
+    ::createIndex(StaticStrings::JobsCollection, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                  {"status", "queue", "delayUntil"}, false, false, collections);
+  } catch (Result res) {
+    return {res};
+  } catch (...) {
+    return {TRI_ERROR_INTERNAL};
+  }
+  return {TRI_ERROR_NO_ERROR};
+}
+
 }  // namespace
 
 bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
@@ -397,7 +391,7 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
   //       present or created), raise an error if not?
 
   if (res.fail()) {
-    LOG_TOPIC("e32fi", ERR, Logger::MAINTENANCE)
+    LOG_TOPIC("e32fi", ERR, Logger::STARTUP)
         << "could not create system collections"
         << ": error: " << res.errorMessage();
     return false;
@@ -416,7 +410,7 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
 
   res = ::createSystemCollectionsIndices(vocbase, presentSystemCollections);
   if (res.fail()) {
-    LOG_TOPIC("e32fx", ERR, Logger::MAINTENANCE)
+    LOG_TOPIC("e32fx", ERR, Logger::STARTUP)
         << "could not create indices for system collections"
         << ": error: " << res.errorMessage();
     return false;
@@ -435,7 +429,7 @@ bool UpgradeTasks::createStatisticsCollectionsAndIndices(TRI_vocbase_t& vocbase,
   res = ::createSystemStatisticsCollections(vocbase, presentSystemCollections);
 
   if (res.fail()) {
-    LOG_TOPIC("e32fi", ERR, Logger::MAINTENANCE)
+    LOG_TOPIC("e32fy", ERR, Logger::STARTUP)
         << "could not create system collections"
         << ": error: " << res.errorMessage();
     return false;
@@ -443,7 +437,7 @@ bool UpgradeTasks::createStatisticsCollectionsAndIndices(TRI_vocbase_t& vocbase,
 
   res = ::createSystemStatisticsIndices(vocbase, presentSystemCollections);
   if (res.fail()) {
-    LOG_TOPIC("e32fx", ERR, Logger::MAINTENANCE)
+    LOG_TOPIC("e32fx", ERR, Logger::STARTUP)
         << "could not create indices for system collections"
         << ": error: " << res.errorMessage();
     return false;
