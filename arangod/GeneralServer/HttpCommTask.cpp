@@ -574,7 +574,7 @@ ResponseCode HttpCommTask<T>::handleAuthHeader(HttpRequest& req) {
       }
 
       req.setAuthenticationMethod(authMethod);
-      if (authMethod != AuthenticationMethod::NONE) {
+      if (authMethod == AuthenticationMethod::NEGOTIATE) {
         std::string cppAuth(auth);
         this->_authToken = this->_auth->tokenCache().checkAuthentication(authMethod, cppAuth);
         req.setAuthenticated(this->_authToken.authenticated());

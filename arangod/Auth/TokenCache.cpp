@@ -52,6 +52,19 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
+
+std::string auth::TokenCache::Entry::generateJWT(TokenCache &t) {
+  VPackBuilder bodyBuilder;
+  {
+    VPackObjectBuilder p(&bodyBuilder);
+    bodyBuilder.add("preferred_username", VPackValue(_username));
+    bodyBuilder.add("iss", VPackValue("arangodb"));
+    bodyBuilder.add("exp", VPackValue(static_cast<uint32_t>(_expiry)));
+  }
+  return t.generateJwt(bodyBuilder.slice());
+}
+
+
 auth::TokenCache::TokenCache(auth::UserManager* um, double timeout)
     : _userManager(um),
       _authTimeout(timeout),
@@ -243,39 +256,53 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationNegotiate(std::stri
 #ifdef USE_ENTERPRISE
   if (_userManager != nullptr) {
     std::string username;
+    uint32_t validityTime = 0;
     // LDAP rights might need to be refreshed
-    if (_userManager->handleToken(secret, username)) {
+    if (_userManager->handleToken(secret, username, validityTime)) {
       _userManager->refreshUser(username);
-      return auth::TokenCache::Entry("", true, 0);
-    }
-  }
-#endif
-  return auth::TokenCache::Entry::Unauthenticated();
+      auth::TokenCache::Entry authResult("", false, 0);
+      // willi@BRUECKLINUX.ARANGODB.BIZ
+
+      size_t hostPos = username.find_first_of('@');
+      if (hostPos > 0) {
+        authResult._username = std::string(username.c_str(), hostPos);
+      }
+      else {
+        authResult._username = username;
+      }
+      
+      if (_userManager == nullptr || !_userManager->userExists(authResult._username)) {
+        return auth::TokenCache::Entry::Unauthenticated();
+      }
+      authResult._authenticated = true;
+      authResult._expiry = TRI_microtime() + validityTime;
+      //      authResult._allowedPaths.push_back("/");// TODO
 
 
   // note that we need the write lock here because it is an LRU
   // cache. reading from it will move the read entry to the start of
   // the cache's linked list. so acquiring just a read-lock is
   // insufficient!!
-  /*
-  {
-    WRITE_LOCKER(writeLocker, _jwtLock);
-    // intentionally copy the entry from the cache
-    auth::TokenCache::Entry const* entry = _jwtCache.get(jwt);
-    if (entry != nullptr) {
-      // would have thrown if not found
-      if (entry->expired()) {
-        _jwtCache.remove(jwt);
-        LOG_TOPIC("65e15", TRACE, Logger::AUTHENTICATION) << "JWT Token expired";
-        return auth::TokenCache::Entry::Unauthenticated();
+      std::string jwt = authResult.generateJWT(*this);
+      {
+        WRITE_LOCKER(writeLocker, _jwtLock);
+        // intentionally copy the entry from the cache
+        auth::TokenCache::Entry const* entry = _jwtCache.get(jwt);
+        if (entry != nullptr) {
+          // would have thrown if not found
+          if (entry->expired()) {
+            _jwtCache.remove(jwt);
+            LOG_TOPIC("65e15", TRACE, Logger::AUTHENTICATION) << "JWT Token expired";
+            return auth::TokenCache::Entry::Unauthenticated();
+          }
+          if (_userManager != nullptr) {
+            // LDAP rights might need to be refreshed
+            _userManager->refreshUser(entry->username());
+          }
+          return *entry;
+        }
       }
-      if (_userManager != nullptr) {
-        // LDAP rights might need to be refreshed
-        _userManager->refreshUser(entry->username());
-      }
-      return *entry;
-    }
-  }
+      /*
   std::vector<std::string> const parts = StringUtils::split(jwt, '.');
   if (parts.size() != 3) {
     LOG_TOPIC("94a73", TRACE, arangodb::Logger::AUTHENTICATION)
@@ -311,6 +338,12 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationNegotiate(std::stri
   _jwtCache.put(jwt, newEntry);
   return newEntry;
   */
+            return authResult;
+    }
+  }
+#endif
+  return auth::TokenCache::Entry::Unauthenticated();
+
 }
 
 std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(std::string const& str,

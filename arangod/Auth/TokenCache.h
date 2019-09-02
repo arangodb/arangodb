@@ -65,7 +65,8 @@ class TokenCache {
     void setExpiry(double expiry) { _expiry = expiry; }
     bool expired() const { return _expiry != 0 && _expiry < TRI_microtime(); }
 
-   public:
+    std::string generateJWT(TokenCache &t);
+  public:
     /// username
     std::string _username;
     /// User exists and password was checked
