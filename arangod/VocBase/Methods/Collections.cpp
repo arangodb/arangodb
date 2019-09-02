@@ -257,9 +257,11 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     TRI_ASSERT(builder.isOpenArray());
 
     if (info.name.empty()) {
+      events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
       return TRI_ERROR_ARANGO_ILLEGAL_NAME;
     } else if (info.collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
                info.collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+      events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
       return TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
     }
     TRI_ASSERT(info.properties.isObject());
