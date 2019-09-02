@@ -259,7 +259,7 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
   {
     VPackObjectBuilder guard(&bodyBuilder);
     bodyBuilder.add("timeout", VPackValue(options.maxWaitForLock));
-    bodyBuilder.add("forceBackup", VPackValue(options.force));
+    bodyBuilder.add("allowInconsistent", VPackValue(options.force));
     if (!options.label.empty()) {
       bodyBuilder.add("label", VPackValue(options.label));
     }
@@ -302,14 +302,14 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
   }
   TRI_ASSERT(identifier.isString());
 
-  VPackSlice const forced = resultObject.get("forced");
+  VPackSlice const forced = resultObject.get("potentiallyInconsistent");
   if (forced.isTrue()) {
     LOG_TOPIC(WARN, arangodb::Logger::BACKUP)
         << "Failed to get write lock before proceeding with backup. Backup may "
            "contain some inconsistencies.";
   } else if (!forced.isBoolean() && !forced.isNone()) {
     result.reset(TRI_ERROR_INTERNAL,
-                 "expected 'result.forced'' to be an boolean");
+                 "expected 'result.potentiallyInconsistent' to be an boolean");
     return result;
   }
 
@@ -679,7 +679,7 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      new DiscreteValuesParameter<StringParameter>(&_options.operation, ::Operations),
                      static_cast<std::underlying_type<Flags>::type>(Flags::Hidden));
 
-  options->addOption("--force",
+  options->addOption("--allow-inconsistent",
                      "whether to attempt to continue in face of errors (may "
                      "result in inconsistent backup state)",
                      new BooleanParameter(&_options.force));
