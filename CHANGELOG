@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Made the mechanism in the Web UI of replacing and upgrading a foxx app more clear.
+
 * Fixed non-deterministic occurrences of "document not found" errors in sharded 
   collections with custom shard keys (i.e. non-`_key`) and multi-document lookups.
 
