@@ -1,6 +1,9 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed non-deterministic occurrences of "document not found" errors in sharded 
+  collections with custom shard keys (i.e. non-`_key`) and multi-document lookups.
+
 * Fixed issue #9862: ServerException: RestHandler/RestCursorHandler.cpp:279
 
   This fixes an issue with the RocksDB primary index IN iterator not resetting its
