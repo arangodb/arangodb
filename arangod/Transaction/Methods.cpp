@@ -1360,12 +1360,18 @@ Future<OperationResult> transaction::Methods::documentAsync(std::string const& c
 
   OperationResult result;
   if (_state->isCoordinator()) {
-    return documentCoordinator(cname, value, options);
-    /*.thenValue([=](OperationResult opRes) {
-      events::ReadDocument(vocbase().name(), cname, value, options,
-                           opRes.errorNumber());
+    std::string key;
+    if (value.isObject()) {
+      VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(value);
+      if (keySlice.isString()) {
+        key.append(reinterpret_cast<char const*>(keySlice.begin()), keySlice.byteSize());
+      }
+    }
+    return documentCoordinator(cname, value, options).thenValue([=, key = std::move(key)](OperationResult opRes) {
+      VPackSlice val(reinterpret_cast<uint8_t const*>(key.data()));
+      events::ReadDocument(vocbase().name(), cname, val, options, opRes.errorNumber());
       return opRes;
-    });*/
+    });
   } else {
     return documentLocal(cname, value, options);
   }
