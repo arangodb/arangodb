@@ -338,8 +338,8 @@ Result createSystemStatisticsIndices(TRI_vocbase_t& vocbase,
       ::createIndex(StaticStrings::StatisticsRawCollection,
                     arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
                     false, false, collections);
-    } catch (basics::Exception const& ex) {
-      return Result(ex.code(), ex.what());
+    } catch (Result res) {
+      return {res};
     } catch (...) {
       return {TRI_ERROR_INTERNAL};
     }
@@ -368,8 +368,8 @@ Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase,
                   {"queue", "status", "delayUntil"}, false, false, collections);
     ::createIndex(StaticStrings::JobsCollection, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
                   {"status", "queue", "delayUntil"}, false, false, collections);
-  } catch (basics::Exception const& ex) {
-    return Result(ex.code(), ex.what());
+  } catch (Result res) {
+    return {res};
   } catch (...) {
     return {TRI_ERROR_INTERNAL};
   }

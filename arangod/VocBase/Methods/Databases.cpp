@@ -68,13 +68,13 @@ CreateDatabaseInfo::CreateDatabaseInfo(std::string const& name, VPackSlice const
 
   res = sanitizeUsers(users, _users);
   if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
+    throw res;
   }
   _userSlice = _users.slice();
 
   res = sanitizeOptions(options, _options);
   if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
+    throw res;
   }
 
   // Obtain a unique id for the database to be created. Since this is different
@@ -267,9 +267,9 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
       });
     } else {
       LOG_TOPIC("2a4dd", DEBUG, Logger::FIXME)
-          << "current ExecContext's user() is empty."
-          << "Database will be created without any user having permissions";
-      return Result();
+        << "current ExecContext's user() is empty."
+        << "Database will be created without any user having permissions";
+     return Result();
     }
   }
 
@@ -294,18 +294,20 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     return res;
   }
 
+  
+
   auto failureGuard = scopeGuard([ci, info]() {
     Result res;
     LOG_TOPIC("8cc61", ERR, Logger::FIXME)
-        << "Failed to create database " << info.getName() << " rolling back.";
+      << "Failed to create database " << info.getName() << " rolling back.";
     res = ci->cancelCreateDatabaseCoordinator(info);
     if (!res.ok()) {
       // this is a double fault: we failed to create the database, but
       // also failed to clean up. Supervision should be cleaning up any
       // leftovers (if the cluster is still able to function otherwise).
       LOG_TOPIC("92157", ERR, Logger::FIXME)
-          << "Failed to rollback creation of database " << info.getName()
-          << ". Cleanup should happen through a supervision job.";
+        << "Failed to rollback creation of database " << info.getName() <<
+        ". Cleanup should happen through a supervision job.";
     }
   });
 
@@ -392,9 +394,9 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   //       or the object could have a .valid() method?
   CreateDatabaseInfo createInfo;
   try {
-    createInfo = CreateDatabaseInfo(dbName, options, users);
-  } catch (basics::Exception const& ex) {
-    return Result(ex.code(), ex.what());
+      createInfo = CreateDatabaseInfo(dbName, options, users);
+  } catch(Result& e) {
+    return std::move(e);
   } catch (...) {
     LOG_TOPIC("c9189", ERR, Logger::FIXME)
         << "Unhandled exception while creating database";
