@@ -417,6 +417,16 @@ void HttpCommTask<T>::processRequest() {
   // scrape the auth headers to determine and authenticate the user
   rest::ResponseCode authResult = handleAuthHeader(*_request);
 
+  if (authResult == rest::ResponseCode::UNAUTHORIZED) {
+    /// force auth
+    std::string realm = "Negotiate";
+    auto res = std::make_unique<HttpResponse>(rest::ResponseCode::UNAUTHORIZED, nullptr);
+    res->setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
+    /// TODO: nice content?
+    sendResponse(std::move(res), nullptr);
+    return;
+  }
+
   // authenticated
   if (authResult == rest::ResponseCode::SERVER_ERROR) {
     std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
@@ -556,14 +566,20 @@ ResponseCode HttpCommTask<T>::handleAuthHeader(HttpRequest& req) {
           authMethod = AuthenticationMethod::BASIC;
         } else if (strncasecmp(authStr.c_str(), "bearer ", 7) == 0) {
           authMethod = AuthenticationMethod::JWT;
+        } else if (strncasecmp(authStr.c_str(), "negotiate ", 9) == 0) {
+          authMethod = AuthenticationMethod::NEGOTIATE;
         }
       }
 
       req.setAuthenticationMethod(authMethod);
       if (authMethod != AuthenticationMethod::NONE) {
-        this->_authToken = this->_auth->tokenCache().checkAuthentication(authMethod, auth);
+        std::string cppAuth(auth);
+        this->_authToken = this->_auth->tokenCache().checkAuthentication(authMethod, cppAuth);
         req.setAuthenticated(this->_authToken.authenticated());
         req.setUser(this->_authToken._username);  // do copy here, so that we do not invalidate the member
+        std::string replyAuthHeader("Negotiate ");
+        replyAuthHeader += auth;
+        req.setHeader(StaticStrings::WwwAuthenticate, replyAuthHeader);
       }
 
       if (req.authenticated() || !this->_auth->isActive()) {

@@ -83,7 +83,7 @@ enum class EncodingType {
   UNSET
 };
 
-enum class AuthenticationMethod { BASIC, JWT, NONE };
+enum class AuthenticationMethod { BASIC, JWT, NEGOTIATE, NONE };
 
 enum class ResponseCode {
   CONTINUE = 100,

@@ -78,7 +78,7 @@ class TokenCache {
 
  public:
   TokenCache::Entry checkAuthentication(arangodb::rest::AuthenticationMethod authType,
-                                        std::string const& secret);
+                                        std::string& secret);
 
   /// Clear the cache of username / password auth
   void invalidateBasicCache();
@@ -100,7 +100,7 @@ class TokenCache {
   TokenCache::Entry checkAuthenticationBasic(std::string const& secret);
   /// Check JWT token contents
   TokenCache::Entry checkAuthenticationJWT(std::string const& secret);
-
+  TokenCache::Entry checkAuthenticationNegotiate(std::string& secret);
   bool validateJwtHeader(std::string const&);
   TokenCache::Entry validateJwtBody(std::string const&);
   bool validateJwtHMAC256Signature(std::string const&, std::string const&);

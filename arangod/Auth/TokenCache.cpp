@@ -43,6 +43,10 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#if USE_ENTERPRISE
+#include "Enterprise/Kerberos/KerberosAuthenticationHandler.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
@@ -85,13 +89,16 @@ std::string auth::TokenCache::jwtSecret() const {
 // should only lock if required, otherwise we will serialize all
 // requests whether we need to or not
 auth::TokenCache::Entry auth::TokenCache::checkAuthentication(AuthenticationMethod authType,
-                                                              std::string const& secret) {
+                                                              std::string& secret) {
   switch (authType) {
     case AuthenticationMethod::BASIC:
       return checkAuthenticationBasic(secret);
 
     case AuthenticationMethod::JWT:
       return checkAuthenticationJWT(secret);
+
+    case AuthenticationMethod::NEGOTIATE:
+      return checkAuthenticationNegotiate(secret);
 
     default:
       return auth::TokenCache::Entry::Unauthenticated();
@@ -229,6 +236,79 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string con
   WRITE_LOCKER(writeLocker, _jwtLock);
   _jwtCache.put(jwt, newEntry);
   return newEntry;
+}
+
+auth::TokenCache::Entry auth::TokenCache::checkAuthenticationNegotiate(std::string& secret) {
+
+#ifdef USE_ENTERPRISE
+  if (_userManager != nullptr) {
+    // LDAP rights might need to be refreshed
+    if (_userManager->handleToken(secret)) {
+      return auth::TokenCache::Entry("", true, 0);
+    }
+  }
+#endif
+  return auth::TokenCache::Entry::Unauthenticated();
+
+
+  // note that we need the write lock here because it is an LRU
+  // cache. reading from it will move the read entry to the start of
+  // the cache's linked list. so acquiring just a read-lock is
+  // insufficient!!
+  /*
+  {
+    WRITE_LOCKER(writeLocker, _jwtLock);
+    // intentionally copy the entry from the cache
+    auth::TokenCache::Entry const* entry = _jwtCache.get(jwt);
+    if (entry != nullptr) {
+      // would have thrown if not found
+      if (entry->expired()) {
+        _jwtCache.remove(jwt);
+        LOG_TOPIC("65e15", TRACE, Logger::AUTHENTICATION) << "JWT Token expired";
+        return auth::TokenCache::Entry::Unauthenticated();
+      }
+      if (_userManager != nullptr) {
+        // LDAP rights might need to be refreshed
+        _userManager->refreshUser(entry->username());
+      }
+      return *entry;
+    }
+  }
+  std::vector<std::string> const parts = StringUtils::split(jwt, '.');
+  if (parts.size() != 3) {
+    LOG_TOPIC("94a73", TRACE, arangodb::Logger::AUTHENTICATION)
+        << "Secret contains " << parts.size() << " parts";
+    return auth::TokenCache::Entry::Unauthenticated();
+  }
+
+  std::string const& header = parts[0];
+  std::string const& body = parts[1];
+  std::string const& signature = parts[2];
+
+  if (!validateJwtHeader(header)) {
+    LOG_TOPIC("2eb8a", TRACE, arangodb::Logger::AUTHENTICATION)
+        << "Couldn't validate jwt header " << header;
+    return auth::TokenCache::Entry::Unauthenticated();
+  }
+
+  std::string const message = header + "." + body;
+  if (!validateJwtHMAC256Signature(message, signature)) {
+    LOG_TOPIC("176c4", TRACE, arangodb::Logger::AUTHENTICATION)
+        << "Couldn't validate jwt signature " << signature << " against given secret";
+    return auth::TokenCache::Entry::Unauthenticated();
+  }
+
+  auth::TokenCache::Entry newEntry = validateJwtBody(body);
+  if (!newEntry._authenticated) {
+    LOG_TOPIC("5fcba", TRACE, arangodb::Logger::AUTHENTICATION)
+        << "Couldn't validate jwt body " << body;
+    return auth::TokenCache::Entry::Unauthenticated();
+  }
+
+  WRITE_LOCKER(writeLocker, _jwtLock);
+  _jwtCache.put(jwt, newEntry);
+  return newEntry;
+  */
 }
 
 std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(std::string const& str,
