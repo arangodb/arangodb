@@ -661,9 +661,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
   }
   std::sort(otherShards.begin(), otherShards.end());
 
-  if (numberOfShards != otherShards.size()) {
-    TRI_ASSERT(false);
-  }
+  TRI_ASSERT(numberOfShards == otherShards.size());
 
   // fetch a unique id for each shard to create
   uint64_t const id = ci->uniqid(numberOfShards);
