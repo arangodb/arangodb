@@ -297,6 +297,16 @@ static void mergeResults(std::vector<std::pair<ShardID, VPackValueLength>> const
 ///        well
 ////////////////////////////////////////////////////////////////////////////////
 
+namespace {
+// velocypack representation of object
+// {"error":true,"errorMessage":"document not found","errorNum":1202}
+static const char* notFoundSlice = 
+  "\x14\x36\x45\x65\x72\x72\x6f\x72\x1a\x4c\x65\x72\x72\x6f\x72\x4d"
+  "\x65\x73\x73\x61\x67\x65\x52\x64\x6f\x63\x75\x6d\x65\x6e\x74\x20"
+  "\x6e\x6f\x74\x20\x66\x6f\x75\x6e\x64\x48\x65\x72\x72\x6f\x72\x4e"
+  "\x75\x6d\x29\xb2\x04\x03";
+} // namespace
+
 static void mergeResultsAllShards(std::vector<std::shared_ptr<VPackBuilder>> const& results,
                                   std::shared_ptr<VPackBuilder>& resultBody,
                                   std::unordered_map<int, size_t>& errorCounter,
@@ -305,12 +315,7 @@ static void mergeResultsAllShards(std::vector<std::shared_ptr<VPackBuilder>> con
   TRI_ASSERT(errorCounter.find(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ==
              errorCounter.end());
   size_t realNotFound = 0;
-  VPackBuilder cmp;
-  cmp.openObject();
-  cmp.add(StaticStrings::Error, VPackValue(true));
-  cmp.add(StaticStrings::ErrorNum, VPackValue(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND));
-  cmp.close();
-  VPackSlice notFound = cmp.slice();
+  
   resultBody->clear();
   resultBody->openArray();
   for (VPackValueLength currentIndex = 0; currentIndex < expectedResults; ++currentIndex) {
@@ -319,7 +324,14 @@ static void mergeResultsAllShards(std::vector<std::shared_ptr<VPackBuilder>> con
       VPackSlice oneRes = it->slice();
       TRI_ASSERT(oneRes.isArray());
       oneRes = oneRes.at(currentIndex);
-      if (!basics::VelocyPackHelper::equal(oneRes, notFound, false)) {
+      
+      int errorNum = TRI_ERROR_NO_ERROR;
+      VPackSlice errorNumSlice = oneRes.get(StaticStrings::ErrorNum);
+      if (errorNumSlice.isNumber()) {
+        errorNum = errorNumSlice.getNumber<int>();
+      }
+      if ((errorNum != TRI_ERROR_NO_ERROR && errorNum != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ||
+          oneRes.hasKey(StaticStrings::KeyString)) {
         // This is the correct result
         // Use it
         resultBody->add(oneRes);
@@ -329,7 +341,7 @@ static void mergeResultsAllShards(std::vector<std::shared_ptr<VPackBuilder>> con
     }
     if (!foundRes) {
       // Found none, use NOT_FOUND
-      resultBody->add(notFound);
+      resultBody->add(VPackSlice(reinterpret_cast<uint8_t const*>(::notFoundSlice)));
       realNotFound++;
     }
   }
@@ -3878,7 +3890,7 @@ arangodb::Result hotBackupDBServers(std::string const& backupId, std::string con
     builder.add("label", VPackValue(backupId));
     builder.add("agency-dump", agencyDump);
     builder.add("timestamp", VPackValue(timeStamp));
-    builder.add("forceBackup", VPackValue(force));
+    builder.add("allowInconsistent", VPackValue(force));
   }
   auto body = std::make_shared<std::string>(builder.toJson());
 
@@ -4044,11 +4056,11 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
         (!payload.isObject() ||
          (payload.hasKey("label") && !payload.get("label").isString()) ||
          (payload.hasKey("timeout") && !payload.get("timeout").isNumber()) ||
-         (payload.hasKey("forceBackup") && !payload.get("forceBackup").isBoolean()))) {
+         (payload.hasKey("allowInconsistent") && !payload.get("allowInconsistent").isBoolean()))) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, BAD_PARAMS_CREATE);
     }
 
-    bool force = !payload.isNone() && payload.get("forceBackup").isTrue();
+    bool force = !payload.isNone() && payload.get("allowInconsistent").isTrue();
 
     std::string const backupId = (payload.isObject() && payload.hasKey("label"))
                                      ? payload.get("label").copyString()
@@ -4192,7 +4204,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       VPackObjectBuilder o(&report);
       report.add("id", VPackValue(timeStamp + "_" + backupId));
       if (!gotLocks) {
-        report.add("forced", VPackValue(true));
+        report.add("potentiallyInconsistent", VPackValue(true));
       }
     }
 
