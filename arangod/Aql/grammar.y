@@ -4,7 +4,7 @@
 %defines
 %parse-param { arangodb::aql::Parser* parser }
 %lex-param { void* scanner }
-%error-verbose
+%define parse.error verbose
 
 %{
 // we are using alloca here explicitly because we may

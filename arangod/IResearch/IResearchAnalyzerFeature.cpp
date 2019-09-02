@@ -87,6 +87,7 @@
 #include "RestServer/UpgradeFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
@@ -863,7 +864,13 @@ arangodb::Result visitAnalyzers( // visit analyzers
     return res;
   }
 
-  auto commit  = irs::make_finally([&trx]()->void { trx.commit(); }); // end read-only transaction
+  auto commit  = irs::make_finally([&trx]()->void { 
+    // end read-only transaction
+    TRI_ASSERT(trx.state()->isReadOnlyTransaction());
+    arangodb::Result res = trx.commit(); 
+    // ignore return value here
+    (void) res;
+  }); 
   auto result = trx.all(ANALYZER_COLLECTION_NAME, 0, 0, options);
 
   if (!result.result.ok()) {

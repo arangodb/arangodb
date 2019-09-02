@@ -220,7 +220,6 @@ ClusterInfo::~ClusterInfo() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterInfo::cleanup() {
-
   ClusterInfo* theInstance = instance();
   if (theInstance == nullptr) {
     return;
@@ -230,7 +229,7 @@ void ClusterInfo::cleanup() {
     {
       MUTEX_LOCKER(mutexLocker, theInstance->_idLock);
       if (!theInstance->_uniqid._backgroundJobIsRunning) {
-        break ;
+        break;
       }
     }
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -252,14 +251,13 @@ void ClusterInfo::triggerBackgroundGetIds() {
   _uniqid._nextBatchStart = 1ULL;
   _uniqid._nextUpperValue = 0ULL;
 
-
   try {
     if (_uniqid._backgroundJobIsRunning) {
-      return ;
+      return;
     }
     _uniqid._backgroundJobIsRunning = true;
-    std::thread([this]{
-      auto guardRunning = scopeGuard([this]{
+    std::thread([this] {
+      auto guardRunning = scopeGuard([this] {
         MUTEX_LOCKER(mutexLocker, _idLock);
         _uniqid._backgroundJobIsRunning = false;
       });
@@ -268,7 +266,7 @@ void ClusterInfo::triggerBackgroundGetIds() {
       try {
         result = _agency.uniqid(MinIdsPerBatch, 0.0);
       } catch (std::exception const&) {
-        return ;
+        return;
       }
 
       {
@@ -282,10 +280,10 @@ void ClusterInfo::triggerBackgroundGetIds() {
         // If we get here, somebody else tried succeeded in doing the same,
         // so we just try again.
       }
-
     }).detach();
   } catch (std::exception const& e) {
-    LOG_TOPIC("adef4", WARN, Logger::CLUSTER) << "Failed to trigger background get ids. " << e.what();
+    LOG_TOPIC("adef4", WARN, Logger::CLUSTER)
+        << "Failed to trigger background get ids. " << e.what();
   }
 }
 
@@ -321,8 +319,8 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
   // Try if we can use the next batch
   if (_uniqid._nextBatchStart + count - 1 <= _uniqid._nextUpperValue) {
     uint64_t result = _uniqid._nextBatchStart;
-    _uniqid._currentValue   = _uniqid._nextBatchStart + count;
-    _uniqid._upperValue     = _uniqid._nextUpperValue;
+    _uniqid._currentValue = _uniqid._nextBatchStart + count;
+    _uniqid._upperValue = _uniqid._nextUpperValue;
     triggerBackgroundGetIds();
 
     return result;
@@ -346,7 +344,6 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
 
   return result;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush the caches (used for testing)
@@ -1373,9 +1370,7 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
   return std::make_shared<CollectionInfoCurrent>(0);
 }
 
-RebootTracker& ClusterInfo::rebootTracker() noexcept {
-  return _rebootTracker;
-}
+RebootTracker& ClusterInfo::rebootTracker() noexcept { return _rebootTracker; }
 
 RebootTracker const& ClusterInfo::rebootTracker() const noexcept {
   return _rebootTracker;
@@ -2706,7 +2701,7 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
 Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName,
                                                  std::string const& viewID,
                                                  VPackSlice const& json) {
-  //TRI_ASSERT(ServerState::instance()->isCoordinator());
+  // TRI_ASSERT(ServerState::instance()->isCoordinator());
   AgencyComm ac;
 
   auto res = ac.getValues("Plan/Views/" + databaseName + "/" + viewID);
@@ -2813,11 +2808,9 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensure an index in coordinator.
 ////////////////////////////////////////////////////////////////////////////////
-Result ClusterInfo::ensureIndexCoordinator(
-    LogicalCollection const& collection,
-    VPackSlice const& slice,
-    bool create, VPackBuilder& resultBuilder,
-    double timeout) {
+Result ClusterInfo::ensureIndexCoordinator(LogicalCollection const& collection,
+                                           VPackSlice const& slice, bool create,
+                                           VPackBuilder& resultBuilder, double timeout) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   // check index id
   uint64_t iid = 0;
@@ -2898,11 +2891,10 @@ Result ClusterInfo::ensureIndexCoordinator(
 // coordinator crash and failover operations.
 // Finally note that the retry loop for the case of a failed precondition
 // is outside this function here in `ensureIndexCoordinator`.
-Result ClusterInfo::ensureIndexCoordinatorInner(
-    LogicalCollection const& collection,
-    std::string const& idString,
-    VPackSlice const& slice, bool create, VPackBuilder& resultBuilder,
-    double timeout) {
+Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collection,
+                                                std::string const& idString,
+                                                VPackSlice const& slice, bool create,
+                                                VPackBuilder& resultBuilder, double timeout) {
   AgencyComm ac;
 
   using namespace std::chrono;
@@ -2931,12 +2923,12 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
   for (auto const& other : VPackArrayIterator(indexes)) {
     TRI_ASSERT(other.isObject());
     if (true == arangodb::Index::Compare(slice, other)) {
-        {  // found an existing index... Copy over all elements in slice.
-          VPackObjectBuilder b(&resultBuilder);
-          resultBuilder.add(VPackObjectIterator(other));
-          resultBuilder.add("isNewlyCreated", VPackValue(false));
-        }
-        return Result(TRI_ERROR_NO_ERROR);
+      {  // found an existing index... Copy over all elements in slice.
+        VPackObjectBuilder b(&resultBuilder);
+        resultBuilder.add(VPackObjectIterator(other));
+        resultBuilder.add("isNewlyCreated", VPackValue(false));
+      }
+      return Result(TRI_ERROR_NO_ERROR);
     }
 
     if (true == arangodb::Index::CompareIdentifiers(slice, other)) {
@@ -2944,7 +2936,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
       // but different definition, throw an error
       return Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
                     "duplicate value for `" + arangodb::StaticStrings::IndexId +
-                    "` or `" + arangodb::StaticStrings::IndexName + "`");
+                        "` or `" + arangodb::StaticStrings::IndexName + "`");
     }
   }
 
@@ -2958,7 +2950,6 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
   std::shared_ptr<std::atomic<int>> dbServerResult =
       std::make_shared<std::atomic<int>>(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
-
 
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& result) {
     if (!result.isObject() || result.length() != numberOfShards) {
@@ -3036,8 +3027,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
   std::string databaseName = collection.vocbase().name();
   std::string collectionID = std::to_string(collection.id());
 
-  std::string where = "Current/Collections/" + databaseName +
-                      "/" + collectionID;
+  std::string where = "Current/Collections/" + databaseName + "/" + collectionID;
   auto agencyCallback =
       std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
 
@@ -3051,7 +3041,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
                            newIndexBuilder.slice());
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
 
-  AgencyPrecondition oldValue(planCollKey, AgencyPrecondition::Type::VALUE, collectionFromPlan.slice());
+  AgencyPrecondition oldValue(planCollKey, AgencyPrecondition::Type::VALUE,
+                              collectionFromPlan.slice());
   AgencyWriteTransaction trx({newValue, incrementVersion}, oldValue);
 
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
@@ -3109,8 +3100,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
         if (result.successful()) {
           auto indexes = result.slice()[0].get(
               std::vector<std::string>{AgencyCommManager::path(), "Plan",
-                                       "Collections",
-                                       databaseName,
+                                       "Collections", databaseName,
                                        collectionID, "indexes"});
 
           bool found = false;
@@ -3543,8 +3533,8 @@ void ClusterInfo::loadServers() {
         _serversProt.doneVersion = storedVersion;
         _serversProt.isValid = true;
       }
-      // RebootTracker has its own mutex, and doesn't strictly need to be in sync
-      // with the other members.
+      // RebootTracker has its own mutex, and doesn't strictly need to be in
+      // sync with the other members.
       rebootTracker().updateServerState(_serversKnown.rebootIds());
       return;
     }
@@ -4629,7 +4619,6 @@ VPackSlice PlanCollectionReader::indexes() {
 CollectionWatcher::~CollectionWatcher() {
   _agencyCallbackRegistry->unregisterCallback(_agencyCallback);
 };
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

@@ -172,6 +172,7 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   systemCollections.push_back(StaticStrings::AppsCollection);
   systemCollections.push_back(StaticStrings::AppBundlesCollection);
   systemCollections.push_back(StaticStrings::FrontendCollection);
+  systemCollections.push_back(StaticStrings::ModulesCollection);
 
   TRI_IF_FAILURE("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions") {
     VPackBuilder testOptions;
@@ -298,7 +299,6 @@ Result createSystemStatisticsCollections(TRI_vocbase_t& vocbase,
         return res;
       }
     }
-    return {TRI_ERROR_NO_ERROR};
   }
   return {TRI_ERROR_NO_ERROR};
 }
@@ -391,7 +391,7 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
   //       present or created), raise an error if not?
 
   if (res.fail()) {
-    LOG_TOPIC("e32fi", ERR, Logger::MAINTENANCE)
+    LOG_TOPIC("e32fi", ERR, Logger::STARTUP)
         << "could not create system collections"
         << ": error: " << res.errorMessage();
     return false;
@@ -410,7 +410,7 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
 
   res = ::createSystemCollectionsIndices(vocbase, presentSystemCollections);
   if (res.fail()) {
-    LOG_TOPIC("e32fx", ERR, Logger::MAINTENANCE)
+    LOG_TOPIC("e32fx", ERR, Logger::STARTUP)
         << "could not create indices for system collections"
         << ": error: " << res.errorMessage();
     return false;
@@ -429,7 +429,7 @@ bool UpgradeTasks::createStatisticsCollectionsAndIndices(TRI_vocbase_t& vocbase,
   res = ::createSystemStatisticsCollections(vocbase, presentSystemCollections);
 
   if (res.fail()) {
-    LOG_TOPIC("e32fi", ERR, Logger::MAINTENANCE)
+    LOG_TOPIC("e32fy", ERR, Logger::STARTUP)
         << "could not create system collections"
         << ": error: " << res.errorMessage();
     return false;
@@ -437,7 +437,7 @@ bool UpgradeTasks::createStatisticsCollectionsAndIndices(TRI_vocbase_t& vocbase,
 
   res = ::createSystemStatisticsIndices(vocbase, presentSystemCollections);
   if (res.fail()) {
-    LOG_TOPIC("e32fx", ERR, Logger::MAINTENANCE)
+    LOG_TOPIC("e32fx", ERR, Logger::STARTUP)
         << "could not create indices for system collections"
         << ": error: " << res.errorMessage();
     return false;

@@ -568,7 +568,7 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   }
 
   return methods::Collections::create(
-      vocbase, collectionsToCreate, waitForSync, true, false, nullptr, // TODO check nullptr
+      vocbase, collectionsToCreate, waitForSync, true, false, nullptr,
       [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
 };
 
