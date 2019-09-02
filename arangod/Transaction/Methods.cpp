@@ -1838,7 +1838,7 @@ OperationResult transaction::Methods::modifyCoordinator(
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  const isPatch = (TRI_VOC_DOCUMENT_OPERATION_UPDATE == operation);
+  const bool isPatch = (TRI_VOC_DOCUMENT_OPERATION_UPDATE == operation);
   int res = arangodb::modifyDocumentOnCoordinator(*this, collectionName, newValue,
                                                   options, isPatch, headers, responseCode,
                                                   errorCounter, resultBody);
