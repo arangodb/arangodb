@@ -39,9 +39,9 @@ namespace methods {
 class CreateDatabaseInfo {
  public:
   CreateDatabaseInfo() = default;
-  CreateDatabaseInfo(std::string const& name,
-                     VPackSlice const& options,
-                     VPackSlice const& users);
+  Result load(std::string const& name,
+              VPackSlice const& options,
+              VPackSlice const& users);
 
   Result buildSlice(VPackBuilder& builder) const;
 
