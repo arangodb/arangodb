@@ -24,10 +24,9 @@
 #define ARANGOD_CLUSTER_REBOOTTRACKER_H
 
 #include "Cluster/ClusterTypes.h"
+#include "Basics/Mutex.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-
-#include "lib/Basics/Mutex.h"
 
 #include <map>
 #include <type_traits>

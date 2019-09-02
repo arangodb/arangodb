@@ -27,6 +27,7 @@ add_executable(${BIN_ARANGOBENCH}
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
 )
+target_include_directories(${BIN_ARANGOBENCH} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGOBENCH}
   ${LIB_ARANGO}
@@ -85,6 +86,7 @@ add_executable(${BIN_ARANGOBACKUP}
   Utils/ClientManager.cpp
   ${ADDITIONAL_BIN_ARANGOBACKUP_SOURCES}
 )
+target_include_directories(${BIN_ARANGOBACKUP} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGOBACKUP}
   ${LIB_ARANGO}
@@ -144,6 +146,7 @@ add_executable(${BIN_ARANGODUMP}
   Utils/ManagedDirectory.cpp
   ${ADDITIONAL_BIN_ARANGODUMP_SOURCES}
 )
+target_include_directories(${BIN_ARANGODUMP} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGODUMP}
   ${LIB_ARANGO}
@@ -202,6 +205,7 @@ add_executable(${BIN_ARANGOEXPORT}
   Utils/ManagedDirectory.cpp
   V8Client/ArangoClientHelper.cpp
 )
+target_include_directories(${BIN_ARANGOEXPORT} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGOEXPORT}
   ${LIB_ARANGO}
@@ -263,6 +267,7 @@ add_executable(arangoimport
   Utils/ManagedDirectory.cpp
   V8Client/ArangoClientHelper.cpp
 )
+target_include_directories(${BIN_ARANGOIMPORT} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGOIMPORT}
   ${LIB_ARANGO}
@@ -331,6 +336,7 @@ add_executable(${BIN_ARANGORESTORE}
   Utils/ManagedDirectory.cpp
   ${ADDITIONAL_BIN_ARANGORESTORE_SOURCES}
 )
+target_include_directories(${BIN_ARANGORESTORE} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGORESTORE}
   ${LIB_ARANGO}
@@ -394,6 +400,7 @@ add_executable(${BIN_ARANGOSH}
   Utils/ManagedDirectory.cpp
   V8Client/ArangoClientHelper.cpp
 )
+target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGOSH}
   ${LIB_ARANGO_V8}
@@ -454,6 +461,7 @@ add_executable(${BIN_ARANGOVPACK}
   VPack/VPackFeature.cpp
   VPack/arangovpack.cpp
 )
+target_include_directories(${BIN_ARANGOVPACK} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGOVPACK}
   ${LIB_ARANGO}
