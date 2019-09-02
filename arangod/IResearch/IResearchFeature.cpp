@@ -148,16 +148,18 @@ arangodb::aql::AqlValue dummyFilterFunc(arangodb::aql::ExpressionContext*,
 }
 
 /// function body for ArangoSearchContext functions ANALYZER/BOOST. 
-/// Just returns its first argument if it exists (or Null-value if not) as outside ArangoSearch context
-/// there is nothing to do with search stuff but it is safe to call such functions during optimization.
+/// Just returns its first argument as outside ArangoSearch context
+/// there is nothing to do with search stuff, but optimization could roll.
 arangodb::aql::AqlValue dummyContextFunc(arangodb::aql::ExpressionContext*,
                                         arangodb::transaction::Methods*,
                                         arangodb::SmallVector<arangodb::aql::AqlValue> const& args) {
-  if(args.empty()) {
-    return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{});
-  } else {
-    return args[0];
+  TRI_ASSERT(!args.empty()); //ensured by function signature
+  if(ADB_UNLIKELY(args.empty())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      "Invalid BOOST/ANALYZER function arguments count"); // does not have our name there 
   }
+  return args[0];
 }
 
 /// Executes MIN_MATCH function with const parameters locally the same way it will be done in ArangoSearch on runtime
