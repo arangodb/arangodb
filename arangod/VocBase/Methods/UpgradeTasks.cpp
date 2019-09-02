@@ -298,7 +298,6 @@ Result createSystemStatisticsCollections(TRI_vocbase_t& vocbase,
         return res;
       }
     }
-    return {TRI_ERROR_NO_ERROR};
   }
   return {TRI_ERROR_NO_ERROR};
 }
