@@ -1153,17 +1153,17 @@
     getFoxxFlags: function () {
       var flags = {};
 
-      const $replace = $('#new-app-flag-replace')[0];
+      var $replace = $('#new-app-flag-replace')[0];
       if ($replace) {
         flags.replace = Boolean($replace.checked);
       }
 
-      const $teardown = $('#new-app-flag-teardown')[0];
+      var $teardown = $('#new-app-flag-teardown')[0];
       if ($teardown) {
         flags.teardown = Boolean($teardown.checked);
       }
 
-      const $setup = $('#new-app-flag-setup')[0];
+      var $setup = $('#new-app-flag-setup')[0];
       if ($setup) {
         flags.setup = Boolean($setup.checked);
       }
