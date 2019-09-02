@@ -242,8 +242,10 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationNegotiate(std::stri
 
 #ifdef USE_ENTERPRISE
   if (_userManager != nullptr) {
+    std::string username;
     // LDAP rights might need to be refreshed
-    if (_userManager->handleToken(secret)) {
+    if (_userManager->handleToken(secret, username)) {
+      _userManager->refreshUser(username);
       return auth::TokenCache::Entry("", true, 0);
     }
   }

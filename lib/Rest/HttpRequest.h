@@ -87,7 +87,10 @@ class HttpRequest final : public GeneralRequest {
   arangodb::velocypack::Buffer<uint8_t>& body() {
     return _body;
   }
-      
+
+  void setAuthToken(std::string const& token) {_authToken = token; }
+  const std::string& getAuthToken() { return _authToken; }
+
   /// @brief sets a key/value header
   //  this function is called by setHeaders and get offsets to
   //  the found key / value with respective lengths.
@@ -116,6 +119,7 @@ class HttpRequest final : public GeneralRequest {
   void parseCookies(char const* buffer, size_t length);
 
  private:
+  std::string _authToken;
   velocypack::Buffer<uint8_t> _body;
   std::unordered_map<std::string, std::string> _cookies;
   int64_t _contentLength;

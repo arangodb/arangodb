@@ -454,6 +454,8 @@ void HttpCommTask<T>::processRequest() {
   resp->setContentType(_request->contentTypeResponse());
   resp->setContentTypeRequested(_request->contentTypeResponse());
 
+  resp->setHeader(StaticStrings::WwwAuthenticate, _request->getAuthToken());
+
   this->executeRequest(std::move(_request), std::move(resp));
 }
 
@@ -577,9 +579,10 @@ ResponseCode HttpCommTask<T>::handleAuthHeader(HttpRequest& req) {
         this->_authToken = this->_auth->tokenCache().checkAuthentication(authMethod, cppAuth);
         req.setAuthenticated(this->_authToken.authenticated());
         req.setUser(this->_authToken._username);  // do copy here, so that we do not invalidate the member
+        
         std::string replyAuthHeader("Negotiate ");
-        replyAuthHeader += auth;
-        req.setHeader(StaticStrings::WwwAuthenticate, replyAuthHeader);
+        replyAuthHeader += cppAuth;
+        req.setAuthToken(replyAuthHeader);
       }
 
       if (req.authenticated() || !this->_auth->isActive()) {

@@ -142,7 +142,7 @@ class UserManager {
   /// @brief apply roles to user, must lock _userCacheLock
   void applyRoles(auth::User&) const;
 
-  bool handleToken(std::string& token);
+  bool handleToken(std::string& token, std::string& username);
   
   /// @brief Check authorization with external system
   /// @param userCached is the user cached locally
