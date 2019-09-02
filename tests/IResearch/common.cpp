@@ -335,7 +335,8 @@ bool assertRules(TRI_vocbase_t& vocbase, std::string const& queryString,
 ) {
   std::unordered_set<std::string> expectedRules;
   for (auto ruleId : expectedRulesIds) {
-    expectedRules.emplace(arangodb::aql::OptimizerRulesFeature::translateRule(ruleId));
+    arangodb::velocypack::StringRef translated = arangodb::aql::OptimizerRulesFeature::translateRule(ruleId);
+    expectedRules.emplace(translated.toString());
   }
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), bindVars,

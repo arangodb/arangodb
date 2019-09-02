@@ -338,7 +338,7 @@ class MMFilesEngine final : public StorageEngine {
   int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors);
 
   /// @brief Add engine-specific optimizer rules
-  void addOptimizerRules() override;
+  void addOptimizerRules(aql::OptimizerRulesFeature&) override;
 
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;

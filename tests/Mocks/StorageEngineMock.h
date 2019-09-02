@@ -43,6 +43,10 @@ struct KeyLockInfo;
 class TransactionManager;
 class WalAccess;
 
+namespace aql {
+class OptimizerRulesFeature;
+}
+
 } // arangodb
 
 class PhysicalCollectionMock: public arangodb::PhysicalCollection {
@@ -157,7 +161,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
   std::atomic<size_t> vocbaseCount;
 
   explicit StorageEngineMock(arangodb::application_features::ApplicationServer& server);
-  virtual void addOptimizerRules() override;
+  virtual void addOptimizerRules(arangodb::aql::OptimizerRulesFeature& feature) override;
   virtual void addRestHandlers(arangodb::rest::RestHandlerFactory& handlerFactory) override;
   virtual void addV8Functions() override;
   virtual void changeCollection(TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection, bool doSync) override;

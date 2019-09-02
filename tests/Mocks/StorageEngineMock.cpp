@@ -959,7 +959,7 @@ arangodb::WalAccess const* StorageEngineMock::walAccess() const {
   return nullptr;
 }
 
-void StorageEngineMock::addOptimizerRules() {
+void StorageEngineMock::addOptimizerRules(arangodb::aql::OptimizerRulesFeature& /*feature*/) {
   before();
   // NOOP
 }

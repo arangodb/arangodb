@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Result.h"
@@ -329,11 +330,11 @@ int ClusterEngine::shutdownDatabase(TRI_vocbase_t& vocbase) {
 }
 
 /// @brief Add engine-specific optimizer rules
-void ClusterEngine::addOptimizerRules() {
+void ClusterEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
   if (engineType() == ClusterEngineType::MMFilesEngine) {
-    MMFilesOptimizerRules::registerResources();
+    MMFilesOptimizerRules::registerResources(feature);
   } else if (engineType() == ClusterEngineType::RocksDBEngine) {
-    RocksDBOptimizerRules::registerResources();
+    RocksDBOptimizerRules::registerResources(feature);
   } else if (engineType() != ClusterEngineType::MockEngine) {
     // invalid engine type...
     TRI_ASSERT(false);

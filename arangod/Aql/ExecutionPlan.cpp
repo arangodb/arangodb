@@ -401,8 +401,8 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) 
   // set up rules
   builder.add(VPackValue("rules"));
   builder.openArray();
-  for (auto const& r : OptimizerRulesFeature::translateRules(_appliedRules)) {
-    builder.add(VPackValue(r));
+  for (auto const& ruleName : OptimizerRulesFeature::translateRules(_appliedRules)) {
+    builder.add(VPackValuePair(ruleName.data(), ruleName.size(), VPackValueType::String));
   }
   builder.close();
 

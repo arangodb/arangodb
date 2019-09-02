@@ -25,6 +25,8 @@
 
 #include "Basics/Common.h"
 
+#include <velocypack/StringRef.h>
+
 #include <type_traits>
 
 namespace arangodb {
@@ -188,9 +190,6 @@ struct OptimizerRule {
     // remove FILTER and SORT if there are geoindexes
     applyGeoIndexRule,
 
-    // replace FULLTEXT with index
-    applyFulltextIndexRule,
-
     useIndexesRule,
 
     // try to remove filters covered by index ranges
@@ -292,23 +291,33 @@ struct OptimizerRule {
     // simplify an EnumerationCollectionNode that fetches an
     // entire document to a projection of this document
     reduceExtractionToProjectionRule,
-
-    // this is a temporary rule, and we need to remove it
-    doNothingRule,
   };
 
-  std::string name;
+  velocypack::StringRef name;
   RuleFunction func;
-  RuleLevel const level;
-  std::underlying_type<Flags>::type const flags;
+  RuleLevel level;
+  std::underlying_type<Flags>::type flags;
 
   OptimizerRule() = delete;
-
-  OptimizerRule(std::string const& name, RuleFunction const& ruleFunc, RuleLevel level, std::underlying_type<Flags>::type flags)
+  OptimizerRule(velocypack::StringRef name, RuleFunction const& ruleFunc, RuleLevel level, std::underlying_type<Flags>::type flags)
       : name(name),
         func(ruleFunc),
         level(level),
         flags(flags) {}
+
+  OptimizerRule(OptimizerRule&& other) = default;
+  OptimizerRule& operator=(OptimizerRule&& other) = default;
+  
+  OptimizerRule(OptimizerRule const& other) = delete;
+  OptimizerRule& operator=(OptimizerRule const& other) = delete;
+  
+  friend bool operator<(OptimizerRule const& lhs, int level) {
+    return lhs.level < level;
+  }
+  
+  friend bool operator<(int lhs, OptimizerRule const& rhs) {
+    return lhs < rhs.level;
+  }
 };
 
 }  // namespace aql

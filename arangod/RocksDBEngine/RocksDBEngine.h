@@ -288,7 +288,7 @@ class RocksDBEngine final : public StorageEngine {
   int shutdownDatabase(TRI_vocbase_t& vocbase) override;
 
   /// @brief Add engine-specific optimizer rules
-  void addOptimizerRules() override;
+  void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
 
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;

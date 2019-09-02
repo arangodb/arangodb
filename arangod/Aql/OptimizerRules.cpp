@@ -1884,7 +1884,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
       if (nodes.size() > 1) {
         // this will tell the optimizer to optimize the cloned plan with this
         // specific rule again
-        opt->addPlan(std::move(newPlan), rule, true, static_cast<int>(rule.level - 1));
+        opt->addPlanAndRerun(std::move(newPlan), rule, true);
       } else {
         // no need to run this specific rule again on the cloned plan
         opt->addPlan(std::move(newPlan), rule, true);
@@ -3375,7 +3375,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(Optimizer* opt,
   // may not yet be optimal. so we may pass it into this same
   // rule again. the default is to continue with the next rule
   // however
-  int newLevel = 0;
+  bool rerun = false;
 
   for (auto const& node : nodes) {
     auto fn = ExecutionNode::castTo<FilterNode const*>(node);
@@ -3447,7 +3447,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(Optimizer* opt,
               handled = true;
               // pass the new plan into this rule again, to optimize even
               // further
-              newLevel = static_cast<int>(rule.level - 1);
+              rerun = true;
             }
           }
         }
@@ -3469,7 +3469,12 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(Optimizer* opt,
     plan->unlinkNodes(toUnlink);
   }
 
-  opt->addPlan(std::move(plan), rule, modified, newLevel);
+  if (rerun) {
+    TRI_ASSERT(modified);
+    opt->addPlanAndRerun(std::move(plan), rule, modified);
+  } else {
+    opt->addPlan(std::move(plan), rule, modified);
+  }
 }
 
 /// @brief helper to compute lots of permutation tuples

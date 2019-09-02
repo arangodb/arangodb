@@ -40,11 +40,11 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
-void MMFilesOptimizerRules::registerResources() {
+void MMFilesOptimizerRules::registerResources(aql::OptimizerRulesFeature& feature) {
   // remove SORT RAND() if appropriate
-  OptimizerRulesFeature::registerRule("remove-sort-rand", removeSortRandRule,
-                                      OptimizerRule::removeSortRandRule,
-                                      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+  feature.registerRule("remove-sort-rand", removeSortRandRule,
+                       OptimizerRule::removeSortRandRule,
+                       OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 }
 
 /// @brief remove SORT RAND() if appropriate

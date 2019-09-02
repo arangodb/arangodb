@@ -3078,8 +3078,8 @@ int MMFilesEngine::transferMarkers(LogicalCollection* collection,
 }
 
 /// @brief Add engine-specific optimizer rules
-void MMFilesEngine::addOptimizerRules() {
-  MMFilesOptimizerRules::registerResources();
+void MMFilesEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
+  MMFilesOptimizerRules::registerResources(feature);
 }
 
 /// @brief Add engine-specific V8 functions

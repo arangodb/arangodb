@@ -274,7 +274,7 @@ void handleViewsRule(arangodb::aql::Optimizer* opt,
 
   // ensure 'Optimizer::addPlan' will be called
   bool modified = false;
-  auto addPlan = irs::make_finally([opt, &plan, rule, &modified]() {
+  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() {
     opt->addPlan(std::move(plan), rule, modified);
   });
 

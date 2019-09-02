@@ -1567,8 +1567,8 @@ int RocksDBEngine::shutdownDatabase(TRI_vocbase_t& vocbase) {
 }
 
 /// @brief Add engine-specific optimizer rules
-void RocksDBEngine::addOptimizerRules() {
-  RocksDBOptimizerRules::registerResources();
+void RocksDBEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
+  RocksDBOptimizerRules::registerResources(feature);
 }
 
 /// @brief Add engine-specific V8 functions

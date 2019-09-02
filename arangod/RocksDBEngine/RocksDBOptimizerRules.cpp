@@ -52,18 +52,18 @@ std::vector<ExecutionNode::NodeType> const reduceExtractionToProjectionTypes = {
 
 }  // namespace
 
-void RocksDBOptimizerRules::registerResources() {
+void RocksDBOptimizerRules::registerResources(OptimizerRulesFeature& feature) {
   // simplify an EnumerationCollectionNode that fetches an entire document to a
   // projection of this document
-  OptimizerRulesFeature::registerRule("reduce-extraction-to-projection",
-                                      reduceExtractionToProjectionRule,
-                                      OptimizerRule::reduceExtractionToProjectionRule,
-                                      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+  feature.registerRule("reduce-extraction-to-projection",
+                       reduceExtractionToProjectionRule,
+                       OptimizerRule::reduceExtractionToProjectionRule,
+                       OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // remove SORT RAND() LIMIT 1 if appropriate
-  OptimizerRulesFeature::registerRule("remove-sort-rand-limit-1", removeSortRandRule,
-                                      OptimizerRule::removeSortRandRule,
-                                      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+  feature.registerRule("remove-sort-rand-limit-1", removeSortRandRule,
+                       OptimizerRule::removeSortRandRule,
+                       OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 }
 
 // simplify an EnumerationCollectionNode that fetches an entire document to a
