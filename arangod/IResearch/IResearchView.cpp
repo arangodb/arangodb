@@ -432,13 +432,14 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
   options.waitForSync = false;
   options.allowImplicitCollections = false;
 
+  Result res;
   try {
     arangodb::transaction::Methods trx(transaction::StandaloneContext::Create(vocbase()),
                                        collections,  // readCollections
                                        EMPTY,        // writeCollections
                                        EMPTY,        // exclusiveCollections
                                        options);
-    auto res = trx.begin();
+    res = trx.begin();
 
     if (!res.ok()) {
       return res; // nothing more to output
@@ -507,14 +508,14 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
     };
 
     linksBuilder.openObject();
-      state->allCollections(visitor);
+    state->allCollections(visitor);
     linksBuilder.close();
 
     if (!res.ok()) {
       return res;
     }
 
-    trx.commit();
+    res = trx.commit();
   } catch (arangodb::basics::Exception& e) {
     IR_LOG_EXCEPTION();
 
@@ -543,7 +544,7 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
 
   builder.add(StaticStrings::LinksField, linksBuilder.slice());
 
-  return arangodb::Result();
+  return res;
 }
 
 bool IResearchView::apply(arangodb::transaction::Methods& trx) {

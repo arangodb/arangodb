@@ -46,16 +46,19 @@ void MessageHeader::addMeta(StringMap const& map) {
 }
 
 // Get value for header metadata key, returns empty string if not found.
-std::string const& MessageHeader::metaByKey(std::string const& key) const {
+std::string const& MessageHeader::metaByKey(std::string const& key, bool& found) const {
   static std::string emptyString("");
   if (meta.empty()) {
+    found = false;
     return emptyString;
   }
-  auto const& found = meta.find(key);
-  if (found == meta.end()) {
+  auto const& it = meta.find(key);
+  if (it == meta.end()) {
+    found = false;
     return emptyString;
   } else {
-    return found->second;
+    found = true;
+    return it->second;
   }
 }
   

@@ -221,7 +221,8 @@ Manager::ManagedTrx::~ManagedTrx() {
     auto ctx =
         std::make_shared<transaction::ManagedContext>(2, state, AccessMode::Type::NONE);
     MGMethods trx(ctx, opts);  // own state now
-    trx.begin();
+    Result res = trx.begin();
+    (void) res;
     TRI_ASSERT(state->nestingLevel() == 1);
     state->decreaseNesting();
     TRI_ASSERT(state->isTopLevelTransaction());
