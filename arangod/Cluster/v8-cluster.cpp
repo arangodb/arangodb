@@ -1290,7 +1290,7 @@ static void PrepareClusterCommRequest(v8::FunctionCallbackInfo<v8::Value> const&
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
-  onlyInCluster();
+  onlyInClusterOrActiveFailover();
 
   TRI_ASSERT(args.Length() >= 4);
 
@@ -1523,7 +1523,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   
-  onlyInCluster();
+  onlyInClusterOrActiveFailover();
 
   if (args.Length() < 4 || args.Length() > 7) {
     TRI_V8_THROW_EXCEPTION_USAGE(
@@ -1676,7 +1676,7 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
   
-  onlyInCluster();
+  onlyInClusterOrActiveFailover();
 
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("wait(obj)");
