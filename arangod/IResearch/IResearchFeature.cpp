@@ -183,7 +183,6 @@ arangodb::aql::AqlValue dummyMinMatchContextFunc(arangodb::aql::ExpressionContex
       TRI_ERROR_BAD_PARAMETER,
       message);
   }
-  return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(false));
 }
 
 arangodb::aql::AqlValue dummyScorerFunc(arangodb::aql::ExpressionContext*,
