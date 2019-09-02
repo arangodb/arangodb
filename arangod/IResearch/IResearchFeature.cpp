@@ -154,11 +154,6 @@ arangodb::aql::AqlValue dummyContextFunc(arangodb::aql::ExpressionContext*,
                                         arangodb::transaction::Methods*,
                                         arangodb::SmallVector<arangodb::aql::AqlValue> const& args) {
   TRI_ASSERT(!args.empty()); //ensured by function signature
-  if(ADB_UNLIKELY(args.empty())) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_BAD_PARAMETER,
-      "Invalid BOOST/ANALYZER function arguments count"); // does not have our name there 
-  }
   return args[0];
 }
 
@@ -169,10 +164,10 @@ arangodb::aql::AqlValue dummyMinMatchContextFunc(arangodb::aql::ExpressionContex
                                         arangodb::SmallVector<arangodb::aql::AqlValue> const& args) {
   TRI_ASSERT(args.size() > 1); // ensured by function signature
   auto& minMatchValue = args.back();
-  if(ADB_LIKELY(minMatchValue.isNumber())) {
+  if (ADB_LIKELY(minMatchValue.isNumber())) {
     auto matchesLeft = minMatchValue.toInt64();
-    const auto argsCount = args.size();
-    for( size_t i = 0; i < (argsCount - 1) && matchesLeft > 0; ++i) {
+    const auto argsCount = args.size() - 1;
+    for (size_t i = 0; i < argsCount && matchesLeft > 0; ++i) {
       auto& currValue = args[i];
       if (currValue.toBoolean()) {
         matchesLeft--;
