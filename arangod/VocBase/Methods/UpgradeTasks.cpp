@@ -172,6 +172,7 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   systemCollections.push_back(StaticStrings::AppsCollection);
   systemCollections.push_back(StaticStrings::AppBundlesCollection);
   systemCollections.push_back(StaticStrings::FrontendCollection);
+  systemCollections.push_back(StaticStrings::ModulesCollection);
 
   TRI_IF_FAILURE("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions") {
     VPackBuilder testOptions;
