@@ -432,13 +432,14 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
   options.waitForSync = false;
   options.allowImplicitCollections = false;
 
+  Result res;
   try {
     arangodb::transaction::Methods trx(transaction::StandaloneContext::Create(vocbase()),
                                        collections,  // readCollections
                                        EMPTY,        // writeCollections
                                        EMPTY,        // exclusiveCollections
                                        options);
-    auto res = trx.begin();
+    res = trx.begin();
 
     if (!res.ok()) {
       return res; // nothing more to output
@@ -507,14 +508,14 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
     };
 
     linksBuilder.openObject();
-      state->allCollections(visitor);
+    state->allCollections(visitor);
     linksBuilder.close();
 
     if (!res.ok()) {
       return res;
     }
 
-    trx.commit();
+    res = trx.commit();
   } catch (arangodb::basics::Exception& e) {
     IR_LOG_EXCEPTION();
 
@@ -543,7 +544,7 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
 
   builder.add(StaticStrings::LinksField, linksBuilder.slice());
 
-  return arangodb::Result();
+  return res;
 }
 
 bool IResearchView::apply(arangodb::transaction::Methods& trx) {
@@ -567,12 +568,12 @@ arangodb::Result IResearchView::dropImpl() {
 
   if (!stale.empty()) {
     // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (arangodb::ExecContext::CURRENT) {
+    if (!arangodb::ExecContext::current().isSuperuser()) {
       for (auto& entry : stale) {
         auto collection = vocbase().lookupCollection(entry);
 
         if (collection &&
-            !arangodb::ExecContext::CURRENT->canUseCollection(
+            !arangodb::ExecContext::current().canUseCollection(
                 vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
           return arangodb::Result(TRI_ERROR_FORBIDDEN);
         }
@@ -1020,13 +1021,13 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
     SCOPED_LOCK_NAMED(mutex, mtx);
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (arangodb::ExecContext::CURRENT) {
+    if (!arangodb::ExecContext::current().isSuperuser()) {
       // check existing links
       for (auto& entry : _links) {
         auto collection = vocbase().lookupCollection(entry.first);
 
         if (collection &&
-            !arangodb::ExecContext::CURRENT->canUseCollection(
+            !arangodb::ExecContext::current().canUseCollection(
                 vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
           return arangodb::Result(
               TRI_ERROR_FORBIDDEN,

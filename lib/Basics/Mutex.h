@@ -43,6 +43,10 @@
 #include "Basics/Thread.h"
 #endif
 
+#ifdef TRI_HAVE_POSIX_THREADS
+#include <pthread.h>
+#endif
+
 namespace arangodb {
 
 class Mutex {

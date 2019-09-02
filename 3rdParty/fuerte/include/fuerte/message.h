@@ -59,7 +59,11 @@ struct MessageHeader {
   void addMeta(StringMap const&);
 
   // Get value for header metadata key, returns empty string if not found.
-  std::string const& metaByKey(std::string const& key) const;
+  std::string const& metaByKey(std::string const& key) const {
+    bool unused;
+    return this->metaByKey(key, unused);
+  }
+  std::string const& metaByKey(std::string const& key, bool& found) const;
 
   // content type accessors
   inline std::string const& contentTypeString() const {

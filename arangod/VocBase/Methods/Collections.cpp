@@ -142,8 +142,6 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  ExecContext const* exec = ExecContext::CURRENT;
-
   if (ServerState::instance()->isCoordinator()) {
     try {
       auto ci = ClusterInfo::instance();
@@ -160,8 +158,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
 
       if (coll) {
         // check authentication after ensuring the collection exists
-        if (exec != nullptr &&
-            !exec->canUseCollection(vocbase.name(), coll->name(), auth::Level::RO)) {
+        if (!ExecContext::current().canUseCollection(vocbase.name(), coll->name(), auth::Level::RO)) {
           return Result(TRI_ERROR_FORBIDDEN,
                         "No access to collection '" + name + "'");
         }
@@ -187,8 +184,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
 
   if (coll != nullptr) {
     // check authentication after ensuring the collection exists
-    if (exec != nullptr &&
-        !exec->canUseCollection(vocbase.name(), coll->name(), auth::Level::RO)) {
+    if (!ExecContext::current().canUseCollection(vocbase.name(), coll->name(), auth::Level::RO)) {
       return Result(TRI_ERROR_FORBIDDEN,
                     "No access to collection '" + name + "'");
     }
@@ -237,8 +233,8 @@ Result Collections::create(TRI_vocbase_t& vocbase,
                            std::vector<CollectionCreationInfo> const& infos,
                            bool createWaitsForSyncReplication, bool enforceReplicationFactor,
                            MultiFuncCallback const& func) {
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec && !exec->canUseDatabase(vocbase.name(), auth::Level::RW)) {
+  ExecContext const& exec = ExecContext::current();
+  if (!exec.canUseDatabase(vocbase.name(), auth::Level::RW)) {
     for (auto const& info : infos) {
       events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_FORBIDDEN);
     }
@@ -334,13 +330,13 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   try {
     // in case of success we grant the creating user RW access
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-    if (um != nullptr && exec != nullptr && !exec->isSuperuser()) {
+    if (um != nullptr && !exec.isSuperuser()) {
       // this should not fail, we can not get here without database RW access
       // however, there may be races for updating the users account, so we try
       // a few times in case of a conflict
       int tries = 0;
       while (true) {
-        Result r = um->updateUser(exec->user(), [&](auth::User& entry) {
+        Result r = um->updateUser(exec.user(), [&](auth::User& entry) {
           for (auto const& col : collections) {
             // do not grant rights on system collections
             if (!col->system()) {
@@ -481,12 +477,10 @@ Result Collections::unload(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
 Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
   LogicalCollection* coll = ctxt.coll();
   TRI_ASSERT(coll != nullptr);
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    bool canRead = exec->canUseCollection(coll->name(), auth::Level::RO);
-    if (exec->databaseAuthLevel() == auth::Level::NONE || !canRead) {
-      return Result(TRI_ERROR_FORBIDDEN, "cannot access " + coll->name());
-    }
+  ExecContext const& exec = ExecContext::current();
+  bool canRead = exec.canUseCollection(coll->name(), auth::Level::RO);
+  if (!canRead || exec.databaseAuthLevel() == auth::Level::NONE) {
+    return Result(TRI_ERROR_FORBIDDEN, "cannot access " + coll->name());
   }
 
   std::unordered_set<std::string> ignoreKeys{
@@ -518,14 +512,11 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 
 Result Collections::updateProperties(LogicalCollection& collection,
                                      velocypack::Slice const& props, bool partialUpdate) {
-  ExecContext const* exec = ExecContext::CURRENT;
+  ExecContext const& exec = ExecContext::current();
+  bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
 
-  if (exec != nullptr) {
-    bool canModify = exec->canUseCollection(collection.name(), auth::Level::RW);
-
-    if ((exec->databaseAuthLevel() != auth::Level::RW || !canModify)) {
-      return TRI_ERROR_FORBIDDEN;
-    }
+  if (!canModify || !exec.canUseDatabase(auth::Level::RW)) {
+    return TRI_ERROR_FORBIDDEN;
   }
 
   if (ServerState::instance()->isCoordinator()) {
@@ -601,12 +592,10 @@ Result Collections::rename(LogicalCollection& collection,
     return Result(TRI_ERROR_BAD_PARAMETER, "<name> must be non-empty");
   }
 
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    if (!exec->canUseDatabase(auth::Level::RW) ||
-        !exec->canUseCollection(collection.name(), auth::Level::RW)) {
-      return TRI_ERROR_FORBIDDEN;
-    }
+  ExecContext const& exec = ExecContext::current();
+  if (!exec.canUseDatabase(auth::Level::RW) ||
+      !exec.canUseCollection(collection.name(), auth::Level::RW)) {
+    return TRI_ERROR_FORBIDDEN;
   }
 
   // check required to pass
@@ -678,12 +667,10 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
     bool allowDropSystem,  // allow dropping system collection
     double timeout         // single-server drop timeout
 ) {
-  ExecContext const* exec = ExecContext::CURRENT;
-
-  if (exec  // have exec context
-      && !(exec->canUseDatabase(coll.vocbase().name(), auth::Level::RW)  // vocbase modifiable
-           && exec->canUseCollection(coll.name(), auth::Level::RW)  // collection modifiable
-           )) {
+  
+  ExecContext const& exec = ExecContext::current();
+  if (!exec.canUseDatabase(coll.vocbase().name(), auth::Level::RW) || // vocbase modifiable
+      !exec.canUseCollection(coll.name(), auth::Level::RW)) { // collection modifiable
     events::DropCollection(coll.vocbase().name(), coll.name(), TRI_ERROR_FORBIDDEN);
     return arangodb::Result(                                     // result
         TRI_ERROR_FORBIDDEN,                                     // code
@@ -722,8 +709,8 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 }
 
 Result Collections::warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll) {
-  ExecContext const* exec = ExecContext::CURRENT;  // disallow expensive ops
-  if (exec != nullptr && !exec->canUseCollection(coll.name(), auth::Level::RO)) {
+  ExecContext const& exec = ExecContext::current();  // disallow expensive ops
+  if (!exec.canUseCollection(coll.name(), auth::Level::RO)) {
     return Result(TRI_ERROR_FORBIDDEN);
   }
 
@@ -740,12 +727,13 @@ Result Collections::warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll
     return res;
   }
 
-  auto idxs = coll.getIndexes();
-  auto poster = [](std::function<void()> fn) -> void {
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
+  auto poster = [](std::function<void()> fn) -> bool {
+    return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
   };
+  
   auto queue = std::make_shared<basics::LocalTaskQueue>(poster);
 
+  auto idxs = coll.getIndexes();
   for (auto& idx : idxs) {
     idx->warmup(&trx, queue);
   }

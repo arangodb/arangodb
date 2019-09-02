@@ -92,22 +92,22 @@ int resolveDestination(DestinationId const& dest, std::string& endpoint) {
   return TRI_ERROR_NO_ERROR;
 }
 
-OperationResult errorFromBody(arangodb::velocypack::Buffer<uint8_t> const& body,
-                              int defaultErrorCode) {
+OperationResult opResultFromBody(arangodb::velocypack::Buffer<uint8_t> const& body,
+                                 int defaultErrorCode) {
   if (body.size() > 0) {
-    return errorFromBody(VPackSlice(body.data()), defaultErrorCode);
+    return opResultFromBody(VPackSlice(body.data()), defaultErrorCode);
   }
   return OperationResult(defaultErrorCode);
 }
 
-OperationResult errorFromBody(std::shared_ptr<VPackBuilder> const& body, int defaultErrorCode) {
+OperationResult opResultFromBody(std::shared_ptr<VPackBuilder> const& body, int defaultErrorCode) {
   if (body) {
-    return errorFromBody(body->slice(), defaultErrorCode);
+    return opResultFromBody(body->slice(), defaultErrorCode);
   }
   return OperationResult(defaultErrorCode);
 }
 
-OperationResult errorFromBody(VPackSlice const& body, int defaultErrorCode) {
+OperationResult opResultFromBody(VPackSlice body, int defaultErrorCode) {
   // read the error number from the response and use it if present
   if (body.isObject()) {
     VPackSlice num = body.get(StaticStrings::ErrorNum);
@@ -126,7 +126,7 @@ OperationResult errorFromBody(VPackSlice const& body, int defaultErrorCode) {
 }
 
 /// @brief extract the error code form the body
-int errorCodeFromBody(arangodb::velocypack::Slice const& body) {
+int errorCodeFromBody(arangodb::velocypack::Slice body) {
   if (body.isObject()) {
     VPackSlice num = body.get(StaticStrings::ErrorNum);
     if (num.isNumber()) {
@@ -135,6 +135,35 @@ int errorCodeFromBody(arangodb::velocypack::Slice const& body) {
     }
   }
   return TRI_ERROR_ILLEGAL_NUMBER;
+}
+  
+Result resultFromBody(std::shared_ptr<arangodb::velocypack::Builder> const& body,
+                      int defaultError) {
+  
+  // read the error number from the response and use it if present
+  if (body) {
+    return resultFromBody(body->slice(), defaultError);
+  }
+
+  return Result(defaultError);
+}
+  
+Result resultFromBody(arangodb::velocypack::Slice slice,
+                      int defaultError) {
+  // read the error number from the response and use it if present
+  if (slice.isObject()) {
+    VPackSlice num = slice.get(StaticStrings::ErrorNum);
+    VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
+    if (num.isNumber()) {
+      if (msg.isString()) {
+        // found an error number and an error message, so let's use it!
+        return Result(num.getNumericValue<int>(), msg.copyString());
+      }
+      // we found an error number, so let's use it!
+      return Result(num.getNumericValue<int>());
+    }
+  }
+  return Result(defaultError);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,15 +240,15 @@ OperationResult clusterResultInsert(arangodb::fuerte::StatusCode code,
       return OperationResult(Result(), std::move(body), nullptr, copy, errorCounter);
     }
     case fuerte::StatusPreconditionFailed:
-      return network::errorFromBody(*body, TRI_ERROR_ARANGO_CONFLICT);
+      return network::opResultFromBody(*body, TRI_ERROR_ARANGO_CONFLICT);
     case fuerte::StatusBadRequest:
-      return network::errorFromBody(*body, TRI_ERROR_INTERNAL);
+      return network::opResultFromBody(*body, TRI_ERROR_INTERNAL);
     case fuerte::StatusNotFound:
-      return network::errorFromBody(*body, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      return network::opResultFromBody(*body, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     case fuerte::StatusConflict:
-      return network::errorFromBody(*body, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+      return network::opResultFromBody(*body, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     default:
-      return network::errorFromBody(*body, TRI_ERROR_INTERNAL);
+      return network::opResultFromBody(*body, TRI_ERROR_INTERNAL);
   }
 }
 }  // namespace network
