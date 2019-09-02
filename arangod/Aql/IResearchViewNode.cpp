@@ -364,10 +364,6 @@ bool parseOptions(aql::Query& query, LogicalView const& view, aql::AstNode const
 bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
                      aql::Variable const& ref,
                      arangodb::HashSet<aql::Variable const*>& vars) {
-  //if (!node.isDeterministic()) {
-  //  return false;
-  //}
-
   vars.clear();
   aql::Ast::getReferencedVariables(&node, vars);
   vars.erase(&ref);  // remove "our" variable
