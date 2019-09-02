@@ -1217,7 +1217,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
     OperationOptions options;  // use default configuration
     options.ignoreRevs = true;
 
-    OperationResult opRes = documentCoordinator(collectionName, value, options);
+    OperationResult opRes = documentCoordinator(collectionName, value, options).get();
     if (opRes.fail()) {
       return opRes.result;
     }
@@ -1287,29 +1287,6 @@ Result transaction::Methods::documentFastPathLocal(std::string const& collection
   return res;
 }
 
-/// @brief Create Cluster Communication result for document
-OperationResult transaction::Methods::clusterResultDocument(
-    rest::ResponseCode const& responseCode, std::shared_ptr<VPackBuilder> const& resultBody,
-    std::unordered_map<int, size_t> const& errorCounter) const {
-  int errorCode = TRI_ERROR_INTERNAL;
-
-  switch (responseCode) {
-    case rest::ResponseCode::OK:
-    case rest::ResponseCode::PRECONDITION_FAILED:
-      return OperationResult(Result(responseCode == rest::ResponseCode::OK
-                                        ? TRI_ERROR_NO_ERROR
-                                        : TRI_ERROR_ARANGO_CONFLICT),
-                             resultBody->steal(), nullptr, OperationOptions{}, errorCounter);
-    case rest::ResponseCode::NOT_FOUND:
-      return network::opResultFromBody(resultBody, TRI_ERROR_NO_ERROR);
-    default: {
-      // will remain at TRI_ERROR_INTERNAL
-      TRI_ASSERT(errorCode == TRI_ERROR_INTERNAL);
-    }
-  }
-  return network::opResultFromBody(resultBody, TRI_ERROR_INTERNAL);
-}
-
 /// @brief Create Cluster Communication result for modify
 OperationResult transaction::Methods::clusterResultModify(
     rest::ResponseCode const& responseCode, std::shared_ptr<VPackBuilder> const& resultBody,
@@ -1369,9 +1346,9 @@ OperationResult transaction::Methods::clusterResultRemove(
 }
 
 /// @brief return one or multiple documents from a collection
-OperationResult transaction::Methods::document(std::string const& collectionName,
-                                               VPackSlice const value,
-                                               OperationOptions& options) {
+Future<OperationResult> transaction::Methods::documentAsync(std::string const& collectionName,
+                                                            VPackSlice const value,
+                                                            OperationOptions& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray()) {
@@ -1383,25 +1360,18 @@ OperationResult transaction::Methods::document(std::string const& collectionName
 
   OperationResult result;
   if (_state->isCoordinator()) {
-    result = documentCoordinator(collectionName, value, options);
+    return documentCoordinator(collectionName, value, options);
   } else {
-    result = documentLocal(collectionName, value, options);
+    return documentLocal(collectionName, value, options);
   }
 
-  events::ReadDocument(vocbase().name(), collectionName, value, options,
-                       result.errorNumber());
   return result;
 }
 
 /// @brief read one or multiple documents in a collection, coordinator
 #ifndef USE_ENTERPRISE
-OperationResult transaction::Methods::documentCoordinator(std::string const& collectionName,
-                                                          VPackSlice const value,
-                                                          OperationOptions& options) {
-  rest::ResponseCode responseCode;
-  std::unordered_map<int, size_t> errorCounter;
-  auto resultBody = std::make_shared<VPackBuilder>();
-
+Future<OperationResult> transaction::Methods::documentCoordinator(
+    std::string const& collectionName, VPackSlice const value, OperationOptions& options) {
   if (!value.isArray()) {
     arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
 
@@ -1410,21 +1380,20 @@ OperationResult transaction::Methods::documentCoordinator(std::string const& col
     }
   }
 
-  int res = arangodb::getDocumentOnCoordinator(*this, collectionName, value, options,
-                                               responseCode, errorCounter, resultBody);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    return clusterResultDocument(responseCode, resultBody, errorCounter);
+  ClusterInfo* ci = ClusterInfo::instance();
+  auto colptr = ci->getCollectionNT(vocbase().name(), collectionName);
+  if (colptr == nullptr) {
+    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
 
-  return OperationResult(res);
+  return arangodb::getDocumentOnCoordinator(*this, *colptr, value, options);
 }
 #endif
 
 /// @brief read one or multiple documents in a collection, local
-OperationResult transaction::Methods::documentLocal(std::string const& collectionName,
-                                                    VPackSlice const value,
-                                                    OperationOptions& options) {
+Future<OperationResult> transaction::Methods::documentLocal(std::string const& collectionName,
+                                                            VPackSlice const value,
+                                                            OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
 
@@ -1494,9 +1463,9 @@ OperationResult transaction::Methods::documentLocal(std::string const& collectio
     res = TRI_ERROR_NO_ERROR;
   }
 
-  return OperationResult(std::move(res), resultBuilder.steal(),
-                         _transactionContextPtr->orderCustomTypeHandler(),
-                         options, countErrorCodes);
+  return futures::makeFuture(OperationResult(std::move(res), resultBuilder.steal(),
+                                             _transactionContextPtr->orderCustomTypeHandler(),
+                                             options, countErrorCodes));
 }
 
 /// @brief create one or multiple documents in a collection

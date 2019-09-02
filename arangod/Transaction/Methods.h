@@ -289,10 +289,17 @@ class Methods {
                                                bool shouldLock);
 
   /// @brief return one or multiple documents from a collection
+  /// @deprecated use async variant
   ENTERPRISE_VIRT OperationResult document(std::string const& collectionName,
                                            VPackSlice const value,
-                                           OperationOptions& options);
-  
+                                           OperationOptions& options) {
+    return documentAsync(collectionName, value, options).get();
+  }
+
+  /// @brief return one or multiple documents from a collection
+  Future<OperationResult> documentAsync(std::string const& collectionName,
+                                        VPackSlice const value, OperationOptions& options);
+
   /// @deprecated use async variant
   OperationResult insert(std::string const& cname,
                          VPackSlice const value,
@@ -436,11 +443,12 @@ class Methods {
                              TRI_voc_rid_t oldRid, ManagedDocumentResult const* oldDoc,
                              ManagedDocumentResult const* newDoc);
 
-  OperationResult documentCoordinator(std::string const& collectionName,
-                                      VPackSlice const value, OperationOptions& options);
+  Future<OperationResult> documentCoordinator(std::string const& collectionName,
+                                              VPackSlice const value,
+                                              OperationOptions& options);
 
-  OperationResult documentLocal(std::string const& collectionName,
-                                VPackSlice const value, OperationOptions& options);
+  Future<OperationResult> documentLocal(std::string const& collectionName,
+                                        VPackSlice const value, OperationOptions& options);
 
   Future<OperationResult> insertCoordinator(std::string const& collectionName,
                                             VPackSlice const value,
@@ -509,11 +517,6 @@ class Methods {
   ENTERPRISE_VIRT Result unlockRecursive(TRI_voc_cid_t, AccessMode::Type);
 
  private:
-
-  /// @brief Helper create a Cluster Communication document
-  OperationResult clusterResultDocument(rest::ResponseCode const& responseCode,
-                                        std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
-                                        std::unordered_map<int, size_t> const& errorCounter) const;
 
   /// @brief Helper create a Cluster Communication modify result
   OperationResult clusterResultModify(rest::ResponseCode const& responseCode,

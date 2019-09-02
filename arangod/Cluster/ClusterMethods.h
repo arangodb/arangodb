@@ -127,11 +127,9 @@ int deleteDocumentOnCoordinator(transaction::Methods& trx, std::string const& co
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int getDocumentOnCoordinator(transaction::Methods& trx, std::string const& collname,
-                             VPackSlice slice, OperationOptions const& options,
-                             arangodb::rest::ResponseCode& responseCode,
-                             std::unordered_map<int, size_t>& errorCounter,
-                             std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
+futures::Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
+                                                          LogicalCollection&, VPackSlice slice,
+                                                          OperationOptions const& options);
 
 /// @brief fetch edges from TraverserEngines
 ///        Contacts all TraverserEngines placed
