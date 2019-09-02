@@ -227,13 +227,13 @@ struct IResearchViewCoordinatorSetup {
     arangodb::application_features::ApplicationServer::server = nullptr;
 
     // destroy application features
-    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) {
       if (features.at((*f)->name()).second) {
         (*f)->stop();
       }
     }
 
-    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) {
       (*f)->unprepare();
     }
 
@@ -327,6 +327,7 @@ SECTION("test_defaults") {
     CHECK((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
     CHECK((1 == vocbase->id()));
 
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     CHECK((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
       vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
     )));
@@ -563,6 +564,7 @@ SECTION("test_create_drop_view") {
     CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     CHECK(1 == vocbase->id());
 
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
       vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
     ));
@@ -713,6 +715,7 @@ SECTION("test_drop_with_link") {
     CHECK((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
     CHECK((1 == vocbase->id()));
 
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     CHECK((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
       vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
     )));
@@ -825,6 +828,7 @@ SECTION("test_update_properties") {
     CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     CHECK(1 == vocbase->id());
 
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
       vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
     ));
@@ -989,6 +993,7 @@ SECTION("test_update_links_partial_remove") {
     CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     CHECK(1 == vocbase->id());
 
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
       vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
     ));
@@ -1554,6 +1559,7 @@ SECTION("test_update_links_partial_add") {
     CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     CHECK(1 == vocbase->id());
 
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
       vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
     ));
@@ -2162,6 +2168,7 @@ SECTION("test_update_links_replace") {
     CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     CHECK(1 == vocbase->id());
 
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
       vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
     ));
@@ -2730,6 +2737,7 @@ SECTION("test_update_links_clear") {
     CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     CHECK(1 == vocbase->id());
 
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
       vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
     ));
@@ -3167,6 +3175,7 @@ SECTION("test_drop_link") {
     CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     CHECK(1 == vocbase->id());
 
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
       vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
     ));
@@ -3442,6 +3451,7 @@ SECTION("test_update_overwrite") {
     CHECK((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
     CHECK((1 == vocbase->id()));
 
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     CHECK((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
       vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
     )));
@@ -4019,6 +4029,7 @@ SECTION("test_update_partial") {
     CHECK((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
     CHECK((1 == vocbase->id()));
 
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     CHECK((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
       vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
     )));
@@ -4603,6 +4614,7 @@ SECTION("IResearchViewNode::createBlock") {
     CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     CHECK(1 == vocbase->id());
 
+    CHECK(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
       vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
     ));

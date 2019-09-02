@@ -719,8 +719,9 @@ std::
 /// @brief register warning
 void registerWarning(arangodb::aql::Query* query, char const* fName, int code) {
   std::string msg;
-
-  if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
+    
+  if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH ||
+      code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH) {
     msg = arangodb::basics::Exception::FillExceptionString(code, fName);
   } else {
     msg.append("in function '");

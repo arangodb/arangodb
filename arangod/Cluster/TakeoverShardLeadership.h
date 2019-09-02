@@ -19,30 +19,31 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Kaveh Vahedipour
+/// @author Matthew Von-Maszewski
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Agent.h"
-#include "StoreCallback.h"
+#ifndef ARANGODB_MAINTENANCE_TAKEOVER_SHARD_LEADERSHIP_H
+#define ARANGODB_MAINTENANCE_TAKEOVER_SHARD_LEADERSHIP_H
 
-using namespace arangodb::consensus;
-using namespace arangodb::velocypack;
+#include "ActionBase.h"
+#include "ActionDescription.h"
 
-StoreCallback::StoreCallback(
-  std::string const& url, query_t const& body, Agent* agent)
-  : _url(url), _body(body), _agent(agent) {}
+#include <chrono>
 
-bool StoreCallback::operator()(arangodb::ClusterCommResult* res) {
+namespace arangodb {
+namespace maintenance {
 
-  if (res->status == CL_COMM_ERROR) {
-    LOG_TOPIC(TRACE, Logger::AGENCY)
-      << _url << "(" << res->status << ", " << res->errorMessage
-      << "): " << _body->toJson();
+class TakeoverShardLeadership : public ActionBase {
+ public:
+  TakeoverShardLeadership(MaintenanceFeature&, ActionDescription const& d);
 
-    if (res->result->getHttpReturnCode() == 404 && _agent != nullptr) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "dropping dead callback at " << _url;
-      _agent->trashStoreCallback(_url, _body);
-    }
-  }
+  virtual ~TakeoverShardLeadership();
 
-  return true;
-}
+  virtual bool first() override final;
+};
+
+}  // namespace maintenance
+}  // namespace arangodb
+
+#endif

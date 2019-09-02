@@ -49,6 +49,7 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   std::string _walDirectory;
   uint64_t _totalWriteBufferSize;
   uint64_t _writeBufferSize;
+  // Update max_write_buffer_number above if you change number of families used
   uint64_t _maxWriteBufferNumber;
   uint64_t _maxTotalWalSize;
   uint64_t _delayedWriteRate;

@@ -182,20 +182,14 @@ class Node {
   /// @brief Get value type
   ValueType valueType() const;
 
-  /// @brief Add observer for this node
-  bool addObserver(std::string const&);
-
-  /// @brief Add observer for this node
-  void notifyObservers(std::string const& origin) const;
-
-  /// @brief Is this node being observed by url
-  bool observedBy(std::string const& url) const;
-
   /// @brief Get our container
   Store& store();
 
   /// @brief Get our container
   Store const& store() const;
+
+  /// brief Normalize node URIs
+  static std::string normalize(std::string const& key);
 
  private:  // FIXME: More should be private here, but this is a late
            // addition, so we might as well get it right for this one.

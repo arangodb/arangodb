@@ -46,7 +46,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
       _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
-      _maxWriteBufferNumber(rocksDBDefaults.max_write_buffer_number),
+      _maxWriteBufferNumber(7 + 2), // number of column families plus 2
       _maxTotalWalSize(80 << 20),
       _delayedWriteRate(rocksDBDefaults.delayed_write_rate),
       _minWriteBufferNumberToMerge(rocksDBDefaults.min_write_buffer_number_to_merge),
