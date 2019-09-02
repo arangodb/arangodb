@@ -126,6 +126,7 @@ StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& se
     : ApplicationFeature(server, "Statistics"),
       _statistics(true),
       _statisticsHistory(true),
+      _statisticsHistoryTouched(false),
       _descriptions(new stats::Descriptions()) {
   startsAfter("AQLPhase");
   setOptional(true);
@@ -141,18 +142,21 @@ void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                      new BooleanParameter(&_statistics),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
   options->addOption("--server.statistics-history",
-                     "turn storaging statistics in database on or off",
+                     "turn storing statistics in database on or off",
                      new BooleanParameter(&_statisticsHistory),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
     .setIntroducedIn(30409)
     .setIntroducedIn(30501);
 }
 
-void StatisticsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+void StatisticsFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_statistics) {
     // turn ourselves off
     disable();
   }
+
+  _statisticsHistoryTouched = options->processingResult().touched("--server.statistics-history");
+
 }
 
 void StatisticsFeature::prepare() {
@@ -202,7 +206,7 @@ void StatisticsFeature::start() {
   }
 
   // force history disable on Agents
-  if (arangodb::ServerState::instance()->isAgent()) {
+  if (arangodb::ServerState::instance()->isAgent() && !_statisticsHistoryTouched) {
     _statisticsHistory = false;
   } // if
   
