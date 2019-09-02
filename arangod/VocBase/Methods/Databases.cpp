@@ -59,17 +59,15 @@ CreateDatabaseInfo::CreateDatabaseInfo(std::string const& name, VPackSlice const
     : _id(0), _name(name) {
   Result res;
 
-  // TODO: throw.
   if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
     events::CreateDatabase(name, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
-    throw Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
   res = sanitizeUsers(users, _users);
   if (!res.ok()) {
     throw res;
   }
-  // TODO: ugly
   _userSlice = _users.slice();
 
   res = sanitizeOptions(options, _options);
@@ -80,7 +78,6 @@ CreateDatabaseInfo::CreateDatabaseInfo(std::string const& name, VPackSlice const
   // Obtain a unique id for the database to be created. Since this is different
   // on Coordinator vs Other, we have to have an if here to keep the other code
   // unified.
-  // TODO: move somewhere more sensible?
   if (ServerState::instance()->isCoordinator()) {
     _id = ClusterInfo::instance()->uniqid();
   } else {
@@ -418,9 +415,8 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     return res;
   }
 
-  // Entirely Foxx related:
-  // TODO: find out why this is here
-  //       and whether it can go away again
+  // Invalidate Foxx Queue database cache. We do not care if this fails,
+  // because the cache entry has a TTL
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
     try {
       auto* sysDbFeature =
@@ -429,8 +425,6 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
 
       TRI_ExpireFoxxQueueDatabaseCache(database.get());
     } catch (...) {
-      // it is of no real importance if cache invalidation fails, because
-      // the cache entry has a ttl
     }
   }
 

@@ -637,7 +637,6 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
   }
 
   // We need to replace the distribute with the cid.
-  // TODO: assert, also fix, wtf?
   auto cidString = arangodb::basics::StringUtils::itoa(other.get()->id());
   col->distributeShardsLike(cidString, other->shardingInfo());
 
@@ -3267,8 +3266,6 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
       }
     }
   }
-
-  // LOG_TOPIC("4ccd8", DEBUG, Logger::BACKUP) << "found: " << dbsBackups;
 
   for (auto& i : dbsBackups) {
     // check if the backup is on all dbservers
