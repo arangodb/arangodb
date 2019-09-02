@@ -58,8 +58,7 @@ RestStatus RestDocumentHandler::execute() {
     case rest::RequestType::GET:
       return readDocument();
     case rest::RequestType::HEAD:
-      checkDocument();
-      break;
+      return checkDocument();
     case rest::RequestType::POST:
       return insertDocument();
     case rest::RequestType::PUT:

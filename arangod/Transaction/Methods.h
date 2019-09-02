@@ -457,11 +457,9 @@ class Methods {
   Future<OperationResult> insertLocal(std::string const& collectionName,
                                       VPackSlice const value, OperationOptions& options);
 
-  OperationResult updateCoordinator(std::string const& collectionName,
-                                    VPackSlice const newValue, OperationOptions& options);
-
-  OperationResult replaceCoordinator(std::string const& collectionName,
-                                     VPackSlice const newValue, OperationOptions& options);
+  OperationResult modifyCoordinator(std::string const& collectionName,
+                                    VPackSlice const newValue, OperationOptions& options,
+                                    TRI_voc_document_operation_e operation);
 
   OperationResult modifyLocal(std::string const& collectionName,
                               VPackSlice const newValue, OperationOptions& options,

@@ -1346,23 +1346,28 @@ OperationResult transaction::Methods::clusterResultRemove(
 }
 
 /// @brief return one or multiple documents from a collection
-Future<OperationResult> transaction::Methods::documentAsync(std::string const& collectionName,
+Future<OperationResult> transaction::Methods::documentAsync(std::string const& cname,
                                                             VPackSlice const value,
                                                             OperationOptions& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
-    events::ReadDocument(vocbase().name(), collectionName, value, options,
+    events::ReadDocument(vocbase().name(), cname, value, options,
                          TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
   OperationResult result;
   if (_state->isCoordinator()) {
-    return documentCoordinator(collectionName, value, options);
+    return documentCoordinator(cname, value, options);
+    /*.thenValue([=](OperationResult opRes) {
+      events::ReadDocument(vocbase().name(), cname, value, options,
+                           opRes.errorNumber());
+      return opRes;
+    });*/
   } else {
-    return documentLocal(collectionName, value, options);
+    return documentLocal(cname, value, options);
   }
 
   return result;
@@ -1463,6 +1468,7 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
     res = TRI_ERROR_NO_ERROR;
   }
 
+  events::ReadDocument(vocbase().name(), collectionName, value, options, res.errorNumber());
   return futures::makeFuture(OperationResult(std::move(res), resultBuilder.steal(),
                                              _transactionContextPtr->orderCustomTypeHandler(),
                                              options, countErrorCodes));
@@ -1804,7 +1810,8 @@ OperationResult transaction::Methods::update(std::string const& collectionName,
 
   OperationResult result;
   if (_state->isCoordinator()) {
-    result = updateCoordinator(collectionName, newValue, optionsCopy);
+    result = modifyCoordinator(collectionName, newValue, optionsCopy,
+                               TRI_VOC_DOCUMENT_OPERATION_UPDATE);
   } else {
     result = modifyLocal(collectionName, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
   }
@@ -1818,16 +1825,17 @@ OperationResult transaction::Methods::update(std::string const& collectionName,
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
 #ifndef USE_ENTERPRISE
-OperationResult transaction::Methods::updateCoordinator(std::string const& collectionName,
-                                                        VPackSlice const newValue,
-                                                        OperationOptions& options) {
+OperationResult transaction::Methods::modifyCoordinator(
+    std::string const& collectionName, VPackSlice const newValue,
+    OperationOptions& options, TRI_voc_document_operation_e operation) {
   auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
+  const isPatch = (TRI_VOC_DOCUMENT_OPERATION_UPDATE == operation);
   int res = arangodb::modifyDocumentOnCoordinator(*this, collectionName, newValue,
-                                                  options, true /* isPatch */, headers,
-                                                  responseCode, errorCounter, resultBody);
+                                                  options, isPatch, headers, responseCode,
+                                                  errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultModify(responseCode, resultBody, errorCounter);
@@ -1861,7 +1869,8 @@ OperationResult transaction::Methods::replace(std::string const& collectionName,
 
   OperationResult result;
   if (_state->isCoordinator()) {
-    result = replaceCoordinator(collectionName, newValue, optionsCopy);
+    result = modifyCoordinator(collectionName, newValue, optionsCopy,
+                               TRI_VOC_DOCUMENT_OPERATION_REPLACE);
   } else {
     result = modifyLocal(collectionName, newValue, optionsCopy,
                          TRI_VOC_DOCUMENT_OPERATION_REPLACE);
@@ -1871,30 +1880,6 @@ OperationResult transaction::Methods::replace(std::string const& collectionName,
                           result.errorNumber());
   return result;
 }
-
-/// @brief replace one or multiple documents in a collection, coordinator
-/// the single-document variant of this operation will either succeed or,
-/// if it fails, clean up after itself
-#ifndef USE_ENTERPRISE
-OperationResult transaction::Methods::replaceCoordinator(std::string const& collectionName,
-                                                         VPackSlice const newValue,
-                                                         OperationOptions& options) {
-  auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-  rest::ResponseCode responseCode;
-  std::unordered_map<int, size_t> errorCounter;
-  auto resultBody = std::make_shared<VPackBuilder>();
-  int res = arangodb::modifyDocumentOnCoordinator(*this, collectionName, newValue,
-                                                  options, false /* isPatch */,
-                                                  headers, responseCode,
-                                                  errorCounter, resultBody);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    return clusterResultModify(responseCode, resultBody, errorCounter);
-  }
-
-  return OperationResult(res);
-}
-#endif
 
 /// @brief replace one or multiple documents in a collection, local
 /// the single-document variant of this operation will either succeed or,
