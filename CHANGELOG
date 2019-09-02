@@ -1,6 +1,8 @@
 devel
 -----
 
+* Made the mechanism in the Web UI of replacing and upgrading a foxx app more clear.
+
 * Fixed adding an orphan collections as the first collection in a SmartGraph. 
 
 * Fixed issue #9862: ServerException: RestHandler/RestCursorHandler.cpp:279
