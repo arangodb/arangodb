@@ -961,26 +961,32 @@ function iResearchAqlTestSuite () {
       assertEqual(result.length, 0);
     },
     testAnalyzerFunctionPrematureCall : function () {
-      db._query("FOR d in UnitTestsView SEARCH ANALYZER(d.a IN TOKENS('#', 'text_en'), 'text_en') RETURN d");
+      assertEqual(
+        db._query("FOR d in UnitTestsView SEARCH ANALYZER(d.a IN TOKENS('#', 'text_en'), 'text_en') OPTIONS { waitForSync : true } RETURN d").toArray().length,
+        0);
+      assertEqual(
+        db._query("FOR d in UnitTestsView SEARCH ANALYZER(d.a NOT IN TOKENS('#', 'text_en'), 'text_en') OPTIONS { waitForSync : true } RETURN d").toArray().length,
+        28);
     },
     testBoostFunctionPrematureCall : function () {
-      db._query("FOR d in UnitTestsView SEARCH BOOST(d.a IN TOKENS('#', 'text_en'), 2) SORT BM25(d) RETURN d");
+      assertEqual(
+        db._query("FOR d in UnitTestsView SEARCH BOOST(d.a IN TOKENS('#', 'text_en'), 2) OPTIONS { waitForSync : true }  SORT BM25(d) RETURN d").toArray().length,
+        0);
+      assertEqual(
+        db._query("FOR d in UnitTestsView SEARCH BOOST(d.a NOT IN TOKENS('#', 'text_en'), 2) OPTIONS { waitForSync : true }  SORT BM25(d) RETURN d").toArray().length,
+        28);
     },
     testMinMatchFunctionPrematureCall : function () {
-      db._query("FOR d in UnitTestsView SEARCH MIN_MATCH(d.a IN TOKENS('#', 'text_en'), d.a IN TOKENS('#', 'text_de'), d.a IN TOKENS('#', 'text_fr'), 2)  RETURN d");
-    }//,
-    //testInRangeFunctionPrematureCall : function () {
-    //  db._query("FOR d in UnitTestsView SEARCH IN_RANGE(d.c, 1, 2, false, false)  RETURN d");
-    //},
-    //testPhraseFunctionPrematureCall : function () {
-    //  db._query("FOR d in UnitTestsView SEARCH PHRASE(d.a, '#', 0, 'text_en')  RETURN d");
-    //},
-    //testStartsWithFunctionPrematureCall : function () {
-    //  db._query("FOR d in UnitTestsView SEARCH STARTS_WITH(d.a, '#')  RETURN d");
-    //},
-    //testExistsFunctionPrematureCall : function () {
-    //  db._query("FOR d in UnitTestsView SEARCH EXISTS(d.S)  RETURN d");
-    //}
+      assertEqual(
+        db._query("FOR d in UnitTestsView SEARCH MIN_MATCH(d.a IN TOKENS('#', 'text_en'), d.a IN TOKENS('#', 'text_de'), 1) OPTIONS { waitForSync : true } RETURN d").toArray().length,
+        0);
+      assertEqual(
+        db._query("FOR d in UnitTestsView SEARCH MIN_MATCH(false, true, true, 2) OPTIONS { waitForSync : true }  RETURN d").toArray().length,
+        28);
+      assertEqual(
+        db._query("FOR d in UnitTestsView SEARCH MIN_MATCH(false, false, false, 0) OPTIONS { waitForSync : true }  RETURN d").toArray().length,
+        28);
+    }
   };
 }
 

@@ -134,7 +134,7 @@ class IResearchLogTopic final : public arangodb::LogTopic {
   }
 };  // IResearchLogTopic
 
-// template <char const *name>
+
 arangodb::aql::AqlValue dummyFilterFunc(arangodb::aql::ExpressionContext*,
                                         arangodb::transaction::Methods*,
                                         arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
@@ -145,6 +145,48 @@ arangodb::aql::AqlValue dummyFilterFunc(arangodb::aql::ExpressionContext*,
       " are designed to be used only within a corresponding SEARCH statement "
       "of ArangoSearch view."
       " Please ensure function signature is correct.");
+}
+
+/// function body for ArangoSearchContext functions ANALYZER/BOOST. 
+/// Just returns its first argument if it exists (or Null-value if not) as outside ArangoSearch context
+/// there is nothing to do with search stuff but it is safe to call such functions during optimization.
+arangodb::aql::AqlValue dummyContextFunc(arangodb::aql::ExpressionContext*,
+                                        arangodb::transaction::Methods*,
+                                        arangodb::SmallVector<arangodb::aql::AqlValue> const& args) {
+  if(args.empty()) {
+    return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{});
+  } else {
+    return args[0];
+  }
+}
+
+/// Executes MIN_MATCH function with const parameters locally the same way it will be done in ArangoSearch on runtime
+/// This will allow optimize out MIN_MATCH call if all arguments are const
+arangodb::aql::AqlValue dummyMinMatchContextFunc(arangodb::aql::ExpressionContext*,
+                                        arangodb::transaction::Methods*,
+                                        arangodb::SmallVector<arangodb::aql::AqlValue> const& args) {
+  TRI_ASSERT(args.size() > 1); // ensured by function signature
+  auto& minMatchValue = args.back();
+  if(ADB_LIKELY(minMatchValue.isNumber())) {
+    auto matchesLeft = minMatchValue.toInt64();
+    const auto argsCount = args.size();
+    for( size_t i = 0; i < (argsCount - 1) && matchesLeft > 0; ++i) {
+      auto& currValue = args[i];
+      if (currValue.toBoolean()) {
+        matchesLeft--;
+      }
+    }
+    return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(matchesLeft == 0));
+  } else {
+    auto message = std::string("'MIN_MATCH' AQL function: ")
+                     .append(" last argument has invalid type '") 
+                     .append(minMatchValue.getTypeString())
+                     .append("' (numeric expected)");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      message);
+  }
+  return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(false));
 }
 
 arangodb::aql::AqlValue dummyScorerFunc(arangodb::aql::ExpressionContext*,
@@ -358,25 +400,18 @@ bool upgradeSingleServerArangoSearchView0_1(
 
 void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   using arangodb::iresearch::addFunction;
-  {
-    auto flags =
+  
+  auto flags =
       arangodb::aql::Function::makeFlags(arangodb::aql::Function::Flags::Deterministic,
                                          arangodb::aql::Function::Flags::Cacheable,
                                          arangodb::aql::Function::Flags::CanRunOnDBServer);
-    addFunction(functions, { "EXISTS", ".|.,.", flags, &dummyFilterFunc });  // (attribute, [ // "analyzer"|"type"|"string"|"numeric"|"bool"|"null" // ])
-    addFunction(functions, { "STARTS_WITH", ".,.|.", flags, &dummyFilterFunc });  // (attribute, prefix, scoring-limit)
-    addFunction(functions, { "PHRASE", ".,.|.+", flags, &dummyFilterFunc });  // (attribute, input [, offset, input... ] [, analyzer])
-    addFunction(functions, { "IN_RANGE", ".,.,.,.,.", flags, &dummyFilterFunc });  // (attribute, lower, upper, include lower, include upper)
-  }
-  { // functions below may end up with only const parameters and we need to make them Non-Deterministic
-    // to prevent premature call on optimization step
-    auto flags =
-      arangodb::aql::Function::makeFlags(arangodb::aql::Function::Flags::Cacheable,
-                                         arangodb::aql::Function::Flags::CanRunOnDBServer);
-    addFunction(functions, { "MIN_MATCH", ".,.|.+", flags, &dummyFilterFunc });  // (filter expression [, filter expression, ... ], min match count)
-    addFunction(functions, { "BOOST", ".,.", flags, &dummyFilterFunc });  // (filter expression, boost)
-    addFunction(functions, { "ANALYZER", ".,.", flags, &dummyFilterFunc });  // (filter expression, analyzer)
-  }
+  addFunction(functions, { "EXISTS", ".|.,.", flags, &dummyFilterFunc });  // (attribute, [ // "analyzer"|"type"|"string"|"numeric"|"bool"|"null" // ])
+  addFunction(functions, { "STARTS_WITH", ".,.|.", flags, &dummyFilterFunc });  // (attribute, prefix, scoring-limit)
+  addFunction(functions, { "PHRASE", ".,.|.+", flags, &dummyFilterFunc });  // (attribute, input [, offset, input... ] [, analyzer])
+  addFunction(functions, { "IN_RANGE", ".,.,.,.,.", flags, &dummyFilterFunc });  // (attribute, lower, upper, include lower, include upper)
+  addFunction(functions, { "MIN_MATCH", ".,.|.+", flags, &dummyMinMatchContextFunc });  // (filter expression [, filter expression, ... ], min match count)
+  addFunction(functions, { "BOOST", ".,.", flags, &dummyContextFunc });  // (filter expression, boost)
+  addFunction(functions, { "ANALYZER", ".,.", flags, &dummyContextFunc });  // (filter expression, analyzer)
 }
 
 void registerIndexFactory() {
@@ -553,7 +588,9 @@ namespace arangodb {
 namespace iresearch {
 
 bool isFilter(arangodb::aql::Function const& func) noexcept {
-  return func.implementation == &dummyFilterFunc;
+  return func.implementation == &dummyFilterFunc ||
+         func.implementation == &dummyContextFunc ||
+         func.implementation == &dummyMinMatchContextFunc;
 }
 
 bool isScorer(arangodb::aql::Function const& func) noexcept {
