@@ -634,7 +634,7 @@ void ClusterInfo::loadPlan() {
       }
 
       // We create the database object on the coordinator here, because
-      // it is used further down to create LogicalCollection instances further
+      // it is used to create LogicalCollection instances further
       // down in this function.
       if (ServerState::instance()->isCoordinator() &&
           !database.value.hasKey(StaticStrings::DatabaseIsBuilding)) {
@@ -1567,8 +1567,6 @@ Result ClusterInfo::waitForDatabaseInCurrent(methods::CreateDatabaseInfo const& 
 
   // Waits for the database to turn up in Current/Databases
   {
-    // double const realTimeout = getTimeout(timeout);
-    // double const endTime = TRI_microtime() + realTimeout;
     double const interval = getPollInterval();
 
     CONDITION_LOCKER(locker, agencyCallback->_cv);
@@ -1594,12 +1592,6 @@ Result ClusterInfo::waitForDatabaseInCurrent(methods::CreateDatabaseInfo const& 
 
         return Result(tmpRes, *errMsg);
       }
-
-      /*
-      if (TRI_microtime() > endTime) {
-        return Result(TRI_ERROR_CLUSTER_TIMEOUT);
-      }
-      */
 
       agencyCallback->executeByCallbackOrTimeout(getReloadServerListTimeout() / interval);
 
@@ -1648,7 +1640,7 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(methods::CreateDatabaseI
   auto waitresult = waitForDatabaseInCurrent(database);
 
   if (waitresult.fail()) {
-    // cleanup: remove database from plan?
+    // cleanup: remove database from plan
     auto ret = cancelCreateDatabaseCoordinator(database);
 
     if (ret.ok()) {
@@ -1984,7 +1976,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         return true;
       }
 
-      // result is the object at thge path?
+      // result is the object at the path
       if (result.isObject() && result.length() == (size_t)info.numberOfShards) {
         std::string tmpError = "";
 
