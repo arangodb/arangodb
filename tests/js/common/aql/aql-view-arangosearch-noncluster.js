@@ -959,8 +959,28 @@ function iResearchAqlTestSuite () {
       var result = db._query("FOR c IN [[[1, 3]]] FOR doc IN UnitTestsView  SEARCH 1 NOT IN NOOPT(FLATTEN(c)) OPTIONS { waitForSync : true } RETURN doc").toArray();
 
       assertEqual(result.length, 0);
-    }
-
+    },
+    testAnalyzerFunctionPrematureCall : function () {
+      db._query("FOR d in UnitTestsView SEARCH ANALYZER(d.a IN TOKENS('#', 'text_en'), 'text_en') RETURN d");
+    },
+    testBoostFunctionPrematureCall : function () {
+      db._query("FOR d in UnitTestsView SEARCH BOOST(d.a IN TOKENS('#', 'text_en'), 2) SORT BM25(d) RETURN d");
+    },
+    testMinMatchFunctionPrematureCall : function () {
+      db._query("FOR d in UnitTestsView SEARCH MIN_MATCH(d.a IN TOKENS('#', 'text_en'), d.a IN TOKENS('#', 'text_de'), d.a IN TOKENS('#', 'text_fr'), 2)  RETURN d");
+    }//,
+    //testInRangeFunctionPrematureCall : function () {
+    //  db._query("FOR d in UnitTestsView SEARCH IN_RANGE(d.c, 1, 2, false, false)  RETURN d");
+    //},
+    //testPhraseFunctionPrematureCall : function () {
+    //  db._query("FOR d in UnitTestsView SEARCH PHRASE(d.a, '#', 0, 'text_en')  RETURN d");
+    //},
+    //testStartsWithFunctionPrematureCall : function () {
+    //  db._query("FOR d in UnitTestsView SEARCH STARTS_WITH(d.a, '#')  RETURN d");
+    //},
+    //testExistsFunctionPrematureCall : function () {
+    //  db._query("FOR d in UnitTestsView SEARCH EXISTS(d.S)  RETURN d");
+    //}
   };
 }
 

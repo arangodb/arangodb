@@ -358,17 +358,25 @@ bool upgradeSingleServerArangoSearchView0_1(
 
 void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   using arangodb::iresearch::addFunction;
-  auto flags =
+  {
+    auto flags =
       arangodb::aql::Function::makeFlags(arangodb::aql::Function::Flags::Deterministic,
                                          arangodb::aql::Function::Flags::Cacheable,
                                          arangodb::aql::Function::Flags::CanRunOnDBServer);
-  addFunction(functions, {"EXISTS", ".|.,.", flags, &dummyFilterFunc});  // (attribute, [ // "analyzer"|"type"|"string"|"numeric"|"bool"|"null" // ])
-  addFunction(functions, {"STARTS_WITH", ".,.|.", flags, &dummyFilterFunc});  // (attribute, prefix, scoring-limit)
-  addFunction(functions, {"PHRASE", ".,.|.+", flags, &dummyFilterFunc});  // (attribute, input [, offset, input... ] [, analyzer])
-  addFunction(functions, {"IN_RANGE", ".,.,.,.,.", flags, &dummyFilterFunc});  // (attribute, lower, upper, include lower, include upper)
-  addFunction(functions, {"MIN_MATCH", ".,.|.+", flags, &dummyFilterFunc});  // (filter expression [, filter expression, ... ], min match count)
-  addFunction(functions, {"BOOST", ".,.", flags, &dummyFilterFunc});  // (filter expression, boost)
-  addFunction(functions, {"ANALYZER", ".,.", flags, &dummyFilterFunc});  // (filter expression, analyzer)
+    addFunction(functions, { "EXISTS", ".|.,.", flags, &dummyFilterFunc });  // (attribute, [ // "analyzer"|"type"|"string"|"numeric"|"bool"|"null" // ])
+    addFunction(functions, { "STARTS_WITH", ".,.|.", flags, &dummyFilterFunc });  // (attribute, prefix, scoring-limit)
+    addFunction(functions, { "PHRASE", ".,.|.+", flags, &dummyFilterFunc });  // (attribute, input [, offset, input... ] [, analyzer])
+    addFunction(functions, { "IN_RANGE", ".,.,.,.,.", flags, &dummyFilterFunc });  // (attribute, lower, upper, include lower, include upper)
+  }
+  { // functions below may end up with only const parameters and we need to make them Non-Deterministic
+    // to prevent premature call on optimization step
+    auto flags =
+      arangodb::aql::Function::makeFlags(arangodb::aql::Function::Flags::Cacheable,
+                                         arangodb::aql::Function::Flags::CanRunOnDBServer);
+    addFunction(functions, { "MIN_MATCH", ".,.|.+", flags, &dummyFilterFunc });  // (filter expression [, filter expression, ... ], min match count)
+    addFunction(functions, { "BOOST", ".,.", flags, &dummyFilterFunc });  // (filter expression, boost)
+    addFunction(functions, { "ANALYZER", ".,.", flags, &dummyFilterFunc });  // (filter expression, analyzer)
+  }
 }
 
 void registerIndexFactory() {
