@@ -3533,7 +3533,6 @@ void ClusterInfo::loadServers() {
           newAdvertisedEndpoints.emplace(std::make_pair(serverId, advertised));
           serverIds.emplace(serverId);
           newTimestamps.emplace(std::make_pair(serverId, serverTimestamp));
-          serverIds.emplace(serverId);
         }
       }
 
@@ -3547,7 +3546,6 @@ void ClusterInfo::loadServers() {
         _serverAdvertisedEndpoints.swap(newAdvertisedEndpoints);
         _serversKnown = std::move(newServersKnown);
         _serverTimestamps.swap(newTimestamps);
-        _serversKnown = std::move(newServersKnown);
         _serversProt.doneVersion = storedVersion;
         _serversProt.isValid = true;
       }
