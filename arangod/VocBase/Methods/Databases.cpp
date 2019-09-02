@@ -56,25 +56,25 @@ using namespace arangodb;
 using namespace arangodb::methods;
 using namespace arangodb::velocypack;
 
-CreateDatabaseInfo::CreateDatabaseInfo(std::string const& name, VPackSlice const& options,
-                                       VPackSlice const& users)
-    : _id(0), _name(name) {
+Result CreateDatabaseInfo::load(std::string const& name, VPackSlice const& options,
+                                VPackSlice const& users) {
   Result res;
+  _id = 0;
+  _name = name;
 
   if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
-    events::CreateDatabase(name, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+    return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
   res = sanitizeUsers(users, _users);
   if (!res.ok()) {
-    throw res;
+    return res;
   }
   _userSlice = _users.slice();
 
   res = sanitizeOptions(options, _options);
   if (!res.ok()) {
-    throw res;
+    return res;
   }
 
   // Obtain a unique id for the database to be created. Since this is different
@@ -89,6 +89,8 @@ CreateDatabaseInfo::CreateDatabaseInfo(std::string const& name, VPackSlice const
       _id = 0;
     }
   }
+
+  return Result();
 };
 
 Result CreateDatabaseInfo::buildSlice(VPackBuilder& builder) const {
@@ -393,14 +395,12 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   //       a struct to avoid the try/catch
   //       or the object could have a .valid() method?
   CreateDatabaseInfo createInfo;
-  try {
-      createInfo = CreateDatabaseInfo(dbName, options, users);
-  } catch(Result& e) {
-    return std::move(e);
-  } catch (...) {
-    LOG_TOPIC("c9189", ERR, Logger::FIXME)
-        << "Unhandled exception while creating database";
-    return Result(TRI_ERROR_INTERNAL);
+  res = createInfo.load(dbName, options, users);
+
+  if (!res.ok()) {
+    LOG_TOPIC("15580", ERR, Logger::FIXME)
+      << "Could not create database: " << res.errorMessage();
+    return res;
   }
 
   if (ServerState::instance()->isCoordinator()) {
