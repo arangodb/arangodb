@@ -316,6 +316,7 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
     ASSERT_TRUE((nullptr != database));
     ASSERT_TRUE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testVocbase", vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
+    ASSERT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
                                                arangodb::velocypack::Slice::emptyObjectSlice(), 0.0)
                      .ok()));
@@ -400,6 +401,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     EXPECT_TRUE((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
     EXPECT_TRUE((1 == vocbase->id()));
 
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
                      .ok()));
   }
@@ -692,7 +694,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
     EXPECT_TRUE("testDatabase" == vocbase->name());
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
-
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
                      .ok()));
   }
@@ -841,6 +843,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
     ASSERT_EQ(1, vocbase->id());
 
+    ASSERT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
                      .ok()));
   }
@@ -958,6 +961,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
     EXPECT_TRUE((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
     EXPECT_TRUE((1 == vocbase->id()));
 
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
                      .ok()));
   }
@@ -1086,7 +1090,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
     EXPECT_TRUE("testDatabase" == vocbase->name());
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
-
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
                      .ok()));
   }
@@ -1257,7 +1261,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
     EXPECT_EQ("testDatabase", vocbase->name());
     EXPECT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
     EXPECT_EQ(1, vocbase->id());
-
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     EXPECT_TRUE(ci->createDatabaseCoordinator(vocbase->name(),
                                               VPackSlice::emptyObjectSlice(), 0.0)
                     .ok());
@@ -1457,7 +1461,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE("testDatabase" == vocbase->name());
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
-
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
                      .ok()));
   }
@@ -2049,7 +2053,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE("testDatabase" == vocbase->name());
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
-
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
                      .ok()));
   }
@@ -2649,10 +2653,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE) {}
     } execContext;
-    auto* origExecContext = ExecContext::CURRENT;
-    auto resetExecContext = irs::make_finally(
-        [origExecContext]() -> void { ExecContext::CURRENT = origExecContext; });
-    ExecContext::CURRENT = &execContext;
+    arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::removeAllUsers()
@@ -2692,7 +2693,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE("testDatabase" == vocbase->name());
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
-
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
                      .ok()));
   }
@@ -3293,7 +3294,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     EXPECT_TRUE("testDatabase" == vocbase->name());
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
-
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
                      .ok()));
   }
@@ -3758,7 +3759,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     EXPECT_TRUE("testDatabase" == vocbase->name());
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
-
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
                      .ok()));
   }
@@ -4025,10 +4026,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE) {}
     } execContext;
-    auto* origExecContext = ExecContext::CURRENT;
-    auto resetExecContext = irs::make_finally(
-        [origExecContext]() -> void { ExecContext::CURRENT = origExecContext; });
-    ExecContext::CURRENT = &execContext;
+    arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::removeAllUsers()
@@ -4067,7 +4065,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     EXPECT_TRUE(("testDatabase" == vocbase->name()));
     EXPECT_TRUE((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
     EXPECT_TRUE((1 == vocbase->id()));
-
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
                      .ok()));
   }
@@ -4357,10 +4355,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE) {}
     } execContext;
-    auto* origExecContext = ExecContext::CURRENT;
-    auto resetExecContext = irs::make_finally(
-        [origExecContext]() -> void { ExecContext::CURRENT = origExecContext; });
-    ExecContext::CURRENT = &execContext;
+    arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -4832,7 +4827,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     EXPECT_TRUE(("testDatabase" == vocbase->name()));
     EXPECT_TRUE((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
     EXPECT_TRUE((1 == vocbase->id()));
-
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
                      .ok()));
   }
@@ -5123,10 +5118,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE) {}
     } execContext;
-    auto* origExecContext = ExecContext::CURRENT;
-    auto resetExecContext = irs::make_finally(
-        [origExecContext]() -> void { ExecContext::CURRENT = origExecContext; });
-    ExecContext::CURRENT = &execContext;
+    arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -5603,7 +5595,7 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     EXPECT_TRUE("testDatabase" == vocbase->name());
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
-
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
                      .ok()));
   }

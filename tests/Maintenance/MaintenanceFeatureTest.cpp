@@ -30,9 +30,6 @@
 
 #include <iostream>
 
-#include <velocypack/velocypack-aliases.h>
-#include <velocypack/vpack.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Result.h"
 #include "Cluster/Action.h"

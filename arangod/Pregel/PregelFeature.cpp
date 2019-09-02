@@ -42,16 +42,14 @@
 
 namespace {
 bool authorized(std::string const& user) {
-  auto context = arangodb::ExecContext::CURRENT;
-  if (context == nullptr || !arangodb::ExecContext::isAuthEnabled()) {
+  auto const& exec = arangodb::ExecContext::current();
+  if (exec.isSuperuser()) {
     return true;
   }
-
-  if (context->isSuperuser()) {
-    return true;
+  if (!(user == exec.user())) {
+    std::this_thread::sleep_for(std::chrono::seconds(20));
   }
-
-  return (user == context->user());
+  return (user == exec.user());
 }
 
 bool authorized(std::pair<std::string, std::shared_ptr<arangodb::pregel::Conductor>> const& conductor) {
@@ -95,21 +93,21 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
   ServerState* ss = ServerState::instance();
 
   // check the access rights to collections
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
+  ExecContext const& exec = ExecContext::current();
+  if (!exec.isSuperuser()) {
     TRI_ASSERT(params.isObject());
     VPackSlice storeSlice = params.get("store");
     bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
     for (std::string const& vc : vertexCollections) {
-      bool canWrite = exec->canUseCollection(vc, auth::Level::RW);
-      bool canRead = exec->canUseCollection(vc, auth::Level::RO);
+      bool canWrite = exec.canUseCollection(vc, auth::Level::RW);
+      bool canRead = exec.canUseCollection(vc, auth::Level::RO);
       if ((storeResults && !canWrite) || !canRead) {
         return std::make_pair(Result{TRI_ERROR_FORBIDDEN}, 0);
       }
     }
     for (std::string const& ec : edgeCollections) {
-      bool canWrite = exec->canUseCollection(ec, auth::Level::RW);
-      bool canRead = exec->canUseCollection(ec, auth::Level::RO);
+      bool canWrite = exec.canUseCollection(ec, auth::Level::RW);
+      bool canRead = exec.canUseCollection(ec, auth::Level::RO);
       if ((storeResults && !canWrite) || !canRead) {
         return std::make_pair(Result{TRI_ERROR_FORBIDDEN}, 0);
       }
@@ -265,7 +263,7 @@ void PregelFeature::unprepare() {
 }
 
 void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c, uint64_t executionNumber) {
-  std::string user = ExecContext::CURRENT ? ExecContext::CURRENT->user() : "";
+  std::string user = ExecContext::current().user();
 
   MUTEX_LOCKER(guard, _mutex);
   _conductors.emplace(executionNumber,
@@ -279,7 +277,7 @@ std::shared_ptr<Conductor> PregelFeature::conductor(uint64_t executionNumber) {
 }
 
 void PregelFeature::addWorker(std::shared_ptr<IWorker>&& w, uint64_t executionNumber) {
-  std::string user = ExecContext::CURRENT ? ExecContext::CURRENT->user() : "";
+  std::string user = ExecContext::current().user();
 
   MUTEX_LOCKER(guard, _mutex);
   _workers.emplace(executionNumber,
@@ -308,10 +306,14 @@ void PregelFeature::cleanupWorker(uint64_t executionNumber) {
   // unmapping etc might need a few seconds
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestLane::INTERNAL_LOW, [this, executionNumber, instance] {
+  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, executionNumber, instance] {
     MUTEX_LOCKER(guard, _mutex);
     _workers.erase(executionNumber);
   });
+  if (!queued) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
+                                   "No thread available to queue cleanup.");
+  }
 }
 
 void PregelFeature::cleanupAll() {

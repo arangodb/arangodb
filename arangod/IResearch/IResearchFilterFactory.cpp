@@ -793,7 +793,7 @@ arangodb::Result fromInArray(irs::boolean_filter* filter, QueryContext const& ct
   if (filter) {
     filter = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type
                  ? &static_cast<irs::boolean_filter&>(
-                       filter->add<irs::Not>().filter<irs::And>())
+                       filter->add<irs::Not>().filter<irs::Or>())
                  : &static_cast<irs::boolean_filter&>(filter->add<irs::Or>());
     filter->boost(filterCtx.boost);
   }
@@ -934,7 +934,7 @@ arangodb::Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
 
       filter = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type
                    ? &static_cast<irs::boolean_filter&>(
-                         filter->add<irs::Not>().filter<irs::And>())
+                         filter->add<irs::Not>().filter<irs::Or>())
                    : &static_cast<irs::boolean_filter&>(filter->add<irs::Or>());
       filter->boost(filterCtx.boost);
 

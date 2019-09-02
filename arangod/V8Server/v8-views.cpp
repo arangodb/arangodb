@@ -47,9 +47,7 @@ namespace {
 /// @return the specified vocbase is granted 'level' access
 ////////////////////////////////////////////////////////////////////////////////
 bool canUse(arangodb::auth::Level level, TRI_vocbase_t const& vocbase) {
-  auto* execCtx = arangodb::ExecContext::CURRENT;
-
-  return !execCtx || execCtx->canUseDatabase(vocbase.name(), level);
+  return arangodb::ExecContext::current().canUseDatabase(vocbase.name(), level);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

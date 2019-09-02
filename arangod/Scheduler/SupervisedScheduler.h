@@ -43,7 +43,7 @@ class SupervisedScheduler final : public Scheduler {
                       uint64_t fifo1Size, uint64_t fifo2Size);
   virtual ~SupervisedScheduler();
 
-  bool queue(RequestLane lane, std::function<void()>, bool allowDirectHandling = false) override;
+  bool queue(RequestLane lane, std::function<void()>, bool allowDirectHandling = false) override ADB_WARN_UNUSED_RESULT;
 
  private:
   std::atomic<size_t> _numWorkers;
@@ -114,12 +114,17 @@ class SupervisedScheduler final : public Scheduler {
     uint64_t _queueRetryCount;  // t1
     uint64_t _sleepTimeout_ms;  // t2
     std::atomic<bool> _stop, _working;
+    // _ready = false means the Worker is not properly initialized
+    // _ready = true means it is initialized and can be used to dispatch tasks to
+    // _ready is protected by the Scheduler's condition variable & mutex
+    bool _ready;
     clock::time_point _lastJobStarted;
     std::unique_ptr<SupervisedSchedulerWorkerThread> _thread;
 
     // initialize with harmless defaults: spin once, sleep forever
     explicit WorkerState(SupervisedScheduler& scheduler);
-    WorkerState(WorkerState&& that) noexcept;
+    WorkerState(WorkerState const&) = delete;
+    WorkerState& operator=(WorkerState const&) = delete;
 
     // cppcheck-suppress missingOverride
     bool start();

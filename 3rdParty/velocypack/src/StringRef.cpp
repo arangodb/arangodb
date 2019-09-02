@@ -72,7 +72,7 @@ StringRef& StringRef::operator=(Slice slice) {
 }
   
 StringRef StringRef::substr(std::size_t pos, std::size_t count) const {
-  if (pos >= _length) {
+  if (pos > _length) {
     throw Exception(Exception::IndexOutOfBounds, "substr index out of bounds");
   }
   if (count == std::string::npos || (count + pos >= _length)) {
@@ -108,14 +108,6 @@ std::size_t StringRef::rfind(char c) const {
   }
 
   return (p - _data);
-}
-  
-int StringRef::compare(std::string const& other) const noexcept {
-  int res = memcmp(_data, other.data(), (std::min)(_length, other.size()));
-  if (res != 0) {
-    return res;
-  }
-  return static_cast<int>(_length) - static_cast<int>(other.size());
 }
   
 int StringRef::compare(StringRef const& other) const noexcept {

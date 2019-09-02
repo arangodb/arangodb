@@ -91,7 +91,7 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
     testAnalyzerRemovalWithDatabaseName_InSystem: function() {
-      let dbName = "analyzerWrongDbName";
+      let dbName = "analyzerWrongDbName1";
       db._useDatabase("_system");
       try { db._dropDatabase(dbName); } catch (e) {}
       db._createDatabase(dbName);
@@ -102,23 +102,74 @@ function iResearchFeatureAqlTestSuite () {
         analyzers.remove(dbName + "::MyTrigram");
         fail(); // removal with db name in wrong current used db should also fail
       } catch(e) {
-        assertEqual(require("internal").errors.ERROR_BAD_PARAMETER .code,
+        assertEqual(require("internal").errors.ERROR_FORBIDDEN .code,
                        e.errorNum);
       }
+      db._useDatabase(dbName);
+      analyzers.remove(dbName + "::MyTrigram", true);
+      db._useDatabase("_system");
       db._dropDatabase(dbName);
     },
-    testAnalyzerRemovalWithDatabaseName_InDbName: function() {
-      let dbName = "analyzerWrongDbName";
+    testAnalyzerCreateRemovalWithDatabaseName_InDb: function() {
+      let dbName = "analyzerWrongDbName2";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      db._createDatabase(dbName);
+      try {
+        analyzers.save(dbName + "::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+        fail();
+      } catch(e) {
+        assertEqual(require("internal").errors.ERROR_FORBIDDEN.code,
+                       e.errorNum);
+      }
+      db._useDatabase(dbName);
+      analyzers.save(dbName + "::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true }); 
+      analyzers.remove(dbName + "::MyTrigram", true); 
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    },
+    testAnalyzerCreateRemovalWithDatabaseName_InSystem: function() {
+      let dbName = "analyzerWrongDbName3";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      try { analyzers.remove("MyTrigram"); } catch (e) {}
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      // cross-db request should fail
+      try {
+        analyzers.save("::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+        fail();
+      } catch(e) {
+        assertEqual(require("internal").errors.ERROR_FORBIDDEN.code,
+                       e.errorNum);
+      }
+      try {
+        analyzers.save("_system::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+        fail();
+      } catch(e) {
+        assertEqual(require("internal").errors.ERROR_FORBIDDEN.code,
+                       e.errorNum);
+      }
+      // in _system db requests should be ok
+      db._useDatabase("_system");
+      analyzers.save("::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true }); 
+      analyzers.remove("::MyTrigram", true); 
+      analyzers.save("_system::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true }); 
+      analyzers.remove("_system::MyTrigram", true); 
+      db._dropDatabase(dbName);
+    },
+    testAnalyzerInvalidName: function() {
+      let dbName = "analyzerWrongDbName4";
       db._useDatabase("_system");
       try { db._dropDatabase(dbName); } catch (e) {}
       db._createDatabase(dbName);
       db._useDatabase(dbName);
-      analyzers.save("MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
       try {
-        analyzers.remove(dbName + "::MyTrigram");
-        fail(); // removal with db name should  fail
+        // invalid ':' in name
+        analyzers.save(dbName + "::MyTr:igram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+        fail();
       } catch(e) {
-        assertEqual(require("internal").errors.ERROR_BAD_PARAMETER .code,
+        assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
                        e.errorNum);
       }
       db._useDatabase("_system");

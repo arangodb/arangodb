@@ -287,10 +287,6 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
   std::shared_ptr<LogicalCollection> def;
 
   OperationResult result;
-  VPackBuilder collectionsOptions;
-  collectionsOptions.openObject();
-  _graph.createCollectionOptions(collectionsOptions, waitForSync);
-  collectionsOptions.close();
 
   if (_graph.hasVertexCollection(collectionName)) {
     if (_graph.hasOrphanCollection(collectionName)) {
@@ -302,13 +298,19 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
                    std::string{TRI_errno_string(TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF)}));
   }
 
+  // add orphan collection to graph
+  _graph.addOrphanCollection(std::string(collectionName));
+
   def = GraphManager::getCollectionByName(_vocbase, collectionName);
+  Result res;
+
   if (def == nullptr) {
     if (createCollection) {
-      result = gmngr.createVertexCollection(collectionName, waitForSync,
-                                            collectionsOptions.slice());
-      if (result.fail()) {
-        return result;
+      // ensure that all collections are available
+      res = gmngr.ensureCollections(&_graph, waitForSync);
+
+      if (res.fail()) {
+        return OperationResult{std::move(res)};
       }
     } else {
       return OperationResult(
@@ -320,13 +322,11 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
     if (def->type() != TRI_COL_TYPE_DOCUMENT) {
       return OperationResult(TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX);
     }
-    auto res = _graph.validateCollection(*(def.get()));
+    res = _graph.validateCollection(*(def.get()));
     if (res.fail()) {
       return OperationResult{std::move(res)};
     }
   }
-  // add orphan collection to graph
-  _graph.addOrphanCollection(std::move(collectionName));
 
   VPackBuilder builder;
   builder.openObject();
@@ -336,10 +336,9 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::WRITE);
 
-  Result res = trx.begin();
+  res = trx.begin();
 
   if (!res.ok()) {
-    trx.finish(TRI_ERROR_NO_ERROR);
     return OperationResult(res);
   }
 
@@ -948,13 +947,13 @@ bool GraphOperations::hasPermissionsFor(std::string const& collection, auth::Lev
                << " permissions for " << databaseName << "." << collection << ": ";
   std::string const logprefix = stringstream.str();
 
-  ExecContext const* execContext = ExecContext::CURRENT;
-  if (execContext == nullptr) {
+  ExecContext const& execContext = ExecContext::current();
+  if (!ExecContext::isAuthEnabled()) {
     LOG_TOPIC("08e1f", DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
     return true;
   }
 
-  if (execContext->canUseCollection(collection, level)) {
+  if (execContext.canUseCollection(collection, level)) {
     return true;
   }
 
@@ -971,8 +970,8 @@ Result GraphOperations::checkEdgeDefinitionPermissions(EdgeDefinition const& edg
                << "." << graph().name() << "`: ";
   std::string const logprefix = stringstream.str();
 
-  ExecContext const* execContext = ExecContext::CURRENT;
-  if (execContext == nullptr) {
+  ExecContext const& execContext = ExecContext::current();
+  if (!ExecContext::isAuthEnabled()) {
     LOG_TOPIC("18e8e", DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
     return TRI_ERROR_NO_ERROR;
   }
@@ -983,11 +982,11 @@ Result GraphOperations::checkEdgeDefinitionPermissions(EdgeDefinition const& edg
   setUnion(graphCollections, edgeDefinition.getTo());
   graphCollections.emplace(edgeDefinition.getName());
 
-  bool canUseDatabaseRW = execContext->canUseDatabase(auth::Level::RW);
+  bool canUseDatabaseRW = execContext.canUseDatabase(auth::Level::RW);
   for (auto const& col : graphCollections) {
     // We need RO on all collections. And, in case any collection does not
     // exist, we need RW on the database.
-    if (!execContext->canUseCollection(col, auth::Level::RO)) {
+    if (!execContext.canUseCollection(col, auth::Level::RO)) {
       LOG_TOPIC("e8a53", DEBUG, Logger::GRAPHS)
           << logprefix << "No read access to " << databaseName << "." << col;
       return TRI_ERROR_FORBIDDEN;

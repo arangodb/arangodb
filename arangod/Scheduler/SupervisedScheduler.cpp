@@ -317,33 +317,35 @@ void SupervisedScheduler::runWorker() {
     id = _numWorkers++;  // increase the number of workers here, to obtain the id
     // copy shared_ptr with worker state
     state = _workerStates.back();
+
+    state->_sleepTimeout_ms = 20 * (id + 1);
+    // cap the timeout to some boundary value
+    if (state->_sleepTimeout_ms >= 1000) {
+      state->_sleepTimeout_ms = 1000;
+    }
+
+    if (id < 32U) {
+      // 512 >> 32 => undefined behavior
+      state->_queueRetryCount = (uint64_t(512) >> id) + 3;
+    } else {
+      // we want at least 3 retries
+      state->_queueRetryCount = 3;
+    }
+    
     // inform the supervisor that this thread is alive
+    state->_ready = true;
     _conditionSupervisor.notify_one();
   }
 
-  state->_sleepTimeout_ms = 20 * (id + 1);
-  // cap the timeout to some boundary value
-  if (state->_sleepTimeout_ms >= 1000) {
-    state->_sleepTimeout_ms = 1000;
-  }
-
-  if (id < 32U) {
-    // 512 >> 32 => undefined behavior
-    state->_queueRetryCount = (uint64_t(512) >> id) + 3;
-  } else {
-    // we want at least 3 retries
-    state->_queueRetryCount = 3;
-  }
-
   while (true) {
-    std::unique_ptr<WorkItem> work = getWork(state);
-    if (work == nullptr) {
-      break;
-    }
-
-    _jobsDequeued++;
-
     try {
+      std::unique_ptr<WorkItem> work = getWork(state);
+      if (work == nullptr) {
+        break;
+      }
+    
+      _jobsDequeued++;
+
       state->_lastJobStarted = clock::now();
       state->_working = true;
       work->_handler();
@@ -395,23 +397,27 @@ void SupervisedScheduler::runSupervisor() {
     lastQueueLength = queueLength;
     lastJobsSubmitted = jobsSubmitted;
 
-    if (doStartOneThread && _numWorkers < _maxNumWorker) {
-      jobsStallingTick = 0;
-      startOneThread();
-    } else if (doStopOneThread && _numWorkers > _numIdleWorker) {
-      stopOneThread();
+    try {
+      if (doStartOneThread && _numWorkers < _maxNumWorker) {
+        jobsStallingTick = 0;
+        startOneThread();
+      } else if (doStopOneThread && _numWorkers > _numIdleWorker) {
+        stopOneThread();
+      }
+
+      cleanupAbandonedThreads();
+      sortoutLongRunningThreads();
+
+      std::unique_lock<std::mutex> guard(_mutexSupervisor);
+
+      if (_stopping) {
+        break;
+      }
+
+      _conditionSupervisor.wait_for(guard, std::chrono::milliseconds(100));
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("3318c", WARN, Logger::THREADS) << "scheduler supervisor thread caught exception: " << ex.what();
     }
-
-    cleanupAbandonedThreads();
-    sortoutLongRunningThreads();
-
-    std::unique_lock<std::mutex> guard(_mutexSupervisor);
-
-    if (_stopping) {
-      break;
-    }
-
-    _conditionSupervisor.wait_for(guard, std::chrono::milliseconds(100));
   }
 }
 
@@ -548,16 +554,21 @@ void SupervisedScheduler::startOneThread() {
 #pragma warning(pop)
 #endif
 
-  if (!_workerStates.back()->start()) {
+  auto& state = _workerStates.back();
+
+  if (!state->start()) {
     // failed to start a worker
     _workerStates.pop_back();  // pop_back deletes shared_ptr, which deletes thread
     LOG_TOPIC("913b5", ERR, Logger::THREADS)
         << "could not start additional worker thread";
-
-  } else {
-    LOG_TOPIC("f9de8", TRACE, Logger::THREADS) << "Started new thread";
-    _conditionSupervisor.wait(guard);
+    return;
   }
+ 
+  // sync with runWorker() 
+  _conditionSupervisor.wait(guard, [&state]() {
+    return state->_ready;
+  });
+  LOG_TOPIC("f9de8", TRACE, Logger::THREADS) << "Started new thread";
 }
 
 void SupervisedScheduler::stopOneThread() {
@@ -590,18 +601,12 @@ void SupervisedScheduler::stopOneThread() {
   }
 }
 
-SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler::WorkerState&& that) noexcept
-    : _queueRetryCount(that._queueRetryCount),
-      _sleepTimeout_ms(that._sleepTimeout_ms),
-      _stop(that._stop.load()),
-      _working(false),
-      _thread(std::move(that._thread)) {}
-
 SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler& scheduler)
     : _queueRetryCount(100),
       _sleepTimeout_ms(100),
       _stop(false),
       _working(false),
+      _ready(false),
       _thread(new SupervisedSchedulerWorkerThread(scheduler)) {}
 
 bool SupervisedScheduler::WorkerState::start() { return _thread->start(); }
