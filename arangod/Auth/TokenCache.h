@@ -73,6 +73,7 @@ class TokenCache {
     bool _authenticated;
     /// expiration time (in seconds since epoch) of this entry
     double _expiry;
+    double _iat;
     // paths that are valid for this token
     std::vector<std::string> _allowedPaths;
   };

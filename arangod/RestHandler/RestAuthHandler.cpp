@@ -60,17 +60,16 @@ std::string RestAuthHandler::generateJwt(std::string const& username,
 
 RestStatus RestAuthHandler::execute() {
   auto const type = _request->requestType();
-  /*
+
   if (_request->authenticated()) {
     AuthenticationFeature* af = AuthenticationFeature::instance();
     TRI_ASSERT(af != nullptr);
 
-    std::string jwt = _request->_authToken.generateJWT(*af);
     
     VPackBuilder resultBuilder;
     {
       VPackObjectBuilder b(&resultBuilder);
-      std::string jwt = generateJwt(_username, password);
+      auto jwt = _request->getJWT();
       resultBuilder.add("jwt", VPackValue(jwt));
     }
 
@@ -78,7 +77,7 @@ RestStatus RestAuthHandler::execute() {
     generateDocument(resultBuilder.slice(), true, &VPackOptions::Defaults);
     return RestStatus::DONE;
   }
-  */
+
   if (type != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;

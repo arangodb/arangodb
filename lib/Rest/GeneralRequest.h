@@ -112,6 +112,10 @@ class GeneralRequest {
   void setUser(std::string const& user) { _user = user; }
   void setUser(std::string&& user) { _user = std::move(user); }
 
+  void setJWT(std::string const& jwt) { _jwt = jwt; }
+  void setJWT(std::string&& jwt) { _jwt = std::move(jwt); }
+  std::string const& getJWT() { return _jwt; }
+
   /// @brief the request context depends on the application
   TEST_VIRTUAL RequestContext* requestContext() const {
     return _requestContext;
@@ -235,6 +239,7 @@ class GeneralRequest {
   std::string _fullUrl;
   std::string _requestPath;
   std::string _prefix;  // part of path matched by rest route
+  std::string _jwt;
   std::vector<std::string> _suffixes;
   ContentType _contentType;  // UNSET, VPACK, JSON
   ContentType _contentTypeResponse;

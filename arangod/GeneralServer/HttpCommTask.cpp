@@ -574,15 +574,17 @@ ResponseCode HttpCommTask<T>::handleAuthHeader(HttpRequest& req) {
       }
 
       req.setAuthenticationMethod(authMethod);
-      if (authMethod == AuthenticationMethod::NEGOTIATE) {
+      if (authMethod != AuthenticationMethod::NONE) {
         std::string cppAuth(auth);
         this->_authToken = this->_auth->tokenCache().checkAuthentication(authMethod, cppAuth);
         req.setAuthenticated(this->_authToken.authenticated());
         req.setUser(this->_authToken._username);  // do copy here, so that we do not invalidate the member
-        
-        std::string replyAuthHeader("Negotiate ");
-        replyAuthHeader += cppAuth;
-        req.setAuthToken(replyAuthHeader);
+        if (authMethod == AuthenticationMethod::NEGOTIATE) {
+          req.setJWT(this->_authToken.generateJWT(this->_auth->tokenCache()));
+          std::string replyAuthHeader("Negotiate ");
+          replyAuthHeader += cppAuth;
+          req.setAuthToken(replyAuthHeader);
+        }
       }
 
       if (req.authenticated() || !this->_auth->isActive()) {

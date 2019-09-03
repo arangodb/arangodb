@@ -60,6 +60,7 @@ std::string auth::TokenCache::Entry::generateJWT(TokenCache &t) {
     bodyBuilder.add("preferred_username", VPackValue(_username));
     bodyBuilder.add("iss", VPackValue("arangodb"));
     bodyBuilder.add("exp", VPackValue(static_cast<uint32_t>(_expiry)));
+    bodyBuilder.add("iat", VPackValue(static_cast<uint32_t>(_iat)));
   }
   return t.generateJwt(bodyBuilder.slice());
 }
@@ -275,7 +276,8 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationNegotiate(std::stri
         return auth::TokenCache::Entry::Unauthenticated();
       }
       authResult._authenticated = true;
-      authResult._expiry = TRI_microtime() + validityTime;
+      authResult._iat = TRI_microtime();
+      authResult._expiry = authResult._iat + validityTime;
       //      authResult._allowedPaths.push_back("/");// TODO
 
 
@@ -300,8 +302,12 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationNegotiate(std::stri
             _userManager->refreshUser(entry->username());
           }
           return *entry;
+        } else {
+          _jwtCache.put(jwt, authResult);
+          return  *_jwtCache.get(jwt);
         }
       }
+    }
       /*
   std::vector<std::string> const parts = StringUtils::split(jwt, '.');
   if (parts.size() != 3) {
@@ -338,8 +344,6 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationNegotiate(std::stri
   _jwtCache.put(jwt, newEntry);
   return newEntry;
   */
-            return authResult;
-    }
   }
 #endif
   return auth::TokenCache::Entry::Unauthenticated();
