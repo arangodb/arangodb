@@ -429,21 +429,19 @@ bool ImportHelper::importJson(std::string const& collectionName,
 
       // send all data before last '\n'
       char const* first = _outputBuffer.c_str();
-      char const * pos = (char*)memrchr(first, '\n', _outputBuffer.length());
+      char const * pos = static_cast<char const*>(memrchr(first, '\n', _outputBuffer.length()));
 
       if (pos != nullptr) {
         size_t len = pos - first + 1;
         char const * cursor = first;
         do {
           ++cursor;
-          cursor = (char*)memchr(cursor, '\n', pos - cursor);
+          cursor = static_cast<char const*>(memchr(cursor, '\n', pos - cursor));
           ++_rowsRead;
         } while (nullptr != cursor);
         sendJsonBuffer(first, len, isObject);
         _outputBuffer.erase_front(len);
         _rowOffset = _rowsRead;
-        ++_numberLines;
-
       }
     }
   }

@@ -186,7 +186,7 @@ QuickHistogram()
         auto str = oss.str();
 
         // old age string buffering & formatting
-        char buffer[133];
+        char buffer[1024];
         snprintf(buffer, sizeof(buffer),
                  "%.3f,%.3f,%llu,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%lu,%s",
                  fp_measuring, fp_interval, static_cast<unsigned long long>(num),
