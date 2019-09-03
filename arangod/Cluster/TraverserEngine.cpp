@@ -172,18 +172,29 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
     }
   }
 
-  _trx->begin();  // We begin the transaction before we lock.
-                  // We also setup indexes before we lock.
+  // We begin the transaction before we lock.
+  // We also setup indexes before we lock.
+  Result res = _trx->begin();  
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 BaseEngine::~BaseEngine() {
   if (_trx) {
     try {
-      _trx->commit();
+      if (_trx->status() == transaction::Status::RUNNING) {
+        Result res = _trx->commit();
+        if (res.fail()) {
+          LOG_TOPIC("315cf", ERR, Logger::CLUSTER)
+            << "BaseEngine could not commit: " 
+            << res.errorMessage() 
+            << ", current status: " << transaction::statusString(_trx->status());
+        }
+      }
     } catch (...) {
-      // If we could not commit
+      // If we could not abort
       // we are in a bad state.
-      // This is a READ-ONLY trx
     }
   }
   delete _query;

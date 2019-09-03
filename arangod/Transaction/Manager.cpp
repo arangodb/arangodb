@@ -48,24 +48,15 @@
 
 namespace {
 bool authorized(std::string const& user) {
-  auto context = arangodb::ExecContext::CURRENT;
-  if (context == nullptr || !arangodb::ExecContext::isAuthEnabled()) {
+  auto const& exec = arangodb::ExecContext::current();
+  if (exec.isSuperuser()) {
     return true;
   }
-
-  if (context->isSuperuser()) {
-    return true;
-  }
-
-  return (user == context->user());
+  return (user == exec.user());
 }
 
 std::string currentUser() {
-  auto context = arangodb::ExecContext::CURRENT;
-  if (context == nullptr || !arangodb::ExecContext::isAuthEnabled()) {
-    return "";
-  }
-  return context->user();
+  return arangodb::ExecContext::current().user();
 }
 }  // namespace
 
@@ -230,7 +221,8 @@ Manager::ManagedTrx::~ManagedTrx() {
     auto ctx =
         std::make_shared<transaction::ManagedContext>(2, state, AccessMode::Type::NONE);
     MGMethods trx(ctx, opts);  // own state now
-    trx.begin();
+    Result res = trx.begin();
+    (void) res;
     TRI_ASSERT(state->nestingLevel() == 1);
     state->decreaseNesting();
     TRI_ASSERT(state->isTopLevelTransaction());

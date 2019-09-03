@@ -1,18 +1,35 @@
 devel
 -----
 
+* Allowing inconsistent rather than forcing hot backups
+
+* Fixed adding an orphan collections as the first collection in a SmartGraph. 
+
+* Fixed issue #9862: ServerException: RestHandler/RestCursorHandler.cpp:279
+
+  This fixes an issue with the RocksDB primary index IN iterator not resetting its
+  internal iterator after being rearmed with new lookup values (which only happens
+  if the IN iterator is called from an inner FOR loop).
+
+* Geo functions will now have better error reporting on invalid input.
+
+* Fixed issue #9795. Fixed NOT IN clause in ArangoSearch.
+
+* The graph viewer of the web interface now tries to find a vertex document of
+  all available vertex collections before it aborts.
+
 * Upgraded bundled jemalloc library to version 5.2.1.
 
 * Fixed internal issue #4407: remove storage engine warning.
 
-* Added support for TLS 1.3 for the arangod server and the client tools. 
+* Added support for TLS 1.3 for the arangod server and the client tools.
 
   The default TLS protocol for the arangod server is now TLS 1.3 as well, in
   contrast to TLS 1.2 in previous versions.
 
   The arangod server can be started with option `--ssl.protocol 5` to make it use
   TLS 1.2 again.
-  
+
   All client tools also support TLS 1.3, by using the `--ssl.protocol 6` option when
   invoking them. The client tools will use TLS 1.2 by default, in order to be
   compatible with older versions of ArangoDB that may be contacted by these tools.

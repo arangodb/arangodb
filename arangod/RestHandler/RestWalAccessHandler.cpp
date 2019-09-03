@@ -163,7 +163,7 @@ RestStatus RestWalAccessHandler::execute() {
     return RestStatus::DONE;
   }
 
-  if (ExecContext::CURRENT == nullptr || !ExecContext::CURRENT->isAdminUser()) {
+  if (!_context.isAdminUser()) {
     generateError(ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;
   }
@@ -263,7 +263,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   TRI_voc_tid_t barrierId =
       _request->parsedValue("barrier", static_cast<TRI_voc_tid_t>(0));
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   bool found = false;
   size_t chunkSize = 1024 * 1024;
@@ -424,16 +424,5 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(WalAccess cons
                            r.fromTickIncluded() ? "true" : "false");
     _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
                            StringUtils::itoa(r.lastIncludedTick()));
-  }
-}
-
-/// @brief Grant temporary restore rights
-void RestWalAccessHandler::grantTemporaryRights() {
-  if (ExecContext::CURRENT != nullptr) {
-    if (ExecContext::CURRENT->databaseAuthLevel() == auth::Level::RW) {
-      // If you have administrative access on this database,
-      // we grant you everything for restore.
-      ExecContext::CURRENT = nullptr;
-    }
   }
 }
