@@ -1688,6 +1688,7 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(methods::CreateDatabaseInf
   return Result();
 }
 
+// This function can only return on success or when the cluster is shutting down.
 Result ClusterInfo::cancelCreateDatabaseCoordinator(methods::CreateDatabaseInfo const& database) {
   AgencyComm ac;
 
@@ -1705,13 +1706,32 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(methods::CreateDatabaseInfo 
 
   AgencyWriteTransaction trx({delPlanCollections, delPlanDatabase, incrPlan}, preCondition);
 
-  auto res = ac.sendTransactionWithFailover(trx, 0.0);
+  size_t tries = 0;
+  // TODO: Hard coded timeout, also the retry numbers below are all
+  //       pulled out of thin air.
+  double nextTimeout = 0.5;
 
-  if (!res.successful()) {
-    // Creation failed and cleanup failed
-    return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
-                  "cleanup failed after failed database creation");
-  }
+  AgencyCommResult res;
+  do {
+    tries++;
+    res = ac.sendTransactionWithFailover(trx, nextTimeout);
+
+    if (!res.successful()) {
+      if (tries == 1) {
+        events::CreateDatabase(database.getName(), res.errorCode());
+      }
+      if (tries >= 5) {
+        nextTimeout = 5.0;
+      }
+      LOG_TOPIC("b47aa", WARN, arangodb::Logger::CLUSTER)
+        << "failed to cancel creation of database " << database.getName() << " with error "
+        << res.errorMessage() << ". Retrying.";
+    }
+
+    if (application_features::ApplicationServer::isStopping()) {
+      return Result(TRI_ERROR_CLUSTER_TIMEOUT);
+    }
+  } while(!res.successful());
 
   return Result();
 }
