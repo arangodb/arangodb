@@ -400,6 +400,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   if (!res.ok()) {
     LOG_TOPIC("15580", ERR, Logger::FIXME)
       << "Could not create database: " << res.errorMessage();
+    events::CreateDatabase(dbName, res.errorNumber());
     return res;
   }
 
