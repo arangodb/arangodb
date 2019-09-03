@@ -136,16 +136,30 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   // the order of systemCollections is important. If we're in _system db, the
   // UsersCollection needs to be first, otherwise, the GraphsCollection must be first.
   std::vector<std::string> systemCollections;
-
-  Result res;
   std::shared_ptr<LogicalCollection> colToDistributeShardsLike;
+  Result res;
+
   if (vocbase.isSystem()) {
-    // we will use UsersCollection for distributeShardsLike
-    std::tie(res, colToDistributeShardsLike) =
-        methods::Collections::createSystem(vocbase, StaticStrings::UsersCollection, true);
-    if (!res.ok()) {
-      return res;
+    // check for legacy sharding, could still be graphs.
+    res = methods::Collections::lookup(
+        vocbase, StaticStrings::GraphsCollection,
+        [&colToDistributeShardsLike](std::shared_ptr<LogicalCollection> const& col) -> void {
+          if (col && col.get()->distributeShardsLike().length() > 0) {
+            colToDistributeShardsLike = col;
+          }
+        });
+
+    if (colToDistributeShardsLike == nullptr) {
+      // otherwise, we will use UsersCollection for distributeShardsLike
+      std::tie(res, colToDistributeShardsLike) =
+          methods::Collections::createSystem(vocbase, StaticStrings::UsersCollection, true);
+      if (!res.ok()) {
+        return res;
+      }
+    } else {
+      systemCollections.push_back(StaticStrings::UsersCollection);
     }
+
     createdCollections.push_back(colToDistributeShardsLike);
     systemCollections.push_back(StaticStrings::GraphsCollection);
     if (StatisticsFeature::enabled()) {
@@ -155,6 +169,7 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
     }
   } else {
     // we will use GraphsCollection for distributeShardsLike
+    // this is equal to older versions
     std::tie(res, colToDistributeShardsLike) =
         methods::Collections::createSystem(vocbase, StaticStrings::GraphsCollection, true);
     createdCollections.push_back(colToDistributeShardsLike);
@@ -214,7 +229,9 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
     res = methods::Collections::lookup(
         vocbase, collection,
         [&createdCollections](std::shared_ptr<LogicalCollection> const& col) -> void {
-          createdCollections.emplace_back(col);
+          if (col) {
+            createdCollections.emplace_back(col);
+          }
         });
     if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       // if not found, create it
@@ -268,7 +285,9 @@ Result createSystemStatisticsCollections(TRI_vocbase_t& vocbase,
       res = methods::Collections::lookup(
           vocbase, collection,
           [&createdCollections](std::shared_ptr<LogicalCollection> const& col) -> void {
-            createdCollections.emplace_back(col);
+            if (col) {
+              createdCollections.emplace_back(col);
+            }
           });
       if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
         // if not found, create it
