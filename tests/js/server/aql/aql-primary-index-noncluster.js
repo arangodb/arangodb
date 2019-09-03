@@ -189,7 +189,43 @@ function explainSuite () {
         ]
       };
       assertEqual([ 1, 2, 3], AQL_EXECUTE(query, bindParams).json);
-    }
+    },
+
+    testInIteratorJustNumeric : function () {
+      let query = "FOR i IN 1..10 FOR doc IN " + cn + " FILTER doc._id IN [i, i + 1] RETURN doc._key";
+
+      assertEqual([ ], AQL_EXECUTE(query).json);
+    },
+    
+    testInIteratorString : function () {
+      let query = "FOR i IN 1..5 LET key = CONCAT('testkey', i) FOR doc IN " + cn + " FILTER doc._key IN [key, 'foo'] RETURN doc._key";
+
+      assertEqual(["testkey1", "testkey2", "testkey3", "testkey4", "testkey5"], AQL_EXECUTE(query).json);
+    },
+    
+    testInIteratorStringId : function () {
+      let query = "FOR i IN 1..5 LET key = CONCAT('" + cn + "/testkey', i) FOR doc IN " + cn + " FILTER doc._id IN [key, 'foo'] RETURN doc._key";
+
+      assertEqual(["testkey1", "testkey2", "testkey3", "testkey4", "testkey5"], AQL_EXECUTE(query).json);
+    },
+
+    testInIteratorStringAndNumericReturnId : function () {
+      let query = "FOR i IN 1..5 LET key = CONCAT('" + cn + "/testkey', i) FOR doc IN " + cn + " FILTER doc._id IN [key, i] RETURN doc._id";
+
+      assertEqual([cn + "/testkey1", cn + "/testkey2", cn + "/testkey3", cn + "/testkey4", cn + "/testkey5"], AQL_EXECUTE(query).json);
+    },
+
+    testInIteratorStringAndNumeric : function () {
+      let query = "FOR i IN 1..5 LET key = CONCAT('" + cn + "/testkey', i) FOR doc IN " + cn + " FILTER doc._id IN [key, i] RETURN doc._key";
+
+      assertEqual(["testkey1", "testkey2", "testkey3", "testkey4", "testkey5"], AQL_EXECUTE(query).json);
+    },
+
+    testInIteratorStringDuplicate : function () {
+      let query = "FOR i IN 1..5 LET key = CONCAT('" + cn + "/testkey', i) FOR doc IN " + cn + " FILTER doc._id IN [key, key] RETURN doc._id";
+
+      assertEqual([cn + "/testkey1", cn + "/testkey2", cn + "/testkey3", cn + "/testkey4", cn + "/testkey5"], AQL_EXECUTE(query).json);
+    },
   };
 }
 
