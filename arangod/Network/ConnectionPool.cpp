@@ -30,10 +30,6 @@
 
 #include <fuerte/connection.h>
 
-#ifdef _WIN32
-static_assert(_WIN32_WINNT >= 0x0600, "this messes up IOCP");
-#endif
-
 namespace arangodb {
 namespace network {
 
