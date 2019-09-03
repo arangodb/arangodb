@@ -1,6 +1,6 @@
 /* jshint unused: false */
 /* global window, $, Backbone, document, d3 */
-/* global $, arangoHelper, btoa, atob, _, frontendConfig */
+/* global $, arangoHelper, btoa, atob, _, frontendConfig, sessionStorage */
 
 (function () {
   'use strict';
@@ -170,7 +170,47 @@
         }
       }.bind(this);
 
-      if (frontendConfig.authenticationEnabled) {
+
+      if (frontendConfig.gssApiEnabled) {
+        if ((sessionStorage.getItem('jwt') === null) ||
+            (sessionStorage.getItem('jwt') === "null") ||
+            (sessionStorage.getItem('jwt') === undefined)
+           ){
+          $.ajax({
+            url: arangoHelper.databaseUrl('/_open/auth'),
+            method: 'POST',
+            data: "",
+            dataType: 'json',
+            success: function (data) {
+              var jwtParts = data.jwt.split('.');
+
+              if (!jwtParts[1]) {
+                throw new Error('Invalid JWT');
+              }
+
+              if (!window.atob) {
+                throw new Error('base64 support missing in browser');
+              }
+
+              var payload = JSON.parse(atob(jwtParts[1]));
+              self.activeUser = payload.preferred_username;
+
+              if (self.activeUser === undefined) {
+                arangoHelper.setCurrentJwt(data.jwt, null);
+              } else {
+                arangoHelper.setCurrentJwt(data.jwt, self.activeUser);
+              }
+
+              self.userCollection.whoAmI(callback);
+            },
+            error: function(){
+              console.log("GSSAPI Authentification failed!"); /// TODO?
+            }
+          });
+        } else {
+          this.userCollection.whoAmI(callback);
+        }
+      } else if (frontendConfig.authenticationEnabled) {
         this.userCollection.whoAmI(callback);
       } else {
         this.initOnce();

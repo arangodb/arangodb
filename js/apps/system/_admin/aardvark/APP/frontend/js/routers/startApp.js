@@ -8,7 +8,7 @@
     $(document).ajaxSend(function (event, jqxhr, settings) {
       jqxhr.setRequestHeader('X-Arango-Frontend', 'true');
       var currentJwt = window.arangoHelper.getCurrentJwt();
-      if (currentJwt) {
+      if ((currentJwt !== null) && (currentJwt !== undefined) && (currentJwt !== "null")) {
         jqxhr.setRequestHeader('Authorization', 'bearer ' + currentJwt);
       }
     });

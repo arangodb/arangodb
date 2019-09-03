@@ -73,14 +73,19 @@ router.get('/config.js', function (req, res) {
   const scriptName = req.get('x-script-name');
   const basePath = req.trustProxy && scriptName || '';
   const isEnterprise = internal.isEnterprise();
+  let kerberosEnabled = false;
   let ldapEnabled = false;
   if (isEnterprise) {
     if (internal.ldapEnabled()) {
       ldapEnabled = true;
     }
+    if (internal.kerberosEnabled()) {
+      kerberosEnabled = true;
+    }
   }
   res.send(
     `var frontendConfig = ${JSON.stringify({
+      gssApiEnabled: kerberosEnabled,
       basePath: basePath,
       db: req.database,
       isEnterprise: isEnterprise,
