@@ -53,10 +53,9 @@ function CollectionSuiteErrorHandling () {
     testErrorHandlingBadNameTooLong : function () {
       try {
         // one char too long
-        db._create("a1234567890123456789012345678901234567890123456789012345678901234");
+        db._create("a12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
@@ -235,6 +234,20 @@ function CollectionSuite () {
 
     testCreateLongName : function () {
       var cn = "a123456789012345678901234567890123456789012345678901234567890123";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+      assertEqual(cn, c1.name());
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief long name
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateLongerName : function () {
+      var cn =  "a1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567";
 
       db._drop(cn);
       var c1 = db._create(cn);

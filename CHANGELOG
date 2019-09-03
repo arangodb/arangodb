@@ -1,6 +1,9 @@
 devel
 -----
 
+* Allow collection names to be at most 128 characters long, instead of 64 characters
+  in previous versions.
+
 * Allowing inconsistent rather than forcing hot backups
 
 * Fixed adding an orphan collections as the first collection in a SmartGraph. 
