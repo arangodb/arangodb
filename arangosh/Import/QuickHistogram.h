@@ -185,18 +185,15 @@ QuickHistogram()
         oss << std::put_time(&tm, "%m-%d-%Y %H:%M:%S");
         auto str = oss.str();
 
-        // old age string buffering & formatting
-        char buffer[1024];
-        snprintf(buffer, sizeof(buffer),
-                 "%.3f,%.3f,%llu,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%lu,%s",
-                 fp_measuring, fp_interval, static_cast<unsigned long long>(num),
-                 (0 != num) ? static_cast<long>(_readingLatencies->at(0).count()) : 0,
-                 static_cast<long>(mean.count()), static_cast<long>(median.count()),
-                 static_cast<long>(per95.count()), static_cast<long>(per99.count()),
-                 static_cast<long>(per99_9.count()),
-                 (0 != num) ? static_cast<long>(_readingLatencies->at(num - 1).count()) : 0,
-                 _objectsReading.load(), str.c_str());
-        LOG_TOPIC(INFO, arangodb::Logger::FIXME) << buffer;
+        LOG_TOPIC(INFO, arangodb::Logger::FIXME) << Logger::FIXED(fp_measuring,3) << ","
+                                                 << Logger::FIXED(fp_interval,3) << ","
+                                                 << num << ","
+                                                 << ((0 != num) ? _readingLatencies->at(0).count() : 0) << ","
+                                                 << mean.count() << "," << median.count() << ","
+                                                 << per95.count() << "," << per99.count() << ","
+                                                 << per99_9.count() << ","
+                                                 << ((0 != num) ? _readingLatencies->at(num - 1).count() : 0) << ","
+                                                 << _objectsReading.load() << "," << str.c_str();
 
         _readingLatencies->clear();
         _intervalStart = intervalEnd;
