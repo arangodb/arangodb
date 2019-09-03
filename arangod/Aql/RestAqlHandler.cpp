@@ -229,8 +229,8 @@ void RestAqlHandler::setupClusterQuery() {
   }
   collectionBuilder.close();
 
-  // creates a StandaloneContext or a leasing context
-  auto ctx = createAQLTransactionContext();
+  // creates a StandaloneContext or a leased context
+  auto ctx = createTransactionContext();
 
   VPackBuilder answerBuilder;
   answerBuilder.openObject();
