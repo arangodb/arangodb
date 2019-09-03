@@ -1,6 +1,8 @@
 v3.4.8 (2019-08-29)
 -------------------
 
+* Drop collection action to timeout shorter to stay in fast lane
+
 * Fixed issue #9798: limit with offset results in an infinite query that can't be
   cancelled.
 
