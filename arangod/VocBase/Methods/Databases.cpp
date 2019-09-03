@@ -296,20 +296,18 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     return res;
   }
 
-  
-
   auto failureGuard = scopeGuard([ci, info]() {
     Result res;
     LOG_TOPIC("8cc61", ERR, Logger::FIXME)
       << "Failed to create database " << info.getName() << " rolling back.";
     res = ci->cancelCreateDatabaseCoordinator(info);
     if (!res.ok()) {
-      // this is a double fault: we failed to create the database, but
-      // also failed to clean up. Supervision should be cleaning up any
-      // leftovers (if the cluster is still able to function otherwise).
+      // this cannot happen since cancelCreateDatabaseCoordinator keeps retrying
+      // indefinitely until the cancellation is either successful or the cluster
+      // is shut down.
       LOG_TOPIC("92157", ERR, Logger::FIXME)
         << "Failed to rollback creation of database " << info.getName() <<
-        ". Cleanup should happen through a supervision job.";
+        ". This should never happen. Cleanup will happen through a supervision job.";
     }
   });
 
@@ -339,9 +337,8 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     // Cleanup entries in agency.
     res = ci->cancelCreateDatabaseCoordinator(info);
     if (!res.ok()) {
-      // this is a double fault: we failed to create the database, but
-      // also failed to clean up. Supervision should be cleaning up any
-      // leftovers (if the cluster is still able to function otherwise).
+      // this should never happen as cancelCreateDatabaseCoordinaotr keeps retrying
+      // until either cancellation is successful or the cluster is shut down.
       return res;
     } else {
       return std::move(upgradeRes.result());
