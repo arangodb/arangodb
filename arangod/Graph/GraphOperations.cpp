@@ -51,9 +51,12 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-std::shared_ptr<transaction::Context> GraphOperations::ctx() const {
-  return transaction::StandaloneContext::Create(_vocbase);
-};
+std::shared_ptr<transaction::Context> GraphOperations::ctx() {
+  if (!_ctx) {
+    _ctx = std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
+  }
+  return _ctx;
+}
 
 void GraphOperations::checkForUsedEdgeCollections(const Graph& graph,
                                                   const std::string& collectionName,
@@ -456,7 +459,7 @@ OperationResult GraphOperations::addEdgeDefinition(VPackSlice edgeDefinitionSlic
 
   // finally save the graph
   return gmngr.storeGraph(_graph, waitForSync, true);
-};
+}
 
 // vertices
 
@@ -466,7 +469,7 @@ OperationResult GraphOperations::getVertex(std::string const& collectionName,
                                            std::string const& key,
                                            boost::optional<TRI_voc_rid_t> rev) {
   return getDocument(collectionName, key, std::move(rev));
-};
+}
 
 // TODO check if definitionName is an edge collection in _graph?
 OperationResult GraphOperations::getEdge(const std::string& definitionName,
@@ -867,10 +870,9 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
     edgeCollections.emplace(it);  // but also to edgeCollections for later iteration
   }
 
-  auto ctx = std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
-  transaction::Methods trx{ctx, {}, trxCollections, {}, trxOptions};
+  transaction::Methods trx{ctx(), {}, trxCollections, {}, trxOptions};
 
   res = trx.begin();
 
@@ -898,7 +900,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
 
       arangodb::aql::Query query(false, _vocbase, queryString, bindVars,
                                  nullptr, arangodb::aql::PART_DEPENDENT);
-      query.setTransactionContext(ctx);  // hack to share  the same transaction
+      query.setTransactionContext(ctx());  // hack to share the same transaction
 
       auto queryResult = query.executeSync(QueryRegistryFeature::registry());
 
