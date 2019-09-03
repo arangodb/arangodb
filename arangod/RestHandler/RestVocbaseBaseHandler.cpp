@@ -292,7 +292,7 @@ void RestVocbaseBaseHandler::generate20x(arangodb::OperationResult const& result
                                          std::string const& collectionName, TRI_col_type_e type,
                                          VPackOptions const* options, bool isMultiple,
                                          rest::ResponseCode waitForSyncResponseCode) {
-  if (result._options.waitForSync) {
+  if (result.options.waitForSync) {
     resetResponse(waitForSyncResponseCode);
   } else {
     resetResponse(rest::ResponseCode::ACCEPTED);

@@ -1521,8 +1521,8 @@ Future<OperationResult> transaction::Methods::insertAsync(std::string const& cna
   if (_state->isCoordinator()) {
     return insertCoordinator(cname, value, options).thenValue([this, value, cname](OperationResult&& opres) {
       events::CreateDocument(vocbase().name(), cname,
-                             (opres.ok() && opres._options.returnNew) ? opres.slice() : value,
-                             opres._options, opres.errorNumber());
+                             (opres.ok() && opres.options.returnNew) ? opres.slice() : value,
+                             opres.options, opres.errorNumber());
       return std::move(opres);
     });
   }

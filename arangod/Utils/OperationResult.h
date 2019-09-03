@@ -41,15 +41,15 @@ struct OperationResult {
   // create from integer status code
   explicit OperationResult(int code) : result(code) {}
   explicit OperationResult(int code, OperationOptions const& options)
-      : result(code), _options(options) {}
+      : result(code), options(options) {}
 
   // create from Result
   explicit OperationResult(Result const& other) : result(other) {}
   explicit OperationResult(Result const& other, OperationOptions const& options)
-      : result(other), _options(options) {}
+      : result(other), options(options) {}
   explicit OperationResult(Result&& other) : result(std::move(other)) {}
   explicit OperationResult(Result&& other, OperationOptions const& options)
-      : result(std::move(other)), _options(options) {}
+      : result(std::move(other)), options(options) {}
 
   // copy
   OperationResult(OperationResult const& other) = delete;
@@ -57,12 +57,12 @@ struct OperationResult {
 
   // move
   OperationResult(OperationResult&& other) = default;
-  OperationResult& operator=(OperationResult&& other) {
+  OperationResult& operator=(OperationResult&& other) noexcept {
     if (this != &other) {
       result = std::move(other.result);
       buffer = std::move(other.buffer);
       customTypeHandler = std::move(other.customTypeHandler);
-      _options = other._options;
+      options = std::move(other.options);
       countErrorCodes = std::move(other.countErrorCodes);
     }
     return *this;
@@ -77,7 +77,7 @@ struct OperationResult {
       : result(std::move(result)),
         buffer(buffer),
         customTypeHandler(handler),
-        _options(options),
+        options(options),
         countErrorCodes(countErrorCodes) {
     if (result.ok()) {
       TRI_ASSERT(buffer != nullptr);
@@ -88,11 +88,11 @@ struct OperationResult {
   ~OperationResult() = default;
 
   // Result-like interface
-  bool ok() const { return result.ok(); }
-  bool fail() const { return result.fail(); }
-  int errorNumber() const { return result.errorNumber(); }
-  bool is(int errorNumber) const { return result.errorNumber() == errorNumber; }
-  bool isNot(int errorNumber) const { return !is(errorNumber); }
+  bool ok() const noexcept { return result.ok(); }
+  bool fail() const noexcept { return result.fail(); }
+  int errorNumber() const noexcept { return result.errorNumber(); }
+  bool is(int errorNumber) const noexcept { return result.errorNumber() == errorNumber; }
+  bool isNot(int errorNumber) const noexcept { return !is(errorNumber); }
   std::string errorMessage() const { return result.errorMessage(); }
 
   inline VPackSlice slice() const {
@@ -104,7 +104,7 @@ struct OperationResult {
   // TODO: add a slice that points to either buffer or raw data
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
   std::shared_ptr<VPackCustomTypeHandler> customTypeHandler;
-  OperationOptions _options;
+  OperationOptions options;
 
   // Executive summary for baby operations: reports all errors that did occur
   // during these operations. Details are stored in the respective positions of
