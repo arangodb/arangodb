@@ -2906,12 +2906,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollection
   // etc. It is not used anywhere and will be cleaned up after this call.
   std::vector<std::shared_ptr<LogicalCollection>> cols;
   for (VPackSlice p : VPackArrayIterator(parameters)) {
-    try {
-      cols.emplace_back(std::make_shared<LogicalCollection>(vocbase, p, true, 0));
-    } catch (basics::Exception const& ex) {
-      events::CreateCollection(vocbase.name(), p.get("name"), ex.code());
-      throw;
-    }
+    cols.emplace_back(std::make_shared<LogicalCollection>(vocbase, p, true, 0));
   }
 
   // Persist collection will return the real object.
