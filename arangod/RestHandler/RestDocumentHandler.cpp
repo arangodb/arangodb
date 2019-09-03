@@ -183,7 +183,7 @@ RestStatus RestDocumentHandler::insertDocument() {
 
   return waitForFuture(
       _activeTrx->insertAsync(cname, body, opOptions)
-          .thenValue([=, cname = std::move(cname)](OperationResult&& opres) {
+          .thenValue([=](OperationResult&& opres) {
             // Will commit if no error occured.
             // or abort if an error occured.
             // result stays valid!
