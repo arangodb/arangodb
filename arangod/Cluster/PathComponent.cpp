@@ -21,3 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PathComponent.h"
+
+using namespace arangodb;
+using namespace arangodb::cluster;
+using namespace arangodb::cluster::paths;
