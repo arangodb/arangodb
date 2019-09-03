@@ -81,7 +81,8 @@ class TransactionManagerTest : public ::testing::Test {
   TRI_voc_tid_t tid;
 
   TransactionManagerTest()
-      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase"),
+      : vocbase(setup.server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                "testVocbase"),
         mgr(transaction::ManagerFeature::manager()),
         tid(TRI_NewTickServer()) {}
 

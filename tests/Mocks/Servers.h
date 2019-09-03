@@ -76,7 +76,7 @@ class MockServer {
   MockApplicationServer _server;
   StorageEngineMock _engine;
   std::unique_ptr<TRI_vocbase_t> _system;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> _features;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> _features;
 };
 
 class MockEmptyServer : public MockServer {

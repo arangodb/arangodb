@@ -102,7 +102,7 @@ class ShardDistributionReporterTest : public ::testing::Test {
  protected:
   arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   fakeit::Mock<ClusterComm> commMock;
   ClusterComm& cc;
@@ -174,19 +174,21 @@ class ShardDistributionReporterTest : public ::testing::Test {
     aliases[dbserver2] = dbserver2short;
     aliases[dbserver3] = dbserver3short;
     arangodb::EngineSelectorFeature::ENGINE = &engine;
-    features.emplace_back(new arangodb::DatabaseFeature(server),
-                          false);  // required for TRI_vocbase_t::dropCollection(...)
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required for TRI_vocbase_t instantiation
+
+    server.addFeature<arangodb::DatabaseFeature>(
+        std::make_unique<arangodb::DatabaseFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::DatabaseFeature>(), false);  // required for TRI_vocbase_t::dropCollection(...)
+
+    server.addFeature<arangodb::QueryRegistryFeature>(
+        std::make_unique<arangodb::QueryRegistryFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::QueryRegistryFeature>(),
+                          false);  // required for TRI_vocbase_t instantiation
 
     for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
+      f.first.prepare();
     }
 
-    for (auto& f : features) {
-      f.first->prepare();
-    }
-
-    vocbase = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+    vocbase = std::make_unique<TRI_vocbase_t>(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                                               1, "testVocbase");
     col = std::make_unique<arangodb::LogicalCollection>(*vocbase, json->slice(), true);
 
@@ -226,7 +228,7 @@ class ShardDistributionReporterTest : public ::testing::Test {
     vocbase.reset();
 
     for (auto& f : features) {
-      f.first->unprepare();
+      f.first.unprepare();
     }
   }
 };

@@ -1012,10 +1012,10 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::createDatabase(
 
   std::string cname = args.get("name").copyString();
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
+    return std::make_unique<TRI_vocbase_t>(server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
                                            id, cname);
   }
-  return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+  return std::make_unique<TRI_vocbase_t>(server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                                          id, cname);
 }
 
@@ -1234,11 +1234,8 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
 
   status = TRI_ERROR_NO_ERROR;
 
-  return std::make_unique<TRI_vocbase_t>(
-    TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-    vocbaseCount++,
-    args.get("name").copyString()
-  );
+  return std::make_unique<TRI_vocbase_t>(server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                                         vocbaseCount++, args.get("name").copyString());
 }
 
 arangodb::Result StorageEngineMock::persistCollection(TRI_vocbase_t& vocbase,

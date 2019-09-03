@@ -53,7 +53,8 @@ class TransactionContextTest : public ::testing::Test {
   TRI_vocbase_t vocbase;
 
   TransactionContextTest()
-      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase") {}
+      : vocbase(setup.server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                "testVocbase") {}
 };
 
 TEST_F(TransactionContextTest, StandaloneContext) {

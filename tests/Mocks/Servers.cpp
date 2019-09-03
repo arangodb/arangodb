@@ -61,7 +61,6 @@ MockServer::MockServer() : _server(nullptr, nullptr), _engine(_server) {
 
 MockServer::~MockServer() {
   _system.reset();  // destroy before reseting the 'ENGINE'
-  arangodb::application_features::ApplicationServer::server = nullptr;
   arangodb::EngineSelectorFeature::ENGINE = nullptr;
   stopFeatures();
 }
@@ -72,30 +71,26 @@ void MockServer::init() {
 
 void MockServer::startFeatures() {
   for (auto& f : _features) {
-    arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-  }
-
-  for (auto& f : _features) {
-    f.first->prepare();
+    f.first.prepare();
   }
 
   for (auto& f : _features) {
     if (f.second) {
-      f.first->start();
+      f.first.start();
     }
   }
 }
 
 void MockServer::stopFeatures() {
-  // destroy application features
+  // destroy application _features
   for (auto& f : _features) {
     if (f.second) {
-      f.first->stop();
+      f.first.stop();
     }
   }
 
   for (auto& f : _features) {
-    f.first->unprepare();
+    f.first.unprepare();
   }
 }
 
@@ -114,29 +109,67 @@ MockAqlServer::MockAqlServer() : MockServer() {
                                   arangodb::LogLevel::FATAL);
   irs::logger::output_le(::iresearch::logger::IRL_FATAL, stderr);
 
-  // setup required application features
-  _features.emplace_back(new arangodb::ViewTypesFeature(_server), true);
-  _features.emplace_back(new arangodb::AuthenticationFeature(_server), true);
-  _features.emplace_back(new arangodb::DatabasePathFeature(_server), false);
-  _features.emplace_back(new arangodb::DatabaseFeature(_server), false);
-  _features.emplace_back(new arangodb::ShardingFeature(_server), true);
-  _features.emplace_back(new arangodb::QueryRegistryFeature(_server), false);  // must be first
-  arangodb::application_features::ApplicationServer::server->addFeature(
-      _features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
-  _system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+  // setup required application _features
+  _server.addFeature<arangodb::ViewTypesFeature>(
+      std::make_unique<arangodb::ViewTypesFeature>(_server));
+  _features.emplace_back(_server.getFeature<arangodb::ViewTypesFeature>(), true);
+
+  _server.addFeature<arangodb::AuthenticationFeature>(
+      std::make_unique<arangodb::AuthenticationFeature>(_server));
+  _features.emplace_back(_server.getFeature<arangodb::AuthenticationFeature>(), true);
+
+  _server.addFeature<arangodb::DatabasePathFeature>(
+      std::make_unique<arangodb::DatabasePathFeature>(_server));
+  _features.emplace_back(_server.getFeature<arangodb::DatabasePathFeature>(), false);
+
+  _server.addFeature<arangodb::DatabaseFeature>(
+      std::make_unique<arangodb::DatabaseFeature>(_server));
+  _features.emplace_back(_server.getFeature<arangodb::DatabaseFeature>(), false);
+
+  _server.addFeature<arangodb::ShardingFeature>(
+      std::make_unique<arangodb::ShardingFeature>(_server));
+  _features.emplace_back(_server.getFeature<arangodb::ShardingFeature>(), true);
+
+  _server.addFeature<arangodb::QueryRegistryFeature>(
+      std::make_unique<arangodb::QueryRegistryFeature>(_server));
+  _features.emplace_back(_server.getFeature<arangodb::QueryRegistryFeature>(), false);  // must be first
+
+  _system = std::make_unique<TRI_vocbase_t>(_server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                                             0, TRI_VOC_SYSTEM_DATABASE);
-  _features.emplace_back(new arangodb::SystemDatabaseFeature(_server, _system.get()),
+  _server.addFeature<arangodb::SystemDatabaseFeature>(
+      std::make_unique<arangodb::SystemDatabaseFeature>(_server, _system.get()));
+  _features.emplace_back(_server.getFeature<arangodb::SystemDatabaseFeature>(),
                          false);  // required for IResearchAnalyzerFeature
-  _features.emplace_back(new arangodb::TraverserEngineRegistryFeature(_server), false);  // must be before AqlFeature
-  _features.emplace_back(new arangodb::AqlFeature(_server), true);
-  _features.emplace_back(new arangodb::aql::OptimizerRulesFeature(_server), true);
-  _features.emplace_back(new arangodb::aql::AqlFunctionFeature(_server), true);  // required for IResearchAnalyzerFeature
-  _features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(_server), true);
-  _features.emplace_back(new arangodb::iresearch::IResearchFeature(_server), true);
+
+  _server.addFeature<arangodb::TraverserEngineRegistryFeature>(
+      std::make_unique<arangodb::TraverserEngineRegistryFeature>(_server));
+  _features.emplace_back(_server.getFeature<arangodb::TraverserEngineRegistryFeature>(),
+                         false);  // must be before AqlFeature
+
+  _server.addFeature<arangodb::AqlFeature>(std::make_unique<arangodb::AqlFeature>(_server));
+  _features.emplace_back(_server.getFeature<arangodb::AqlFeature>(), true);
+
+  _server.addFeature<arangodb::aql::OptimizerRulesFeature>(
+      std::make_unique<arangodb::aql::OptimizerRulesFeature>(_server));
+  _features.emplace_back(_server.getFeature<arangodb::aql::OptimizerRulesFeature>(), true);
+
+  _server.addFeature<arangodb::aql::AqlFunctionFeature>(
+      std::make_unique<arangodb::aql::AqlFunctionFeature>(_server));
+  _features.emplace_back(_server.getFeature<arangodb::aql::AqlFunctionFeature>(),
+                         true);  // required for IResearchAnalyzerFeature
+
+  _server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
+      std::make_unique<arangodb::iresearch::IResearchAnalyzerFeature>(_server));
+  _features.emplace_back(_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>(),
+                         true);
+
+  _server.addFeature<arangodb::iresearch::IResearchFeature>(
+      std::make_unique<arangodb::iresearch::IResearchFeature>(_server));
+  _features.emplace_back(_server.getFeature<arangodb::iresearch::IResearchFeature>(), true);
 
 #if USE_ENTERPRISE
-  _features.emplace_back(new arangodb::LdapFeature(_server),
-                         false);  // required for AuthenticationFeature with USE_ENTERPRISE
+  _server.addFeature<arangodb::LdapFeature>(std::make_unique<arangodb::LdapFeature>(_server));
+  _features.emplace_back(_server.getFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
   startFeatures();
@@ -185,18 +218,27 @@ MockRestServer::MockRestServer() : MockServer() {
                                   arangodb::LogLevel::FATAL);
   irs::logger::output_le(::iresearch::logger::IRL_FATAL, stderr);
 
-  _features.emplace_back(new arangodb::AuthenticationFeature(_server), false);
-  _features.emplace_back(new arangodb::DatabaseFeature(_server), false);
-  _features.emplace_back(new arangodb::QueryRegistryFeature(_server), false);
-  arangodb::application_features::ApplicationServer::server->addFeature(
-      _features.back().first);
-  _system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+  _server.addFeature<arangodb::AuthenticationFeature>(
+      std::make_unique<arangodb::AuthenticationFeature>(_server));
+  _features.emplace_back(_server.getFeature<arangodb::AuthenticationFeature>(), false);
+
+  _server.addFeature<arangodb::DatabaseFeature>(
+      std::make_unique<arangodb::DatabaseFeature>(_server));
+  _features.emplace_back(_server.getFeature<arangodb::DatabaseFeature>(), false);
+
+  _server.addFeature<arangodb::QueryRegistryFeature>(
+      std::make_unique<arangodb::QueryRegistryFeature>(_server));
+  _features.emplace_back(_server.getFeature<arangodb::QueryRegistryFeature>(), false);
+
+  _system = std::make_unique<TRI_vocbase_t>(_server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                                             0, TRI_VOC_SYSTEM_DATABASE);
-  _features.emplace_back(new arangodb::SystemDatabaseFeature(_server, _system.get()), false);
+  _server.addFeature<arangodb::SystemDatabaseFeature>(
+      std::make_unique<arangodb::SystemDatabaseFeature>(_server, _system.get()));
+  _features.emplace_back(_server.getFeature<arangodb::SystemDatabaseFeature>(), false);
 
 #if USE_ENTERPRISE
-  _features.emplace_back(new arangodb::LdapFeature(_server),
-                         false);  // required for AuthenticationFeature with USE_ENTERPRISE
+  _server.addFeature<arangodb::LdapFeature>(std::make_unique<arangodb::LdapFeature>(_server));
+  _features.emplace_back(_server.getFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
   startFeatures();

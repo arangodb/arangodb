@@ -30,13 +30,10 @@
 #include "utils/log.hpp"
 #include "utils/utf8_path.hpp"
 
+#include "Agency/AgencyFeature.h"
 #include "Agency/Store.h"
-#include "ApplicationFeatures/BasicPhase.h"
-#include "ApplicationFeatures/ClusterPhase.h"
-#include "ApplicationFeatures/CommunicationPhase.h"
-#include "ApplicationFeatures/DatabasePhase.h"
-#include "ApplicationFeatures/GreetingsPhase.h"
-#include "ApplicationFeatures/V8Phase.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -51,17 +48,13 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
-#include "Utils/ExecContext.h"
-#include "VocBase/Methods/Indexes.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
-#include "Agency/AgencyFeature.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
+#include "FeaturePhases/DatabaseFeaturePhase.h"
+#include "FeaturePhases/V8FeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
@@ -84,12 +77,18 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Utils/ExecContext.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/Methods/Indexes.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
+
+#if USE_ENTERPRISE
+#include "Ldap/LdapFeature.h"
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -101,16 +100,17 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
     static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
   };
 
-  arangodb::consensus::Store _agencyStore{nullptr, "arango"};
+  arangodb::application_features::ApplicationServer server;
+  arangodb::consensus::Store _agencyStore;
   GeneralClientConnectionAgencyMock* agency;
   StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
   std::map<std::string, std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
-  std::vector<arangodb::application_features::ApplicationFeature*> orderedFeatures;
+  std::vector<std::reference_wrapper<arangodb::application_features::ApplicationFeature>> orderedFeatures;
   std::string testFilesystemPath;
 
-  IResearchViewCoordinatorTest() : engine(server), server(nullptr, nullptr) {
+  IResearchViewCoordinatorTest()
+      : server(nullptr, nullptr), _agencyStore(server, nullptr, "arango"), engine(server) {
     // need 2 connections or Agency callbacks will fail
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
@@ -133,59 +133,158 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
     serverRoleBeforeSetup = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
 
-    auto buildFeatureEntry = [&](arangodb::application_features::ApplicationFeature* ftr,
-                                 bool start) -> void {
-      std::string name = ftr->name();
-      features.emplace(name, std::make_pair(ftr, start));
-    };
-    arangodb::application_features::ApplicationFeature* tmpFeature;
+    server.addFeature<arangodb::application_features::BasicFeaturePhaseServer>(
+        std::make_unique<arangodb::application_features::BasicFeaturePhaseServer>(server));
+    features.emplace(server
+                         .getFeature<arangodb::application_features::BasicFeaturePhaseServer>()
+                         .name(),
+                     std::make_pair(&server.getFeature<arangodb::application_features::BasicFeaturePhaseServer>(),
+                                    false));
 
-    buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(server, false), false);
-    buildFeatureEntry(new arangodb::application_features::CommunicationFeaturePhase(server),
-                      false);
-    buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(server), false);
-    buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(server), false);
-    buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(server, false),
-                      false);
-    buildFeatureEntry(new arangodb::application_features::V8FeaturePhase(server), false);
+    server.addFeature<arangodb::application_features::CommunicationFeaturePhase>(
+        std::make_unique<arangodb::application_features::CommunicationFeaturePhase>(server));
+    features.emplace(server
+                         .getFeature<arangodb::application_features::CommunicationFeaturePhase>()
+                         .name(),
+                     std::make_pair(&server.getFeature<arangodb::application_features::CommunicationFeaturePhase>(),
+                                    false));
+
+    server.addFeature<arangodb::application_features::ClusterFeaturePhase>(
+        std::make_unique<arangodb::application_features::ClusterFeaturePhase>(server));
+    features.emplace(
+        server.getFeature<arangodb::application_features::ClusterFeaturePhase>().name(),
+        std::make_pair(&server.getFeature<arangodb::application_features::ClusterFeaturePhase>(),
+                       false));
+
+    server.addFeature<arangodb::application_features::DatabaseFeaturePhase>(
+        std::make_unique<arangodb::application_features::DatabaseFeaturePhase>(server));
+    features.emplace(server
+                         .getFeature<arangodb::application_features::DatabaseFeaturePhase>()
+                         .name(),
+                     std::make_pair(&server.getFeature<arangodb::application_features::DatabaseFeaturePhase>(),
+                                    false));
+
+    server.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
+        std::make_unique<arangodb::application_features::GreetingsFeaturePhase>(server, false));
+    features.emplace(server
+                         .getFeature<arangodb::application_features::GreetingsFeaturePhase>()
+                         .name(),
+                     std::make_pair(&server.getFeature<arangodb::application_features::GreetingsFeaturePhase>(),
+                                    false));
+
+    server.addFeature<arangodb::application_features::V8FeaturePhase>(
+        std::make_unique<arangodb::application_features::V8FeaturePhase>(server));
+    features.emplace(
+        server.getFeature<arangodb::application_features::V8FeaturePhase>().name(),
+        std::make_pair(&server.getFeature<arangodb::application_features::V8FeaturePhase>(),
+                       false));
 
     // setup required application features
-    buildFeatureEntry(new arangodb::V8DealerFeature(server), false);
-    buildFeatureEntry(new arangodb::ViewTypesFeature(server), true);
-    buildFeatureEntry(tmpFeature = new arangodb::QueryRegistryFeature(server), false);
-    arangodb::application_features::ApplicationServer::server->addFeature(tmpFeature);  // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+    server.addFeature<arangodb::V8DealerFeature>(
+        std::make_unique<arangodb::V8DealerFeature>(server));
+    features.emplace(server.getFeature<arangodb::V8DealerFeature>().name(),
+                     std::make_pair(&server.getFeature<arangodb::V8DealerFeature>(), false));
+
+    server.addFeature<arangodb::ViewTypesFeature>(
+        std::make_unique<arangodb::ViewTypesFeature>(server));
+    features.emplace(server.getFeature<arangodb::ViewTypesFeature>().name(),
+                     std::make_pair(&server.getFeature<arangodb::ViewTypesFeature>(), true));
+
+    server.addFeature<arangodb::QueryRegistryFeature>(
+        std::make_unique<arangodb::QueryRegistryFeature>(server));
+    features.emplace(server.getFeature<arangodb::QueryRegistryFeature>().name(),
+                     std::make_pair(&server.getFeature<arangodb::QueryRegistryFeature>(), false));
+
+    system = irs::memory::make_unique<TRI_vocbase_t>(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                                                      0, TRI_VOC_SYSTEM_DATABASE);
-    buildFeatureEntry(new arangodb::SystemDatabaseFeature(server, system.get()),
-                      false);  // required for IResearchAnalyzerFeature
-    buildFeatureEntry(new arangodb::RandomFeature(server), false);  // required by AuthenticationFeature
-    buildFeatureEntry(new arangodb::AuthenticationFeature(server), false);
-    buildFeatureEntry(arangodb::DatabaseFeature::DATABASE =
-                          new arangodb::DatabaseFeature(server),
-                      false);
-    buildFeatureEntry(new arangodb::DatabasePathFeature(server), false);
-    buildFeatureEntry(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
-    buildFeatureEntry(new arangodb::AqlFeature(server), true);
-    buildFeatureEntry(new arangodb::aql::AqlFunctionFeature(server), true);  // required for IResearchAnalyzerFeature
-    buildFeatureEntry(new arangodb::iresearch::IResearchFeature(server), true);
-    buildFeatureEntry(new arangodb::aql::OptimizerRulesFeature(server), true);
-    buildFeatureEntry(new arangodb::FlushFeature(server), false);  // do not start the thread
-    buildFeatureEntry(new arangodb::ClusterFeature(server), false);
-    buildFeatureEntry(new arangodb::ShardingFeature(server), false);
-    buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
+    server.addFeature<arangodb::SystemDatabaseFeature>(
+        std::make_unique<arangodb::SystemDatabaseFeature>(server, system.get()));
+    features.emplace(server.getFeature<arangodb::SystemDatabaseFeature>().name(),
+                     std::make_pair(&server.getFeature<arangodb::SystemDatabaseFeature>(),
+                                    false));  // required for IResearchAnalyzerFeature
+
+    server.addFeature<arangodb::RandomFeature>(
+        std::make_unique<arangodb::RandomFeature>(server));
+    features.emplace(server.getFeature<arangodb::RandomFeature>().name(),
+                     std::make_pair(&server.getFeature<arangodb::RandomFeature>(),
+                                    false));  // required by AuthenticationFeature
+
+    server.addFeature<arangodb::AuthenticationFeature>(
+        std::make_unique<arangodb::AuthenticationFeature>(server));
+    features.emplace(server.getFeature<arangodb::AuthenticationFeature>().name(),
+                     std::make_pair(&server.getFeature<arangodb::AuthenticationFeature>(), false));
+
+    server.addFeature<arangodb::DatabaseFeature>(
+        std::make_unique<arangodb::DatabaseFeature>(server));
+    features.emplace(server.getFeature<arangodb::DatabaseFeature>().name(),
+                     std::make_pair(&server.getFeature<arangodb::DatabaseFeature>(), false));
+
+    server.addFeature<arangodb::DatabasePathFeature>(
+        std::make_unique<arangodb::DatabasePathFeature>(server));
+    features.emplace(server.getFeature<arangodb::DatabasePathFeature>().name(),
+                     std::make_pair(&server.getFeature<arangodb::DatabasePathFeature>(), false));
+
+    server.addFeature<arangodb::TraverserEngineRegistryFeature>(
+        std::make_unique<arangodb::TraverserEngineRegistryFeature>(server));
+    features.emplace(
+        server.getFeature<arangodb::TraverserEngineRegistryFeature>().name(),
+        std::make_pair(&server.getFeature<arangodb::TraverserEngineRegistryFeature>(),
+                       false));  // must be before AqlFeature
+
+    server.addFeature<arangodb::AqlFeature>(std::make_unique<arangodb::AqlFeature>(server));
+    features.emplace(server.getFeature<arangodb::AqlFeature>().name(),
+                     std::make_pair(&server.getFeature<arangodb::AqlFeature>(), true));
+
+    server.addFeature<arangodb::aql::AqlFunctionFeature>(
+        std::make_unique<arangodb::aql::AqlFunctionFeature>(server));
+    features.emplace(server.getFeature<arangodb::aql::AqlFunctionFeature>().name(),
+                     std::make_pair(&server.getFeature<arangodb::aql::AqlFunctionFeature>(),
+                                    true));  // required for IResearchAnalyzerFeature
+
+    server.addFeature<arangodb::iresearch::IResearchFeature>(
+        std::make_unique<arangodb::iresearch::IResearchFeature>(server));
+    features.emplace(server.getFeature<arangodb::iresearch::IResearchFeature>().name(),
+                     std::make_pair(&server.getFeature<arangodb::iresearch::IResearchFeature>(),
+                                    true));
+
+    server.addFeature<arangodb::aql::OptimizerRulesFeature>(
+        std::make_unique<arangodb::aql::OptimizerRulesFeature>(server));
+    features.emplace(server.getFeature<arangodb::aql::OptimizerRulesFeature>().name(),
+                     std::make_pair(&server.getFeature<arangodb::aql::OptimizerRulesFeature>(),
+                                    true));
+
+    server.addFeature<arangodb::FlushFeature>(
+        std::make_unique<arangodb::FlushFeature>(server));
+    features.emplace(server.getFeature<arangodb::FlushFeature>().name(),
+                     std::make_pair(&server.getFeature<arangodb::FlushFeature>(), false));  // do not start the thread
+
+    server.addFeature<arangodb::ClusterFeature>(
+        std::make_unique<arangodb::ClusterFeature>(server));
+    features.emplace(server.getFeature<arangodb::ClusterFeature>().name(),
+                     std::make_pair(&server.getFeature<arangodb::ClusterFeature>(), false));
+
+    server.addFeature<arangodb::ShardingFeature>(
+        std::make_unique<arangodb::ShardingFeature>(server));
+    features.emplace(server.getFeature<arangodb::ShardingFeature>().name(),
+                     std::make_pair(&server.getFeature<arangodb::ShardingFeature>(), false));
+
+    server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
+        std::make_unique<arangodb::iresearch::IResearchAnalyzerFeature>(server));
+    features.emplace(
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>().name(),
+        std::make_pair(&server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>(), true));
 
 #if USE_ENTERPRISE
-    buildFeatureEntry(new arangodb::LdapFeature(server),
-                      false);  // required for AuthenticationFeature with USE_ENTERPRISE
+    server.addFeature<arangodb::LdapFeature>(std::make_unique<arangodb::LdapFeature>(server));
+    features.emplace(server.getFeature<arangodb::LdapFeature>().name(),
+                     std::make_pair(&server.getFeature<arangodb::LdapFeature>(), false));  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
-    for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(
-          f.second.first);
-    }
-    arangodb::application_features::ApplicationServer::server->setupDependencies(false);
-    orderedFeatures =
-        arangodb::application_features::ApplicationServer::server->getOrderedFeatures();
+    arangodb::DatabaseFeature::DATABASE =
+        &server.getFeature<arangodb::DatabaseFeature>();
+
+    server.setupDependencies(false);
+    orderedFeatures = server.getOrderedFeatures();
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
@@ -199,33 +298,29 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     for (auto& f : orderedFeatures) {
-      f->prepare();
+      f.get().prepare();
 
-      if (f->name() == "Authentication") {
-        f->forceDisable();
+      if (f.get().name() == "Authentication") {
+        f.get().forceDisable();
       }
     }
 
     for (auto& f : orderedFeatures) {
-      if (features.at(f->name()).second) {
-        f->start();
+      if (features.at(f.get().name()).second) {
+        f.get().start();
       }
     }
 
-    auto* authFeature =
-        arangodb::application_features::ApplicationServer::getFeature<arangodb::AuthenticationFeature>(
-            "Authentication");
-    authFeature->enable();  // required for authentication tests
+    auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
+    authFeature.enable();  // required for authentication tests
 
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
 
-    auto* dbPathFeature =
-        arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
-            "DatabasePath");
-    arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
-    testFilesystemPath = dbPathFeature->directory();
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+    testFilesystemPath = dbPathFeature.directory();
 
     long systemError;
     std::string systemErrorStr;
@@ -248,17 +343,16 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
                                     arangodb::LogLevel::DEFAULT);
     arangodb::ClusterInfo::cleanup();  // reset ClusterInfo::instance() before DatabaseFeature::unprepare()
-    arangodb::application_features::ApplicationServer::server = nullptr;
 
     // destroy application features
     for (auto f = orderedFeatures.rbegin(); f != orderedFeatures.rend(); ++f) {
-      if (features.at((*f)->name()).second) {
-        (*f)->stop();
+      if (features.at(f->get().name()).second) {
+        f->get().stop();
       }
     }
 
     for (auto f = orderedFeatures.rbegin(); f != orderedFeatures.rend(); ++f) {
-      (*f)->unprepare();
+      f->get().unprepare();
     }
 
     ClusterCommControl::reset();
@@ -285,7 +379,7 @@ TEST_F(IResearchViewCoordinatorTest, test_rename) {
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\", "
       "\"collections\": [1,2,3] }");
 
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1,
+  Vocbase vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1,
                   "testVocbase");
   arangodb::LogicalView::ptr view;
   ASSERT_TRUE(
@@ -411,8 +505,8 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" "
         "}");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
+                          1, "testVocbase");
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE(
         (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), 0).ok()));

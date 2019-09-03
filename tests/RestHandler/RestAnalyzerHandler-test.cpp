@@ -90,7 +90,7 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
  protected:
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   RestAnalyzerHandlerTest() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
@@ -105,42 +105,46 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
                                     arangodb::LogLevel::FATAL);
 
     // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(server), false);  // required for VocbaseContext
-    features.emplace_back(new arangodb::DatabaseFeature(server), false);
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server),
+    server.addFeature<arangodb::AuthenticationFeature>(
+        std::make_unique<arangodb::AuthenticationFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::AuthenticationFeature>(),
+                          false);  // required for VocbaseContext
+
+    server.addFeature<arangodb::DatabaseFeature>(
+        std::make_unique<arangodb::DatabaseFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::DatabaseFeature>(), false);
+
+    server.addFeature<arangodb::SystemDatabaseFeature>(
+        std::make_unique<arangodb::SystemDatabaseFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::SystemDatabaseFeature>(),
                           true);  // required for IResearchAnalyzerFeature
+
 #if USE_ENTERPRISE
-    features.emplace_back(new arangodb::LdapFeature(server),
-                          false);  // required for AuthenticationFeature with USE_ENTERPRISE
+    server.addFeature<arangodb::LdapFeature>(std::make_unique<arangodb::LdapFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
     for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
+      f.first.prepare();
     }
 
     for (auto& f : features) {
       if (f.second) {
-        f.first->start();
+        f.first.start();
       }
     }
   }
 
   ~RestAnalyzerHandlerTest() {
-    arangodb::application_features::ApplicationServer::server = nullptr;
-
     // destroy application features
     for (auto& f : features) {
       if (f.second) {
-        f.first->stop();
+        f.first.stop();
       }
     }
 
     for (auto& f : features) {
-      f.first->unprepare();
+      f.first.unprepare();
     }
 
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
@@ -158,52 +162,54 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
 TEST_F(RestAnalyzerHandlerTest, test_create) {
   // create a new instance of an ApplicationServer and fill it with the required features
   // cannot use the existing server since its features already have some state
-  std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-      arangodb::application_features::ApplicationServer::server,
-      [](arangodb::application_features::ApplicationServer* ptr) -> void {
-        arangodb::application_features::ApplicationServer::server = ptr;
-      });
-  arangodb::application_features::ApplicationServer::server =
-      nullptr;  // avoid "ApplicationServer initialized twice"
-  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-  arangodb::iresearch::IResearchAnalyzerFeature* analyzers;
-  arangodb::DatabaseFeature* dbFeature;
-  arangodb::SystemDatabaseFeature* sysDatabase;
-  server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
-  server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
-  server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
-  server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
-  server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server));  // required for IResearchAnalyzerFeature::start()
+  arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
+  newServer.addFeature<arangodb::QueryRegistryFeature>(
+      std::make_unique<arangodb::QueryRegistryFeature>(newServer));  // required for constructing TRI_vocbase_t
+  newServer.addFeature<arangodb::V8DealerFeature>(std::make_unique<arangodb::V8DealerFeature>(
+      newServer));  // required for DatabaseFeature::createDatabase(...)
+  newServer.addFeature<arangodb::DatabaseFeature>(std::make_unique<arangodb::DatabaseFeature>(
+      newServer));  // required for IResearchAnalyzerFeature::emplace(...)
+  newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
+      std::make_unique<arangodb::iresearch::IResearchAnalyzerFeature>(newServer));  // required for running upgrade task
+  newServer.addFeature<arangodb::SystemDatabaseFeature>(
+      std::make_unique<arangodb::SystemDatabaseFeature>(newServer));  // required for IResearchAnalyzerFeature::start()
+  arangodb::iresearch::IResearchAnalyzerFeature& analyzers =
+      newServer.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  arangodb::DatabaseFeature& dbFeature =
+      newServer.getFeature<arangodb::DatabaseFeature>();
+  arangodb::SystemDatabaseFeature& sysDatabase =
+      newServer.getFeature<arangodb::SystemDatabaseFeature>();
 
-  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+  auto cleanup = arangodb::scopeGuard([&dbFeature]() { dbFeature.unprepare(); });
 
   // create system vocbase
   {
     auto const databases = arangodb::velocypack::Parser::fromJson(
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
-    sysDatabase->start();  // get system database from DatabaseFeature
-    arangodb::methods::Collections::createSystem(
-        *sysDatabase->use(), 
-        arangodb::tests::AnalyzerCollectionName);
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.loadDatabases(databases->slice())));
+    sysDatabase.start();  // get system database from DatabaseFeature
+    arangodb::methods::Collections::createSystem(*sysDatabase.use(),
+                                                 arangodb::tests::AnalyzerCollectionName);
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
   {
     const auto name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
-    ASSERT_TRUE(analyzers->emplace(result, name, "identity", 
-                                  VPackParser::fromJson("{\"args\":\"abc\"}")->slice())
-                           .ok());
+    ASSERT_TRUE(analyzers
+                    .emplace(result, name, "identity",
+                             VPackParser::fromJson("{\"args\":\"abc\"}")->slice())
+                    .ok());
   }
 
   {
     const auto name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
-    ASSERT_TRUE(analyzers->emplace(result, name, "rest-analyzer-empty",
-                                  VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
-                                  irs::flags{irs::frequency::type()})
-                           .ok());
+    ASSERT_TRUE(analyzers
+                    .emplace(result, name, "rest-analyzer-empty",
+                             VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
+                             irs::flags{irs::frequency::type()})
+                    .ok());
   }
 
   struct ExecContext : public arangodb::ExecContext {
@@ -213,8 +219,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                                 arangodb::auth::Level::NONE) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
-  auto* authFeature = arangodb::AuthenticationFeature::instance();
-  auto* userManager = authFeature->userManager();
+  auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
+  auto* userManager = authFeature.userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
   userManager->setQueryRegistry(&queryRegistry);
   auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
@@ -223,8 +229,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
 
   // invalid params (non-object body)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -263,8 +269,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
 
   // invalid params (no name)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -306,8 +312,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
 
   // invalid params (invalid name)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -349,8 +355,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
 
   // invalid params (name contains invalid symbols)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -392,8 +398,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
 
   // name contains :: as link to system database (this is now ok)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -418,14 +424,14 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
     auto status = handler.execute();
     EXPECT_TRUE((arangodb::RestStatus::DONE == status));
     EXPECT_TRUE((arangodb::rest::ResponseCode::CREATED == responce.responseCode()));
-    auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
-                                   "::testAnalyzerImplicitDbName");
+    auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
+                                  "::testAnalyzerImplicitDbName");
     EXPECT_NE(nullptr, analyzer);
   }
   // name contains full database name
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -451,14 +457,14 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
     auto status = handler.execute();
     EXPECT_TRUE((arangodb::RestStatus::DONE == status));
     EXPECT_TRUE((arangodb::rest::ResponseCode::CREATED == responce.responseCode()));
-    auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
-                                   "::testAnalyzerWithDbName");
+    auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
+                                  "::testAnalyzerWithDbName");
     EXPECT_NE(nullptr, analyzer);
   }
   // name collision
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -500,8 +506,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
 
   // duplicate matching
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -534,15 +540,15 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
     EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString()));
     EXPECT_TRUE(slice.hasKey("properties") && slice.get("properties").isObject());
     EXPECT_TRUE((slice.hasKey("features") && slice.get("features").isArray()));
-    auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
-                                   "::testAnalyzer1");
+    auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
+                                  "::testAnalyzer1");
     EXPECT_TRUE((false == !analyzer));
   }
 
   // not authorised
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -584,8 +590,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
 
   // successful creation
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -618,8 +624,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
     EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString()));
     EXPECT_TRUE(slice.hasKey("properties") && slice.get("properties").isObject());
     EXPECT_TRUE((slice.hasKey("features") && slice.get("features").isArray()));
-    auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
-                                   "::testAnalyzer1");
+    auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
+                                  "::testAnalyzer1");
     EXPECT_TRUE((false == !analyzer));
   }
 }
@@ -627,52 +633,51 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
 TEST_F(RestAnalyzerHandlerTest, test_get) {
   // create a new instance of an ApplicationServer and fill it with the required features
   // cannot use the existing server since its features already have some state
-  std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-      arangodb::application_features::ApplicationServer::server,
-      [](arangodb::application_features::ApplicationServer* ptr) -> void {
-        arangodb::application_features::ApplicationServer::server = ptr;
-      });
-  arangodb::application_features::ApplicationServer::server =
-      nullptr;  // avoid "ApplicationServer initialized twice"
-  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-  arangodb::iresearch::IResearchAnalyzerFeature* analyzers;
-  arangodb::DatabaseFeature* dbFeature;
-  server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
-  server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
-  server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
-  auto sysDbFeature = new arangodb::SystemDatabaseFeature(server);
-  server.addFeature(sysDbFeature);
-  server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
-  analyzers->prepare();  // add static analyzers
+  arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
+  newServer.addFeature<arangodb::QueryRegistryFeature>(
+      std::make_unique<arangodb::QueryRegistryFeature>(newServer));  // required for constructing TRI_vocbase_t
+  newServer.addFeature<arangodb::V8DealerFeature>(std::make_unique<arangodb::V8DealerFeature>(
+      newServer));  // required for DatabaseFeature::createDatabase(...)
+  newServer.addFeature<arangodb::DatabaseFeature>(std::make_unique<arangodb::DatabaseFeature>(
+      newServer));  // required for IResearchAnalyzerFeature::emplace(...)
+  newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
+      std::make_unique<arangodb::iresearch::IResearchAnalyzerFeature>(newServer));  // required for running upgrade task
+  newServer.addFeature<arangodb::SystemDatabaseFeature>(
+      std::make_unique<arangodb::SystemDatabaseFeature>(newServer));  // required for IResearchAnalyzerFeature::start()
+  arangodb::iresearch::IResearchAnalyzerFeature& analyzers =
+      newServer.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  arangodb::DatabaseFeature& dbFeature =
+      newServer.getFeature<arangodb::DatabaseFeature>();
+  arangodb::SystemDatabaseFeature& sysDatabase =
+      newServer.getFeature<arangodb::SystemDatabaseFeature>();
+  analyzers.prepare();  // add static analyzers
 
-  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+  auto cleanup = arangodb::scopeGuard([&dbFeature]() { dbFeature.unprepare(); });
 
   // create vocbases
   {
     auto const databases = arangodb::velocypack::Parser::fromJson(
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" }, { \"name\": \"FooDb\" }, { \"name\": \"FooDb2\" } ]");
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.loadDatabases(databases->slice())));
     arangodb::methods::Collections::createSystem(
-        *dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase),
+        *dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase),
         arangodb::tests::AnalyzerCollectionName);
     arangodb::methods::Collections::createSystem(
-        *dbFeature->useDatabase("FooDb"),
-        arangodb::tests::AnalyzerCollectionName);
-     arangodb::methods::Collections::createSystem(
-        *dbFeature->useDatabase("FooDb2"),
-        arangodb::tests::AnalyzerCollectionName);
+        *dbFeature.useDatabase("FooDb"), arangodb::tests::AnalyzerCollectionName);
+    arangodb::methods::Collections::createSystem(
+        *dbFeature.useDatabase("FooDb2"), arangodb::tests::AnalyzerCollectionName);
 
-     sysDbFeature->prepare();
-     sysDbFeature->start();
+    sysDatabase.prepare();
+    sysDatabase.start();
   }
   
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
-                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                             "identity", 
-                             VPackSlice::noneSlice())  // Empty VPack for nullptr
+                   .emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                            "identity",
+                            VPackSlice::noneSlice())  // Empty VPack for nullptr
                    .ok()));
 
   struct ExecContext : public arangodb::ExecContext {
@@ -682,8 +687,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
                                 arangodb::auth::Level::NONE) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
-  auto* authFeature = arangodb::AuthenticationFeature::instance();
-  auto* userManager = authFeature->userManager();
+  auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
+  auto* userManager = authFeature.userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
   userManager->setQueryRegistry(&queryRegistry);
   auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
@@ -692,8 +697,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
 
   // get static (known analyzer)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -732,8 +737,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
 
   // get static (unknown analyzer)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -771,8 +776,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
 
   // get custom (known analyzer) authorized
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -823,13 +828,12 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
      userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
      ASSERT_TRUE((analyzers
-                   ->emplace(result, "FooDb::testAnalyzer1",
-                             "identity", 
-                             VPackSlice::noneSlice())  // Empty VPack for nullptr
-                   .ok()));
+                      .emplace(result, "FooDb::testAnalyzer1", "identity",
+                               VPackSlice::noneSlice())  // Empty VPack for nullptr
+                      .ok()));
      {
-       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-         "FooDb2");
+       TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                             1, "FooDb2");
        auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
        auto& request = *requestPtr;
        auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -845,8 +849,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
        EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
      }
      {
-       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-         "FooDb2");
+       TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                             1, "FooDb2");
        auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
        auto& request = *requestPtr;
        auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -861,8 +865,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
        EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
      }
      {
-       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-         "FooDb2");
+       TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                             1, "FooDb2");
        auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
        auto& request = *requestPtr;
        auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -879,8 +883,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
   }
   // get custom (known analyzer) not authorized
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -918,8 +922,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
 
   // get custom (unknown analyzer) authorized
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -957,8 +961,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
 
   // get custom (unknown analyzer) not authorized
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -996,8 +1000,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
 
   // get custom (unknown analyzer, unknown vocbase) authorized
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "unknownVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, "unknownVocbase");
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1035,8 +1039,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
 
   // get custom (unknown analyzer, unknown vocbase) not authorized
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "unknownVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, "unknownVocbase");
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1076,51 +1080,50 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
 TEST_F(RestAnalyzerHandlerTest, test_list) {
   // create a new instance of an ApplicationServer and fill it with the required features
   // cannot use the existing server since its features already have some state
-  std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-      arangodb::application_features::ApplicationServer::server,
-      [](arangodb::application_features::ApplicationServer* ptr) -> void {
-        arangodb::application_features::ApplicationServer::server = ptr;
-      });
-  arangodb::application_features::ApplicationServer::server =
-      nullptr;  // avoid "ApplicationServer initialized twice"
-  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-  arangodb::iresearch::IResearchAnalyzerFeature* analyzers;
-  arangodb::DatabaseFeature* dbFeature;
-  arangodb::SystemDatabaseFeature* sysDatabase;
-  server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
-  server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
-  server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
-  server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server));  // required for IResearchAnalyzerFeature::start()
-  server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
+  arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
+  newServer.addFeature<arangodb::QueryRegistryFeature>(
+      std::make_unique<arangodb::QueryRegistryFeature>(newServer));  // required for constructing TRI_vocbase_t
+  newServer.addFeature<arangodb::V8DealerFeature>(std::make_unique<arangodb::V8DealerFeature>(
+      newServer));  // required for DatabaseFeature::createDatabase(...)
+  newServer.addFeature<arangodb::DatabaseFeature>(std::make_unique<arangodb::DatabaseFeature>(
+      newServer));  // required for IResearchAnalyzerFeature::emplace(...)
+  newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
+      std::make_unique<arangodb::iresearch::IResearchAnalyzerFeature>(newServer));  // required for running upgrade task
+  newServer.addFeature<arangodb::SystemDatabaseFeature>(
+      std::make_unique<arangodb::SystemDatabaseFeature>(newServer));  // required for IResearchAnalyzerFeature::start()
+  arangodb::iresearch::IResearchAnalyzerFeature& analyzers =
+      newServer.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  arangodb::DatabaseFeature& dbFeature =
+      newServer.getFeature<arangodb::DatabaseFeature>();
+  arangodb::SystemDatabaseFeature& sysDatabase =
+      newServer.getFeature<arangodb::SystemDatabaseFeature>();
 
-  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+  auto cleanup = arangodb::scopeGuard([&dbFeature]() { dbFeature.unprepare(); });
 
   // create system vocbase
   {
     auto const databases = arangodb::velocypack::Parser::fromJson(
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.loadDatabases(databases->slice())));
     TRI_vocbase_t* vocbase;
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", vocbase)));
-    sysDatabase->start();  // get system database from DatabaseFeature
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.createDatabase(1, "testVocbase", vocbase)));
+    sysDatabase.start();  // get system database from DatabaseFeature
     arangodb::methods::Collections::createSystem(
         *vocbase, 
         arangodb::tests::AnalyzerCollectionName);
-    arangodb::methods::Collections::createSystem(
-        *sysDatabase->use(), 
-        arangodb::tests::AnalyzerCollectionName);
+    arangodb::methods::Collections::createSystem(*sysDatabase.use(),
+                                                 arangodb::tests::AnalyzerCollectionName);
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
-                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                             "identity", VPackSlice::noneSlice())
+                   .emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                            "identity", VPackSlice::noneSlice())
                    .ok()));
   ASSERT_TRUE((analyzers
-                   ->emplace(result, "testVocbase::testAnalyzer2", "identity",
-                             VPackSlice::noneSlice())
+                   .emplace(result, "testVocbase::testAnalyzer2", "identity",
+                            VPackSlice::noneSlice())
                    .ok()));
 
   struct ExecContext : public arangodb::ExecContext {
@@ -1130,8 +1133,8 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
                                 arangodb::auth::Level::NONE) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
-  auto* authFeature = arangodb::AuthenticationFeature::instance();
-  auto* userManager = authFeature->userManager();
+  auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
+  auto* userManager = authFeature.userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
   userManager->setQueryRegistry(&queryRegistry);
   auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
@@ -1140,8 +1143,8 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
 
   // system database (authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1196,8 +1199,8 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
 
   // system database (not authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1251,8 +1254,8 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
 
   // non-system database (authorised, system authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, "testVocbase");
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1309,8 +1312,8 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
 
   // non-system database (not authorised, system authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, "testVocbase");
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1366,8 +1369,8 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
 
   // non-system database (authorised, system not authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, "testVocbase");
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1423,8 +1426,8 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
 
   // non-system database (not authorised, system not authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, "testVocbase");
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1481,54 +1484,55 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
 TEST_F(RestAnalyzerHandlerTest, test_remove) {
   // create a new instance of an ApplicationServer and fill it with the required features
   // cannot use the existing server since its features already have some state
-  std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-      arangodb::application_features::ApplicationServer::server,
-      [](arangodb::application_features::ApplicationServer* ptr) -> void {
-        arangodb::application_features::ApplicationServer::server = ptr;
-      });
-  arangodb::application_features::ApplicationServer::server =
-      nullptr;  // avoid "ApplicationServer initialized twice"
-  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-  arangodb::iresearch::IResearchAnalyzerFeature* analyzers;
-  arangodb::DatabaseFeature* dbFeature;
-  server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
-  server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
-  server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
-  auto sysDbFeature = new arangodb::SystemDatabaseFeature(server);
-  server.addFeature(sysDbFeature);
-  server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
+  arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
+  newServer.addFeature<arangodb::QueryRegistryFeature>(
+      std::make_unique<arangodb::QueryRegistryFeature>(newServer));  // required for constructing TRI_vocbase_t
+  newServer.addFeature<arangodb::V8DealerFeature>(std::make_unique<arangodb::V8DealerFeature>(
+      newServer));  // required for DatabaseFeature::createDatabase(...)
+  newServer.addFeature<arangodb::DatabaseFeature>(std::make_unique<arangodb::DatabaseFeature>(
+      newServer));  // required for IResearchAnalyzerFeature::emplace(...)
+  newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
+      std::make_unique<arangodb::iresearch::IResearchAnalyzerFeature>(newServer));  // required for running upgrade task
+  newServer.addFeature<arangodb::SystemDatabaseFeature>(
+      std::make_unique<arangodb::SystemDatabaseFeature>(newServer));  // required for IResearchAnalyzerFeature::start()
+  arangodb::iresearch::IResearchAnalyzerFeature& analyzers =
+      newServer.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  arangodb::DatabaseFeature& dbFeature =
+      newServer.getFeature<arangodb::DatabaseFeature>();
+  arangodb::SystemDatabaseFeature& sysDatabase =
+      newServer.getFeature<arangodb::SystemDatabaseFeature>();
 
-  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+  auto cleanup = arangodb::scopeGuard([&dbFeature]() { dbFeature.unprepare(); });
 
   // create system vocbase
   {
     auto const databases = arangodb::velocypack::Parser::fromJson(
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.loadDatabases(databases->slice())));
     arangodb::methods::Collections::createSystem(
-        *dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase),
+        *dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase),
         arangodb::tests::AnalyzerCollectionName);
-    sysDbFeature->prepare();
-    sysDbFeature->start();
+    sysDatabase.prepare();
+    sysDatabase.start();
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
-                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                             "identity", VPackSlice::noneSlice())
+                   .emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                            "identity", VPackSlice::noneSlice())
                    .ok()));
   ASSERT_TRUE((analyzers
-                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
-                             "identity", VPackSlice::noneSlice())
+                   .emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
+                            "identity", VPackSlice::noneSlice())
                    .ok()));
   ASSERT_TRUE((analyzers
-                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer3",
-                             "identity", VPackSlice::noneSlice())
+                   .emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer3",
+                            "identity", VPackSlice::noneSlice())
                    .ok()));
   ASSERT_TRUE((analyzers
-                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer4",
-                             "identity", VPackSlice::noneSlice())
+                   .emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer4",
+                            "identity", VPackSlice::noneSlice())
                    .ok()));
   result.first.reset(); // to release reference!
 
@@ -1539,8 +1543,8 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
                                 arangodb::auth::Level::NONE) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
-  auto* authFeature = arangodb::AuthenticationFeature::instance();
-  auto* userManager = authFeature->userManager();
+  auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
+  auto* userManager = authFeature.userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
   userManager->setQueryRegistry(&queryRegistry);
   auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
@@ -1549,8 +1553,8 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
 
   // invalid params (no name)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1587,8 +1591,8 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
 
   // unknown analyzer
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1626,8 +1630,8 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
 
   // not authorised
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1661,15 +1665,15 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
-    auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
-                                   "::testAnalyzer1");
+    auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
+                                  "::testAnalyzer1");
     EXPECT_TRUE((false == !analyzer));
   }
 
   // still in use (fail)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1679,8 +1683,8 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
     request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
     request.addSuffix("testAnalyzer2");
     request.values().emplace("force", "false");
-    auto inUseAnalyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
-                                        "::testAnalyzer2");  // hold ref to mark in-use
+    auto inUseAnalyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
+                                       "::testAnalyzer2");  // hold ref to mark in-use
     ASSERT_TRUE((false == !inUseAnalyzer));
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1707,15 +1711,15 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_ARANGO_CONFLICT ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
-    auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
-                                   "::testAnalyzer2");
+    auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
+                                  "::testAnalyzer2");
     EXPECT_TRUE((false == !analyzer));
   }
 
   // still in use + force (success)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1725,8 +1729,8 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
     request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
     request.addSuffix("testAnalyzer2");
     request.values().emplace("force", "true");
-    auto inUseAnalyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
-                                        "::testAnalyzer2");  // hold ref to mark in-use
+    auto inUseAnalyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
+                                       "::testAnalyzer2");  // hold ref to mark in-use
     ASSERT_TRUE((false == !inUseAnalyzer));
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1752,15 +1756,15 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
     EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
                  arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2" ==
                      slice.get("name").copyString()));
-    auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
-                                   "::testAnalyzer2");
+    auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
+                                  "::testAnalyzer2");
     EXPECT_TRUE((true == !analyzer));
   }
 
   //  removal with  db name in analyzer name
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1782,15 +1786,15 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
     auto status = handler.execute();
     EXPECT_TRUE((arangodb::RestStatus::DONE == status));
     EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
-    auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
-                                   "::testAnalyzer3");
+    auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
+                                  "::testAnalyzer3");
     EXPECT_EQ(nullptr, analyzer);
   }
 
   //  removal with db name prefix as ::
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1811,15 +1815,15 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
     auto status = handler.execute();
     EXPECT_TRUE((arangodb::RestStatus::DONE == status));
     EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
-    auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
-                                   "::testAnalyzer4");
+    auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
+                                  "::testAnalyzer4");
     EXPECT_EQ(nullptr, analyzer);
   }
 
   // success removal
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          1, arangodb::StaticStrings::SystemDatabase);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1852,8 +1856,8 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
     EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
                  arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
                      slice.get("name").copyString()));
-    auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
-                                   "::testAnalyzer1");
+    auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
+                                  "::testAnalyzer1");
     EXPECT_TRUE((true == !analyzer));
   }
 }

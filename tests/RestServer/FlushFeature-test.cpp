@@ -58,7 +58,7 @@ class FlushFeatureTest : public ::testing::Test {
 
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   FlushFeatureTest() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
@@ -71,48 +71,56 @@ class FlushFeatureTest : public ::testing::Test {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
                                     arangodb::LogLevel::FATAL);
 
-    features.emplace_back(new arangodb::AuthenticationFeature(server), false);  // required for ClusterFeature::prepare()
-    features.emplace_back(new arangodb::ClusterFeature(server),
-                          false);  // required for V8DealerFeature::prepare()
-    features.emplace_back(arangodb::DatabaseFeature::DATABASE =
-                              new arangodb::DatabaseFeature(server),
-                          false);  // required for MMFilesWalRecoverState constructor
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required for TRI_vocbase_t
-    features.emplace_back(new arangodb::V8DealerFeature(server),
-                          false);  // required for DatabaseFeature::createDatabase(...)
+    server.addFeature<arangodb::AuthenticationFeature>(
+        std::make_unique<arangodb::AuthenticationFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::AuthenticationFeature>(),
+                          false);  // required for ClusterFeature::prepare()
+
+    server.addFeature<arangodb::ClusterFeature>(
+        std::make_unique<arangodb::ClusterFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::ClusterFeature>(), false);  // required for V8DealerFeature::prepare()
+
+    server.addFeature<arangodb::DatabaseFeature>(
+        std::make_unique<arangodb::DatabaseFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::DatabaseFeature>(), false);  // required for MMFilesWalRecoverState constructor
+
+    server.addFeature<arangodb::QueryRegistryFeature>(
+        std::make_unique<arangodb::QueryRegistryFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
+
+    server.addFeature<arangodb::V8DealerFeature>(
+        std::make_unique<arangodb::V8DealerFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
 
 #if USE_ENTERPRISE
-    features.emplace_back(new arangodb::LdapFeature(server),
-                          false);  // required for AuthenticationFeature with USE_ENTERPRISE
+    server.addFeature<arangodb::LdapFeature>(std::make_unique<arangodb::LdapFeature>(server));
+    features.emplace_back(server.getFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
-    for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
+    arangodb::DatabaseFeature::DATABASE =
+        &server.getFeature<arangodb::DatabaseFeature>();
 
     for (auto& f : features) {
-      f.first->prepare();
+      f.first.prepare();
     }
 
     for (auto& f : features) {
       if (f.second) {
-        f.first->start();
+        f.first.start();
       }
     }
   }
 
   ~FlushFeatureTest() {
-    arangodb::application_features::ApplicationServer::server = nullptr;
-
     // destroy application features
     for (auto& f : features) {
       if (f.second) {
-        f.first->stop();
+        f.first.stop();
       }
     }
 
     for (auto& f : features) {
-      f.first->unprepare();
+      f.first.unprepare();
     }
 
     ClusterCommControl::reset();
@@ -140,12 +148,9 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
     TRI_voc_tick_t _tick{};
   };
 
-  auto* dbFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
-          "Database");
-  ASSERT_TRUE((dbFeature));
+  auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
   TRI_vocbase_t* vocbase;
-  ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "testDatabase", vocbase)));
+  ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.createDatabase(1, "testDatabase", vocbase)));
   ASSERT_NE(nullptr, vocbase);
 
   arangodb::FlushFeature feature(server);
