@@ -56,7 +56,7 @@ int resolveDestination(DestinationId const& dest, std::string& endpoint) {
   // is looked up, both can fail and immediately lead to a CL_COMM_ERROR
   // state.
   ServerID serverID;
-  if (dest.find("shard:") == 0) {
+  if (dest.rfind("shard:", 0) == 0) {
     ShardID shardID = dest.substr(6);
     {
       std::shared_ptr<std::vector<ServerID>> resp = ci->getResponsibleServer(shardID);
@@ -69,7 +69,7 @@ int resolveDestination(DestinationId const& dest, std::string& endpoint) {
       }
     }
     LOG_TOPIC("64670", DEBUG, Logger::CLUSTER) << "Responsible server: " << serverID;
-  } else if (dest.find("server:") == 0) {
+  } else if (dest.rfind("server:", 0) == 0) {
     serverID = dest.substr(7);
   } else {
     std::string errorMessage = "did not understand destination '" + dest + "'";

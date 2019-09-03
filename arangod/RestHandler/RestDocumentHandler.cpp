@@ -289,32 +289,30 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
         if (!opRes.ok()) {
           if (opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
             generateDocumentNotFound(collection, key);
-            return false;
           } else if (ifRid != 0 && opRes.is(TRI_ERROR_ARANGO_CONFLICT)) {
             generatePreconditionFailed(opRes.slice());
           } else {
             generateTransactionError(collection, res, key);
           }
-          return false;
+          return;
         }
 
         if (!res.ok()) {
           generateTransactionError(collection, res, key);
-          return false;
+          return;
         }
 
         if (ifNoneRid != 0) {
           TRI_voc_rid_t const rid = TRI_ExtractRevisionId(opRes.slice());
           if (ifNoneRid == rid) {
             generateNotModified(rid);
-            return true;
+            return;
           }
         }
 
         // use default options
         generateDocument(opRes.slice(), generateBody,
                          _activeTrx->transactionContextPtr()->getVPackOptionsForDump());
-        return true;
       }));
 }
 

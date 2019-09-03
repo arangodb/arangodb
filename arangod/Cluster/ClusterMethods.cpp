@@ -1168,7 +1168,7 @@ static void collectResponsesFromAllShards(
   // If none of the shards responds we return a SERVER_ERROR;
   for (Try<arangodb::network::Response> const& tryRes : responses) {
     network::Response const& res = tryRes.get();  // throws exceptions upwards
-    ShardID sId = res.destination.substr(6);
+    ShardID sId = res.destinationShard();
     
     int commError = network::fuerteToArangoErrorCode(res);
     if (commError != TRI_ERROR_NO_ERROR) {
@@ -1765,7 +1765,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
         VPackValueLength len;
         char const* str = keySlice.getString(len);
         std::string url = baseUrl + StringUtils::urlEncode(it.first) + "/";
-        url.append(str, len).append(optsUrlPart);
+        url.append(StringUtils::urlEncode(str, len)).append(optsUrlPart);
 
         // We send to single endpoint
         auto future =
@@ -1872,7 +1872,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       auto future =
           network::sendRequestRetry("shard:" + shard, restVerb,
                                     baseUrl + StringUtils::urlEncode(shard) + optsUrlPart,
-                                    buffer, network::Timeout(CL_DEFAULT_TIMEOUT),
+                                    buffer /* cannot move */, network::Timeout(CL_DEFAULT_TIMEOUT),
                                     headers, /*retryNotFound*/ true);
       futures.emplace_back(std::move(future));
     }

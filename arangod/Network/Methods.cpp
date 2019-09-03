@@ -44,6 +44,16 @@ namespace network {
 using namespace arangodb::fuerte;
 
 using PromiseRes = arangodb::futures::Promise<network::Response>;
+  
+  
+/// @brief shardId or empty
+std::string Response::destinationShard() const {
+  if (this->destination.size() > 6 &&
+      this->destination.rfind("shard:", 0) == 0) {
+    return this->destination.substr(6);
+  }
+  return StaticStrings::Empty;
+}
 
 template <typename T>
 auto prepareRequest(RestVerb type, std::string const& path, T&& payload,
