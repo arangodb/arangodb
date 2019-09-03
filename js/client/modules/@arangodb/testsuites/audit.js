@@ -74,7 +74,6 @@ function auditLog(onServer) {
       'server.authentication': 'true',
       'server.jwt-secret': 'haxxmann',
       'log.level': 'audit-authentication=info',
-      'log.force-direct': true
     };
 
     print(CYAN + 'Audit log server tests...' + RESET);

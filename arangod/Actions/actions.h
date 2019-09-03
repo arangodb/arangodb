@@ -26,6 +26,7 @@
 
 #include <functional>
 #include <memory>
+#include <string>
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"

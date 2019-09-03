@@ -23,25 +23,7 @@
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
 // 
 // @author Max Neunhoeffer
-// @author Wilfried Goesgnes
 // /////////////////////////////////////////////////////////////////////////////
-
-const _ = require('lodash');
-const fs = require('fs');
-
-const pu = require('@arangodb/process-utils');
-const rp = require('@arangodb/result-processing');
-const cu = require('@arangodb/crash-utils');
-const tu = require('@arangodb/test-utils');
-const internal = require('internal');
-const platform = internal.platform;
-
-const BLUE = internal.COLORS.COLOR_BLUE;
-const CYAN = internal.COLORS.COLOR_CYAN;
-const GREEN = internal.COLORS.COLOR_GREEN;
-const RED = internal.COLORS.COLOR_RED;
-const RESET = internal.COLORS.COLOR_RESET;
-const YELLOW = internal.COLORS.COLOR_YELLOW;
 
 let functionsDocumentation = {
   'all': 'run all tests (marked with [x])',
@@ -57,6 +39,8 @@ let optionsDocumentation = [
   ' The following properties of `options` are defined:',
   '',
   '   - `testOutput`: set the output directory for testresults, defaults to `out`',
+  '   - `jsonReply`: if set a json is returned which the caller has to ',
+  '        present the user',
   '   - `force`: if set to true the tests are continued even if one fails',
   '',
   "   - `skipLogAnalysis`: don't try to crawl the server logs",
@@ -93,17 +77,15 @@ let optionsDocumentation = [
   '   - `agencySupervision`: run supervision in agency',
   '   - `oneTestTimeout`: how long a single testsuite (.js, .rb)  should run',
   '   - `isAsan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
-  '   - `test`: path to single test to execute for "single" test target, ',
-  '             or pattern to filter for other suites',
-  '   - `cleanup`: if set to false the data files',
-  '                and logs are not removed after termination of the test.',
+  '   - `test`: path to single test to execute for "single" test target',
+  '   - `cleanup`: if set to true (the default), the cluster data files',
+  '     and logs are removed after termination of the test.',
   '',
   '   - `protocol`: the protocol to talk to the server - [tcp (default), ssl, unix]',
   '   - `sniff`: if we should try to launch tcpdump / windump for a testrun',
   '              false / true / sudo',
   '   - `sniffDevice`: the device tcpdump / tshark should use',
   '   - `sniffProgram`: specify your own programm',
-  '',
   '   - `build`: the directory containing the binaries',
   '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
   '   - `configDir`: the directory containing the config files, defaults to',
@@ -112,8 +94,6 @@ let optionsDocumentation = [
   '   - `dumpAgencyOnError`: if we should create an agency dump if an error occurs',
   '   - `prefix`:    prefix for the tests in the xml reports',
   '',
-  '   - `disableClusterMonitor`: if set to false, an arangosh is started that will send',
-  '                              keepalive requests to all cluster instances, and report on error',
   '   - `disableMonitor`: if set to true on windows, procdump will not be attached.',
   '   - `rr`: if set to true arangod instances are run with rr',
   '   - `exceptionFilter`: on windows you can use this to abort tests on specific exceptions',
@@ -155,7 +135,7 @@ const optionsDefaults = {
   'agencyWaitForSync': false,
   'agencySupervision': true,
   'build': '',
-  'buildType': (platform.substr(0, 3) === 'win') ? 'RelWithDebInfo':'',
+  'buildType': '',
   'cleanup': true,
   'cluster': false,
   'concurrency': 3,
@@ -170,6 +150,7 @@ const optionsDefaults = {
   'force': true,
   'getSockStat': false,
   'arangosearch':true,
+  'jsonReply': false,
   'loopEternal': false,
   'loopSleepSec': 1,
   'loopSleepWhen': 1,
@@ -200,7 +181,6 @@ const optionsDefaults = {
   'storageEngine': 'rocksdb',
   'test': undefined,
   'testBuckets': undefined,
-  'testOutputDirectory': 'out/',
   'useReconnect': true,
   'username': 'root',
   'valgrind': false,
@@ -213,14 +193,266 @@ const optionsDefaults = {
   'testFailureText': 'testfailures.txt',
   'testCase': undefined,
   'disableMonitor': false,
-  'disableClusterMonitor': true,
   'sleepBeforeStart' : 0,
 };
 
-let globalStatus = true;
+const _ = require('lodash');
+const fs = require('fs');
+const yaml = require('js-yaml');
 
-let allTests = [];
-let testFuncs = {};
+const pu = require('@arangodb/process-utils');
+const cu = require('@arangodb/crash-utils');
+const tu = require('@arangodb/test-utils');
+
+const BLUE = require('internal').COLORS.COLOR_BLUE;
+const CYAN = require('internal').COLORS.COLOR_CYAN;
+const GREEN = require('internal').COLORS.COLOR_GREEN;
+const RED = require('internal').COLORS.COLOR_RED;
+const RESET = require('internal').COLORS.COLOR_RESET;
+const YELLOW = require('internal').COLORS.COLOR_YELLOW;
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test functions for all
+// //////////////////////////////////////////////////////////////////////////////
+
+let failedRuns = {
+};
+
+let allTests = [
+];
+
+// /////////////////////////////////////////////////////////////////////////////
+// blacklisting
+// /////////////////////////////////////////////////////////////////////////////
+
+let useBlacklist = false;
+
+let blacklistTests = {};
+
+function skipTest(type, name) {
+  let ntype = type.toUpperCase();
+  return useBlacklist && !!blacklistTests[ntype + ":" + name];
+}
+
+function loadBlacklist(name) {
+  let content = fs.read("BLACKLIST");
+  let a = _.filter(
+    _.map(content.split("\n"),
+          function(x) {return x.trim();}),
+    function(x) {return x.length > 0 && x[0] !== '#';});
+
+  for (let i = 0; i < a.length; ++i) {
+    blacklistTests[a[i]] = true;
+  }
+
+  useBlacklist = true;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: all
+// //////////////////////////////////////////////////////////////////////////////
+
+let testFuncs = {
+  'all': function () {}
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief internal members of the results
+// //////////////////////////////////////////////////////////////////////////////
+
+const internalMembers = [
+  'code',
+  'error',
+  'status',
+  'duration',
+  'failed',
+  'total',
+  'crashed',
+  'ok',
+  'message',
+  'suiteName'
+];
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief pretty prints the result
+// //////////////////////////////////////////////////////////////////////////////
+
+function testCaseMessage (test) {
+  if (typeof test.message === 'object' && test.message.hasOwnProperty('body')) {
+    return test.message.body;
+  } else {
+    return test.message;
+  }
+}
+
+function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
+  function skipInternalMember (r, a) {
+    return !r.hasOwnProperty(a) || internalMembers.indexOf(a) !== -1;
+  }
+  print(YELLOW + '================================================================================');
+  print('TEST RESULTS');
+  print('================================================================================\n' + RESET);
+
+  let failedSuite = 0;
+  let failedTests = 0;
+
+  let onlyFailedMessages = '';
+  let failedMessages = '';
+  let SuccessMessages = '';
+  let bucketName = "";
+  if (options.testBuckets) {
+    let n = options.testBuckets.split('/');
+    bucketName = "_" + n[1];
+  }
+  try {
+    /* jshint forin: false */
+    for (let testrunName in res) {
+      if (skipInternalMember(res, testrunName)) {
+        continue;
+      }
+
+      let testrun = res[testrunName];
+
+      let successCases = {};
+      let failedCases = {};
+      let isSuccess = true;
+
+      for (let testName in testrun) {
+        if (skipInternalMember(testrun, testName)) {
+          continue;
+        }
+
+        let test = testrun[testName];
+
+        if (test.status) {
+          successCases[testName] = test;
+        } else {
+          isSuccess = false;
+          ++failedSuite;
+
+          if (test.hasOwnProperty('message')) {
+            ++failedTests;
+            failedCases[testName] = {
+              test: testCaseMessage(test)
+            };
+          } else {
+            let fails = failedCases[testName] = {};
+
+            for (let oneName in test) {
+              if (skipInternalMember(test, oneName)) {
+                continue;
+              }
+
+              let oneTest = test[oneName];
+
+              if (!oneTest.status) {
+                ++failedTests;
+                fails[oneName] = testCaseMessage(oneTest);
+              }
+            }
+          }
+        }
+      }
+
+      if (isSuccess) {
+        SuccessMessages += '* Test "' + testrunName + bucketName + '"\n';
+
+        for (let name in successCases) {
+          if (!successCases.hasOwnProperty(name)) {
+            continue;
+          }
+
+          let details = successCases[name];
+
+          if (details.skipped) {
+            SuccessMessages += YELLOW + '    [SKIPPED] ' + name + RESET + '\n';
+          } else {
+            SuccessMessages += GREEN + '    [SUCCESS] ' + name + RESET + '\n';
+          }
+        }
+      } else {
+        let m = '* Test "' + testrunName + bucketName + '"\n';
+        onlyFailedMessages += m;
+        failedMessages += m;
+
+        for (let name in successCases) {
+          if (!successCases.hasOwnProperty(name)) {
+            continue;
+          }
+
+          let details = successCases[name];
+
+          if (details.skipped) {
+            failedMessages += YELLOW + '    [SKIPPED] ' + name + RESET + '\n';
+            onlyFailedMessages += '    [SKIPPED] ' + name + '\n';
+          } else {
+            failedMessages += GREEN + '    [SUCCESS] ' + name + RESET + '\n';
+          }
+        }
+
+        for (let name in failedCases) {
+          if (!failedCases.hasOwnProperty(name)) {
+            continue;
+          }
+
+          failedMessages += RED + '    [FAILED]  ' + name + RESET + '\n\n';
+          onlyFailedMessages += '    [FAILED]  ' + name + '\n\n';
+
+          let details = failedCases[name];
+
+          let count = 0;
+          for (let one in details) {
+            if (!details.hasOwnProperty(one)) {
+              continue;
+            }
+
+            if (count > 0) {
+              failedMessages += '\n';
+              onlyFailedMessages += '\n';
+            }
+            failedMessages += RED + '      "' + one + '" failed: ' + details[one] + RESET + '\n\n';
+            onlyFailedMessages += '      "' + one + '" failed: ' + details[one] + '\n\n';
+            count++;
+          }
+        }
+      }
+    }
+    print(SuccessMessages);
+    print(failedMessages);
+    /* jshint forin: true */
+
+    let color = (!res.crashed && res.status === true) ? GREEN : RED;
+    let crashText = '';
+    let crashedText = '';
+    if (res.crashed === true) {
+      for (let failed in failedRuns) {
+        crashedText += ' [' + failed + '] : ' + failedRuns[failed].replace(/^/mg, '    ');
+      }
+      crashedText += "\nMarking crashy!";
+      crashText = RED + crashedText + RESET;
+    }
+    print('\n' + color + '* Overall state: ' + ((res.status === true) ? 'Success' : 'Fail') + RESET + crashText);
+
+    let failText = '';
+    if (res.status !== true) {
+      failText = '   Suites failed: ' + failedSuite + ' Tests Failed: ' + failedTests;
+      print(color + failText + RESET);
+    }
+
+    failedMessages = onlyFailedMessages;
+    if (crashedText !== '') {
+      failedMessages += '\n' + crashedText;
+    }
+    if (cu.GDB_OUTPUT !== '' || failText !== '') {
+      failedMessages += '\n\n' + cu.GDB_OUTPUT + failText + '\n';
+    }
+    fs.write(testOutputDirectory + options.testFailureText, failedMessages);
+  } catch (x) {
+    print('exception caught while pretty printing result: ');
+    print(x.message);
+    print(JSON.stringify(res));
+  }
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief print usage information
@@ -269,9 +501,7 @@ function findTestCases(options) {
   let allTestFiles = {};
   for (let testSuiteName in allTestPaths) {
     var myList = [];
-    var _opts = _.clone(options);
-    _opts.extremeVerbosity = 'silence';
-    let files = tu.scanTestPaths(allTestPaths[testSuiteName], _opts);
+    let files = tu.scanTestPaths(allTestPaths[testSuiteName], options);
     if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
       for (let j = 0; j < files.length; j++) {
         let foo = {};
@@ -326,6 +556,7 @@ function findTest(options) {
     };
   }
 }
+
 
 function autoTest(options) {
   if (!options.hasOwnProperty('test') || (typeof (options.test) === 'undefined')) {
@@ -389,13 +620,16 @@ function loadTestSuites () {
       throw x;
     }
   }
-  testFuncs['all'] = allTests;
   testFuncs['find'] = findTest;
   testFuncs['auto'] = autoTest;
 }
 
-function translateTestList(cases) {
+let globalStatus = true;
+
+function iterateTests(cases, options, jsonReply) {
+  // tests to run
   let caselist = [];
+
   const expandWildcard = ( name ) => {
     if (!name.endsWith('*')) {
       return name;
@@ -406,18 +640,29 @@ function translateTestList(cases) {
 
   for (let n = 0; n < cases.length; ++n) {
     let splitted = expandWildcard(cases[n]).split(/[,;|]/);
+
     for (let m = 0; m < splitted.length; ++m) {
       let which = splitted[m];
 
-      if (testFuncs.hasOwnProperty(which)) {
+      if (which === 'all') {
+        caselist = caselist.concat(allTests);
+      } else if (testFuncs.hasOwnProperty(which)) {
         caselist.push(which);
       } else {
         print('Unknown test "' + which + '"\nKnown tests are: ' + Object.keys(testFuncs).sort().join(', '));
-        throw new Error("USAGE ERROR");
+
+        return {
+          status: false
+        };
       }
     }
   }
-  // Expand meta tests like ldap, all
+
+  let results = {};
+  let cleanup = true;
+
+  // real ugly hack. there are some suites which are just placeholders
+  // for other suites
   caselist = (function() {
     let flattened = [];
     for (let n = 0; n < caselist.length; ++n) {
@@ -430,27 +675,12 @@ function translateTestList(cases) {
     }
     return flattened;
   })();
-  if (cases === undefined || cases.length === 0) {
-    printUsage();
-    
-    print('\nFATAL: "which" is undefined\n');
-    throw new Error("USAGE ERROR");
-  }
-  return caselist;
-}
 
-function iterateTests(cases, options) {
-  // tests to run
-  let caselist = [];
-
-  let results = {};
-  let cleanup = true;
-
-  caselist = translateTestList(cases);
   // running all tests
   for (let n = 0; n < caselist.length; ++n) {
     const currentTest = caselist[n];
     var localOptions = _.cloneDeep(options);
+    localOptions.skipTest = skipTest;
     let printTestName = currentTest;
     if (options.testBuckets) {
       printTestName += " - " + options.testBuckets;
@@ -467,23 +697,34 @@ function iterateTests(cases, options) {
     let status = true;
     let shutdownSuccess = true;
 
-    result = testFuncs[currentTest](localOptions);
-    // grrr...normalize structure
-    delete result.status;
-    delete result.failed;
-    delete result.crashed;
-    if (result.hasOwnProperty('shutdown')) {
-      shutdownSuccess = result['shutdown'];
-      delete result.shutdown;
+    if (skipTest("SUITE", currentTest)) {
+      result = {
+        failed: 0,
+        status: true,
+        crashed: false,
+      };
+
+      print(YELLOW + "[SKIPPED] " + currentTest + RESET + "\n");
+    } else {
+      result = testFuncs[currentTest](localOptions);
+      // grrr...normalize structure
+      delete result.status;
+      delete result.failed;
+      delete result.crashed;
+      if (result.hasOwnProperty('shutdown')) {
+        shutdownSuccess = result['shutdown'];
+        delete result.shutdown;
+      }
+
+      status = Object.values(result).every(testCase => testCase.status === true);
+      let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
+      if (!status) {
+        globalStatus = false;
+      }
+      result.failed = failed;
+      result.status = status;
     }
 
-    status = rp.gatherStatus(result);
-    let failed = rp.gatherFailed(result);
-    if (!status) {
-      globalStatus = false;
-    }
-    result.failed = failed;
-    result.status = status;
     results[currentTest] = result;
 
     if (status && localOptions.cleanup && shutdownSuccess ) {
@@ -491,7 +732,11 @@ function iterateTests(cases, options) {
     } else {
       cleanup = false;
     }
-    pu.aggregateFatalErrors(currentTest);
+
+    if (pu.serverCrashed) {
+      failedRuns[currentTest] = pu.serverFailMessages;
+      pu.serverFailMessages = "";
+    }
   }
 
   results.status = globalStatus;
@@ -510,8 +755,14 @@ function iterateTests(cases, options) {
   }
 
   if (options.extremeVerbosity === true) {
-    rp.yamlDumpResults(options, results);
+    try {
+      print(yaml.safeDump(JSON.parse(JSON.stringify(results))));
+    } catch (err) {
+      print(RED + 'cannot dump results: ' + String(err) + RESET);
+      print(RED + require('internal').inspect(results) + RESET);
+    }
   }
+
   return results;
 }
 
@@ -528,9 +779,19 @@ function unitTest (cases, options) {
   if (typeof options !== 'object') {
     options = {};
   }
-  loadTestSuites(options);
-  // testsuites may register more defaults...
+  loadTestSuites();
   _.defaults(options, optionsDefaults);
+
+  if (cases === undefined || cases.length === 0) {
+    printUsage();
+
+    print('FATAL: "which" is undefined\n');
+
+    return {
+      status: false,
+      crashed: false
+    };
+  }
 
   try {
     pu.setupBinaries(options.build, options.buildType, options.configDir);
@@ -547,18 +808,25 @@ function unitTest (cases, options) {
       }]
     };
   }
+  const jsonReply = options.jsonReply;
+  delete options.jsonReply;
 
-  if ((cases.length === 1) && cases[0] === 'auto') {
-    return autoTest(options);
+  let results = iterateTests(cases, options, jsonReply);
+
+  if (jsonReply === true) {
+    return results;
   } else {
-    return iterateTests(cases, options);
+    return globalStatus;
   }
 }
 
 // /////////////////////////////////////////////////////////////////////////////
 // exports
 // /////////////////////////////////////////////////////////////////////////////
-exports.optionsDefaults = optionsDefaults;
+
 exports.unitTest = unitTest;
 
+exports.internalMembers = internalMembers;
 exports.testFuncs = testFuncs;
+exports.unitTestPrettyPrintResults = unitTestPrettyPrintResults;
+exports.loadBlacklist = loadBlacklist;
