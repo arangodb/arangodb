@@ -1,6 +1,16 @@
 devel
 -----
 
+* Improved database creation within the cluster. In the case of coordinator outages
+  during the creation of the database there was a chance that not all relevant
+  system collections had been created. Although this database was accessible now
+  some features did not work as expected (e.g. creation of graphs). We modified
+  creation of a new database as an all or nothing operation and only allow access
+  to the database after all system collections are properly perpared to avoid the
+  above inconsistencies. Also creation of databases are now secured against
+  coordinator outages, they will either be fully created or not visible and
+  eventually dropped. This does not require any change on the client code.
+
 * Allowing inconsistent rather than forcing hot backups
 
 * Fixed adding an orphan collections as the first collection in a SmartGraph. 
