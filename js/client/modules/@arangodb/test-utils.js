@@ -284,7 +284,6 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           let deltaViews = diffArray(viewsBefore, viewsAfter).filter(function(name) {
             return ! ((name[0] === '_') || (name === "compact") || (name === "election")
                      || (name === "log")); 
-            return (name[0] !== '_');
           });
           if ((delta.length !== 0) || (deltaViews.length !== 0)){
             results[te] = {
