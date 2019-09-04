@@ -1,6 +1,9 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Added UI support to create documents in a collection using smartGraphAttribute
+  and/or smartJoinAttribute. 
+
 * Check for duplicate server endpoints registered in the agency in sub-keys of
   `/Current/ServersRegistered`.
 
