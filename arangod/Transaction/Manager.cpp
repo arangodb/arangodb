@@ -244,19 +244,19 @@ void Manager::registerAQLTrx(TransactionState* state) {
   }
 
   TRI_ASSERT(state != nullptr);
-  const size_t bucket = getBucket(state->id());
+  auto const tid = state->id();
+  size_t const bucket = getBucket(tid);
   {
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
-    auto const id = state->id();
     auto& buck = _transactions[bucket];
-    auto it = buck._managed.find(id);
+    auto it = buck._managed.find(tid);
     if (it != buck._managed.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
-                                     std::string("transaction ID ") + std::to_string(id) + "' already used in registerAQLTrx");
+                                     std::string("transaction ID ") + std::to_string(tid) + "' already used in registerAQLTrx");
     }
-    buck._managed.emplace(std::piecewise_construct, std::forward_as_tuple(id),
+    buck._managed.emplace(std::piecewise_construct, std::forward_as_tuple(tid),
                           std::forward_as_tuple(MetaType::StandaloneAQL, state));
   }
 }
