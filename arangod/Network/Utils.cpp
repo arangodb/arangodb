@@ -199,6 +199,9 @@ int fuerteToArangoErrorCode(network::Response const& res) {
   // returns TRI_ERROR_NO_ERROR.
   // If TRI_ERROR_NO_ERROR is returned, then the result was CL_COMM_RECEIVED
   // and .answer can safely be inspected.
+  
+  
+  LOG_TOPIC_IF("abcde", ERR, Logger::CLUSTER, res.error != fuerte::Error::NoError) << fuerte::to_string(res.error);
 
   switch (res.error) {
     case fuerte::Error::NoError:

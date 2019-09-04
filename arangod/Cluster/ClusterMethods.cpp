@@ -1840,6 +1840,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
 
+  size_t expectedLen = 0;
   if (!useMultiple) {
     const bool addMatch = !options.ignoreRevs && slice.hasKey(StaticStrings::RevString);
     for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
@@ -1863,6 +1864,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       futures.emplace_back(std::move(future));
     }
   } else {
+    expectedLen = static_cast<size_t>(slice.length());
     VPackBuffer<uint8_t> buffer;
     buffer.append(slice.begin(), slice.byteSize());
     for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
@@ -1878,7 +1880,6 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
     }
   }
 
-  size_t expectedLen = static_cast<size_t>(slice.length());
   auto cth = trx.transactionContextPtr()->orderCustomTypeHandler();
   auto cb = [=](std::vector<Try<network::Response>>&& responses) -> OperationResult {
     std::shared_ptr<VPackBuffer<uint8_t>> buffer;
@@ -1886,7 +1887,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 
       int nrok = 0;
       int commError = TRI_ERROR_NO_ERROR;
-
+      fuerte::StatusCode code;
       for (size_t i = 0; i < responses.size(); i++) {
         network::Response const& res = responses[i].get();
 
@@ -1895,6 +1896,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
           const bool isNotFound = res.response->statusCode() == fuerte::StatusNotFound;
           if (!isNotFound || (isNotFound && nrok == 0 && i == responses.size() - 1)) {
             nrok++;
+            code = res.response->statusCode();
             buffer = res.response->stealPayload();
           }
         } else {
@@ -1902,14 +1904,13 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
         }
       }
 
-      int res = TRI_ERROR_NO_ERROR;
       if (nrok == 0) {  // This can only happen, if a commError was encountered!
-        res = commError;
+        return OperationResult(commError);
       } else if (nrok > 1) {
-        res = TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS;
+        return OperationResult(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
       }
 
-      return OperationResult(res, std::move(buffer), /*typeHandler*/ cth, options);
+      return network::clusterResultDocument(code, std::move(buffer), options, {});
     }
 
     // We select all results from all shards and merge them back again.
