@@ -256,7 +256,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             healthCheck(options, serverOptions, instanceInfo, customInstanceInfos, startStopHandlers)) {
           continueTesting = true; 
 
-          // Check whether some collections were left behind, and if mark test as failed.
+          // Check whether some collections & views were left behind, and if mark test as failed.
           let collectionsAfter = [];
           let viewsAfter = [];
           try {
@@ -283,8 +283,8 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
           let deltaViews = diffArray(viewsBefore, viewsAfter).filter(function(name) {
             return ! ((name[0] === '_') || (name === "compact") || (name === "election")
-                     || (name === "log")); // exclude system/agency collections from the comparison
-            return (name[0] !== '_'); // exclude system collections from the comparison
+                     || (name === "log")); 
+            return (name[0] !== '_');
           });
           if ((delta.length !== 0) || (deltaViews.length !== 0)){
             results[te] = {
