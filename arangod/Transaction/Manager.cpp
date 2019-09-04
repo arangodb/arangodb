@@ -236,25 +236,27 @@ Manager::ManagedTrx::~ManagedTrx() {
 using namespace arangodb;
 
 /// @brief register a transaction shard
+/// @brief tid global transaction shard
+/// @param cid the optional transaction ID (use 0 for a single shard trx)
 void Manager::registerAQLTrx(TransactionState* state) {
   if (_disallowInserts.load(std::memory_order_acquire)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 
   TRI_ASSERT(state != nullptr);
-  auto const id = state->id();
-  size_t const bucket = getBucket(id);
+  const size_t bucket = getBucket(state->id());
   {
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
     auto& buck = _transactions[bucket];
-    if (!buck._managed.emplace(std::piecewise_construct, std::forward_as_tuple(id),
-                               std::forward_as_tuple(MetaType::StandaloneAQL, state)).second) {
-      // if insertion fails because of a duplicate key, bail out!
+    auto it = buck._managed.find(state->id());
+    if (it != buck._managed.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
-                                     std::string("transaction ID '") + std::to_string(id) + "' already used in registerAQLTrx");
+                                     "transaction ID already used");
     }
+    buck._managed.emplace(std::piecewise_construct, std::forward_as_tuple(state->id()),
+                          std::forward_as_tuple(MetaType::StandaloneAQL, state));
   }
 }
 
@@ -356,7 +358,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     auto it = buck._managed.find(tid);
     if (it != buck._managed.end()) {
       return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                       std::string("transaction ID '") + std::to_string(tid) + "' already used in createManagedTrx check");
+                       "transaction ID already used");
     }
   }
 
@@ -422,20 +424,19 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     return res;
   }
 
-  TRI_ASSERT(state->id() == tid);
-
   {  // add transaction to bucket
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
-    
-    if (!_transactions[bucket]._managed.emplace(std::piecewise_construct,
-                                                std::forward_as_tuple(tid),
-                                                std::forward_as_tuple(MetaType::Managed,
-                                                                      state.release())).second) {
-      // transaction with the same ID already present
+    auto it = _transactions[bucket]._managed.find(tid);
+    if (it != _transactions[bucket]._managed.end()) {
       return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                       std::string("transaction ID ") + std::to_string(tid) + "' already used in createManagedTrx insert");
+                       "transaction ID already used");
     }
+    TRI_ASSERT(state->id() == tid);
+    _transactions[bucket]._managed.emplace(std::piecewise_construct,
+                                           std::forward_as_tuple(tid),
+                                           std::forward_as_tuple(MetaType::Managed,
+                                                                 state.release()));
   }
 
   LOG_TOPIC("d6806", DEBUG, Logger::TRANSACTIONS) << "created managed trx '" << tid << "'";
