@@ -220,6 +220,18 @@ struct ClusterCommResult {
   /// @brief stringify the internal error state
   std::string stringifyErrorMessage() const;
 
+  /// @brief return if request was successful, use this on the request
+  /// results after a `performRequest`:
+  bool successful() const {
+    if (status != CL_COMM_RECEIVED) {
+      return false;
+    }
+    return answer_code == rest::ResponseCode::OK ||
+           answer_code == rest::ResponseCode::CREATED ||
+           answer_code == rest::ResponseCode::ACCEPTED ||
+           answer_code == rest::ResponseCode::NO_CONTENT;
+  }
+
   /// @brief return an error code for a result
   int getErrorCode() const;
 
