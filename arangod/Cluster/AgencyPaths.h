@@ -50,7 +50,7 @@ namespace paths {
 
 // The root is no PathComponent, mainly because it has no parent and is the
 // base case for recursions.
-class Root : public Path {
+class Root final : public Path {
  public:
   class Arango : public PathComponent<Arango, Root> {
    public:
@@ -154,15 +154,15 @@ class Root : public Path {
 
  public:
 
-  std::vector<std::string> _pathVec(size_t size) const override {
+  std::vector<std::string> _pathVec(size_t size) const final {
     auto path = std::vector<std::string>();
     path.reserve(size);
     return path;
   }
 
-  std::ostream& pathToStream(std::ostream& stream) const override { return stream; }
+  std::ostream& pathToStream(std::ostream& stream) const final { return stream; }
 
-  std::string pathStr() const override { return std::string{""}; }
+  std::string pathStr() const final { return std::string{""}; }
 };
 
 }  // namespace paths

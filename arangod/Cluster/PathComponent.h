@@ -54,17 +54,17 @@ class PathComponent : public std::enable_shared_from_this<T> /* (sic) */, public
 
   PathComponent() = delete;
 
-  std::ostream& pathToStream(std::ostream& stream) const override {
+  std::ostream& pathToStream(std::ostream& stream) const final {
     return parent().pathToStream(stream) << "/" << child().component();
   }
 
-  std::vector<std::string> _pathVec(size_t size) const override {
+  std::vector<std::string> _pathVec(size_t size) const final {
     auto path = parent()._pathVec(size + 1);
     path.emplace_back(child().component());
     return path;
   }
 
-  std::string pathStr() const override {
+  std::string pathStr() const final {
     auto stream = std::stringstream{};
     pathToStream(stream);
     return stream.str();
