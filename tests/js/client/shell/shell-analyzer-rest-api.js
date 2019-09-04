@@ -285,7 +285,7 @@ function testSuite() {
           db._drop("ulfColTestLinks");
         } catch (_) {}
         try {
-          db._drop("ulfViewTestLinks");
+          db._dropView("ulfViewTestLinks");
         } catch (_) {}
       }
     }
