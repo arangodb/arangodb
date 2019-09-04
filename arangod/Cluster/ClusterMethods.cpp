@@ -1693,11 +1693,10 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
   bool useMultiple = slice.isArray();
 
-  int res = TRI_ERROR_NO_ERROR;
   bool canUseFastPath = true;
   if (useMultiple) {
     for (VPackSlice value : VPackArrayIterator(slice)) {
-      res = distributeBabyOnShards(shardMap, ci, collid, coll, reverseMapping, value);
+      int res = distributeBabyOnShards(shardMap, ci, collid, coll, reverseMapping, value);
       if (res != TRI_ERROR_NO_ERROR) {
         canUseFastPath = false;
         shardMap.clear();
@@ -1706,7 +1705,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       }
     }
   } else {
-    res = distributeBabyOnShards(shardMap, ci, collid, coll, reverseMapping, slice);
+    int res = distributeBabyOnShards(shardMap, ci, collid, coll, reverseMapping, slice);
     if (res != TRI_ERROR_NO_ERROR) {
       canUseFastPath = false;
     }

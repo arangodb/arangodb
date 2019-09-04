@@ -733,7 +733,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
       if (ec || !(s = self.lock())) {  // was canceled / deallocated
         return;
       }
-      LOG_TOPIC("5c1e0", DEBUG, Logger::REQUESTS)
+      LOG_TOPIC("5c1e0", INFO, Logger::REQUESTS)
       << "keep alive timeout, closing stream!";
       s->close();
     });
