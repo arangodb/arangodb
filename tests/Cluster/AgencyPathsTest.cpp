@@ -37,10 +37,12 @@ using namespace arangodb::cluster::paths;
 // However, we can only check for specific constructors.
 // TODO complete the list
 #define CONSTRUCTIBLE_MESSAGE "This class should not be publicly constructible!"
+static_assert(!std::is_default_constructible<Root>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Current>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Databases>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Databases::Database>::value, CONSTRUCTIBLE_MESSAGE);
 
 // Exclude these on windows, because the constructor is made public there.
 #ifndef _WIN32
@@ -48,6 +50,8 @@ static_assert(!std::is_constructible<Root::Arango, Root>::value, CONSTRUCTIBLE_M
 static_assert(!std::is_constructible<Root::Arango::Current, Root::Arango>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan, Root::Arango>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Databases, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Databases::Database, Root::Arango::Plan::Databases>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Databases::Database, Root::Arango::Plan::Databases, DatabaseID>::value, CONSTRUCTIBLE_MESSAGE);
 #endif
 #undef CONSTRUCTIBLE_MESSAGE
 
