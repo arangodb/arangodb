@@ -1,6 +1,10 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Automatically turn values for deprecated startup option parameters 
+  `--log.use-microtime` and `--log.use-local-time` into equivalent option values
+  of the new, preferred option `--log.time-format`.
+
 * Drop collection action to timeout more quickly to stay on fast lane.
 
 * Check for duplicate server endpoints registered in the agency in sub-keys of
