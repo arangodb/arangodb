@@ -33,27 +33,38 @@ namespace arangodb {
 namespace cluster {
 namespace paths {
 
-// TODO We probably want a virtual base class
+class Path {
+ public:
+  virtual std::ostream& pathToStream(std::ostream& stream) const = 0;
+
+  std::vector<std::string> pathVec() const { return _pathVec(0); }
+
+  virtual std::vector<std::string> _pathVec(size_t size) const = 0;
+
+  virtual std::string pathStr() const = 0;
+
+  virtual ~Path() = default;
+};
 
 template <class T, class P>
-class PathComponent : public std::enable_shared_from_this<T> /* (sic) */ {
+class PathComponent : public std::enable_shared_from_this<T> /* (sic) */, public Path {
  public:
   using ParentType = P;
   using BaseType = PathComponent<T, P>;
 
   PathComponent() = delete;
 
-  std::ostream& pathToStream(std::ostream& stream) const {
+  std::ostream& pathToStream(std::ostream& stream) const override {
     return parent().pathToStream(stream) << "/" << child().component();
   }
 
-  std::vector<std::string> pathVec(size_t size = 0) const {
-    auto path = parent().pathVec(size + 1);
+  std::vector<std::string> _pathVec(size_t size) const override {
+    auto path = parent()._pathVec(size + 1);
     path.emplace_back(child().component());
     return path;
   }
 
-  std::string pathStr() const {
+  std::string pathStr() const override {
     auto stream = std::stringstream{};
     pathToStream(stream);
     return stream.str();
