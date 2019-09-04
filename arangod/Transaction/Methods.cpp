@@ -1375,8 +1375,6 @@ Future<OperationResult> transaction::Methods::documentAsync(std::string const& c
   } else {
     return documentLocal(cname, value, options);
   }
-
-  return result;
 }
 
 /// @brief read one or multiple documents in a collection, coordinator
