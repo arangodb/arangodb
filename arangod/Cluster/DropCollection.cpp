@@ -80,7 +80,7 @@ bool DropCollection::first() {
           TRI_ASSERT(coll);
           LOG_TOPIC("03e2f", DEBUG, Logger::MAINTENANCE)
               << "Dropping local collection " + collection;
-          _result = Collections::drop(*coll, false, 120);
+          _result = Collections::drop(*coll, false, 2.5);
         });
 
     if (found.fail()) {
