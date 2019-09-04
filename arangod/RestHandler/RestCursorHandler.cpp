@@ -215,7 +215,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
       Cursor* cursor = cursors->createQueryStream(querySlice.copyString(), bindVarsBuilder,
                                                   _options, batchSize, ttl,
                                                   /*contextOwnedByExt*/ false,
-                                                  createAQLTransactionContext());
+                                                  createTransactionContext());
 
       return generateCursorResult(rest::ResponseCode::CREATED, cursor);
     }
@@ -230,7 +230,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   auto query = std::make_unique<aql::Query>(
       false, _vocbase, arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
       bindVarsBuilder, _options, arangodb::aql::PART_MAIN);
-  query->setTransactionContext(createAQLTransactionContext());
+  query->setTransactionContext(createTransactionContext());
 
   std::shared_ptr<aql::SharedQueryState> ss = query->sharedState();
   ss->setContinueHandler([self = shared_from_this(), ss] { self->continueHandlerExecution(); });

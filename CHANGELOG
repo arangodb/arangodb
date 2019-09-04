@@ -13,7 +13,28 @@ v3.5.1 (XXXX-XX-XX)
   visible and eventually dropped. This does not require any change on the
   client code.
 
+* Check for duplicate server endpoints registered in the agency in sub-keys of
+  `/Current/ServersRegistered`.
+
+  Duplicate endpoints will be registered if more than one arangod instance is 
+  started with the same value for startup option `--cluster.my-address`. This can 
+  happen unintentionally due to typos in the configuration, copy&paste remainders etc.
+
+  In case a duplicate endpoint is detected on startup, a warning will be written 
+  to the log, indicating which other server has already "acquired" the same endpoint.
+
+* Make graph operations in general-graph transaction-aware.
+
 * Fixed adding an orphan collections as the first collection in a SmartGraph.
+
+* Fixed non-deterministic occurrences of "document not found" errors in sharded 
+  collections with custom shard keys (i.e. non-`_key`) and multi-document lookups.
+
+* Fixed issue #9862: ServerException: RestHandler/RestCursorHandler.cpp:279
+
+  This fixes an issue with the RocksDB primary index IN iterator not resetting its
+  internal iterator after being rearmed with new lookup values (which only happens
+  if the IN iterator is called from an inner FOR loop).
 
 * Geo functions will now have better error reporting on invalid input.
 
