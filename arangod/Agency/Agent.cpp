@@ -31,11 +31,13 @@
 
 #include "Agency/AgentCallback.h"
 #include "Agency/GossipCallback.h"
+#include "Agency/AgencyFeature.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
@@ -1284,6 +1286,9 @@ void Agent::run() {
       // Check whether we can advance _commitIndex
       advanceCommitIndex();
 
+      // Empty store callback trash bin
+      emptyCbTrashBin();
+
       bool commenceService = false;
       {
         READ_LOCKER(oLocker, _outputLock);
@@ -1621,7 +1626,7 @@ arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
 
   uint64_t commitIndex = 0;
-   
+
   { READ_LOCKER(oLocker, _outputLock);
 
     commitIndex = _commitIndex;
@@ -1632,10 +1637,10 @@ arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
     // key-value store {}
     builder.add(VPackValue("agency"));
     _readDB.get().toBuilder(builder, true); }
-  
+
   // replicated log []
   _state.toVelocyPack(commitIndex, builder);
-  
+
   return commitIndex;
 }
 
@@ -1898,6 +1903,81 @@ bool Agent::ready() const {
 
   return _ready;
 }
+
+
+
+void Agent::trashStoreCallback(std::string const& url, query_t const& body) {
+
+  auto const& slice = body->slice();
+  TRI_ASSERT(slice.isObject());
+
+  // body consists of object holding keys index, term and the observed keys
+  // we'll remove observation on every key and according observer url
+  for (auto const& i : VPackObjectIterator(slice)) {
+    if (!i.key.isEqualString("term") && !i.key.isEqualString("index")) {
+      MUTEX_LOCKER(lock, _cbtLock);
+      _callbackTrashBin[i.key.copyString()].emplace(url);
+    }
+  }
+}
+
+
+void Agent::emptyCbTrashBin() {
+
+  using clock = std::chrono::steady_clock;
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  {
+    _cbtLock.assertNotLockedByCurrentThread();
+    MUTEX_LOCKER(lock, _cbtLock);
+
+    auto early =
+      std::chrono::duration_cast<std::chrono::seconds>(
+        clock::now() - _callbackLastPurged).count() < 10;
+
+    if (early || _callbackTrashBin.empty()) {
+      return;
+    }
+
+    {
+      VPackArrayBuilder trxs(envelope.get());
+      for (auto const& i : _callbackTrashBin) {
+        for (auto const& j : i.second) {
+          {
+            VPackArrayBuilder trx(envelope.get());
+            {
+              VPackObjectBuilder ak(envelope.get());
+              envelope->add(VPackValue(i.first));
+              {
+                VPackObjectBuilder oper(envelope.get());
+                envelope->add("op", VPackValue("unobserve"));
+                envelope->add("url", VPackValue(j));
+              }
+            }
+          }
+        }
+      }
+    }
+    _callbackTrashBin.clear();
+    _callbackLastPurged = std::chrono::steady_clock::now();
+  }
+
+  // Best effort. Will be retried otherwise.
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "scheduling unobserve: " << envelope->toJson();
+  auto* scheduler = SchedulerFeature::SCHEDULER;
+  
+  if (scheduler != nullptr) {
+    scheduler->queue(
+      RequestPriority::LOW, [envelope](bool) {
+                              auto* agent = AgencyFeature::AGENT;
+                              if (!application_features::ApplicationServer::isStopping() && agent) {
+                                agent->write(envelope);
+                              }
+                            });
+  }
+
+}
+
 
 query_t Agent::buildDB(arangodb::consensus::index_t index) {
   Store store(this);

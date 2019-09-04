@@ -796,6 +796,10 @@ std::pair<ExecutionState, size_t> IndexBlock::skipSome(size_t atMost) {
     // At least one of them is prepared and ready to read.
     TRI_ASSERT(!_indexesExhausted);
     _indexesExhausted = !skipIndex(atMost);
+
+    if (_indexesExhausted) {
+      break;
+    }
   }
 
   size_t returned = _returned;
