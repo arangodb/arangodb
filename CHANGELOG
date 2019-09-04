@@ -1,7 +1,7 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
-* Drop collection action with shorter timeout
+* Drop collection action to timeout more quickly to stay on fast lane.
 
 * Check for duplicate server endpoints registered in the agency in sub-keys of
   `/Current/ServersRegistered`.
