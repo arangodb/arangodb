@@ -28,8 +28,6 @@
 #include "Network/NetworkFeature.h"
 #include "Random/RandomGenerator.h"
 
-#include "Logger/LogMacros.h"
-
 #include <fuerte/connection.h>
 
 namespace arangodb {
