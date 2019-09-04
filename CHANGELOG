@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added UI support to create documents in a collection using smartGraphAttribute
+  and/or smartJoinAttribute. 
+
 * Allowing inconsistent rather than forcing hot backups
 
 * Fixed adding an orphan collections as the first collection in a SmartGraph. 
