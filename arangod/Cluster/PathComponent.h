@@ -23,6 +23,7 @@
 #ifndef ARANGOD_CLUSTER_PATHCOMPONENT_H
 #define ARANGOD_CLUSTER_PATHCOMPONENT_H
 
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <sstream>
@@ -35,13 +36,35 @@ namespace paths {
 
 class Path {
  public:
-  virtual std::ostream& pathToStream(std::ostream& stream) const = 0;
+  // Call for each component on the path, starting with the topmost component,
+  // excluding Root.
+  virtual void forEach(std::function<void(char const* component)> const&) const = 0;
 
-  std::vector<std::string> pathVec() const { return _pathVec(0); }
+  // Fold the path.
+  template <class T>
+  T fold(std::function<T(const char*, T)> const& callback, T init) const {
+    forEach([&callback, &init](const char* component) { init = callback(init); });
+    return std::move(init);
+  }
 
-  virtual std::vector<std::string> _pathVec(size_t size) const = 0;
+  std::ostream& toStream(std::ostream& stream) const {
+    forEach([&stream](const char* component) { stream << "/" << component; });
+    return stream;
+  }
 
-  virtual std::string pathStr() const = 0;
+  std::vector<std::string> vec() const {
+    std::vector<std::string> res;
+    forEach([&res](const char* component) {
+      res.emplace_back(std::string{component});
+    });
+    return res;
+  }
+
+  std::string str() const {
+    auto stream = std::stringstream{};
+    toStream(stream);
+    return stream.str();
+  }
 
   virtual ~Path() = default;
 };
@@ -54,20 +77,9 @@ class PathComponent : public std::enable_shared_from_this<T> /* (sic) */, public
 
   PathComponent() = delete;
 
-  std::ostream& pathToStream(std::ostream& stream) const final {
-    return parent().pathToStream(stream) << "/" << child().component();
-  }
-
-  std::vector<std::string> _pathVec(size_t size) const final {
-    auto path = parent()._pathVec(size + 1);
-    path.emplace_back(child().component());
-    return path;
-  }
-
-  std::string pathStr() const final {
-    auto stream = std::stringstream{};
-    pathToStream(stream);
-    return stream.str();
+  void forEach(std::function<void(char const* component)> const& callback) const final {
+    parent().forEach(callback);
+    callback(child().component());
   }
 
   // Only the parent type P may instantiate a component, so make this protected
@@ -79,7 +91,8 @@ class PathComponent : public std::enable_shared_from_this<T> /* (sic) */, public
   friend P;
 #endif
   // constexpr PathComponent(P const& parent) noexcept : _parent(parent) {}
-  explicit constexpr PathComponent(std::shared_ptr<P const> parent) noexcept : _parent(std::move(parent)) {}
+  explicit constexpr PathComponent(std::shared_ptr<P const> parent) noexcept
+      : _parent(std::move(parent)) {}
 
   // shared ptr constructor
   static std::shared_ptr<T const> make_shared(std::shared_ptr<P const> parent) {
@@ -101,9 +114,8 @@ class PathComponent : public std::enable_shared_from_this<T> /* (sic) */, public
   std::shared_ptr<P const> _parent;
 };
 
-template <class T, class P>
-std::ostream& operator<<(std::ostream& stream, PathComponent<T, P> const& pc) {
-  return pc.pathToStream(stream);
+std::ostream& operator<<(std::ostream& stream, Path const& path) {
+  return path.toStream(stream);
 }
 
 }  // namespace paths

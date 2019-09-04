@@ -52,6 +52,9 @@ namespace paths {
 // base case for recursions.
 class Root final : public Path {
  public:
+  void forEach(std::function<void(char const* component)> const&) const final {}
+
+ public:
   class Arango : public PathComponent<Arango, Root> {
    public:
     constexpr char const* component() const noexcept { return "arango"; }
@@ -151,18 +154,6 @@ class Root final : public Path {
     // This builds a new root on purpose, as *this might not be on the heap.
     return Arango::make_shared(std::make_shared<Root>());
   }
-
- public:
-
-  std::vector<std::string> _pathVec(size_t size) const final {
-    auto path = std::vector<std::string>();
-    path.reserve(size);
-    return path;
-  }
-
-  std::ostream& pathToStream(std::ostream& stream) const final { return stream; }
-
-  std::string pathStr() const final { return std::string{""}; }
 };
 
 }  // namespace paths

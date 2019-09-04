@@ -22,9 +22,14 @@
 
 #include "gtest/gtest.h"
 
+#include "Basics/StringUtils.h"
 #include "Cluster/AgencyPaths.h"
 
+#include <memory>
+#include <vector>
+
 using namespace arangodb;
+using namespace arangodb::basics;
 using namespace arangodb::cluster;
 using namespace arangodb::cluster::paths;
 
@@ -48,98 +53,48 @@ static_assert(!std::is_constructible<Root::Arango::Plan::Databases, Root::Arango
 
 class AgencyPathsTest : public ::testing::Test {
  protected:
-  Root root;
+  // Vector of {expected, actual} pairs.
+  std::vector<std::pair<std::vector<std::string>, std::shared_ptr<Path const>>> ioPairs {
+      {{"arango"}, Root().arango()},
+      {{"arango", "Plan"}, Root().arango()->plan()},
+      {{"arango", "Plan", "Databases"}, Root().arango()->plan()->databases()},
+      {{"arango", "Plan", "Databases", "_system"}, Root().arango()->plan()->databases()->database(DatabaseID{"_system"})},
+      {{"arango", "Plan", "Databases", "someCol"}, Root().arango()->plan()->databases()->database(DatabaseID{"someCol"})},
+      {{"arango", "Current"}, Root().arango()->current()},
+      {{"arango", "Current", "ServersRegistered"}, Root().arango()->current()->serversRegistered()},
+  };
 };
 
 TEST_F(AgencyPathsTest, test_path_string) {
-  std::string actual;
-  actual = root.arango()->pathStr();
-  EXPECT_EQ("/arango", actual);
-  actual = root.arango()->plan()->pathStr();
-  EXPECT_EQ("/arango/Plan", actual);
-  actual = root.arango()->plan()->databases()->pathStr();
-  EXPECT_EQ("/arango/Plan/Databases", actual);
-  actual = root.arango()->plan()->databases()->database(DatabaseID{"_system"})->pathStr();
-  EXPECT_EQ("/arango/Plan/Databases/_system", actual);
-  actual = root.arango()->current()->pathStr();
-  EXPECT_EQ("/arango/Current", actual);
-  actual = root.arango()->current()->serversRegistered()->pathStr();
-  EXPECT_EQ("/arango/Current/ServersRegistered", actual);
+  for (auto const& it : ioPairs) {
+    auto expected = std::string{"/"} + StringUtils::join(it.first, "/");
+    auto actual = it.second->str();
+    EXPECT_EQ(expected, actual);
+  }
 }
 
 TEST_F(AgencyPathsTest, test_path_pathvec) {
-  using Res = std::vector<std::string>;
-  Res actual;
-  actual = root.arango()->pathVec();
-  EXPECT_EQ((Res{"arango"}), actual);
-  actual = root.arango()->plan()->pathVec();
-  EXPECT_EQ((Res{"arango", "Plan"}), actual);
-  actual = root.arango()->plan()->databases()->pathVec();
-  EXPECT_EQ((Res{"arango", "Plan", "Databases"}), actual);
-  actual = root.arango()->plan()->databases()->database(DatabaseID{"_system"})->pathVec();
-  EXPECT_EQ((Res{"arango", "Plan", "Databases", "_system"}), actual);
-  actual = root.arango()->current()->pathVec();
-  EXPECT_EQ((Res{"arango", "Current"}), actual);
-  actual = root.arango()->current()->serversRegistered()->pathVec();
-  EXPECT_EQ((Res{"arango", "Current", "ServersRegistered"}), actual);
+  for (auto const& it : ioPairs) {
+    auto& expected = it.first;
+    auto actual = it.second->vec();
+    EXPECT_EQ(expected, actual);
+  }
 }
 
 TEST_F(AgencyPathsTest, test_path_stringstream) {
-  std::stringstream actual;
-
-  actual << *root.arango();
-  EXPECT_EQ("/arango", actual.str());
-  actual.str(std::string{});
-
-  actual << *root.arango()->plan();
-  EXPECT_EQ("/arango/Plan", actual.str());
-  actual.str(std::string{});
-
-  actual << *root.arango()->plan()->databases();
-  EXPECT_EQ("/arango/Plan/Databases", actual.str());
-  actual.str(std::string{});
-
-  actual << *root.arango()->plan()->databases()->database(DatabaseID{"_system"});
-  EXPECT_EQ("/arango/Plan/Databases/_system", actual.str());
-  actual.str(std::string{});
-
-  actual << *root.arango()->current();
-  EXPECT_EQ("/arango/Current", actual.str());
-  actual.str(std::string{});
-
-  actual << *root.arango()->current()->serversRegistered();
-  EXPECT_EQ("/arango/Current/ServersRegistered", actual.str());
-  actual.str(std::string{});
+  for (auto const& it : ioPairs) {
+    auto expected = std::string{"/"} + StringUtils::join(it.first, "/");
+    std::stringstream stream;
+    stream << *it.second;
+    EXPECT_EQ(expected, stream.str());
+  }
 }
 
 TEST_F(AgencyPathsTest, test_path_pathtostream) {
-  std::stringstream actual;
-
-  root.pathToStream(actual);
-  EXPECT_EQ("", actual.str());
-  actual.str(std::string{});
-
-  root.arango()->pathToStream(actual);
-  EXPECT_EQ("/arango", actual.str());
-  actual.str(std::string{});
-
-  root.arango()->plan()->pathToStream(actual);
-  EXPECT_EQ("/arango/Plan", actual.str());
-  actual.str(std::string{});
-
-  root.arango()->plan()->databases()->pathToStream(actual);
-  EXPECT_EQ("/arango/Plan/Databases", actual.str());
-  actual.str(std::string{});
-
-  root.arango()->plan()->databases()->database(DatabaseID{"_system"})->pathToStream(actual);
-  EXPECT_EQ("/arango/Plan/Databases/_system", actual.str());
-  actual.str(std::string{});
-
-  root.arango()->current()->pathToStream(actual);
-  EXPECT_EQ("/arango/Current", actual.str());
-  actual.str(std::string{});
-
-  root.arango()->current()->serversRegistered()->pathToStream(actual);
-  EXPECT_EQ("/arango/Current/ServersRegistered", actual.str());
-  actual.str(std::string{});
+  for (auto const& it : ioPairs) {
+    auto expected = std::string{"/"} + StringUtils::join(it.first, "/");
+    std::stringstream stream;
+    it.second->toStream(stream);
+    EXPECT_EQ(expected, stream.str());
+  }
 }
