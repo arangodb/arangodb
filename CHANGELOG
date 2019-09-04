@@ -1,7 +1,7 @@
-v3.4.8 (2019-09-XX)
+v3.4.8 (2019-09-09)
 -------------------
 
-* Drop collection action to timeout more quickly to stay on fast lane
+* Drop collection action to timeout more quickly to stay on fast lane.
 
 * Fixed non-deterministic occurrences of "document not found" errors in sharded 
   collections with custom shard keys (i.e. non-`_key`) and multi-document lookups.
