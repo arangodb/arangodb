@@ -232,6 +232,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       }
 
       case fuerte::Error::CouldNotConnect:
+      case fuerte::Error::ConnectionClosed:
       case fuerte::Error::Timeout: {
         // Note that this case includes the refusal of a leader to accept
         // the operation, in which case we have to flush ClusterInfo:
