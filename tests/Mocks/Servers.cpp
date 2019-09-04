@@ -459,11 +459,6 @@ MockRestServer::MockRestServer() : MockServer() {
 
   _features.emplace(new arangodb::QueryRegistryFeature(_server), false);
 
-#if USE_ENTERPRISE
-  _features.emplace(new arangodb::LdapFeature(_server),
-                    false);  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
-
   SetupV8Phase(_features, _server);
   startFeatures();
 }
