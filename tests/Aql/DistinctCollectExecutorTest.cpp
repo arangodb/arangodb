@@ -38,7 +38,7 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
-#include "tests/Mocks/Servers.h"
+#include "Mocks/Servers.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>

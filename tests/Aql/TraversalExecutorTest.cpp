@@ -34,7 +34,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Traverser.h"
 #include "Graph/TraverserOptions.h"
-#include "tests/Mocks/Servers.h"
+
+#include "Mocks/Servers.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
