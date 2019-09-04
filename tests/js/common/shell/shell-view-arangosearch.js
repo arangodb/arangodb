@@ -43,6 +43,14 @@ var ERRORS = arangodb.errors;
 function ViewSuite () {
   'use strict';
   return {
+    tearDown : function () {
+      try {
+        db._dropView("abc");
+      } catch (_) {}
+      try {
+        db._dropView("def");
+      } catch (_) {}
+    },
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief bad name (empty)
