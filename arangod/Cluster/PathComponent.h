@@ -70,12 +70,12 @@ class Path {
 };
 
 template <class T, class P>
-class PathComponent : public std::enable_shared_from_this<T> /* (sic) */, public Path {
+class StaticComponent : public std::enable_shared_from_this<T> /* (sic) */, public Path {
  public:
   using ParentType = P;
-  using BaseType = PathComponent<T, P>;
+  using BaseType = StaticComponent<T, P>;
 
-  PathComponent() = delete;
+  StaticComponent() = delete;
 
   void forEach(std::function<void(char const* component)> const& callback) const final {
     parent().forEach(callback);
@@ -90,8 +90,7 @@ class PathComponent : public std::enable_shared_from_this<T> /* (sic) */, public
  protected:
   friend P;
 #endif
-  // constexpr PathComponent(P const& parent) noexcept : _parent(parent) {}
-  explicit constexpr PathComponent(std::shared_ptr<P const> parent) noexcept
+  explicit constexpr StaticComponent(std::shared_ptr<P const> parent) noexcept
       : _parent(std::move(parent)) {}
 
   // shared ptr constructor
@@ -111,7 +110,58 @@ class PathComponent : public std::enable_shared_from_this<T> /* (sic) */, public
   // Accessor to our parent. Could be made public, but should then probably return the shared_ptr.
   P const& parent() const noexcept { return *_parent; }
 
-  std::shared_ptr<P const> _parent;
+  std::shared_ptr<P const> const _parent;
+};
+
+template <class T, class P, class V>
+class DynamicComponent : public std::enable_shared_from_this<T> /* (sic) */, public Path {
+ public:
+  using ParentType = P;
+  using BaseType = DynamicComponent<T, P, V>;
+
+  DynamicComponent() = delete;
+
+  void forEach(std::function<void(char const* component)> const& callback) const final {
+    parent().forEach(callback);
+    callback(child().component());
+  }
+
+  // Only the parent type P may instantiate a component, so make this protected
+  // and P a friend. MSVC ignores the friend declaration, though.
+#if defined(_WIN32) || defined(_WIN64)
+ public:
+#else
+ protected:
+  friend P;
+#endif
+  explicit constexpr DynamicComponent(std::shared_ptr<P const> parent, V value) noexcept
+      : _parent(std::move(parent)), _value(std::move(value)) {
+    static_assert(noexcept(V(std::move(value))),
+                  "Move constructor of V is expected to be noexcept");
+  }
+
+  // shared ptr constructor
+  static std::shared_ptr<T const> make_shared(std::shared_ptr<P const> parent, V value) {
+    struct ConstructibleT : public T {
+     public:
+      explicit ConstructibleT(std::shared_ptr<P const> parent, V value) noexcept
+          : T(std::move(parent), std::move(value)) {}
+    };
+    return std::make_shared<ConstructibleT const>(std::move(parent), std::move(value));
+  }
+
+  V const& value() const { return _value; }
+
+ private:
+  // Accessor to our subclass
+  T const& child() const { return static_cast<T const&>(*this); }
+
+  // Accessor to our parent. Could be made public, but should then probably return the shared_ptr.
+  P const& parent() const noexcept { return *_parent; }
+
+  std::shared_ptr<P const> const _parent;
+
+  V const _value;
 };
 
 std::ostream& operator<<(std::ostream& stream, Path const& path) {

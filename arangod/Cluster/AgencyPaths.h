@@ -61,88 +61,93 @@ namespace paths {
  * An example for a static component looks like this:
  * class SomeOuterClass {
  * ...
- *   class YourComponent : public PathComponent<YourComponent, SomeOuterClass> {
+ *   // Add your component
+ *   class YourComponent : public StaticComponent<YourComponent, SomeOuterClass> {
  *    public:
  *     constexpr char const* component() const noexcept { return "YourComponent"; }
  *
- *     using BaseType::PathComponent;
+ *     // Inherit constructors
+ *     using BaseType::StaticComponent;
  *
  *     // Add possible inner classes here
  *   };
  *
+ *   // Add an accessor to it in the outer class
  *   std::shared_ptr<YourComponent const> yourComponent() const {
  *     return YourComponent::make_shared(shared_from_this());
  *   }
  * ...
  * }
  *
+ * An example for a dynamic component looks like this, here holding a value of type SomeType:
+ * class SomeOuterClass {
+ * ...
+ *   // Add your component
+ *   class YourComponent : public DynamicComponent<YourComponent, SomeOuterClass, SomeType> {
+ *    public:
+ *     // Access your SomeType value with value():
+ *     char const* component() const noexcept { return value().c_str(); }
+ *
+ *     // Inherit constructors
+ *     using BaseType::DynamicComponent;
+ *   };
+ *
+ *   // Add an accessor to it in the outer class
+ *   std::shared_ptr<YourComponent const> yourComponent(DatabaseID name) const {
+ *     return YourComponent::make_shared(shared_from_this(), std::move(name));
+ *   }
+ * ...
+ * }
+ *
  */
+
+/*
+class YourComponent : public StaticComponent<YourComponent, SomeOuterClass> {
+ public:
+  constexpr char const* component() const noexcept { return "YourComponent"; }
+
+  using BaseType::StaticComponent;
+};
+
+std::shared_ptr<YourComponent const> yourComponent() const {
+  return YourComponent::make_shared(shared_from_this());
+}
+*/
 
 class Root;
 
 inline std::shared_ptr<Root const> root();
 
-// The root is no PathComponent, mainly because it has no parent and is the
+// The root is no StaticComponent, mainly because it has no parent and is the
 // base case for recursions.
 class Root : public std::enable_shared_from_this<Root>, public Path {
  public:
   void forEach(std::function<void(char const* component)> const&) const final {}
 
  public:
-  class Arango : public PathComponent<Arango, Root> {
+  class Arango : public StaticComponent<Arango, Root> {
    public:
     constexpr char const* component() const noexcept { return "arango"; }
 
-    using BaseType::PathComponent;
+    using BaseType::StaticComponent;
 
-    class Plan : public PathComponent<Plan, Arango> {
+    class Plan : public StaticComponent<Plan, Arango> {
      public:
       constexpr char const* component() const noexcept { return "Plan"; }
 
-      using BaseType::PathComponent;
+      using BaseType::StaticComponent;
 
-      class Databases : public PathComponent<Databases, Plan> {
+      class Databases : public StaticComponent<Databases, Plan> {
        public:
         constexpr char const* component() const noexcept { return "Databases"; }
 
-        using BaseType::PathComponent;
+        using BaseType::StaticComponent;
 
-        class Database : public PathComponent<Database, Databases> {
+        class Database : public DynamicComponent<Database, Databases, DatabaseID> {
          public:
-          char const* component() const noexcept { return _name.c_str(); }
+          char const* component() const noexcept { return value().c_str(); }
 
-         private:
-          DatabaseID const _name;
-
-          // Only the parent type P may instantiate a component, so make this private
-          // and P a friend. MSVC ignores the friend declaration, though.
-#if defined(_WIN32) || defined(_WIN64)
-         public:
-#else
-         protected:
-          friend ParentType;
-#endif
-          Database(std::shared_ptr<ParentType const> parent, DatabaseID name) noexcept
-              : BaseType(std::move(parent)), _name(std::move(name)) {
-            // An empty id would break the path creation, and we would get a
-            // path to arango/Plan/Databases/. This could be all sorts of bad.
-            // This would best be prevented by DatabaseID being a real type,
-            // that disallows construction with an empty name.
-            TRI_ASSERT(!_name.empty());
-          }
-
-          // shared ptr constructor
-          static std::shared_ptr<Database const> make_shared(std::shared_ptr<ParentType const> parent,
-                                                             DatabaseID name) {
-            struct ConstructibleDatabase : public Database {
-             public:
-              ConstructibleDatabase(std::shared_ptr<ParentType const> parent,
-                                    DatabaseID name) noexcept
-                  : Database(std::move(parent), std::move(name)) {}
-            };
-            return std::make_shared<ConstructibleDatabase const>(std::move(parent),
-                                                                 std::move(name));
-          }
+          using BaseType::DynamicComponent;
         };
 
         std::shared_ptr<Database const> database(DatabaseID name) const {
@@ -159,19 +164,19 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
       return Plan::make_shared(shared_from_this());
     }
 
-    class Current : public PathComponent<Current, Arango> {
+    class Current : public StaticComponent<Current, Arango> {
      public:
       constexpr char const* component() const noexcept { return "Current"; }
 
-      using BaseType::PathComponent;
+      using BaseType::StaticComponent;
 
-      class ServersRegistered : public PathComponent<ServersRegistered, Current> {
+      class ServersRegistered : public StaticComponent<ServersRegistered, Current> {
        public:
         constexpr char const* component() const noexcept {
           return "ServersRegistered";
         }
 
-        using BaseType::PathComponent;
+        using BaseType::StaticComponent;
       };
 
       std::shared_ptr<ServersRegistered const> serversRegistered() const {
@@ -183,36 +188,36 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
       return Current::make_shared(shared_from_this());
     }
 
-    class Supervision : public PathComponent<Supervision, Arango> {
+    class Supervision : public StaticComponent<Supervision, Arango> {
      public:
       constexpr char const* component() const noexcept { return "Supervision"; }
 
-      using BaseType::PathComponent;
+      using BaseType::StaticComponent;
 
-      class State : public PathComponent<State, Supervision> {
+      class State : public StaticComponent<State, Supervision> {
        public:
         constexpr char const* component() const noexcept { return "State"; }
 
-        using BaseType::PathComponent;
+        using BaseType::StaticComponent;
 
-        class Timestamp : public PathComponent<Timestamp, State> {
+        class Timestamp : public StaticComponent<Timestamp, State> {
          public:
           constexpr char const* component() const noexcept {
             return "Timestamp";
           }
 
-          using BaseType::PathComponent;
+          using BaseType::StaticComponent;
         };
 
         std::shared_ptr<Timestamp const> timestamp() const {
           return Timestamp::make_shared(shared_from_this());
         }
 
-        class Mode : public PathComponent<Mode, State> {
+        class Mode : public StaticComponent<Mode, State> {
          public:
           constexpr char const* component() const noexcept { return "Mode"; }
 
-          using BaseType::PathComponent;
+          using BaseType::StaticComponent;
         };
 
         std::shared_ptr<Mode const> mode() const {
@@ -224,193 +229,162 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         return State::make_shared(shared_from_this());
       }
 
-      class Shards : public PathComponent<Shards, Supervision> {
+      class Shards : public StaticComponent<Shards, Supervision> {
        public:
         constexpr char const* component() const noexcept { return "Shards"; }
 
-        using BaseType::PathComponent;
+        using BaseType::StaticComponent;
       };
 
       std::shared_ptr<Shards const> shards() const {
         return Shards::make_shared(shared_from_this());
       }
 
-      class DbServers : public PathComponent<DbServers, Supervision> {
+      class DbServers : public StaticComponent<DbServers, Supervision> {
        public:
         constexpr char const* component() const noexcept { return "DBServers"; }
 
-        using BaseType::PathComponent;
+        using BaseType::StaticComponent;
       };
 
       std::shared_ptr<DbServers const> dbServers() const {
         return DbServers::make_shared(shared_from_this());
       }
 
-      class Health : public PathComponent<Health, Supervision> {
+      class Health : public StaticComponent<Health, Supervision> {
        public:
         constexpr char const* component() const noexcept { return "Health"; }
 
-        using BaseType::PathComponent;
+        using BaseType::StaticComponent;
 
-        class DbServer : public PathComponent<DbServer, Health> {
+        class DbServer : public DynamicComponent<DbServer, Health, ServerID> {
          public:
-          char const* component() const noexcept { return _name.c_str(); }
+          char const* component() const noexcept { return value().c_str(); }
 
-         private:
-          ServerID const _name;
+          using BaseType::DynamicComponent;
 
-          // Only the parent type P may instantiate a component, so make this private
-          // and P a friend. MSVC ignores the friend declaration, though.
-#if defined(_WIN32) || defined(_WIN64)
-         public:
-#else
-         protected:
-          friend ParentType;
-#endif
-          DbServer(std::shared_ptr<ParentType const> parent, ServerID name) noexcept
-              : BaseType(std::move(parent)), _name(std::move(name)) {
-            // An empty id would break the path creation, and we would get a
-            // path to arango/Plan/Databases/. This could be all sorts of bad.
-            // This would best be prevented by DatabaseID being a real type,
-            // that disallows construction with an empty name.
-            TRI_ASSERT(!_name.empty());
-          }
-
-          // shared ptr constructor
-          static std::shared_ptr<DbServer const> make_shared(std::shared_ptr<ParentType const> parent,
-                                                             ServerID name) {
-            struct ConstructibleDbServer : public DbServer {
-             public:
-              ConstructibleDbServer(std::shared_ptr<ParentType const> parent, ServerID name) noexcept
-                  : DbServer(std::move(parent), std::move(name)) {}
-            };
-            return std::make_shared<ConstructibleDbServer const>(std::move(parent),
-                                                                 std::move(name));
-          }
-
-         public:
-          class SyncTime : public PathComponent<SyncTime, DbServer> {
+          class SyncTime : public StaticComponent<SyncTime, DbServer> {
            public:
             constexpr char const* component() const noexcept {
               return "SyncTime";
             }
 
-            using BaseType::PathComponent;
+            using BaseType::StaticComponent;
           };
 
           std::shared_ptr<SyncTime const> syncTime() const {
             return SyncTime::make_shared(shared_from_this());
           }
 
-          class Timestamp : public PathComponent<Timestamp, DbServer> {
+          class Timestamp : public StaticComponent<Timestamp, DbServer> {
            public:
             constexpr char const* component() const noexcept {
               return "Timestamp";
             }
 
-            using BaseType::PathComponent;
+            using BaseType::StaticComponent;
           };
 
           std::shared_ptr<Timestamp const> timestamp() const {
             return Timestamp::make_shared(shared_from_this());
           }
 
-          class SyncStatus : public PathComponent<SyncStatus, DbServer> {
+          class SyncStatus : public StaticComponent<SyncStatus, DbServer> {
            public:
             constexpr char const* component() const noexcept {
               return "SyncStatus";
             }
 
-            using BaseType::PathComponent;
+            using BaseType::StaticComponent;
           };
 
           std::shared_ptr<SyncStatus const> syncStatus() const {
             return SyncStatus::make_shared(shared_from_this());
           }
 
-          class LastAckedTime : public PathComponent<LastAckedTime, DbServer> {
+          class LastAckedTime : public StaticComponent<LastAckedTime, DbServer> {
            public:
             constexpr char const* component() const noexcept {
               return "LastAckedTime";
             }
 
-            using BaseType::PathComponent;
+            using BaseType::StaticComponent;
           };
 
           std::shared_ptr<LastAckedTime const> lastAckedTime() const {
             return LastAckedTime::make_shared(shared_from_this());
           }
 
-          class Host : public PathComponent<Host, DbServer> {
+          class Host : public StaticComponent<Host, DbServer> {
            public:
             constexpr char const* component() const noexcept { return "Host"; }
 
-            using BaseType::PathComponent;
+            using BaseType::StaticComponent;
           };
 
           std::shared_ptr<Host const> host() const {
             return Host::make_shared(shared_from_this());
           }
 
-          class Engine : public PathComponent<Engine, DbServer> {
+          class Engine : public StaticComponent<Engine, DbServer> {
            public:
             constexpr char const* component() const noexcept {
               return "Engine";
             }
 
-            using BaseType::PathComponent;
+            using BaseType::StaticComponent;
           };
 
           std::shared_ptr<Engine const> engine() const {
             return Engine::make_shared(shared_from_this());
           }
 
-          class Version : public PathComponent<Version, DbServer> {
+          class Version : public StaticComponent<Version, DbServer> {
            public:
             constexpr char const* component() const noexcept {
               return "Version";
             }
 
-            using BaseType::PathComponent;
+            using BaseType::StaticComponent;
           };
 
           std::shared_ptr<Version const> version() const {
             return Version::make_shared(shared_from_this());
           }
 
-          class Status : public PathComponent<Status, DbServer> {
+          class Status : public StaticComponent<Status, DbServer> {
            public:
             constexpr char const* component() const noexcept {
               return "Status";
             }
 
-            using BaseType::PathComponent;
+            using BaseType::StaticComponent;
           };
 
           std::shared_ptr<Status const> status() const {
             return Status::make_shared(shared_from_this());
           }
 
-          class ShortName : public PathComponent<ShortName, DbServer> {
+          class ShortName : public StaticComponent<ShortName, DbServer> {
            public:
             constexpr char const* component() const noexcept {
               return "ShortName";
             }
 
-            using BaseType::PathComponent;
+            using BaseType::StaticComponent;
           };
 
           std::shared_ptr<ShortName const> shortName() const {
             return ShortName::make_shared(shared_from_this());
           }
 
-          class Endpoint : public PathComponent<Endpoint, DbServer> {
+          class Endpoint : public StaticComponent<Endpoint, DbServer> {
            public:
             constexpr char const* component() const noexcept {
               return "Endpoint";
             }
 
-            using BaseType::PathComponent;
+            using BaseType::StaticComponent;
           };
 
           std::shared_ptr<Endpoint const> endpoint() const {
