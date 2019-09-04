@@ -581,10 +581,11 @@
               // custom event handler, updating key label
               $('#new-document-key-attr').css('width', '50%').css('float', 'right');
               $('#new-document-key-attr').before(
-                '<input type="text" id="new-document-key-prefix-attr" value="" placeholder="<smart-prefix>" disabled style="width: 40%; float: left;">'
+                '<input type="text" id="new-document-key-prefix-attr" value="" placeholder="<smart-prefix>" disabled style="width: 40%; float: left;">' +
+                '<div style="width: 2px; float: left; margin-top: 15px; margin-left: 5px; font-weight: 800;">:</div>'
               );
               $('new-smart-val-attr').unbind('keyup');
-              $('#new-smart-val-attr').on('keyup', function(element) {
+              $('#new-smart-val-attr').on('keyup', function (element) {
                 $('#new-document-key-prefix-attr').val($(element.currentTarget).val());
               });
             } else if (this.collection.getSmartGraphAttribute()) {
@@ -621,10 +622,11 @@
               // custom event handler, updating key label
               $('#new-document-key-attr').css('width', '50%').css('float', 'right');
               $('#new-document-key-attr').before(
-                '<input type="text" id="new-document-key-prefix-attr" value="" placeholder="<smart-prefix>" disabled style="width: 40%; float: left;">'
+                '<input type="text" id="new-document-key-prefix-attr" value="" placeholder="<smart-prefix>" disabled style="width: 40%; float: left;">' +
+                '<div style="width: 2px; float: left; margin-top: 15px; margin-left: 5px; font-weight: 800;">:</div>'
               );
               $('#new-smartGraph-val-attr').unbind('keyup');
-              $('#new-smartGraph-val-attr').on('keyup', function(element) {
+              $('#new-smartGraph-val-attr').on('keyup', function (element) {
                 $('#new-document-key-prefix-attr').val($(element.currentTarget).val());
               });
             } else if (type === 'edge') {
