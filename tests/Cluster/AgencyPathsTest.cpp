@@ -51,65 +51,63 @@ class AgencyPathsTest : public ::testing::Test {
   Root root;
 };
 
-static Root root{};
-
 TEST_F(AgencyPathsTest, test_path_string) {
   std::string actual;
-  actual = root.arango().pathStr();
+  actual = root.arango()->pathStr();
   EXPECT_EQ("/arango", actual);
-  actual = root.arango().plan().pathStr();
+  actual = root.arango()->plan()->pathStr();
   EXPECT_EQ("/arango/Plan", actual);
-  actual = root.arango().plan().databases().pathStr();
+  actual = root.arango()->plan()->databases()->pathStr();
   EXPECT_EQ("/arango/Plan/Databases", actual);
-  actual = root.arango().plan().databases()(DatabaseID{"_system"}).pathStr();
+  actual = root.arango()->plan()->databases()->database(DatabaseID{"_system"})->pathStr();
   EXPECT_EQ("/arango/Plan/Databases/_system", actual);
-  actual = root.arango().current().pathStr();
+  actual = root.arango()->current()->pathStr();
   EXPECT_EQ("/arango/Current", actual);
-  actual = root.arango().current().serversRegistered().pathStr();
+  actual = root.arango()->current()->serversRegistered()->pathStr();
   EXPECT_EQ("/arango/Current/ServersRegistered", actual);
 }
 
 TEST_F(AgencyPathsTest, test_path_pathvec) {
   using Res = std::vector<std::string>;
   Res actual;
-  actual = root.arango().pathVec();
+  actual = root.arango()->pathVec();
   EXPECT_EQ((Res{"arango"}), actual);
-  actual = root.arango().plan().pathVec();
+  actual = root.arango()->plan()->pathVec();
   EXPECT_EQ((Res{"arango", "Plan"}), actual);
-  actual = root.arango().plan().databases().pathVec();
+  actual = root.arango()->plan()->databases()->pathVec();
   EXPECT_EQ((Res{"arango", "Plan", "Databases"}), actual);
-  actual = root.arango().plan().databases()(DatabaseID{"_system"}).pathVec();
+  actual = root.arango()->plan()->databases()->database(DatabaseID{"_system"})->pathVec();
   EXPECT_EQ((Res{"arango", "Plan", "Databases", "_system"}), actual);
-  actual = root.arango().current().pathVec();
+  actual = root.arango()->current()->pathVec();
   EXPECT_EQ((Res{"arango", "Current"}), actual);
-  actual = root.arango().current().serversRegistered().pathVec();
+  actual = root.arango()->current()->serversRegistered()->pathVec();
   EXPECT_EQ((Res{"arango", "Current", "ServersRegistered"}), actual);
 }
 
 TEST_F(AgencyPathsTest, test_path_stringstream) {
   std::stringstream actual;
 
-  actual << root.arango();
+  actual << *root.arango();
   EXPECT_EQ("/arango", actual.str());
   actual.str(std::string{});
 
-  actual << root.arango().plan();
+  actual << *root.arango()->plan();
   EXPECT_EQ("/arango/Plan", actual.str());
   actual.str(std::string{});
 
-  actual << root.arango().plan().databases();
+  actual << *root.arango()->plan()->databases();
   EXPECT_EQ("/arango/Plan/Databases", actual.str());
   actual.str(std::string{});
 
-  actual << root.arango().plan().databases()(DatabaseID{"_system"});
+  actual << *root.arango()->plan()->databases()->database(DatabaseID{"_system"});
   EXPECT_EQ("/arango/Plan/Databases/_system", actual.str());
   actual.str(std::string{});
 
-  actual << root.arango().current();
+  actual << *root.arango()->current();
   EXPECT_EQ("/arango/Current", actual.str());
   actual.str(std::string{});
 
-  actual << root.arango().current().serversRegistered();
+  actual << *root.arango()->current()->serversRegistered();
   EXPECT_EQ("/arango/Current/ServersRegistered", actual.str());
   actual.str(std::string{});
 }
@@ -121,27 +119,27 @@ TEST_F(AgencyPathsTest, test_path_pathtostream) {
   EXPECT_EQ("", actual.str());
   actual.str(std::string{});
 
-  root.arango().pathToStream(actual);
+  root.arango()->pathToStream(actual);
   EXPECT_EQ("/arango", actual.str());
   actual.str(std::string{});
 
-  root.arango().plan().pathToStream(actual);
+  root.arango()->plan()->pathToStream(actual);
   EXPECT_EQ("/arango/Plan", actual.str());
   actual.str(std::string{});
 
-  root.arango().plan().databases().pathToStream(actual);
+  root.arango()->plan()->databases()->pathToStream(actual);
   EXPECT_EQ("/arango/Plan/Databases", actual.str());
   actual.str(std::string{});
 
-  root.arango().plan().databases()(DatabaseID{"_system"}).pathToStream(actual);
+  root.arango()->plan()->databases()->database(DatabaseID{"_system"})->pathToStream(actual);
   EXPECT_EQ("/arango/Plan/Databases/_system", actual.str());
   actual.str(std::string{});
 
-  root.arango().current().pathToStream(actual);
+  root.arango()->current()->pathToStream(actual);
   EXPECT_EQ("/arango/Current", actual.str());
   actual.str(std::string{});
 
-  root.arango().current().serversRegistered().pathToStream(actual);
+  root.arango()->current()->serversRegistered()->pathToStream(actual);
   EXPECT_EQ("/arango/Current/ServersRegistered", actual.str());
   actual.str(std::string{});
 }

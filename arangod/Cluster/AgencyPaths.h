@@ -29,6 +29,7 @@
 #include "Cluster/ClusterTypes.h"
 
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -51,7 +52,7 @@ namespace paths {
 // base case for recursions.
 class Root {
  public:
-  Root() : _arango(*this) {}
+  Root() = default;
 
   class Arango : public PathComponent<Arango, Root> {
    public:
@@ -75,8 +76,19 @@ class Root {
          public:
           char const* component() const noexcept { return _name.c_str(); }
 
-          explicit Database(ParentType const& parent, DatabaseID name) noexcept
-              : BaseType(parent), _name(std::move(name)) {
+         private:
+          DatabaseID const _name;
+
+          // Only the parent type P may instantiate a component, so make this private
+          // and P a friend. MSVC ignores the friend declaration, though.
+#if defined(_WIN32) || defined(_WIN64)
+         public:
+#else
+         protected:
+          friend ParentType;
+#endif
+          Database(std::shared_ptr<ParentType const> parent, DatabaseID name) noexcept
+              : BaseType(std::move(parent)), _name(std::move(name)) {
             // An empty id would break the path creation, and we would get a
             // path to arango/Plan/Databases/. This could be all sorts of bad.
             // This would best be prevented by DatabaseID being a real type,
@@ -84,19 +96,33 @@ class Root {
             TRI_ASSERT(!_name.empty());
           }
 
-         private:
-          DatabaseID const _name;
+          // shared ptr constructor
+          static std::shared_ptr<Database const> make_shared(std::shared_ptr<ParentType const> parent,
+                                                             DatabaseID name) {
+            struct ConstructibleDatabase : public Database {
+             public:
+              ConstructibleDatabase(std::shared_ptr<ParentType const> parent,
+                                    DatabaseID name) noexcept
+                  : Database(std::move(parent), std::move(name)) {}
+            };
+            return std::make_shared<ConstructibleDatabase const>(std::move(parent),
+                                                                 std::move(name));
+          }
         };
 
-        Database operator()(DatabaseID name) noexcept {
-          return Database(*this, std::move(name));
+        std::shared_ptr<Database const> database(DatabaseID name) const {
+          return Database::make_shared(shared_from_this(), std::move(name));
         }
       };
 
-      Databases databases() const noexcept { return Databases(*this); }
+      std::shared_ptr<Databases const> databases() const {
+        return Databases::make_shared(shared_from_this());
+      }
     };
 
-    Plan plan() const noexcept { return Plan(*this); }
+    std::shared_ptr<Plan const> plan() const {
+      return Plan::make_shared(shared_from_this());
+    }
 
     class Current : public PathComponent<Current, Arango> {
      public:
@@ -113,15 +139,20 @@ class Root {
         using BaseType::PathComponent;
       };
 
-      ServersRegistered serversRegistered() const noexcept {
-        return ServersRegistered(*this);
+      std::shared_ptr<ServersRegistered const> serversRegistered() const {
+        return ServersRegistered::make_shared(shared_from_this());
       }
     };
 
-    Current current() const noexcept { return Current(*this); }
+    std::shared_ptr<Current const> current() const {
+      return Current::make_shared(shared_from_this());
+    }
   };
 
-  constexpr Arango const& arango() const noexcept { return _arango; }
+  std::shared_ptr<Arango const> arango() const {
+    // This builds a new root on purpose, as *this might not be on the heap.
+    return Arango::make_shared(std::make_shared<Root>());
+  }
 
  public:
   std::vector<std::string> pathVec(size_t size = 0) const {
@@ -133,9 +164,6 @@ class Root {
   std::ostream& pathToStream(std::ostream& stream) const { return stream; }
 
   std::string pathStr() const { return std::string{""}; }
-
- private:
-  Arango const _arango;
 };
 
 }  // namespace paths

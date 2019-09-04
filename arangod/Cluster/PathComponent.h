@@ -24,6 +24,7 @@
 #define ARANGOD_CLUSTER_PATHCOMPONENT_H
 
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -32,8 +33,10 @@ namespace arangodb {
 namespace cluster {
 namespace paths {
 
+// TODO We probably want a virtual base class
+
 template <class T, class P>
-class PathComponent {
+class PathComponent : public std::enable_shared_from_this<T> /* (sic) */ {
  public:
   using ParentType = P;
   using BaseType = PathComponent<T, P>;
@@ -56,23 +59,35 @@ class PathComponent {
     return stream.str();
   }
 
-  P const& parent() const noexcept { return _parent; }
-
-  // Only the parent type P may instantiate a component, so make this private
+  // Only the parent type P may instantiate a component, so make this protected
   // and P a friend. MSVC ignores the friend declaration, though.
 #if defined(_WIN32) || defined(_WIN64)
  public:
 #else
- private:
+ protected:
   friend P;
 #endif
-  constexpr PathComponent(P const& parent) noexcept : _parent(parent) {}
+  // constexpr PathComponent(P const& parent) noexcept : _parent(parent) {}
+  explicit constexpr PathComponent(std::shared_ptr<P const> parent) noexcept : _parent(std::move(parent)) {}
+
+  // shared ptr constructor
+  static std::shared_ptr<T const> make_shared(std::shared_ptr<P const> parent) {
+    struct ConstructibleT : public T {
+     public:
+      explicit ConstructibleT(std::shared_ptr<P const> parent) noexcept
+          : T(std::move(parent)) {}
+    };
+    return std::make_shared<ConstructibleT const>(std::move(parent));
+  }
 
  private:
   // Accessor to our subclass
   T const& child() const { return static_cast<T const&>(*this); }
 
-  P const& _parent;
+  // Accessor to our parent. Could be made public, but should then probably return the shared_ptr.
+  P const& parent() const noexcept { return *_parent; }
+
+  std::shared_ptr<P const> _parent;
 };
 
 template <class T, class P>
