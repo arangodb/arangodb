@@ -54,14 +54,14 @@ static_assert(!std::is_constructible<Root::Arango::Plan::Databases, Root::Arango
 class AgencyPathsTest : public ::testing::Test {
  protected:
   // Vector of {expected, actual} pairs.
-  std::vector<std::pair<std::vector<std::string>, std::shared_ptr<Path const>>> ioPairs {
-      {{"arango"}, Root().arango()},
-      {{"arango", "Plan"}, Root().arango()->plan()},
-      {{"arango", "Plan", "Databases"}, Root().arango()->plan()->databases()},
-      {{"arango", "Plan", "Databases", "_system"}, Root().arango()->plan()->databases()->database(DatabaseID{"_system"})},
-      {{"arango", "Plan", "Databases", "someCol"}, Root().arango()->plan()->databases()->database(DatabaseID{"someCol"})},
-      {{"arango", "Current"}, Root().arango()->current()},
-      {{"arango", "Current", "ServersRegistered"}, Root().arango()->current()->serversRegistered()},
+  std::vector<std::pair<std::vector<std::string> const, std::shared_ptr<Path const> const>> const ioPairs {
+      {{"arango"}, root()->arango()},
+      {{"arango", "Plan"}, root()->arango()->plan()},
+      {{"arango", "Plan", "Databases"}, root()->arango()->plan()->databases()},
+      {{"arango", "Plan", "Databases", "_system"}, root()->arango()->plan()->databases()->database(DatabaseID{"_system"})},
+      {{"arango", "Plan", "Databases", "someCol"}, root()->arango()->plan()->databases()->database(DatabaseID{"someCol"})},
+      {{"arango", "Current"}, root()->arango()->current()},
+      {{"arango", "Current", "ServersRegistered"}, root()->arango()->current()->serversRegistered()},
   };
 };
 

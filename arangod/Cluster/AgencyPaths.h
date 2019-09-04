@@ -39,18 +39,33 @@ namespace cluster {
 namespace paths {
 
 /**
- * Note that Root is the only class here that may be instantiated directly!
+ * Note that no class here may be instantiated directly! You can only call root() and work your way down from there.
  *
  * Use e.g. as
- * auto root = Root();
- * std::string path = root.arango().plan().databases()("_system").pathStr();
+ *   std::string path = root()->arango()->plan()->databases()->database("_system")->str();
+ *   // path == "/arango/Plan/Databases/_system"
+ * or
+ *   std::vector<std::string> path = root()->arango()->plan()->databases()->database("_system")->vec();
+ *   // path == {"arango", "Plan", "Databases", "_system"}
+ * or
+ *   std::stringstream stream;
+ *   stream << *root()->arango()->plan()->databases()->database("_system");
+ *   // stream.str() == "/arango/Plan/Databases/_system"
+ * or
+ *   std::stringstream stream;
+ *   root()->arango()->plan()->databases()->database("_system")->toStream(stream);
+ *   // stream.str() == "/arango/Plan/Databases/_system"
  *
  * If you add anything, make sure to add tests in tests/Cluster/AgencyPathsTest.cpp.
  */
 
+class Root;
+
+inline std::shared_ptr<Root const> root();
+
 // The root is no PathComponent, mainly because it has no parent and is the
 // base case for recursions.
-class Root final : public Path {
+class Root : public std::enable_shared_from_this<Root>, public Path {
  public:
   void forEach(std::function<void(char const* component)> const&) const final {}
 
@@ -151,10 +166,23 @@ class Root final : public Path {
   };
 
   std::shared_ptr<Arango const> arango() const {
-    // This builds a new root on purpose, as *this might not be on the heap.
-    return Arango::make_shared(std::make_shared<Root>());
+    return Arango::make_shared(shared_from_this());
+  }
+
+ private:
+  // May only be constructed by root()
+  friend std::shared_ptr<Root const> root();
+  Root() = default;
+  static std::shared_ptr<Root const> make_shared() {
+    struct ConstructibleRoot : public Root {
+     public:
+      explicit ConstructibleRoot() noexcept = default;
+    };
+    return std::make_shared<ConstructibleRoot const>();
   }
 };
+
+std::shared_ptr<Root const> root() { return Root::make_shared(); }
 
 }  // namespace paths
 }  // namespace cluster
