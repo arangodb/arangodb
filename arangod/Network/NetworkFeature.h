@@ -43,6 +43,7 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   void prepare() override;
   void start() override;
   void beginShutdown() override;
+  void stop() override;
 
   /// @brief global connection pool
   static arangodb::network::ConnectionPool* pool() {
@@ -56,12 +57,11 @@ class NetworkFeature final : public application_features::ApplicationFeature {
 #endif
 
  private:
-  
   uint32_t _numIOThreads;
   uint64_t _maxOpenConnections;
   uint64_t _connectionTtlMilli;
   bool _verifyHosts;
-  
+
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
   /// @brief where rhythm is life, and life is rhythm :)
