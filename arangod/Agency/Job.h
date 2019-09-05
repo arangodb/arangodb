@@ -61,6 +61,8 @@ extern std::string const toBeCleanedPrefix;
 extern std::string const failedServersPrefix;
 extern std::string const planColPrefix;
 extern std::string const curColPrefix;
+extern std::string const planDBPrefix;
+extern std::string const curServersKnown;
 extern std::string const blockedServersPrefix;
 extern std::string const blockedShardsPrefix;
 extern std::string const planVersion;
