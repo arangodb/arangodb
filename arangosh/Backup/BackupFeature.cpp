@@ -681,55 +681,60 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      static_cast<std::underlying_type<Flags>::type>(Flags::Hidden));
 
   options->addOption("--allow-inconsistent",
-                     "whether to attempt to continue in face of errors (may "
-                     "result in inconsistent backup state)",
+                     "whether to attempt to continue in face of errors. "
+                     "May result in inconsistent backup state (create operation)",
                      new BooleanParameter(&_options.force));
 
-  options->addOption("--identifier", "a unique identifier for a backup",
+  options->addOption("--identifier",
+                     "a unique identifier for a backup "
+                     "(restore/upload/download operation)",
                      new StringParameter(&_options.identifier));
 
-  //  options->addOption("--include-search", "whether to include ArangoSearch data",
+  //  options->addOption("--include-search",
+  //                     "whether to include ArangoSearch data (??? operation)",
   //                     new BooleanParameter(&_options.includeSearch));
 
   options->addOption(
       "--label",
-      "an additional label to add to the backup identifier upon creation",
+      "an additional label to add to the backup identifier (create operation)",
       new StringParameter(&_options.label));
 
   options->addOption("--max-wait-for-lock",
-                     "maximum time to wait (in seconds) to aquire a lock on "
-                     "all necessary resources",
+                     "maximum time to wait in seconds to aquire a lock on "
+                     "all necessary resources (create operation)",
                      new DoubleParameter(&_options.maxWaitForLock));
 
   options->addOption(
       "--max-wait-for-restart",
-      "maximum time to wait (in seconds) for the server to restart after a "
+      "maximum time to wait in seconds for the server to restart after a "
       "restore operation before reporting an error; if zero, arangobackup will "
       "not wait to check that the server restarts and will simply return the "
-      "result of the restore request",
+      "result of the restore request (create operation)",
       new DoubleParameter(&_options.maxWaitForRestart));
 
   options->addOption("--save-current",
                      "whether to save the current state as a backup before "
-                     "restoring to another state",
+                     "restoring to another state (create operation)",
                      new BooleanParameter(&_options.saveCurrent));
 #ifdef USE_ENTERPRISE
   options->addOption("--status-id",
-                     "returns the status of a transfere process",
+                     "returns the status of a transfere process "
+                     "(upload/download operation)",
                      new StringParameter(&_options.statusId));
 
   options->addOption("--rclone-config-file",
                      "filename of the rclone configuration file used for"
-                     "file transfere",
+                     "file transfer (upload/download operation)",
                      new StringParameter(&_options.rcloneConfigFile));
 
   options->addOption("--remote-path",
                      "remote rclone path of directory used to store or "
-                     "receive backups",
+                     "receive backups (upload/download operation)",
                      new StringParameter(&_options.remoteDirectory));
 
   options->addOption("--abort",
-                     "abort transfer with given status-id",
+                     "abort transfer with given status-id "
+                     "(upload/download operation)",
                      new BooleanParameter(&_options.abort));
 #endif
   /*
@@ -737,12 +742,12 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
         "remote", "Options detailing a remote connection to use for operations");
 
     options->addOption("--remote.credentials",
-                       "the credentials used for the remote endpoint (see manual "
-                       "for more details)",
+                       "the credentials used for the remote endpoint. "
+                       "(upload/download??? operation)",
                        new StringParameter(&_options.credentials));
 
     options->addOption("--remote.endpoint",
-                       "the remote endpoint (see manual for more details)",
+                       "the remote endpoint (upload/download??? operation)",
                        new StringParameter(&_options.endpoint));
   */
 }
