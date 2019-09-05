@@ -1,6 +1,8 @@
 devel
 -----
 
+* Retry hot backup list in cluster for 2 minutes before reporting error
+
 * Improved database creation within the cluster. In the case of coordinator outages
   during the creation of the database there was a chance that not all relevant
   system collections had been created. Although this database was accessible now
@@ -12,11 +14,11 @@ devel
   eventually dropped. This does not require any change on the client code.
   
 * Added UI support to create documents in a collection using smartGraphAttribute
-  and/or smartJoinAttribute. 
+  and/or smartJoinAttribute.
 
 * Allowing inconsistent rather than forcing hot backups
 
-* Fixed adding an orphan collections as the first collection in a SmartGraph. 
+* Fixed adding an orphan collections as the first collection in a SmartGraph.
 
 * Fixed issue #9862: ServerException: RestHandler/RestCursorHandler.cpp:279
 
