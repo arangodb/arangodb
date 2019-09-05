@@ -1,3 +1,11 @@
+v3.4.9 (XXXX-XX-XX)
+-------------------
+
+* Fixed the removal (including a collection drop) of an orphanCollection from a
+  graph definition when using the arango shell. The boolean flag whether to drop
+	the collection or not was not transferred properly.
+
+
 v3.4.8 (2019-09-09)
 -------------------
 
