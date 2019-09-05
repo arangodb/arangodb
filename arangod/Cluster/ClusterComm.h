@@ -307,18 +307,33 @@ struct ClusterCommResult {
       if (status == CL_COMM_ERROR) {
         try {
           auto body = result->getBodyVelocyPack(VPackOptions());
-          if (body->slice().isObject() &&
-              body->slice().hasKey("errorMessage")) {
-            errorMessage = body->slice().get("errorMessage").copyString();
-            errorCode = body->slice().get("errorNum").getNumber<int>();
+          if (body->slice().isObject()) {
+            if (body->slice().hasKey(arangodb::StaticStrings::ErrorMessage)) {
+              errorMessage = body->slice().get(arangodb::StaticStrings::ErrorMessage).copyString();
+            }
+            if (body->slice().hasKey(arangodb::StaticStrings::ErrorNum)) {
+              errorCode = body->slice().get(arangodb::StaticStrings::ErrorNum).getNumber<int>();
+            }
           }
         } catch (...) {
         }
       }
     } else {
-      // mop: actually it will never be an ERROR here...this is and was a dirty
-      // hack :S
       status = CL_COMM_RECEIVED;
+      // Get error message and code out of body if possible:
+      try {
+        auto options = VPackOptions();
+        VPackSlice body = request->payload(&options);
+        if (body.isObject()) {
+          if (body.hasKey(arangodb::StaticStrings::ErrorMessage)) {
+            errorMessage = body.get(arangodb::StaticStrings::ErrorMessage).copyString();
+          }
+          if (body.hasKey(arangodb::StaticStrings::ErrorNum)) {
+            errorCode = body.get(arangodb::StaticStrings::ErrorNum).getNumber<int>();
+          }
+        }
+      } catch (...) {
+      }
     }
   }
 };
