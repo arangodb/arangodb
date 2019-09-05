@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
     server.addFeature<VersionFeature>(std::make_unique<VersionFeature>(server));
 
 #ifdef USE_ENTERPRISE
-    server.addFeature(new EncryptionFeature(server));
+    server.addFeature<EncryptionFeature>(std::make_unique<EncryptionFeature>(server));
 #endif
 
     try {

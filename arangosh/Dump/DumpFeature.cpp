@@ -1081,7 +1081,7 @@ void DumpFeature::start() {
   double const start = TRI_microtime();
 
   // set up the output directory, not much else
-  _directory = std::make_unique<ManagedDirectory>(_options.outputPath,
+  _directory = std::make_unique<ManagedDirectory>(server(), _options.outputPath,
                                                   !_options.overwrite, true,
                                                   _options.useGzip);
   if (_directory->status().fail()) {
@@ -1089,7 +1089,6 @@ void DumpFeature::start() {
       case TRI_ERROR_FILE_EXISTS:
         LOG_TOPIC("efed0", FATAL, Logger::DUMP) << "cannot write to output directory '"
                                        << _options.outputPath << "'";
-
         break;
       case TRI_ERROR_CANNOT_OVERWRITE_FILE:
         LOG_TOPIC("bd7fe", FATAL, Logger::DUMP)
@@ -1167,8 +1166,9 @@ void DumpFeature::start() {
         client.setDatabaseName(db);
         httpClient = _clientManager.getConnectedClient(_options.force, false, true);
 
-        _directory = std::make_unique<ManagedDirectory>(arangodb::basics::FileUtils::buildFilename(_options.outputPath, db),
-                                                        true, true);
+        _directory = std::make_unique<ManagedDirectory>(
+            server(), arangodb::basics::FileUtils::buildFilename(_options.outputPath, db),
+            true, true);
 
         if (_directory->status().fail()) {
           res = _directory->status();

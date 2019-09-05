@@ -288,6 +288,7 @@ class ImportHelper {
   void waitForSenders();
 
  private:
+  ClientFeature const& _clientFeature;
   std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
   std::atomic<uint64_t> _maxUploadSize;
   std::atomic<uint64_t> _periodByteCount;

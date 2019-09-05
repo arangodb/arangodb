@@ -160,7 +160,8 @@ unsigned const ImportHelper::MaxBatchSize = 768 * 1024 * 1024;
 ImportHelper::ImportHelper(ClientFeature const& client, std::string const& endpoint,
                            httpclient::SimpleHttpClientParams const& params,
                            uint64_t maxUploadSize, uint32_t threadCount, bool autoUploadSize)
-    : _httpClient(client.createHttpClient(endpoint, params)),
+    : _clientFeature(client),
+      _httpClient(client.createHttpClient(endpoint, params)),
       _maxUploadSize(maxUploadSize),
       _periodByteCount(0),
       _autoUploadSize(autoUploadSize),
@@ -232,7 +233,8 @@ ImportHelper::~ImportHelper() {
 bool ImportHelper::importDelimited(std::string const& collectionName,
                                    std::string const& pathName,
                                    DelimitedImportType typeImport) {
-  ManagedDirectory directory(TRI_Dirname(pathName), false, false, true);
+  ManagedDirectory directory(_clientFeature.server(), TRI_Dirname(pathName),
+                             false, false, true);
   std::string fileName(TRI_Basename(pathName.c_str()));
   _collectionName = collectionName;
   _firstLine = "";
@@ -340,7 +342,8 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
 
 bool ImportHelper::importJson(std::string const& collectionName,
                               std::string const& pathName, bool assumeLinewise) {
-  ManagedDirectory directory(TRI_Dirname(pathName), false, false, true);
+  ManagedDirectory directory(_clientFeature.server(), TRI_Dirname(pathName),
+                             false, false, true);
   std::string fileName(TRI_Basename(pathName.c_str()));
   _collectionName = collectionName;
   _firstLine = "";

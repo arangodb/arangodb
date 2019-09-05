@@ -27,7 +27,7 @@
 #include "Ssl/SslFeature.h"
 
 #ifdef USE_ENTERPRISE
-#include "Encryption/EncryptionFeature.h"
+#include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
 
 namespace arangodb {
