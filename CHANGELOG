@@ -6,6 +6,12 @@ v3.5.1 (XXXX-XX-XX)
 
 * Drop collection action to timeout more quickly to stay on fast lane.
 
+* Make arangorestore restore data into the `_users` collection last. This is to
+  ensure that arangorestore does not overwrite the credentials of its invoker while
+  the restore is running, but only at the very end of the process.
+  This change also makes arangorestore restore the `_system` database last if it
+  is started with the `--all-databases` option.
+
 * Check for duplicate server endpoints registered in the agency in sub-keys of
   `/Current/ServersRegistered`.
 
