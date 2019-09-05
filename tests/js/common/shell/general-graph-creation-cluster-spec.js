@@ -379,8 +379,6 @@ describe('General graph creation', function () {
     describe('modify vertices', function () {
       it(`remove a vertex collection from the graph definition and also drop the collection`, function () {
         expect(db[on].name() === on);
-        print("===========");
-        print(db[on].name());
         g._removeVertexCollection(on, true);
 
         // check that the collection is really dropped
@@ -392,13 +390,6 @@ describe('General graph creation', function () {
             found = true;
           }
         });
-
-        // using collection getter
-        try {
-          let deleted = db[on];
-          fail();
-        } catch (e) {
-        }
 
         expect(found).to.be.false;
       });
