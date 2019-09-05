@@ -827,7 +827,7 @@ function iResearchAqlTestSuite () {
 
       assertEqual(result.length, 0);
     },
-	testAnalyzerFunctionPrematureCall : function () {
+    testAnalyzerFunctionPrematureCall : function () {
       assertEqual(
         db._query("FOR d in UnitTestsView SEARCH ANALYZER(d.a IN TOKENS('#', 'text_en'), 'text_en') OPTIONS { waitForSync : true } RETURN d").toArray().length,
         0);
