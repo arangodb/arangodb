@@ -3239,25 +3239,17 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
   auto nrGood = cc->performRequests(
     requests, CL_DEFAULT_TIMEOUT, Logger::BACKUP, false, false);
 
-  LOG_TOPIC("410a1", DEBUG, Logger::BACKUP) << "Got " << nrGood << " lists of local backups";
+  LOG_TOPIC("410a1", DEBUG, Logger::BACKUP) << "Got " << nrGood << " of " << requests.size() << " lists of local backups";
 
   if (nrGood < requests.size()) {
     return arangodb::Result(
       TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL,
       std::string("not all db servers could be reached for backup listing"));
   }
-
-  // Now listen to the results:
+  
+  // Now check results
   for (auto const& req : requests) {
     auto res = req.result;
-    int commError = handleGeneralCommErrors(&res);
-    if (commError != TRI_ERROR_NO_ERROR) {
-      return arangodb::Result(
-        commError,
-        std::string("communication error while getting list of backups from ") +
-        req.destination);
-    }
-
     TRI_ASSERT(res.answer != nullptr);
     auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice resSlice = resBody->slice();
