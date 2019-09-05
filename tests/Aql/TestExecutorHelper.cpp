@@ -23,7 +23,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <lib/Logger/LogMacros.h>
 #include "TestExecutorHelper.h"
 
 #include "Basics/Common.h"
@@ -32,6 +31,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Logger/LogMacros.h"
 
 #include <utility>
 

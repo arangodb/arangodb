@@ -43,6 +43,14 @@ var ERRORS = arangodb.errors;
 function ViewSuite () {
   'use strict';
   return {
+    tearDown : function () {
+      try {
+        db._dropView("abc");
+      } catch (_) {}
+      try {
+        db._dropView("def");
+      } catch (_) {}
+    },
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief bad name (empty)
@@ -102,6 +110,7 @@ function ViewSuite () {
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, err.errorNum);
+      } finally {
         var abc = db._view("abc");
         abc.drop();
       }
@@ -111,12 +120,15 @@ function ViewSuite () {
     /// @brief bad name (conflict with collection)
     ////////////////////////////////////////////////////////////////////////////
     testErrorHandlingBadNameDuplicateOfCollection : function () {
+      db._dropView("abc");
+      db._drop("abc");
       try {
         db._create("abc");
         db._createView("abc", "arangosearch", {});
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, err.errorNum);
+      } finally {
         var abc = db._collection("abc");
         abc.drop();
       }
@@ -126,6 +138,7 @@ function ViewSuite () {
     /// @brief get non-existent
     ////////////////////////////////////////////////////////////////////////////
     testErrorHandlingGetMissing : function () {
+      db._dropView("abc");
       var abc = db._view("abc");
       assertEqual(abc, null);
     },
@@ -134,12 +147,16 @@ function ViewSuite () {
     /// @brief modify with unacceptable properties
     ////////////////////////////////////////////////////////////////////////////
     testErrorHandlingModifyUnacceptable : function () {
+      db._dropView("abc");
       var abc = db._createView("abc", "arangosearch", { "consolidationIntervalMsec": 17 });
-      assertEqual(abc.name(), "abc");
-      assertEqual(abc.properties().consolidationIntervalMsec, 17);
-      abc.properties({ "bogus": "junk", "consolidationIntervalMsec": 7 });
-      assertEqual(abc.properties().consolidationIntervalMsec, 7);
-      abc.drop();
+      try {
+        assertEqual(abc.name(), "abc");
+        assertEqual(abc.properties().consolidationIntervalMsec, 17);
+        abc.properties({ "bogus": "junk", "consolidationIntervalMsec": 7 });
+        assertEqual(abc.properties().consolidationIntervalMsec, 7);
+      } finally {
+        abc.drop();
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////
@@ -149,76 +166,84 @@ function ViewSuite () {
       db._dropView("abc");
       db._dropView("def");
       db._createView("abc", "arangosearch", { "consolidationIntervalMsec": 10 });
-      db._createView("def", "arangosearch", { "consolidationIntervalMsec": 3 });
       var abc = db._view("abc");
-      var def = db._view("def");
-      var propA = abc.properties();
-      var propD = def.properties();
-      assertEqual(abc.name(), "abc");
-      assertEqual(abc.type(), "arangosearch");
-      assertEqual(propA.consolidationIntervalMsec, 10);
-      assertEqual(def.name(), "def");
-      assertEqual(def.type(), "arangosearch");
-      assertEqual(propD.consolidationIntervalMsec, 3);
-      abc.drop();
-      def.drop();
-      assertNull(db._view("abc"));
-      assertNull(db._view("def"));
-    },
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief retrieve empty list of views
-    ////////////////////////////////////////////////////////////////////////////
-    testEmptyList : function () {
-      var views = db._views();
-      assertTrue(Array.isArray(views));
-      assertEqual(views.length, 0);
+      try {
+        db._createView("def", "arangosearch", { "consolidationIntervalMsec": 3 });
+        var def = db._view("def");
+        try {
+          var propA = abc.properties();
+          var propD = def.properties();
+          assertEqual(abc.name(), "abc");
+          assertEqual(abc.type(), "arangosearch");
+          assertEqual(propA.consolidationIntervalMsec, 10);
+          assertEqual(def.name(), "def");
+          assertEqual(def.type(), "arangosearch");
+          assertEqual(propD.consolidationIntervalMsec, 3);
+        } finally {
+          def.drop();
+          assertNull(db._view("def"));
+        }
+      } finally {
+        abc.drop();
+        assertNull(db._view("abc"));
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief retrieve short list of views
     ////////////////////////////////////////////////////////////////////////////
     testShortList : function () {
+      db._dropView("abc");
+      db._dropView("def");
       var abc = db._createView("abc", "arangosearch", {});
-      assertEqual(abc.name(), "abc");
-      var def = db._createView("def", "arangosearch", {});
-      assertEqual(def.name(), "def");
-      var views = db._views();
+      try {
+        assertEqual(abc.name(), "abc");
+        var def = db._createView("def", "arangosearch", {});
+        try {
+          assertEqual(def.name(), "def");
+          var views = db._views();
 
-      let expectedViews = new Set();
-      expectedViews.add(abc.name());
-      expectedViews.add(def.name());
+          let expectedViews = new Set();
+          expectedViews.add(abc.name());
+          expectedViews.add(def.name());
 
-      assertTrue(Array.isArray(views));
-      assertEqual(views.length, expectedViews.size);
-      for (var i = 0; i < views.length; i++) {
-        expectedViews.delete(views[i].name());
+          assertTrue(Array.isArray(views));
+          assertTrue(views.length >= expectedViews.size);
+          for (var i = 0; i < views.length; i++) {
+            expectedViews.delete(views[i].name());
+          }
+          assertEqual(0, expectedViews.size);
+        } finally {
+          def.drop();
+        }
+      } finally {
+        abc.drop();
       }
-      assertEqual(0, expectedViews.size);
-      abc.drop();
-      def.drop();
     },
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief modify properties
     ////////////////////////////////////////////////////////////////////////////
     testModifyProperties : function () {
+      db._dropView("abc");
       var abc = db._createView("abc", "arangosearch", { "consolidationIntervalMsec": 10 });
-      var props = abc.properties();
+      try {
+        var props = abc.properties();
 
-      assertEqual(abc.name(), "abc");
-      assertEqual(abc.type(), "arangosearch");
-      assertEqual(props.consolidationIntervalMsec, 10);
+        assertEqual(abc.name(), "abc");
+        assertEqual(abc.type(), "arangosearch");
+        assertEqual(props.consolidationIntervalMsec, 10);
 
-      abc.properties({ "consolidationIntervalMsec": 7 });
-      abc = db._view("abc");
-      props = abc.properties();
+        abc.properties({ "consolidationIntervalMsec": 7 });
+        abc = db._view("abc");
+        props = abc.properties();
 
-      assertEqual(abc.name(), "abc");
-      assertEqual(abc.type(), "arangosearch");
-      assertEqual(props.consolidationIntervalMsec, 7);
-
-      abc.drop();
+        assertEqual(abc.name(), "abc");
+        assertEqual(abc.type(), "arangosearch");
+        assertEqual(props.consolidationIntervalMsec, 7);
+      } finally {
+        abc.drop();
+      }
     },
 
   };

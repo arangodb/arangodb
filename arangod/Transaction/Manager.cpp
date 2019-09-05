@@ -244,18 +244,19 @@ void Manager::registerAQLTrx(TransactionState* state) {
   }
 
   TRI_ASSERT(state != nullptr);
-  const size_t bucket = getBucket(state->id());
+  auto const tid = state->id();
+  size_t const bucket = getBucket(tid);
   {
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
     auto& buck = _transactions[bucket];
-    auto it = buck._managed.find(state->id());
+    auto it = buck._managed.find(tid);
     if (it != buck._managed.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
-                                     "transaction ID already used");
+                                     std::string("transaction ID ") + std::to_string(tid) + "' already used in registerAQLTrx");
     }
-    buck._managed.emplace(std::piecewise_construct, std::forward_as_tuple(state->id()),
+    buck._managed.emplace(std::piecewise_construct, std::forward_as_tuple(tid),
                           std::forward_as_tuple(MetaType::StandaloneAQL, state));
   }
 }
@@ -358,7 +359,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     auto it = buck._managed.find(tid);
     if (it != buck._managed.end()) {
       return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                       "transaction ID already used");
+                       std::string("transaction ID '") + std::to_string(tid) + "' already used in createManagedTrx lookup");
     }
   }
 
@@ -430,7 +431,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     auto it = _transactions[bucket]._managed.find(tid);
     if (it != _transactions[bucket]._managed.end()) {
       return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                       "transaction ID already used");
+                       std::string("transaction ID '") + std::to_string(tid) + "' already used in createManagedTrx insert");
     }
     TRI_ASSERT(state->id() == tid);
     _transactions[bucket]._managed.emplace(std::piecewise_construct,

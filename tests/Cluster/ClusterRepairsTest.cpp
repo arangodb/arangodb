@@ -22,15 +22,14 @@
 
 #include "gtest/gtest.h"
 
-#include "Basics/ScopeGuard.h"
-#include "Cluster/ClusterRepairs.h"
-#include "Cluster/ServerState.h"
-
 #include "Agency/AddFollower.h"
 #include "Agency/FailedLeader.h"
 #include "Agency/MoveShard.h"
-#include "arangod/Cluster/ResultT.h"
-#include "lib/Random/RandomGenerator.h"
+#include "Basics/ScopeGuard.h"
+#include "Cluster/ClusterRepairs.h"
+#include "Cluster/ResultT.h"
+#include "Cluster/ServerState.h"
+#include "Random/RandomGenerator.h"
 
 #include <boost/core/demangle.hpp>
 #include <boost/date_time.hpp>
