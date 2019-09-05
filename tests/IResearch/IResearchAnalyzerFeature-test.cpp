@@ -80,7 +80,7 @@
 #include "velocypack/Slice.h"
 
 #if USE_ENTERPRISE
-#include "Ldap/LdapFeature.h"
+#include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
 namespace {

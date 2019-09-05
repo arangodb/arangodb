@@ -88,7 +88,6 @@ class ReplicationApplierConfiguration {
   ReplicationApplierConfiguration& operator=(ReplicationApplierConfiguration const&);
 
   ReplicationApplierConfiguration(ReplicationApplierConfiguration&&) = default;
-  ReplicationApplierConfiguration& operator=(ReplicationApplierConfiguration&&) = default;
 
   /// @brief reset the configuration to defaults
   void reset();

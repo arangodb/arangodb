@@ -3085,7 +3085,8 @@ static void JS_ReadDecrypt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   size_t length;
-  char* content = TRI_SlurpDecryptFile(*name, *keyfile, &length);
+  auto& encryptionFeature = server.getFeature<EncryptionFeature>();
+  char* content = TRI_SlurpDecryptFile(encryptionFeature, *name, *keyfile, &length);
 
   if (content == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), TRI_last_error());

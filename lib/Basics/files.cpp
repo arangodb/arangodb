@@ -1172,19 +1172,11 @@ char* TRI_SlurpGzipFile(char const* filename, size_t* length) {
 /// @brief slurps in a file that is encrypted and return unencrypted contents
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_SlurpDecryptFile(char const* filename, char const * keyfile, size_t* length) {
+char* TRI_SlurpDecryptFile(EncryptionFeature& encryptionFeature, char const* filename, char const * keyfile, size_t* length) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
-  EncryptionFeature*  encryptionFeature;
 
-  encryptionFeature = application_features::ApplicationServer::getFeature<EncryptionFeature>("Encryption");
-
-  if (nullptr == encryptionFeature) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    return nullptr;
-  }
-
-  encryptionFeature->setKeyFile(keyfile);
-  auto keyGuard = arangodb::scopeGuard([encryptionFeature](){ encryptionFeature->clearKey(); });
+  encryptionFeature.setKeyFile(keyfile);
+  auto keyGuard = arangodb::scopeGuard([&encryptionFeature](){ encryptionFeature.clearKey(); });
 
   int fd = TRI_OPEN(filename, O_RDONLY | TRI_O_CLOEXEC);
 
@@ -1194,7 +1186,7 @@ char* TRI_SlurpDecryptFile(char const* filename, char const * keyfile, size_t* l
   }
 
   std::unique_ptr<EncryptionFeature::Context> context;
-  context = encryptionFeature->beginDecryption(fd);
+  context = encryptionFeature.beginDecryption(fd);
 
   if (nullptr == context.get() || !context->status().ok()) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -1215,7 +1207,7 @@ char* TRI_SlurpDecryptFile(char const* filename, char const * keyfile, size_t* l
       return nullptr;
     }
 
-    ssize_t n = encryptionFeature->readData(*context, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
+    ssize_t n = encryptionFeature.readData(*context, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
 
     if (n == 0) {
       break;

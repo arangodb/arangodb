@@ -1711,10 +1711,10 @@ static void JS_LdapEnabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
 #ifdef USE_ENTERPRISE
-  auto ldap =
-      application_features::ApplicationServer::getFeature<LdapFeature>("Ldap");
-  TRI_ASSERT(ldap != nullptr);
-  TRI_V8_RETURN(v8::Boolean::New(isolate, ldap->isEnabled()));
+  auto& server = application_features::ApplicationServer::server();
+  TRI_ASSERT(server.hasFeature<LdapFeature>());
+  auto& ldap = server.getFeature<LdapFeature>();
+  TRI_V8_RETURN(v8::Boolean::New(isolate, ldap.isEnabled()));
 #else
   // LDAP only enabled in enterprise mode
   TRI_V8_RETURN(v8::False(isolate));

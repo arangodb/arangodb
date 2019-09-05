@@ -43,8 +43,8 @@
 #endif
 
 #ifdef USE_ENTERPRISE
-#include "Audit/AuditFeature.h"
-#include "Encryption/EncryptionFeature.h"
+#include "Enterprise/Audit/AuditFeature.h"
+#include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
 
 namespace arangodb {

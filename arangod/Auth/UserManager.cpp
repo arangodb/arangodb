@@ -93,7 +93,7 @@ auth::UserManager::UserManager(application_features::ApplicationServer& server)
       _authHandler(nullptr) {}
 
 auth::UserManager::UserManager(application_features::ApplicationServer& server,
-                               td::unique_ptr<auth::Handler> handler)
+                               std::unique_ptr<auth::Handler> handler)
     : _server(server),
       _globalVersion(1),
       _internalVersion(0),
