@@ -87,8 +87,45 @@ static_assert(!std::is_default_constructible<Root::Arango::Current::Databases::D
 static_assert(!std::is_default_constructible<Root::Arango::Current::Databases::Database::Server::Error>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Current::Databases::Database::Server::ErrorMessage>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Views>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Views::Database>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::AsyncReplication>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Coordinators>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Coordinators::Server>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Version>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Lock>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Singles>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::DbServers>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::DbServers::Server>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::WaitForSync>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::Type>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::Status>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::Shards>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::Shards::Shard>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::StatusString>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::ShardingStrategy>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::ShardKeys>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::ReplicationFactor>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::NumberOfShards>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::KeyOptions>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::KeyOptions::Type>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::KeyOptions::AllowUserKeys>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::IsSystem>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::Name>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::Indexes>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::IsSmart>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::Id>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::DistributeShardsLike>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::Deleted>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::MinReplicationFactor>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::CacheEnabled>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Databases>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Databases::Database>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Databases::Database::Name>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Databases::Database::Id>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Supervision>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Supervision::State>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Supervision::State::Timestamp>::value, CONSTRUCTIBLE_MESSAGE);
@@ -177,8 +214,45 @@ static_assert(!std::is_constructible<Root::Arango::Current::Databases::Database:
 static_assert(!std::is_constructible<Root::Arango::Current::Databases::Database::Server::Error, Root::Arango::Current::Databases::Database::Server>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::Databases::Database::Server::ErrorMessage, Root::Arango::Current::Databases::Database::Server>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan, Root::Arango>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Views, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Views::Database, Root::Arango::Plan::Views>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::AsyncReplication, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Coordinators, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Coordinators::Server, Root::Arango::Plan::Coordinators>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Version, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Lock, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Singles, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::DbServers, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::DbServers::Server, Root::Arango::Plan::DbServers>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database, Root::Arango::Plan::Collections>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection, Root::Arango::Plan::Collections::Database>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::WaitForSync, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::Type, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::Status, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::Shards, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::Shards::Shard, Root::Arango::Plan::Collections::Database::Collection::Shards>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::StatusString, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::ShardingStrategy, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::ShardKeys, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::ReplicationFactor, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::NumberOfShards, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::KeyOptions, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::KeyOptions::Type, Root::Arango::Plan::Collections::Database::Collection::KeyOptions>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::KeyOptions::AllowUserKeys, Root::Arango::Plan::Collections::Database::Collection::KeyOptions>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::IsSystem, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::Name, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::Indexes, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::IsSmart, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::Id, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::DistributeShardsLike, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::Deleted, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::MinReplicationFactor, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::CacheEnabled, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Databases, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Databases::Database, Root::Arango::Plan::Databases>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Databases::Database::Name, Root::Arango::Plan::Databases::Database>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Databases::Database::Id, Root::Arango::Plan::Databases::Database>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Supervision, Root::Arango>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Supervision::State, Root::Arango::Supervision>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Supervision::State::Timestamp, Root::Arango::Supervision::State>::value, CONSTRUCTIBLE_MESSAGE);
@@ -227,6 +301,12 @@ static_assert(!std::is_constructible<Root::Arango::Current::Collections::Databas
 static_assert(!std::is_constructible<Root::Arango::Current::Collections::Database::Collection::Shard, Root::Arango::Current::Collections::Database::Collection, ShardID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::Databases::Database, Root::Arango::Current::Databases, DatabaseID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::Databases::Database::Server, Root::Arango::Current::Databases::Database, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Views::Database, Root::Arango::Plan::Views, DatabaseID>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Coordinators::Server, Root::Arango::Plan::Coordinators, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::DbServers::Server, Root::Arango::Plan::DbServers, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database, Root::Arango::Plan::Collections, DatabaseID>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection, Root::Arango::Plan::Collections::Database, CollectionID>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::Shards::Shard, Root::Arango::Plan::Collections::Database::Collection::Shards, ShardID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Databases::Database, Root::Arango::Plan::Databases, DatabaseID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Supervision::Health::Server, Root::Arango::Supervision::Health, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId::Server, Root::Arango::Target::MapUniqueToShortId, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
@@ -242,9 +322,52 @@ class AgencyPathsTest : public ::testing::Test {
       // clang-format off
       {{"arango"}, root()->arango()},
       {{"arango", "Plan"}, root()->arango()->plan()},
+      {{"arango", "Plan", "Views"}, root()->arango()->plan()->views()},
+      {{"arango", "Plan", "Views", "_system"}, root()->arango()->plan()->views()->database("_system")},
+      {{"arango", "Plan", "Views", "myDb"}, root()->arango()->plan()->views()->database("myDb")},
+      {{"arango", "Plan", "AsyncReplication"}, root()->arango()->plan()->asyncReplication()},
+      {{"arango", "Plan", "Coordinators"}, root()->arango()->plan()->coordinators()},
+      {{"arango", "Plan", "Coordinators", "CRDN-1234"}, root()->arango()->plan()->coordinators()->server("CRDN-1234")},
+      {{"arango", "Plan", "Coordinators", "CRDN-5678"}, root()->arango()->plan()->coordinators()->server("CRDN-5678")},
+      {{"arango", "Plan", "Version"}, root()->arango()->plan()->version()},
+      {{"arango", "Plan", "Lock"}, root()->arango()->plan()->lock()},
+      {{"arango", "Plan", "Singles"}, root()->arango()->plan()->singles()},
+      {{"arango", "Plan", "DBServers"}, root()->arango()->plan()->dBServers()},
+      {{"arango", "Plan", "DBServers", "PRMR-1234"}, root()->arango()->plan()->dBServers()->server("PRMR-1234")},
+      {{"arango", "Plan", "DBServers", "PRMR-5678"}, root()->arango()->plan()->dBServers()->server("PRMR-5678")},
+      {{"arango", "Plan", "Collections"}, root()->arango()->plan()->collections()},
+      {{"arango", "Plan", "Collections", "_system"}, root()->arango()->plan()->collections()->database("_system")},
+      {{"arango", "Plan", "Collections", "myDb"}, root()->arango()->plan()->collections()->database("myDb")},
+      {{"arango", "Plan", "Collections", "_system", "12345"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")},
+      {{"arango", "Plan", "Collections", "_system", "67890"}, root()->arango()->plan()->collections()->database("_system")->collection("67890")},
+      {{"arango", "Plan", "Collections", "_system", "12345", "waitForSync"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->waitForSync()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "type"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->type()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "status"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->status()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "shards"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->shards()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "shards", "s123"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->shards()->shard("s123")},
+      {{"arango", "Plan", "Collections", "_system", "12345", "shards", "s456"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->shards()->shard("s456")},
+      {{"arango", "Plan", "Collections", "_system", "12345", "statusString"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->statusString()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "shardingStrategy"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->shardingStrategy()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "shardKeys"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->shardKeys()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "replicationFactor"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->replicationFactor()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "numberOfShards"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->numberOfShards()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "keyOptions"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->keyOptions()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "keyOptions", "type"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->keyOptions()->type()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "keyOptions", "allowUserKeys"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->keyOptions()->allowUserKeys()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "isSystem"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->isSystem()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "name"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->name()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "indexes"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->indexes()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "isSmart"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->isSmart()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "id"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->id()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "distributeShardsLike"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->distributeShardsLike()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "deleted"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->deleted()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "minReplicationFactor"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->minReplicationFactor()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "cacheEnabled"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->cacheEnabled()},
       {{"arango", "Plan", "Databases"}, root()->arango()->plan()->databases()},
       {{"arango", "Plan", "Databases", "_system"}, root()->arango()->plan()->databases()->database(DatabaseID{"_system"})},
-      {{"arango", "Plan", "Databases", "someCol"}, root()->arango()->plan()->databases()->database(DatabaseID{"someCol"})},
+      {{"arango", "Plan", "Databases", "someDb"}, root()->arango()->plan()->databases()->database(DatabaseID{"someDb"})},
+      {{"arango", "Plan", "Databases", "_system", "name"}, root()->arango()->plan()->databases()->database(DatabaseID{"_system"})->name()},
+      {{"arango", "Plan", "Databases", "_system", "id"}, root()->arango()->plan()->databases()->database(DatabaseID{"_system"})->id()},
       {{"arango", "Current"}, root()->arango()->current()},
       {{"arango", "Current", "ServersKnown"}, root()->arango()->current()->serversKnown()},
       {{"arango", "Current", "ServersKnown", "PRMR-1234"}, root()->arango()->current()->serversKnown()->server("PRMR-1234")},
