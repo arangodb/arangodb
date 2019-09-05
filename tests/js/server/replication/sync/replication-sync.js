@@ -2321,9 +2321,11 @@ function ReplicationNonIncrementalKeyConflict () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(ReplicationSuite);
-jsunity.run(ReplicationOtherDBSuite);
-jsunity.run(ReplicationIncrementalKeyConflict);
-jsunity.run(ReplicationNonIncrementalKeyConflict);
+if (internal.debugCanUseFailAt()) {
+  jsunity.run(ReplicationSuite);
+  jsunity.run(ReplicationOtherDBSuite);
+  jsunity.run(ReplicationIncrementalKeyConflict);
+  jsunity.run(ReplicationNonIncrementalKeyConflict);
+}
 
 return jsunity.done();
