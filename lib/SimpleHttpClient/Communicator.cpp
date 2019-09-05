@@ -112,31 +112,46 @@ static int dumb_socketpair(SOCKET socks[2], int make_overlapped) {
 
   for (;;) {
     if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, (char*)&reuse,
-                   (socklen_t)sizeof(reuse)) == -1)
+                   (socklen_t)sizeof(reuse)) == -1) {
       break;
-    if (bind(listener, &a.addr, sizeof(a.inaddr)) == SOCKET_ERROR) break;
+    }
+    if (bind(listener, &a.addr, sizeof(a.inaddr)) == SOCKET_ERROR) {
+      break;
+    }
 
     memset(&a, 0, sizeof(a));
-    if (getsockname(listener, &a.addr, &addrlen) == SOCKET_ERROR) break;
+    if (getsockname(listener, &a.addr, &addrlen) == SOCKET_ERROR) {
+      break;
+    }
     // win32 getsockname may only set the port number, p=0.0005.
     // ( http://msdn.microsoft.com/library/ms738543.aspx ):
     a.inaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     a.inaddr.sin_family = AF_INET;
 
-    if (listen(listener, 1) == SOCKET_ERROR) break;
+    if (listen(listener, 1) == SOCKET_ERROR) {
+      break;
+    }
 
     socks[0] = WSASocketW(AF_INET, SOCK_STREAM, 0, NULL, 0, flags);
-    if (socks[0] == -1) break;
-    if (connect(socks[0], &a.addr, sizeof(a.inaddr)) == SOCKET_ERROR) break;
+    if (socks[0] == -1) {
+      break;
+    }
+    if (connect(socks[0], &a.addr, sizeof(a.inaddr)) == SOCKET_ERROR) {
+      break;
+    }
 
     socks[1] = accept(listener, NULL, NULL);
-    if (socks[1] == -1) break;
+    if (socks[1] == -1) {
+      break;
+    }
 
     closesocket(listener);
 
     u_long mode = 1;
     int res = ioctlsocket(socks[0], FIONBIO, &mode);
-    if (res != NO_ERROR) break;
+    if (res != NO_ERROR) {
+      break;
+    }
 
     return 0;
   }
