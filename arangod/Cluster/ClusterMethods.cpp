@@ -4257,11 +4257,9 @@ arangodb::Result listHotBackupsOnCoordinator(VPackSlice const payload, VPackBuil
 
   VPackBuilder dummy;
 
+  // Try to get complete listing for 2 minutes
   using namespace std::chrono;
   auto timeout = steady_clock::now() + duration<double>(120.0);
-
-
-  // Try to get complete listing for 2 minutes
   arangodb::Result result;
   std::chrono::duration<double> wait(1.0);
   while (true) {
@@ -4283,6 +4281,7 @@ arangodb::Result listHotBackupsOnCoordinator(VPackSlice const payload, VPackBuil
     }
   }
 
+  // Build report
   {
     VPackObjectBuilder o(&report);
     report.add(VPackValue("list"));
