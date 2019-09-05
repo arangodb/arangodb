@@ -1,10 +1,12 @@
-v3.4.8 (2019-09-XX)
+v3.4.8 (2019-09-09)
 -------------------
 
 * Fixed internal issue #633. Made ArangoSearch functions BOOST, ANALYZER, MIN_MATCH
   callable with constant arguments. This will allow running queries where all arguments
   for these functions are deterministic and do not depend on loop variables.
-  
+
+* Drop collection action to timeout more quickly to stay on fast lane.
+
 * Fixed non-deterministic occurrences of "document not found" errors in sharded 
   collections with custom shard keys (i.e. non-`_key`) and multi-document lookups.
 
