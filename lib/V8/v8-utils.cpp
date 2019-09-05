@@ -4494,7 +4494,7 @@ static void JS_ExecuteAndWaitExternal(v8::FunctionCallbackInfo<v8::Value> const&
   // extract the arguments
   if (5 < args.Length() || args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "executeAndWaitExternal(<filename>[, <arguments> [,<usePipes>, [, <timoutms> [,<env>] ] ] ])");
+        "executeExternalAndWait(<filename>[, <arguments> [,<usePipes>, [, <timeoutms> [, <env>] ] ] ])");
   }
 
   TRI_Utf8ValueNFC name(isolate, args[0]);
