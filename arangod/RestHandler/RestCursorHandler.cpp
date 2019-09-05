@@ -270,6 +270,13 @@ RestStatus RestCursorHandler::processQuery() {
 }
 
 RestStatus RestCursorHandler::handleQueryResult() {
+  auto guard = scopeGuard([this]() {
+    // destroy the query context as soon as we leave this method.
+    // this is needed because the context is managing resources (e.g. leases
+    // for a managed transaction) that we want to free as early as possible
+    _queryResult.context.reset();
+  });
+
   if (_queryResult.result.fail()) {
     if (_queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
         (_queryResult.result.is(TRI_ERROR_QUERY_KILLED) && wasCanceled())) {
@@ -344,12 +351,19 @@ RestStatus RestCursorHandler::handleQueryResult() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
     generateResult(rest::ResponseCode::CREATED, std::move(buffer), _queryResult.context);
+    // directly after returning from here, we will free the query's context and free the
+    // resources it uses (e.g. leases for a managed transaction). this way the server
+    // can send back the query result to the client and the client can make follow-up
+    // requests on the same transaction (e.g. trx.commit()) without the server code for
+    // freeing the resources and the client code racing for who's first
     return RestStatus::DONE;
   } else {
     // result is bigger than batchSize, and a cursor will be created
     CursorRepository* cursors = _vocbase.cursorRepository();
     TRI_ASSERT(cursors != nullptr);
     TRI_ASSERT(_queryResult.data.get() != nullptr);
+    // context is needed for longer, so cancel the guard 
+    guard.cancel();
     // steal the query result, cursor will take over the ownership
     Cursor* cursor =
         cursors->createFromQueryResult(std::move(_queryResult), batchSize, ttl, count);
