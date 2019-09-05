@@ -1461,7 +1461,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
     ++count;
 
     instanceInfo.arangods.forEach(arangod => {
-      print("tickeling cluster node " + arangod.url);
+      print(Date() + " tickeling cluster node " + arangod.url);
       const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(instanceInfo.authOpts));
       if (!reply.error && reply.code === 200) {
         arangod.upAndRunning = true;
@@ -1619,10 +1619,10 @@ function launchFinalize(options, instanceInfo, startTime) {
     let count = 0;
     instanceInfo.arangods.forEach(arangod => {
       while (true) {
-        wait(0.5, false);
+        wait(1, false);
         if (options.useReconnect) {
           try {
-            print("reconnecting " + arangod.url);
+            print(Date() + " reconnecting " + arangod.url);
             arango.reconnect(instanceInfo.endpoint,
                              '_system',
                              options.username,
@@ -1631,9 +1631,10 @@ function launchFinalize(options, instanceInfo, startTime) {
                             );
             break;
           } catch (e) {
+            print(Date() + " caught exception: " + e.message);
           }
         } else {
-          print("tickeling " + arangod.url);
+          print(Date() + " tickeling " + arangod.url);
           const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(options));
 
           if (!reply.error && reply.code === 200) {
@@ -1891,7 +1892,6 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
       startInstanceSingleServer(instanceInfo, protocol, options,
                                 addArgs, rootDir, 'single');
     }
-
     launchFinalize(options, instanceInfo, startTime);
   } catch (e) {
     print(e, e.stack);
