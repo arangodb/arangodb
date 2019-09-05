@@ -497,7 +497,7 @@ function iResearchAqlTestSuite () {
       });
     },
 	
-	testViewInInnerLoopSortByAttributeWithNonDeterministic : function() {
+    testViewInInnerLoopSortByAttributeWithNonDeterministic : function() {
       var expected = [];
       expected.push({ a: "bar", b: "foo", c: 1 });
       expected.push({ a: "baz", b: "foo", c: 1 });
