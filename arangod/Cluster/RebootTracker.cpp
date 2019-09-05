@@ -41,7 +41,7 @@ RebootTracker::RebootTracker(RebootTracker::SchedulerPointer scheduler)
   // SchedulerFeature. Thus this dies. However, we will be able to fix that at
   // a central place later, as there is some refactoring going on there. Then
   // this #ifdef can be removed.
-#ifndef ARANGODB_USE_GOOGLE_TESTS
+#ifndef ARANGODB_USE_CATCH_TESTS
   TRI_ASSERT(_scheduler != nullptr);
 #endif
 }
