@@ -26,10 +26,9 @@
 #define ARANGOD_GENERAL_SERVER_VST_COMM_TASK_H 1
 
 #include "Basics/Common.h"
-
 #include "GeneralServer/GeneralCommTask.h"
-#include "lib/Rest/VstRequest.h"
-#include "lib/Rest/VstResponse.h"
+#include "Rest/VstRequest.h"
+#include "Rest/VstResponse.h"
 
 #include <boost/lockfree/queue.hpp>
 #include <fuerte/detail/vst.h>

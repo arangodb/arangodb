@@ -38,11 +38,12 @@
 #include "Graph/ShortestPathResult.h"
 #include "Graph/TraverserCache.h"
 
+#include "Mocks/Servers.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
-#include "tests/Mocks/Servers.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

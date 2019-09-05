@@ -30,8 +30,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
-
-#include <lib/Logger/LogMacros.h>
+#include "Logger/LogMacros.h"
 
 #include <utility>
 

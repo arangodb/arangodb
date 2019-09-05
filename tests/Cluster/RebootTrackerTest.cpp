@@ -23,12 +23,11 @@
 #include "gtest/gtest.h"
 
 #include "Cluster/RebootTracker.h"
+#include "Logger/Logger.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/SupervisedScheduler.h"
 
 #include "Mocks/Servers.h"
-
-#include "lib/Logger/Logger.h"
 
 #include <memory>
 #include <type_traits>
