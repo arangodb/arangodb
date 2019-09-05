@@ -310,6 +310,11 @@ std::shared_ptr<ShardMap> LogicalCollection::shardIds() const {
   return _sharding->shardIds();
 }
 
+std::shared_ptr<std::vector<ShardID>> LogicalCollection::shardListAsShardID() const {
+  TRI_ASSERT(_sharding != nullptr);
+  return _sharding->shardListAsShardID();
+}
+
 void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> const& map) {
   TRI_ASSERT(_sharding != nullptr);
   _sharding->setShardMap(map);

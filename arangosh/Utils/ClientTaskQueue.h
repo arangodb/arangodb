@@ -326,7 +326,7 @@ inline void ClientTaskQueue<JobData>::waitForIdle() noexcept {
       }
 
       CONDITION_LOCKER(lock, _workersCondition);
-      lock.wait(std::chrono::milliseconds(250));
+      lock.wait(std::chrono::milliseconds(100));
     }
   } catch (...) {
   }

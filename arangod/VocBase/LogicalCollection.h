@@ -92,6 +92,9 @@ class ChecksumResult {
 /// state each time! all state of a LogicalCollection in the coordinator case
 /// needs to be derived from the JSON info in the agency's plan entry for the
 /// collection...
+
+typedef std::shared_ptr<LogicalCollection> LogicalCollectionPtr;
+
 class LogicalCollection : public LogicalDataSource {
   friend struct ::TRI_vocbase_t;
 
@@ -165,6 +168,8 @@ class LogicalCollection : public LogicalDataSource {
   bool isSmart() const { return _isSmart; }
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
+  /// @brief is this a cluster-wide Plan (ClusterInfo) collection
+  bool isClusterGlobal() const { return _isAStub; }
 
   bool hasSmartJoinAttribute() const { return !smartJoinAttribute().empty(); }
 
@@ -185,6 +190,7 @@ class LogicalCollection : public LogicalDataSource {
   bool usesDefaultShardKeys() const;
   std::vector<std::string> const& shardKeys() const;
   TEST_VIRTUAL std::shared_ptr<ShardMap> shardIds() const;
+  TEST_VIRTUAL std::shared_ptr<std::vector<ShardID>> shardListAsShardID() const;
 
   // mutation options for sharding
   void setShardMap(std::shared_ptr<ShardMap> const& map);

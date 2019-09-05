@@ -217,7 +217,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     arangodb::methods::Collections::createSystem(
         *vocbase,
-        arangodb::tests::AnalyzerCollectionName);
+        arangodb::tests::AnalyzerCollectionName, false);
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -716,7 +716,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     arangodb::methods::Collections::createSystem(
         *vocbase, 
-        arangodb::tests::AnalyzerCollectionName);
+        arangodb::tests::AnalyzerCollectionName, false);
   }
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
@@ -1421,13 +1421,13 @@ TEST_F(V8AnalyzersTest, test_get) {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     arangodb::methods::Collections::createSystem(
         *vocbase, 
-        arangodb::tests::AnalyzerCollectionName);
+        arangodb::tests::AnalyzerCollectionName, false);
   }
   {
     auto vocbase = dbFeature.useDatabase("testVocbase");
     arangodb::methods::Collections::createSystem(
         *vocbase, 
-        arangodb::tests::AnalyzerCollectionName);
+        arangodb::tests::AnalyzerCollectionName, false);
   }
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
@@ -2084,13 +2084,13 @@ TEST_F(V8AnalyzersTest, test_list) {
     sysDatabase.start();  // get system database from DatabaseFeature
     arangodb::methods::Collections::createSystem(
         *vocbase, 
-        arangodb::tests::AnalyzerCollectionName);
+        arangodb::tests::AnalyzerCollectionName, false);
   }
   {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     arangodb::methods::Collections::createSystem(
         *vocbase, 
-        arangodb::tests::AnalyzerCollectionName);
+        arangodb::tests::AnalyzerCollectionName, false);
   }
 
   auto cleanup = arangodb::scopeGuard([&dbFeature]() { dbFeature.unprepare(); });
@@ -2557,13 +2557,13 @@ TEST_F(V8AnalyzersTest, test_remove) {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     arangodb::methods::Collections::createSystem(
         *vocbase, 
-        arangodb::tests::AnalyzerCollectionName);
+        arangodb::tests::AnalyzerCollectionName, false);
   }
   {
     auto vocbase = dbFeature.useDatabase("testVocbase");
     arangodb::methods::Collections::createSystem(
         *vocbase, 
-        arangodb::tests::AnalyzerCollectionName);
+        arangodb::tests::AnalyzerCollectionName, false);
   }
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;

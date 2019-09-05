@@ -31,6 +31,7 @@
 
 #include "Agency/AgentCallback.h"
 #include "Agency/GossipCallback.h"
+#include "Agency/AgencyFeature.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
@@ -38,6 +39,7 @@
 #include "Basics/application-exit.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "Scheduler/Scheduler.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
@@ -1974,8 +1976,21 @@ void Agent::emptyCbTrashBin() {
 
   LOG_TOPIC("12ad3", DEBUG, Logger::AGENCY) << "unobserving: " << envelope->toJson();
 
-  // Best effort. Will be retried anyway
-  auto wres = write(envelope);
+  // This is a best effort attempt. If either the queueing or the write fail,
+  // while above _callbackTrashBin has been cleaned, entries will repopulate with
+  // future 404 errors, when they are triggered again. So either way these attempts
+  // are repeated until such time, when the callbacks are gone successfully through
+  // queue + write.
+  auto* scheduler = SchedulerFeature::SCHEDULER;
+  if (scheduler != nullptr) {
+    bool ok = scheduler->queue(RequestLane::INTERNAL_LOW, [&server = server(), envelope = std::move(envelope)] {
+        auto* agent = server.getFeature<AgencyFeature>().agent();
+        if (!server.isStopping() && agent) {
+          agent->write(envelope);
+        }
+      });
+    LOG_TOPIC_IF("52461", DEBUG, Logger::AGENCY, !ok) << "Could not schedule callback cleanup job.";
+  }
 
 }
 

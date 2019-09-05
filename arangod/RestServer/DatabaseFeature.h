@@ -119,10 +119,10 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void inventory(arangodb::velocypack::Builder& result, TRI_voc_tick_t,
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
-  TRI_vocbase_t* useDatabase(std::string const& name);
-  TRI_vocbase_t* useDatabase(TRI_voc_tick_t id);
+  TRI_vocbase_t* useDatabase(std::string const& name) const;
+  TRI_vocbase_t* useDatabase(TRI_voc_tick_t id) const;
 
-  TRI_vocbase_t* lookupDatabase(std::string const& name);
+  TRI_vocbase_t* lookupDatabase(std::string const& name) const;
   void enumerateDatabases(std::function<void(TRI_vocbase_t& vocbase)> const& func);
   std::string translateCollectionName(std::string const& dbName,
                                       std::string const& collectionName);
@@ -181,8 +181,8 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   std::atomic<DatabasesLists*> _databasesLists;
   // TODO: Make this again a template once everybody has gcc >= 4.9.2
   // arangodb::basics::DataProtector<64>
-  arangodb::basics::DataProtector _databasesProtector;
-  arangodb::Mutex _databasesMutex;
+  mutable arangodb::basics::DataProtector _databasesProtector;
+  mutable arangodb::Mutex _databasesMutex;
 
   bool _isInitiallyEmpty;
   bool _checkVersion;

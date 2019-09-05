@@ -23,12 +23,11 @@
 #include "gtest/gtest.h"
 
 #include "Cluster/RebootTracker.h"
+#include "Logger/Logger.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/SupervisedScheduler.h"
 
 #include "Mocks/Servers.h"
-
-#include "lib/Logger/Logger.h"
 
 #include <memory>
 #include <type_traits>
@@ -132,8 +131,8 @@ TEST_F(CallbackGuardTest, test_move_operator_eq_explicit) {
 
 class RebootTrackerTest : public ::testing::Test {
  protected:
-// MSVC new/malloc only guarantees 8 byte alignment, but SupervisedScheduler needs 64.
-// Disable warning:
+// MSVC new/malloc only guarantees 8 byte alignment, but SupervisedScheduler
+// needs 64. Disable warning:
 #if (_MSC_VER >= 1)
 #pragma warning(push)
 #pragma warning(disable : 4316)  // Object allocated on the heap may not be aligned for this type
@@ -158,7 +157,7 @@ class RebootTrackerTest : public ::testing::Test {
                 "Use the correct scheduler in the tests");
   // ApplicationServer needs to be prepared in order for the scheduler to start
   // threads.
-  MockEmptyServer mockApplicationServer;
+  MockRestServer mockApplicationServer;
 
   void SetUp() { scheduler->start(); }
   void TearDown() { scheduler->shutdown(); }

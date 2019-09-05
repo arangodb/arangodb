@@ -594,7 +594,9 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   } catch (...) {
   }
 
-  trx.commit();
+  res = trx.commit();
+  // not much we can do about it here
+  (void) res;
 
   // remove all datafile statistics that we don't need anymore
   for (size_t i = 1; i < n; ++i) {

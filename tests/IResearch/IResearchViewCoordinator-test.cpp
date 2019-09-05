@@ -1,4 +1,5 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///
 /// DISCLAIMER
 ///
 /// Copyright 2018 ArangoDB GmbH, Cologne, Germany
@@ -22,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "../Mocks/StorageEngineMock.h"
+#include "../Mocks/Servers.h"
 #include "AgencyMock.h"
 #include "common.h"
 #include "gtest/gtest.h"
@@ -42,14 +44,12 @@
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/NoResultsExecutor.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SortCondition.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterComm.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -58,7 +58,6 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
@@ -96,273 +95,33 @@
 
 class IResearchViewCoordinatorTest : public ::testing::Test {
  protected:
-  struct ClusterCommControl : arangodb::ClusterComm {
-    static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
-  };
 
-  arangodb::application_features::ApplicationServer server;
-  arangodb::consensus::Store _agencyStore;
-  GeneralClientConnectionAgencyMock* agency;
-  StorageEngineMock engine;
-  std::unique_ptr<TRI_vocbase_t> system;
-  std::map<std::string, std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
-  std::vector<std::reference_wrapper<arangodb::application_features::ApplicationFeature>> orderedFeatures;
-  std::string testFilesystemPath;
+  arangodb::tests::mocks::MockCoordinator server;
+  arangodb::consensus::Store& _agencyStore;
 
-  IResearchViewCoordinatorTest()
-      : server(nullptr, nullptr), _agencyStore(server, nullptr, "arango"), engine(server) {
-    // need 2 connections or Agency callbacks will fail
-    auto* agencyCommManager = new AgencyCommManagerMock("arango");
-    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
-    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
-    arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
-
+  IResearchViewCoordinatorTest() : server(), _agencyStore(server.getAgencyStore()) {
+/*
     arangodb::EngineSelectorFeature::ENGINE = &engine;
     // register factories & normalizers
     auto& indexFactory = const_cast<arangodb::IndexFactory&>(engine.indexFactory());
     indexFactory.emplace(arangodb::iresearch::DATA_SOURCE_TYPE.name(),
                          arangodb::iresearch::IResearchLinkCoordinator::factory());
-
+*/
     arangodb::tests::init();
-
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::WARN);
-
-    // pretend we're on coordinator
-    serverRoleBeforeSetup = arangodb::ServerState::instance()->getRole();
-    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
-
-    server.addFeature<arangodb::application_features::BasicFeaturePhaseServer>(
-        std::make_unique<arangodb::application_features::BasicFeaturePhaseServer>(server));
-    features.emplace(server
-                         .getFeature<arangodb::application_features::BasicFeaturePhaseServer>()
-                         .name(),
-                     std::make_pair(&server.getFeature<arangodb::application_features::BasicFeaturePhaseServer>(),
-                                    false));
-
-    server.addFeature<arangodb::application_features::CommunicationFeaturePhase>(
-        std::make_unique<arangodb::application_features::CommunicationFeaturePhase>(server));
-    features.emplace(server
-                         .getFeature<arangodb::application_features::CommunicationFeaturePhase>()
-                         .name(),
-                     std::make_pair(&server.getFeature<arangodb::application_features::CommunicationFeaturePhase>(),
-                                    false));
-
-    server.addFeature<arangodb::application_features::ClusterFeaturePhase>(
-        std::make_unique<arangodb::application_features::ClusterFeaturePhase>(server));
-    features.emplace(
-        server.getFeature<arangodb::application_features::ClusterFeaturePhase>().name(),
-        std::make_pair(&server.getFeature<arangodb::application_features::ClusterFeaturePhase>(),
-                       false));
-
-    server.addFeature<arangodb::application_features::DatabaseFeaturePhase>(
-        std::make_unique<arangodb::application_features::DatabaseFeaturePhase>(server));
-    features.emplace(server
-                         .getFeature<arangodb::application_features::DatabaseFeaturePhase>()
-                         .name(),
-                     std::make_pair(&server.getFeature<arangodb::application_features::DatabaseFeaturePhase>(),
-                                    false));
-
-    server.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
-        std::make_unique<arangodb::application_features::GreetingsFeaturePhase>(server, false));
-    features.emplace(server
-                         .getFeature<arangodb::application_features::GreetingsFeaturePhase>()
-                         .name(),
-                     std::make_pair(&server.getFeature<arangodb::application_features::GreetingsFeaturePhase>(),
-                                    false));
-
-    server.addFeature<arangodb::application_features::V8FeaturePhase>(
-        std::make_unique<arangodb::application_features::V8FeaturePhase>(server));
-    features.emplace(
-        server.getFeature<arangodb::application_features::V8FeaturePhase>().name(),
-        std::make_pair(&server.getFeature<arangodb::application_features::V8FeaturePhase>(),
-                       false));
-
-    // setup required application features
-    server.addFeature<arangodb::V8DealerFeature>(
-        std::make_unique<arangodb::V8DealerFeature>(server));
-    features.emplace(server.getFeature<arangodb::V8DealerFeature>().name(),
-                     std::make_pair(&server.getFeature<arangodb::V8DealerFeature>(), false));
-
-    server.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(server));
-    features.emplace(server.getFeature<arangodb::ViewTypesFeature>().name(),
-                     std::make_pair(&server.getFeature<arangodb::ViewTypesFeature>(), true));
-
-    server.addFeature<arangodb::QueryRegistryFeature>(
-        std::make_unique<arangodb::QueryRegistryFeature>(server));
-    features.emplace(server.getFeature<arangodb::QueryRegistryFeature>().name(),
-                     std::make_pair(&server.getFeature<arangodb::QueryRegistryFeature>(), false));
-
-    system = irs::memory::make_unique<TRI_vocbase_t>(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                                     0, TRI_VOC_SYSTEM_DATABASE);
-    server.addFeature<arangodb::SystemDatabaseFeature>(
-        std::make_unique<arangodb::SystemDatabaseFeature>(server, system.get()));
-    features.emplace(server.getFeature<arangodb::SystemDatabaseFeature>().name(),
-                     std::make_pair(&server.getFeature<arangodb::SystemDatabaseFeature>(),
-                                    false));  // required for IResearchAnalyzerFeature
-
-    server.addFeature<arangodb::RandomFeature>(
-        std::make_unique<arangodb::RandomFeature>(server));
-    features.emplace(server.getFeature<arangodb::RandomFeature>().name(),
-                     std::make_pair(&server.getFeature<arangodb::RandomFeature>(),
-                                    false));  // required by AuthenticationFeature
-
-    server.addFeature<arangodb::AuthenticationFeature>(
-        std::make_unique<arangodb::AuthenticationFeature>(server));
-    features.emplace(server.getFeature<arangodb::AuthenticationFeature>().name(),
-                     std::make_pair(&server.getFeature<arangodb::AuthenticationFeature>(), false));
-
-    server.addFeature<arangodb::DatabaseFeature>(
-        std::make_unique<arangodb::DatabaseFeature>(server));
-    features.emplace(server.getFeature<arangodb::DatabaseFeature>().name(),
-                     std::make_pair(&server.getFeature<arangodb::DatabaseFeature>(), false));
-
-    server.addFeature<arangodb::DatabasePathFeature>(
-        std::make_unique<arangodb::DatabasePathFeature>(server));
-    features.emplace(server.getFeature<arangodb::DatabasePathFeature>().name(),
-                     std::make_pair(&server.getFeature<arangodb::DatabasePathFeature>(), false));
-
-    server.addFeature<arangodb::TraverserEngineRegistryFeature>(
-        std::make_unique<arangodb::TraverserEngineRegistryFeature>(server));
-    features.emplace(
-        server.getFeature<arangodb::TraverserEngineRegistryFeature>().name(),
-        std::make_pair(&server.getFeature<arangodb::TraverserEngineRegistryFeature>(),
-                       false));  // must be before AqlFeature
-
-    server.addFeature<arangodb::AqlFeature>(std::make_unique<arangodb::AqlFeature>(server));
-    features.emplace(server.getFeature<arangodb::AqlFeature>().name(),
-                     std::make_pair(&server.getFeature<arangodb::AqlFeature>(), true));
-
-    server.addFeature<arangodb::aql::AqlFunctionFeature>(
-        std::make_unique<arangodb::aql::AqlFunctionFeature>(server));
-    features.emplace(server.getFeature<arangodb::aql::AqlFunctionFeature>().name(),
-                     std::make_pair(&server.getFeature<arangodb::aql::AqlFunctionFeature>(),
-                                    true));  // required for IResearchAnalyzerFeature
-
-    server.addFeature<arangodb::iresearch::IResearchFeature>(
-        std::make_unique<arangodb::iresearch::IResearchFeature>(server));
-    features.emplace(server.getFeature<arangodb::iresearch::IResearchFeature>().name(),
-                     std::make_pair(&server.getFeature<arangodb::iresearch::IResearchFeature>(),
-                                    true));
-
-    server.addFeature<arangodb::aql::OptimizerRulesFeature>(
-        std::make_unique<arangodb::aql::OptimizerRulesFeature>(server));
-    features.emplace(server.getFeature<arangodb::aql::OptimizerRulesFeature>().name(),
-                     std::make_pair(&server.getFeature<arangodb::aql::OptimizerRulesFeature>(),
-                                    true));
-
-    server.addFeature<arangodb::FlushFeature>(
-        std::make_unique<arangodb::FlushFeature>(server));
-    features.emplace(server.getFeature<arangodb::FlushFeature>().name(),
-                     std::make_pair(&server.getFeature<arangodb::FlushFeature>(), false));  // do not start the thread
-
-    server.addFeature<arangodb::ClusterFeature>(
-        std::make_unique<arangodb::ClusterFeature>(server));
-    features.emplace(server.getFeature<arangodb::ClusterFeature>().name(),
-                     std::make_pair(&server.getFeature<arangodb::ClusterFeature>(), false));
-
-    server.addFeature<arangodb::ShardingFeature>(
-        std::make_unique<arangodb::ShardingFeature>(server));
-    features.emplace(server.getFeature<arangodb::ShardingFeature>().name(),
-                     std::make_pair(&server.getFeature<arangodb::ShardingFeature>(), false));
-
-    server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
-        std::make_unique<arangodb::iresearch::IResearchAnalyzerFeature>(server));
-    features.emplace(
-        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>().name(),
-        std::make_pair(&server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>(), true));
-
-#if USE_ENTERPRISE
-    server.addFeature<arangodb::LdapFeature>(std::make_unique<arangodb::LdapFeature>(server));
-    features.emplace(server.getFeature<arangodb::LdapFeature>().name(),
-                     std::make_pair(&server.getFeature<arangodb::LdapFeature>(), false));  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
-
-    arangodb::DatabaseFeature::DATABASE =
-        &server.getFeature<arangodb::DatabaseFeature>();
-
-    server.setupDependencies(false);
-    orderedFeatures = server.getOrderedFeatures();
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
-                                    arangodb::LogLevel::FATAL);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::ENGINES.name(), arangodb::LogLevel::FATAL);  // suppress ERROR {engines} failed to instantiate index, error: ...
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress ERROR recovery failure due to error from callback
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::FATAL);
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
-
-    for (auto& f : orderedFeatures) {
-      f.get().prepare();
-
-      if (f.get().name() == "Authentication") {
-        f.get().forceDisable();
-      }
-    }
-
-    for (auto& f : orderedFeatures) {
-      if (features.at(f.get().name()).second) {
-        f.get().start();
-      }
-    }
-
-    auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
-    authFeature.enable();  // required for authentication tests
-
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
+  }
 
-    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
-    testFilesystemPath = dbPathFeature.directory();
-
-    long systemError;
-    std::string systemErrorStr;
-    TRI_CreateDirectory(testFilesystemPath.c_str(), systemError, systemErrorStr);
-
-    agencyCommManager->start();  // initialize agency
+  void createTestDatabase(TRI_vocbase_t*& vocbase) {
+    vocbase = server.createDatabase("testDatabase");
+    ASSERT_NE(nullptr, vocbase);
+    ASSERT_EQ("testDatabase", vocbase->name());
+    ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
   }
 
   ~IResearchViewCoordinatorTest() {
-    system.reset();  // destroy before reseting the 'ENGINE'
-    TRI_RemoveDirectory(testFilesystemPath.c_str());
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::ENGINES.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::ClusterInfo::cleanup();  // reset ClusterInfo::instance() before DatabaseFeature::unprepare()
-
-    // destroy application features
-    for (auto f = orderedFeatures.rbegin(); f != orderedFeatures.rend(); ++f) {
-      if (features.at(f->get().name()).second) {
-        f->get().stop();
-      }
-    }
-
-    for (auto f = orderedFeatures.rbegin(); f != orderedFeatures.rend(); ++f) {
-      f->get().unprepare();
-    }
-
-    ClusterCommControl::reset();
-    arangodb::ServerState::instance()->setRole(serverRoleBeforeSetup);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
-
-  arangodb::ServerState::RoleEnum serverRoleBeforeSetup;
 };
 
 // -----------------------------------------------------------------------------
@@ -379,13 +138,13 @@ TEST_F(IResearchViewCoordinatorTest, test_rename) {
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\", "
       "\"collections\": [1,2,3] }");
 
-  Vocbase vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1,
+  Vocbase vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1,
                   "testVocbase");
   arangodb::LogicalView::ptr view;
   ASSERT_TRUE(
       (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), 0).ok()));
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(0 == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -405,16 +164,7 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   ASSERT_TRUE((nullptr != ci));
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
-  {
-    auto* database = arangodb::DatabaseFeature::DATABASE;
-    ASSERT_TRUE((nullptr != database));
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testVocbase", vocbase)));
-    ASSERT_TRUE((nullptr != vocbase));
-    ASSERT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
-    ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
-                                               arangodb::velocypack::Slice::emptyObjectSlice(), 0.0)
-                     .ok()));
-  }
+  createTestDatabase(vocbase);
 
   std::string collectionId0("100");
   std::string collectionId1("101");
@@ -430,18 +180,18 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" "
       "}");
-  ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1,
-                                               1, false, collectionJson0->slice(), 0.0)
+  ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, 1, false,
+                                               collectionJson0->slice(), 0.0, false, nullptr)
                    .ok()));
   auto logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
   ASSERT_TRUE((false == !logicalCollection0));
-  ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1,
-                                               1, false, collectionJson1->slice(), 0.0)
+  ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, 1, false,
+                                               collectionJson1->slice(), 0.0, false, nullptr)
                    .ok()));
   auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
   ASSERT_TRUE((false == !logicalCollection1));
-  ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId2, 0, 1,
-                                               1, false, collectionJson2->slice(), 0.0)
+  ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId2, 0, 1, 1, false,
+                                               collectionJson2->slice(), 0.0, false, nullptr)
                    .ok()));
   auto logicalCollection2 = ci->getCollection(vocbase->name(), collectionId2);
   ASSERT_TRUE((false == !logicalCollection2));
@@ -451,8 +201,7 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   auto* view =
       dynamic_cast<arangodb::iresearch::IResearchViewCoordinator*>(logicalView.get());
 
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_EQ(9, view->planVersion());
+  ASSERT_TRUE(nullptr != view);
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(1 == view->id());
@@ -478,34 +227,18 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_defaults) {
-  auto* database = arangodb::DatabaseFeature::DATABASE;
-  ASSERT_TRUE(nullptr != database);
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE((nullptr != ci));
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
-  // create database
-  {
-    // simulate heartbeat thread
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase", vocbase)));
-
-    ASSERT_TRUE((nullptr != vocbase));
-    EXPECT_TRUE(("testDatabase" == vocbase->name()));
-    EXPECT_TRUE((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
-    EXPECT_TRUE((1 == vocbase->id()));
-
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
-                     .ok()));
-  }
+  createTestDatabase(vocbase);
 
   // view definition with LogicalView (for persistence)
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" "
         "}");
-    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
+    TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
                           1, "testVocbase");
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE(
@@ -655,8 +388,8 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     auto collectionId = std::to_string(1);
     auto viewId = "testView";
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -687,8 +420,8 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     auto collectionId = std::to_string(1);
     auto viewId = "testView";
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -735,8 +468,8 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     auto collectionId = std::to_string(1);
     auto viewId = "testView";
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -779,19 +512,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
-  // create database
-  {
-    // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
-
-    ASSERT_TRUE(nullptr != vocbase);
-    EXPECT_TRUE("testDatabase" == vocbase->name());
-    EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
-    EXPECT_TRUE(1 == vocbase->id());
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
-                     .ok()));
-  }
+  createTestDatabase(vocbase);
 
   // no name specified
   {
@@ -846,8 +567,8 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
     auto planVersion = arangodb::tests::getCurrentPlanVersion();
 
     auto view = ci->getView(vocbase->name(), viewId);
-    EXPECT_TRUE(nullptr != view);
-    EXPECT_TRUE(nullptr !=
+    ASSERT_TRUE(nullptr != view);
+    ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
     EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
@@ -869,7 +590,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
     EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
 
     // check there is no more view
-    EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+    ASSERT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
 
     // drop already dropped view
     EXPECT_TRUE((view->drop().ok()));
@@ -890,8 +611,8 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
     auto planVersion = arangodb::tests::getCurrentPlanVersion();
 
     auto view = ci->getView(vocbase->name(), viewId);
-    EXPECT_TRUE(nullptr != view);
-    EXPECT_TRUE(nullptr !=
+    ASSERT_TRUE(nullptr != view);
+    ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
     EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
@@ -913,7 +634,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
     EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
 
     // check there is no more view
-    EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+    ASSERT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
 
     // drop already dropped view
     EXPECT_TRUE((view->drop().ok()));
@@ -921,26 +642,11 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
-  auto* database = arangodb::DatabaseFeature::DATABASE;
-  ASSERT_NE(nullptr, database);
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_NE(nullptr, ci);
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
-  // create database
-  {
-    // simulate heartbeat thread
-    ASSERT_EQ(TRI_ERROR_NO_ERROR, database->createDatabase(1, "testDatabase", vocbase));
-
-    ASSERT_NE(nullptr, vocbase);
-    ASSERT_EQ("testDatabase", vocbase->name());
-    ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
-    ASSERT_EQ(1, vocbase->id());
-
-    ASSERT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
-    ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
-                     .ok()));
-  }
+  createTestDatabase(vocbase);
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", "
@@ -954,8 +660,8 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
   auto collectionId = std::to_string(1);
   auto viewId = std::to_string(42);
 
-  ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                               1, false, collectionJson->slice(), 0.0)
+  ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                               collectionJson->slice(), 0.0, false, nullptr)
                    .ok()));
   auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
   ASSERT_NE(nullptr, logicalCollection);
@@ -1038,27 +744,11 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
-  auto* database = arangodb::DatabaseFeature::DATABASE;
-  ASSERT_TRUE(nullptr != database);
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE((nullptr != ci));
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
-  // create database
-  {
-    // simulate heartbeat thread
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase", vocbase)));
-
-    ASSERT_TRUE((nullptr != vocbase));
-    EXPECT_TRUE(("testDatabase" == vocbase->name()));
-    EXPECT_TRUE((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
-    EXPECT_TRUE((1 == vocbase->id()));
-
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
-                     .ok()));
-  }
+  createTestDatabase(vocbase);
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", "
@@ -1071,8 +761,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
   auto collectionId = std::to_string(1);
   auto viewId = std::to_string(42);
 
-  EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                               1, false, collectionJson->slice(), 0.0)
+  EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                               collectionJson->slice(), 0.0, false, nullptr)
                    .ok()));
   auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
   ASSERT_TRUE((false == !logicalCollection));
@@ -1167,27 +857,12 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
-  auto* database = arangodb::DatabaseFeature::DATABASE;
-  ASSERT_TRUE(nullptr != database);
-
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE(nullptr != ci);
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
-  // create database
-  {
-    // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
-
-    ASSERT_TRUE(nullptr != vocbase);
-    EXPECT_TRUE("testDatabase" == vocbase->name());
-    EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
-    EXPECT_TRUE(1 == vocbase->id());
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
-                     .ok()));
-  }
+  createTestDatabase(vocbase);
 
   // create view
   {
@@ -1202,8 +877,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
     auto planVersion = arangodb::tests::getCurrentPlanVersion();
 
     auto view = ci->getView(vocbase->name(), viewId);
-    EXPECT_TRUE(nullptr != view);
-    EXPECT_TRUE(nullptr !=
+    ASSERT_TRUE(nullptr != view);
+    ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
     EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
@@ -1241,8 +916,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
 
       fullyUpdatedView = ci->getView(vocbase->name(), viewId);
       EXPECT_TRUE(fullyUpdatedView != view);  // different objects
-      EXPECT_TRUE(nullptr != fullyUpdatedView);
-      EXPECT_TRUE(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
+      ASSERT_TRUE(nullptr != fullyUpdatedView);
+      ASSERT_TRUE(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
                                  fullyUpdatedView));
       EXPECT_TRUE(planVersion == fullyUpdatedView->planVersion());
       EXPECT_TRUE("testView" == fullyUpdatedView->name());
@@ -1297,8 +972,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
 
       auto partiallyUpdatedView = ci->getView(vocbase->name(), viewId);
       EXPECT_TRUE(partiallyUpdatedView != view);  // different objects
-      EXPECT_TRUE(nullptr != partiallyUpdatedView);
-      EXPECT_TRUE(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
+      ASSERT_TRUE(nullptr != partiallyUpdatedView);
+      ASSERT_TRUE(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
                                  partiallyUpdatedView));
       EXPECT_TRUE(planVersion == partiallyUpdatedView->planVersion());
       EXPECT_TRUE("testView" == partiallyUpdatedView->name());
@@ -1333,33 +1008,17 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
     EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
 
     // there is no more view
-    EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+    ASSERT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
   }
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
-  auto* database = arangodb::DatabaseFeature::DATABASE;
-  ASSERT_NE(nullptr, database);
-
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_NE(nullptr, ci);
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
-  // create database
-  {
-    // simulate heartbeat thread
-    ASSERT_EQ(TRI_ERROR_NO_ERROR, database->createDatabase(1, "testDatabase", vocbase));
-
-    ASSERT_NE(nullptr, vocbase);
-    EXPECT_EQ("testDatabase", vocbase->name());
-    EXPECT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
-    EXPECT_EQ(1, vocbase->id());
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
-    EXPECT_TRUE(ci->createDatabaseCoordinator(vocbase->name(),
-                                              VPackSlice::emptyObjectSlice(), 0.0)
-                    .ok());
-  }
+  createTestDatabase(vocbase);
 
   // create view
   auto json = arangodb::velocypack::Parser::fromJson(
@@ -1538,27 +1197,12 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
-  auto* database = arangodb::DatabaseFeature::DATABASE;
-  ASSERT_TRUE(nullptr != database);
-
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE(nullptr != ci);
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
-  // create database
-  {
-    // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
-
-    ASSERT_TRUE(nullptr != vocbase);
-    EXPECT_TRUE("testDatabase" == vocbase->name());
-    EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
-    EXPECT_TRUE(1 == vocbase->id());
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
-                     .ok()));
-  }
+  createTestDatabase(vocbase);
 
   // create collections
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
@@ -1569,8 +1213,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
         "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", "
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
 
     logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
@@ -1585,8 +1229,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
         "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", "
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
 
     logicalCollection2 = ci->getCollection(vocbase->name(), collectionId);
@@ -1601,8 +1245,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
         "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", "
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
 
     logicalCollection3 = ci->getCollection(vocbase->name(), collectionId);
@@ -1671,8 +1315,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   auto oldView = view;
   view = ci->getView(vocbase->name(), viewId);  // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -1916,8 +1560,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   oldView = view;
   view = ci->getView(vocbase->name(), viewId);  // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -2098,7 +1742,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
 
   // there is no more view
-  EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+  ASSERT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
 
   // there are no more links
   {
@@ -2130,27 +1774,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
-  auto* database = arangodb::DatabaseFeature::DATABASE;
-  ASSERT_TRUE(nullptr != database);
-
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE(nullptr != ci);
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
-  // create database
-  {
-    // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
-
-    ASSERT_TRUE(nullptr != vocbase);
-    EXPECT_TRUE("testDatabase" == vocbase->name());
-    EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
-    EXPECT_TRUE(1 == vocbase->id());
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
-                     .ok()));
-  }
+  createTestDatabase(vocbase);
 
   // create collections
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
@@ -2161,8 +1790,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
         "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", "
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
 
     logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
@@ -2177,8 +1806,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
         "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", "
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
 
     logicalCollection2 = ci->getCollection(vocbase->name(), collectionId);
@@ -2193,8 +1822,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
         "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", "
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
 
     logicalCollection3 = ci->getCollection(vocbase->name(), collectionId);
@@ -2254,8 +1883,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   auto oldView = view;
   view = ci->getView(vocbase->name(), viewId);  // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -2438,8 +2067,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   oldView = view;
   view = ci->getView(vocbase->name(), viewId);  // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -2697,7 +2326,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
 
   // there is no more view
-  EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+  ASSERT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
 
   // there are no more links
   {
@@ -2747,10 +2376,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE) {}
     } execContext;
-    auto* origExecContext = ExecContext::CURRENT;
-    auto resetExecContext = irs::make_finally(
-        [origExecContext]() -> void { ExecContext::CURRENT = origExecContext; });
-    ExecContext::CURRENT = &execContext;
+    arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::removeAllUsers()
@@ -2773,27 +2399,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
-  auto* database = arangodb::DatabaseFeature::DATABASE;
-  ASSERT_TRUE(nullptr != database);
-
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE(nullptr != ci);
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
-  // create database
-  {
-    // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
-
-    ASSERT_TRUE(nullptr != vocbase);
-    EXPECT_TRUE("testDatabase" == vocbase->name());
-    EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
-    EXPECT_TRUE(1 == vocbase->id());
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
-                     .ok()));
-  }
+  createTestDatabase(vocbase);
 
   // create collections
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
@@ -2804,8 +2415,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
         "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", "
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
 
     logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
@@ -2820,8 +2431,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
         "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", "
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
 
     logicalCollection2 = ci->getCollection(vocbase->name(), collectionId);
@@ -2836,8 +2447,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
         "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", "
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
 
     logicalCollection3 = ci->getCollection(vocbase->name(), collectionId);
@@ -2897,8 +2508,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   auto oldView = view;
   view = ci->getView(vocbase->name(), viewId);  // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -3098,8 +2709,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   oldView = view;
   view = ci->getView(vocbase->name(), viewId);  // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -3228,8 +2839,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   oldView = view;
   view = ci->getView(vocbase->name(), viewId);  // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -3342,7 +2953,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
 
   // there is no more view
-  EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+  ASSERT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
 
   // there are no more links
   {
@@ -3374,27 +2985,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
-  auto* database = arangodb::DatabaseFeature::DATABASE;
-  ASSERT_TRUE(nullptr != database);
-
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE(nullptr != ci);
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
-  // create database
-  {
-    // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
-
-    ASSERT_TRUE(nullptr != vocbase);
-    EXPECT_TRUE("testDatabase" == vocbase->name());
-    EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
-    EXPECT_TRUE(1 == vocbase->id());
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
-                     .ok()));
-  }
+  createTestDatabase(vocbase);
 
   // create collections
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
@@ -3405,8 +3001,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
         "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", "
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
 
     logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
@@ -3421,8 +3017,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
         "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", "
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
 
     logicalCollection2 = ci->getCollection(vocbase->name(), collectionId);
@@ -3437,8 +3033,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
         "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", "
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
 
     logicalCollection3 = ci->getCollection(vocbase->name(), collectionId);
@@ -3507,8 +3103,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   auto oldView = view;
   view = ci->getView(vocbase->name(), viewId);  // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -3768,8 +3364,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   oldView = view;
   view = ci->getView(vocbase->name(), viewId);  // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
-  EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(nullptr !=
+  ASSERT_TRUE(nullptr != view);
+  ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
@@ -3835,31 +3431,16 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
 
   // there is no more view
-  EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+  ASSERT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
-  auto* database = arangodb::DatabaseFeature::DATABASE;
-  ASSERT_TRUE(nullptr != database);
-
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE(nullptr != ci);
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
-  // create database
-  {
-    // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
-
-    ASSERT_TRUE(nullptr != vocbase);
-    EXPECT_TRUE("testDatabase" == vocbase->name());
-    EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
-    EXPECT_TRUE(1 == vocbase->id());
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
-                     .ok()));
-  }
+  createTestDatabase(vocbase);
 
   // create collection
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection;
@@ -3870,8 +3451,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
         "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", "
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
 
     logicalCollection = ci->getCollection(vocbase->name(), collectionId);
@@ -3921,8 +3502,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
         ci->getView(vocbase->name(), viewId));  // get new version of the view
     EXPECT_TRUE(view != oldView);               // different objects
-    EXPECT_TRUE(nullptr != view);
-    EXPECT_TRUE(nullptr !=
+    ASSERT_TRUE(nullptr != view);
+    ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
     EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
@@ -4048,8 +3629,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
         ci->getView(vocbase->name(), viewId));  // get new version of the view
     EXPECT_TRUE(view != oldView);               // different objects
-    EXPECT_TRUE(nullptr != view);
-    EXPECT_TRUE(nullptr !=
+    ASSERT_TRUE(nullptr != view);
+    ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
     EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
@@ -4092,7 +3673,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
 
     // there is no more view
-    EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+    ASSERT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
   }
 
   // add link (collection not authorized)
@@ -4123,10 +3704,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE) {}
     } execContext;
-    auto* origExecContext = ExecContext::CURRENT;
-    auto resetExecContext = irs::make_finally(
-        [origExecContext]() -> void { ExecContext::CURRENT = origExecContext; });
-    ExecContext::CURRENT = &execContext;
+    arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::removeAllUsers()
@@ -4149,26 +3727,11 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
-  auto* database = arangodb::DatabaseFeature::DATABASE;
-  ASSERT_TRUE(nullptr != database);
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE((nullptr != ci));
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
-  // create database
-  {
-    // simulate heartbeat thread
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase", vocbase)));
-
-    ASSERT_TRUE((nullptr != vocbase));
-    EXPECT_TRUE(("testDatabase" == vocbase->name()));
-    EXPECT_TRUE((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
-    EXPECT_TRUE((1 == vocbase->id()));
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
-                     .ok()));
-  }
+  createTestDatabase(vocbase);
 
   // modify meta params with links to missing collections
   {
@@ -4228,8 +3791,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     auto collectionId = std::to_string(1);
     auto viewId = std::to_string(42);
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -4288,8 +3851,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     auto collectionId = std::to_string(1);
     auto viewId = std::to_string(42);
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -4426,8 +3989,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     auto collectionId = std::to_string(1);
     auto viewId = std::to_string(42);
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -4455,10 +4018,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE) {}
     } execContext;
-    auto* origExecContext = ExecContext::CURRENT;
-    auto resetExecContext = irs::make_finally(
-        [origExecContext]() -> void { ExecContext::CURRENT = origExecContext; });
-    ExecContext::CURRENT = &execContext;
+    arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -4490,8 +4050,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     auto collectionId = std::to_string(1);
     auto viewId = std::to_string(42);
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -4622,18 +4182,20 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     auto collectionId1 = std::to_string(2);
     auto viewId = std::to_string(42);
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1,
-                                                 1, false, collection0Json->slice(), 0.0)
-                     .ok()));
+    EXPECT_TRUE(
+        (ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, 1, false,
+                                         collection0Json->slice(), 0.0, false, nullptr)
+             .ok()));
     auto logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
     auto dropLogicalCollection0 = std::shared_ptr<arangodb::ClusterInfo>(
         ci, [vocbase, &collectionId0](arangodb::ClusterInfo* ci) -> void {
           ci->dropCollectionCoordinator(vocbase->name(), collectionId0, 0);
         });
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1,
-                                                 1, false, collection1Json->slice(), 0.0)
-                     .ok()));
+    EXPECT_TRUE(
+        (ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, 1, false,
+                                         collection1Json->slice(), 0.0, false, nullptr)
+             .ok()));
     auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));
     auto dropLogicalCollection1 = std::shared_ptr<arangodb::ClusterInfo>(
@@ -4771,18 +4333,20 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     auto collectionId1 = std::to_string(2);
     auto viewId = std::to_string(42);
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1,
-                                                 1, false, collection0Json->slice(), 0.0)
-                     .ok()));
+    EXPECT_TRUE(
+        (ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, 1, false,
+                                         collection0Json->slice(), 0.0, false, nullptr)
+             .ok()));
     auto logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
     auto dropLogicalCollection0 = std::shared_ptr<arangodb::ClusterInfo>(
         ci, [vocbase, &collectionId0](arangodb::ClusterInfo* ci) -> void {
           ci->dropCollectionCoordinator(vocbase->name(), collectionId0, 0);
         });
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1,
-                                                 1, false, collection1Json->slice(), 0.0)
-                     .ok()));
+    EXPECT_TRUE(
+        (ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, 1, false,
+                                         collection1Json->slice(), 0.0, false, nullptr)
+             .ok()));
     auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));
     auto dropLogicalCollection1 = std::shared_ptr<arangodb::ClusterInfo>(
@@ -4914,26 +4478,11 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
-  auto* database = arangodb::DatabaseFeature::DATABASE;
-  ASSERT_TRUE(nullptr != database);
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE((nullptr != ci));
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
-  // create database
-  {
-    // simulate heartbeat thread
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase", vocbase)));
-
-    ASSERT_TRUE((nullptr != vocbase));
-    EXPECT_TRUE(("testDatabase" == vocbase->name()));
-    EXPECT_TRUE((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
-    EXPECT_TRUE((1 == vocbase->id()));
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
-                     .ok()));
-  }
+  createTestDatabase(vocbase);
 
   // modify meta params with links to missing collections
   {
@@ -4995,8 +4544,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     auto collectionId = std::to_string(1);
     auto viewId = std::to_string(42);
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -5054,8 +4603,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     auto collectionId = std::to_string(1);
     auto viewId = std::to_string(42);
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -5192,8 +4741,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     auto collectionId = std::to_string(1);
     auto viewId = std::to_string(42);
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -5221,10 +4770,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE) {}
     } execContext;
-    auto* origExecContext = ExecContext::CURRENT;
-    auto resetExecContext = irs::make_finally(
-        [origExecContext]() -> void { ExecContext::CURRENT = origExecContext; });
-    ExecContext::CURRENT = &execContext;
+    arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -5256,8 +4802,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     auto collectionId = std::to_string(1);
     auto viewId = std::to_string(42);
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                                 1, false, collectionJson->slice(), 0.0)
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                 collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -5385,18 +4931,20 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     auto collectionId1 = std::to_string(2);
     auto viewId = std::to_string(42);
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1,
-                                                 1, false, collection0Json->slice(), 0.0)
-                     .ok()));
+    EXPECT_TRUE(
+        (ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, 1, false,
+                                         collection0Json->slice(), 0.0, false, nullptr)
+             .ok()));
     auto logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
     auto dropLogicalCollection0 = std::shared_ptr<arangodb::ClusterInfo>(
         ci, [vocbase, &collectionId0](arangodb::ClusterInfo* ci) -> void {
           ci->dropCollectionCoordinator(vocbase->name(), collectionId0, 0);
         });
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1,
-                                                 1, false, collection1Json->slice(), 0.0)
-                     .ok()));
+    EXPECT_TRUE(
+        (ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, 1, false,
+                                         collection1Json->slice(), 0.0, false, nullptr)
+             .ok()));
     auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));
     auto dropLogicalCollection1 = std::shared_ptr<arangodb::ClusterInfo>(
@@ -5541,18 +5089,20 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     auto collectionId1 = std::to_string(2);
     auto viewId = std::to_string(42);
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1,
-                                                 1, false, collection0Json->slice(), 0.0)
-                     .ok()));
+    EXPECT_TRUE(
+        (ci->createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, 1, false,
+                                         collection0Json->slice(), 0.0, false, nullptr)
+             .ok()));
     auto logicalCollection0 = ci->getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
     auto dropLogicalCollection0 = std::shared_ptr<arangodb::ClusterInfo>(
         ci, [vocbase, &collectionId0](arangodb::ClusterInfo* ci) -> void {
           ci->dropCollectionCoordinator(vocbase->name(), collectionId0, 0);
         });
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1,
-                                                 1, false, collection1Json->slice(), 0.0)
-                     .ok()));
+    EXPECT_TRUE(
+        (ci->createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, 1, false,
+                                         collection1Json->slice(), 0.0, false, nullptr)
+             .ok()));
     auto logicalCollection1 = ci->getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));
     auto dropLogicalCollection1 = std::shared_ptr<arangodb::ClusterInfo>(
@@ -5684,27 +5234,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
-  auto* database = arangodb::DatabaseFeature::DATABASE;
-  ASSERT_TRUE(nullptr != database);
-
   auto* ci = arangodb::ClusterInfo::instance();
   ASSERT_TRUE(nullptr != ci);
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
-  // create database
-  {
-    // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
-
-    ASSERT_TRUE(nullptr != vocbase);
-    EXPECT_TRUE("testDatabase" == vocbase->name());
-    EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
-    EXPECT_TRUE(1 == vocbase->id());
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
-    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
-                     .ok()));
-  }
+  createTestDatabase(vocbase);
 
   // create and drop view (no id specified)
   {
@@ -5719,8 +5254,8 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     auto planVersion = arangodb::tests::getCurrentPlanVersion();
 
     auto view = ci->getView(vocbase->name(), viewId);
-    EXPECT_TRUE(nullptr != view);
-    EXPECT_TRUE(nullptr !=
+    ASSERT_TRUE(nullptr != view);
+    ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
     EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
@@ -5759,8 +5294,8 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     node.planRegisters(nullptr);
     auto singletonBlock = singleton.createBlock(engine, cache);
     auto execBlock = node.createBlock(engine, cache);
-    EXPECT_TRUE(nullptr != execBlock);
-    EXPECT_TRUE(nullptr !=
+    ASSERT_TRUE(nullptr != execBlock);
+    ASSERT_TRUE(nullptr !=
                 dynamic_cast<arangodb::aql::ExecutionBlockImpl<arangodb::aql::NoResultsExecutor>*>(
                     execBlock.get()));
 
@@ -5769,6 +5304,6 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
 
     // check there is no more view
-    EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+    ASSERT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
   }
 }

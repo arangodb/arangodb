@@ -479,9 +479,7 @@ TEST_F(IResearchViewTest, test_defaults) {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto* origExecContext = ExecContext::CURRENT;
-    auto resetExecContext = irs::make_finally([origExecContext]()->void{ ExecContext::CURRENT = origExecContext; });
-    ExecContext::CURRENT = &execContext;
+    arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::auth::UserMap userMap; // empty map, no user -> no permissions
@@ -5073,9 +5071,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto* origExecContext = ExecContext::CURRENT;
-    auto resetExecContext = irs::make_finally([origExecContext]()->void{ ExecContext::CURRENT = origExecContext; });
-    ExecContext::CURRENT = &execContext;
+    arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::auth::UserMap userMap; // empty map, no user -> no permissions
@@ -6998,9 +6994,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto* origExecContext = ExecContext::CURRENT;
-    auto resetExecContext = irs::make_finally([origExecContext]()->void{ ExecContext::CURRENT = origExecContext; });
-    ExecContext::CURRENT = &execContext;
+    arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::auth::UserMap userMap; // empty map, no user -> no permissions

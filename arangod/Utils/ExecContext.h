@@ -24,9 +24,10 @@
 #define ARANGOD_UTILS_EXECCONTEXT_H 1
 
 #include "Auth/Common.h"
-#include "Basics/Common.h"
-#include "Basics/debugging.h"
 #include "Rest/RequestContext.h"
+
+#include <memory>
+#include <string>
 
 namespace arangodb {
 namespace transaction {
@@ -39,17 +40,13 @@ class Methods;
 /// from ExecContext::CURRENT. Inherits from request
 /// context for convencience
 class ExecContext : public RequestContext {
+  friend struct ExecContextScope;
+  friend struct ExecContextSuperuserScope;
  protected:
   enum class Type { Default, Internal };
 
   ExecContext(ExecContext::Type type, std::string const& user,
-              std::string const& database, auth::Level systemLevel, auth::Level dbLevel)
-      : _type(type),
-        _user(user),
-        _database(database),
-        _canceled(false),
-        _systemDbAuthLevel(systemLevel),
-        _databaseAuthLevel(dbLevel) {}
+              std::string const& database, auth::Level systemLevel, auth::Level dbLevel);
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
 
@@ -58,13 +55,16 @@ class ExecContext : public RequestContext {
 
   /// shortcut helper to check the AuthenticationFeature
   static bool isAuthEnabled();
+  
+  /// Should always contain a reference to current user context
+  static ExecContext const& current();
 
   /// @brief an internal superuser context, is
   ///        a singleton instance, deleting is an error
-  static ExecContext const* superuser();
+  static ExecContext const& superuser();
 
   /// @brief create user context, caller is responsible for deleting
-  static ExecContext* create(std::string const& user, std::string const& db);
+  static std::unique_ptr<ExecContext> create(std::string const& user, std::string const& db);
 
   /// @brief an internal user is none / ro / rw for all collections / dbs
   /// mainly used to override further permission resolution
@@ -95,7 +95,6 @@ class ExecContext : public RequestContext {
   // std::string const& database() const { return _database; }
   /// @brief authentication level on _system. Always RW for superuser
   auth::Level systemAuthLevel() const {
-    TRI_ASSERT(_systemDbAuthLevel != auth::Level::UNDEFINED);
     return _systemDbAuthLevel;
   };
 
@@ -103,13 +102,12 @@ class ExecContext : public RequestContext {
   ///        request scope. Should almost always contain something,
   ///        if this thread originated in v8 or from HTTP / VST
   auth::Level databaseAuthLevel() const {
-    TRI_ASSERT(_databaseAuthLevel != auth::Level::UNDEFINED);
     return _databaseAuthLevel;
   };
 
   /// @brief returns true if auth level is above or equal `requested`
   bool canUseDatabase(auth::Level requested) const {
-    return canUseDatabase(_database, requested);
+    return requested <= _databaseAuthLevel;
   }
   /// @brief returns true if auth level is above or equal `requested`
   bool canUseDatabase(std::string const& db, auth::Level requested) const;
@@ -127,10 +125,6 @@ class ExecContext : public RequestContext {
     return requested <= collectionAuthLevel(db, coll);
   }
 
- public:
-  /// Should always contain a reference to current user context
-  static thread_local ExecContext const* CURRENT;
-
  protected:
   Type _type;
   /// current user, may be empty for internal users
@@ -143,8 +137,11 @@ class ExecContext : public RequestContext {
   auth::Level _systemDbAuthLevel;
   /// level of current database
   auth::Level _databaseAuthLevel;
+  
+ private:
 
-  static ExecContext SUPERUSER;
+  static ExecContext Superuser;
+  static thread_local ExecContext const* CURRENT;
 };
 
 /// @brief scope guard for the exec context
@@ -159,6 +156,25 @@ struct ExecContextScope {
  private:
   ExecContext const* _old;
 };
+  
+struct ExecContextSuperuserScope {
+  explicit ExecContextSuperuserScope()
+  : _old(ExecContext::CURRENT) {
+    ExecContext::CURRENT = &ExecContext::Superuser;
+  }
+  
+  explicit ExecContextSuperuserScope(bool cond) : _old(ExecContext::CURRENT) {
+    if (cond) {
+      ExecContext::CURRENT = &ExecContext::Superuser;
+    }
+  }
+  
+  ~ExecContextSuperuserScope() { ExecContext::CURRENT = _old; }
+  
+private:
+  ExecContext const* _old;
+};
+
 }  // namespace arangodb
 
 #endif

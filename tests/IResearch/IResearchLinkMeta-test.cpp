@@ -199,14 +199,14 @@ class IResearchLinkMetaTest : public ::testing::Test {
     auto sysvocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     arangodb::methods::Collections::createSystem(
         *sysvocbase,
-        arangodb::tests::AnalyzerCollectionName);
+        arangodb::tests::AnalyzerCollectionName, false);
 
     
     TRI_vocbase_t* vocbase;
     dbFeature.createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     arangodb::methods::Collections::createSystem(
       *vocbase,
-      arangodb::tests::AnalyzerCollectionName);
+      arangodb::tests::AnalyzerCollectionName, false);
 
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;

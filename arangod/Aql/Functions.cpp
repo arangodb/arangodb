@@ -4219,11 +4219,11 @@ AqlValue Functions::Collections(ExpressionContext* expressionContext,
 
   size_t const n = colls.size();
 
+  auto const& exec = ExecContext::current();
   for (size_t i = 0; i < n; ++i) {
     auto& coll = colls[i];
 
-    if (ExecContext::CURRENT != nullptr &&
-        !ExecContext::CURRENT->canUseCollection(vocbase.name(), coll->name(),
+    if (!exec.canUseCollection(vocbase.name(), coll->name(),
                                                 auth::Level::RO)) {
       continue;
     }
@@ -6426,16 +6426,10 @@ AqlValue Functions::CurrentDatabase(ExpressionContext* expressionContext,
 /// @brief function CURRENT_USER
 AqlValue Functions::CurrentUser(ExpressionContext*, transaction::Methods* trx,
                                 VPackFunctionParameters const& parameters) {
-  if (ExecContext::CURRENT == nullptr) {
-    return AqlValue(AqlValueHintNull());
-  }
-
-  std::string const& username = ExecContext::CURRENT->user();
-
+  std::string const& username = ExecContext::current().user();
   if (username.empty()) {
     return AqlValue(AqlValueHintNull());
   }
-
   return AqlValue(username);
 }
 

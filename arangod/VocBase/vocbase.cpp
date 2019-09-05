@@ -454,9 +454,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   // read lock
   // check if the collection is already loaded
   {
-    ExecContext const* exec = ExecContext::CURRENT;
-    if (exec != nullptr &&
-        !exec->canUseCollection(_name, collection->name(), auth::Level::RO)) {
+    if (!ExecContext::current().canUseCollection(_name, collection->name(), auth::Level::RO)) {
       return TRI_set_errno(TRI_ERROR_FORBIDDEN);
     }
 
@@ -620,7 +618,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
   state = DROP_EXIT;
   std::string const colName(collection->name());
 
-  double startTime = TRI_microtime();
+  double endTime = TRI_microtime() + timeout;
 
   // do not acquire these locks instantly
   RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock, _dataSourceLockWriteOwner,
@@ -648,7 +646,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     TRI_ASSERT(!writeLocker.isLocked());
     TRI_ASSERT(!locker.isLocked());
 
-    if (timeout >= 0.0 && TRI_microtime() > startTime + timeout) {
+    if (timeout >= 0.0 && TRI_microtime() > endTime) {
       events::DropCollection(name(), colName, TRI_ERROR_LOCK_TIMEOUT);
       return TRI_ERROR_LOCK_TIMEOUT;
     }
@@ -894,7 +892,7 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
               });
   }
 
-  ExecContext const* exec = ExecContext::CURRENT;
+  ExecContext const& exec = ExecContext::current();
   result.add("collections", VPackValue(VPackValueType::Array));
   for (auto& collection : collections) {
     READ_LOCKER(readLocker, collection->_lock);
@@ -916,8 +914,7 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
       continue;
     }
 
-    if (exec != nullptr &&
-        !exec->canUseCollection(_name, collection->name(), auth::Level::RO)) {
+    if (!exec.canUseCollection(_name, collection->name(), auth::Level::RO)) {
       continue;
     }
 

@@ -49,10 +49,10 @@ Query::Query(QueryParameters queryParameters) : _content(queryParameters) {}
 
 bool Query::empty() const noexcept {
   struct output {
-    bool operator()(QueryString const& queryString) {
+    bool operator()(QueryString const& queryString) const {
       return queryString.value().empty();
     }
-    bool operator()(QueryParameters const& queryParameters) {
+    bool operator()(QueryParameters const& queryParameters) const {
       return queryParameters.empty();
     }
   };

@@ -359,8 +359,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
 
   TRI_GET_GLOBAL_STRING(IsAdminUser);
   if (request->authenticated()) {
-    if (user.empty() ||
-        (ExecContext::CURRENT != nullptr && ExecContext::CURRENT->isAdminUser())) {
+    if (user.empty() || ExecContext::current().isAdminUser()) {
       req->Set(IsAdminUser, v8::True(isolate));
     } else {
       req->Set(IsAdminUser, v8::False(isolate));

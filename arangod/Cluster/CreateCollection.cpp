@@ -153,21 +153,21 @@ bool CreateCollection::first() {
       docket.add("planId", VPackValue(collection));
     }
 
-    _result =
-        Collections::create(vocbase, shard, type, docket.slice(), waitForRepl, enforceReplFact,
-                            [=](std::shared_ptr<LogicalCollection> const& col) -> void {
-                              TRI_ASSERT(col);
-                              LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)
-                                  << "local collection " << database << "/"
-                                  << shard << " successfully created";
+    _result = Collections::create(
+        vocbase, shard, type, docket.slice(), waitForRepl, enforceReplFact,
+        false, [=](std::shared_ptr<LogicalCollection> const& col) -> void {
+          TRI_ASSERT(col);
+          LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)
+              << "local collection " << database << "/" << shard
+              << " successfully created";
 
-                              if (leader.empty()) {
-                                std::vector<std::string> noFollowers;
-                                col->followers()->takeOverLeadership(noFollowers, nullptr);
-                              } else {
-                                col->followers()->setTheLeader(leader);
-                              }
-                            });
+          if (leader.empty()) {
+            std::vector<std::string> noFollowers;
+            col->followers()->takeOverLeadership(noFollowers, nullptr);
+          } else {
+            col->followers()->setTheLeader(leader);
+          }
+        });
 
     if (_result.fail()) {
       std::stringstream error;

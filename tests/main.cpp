@@ -9,7 +9,8 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/ServerIdFeature.h"
 #include "gtest/gtest.h"
-#include "tests/Basics/icu-helper.h"
+
+#include "Basics/icu-helper.h"
 
 #include <chrono>
 #include <thread>

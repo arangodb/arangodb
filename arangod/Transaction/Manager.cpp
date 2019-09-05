@@ -48,24 +48,15 @@
 
 namespace {
 bool authorized(std::string const& user) {
-  auto context = arangodb::ExecContext::CURRENT;
-  if (context == nullptr || !arangodb::ExecContext::isAuthEnabled()) {
+  auto const& exec = arangodb::ExecContext::current();
+  if (exec.isSuperuser()) {
     return true;
   }
-
-  if (context->isSuperuser()) {
-    return true;
-  }
-
-  return (user == context->user());
+  return (user == exec.user());
 }
 
 std::string currentUser() {
-  auto context = arangodb::ExecContext::CURRENT;
-  if (context == nullptr || !arangodb::ExecContext::isAuthEnabled()) {
-    return "";
-  }
-  return context->user();
+  return arangodb::ExecContext::current().user();
 }
 }  // namespace
 
@@ -230,7 +221,8 @@ Manager::ManagedTrx::~ManagedTrx() {
     auto ctx =
         std::make_shared<transaction::ManagedContext>(2, state, AccessMode::Type::NONE);
     MGMethods trx(ctx, opts);  // own state now
-    trx.begin();
+    Result res = trx.begin();
+    (void) res;
     TRI_ASSERT(state->nestingLevel() == 1);
     state->decreaseNesting();
     TRI_ASSERT(state->isTopLevelTransaction());
@@ -252,18 +244,19 @@ void Manager::registerAQLTrx(TransactionState* state) {
   }
 
   TRI_ASSERT(state != nullptr);
-  const size_t bucket = getBucket(state->id());
+  auto const tid = state->id();
+  size_t const bucket = getBucket(tid);
   {
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
     auto& buck = _transactions[bucket];
-    auto it = buck._managed.find(state->id());
+    auto it = buck._managed.find(tid);
     if (it != buck._managed.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
-                                     "transaction ID already used");
+                                     std::string("transaction ID ") + std::to_string(tid) + "' already used in registerAQLTrx");
     }
-    buck._managed.emplace(std::piecewise_construct, std::forward_as_tuple(state->id()),
+    buck._managed.emplace(std::piecewise_construct, std::forward_as_tuple(tid),
                           std::forward_as_tuple(MetaType::StandaloneAQL, state));
   }
 }
@@ -366,7 +359,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     auto it = buck._managed.find(tid);
     if (it != buck._managed.end()) {
       return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                       "transaction ID already used");
+                       std::string("transaction ID '") + std::to_string(tid) + "' already used in createManagedTrx lookup");
     }
   }
 
@@ -438,7 +431,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     auto it = _transactions[bucket]._managed.find(tid);
     if (it != _transactions[bucket]._managed.end()) {
       return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                       "transaction ID already used");
+                       std::string("transaction ID '") + std::to_string(tid) + "' already used in createManagedTrx insert");
     }
     TRI_ASSERT(state->id() == tid);
     _transactions[bucket]._managed.emplace(std::piecewise_construct,

@@ -977,7 +977,7 @@ void DatabaseFeature::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
   result.close();
 }
 
-TRI_vocbase_t* DatabaseFeature::useDatabase(std::string const& name) {
+TRI_vocbase_t* DatabaseFeature::useDatabase(std::string const& name) const {
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
@@ -993,7 +993,7 @@ TRI_vocbase_t* DatabaseFeature::useDatabase(std::string const& name) {
   return nullptr;
 }
 
-TRI_vocbase_t* DatabaseFeature::useDatabase(TRI_voc_tick_t id) {
+TRI_vocbase_t* DatabaseFeature::useDatabase(TRI_voc_tick_t id) const {
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
@@ -1012,7 +1012,7 @@ TRI_vocbase_t* DatabaseFeature::useDatabase(TRI_voc_tick_t id) {
 }
 
 /// @brief lookup a database by its name, not increasing its reference count
-TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {
+TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) const {
   if (name.empty()) {
     return nullptr;
   }

@@ -88,6 +88,7 @@
 #include "RestServer/UpgradeFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
@@ -711,101 +712,6 @@ std::string normalizedAnalyzerName(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates '_analyzers' collection
-////////////////////////////////////////////////////////////////////////////////
-bool setupAnalyzersCollection(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& /*upgradeParams*/) {
-  return arangodb::methods::Collections::createSystem(vocbase, ANALYZER_COLLECTION_NAME).ok();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief drops '_iresearch_analyzers' collection
-////////////////////////////////////////////////////////////////////////////////
-bool dropLegacyAnalyzersCollection(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& /*upgradeParams*/) {
-  // drop legacy collection if upgrading the system vocbase and collection found
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto& server = arangodb::application_features::ApplicationServer::server();
-  if (!server.hasFeature<arangodb::SystemDatabaseFeature>()) {
-    LOG_TOPIC("8783e", WARN, arangodb::iresearch::TOPIC)
-        << "failure to find '" << arangodb::SystemDatabaseFeature::name()
-        << "' feature while registering legacy static analyzers with vocbase '"
-        << vocbase.name() << "'";
-    TRI_set_errno(TRI_ERROR_INTERNAL);
-
-    return false; // internal error
-  }
-
-  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-                        : nullptr;
-
-  TRI_ASSERT(sysVocbase.get() == &vocbase || sysVocbase->name() == vocbase.name());
-#endif
-
-  static std::string const LEGACY_ANALYZER_COLLECTION_NAME("_iresearch_analyzers");
-
-  // find legacy analyzer collection
-  arangodb::Result dropRes;
-  auto const lookupRes = arangodb::methods::Collections::lookup(
-    vocbase,
-    LEGACY_ANALYZER_COLLECTION_NAME,
-    [&dropRes](std::shared_ptr<arangodb::LogicalCollection> const& col)->void { // callback if found
-      if (col) {
-        dropRes = arangodb::methods::Collections::drop(*col, true, -1.0); // -1.0 same as in RestCollectionHandler
-      }
-    }
-  );
-
-  if (lookupRes.ok()) {
-    return dropRes.ok();
-  }
-
-  return lookupRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-}
-
-
-void registerUpgradeTasks() {
-  using namespace arangodb;
-  using namespace arangodb::application_features;
-  using namespace arangodb::methods;
-
-  auto& server = arangodb::application_features::ApplicationServer::server();
-  if (!server.hasFeature<UpgradeFeature>()) {
-    return; // nothing to register with (OK if no tasks actually need to be applied)
-  }
-
-  auto& upgrade = server.getFeature<UpgradeFeature>();
-
-  // NOTE: db-servers do not have a dedicated collection for storing analyzers,
-  //       instead they get their cache populated from coordinators
-
-  upgrade.addTask({
-      "setupAnalyzers",                           // name
-      "setup _analyzers collection",              // description
-      Upgrade::Flags::DATABASE_ALL,               // system flags
-      Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL  // cluster flags
-          | Upgrade::Flags::CLUSTER_NONE,
-      Upgrade::Flags::DATABASE_INIT  // database flags
-          | Upgrade::Flags::DATABASE_UPGRADE | Upgrade::Flags::DATABASE_EXISTING,
-      &setupAnalyzersCollection  // action
-  });
-
-  upgrade.addTask({
-      "dropLegacyAnalyzersCollection",            // name
-      "drop _iresearch_analyzers collection",     // description
-      Upgrade::Flags::DATABASE_SYSTEM,            // system flags
-      Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL  // cluster flags
-          | Upgrade::Flags::CLUSTER_NONE,
-      Upgrade::Flags::DATABASE_INIT  // database flags
-          | Upgrade::Flags::DATABASE_UPGRADE,
-      &dropLegacyAnalyzersCollection  // action
-  });
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief read analyzers from vocbase
 /// @return visitation completed fully
 ////////////////////////////////////////////////////////////////////////////////
@@ -959,7 +865,13 @@ arangodb::Result visitAnalyzers( // visit analyzers
     return res;
   }
 
-  auto commit  = irs::make_finally([&trx]()->void { trx.commit(); }); // end read-only transaction
+  auto commit  = irs::make_finally([&trx]()->void { 
+    // end read-only transaction
+    TRI_ASSERT(trx.state()->isReadOnlyTransaction());
+    arangodb::Result res = trx.commit(); 
+    // ignore return value here
+    (void) res;
+  }); 
   auto result = trx.all(ANALYZER_COLLECTION_NAME, 0, 0, options);
 
   if (!result.result.ok()) {
@@ -1163,21 +1075,17 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_feature
     TRI_vocbase_t const& vocbase, // analyzer vocbase
     arangodb::auth::Level const& level // access level
 ) {
-  auto* ctx = arangodb::ExecContext::CURRENT;
-
-  return !ctx // authentication not enabled
-    || (ctx->canUseDatabase(vocbase.name(), level) // can use vocbase
-        && (ctx->canUseCollection(vocbase.name(), ANALYZER_COLLECTION_NAME, level)) // can use analyzers
-       );
+  auto& ctx = arangodb::ExecContext::current();
+  return ctx.canUseDatabase(vocbase.name(), level) && // can use vocbase
+         ctx.canUseCollection(vocbase.name(), ANALYZER_COLLECTION_NAME, level); // can use analyzers
 }
 
 /*static*/ bool IResearchAnalyzerFeature::canUse( // check permissions
   irs::string_ref const& name, // analyzer name (already normalized)
   arangodb::auth::Level const& level // access level
 ) {
-  auto* ctx = arangodb::ExecContext::CURRENT;
-
-  if (!ctx) {
+  auto& ctx = arangodb::ExecContext::current();
+  if (ctx.isAdminUser()) {
     return true; // authentication not enabled
   }
 
@@ -1190,8 +1098,8 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_feature
   auto split = splitAnalyzerName(name);
 
   return split.first.null() // static analyzer (always allowed)
-    || (ctx->canUseDatabase(split.first, level) // can use vocbase
-        && ctx->canUseCollection(split.first, ANALYZER_COLLECTION_NAME, level) // can use analyzers
+    || (ctx.canUseDatabase(split.first, level) // can use vocbase
+        && ctx.canUseCollection(split.first, ANALYZER_COLLECTION_NAME, level) // can use analyzers
        );
 }
 
@@ -2346,8 +2254,6 @@ void IResearchAnalyzerFeature::start() {
              "IResearch functions";
     }
   }
-
-  registerUpgradeTasks(); // register tasks after UpgradeFeature::prepare() has finished
 
   auto res = loadAnalyzers();
 

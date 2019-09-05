@@ -21,8 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DependencyProxyMock.h"
-
-#include <lib/Basics/Common.h>
+#include "Basics/Common.h"
 
 #include "gtest/gtest.h"
 

@@ -32,8 +32,7 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
-
-#include <lib/Logger/LogMacros.h>
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

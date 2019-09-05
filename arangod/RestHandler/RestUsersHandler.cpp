@@ -108,10 +108,8 @@ RestStatus RestUsersHandler::execute() {
 bool RestUsersHandler::isAdminUser() const {
   if (!ExecContext::isAuthEnabled()) {
     return true;
-  } else if (ExecContext::CURRENT != nullptr) {
-    return ExecContext::CURRENT->isAdminUser();
   }
-  return false;
+  return ExecContext::current().isAdminUser();
 }
 
 bool RestUsersHandler::canAccessUser(std::string const& user) const {

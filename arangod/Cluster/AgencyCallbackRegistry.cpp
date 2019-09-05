@@ -87,14 +87,24 @@ std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint32_t id)
 }
 
 bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> cb) {
-  WRITE_LOCKER(locker, _lock);
+  bool found = false;
+  uint32_t endpointToDelete = 0;
+  {
+    READ_LOCKER(locker, _lock);
 
-  for (auto const& it : _endpoints) {
-    if (it.second.get() == cb.get()) {
-      _agency.unregisterCallback(cb->key, getEndpointUrl(it.first));
-      _endpoints.erase(it.first);
-      return true;
+    for (auto const& it : _endpoints) {
+      if (it.second.get() == cb.get()) {
+        _agency.unregisterCallback(cb->key, getEndpointUrl(it.first));
+        endpointToDelete = it.first;
+        found = true;
+        break;
+      }
     }
+  }
+  if (found) {
+    WRITE_LOCKER(locker, _lock);
+    _endpoints.erase(endpointToDelete);
+    return true;
   }
   return false;
 }

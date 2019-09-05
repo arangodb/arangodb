@@ -213,8 +213,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
         "_create(<name>, <properties>, <type>, <options>)");
   }
 
-  if (ExecContext::CURRENT != nullptr &&
-      !ExecContext::CURRENT->canUseDatabase(vocbase.name(), auth::Level::RW)) {
+  if (!ExecContext::current().canUseDatabase(vocbase.name(), auth::Level::RW)) {
     events::CreateCollection(vocbase.name(), "", TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
@@ -269,12 +268,13 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   v8::Handle<v8::Value> result;
   auto res = methods::Collections::create(
-    vocbase, // collection vocbase
-    name, // collection name
-    collectionType, // collection type
-    propSlice, // collection properties
-    createWaitsForSyncReplication, // replication wait flag
+      vocbase,                        // collection vocbase
+      name,                           // collection name
+      collectionType,                 // collection type
+      propSlice,                      // collection properties
+      createWaitsForSyncReplication,  // replication wait flag
       enforceReplicationFactor,
+      false,  // is new Database?, here always false
       [&isolate, &result](std::shared_ptr<LogicalCollection> const& coll) -> void {
         TRI_ASSERT(coll);
         result = WrapCollection(isolate, coll);

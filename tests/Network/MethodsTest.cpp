@@ -30,7 +30,7 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 
-#include "ApplicationFeatures/GreetingsPhase.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -81,9 +81,9 @@ struct DummyPool : public network::ConnectionPool {
   std::shared_ptr<DummyConnection> _conn;
 };
 
-struct MethodsTest : public ::testing::Test {
+struct NetworkMethodsTest : public ::testing::Test {
   
-  MethodsTest() : pool(config()) {}
+  NetworkMethodsTest() : pool(config()) {}
   
 protected:
   
@@ -107,7 +107,7 @@ protected:
   DummyPool pool;
 };
 
-TEST_F(MethodsTest, simple_request) {
+TEST_F(NetworkMethodsTest, simple_request) {
   pool._conn->_err = fuerte::Error::NoError;
   
   fuerte::ResponseHeader header;
@@ -129,7 +129,7 @@ TEST_F(MethodsTest, simple_request) {
   ASSERT_EQ(res.response->statusCode(), fuerte::StatusAccepted);
 }
 
-TEST_F(MethodsTest, request_failure) {
+TEST_F(NetworkMethodsTest, request_failure) {
   pool._conn->_err = fuerte::Error::ConnectionClosed;
   
   VPackBuffer<uint8_t> buffer;
@@ -147,50 +147,42 @@ struct SchedulerTestSetup {
   
   SchedulerTestSetup() : server(nullptr, nullptr) {
     using namespace arangodb::application_features;
-    std::vector<ApplicationFeature*> features;
+
+    server.addFeature<GreetingsFeaturePhase>(std::make_unique<GreetingsFeaturePhase>(server, false));
+    server.addFeature<arangodb::FileDescriptorsFeature>(std::make_unique<arangodb::FileDescriptorsFeature>(server));
+    server.addFeature<arangodb::SchedulerFeature>(std::make_unique<arangodb::SchedulerFeature>(server));
     
-    features.emplace_back(new GreetingsFeaturePhase(server, false));
-    features.emplace_back(new arangodb::FileDescriptorsFeature(server));
-    features.emplace_back(new arangodb::SchedulerFeature(server));
+    server.setupDependencies(false);
     
-    for (auto& f : features) {
-      ApplicationServer::server->addFeature(f);
-    }
-    ApplicationServer::server->setupDependencies(false);
-    
-    ApplicationServer::setStateUnsafe(ApplicationServer::State::IN_WAIT);
+    server.setStateUnsafe(ApplicationServer::State::IN_WAIT);
     auto orderedFeatures = server.getOrderedFeatures();
-    features[2]->validateOptions(nullptr);
+    server.getFeature<arangodb::SchedulerFeature>().validateOptions(nullptr);
     for (auto& f : orderedFeatures) {
-      f->prepare();
+      f.get().prepare();
     }
     for (auto& f : orderedFeatures) {
-      f->start();
+      f.get().start();
     }
   }
   
   ~SchedulerTestSetup() {
     using namespace arangodb::application_features;
-    ApplicationServer::setStateUnsafe(ApplicationServer::State::IN_STOP);
+    server.setStateUnsafe(ApplicationServer::State::IN_STOP);
     
     auto orderedFeatures = server.getOrderedFeatures();
     for (auto& f : orderedFeatures) {
-      f->beginShutdown();
+      f.get().beginShutdown();
     }
     for (auto& f : orderedFeatures) {
-      f->stop();
+      f.get().stop();
     }
     for (auto& f : orderedFeatures) {
-      f->unprepare();
+      f.get().unprepare();
     }
-    
-    arangodb::application_features::ApplicationServer::server = nullptr;
   }
-  
-  std::vector<std::unique_ptr<arangodb::application_features::ApplicationFeature*>> features;
 };
 
-TEST_F(MethodsTest, request_with_retry_after_error) {
+TEST_F(NetworkMethodsTest, request_with_retry_after_error) {
   SchedulerTestSetup setup;
   
   // Step 1: Provoke a connection error
@@ -226,7 +218,7 @@ TEST_F(MethodsTest, request_with_retry_after_error) {
   ASSERT_EQ(res.response->statusCode(), fuerte::StatusAccepted);
 }
 
-TEST_F(MethodsTest, request_with_retry_after_not_found_error) {
+TEST_F(NetworkMethodsTest, request_with_retry_after_not_found_error) {
     SchedulerTestSetup setup;
     
     // Step 1: Provoke a data source not found error

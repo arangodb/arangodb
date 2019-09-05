@@ -70,6 +70,7 @@
 #include "Logger/LoggerBufferFeature.h"
 #include "Logger/LoggerFeature.h"
 #include "Pregel/PregelFeature.h"
+#include "Network/NetworkFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Replication/ReplicationFeature.h"
@@ -204,6 +205,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<LoggerFeature>(std::make_unique<LoggerFeature>(server, true));
     server.addFeature<MaintenanceFeature>(std::make_unique<MaintenanceFeature>(server));
     server.addFeature<MaxMapCountFeature>(std::make_unique<MaxMapCountFeature>(server));
+    server.addFeature<NetworkFeature>(std::make_unique<NetworkFeature>(server));
     server.addFeature<NonceFeature>(std::make_unique<NonceFeature>(server));
     server.addFeature<PageSizeFeature>(std::make_unique<PageSizeFeature>(server));
     server.addFeature<PrivilegeFeature>(std::make_unique<PrivilegeFeature>(server));

@@ -666,7 +666,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
       instanceInfo.exitStatus = res;
     }
   } else {
-    res = executeExternalAndWait(cmd, args, false, timeout, coverageEnvironment());
+    // V8 executeExternalAndWait thinks that timeout is in ms, so *100
+    res = executeExternalAndWait(cmd, args, false, timeout*100, coverageEnvironment());
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
   }
@@ -1145,7 +1146,7 @@ function executeArangod (cmd, args, options) {
     print(Date() + ' starting process ' + cmd + ' with arguments: ' + JSON.stringify(args));
   }
 
-  return executeExternal(cmd, args, coverageEnvironment());
+  return executeExternal(cmd, args, false, coverageEnvironment());
 }
 
 // //////////////////////////////////////////////////////////////////////////////

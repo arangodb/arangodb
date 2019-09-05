@@ -30,7 +30,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"

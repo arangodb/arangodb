@@ -42,6 +42,9 @@
 #endif
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 #ifndef USE_ENTERPRISE
 class EncryptionFeature;  // to reduce number of #ifdef
 #endif

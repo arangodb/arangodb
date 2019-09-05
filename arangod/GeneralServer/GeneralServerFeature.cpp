@@ -42,7 +42,6 @@
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "GeneralServer/SslServerFeature.h"
-#include "Graph/Graph.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -60,7 +59,6 @@
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestAuthReloadHandler.h"
 #include "RestHandler/RestBatchHandler.h"
-#include "RestHandler/RestCollectionHandler.h"
 #include "RestHandler/RestControlPregelHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDatabaseHandler.h"
@@ -72,9 +70,6 @@
 #include "RestHandler/RestExplainHandler.h"
 #include "RestHandler/RestGraphHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
-#ifdef USE_ENTERPRISE
-#include "Enterprise/RestHandler/RestHotBackupHandler.h"
-#endif
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
@@ -99,17 +94,18 @@
 #include "RestHandler/RestWalAccessHandler.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/ServerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "V8Server/V8DealerFeature.h"
+
 #ifdef USE_ENTERPRISE
+#include "Enterprise/RestHandler/RestHotBackupHandler.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
-#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::rest;
 using namespace arangodb::options;
