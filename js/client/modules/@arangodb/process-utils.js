@@ -609,16 +609,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     cmd = options.valgrind;
   }
 
-  if (circumventCores) {
-    if (platform.substr(0, 3) !== 'win') {
-      // this shellscript will prevent cores from being writen on macos and linux.
-      args.unshift(cmd);
-      cmd = TOP_DIR + '/scripts/disable-cores.sh';
-    }
-  }
-
   if (options.extremeVerbosity) {
-    print(Date() + ' executeAndWait: cmd =', cmd, 'args =', args);
+    print(Date() + ' executeAndWait: cmd =', cmd, 'args =', args, 'circumventCores = ', circumventCores);
   }
 
   const startTime = time();
