@@ -28,6 +28,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
+#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Import/SenderThread.h"
 #include "Logger/Logger.h"
@@ -263,7 +264,6 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   }
 
   // progress display control variables
-  int64_t totalRead = 0;
   double nextProgress = ProgressStep;
 
   size_t separatorLength;
@@ -294,6 +294,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   _rowsRead = 0;
 
   char buffer[32768];
+  // int64_t totalRead = 0;
 
   while (!_hasError) {
     ssize_t n = fd->read(buffer, sizeof(buffer));
@@ -312,7 +313,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
       break;
     }
 
-    totalRead += static_cast<int64_t>(n);
+    // totalRead += static_cast<int64_t>(n);
     reportProgress(totalLength, fd->offset(), nextProgress);
 
     TRI_ParseCsvString(&parser, buffer, n);
@@ -377,10 +378,12 @@ bool ImportHelper::importJson(std::string const& collectionName,
   }
 
   // progress display control variables
-  int64_t totalRead = 0;
+  // int64_t totalRead = 0;
   double nextProgress = ProgressStep;
 
   static int const BUFFER_SIZE = 32768;
+  _rowOffset = 0;
+  _rowsRead = 0;
 
   while (!_hasError) {
     // reserve enough room to read more data
@@ -419,7 +422,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
       checkedFront = true;
     }
 
-    totalRead += static_cast<int64_t>(n);
+    // totalRead += static_cast<int64_t>(n);
     reportProgress(totalLength, fd->offset(), nextProgress);
 
     if (_outputBuffer.length() > _maxUploadSize) {
@@ -433,17 +436,25 @@ bool ImportHelper::importJson(std::string const& collectionName,
 
       // send all data before last '\n'
       char const* first = _outputBuffer.c_str();
-      char* pos = (char*)memrchr(first, '\n', _outputBuffer.length());
+      char const * pos = static_cast<char const*>(memrchr(first, '\n', _outputBuffer.length()));
 
       if (pos != nullptr) {
         size_t len = pos - first + 1;
+        char const * cursor = first;
+        do {
+          ++cursor;
+          cursor = static_cast<char const*>(memchr(cursor, '\n', pos - cursor));
+          ++_rowsRead;
+        } while (nullptr != cursor);
         sendJsonBuffer(first, len, isObject);
         _outputBuffer.erase_front(len);
+        _rowOffset = _rowsRead;
       }
     }
   }
 
   if (_outputBuffer.length() > 0) {
+    ++_rowsRead;
     sendJsonBuffer(_outputBuffer.c_str(), _outputBuffer.length(), isObject);
   }
 
@@ -885,7 +896,7 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
   if (t != nullptr) {
     _tempBuffer.reset();
     _tempBuffer.appendText(str, len);
-    t->sendData(url, &_tempBuffer);
+    t->sendData(url, &_tempBuffer, _rowOffset +1, _rowsRead);
     addPeriodByteCount(len + url.length());
   }
 }
