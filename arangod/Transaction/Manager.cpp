@@ -400,9 +400,9 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                       ":" + cname);
       } else {
 #ifdef USE_ENTERPRISE
-        std::shared_ptr<LogicalCollection> col = resolver.getCollection(cname);
-        if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
-          if (state->isCoordinator()) {
+        if (state->isCoordinator()) {
+          std::shared_ptr<LogicalCollection> col = resolver.getCollection(cname);
+          if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
             auto theEdge = dynamic_cast<arangodb::VirtualSmartEdgeCollection*>(col.get());
             if (theEdge == nullptr) {
               THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot cast collection to smart edge collection");
@@ -623,14 +623,14 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
     if (it == buck._managed.end() || !::authorized(it->second.user)) {
-      return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND);
+      return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid) + "' not found");
     }
 
     ManagedTrx& mtrx = it->second;
     TRY_WRITE_LOCKER(tryGuard, mtrx.rwlock);
     if (!tryGuard.isLocked()) {
       return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
-                       "transaction is in use");
+                       std::string("transaction '") + std::to_string(tid) + "' is in use");
     }
 
     if (mtrx.type == MetaType::StandaloneAQL) {
