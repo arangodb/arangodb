@@ -3236,22 +3236,20 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
   }
 
   // Perform the requests
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, Logger::BACKUP, false, false);
+  auto nrGood = cc->performRequests(
+    requests, CL_DEFAULT_TIMEOUT, Logger::BACKUP, false, false);
 
-  LOG_TOPIC("410a1", DEBUG, Logger::BACKUP) << "Getting list of local backups";
+  LOG_TOPIC("410a1", DEBUG, Logger::BACKUP) << "Got " << nrGood << " of " << requests.size() << " lists of local backups";
 
-  // Now listen to the results:
+  if (nrGood < requests.size()) {
+    return arangodb::Result(
+      TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL,
+      std::string("not all db servers could be reached for backup listing"));
+  }
+  
+  // Now check results
   for (auto const& req : requests) {
     auto res = req.result;
-    int commError = handleGeneralCommErrors(&res);
-    if (commError != TRI_ERROR_NO_ERROR) {
-      return arangodb::Result(
-          commError,
-          std::string(
-              "Communication error while getting list of backups from ") +
-              req.destination);
-    }
-
     TRI_ASSERT(res.answer != nullptr);
     auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice resSlice = resBody->slice();
@@ -4250,12 +4248,34 @@ arangodb::Result listHotBackupsOnCoordinator(VPackSlice const payload, VPackBuil
   }  // allow continuation with None slice
 
   VPackBuilder dummy;
-  arangodb::Result result = hotBackupList(dbServers, payload, list, dummy);
 
-  if (!result.ok()) {
-    return result;
+  // Try to get complete listing for 2 minutes
+  using namespace std::chrono;
+  auto timeout = steady_clock::now() + duration<double>(120.0);
+  arangodb::Result result;
+  std::chrono::duration<double> wait(1.0);
+  while (true) {
+    if (application_features::ApplicationServer::isStopping()) {
+      return Result(TRI_ERROR_SHUTTING_DOWN, "server is shutting down");
+    }
+
+    result = hotBackupList(dbServers, payload, list, dummy);
+
+    if (!result.ok()) {
+      if (steady_clock::now() > timeout) {
+        return arangodb::Result(
+          TRI_ERROR_CLUSTER_TIMEOUT, "timeout waiting for all db servers to report backup list");
+      } else {
+        LOG_TOPIC("f9u3f", DEBUG, Logger::BACKUP) << "failed to get a hot backup listing from all db servers waiting " << wait.count() << " seconds";
+        std::this_thread::sleep_for(wait);
+        wait *= 1.1;
+      }
+    } else {
+      break;
+    }
   }
 
+  // Build report
   {
     VPackObjectBuilder o(&report);
     report.add(VPackValue("list"));
