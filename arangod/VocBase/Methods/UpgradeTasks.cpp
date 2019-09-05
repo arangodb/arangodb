@@ -145,7 +145,8 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
     res = methods::Collections::lookup(
         vocbase, StaticStrings::GraphsCollection,
         [&colToDistributeShardsLike](std::shared_ptr<LogicalCollection> const& col) -> void {
-          if (col && col.get()->distributeShardsLike().length() > 0) {
+          if (col && col.get()->distributeShardsLike().empty()) {
+            // We have a graphs collection, and this is not sharded by something else.
             colToDistributeShardsLike = col;
           }
         });
@@ -336,7 +337,7 @@ static Result createIndex(std::string const name, Index::IndexType type,
                        });
   if (colIt == collections.end()) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                 "Collection " + name + " not found");
+                  "Collection " + name + " not found");
   }
   return methods::Indexes::createIndex(colIt->get(), type, fields, unique, sparse);
 }
@@ -345,18 +346,24 @@ Result createSystemStatisticsIndices(TRI_vocbase_t& vocbase,
                                      std::vector<std::shared_ptr<LogicalCollection>>& collections) {
   Result res;
   if (vocbase.isSystem() && StatisticsFeature::enabled()) {
-      res = ::createIndex(StaticStrings::StatisticsCollection,
-                          arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                          false, false, collections);
-      if (!res.ok()) { return res; }
-      res = ::createIndex(StaticStrings::Statistics15Collection,
-                          arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                          false, false, collections);
-      if (!res.ok()) { return res; }
-      res = ::createIndex(StaticStrings::StatisticsRawCollection,
-                          arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                          false, false, collections);
-      if (!res.ok()) { return res; }
+    res = ::createIndex(StaticStrings::StatisticsCollection,
+                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
+                        false, false, collections);
+    if (!res.ok()) {
+      return res;
+    }
+    res = ::createIndex(StaticStrings::Statistics15Collection,
+                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
+                        false, false, collections);
+    if (!res.ok()) {
+      return res;
+    }
+    res = ::createIndex(StaticStrings::StatisticsRawCollection,
+                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
+                        false, false, collections);
+    if (!res.ok()) {
+      return res;
+    }
   }
   return {TRI_ERROR_NO_ERROR};
 }
@@ -365,26 +372,38 @@ Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase,
                                       std::vector<std::shared_ptr<LogicalCollection>>& collections) {
   Result res;
   if (vocbase.isSystem()) {
-      res = ::createIndex(StaticStrings::UsersCollection, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,
-                    {"user"}, true, true, collections);
-      if (!res.ok()) { return res; }
+    res = ::createIndex(StaticStrings::UsersCollection, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,
+                        {"user"}, true, true, collections);
+    if (!res.ok()) {
+      return res;
+    }
 
-      res = ::createSystemStatisticsIndices(vocbase, collections);
-      if (!res.ok()) { return res; }
+    res = ::createSystemStatisticsIndices(vocbase, collections);
+    if (!res.ok()) {
+      return res;
+    }
   }
 
   res = upgradeGeoIndexes(vocbase);
-  if (!res.ok()) { return res; }
+  if (!res.ok()) {
+    return res;
+  }
 
   res = ::createIndex(StaticStrings::AppsCollection, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,
                       {"mount"}, true, true, collections);
-  if (!res.ok()) { return res; }
+  if (!res.ok()) {
+    return res;
+  }
   res = ::createIndex(StaticStrings::JobsCollection, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-                  {"queue", "status", "delayUntil"}, false, false, collections);
-  if (!res.ok()) { return res; }
+                      {"queue", "status", "delayUntil"}, false, false, collections);
+  if (!res.ok()) {
+    return res;
+  }
   res = ::createIndex(StaticStrings::JobsCollection, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-                  {"status", "queue", "delayUntil"}, false, false, collections);
-  if (!res.ok()) { return res; }
+                      {"status", "queue", "delayUntil"}, false, false, collections);
+  if (!res.ok()) {
+    return res;
+  }
 
   return {TRI_ERROR_NO_ERROR};
 }
