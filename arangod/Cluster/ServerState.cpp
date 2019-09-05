@@ -454,8 +454,8 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
         auto it2 = endpoints.emplace(endpointSlice.copyString(), serverId);
         if (!it2.second && it2.first->first != serverId) {
           // duplicate entry!
-          LOG_TOPIC("9a134", WARN, Logger::CLUSTER) 
-            << "found duplicate server entry for endpoint '" 
+          LOG_TOPIC("9a134", WARN, Logger::CLUSTER)
+            << "found duplicate server entry for endpoint '"
             << endpointSlice.copyString() << "', already used by other server " << it2.first->second
             << ". it looks like this is a (mis)configuration issue";
           // anyway, continue with startup
@@ -466,7 +466,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
 
   return true;
 }
-        
+
 /// @brief whether or not "value" is a server UUID
 bool ServerState::isUuid(std::string const& value) const {
   // whenever the format of the generated UUIDs changes, please make sure to
@@ -629,9 +629,9 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum
   // ok to fail..if it failed we are already registered
   AgencyCommResult pregResult = comm.sendTransactionWithFailover(preg, 0.0);
   if (!pregResult.successful()) {
-    LOG_TOPIC("cd1d0", TRACE, Logger::CLUSTER) 
-      << "unable to initially register in agency. " 
-      << pregResult.errorMessage(); 
+    LOG_TOPIC("cd1d0", TRACE, Logger::CLUSTER)
+      << "unable to initially register in agency. "
+      << pregResult.errorMessage();
   }
 
   AgencyWriteTransaction creg(
@@ -641,9 +641,9 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum
   // ok to fail..if it failed we are already registered
   AgencyCommResult cregResult = comm.sendTransactionWithFailover(creg, 0.0);
   if (!cregResult.successful()) {
-    LOG_TOPIC("fe96a", TRACE, Logger::CLUSTER) 
-      << "unable to initially register in agency. " 
-      << cregResult.errorMessage(); 
+    LOG_TOPIC("fe96a", TRACE, Logger::CLUSTER)
+      << "unable to initially register in agency. "
+      << cregResult.errorMessage();
   }
 
   // coordinator is already/still registered from an previous unclean shutdown;
@@ -739,10 +739,10 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum
 
 bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersistedId) {
   TRI_ASSERT(!_id.empty() && !_myEndpoint.empty());
-    
+
   std::string const serverRegistrationPath = currentServersRegisteredPref + _id;
   std::string const rebootIdPath = "/Current/ServersKnown/" + _id + "/rebootId";
-  
+
   // If we generated a new UUID, this *must not* exist in the Agency, so we
   // should fail to register.
   std::vector<AgencyPrecondition> pre;
@@ -762,7 +762,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
       builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
       builder.add("timestamp", VPackValue(timepointToString(std::chrono::system_clock::now())));
     }
-    
+
     AgencyWriteTransaction trx(
         {AgencyOperation(serverRegistrationPath, AgencyValueOperationType::SET,
                          builder.slice()),
