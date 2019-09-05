@@ -462,6 +462,9 @@ class MMFilesEngine final : public StorageEngine {
   // stop and delete the compactor thread for the database
   int stopCompactor(TRI_vocbase_t* vocbase);
 
+  // stop and delete the compactor and cleanup threads for all databases
+  void stopAllThreads();
+
   /// @brief writes a drop-database marker into the log
   int writeDropMarker(TRI_voc_tick_t id, std::string const& name);
 
