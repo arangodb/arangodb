@@ -32,8 +32,9 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Utils/OperationOptions.h"
-#include "velocypack/Slice.h"
-#include "velocypack/velocypack-aliases.h"
+
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace transaction {

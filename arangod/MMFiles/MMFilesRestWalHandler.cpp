@@ -77,7 +77,7 @@ void MMFilesRestWalHandler::properties() {
   auto l = MMFilesLogfileManager::instance();
 
   if (_request->requestType() == rest::RequestType::PUT) {
-    if (ExecContext::CURRENT != nullptr && !ExecContext::CURRENT->isAdminUser()) {
+    if (!ExecContext::current().isAdminUser()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "you need admin rights to modify WAL properties");
       return;

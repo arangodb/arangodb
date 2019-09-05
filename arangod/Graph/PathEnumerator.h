@@ -115,6 +115,7 @@ class PathEnumerator {
   void incHttpRequests(size_t requests) { _httpRequests += requests; }
 };
 
+// cppcheck-suppress noConstructor
 class DepthFirstEnumerator final : public PathEnumerator {
  private:
   //////////////////////////////////////////////////////////////////////////////

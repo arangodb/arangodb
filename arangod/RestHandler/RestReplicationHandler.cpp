@@ -122,19 +122,15 @@ static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& co
 
   std::string shardAgencyPathString = StringUtils::join(agencyPath, '/');
 
-  LOG_DEVEL << shardAgencyPathString;
-
   AgencyComm ac;
   AgencyCommResult res = ac.getValues(shardAgencyPathString);
 
   if (res.successful()) {
 
-  LOG_DEVEL << "Agency Transaction: " << res.slice().toJson();
     // This is bullshit. Why does the *fancy* AgencyComm Manager
     // prepend the agency url with `arango` but in the end returns an object
     // that is prepended by `arango`! WTF!?
     VPackSlice plan = res.slice().at(0).get(AgencyCommManager::path()).get(agencyPath);
-    LOG_DEVEL << plan.toJson();
     TRI_ASSERT(plan.isArray() && plan.length() > 0);
 
     VPackSlice leaderSlice = plan.at(0);
@@ -622,7 +618,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   configuration.validate();
 
   // allow access to _users if appropriate
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   // forget about any existing replication applier configuration
   applier->forget();
@@ -993,7 +989,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     return Result();
   }
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   auto* col = _vocbase.lookupCollection(name).get();
 
@@ -1046,13 +1042,12 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
   }
 
   // might be also called on dbservers
-  ExecContext const* exe = ExecContext::CURRENT;
-  if (name[0] != '_' && exe != nullptr && !exe->isSuperuser() &&
+  if (name[0] != '_' && !ExecContext::current().isSuperuser() &&
       ServerState::instance()->isSingleServer()) {
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
     TRI_ASSERT(um != nullptr);  // should not get here
     if (um != nullptr) {
-      um->updateUser(exe->user(), [&](auth::User& entry) {
+      um->updateUser(ExecContext::current().user(), [&](auth::User& entry) {
         entry.grantCollection(_vocbase.name(), col->name(), auth::Level::RW);
         return TRI_ERROR_NO_ERROR;
       });
@@ -1203,7 +1198,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     if (replFactorSlice.isString() &&
         replFactorSlice.isEqualString("satellite")) {
       minReplicationFactor = 0;
-    } else if (minReplicationFactor <= 0) {
+    } else if (minReplicationFactor == 0) {
       minReplicationFactor = 1;
     }
     TRI_ASSERT(minReplicationFactor <= replicationFactor);
@@ -1308,13 +1303,13 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     auto cols =
         ClusterMethods::createCollectionOnCoordinator(_vocbase, merged, ignoreDistributeShardsLikeErrors,
                                                       createWaitsForSyncReplication, false);
-    ExecContext const* exe = ExecContext::CURRENT;
+    ExecContext const& exec = ExecContext::current();
     TRI_ASSERT(cols.size() == 1);
-    if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
+    if (name[0] != '_' && !exec.isSuperuser()) {
       auth::UserManager* um = AuthenticationFeature::instance()->userManager();
       TRI_ASSERT(um != nullptr);  // should not get here
       if (um != nullptr) {
-        um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
+        um->updateUser(exec.user(), [&](auth::User& entry) {
           for (auto const& col : cols) {
             TRI_ASSERT(col != nullptr);
             entry.grantCollection(dbName, col->name(), auth::Level::RW);
@@ -1345,7 +1340,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   }
 #endif
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   if (colName == TRI_COL_NAME_USERS) {
     // We need to handle the _users in a special way
@@ -1798,7 +1793,7 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
 
   Result fres;
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
   READ_LOCKER(readLocker, _vocbase._inventoryLock);
 
   // look up the collection
@@ -2062,7 +2057,6 @@ void RestReplicationHandler::handleCommandSync() {
   // will throw if invalid
   config.validate();
 
-  TRI_ASSERT(!config._skipCreateDrop);
   std::shared_ptr<InitialSyncer> syncer;
 
   if (isGlobal) {
@@ -2528,24 +2522,27 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
     return;
   }
 
-  Result res = checkPlanLeaderDirect(col, leaderId);
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
   std::string currentLeader = col->followers()->getLeader();
   if (currentLeader == arangodb::maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
     // We have resigned, check that we are the old leader
     currentLeader = ServerState::instance()->getId();
   }
 
-  if (!oldLeaderIdSlice.isEqualString(currentLeader)) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN, "old leader not as expected");
-    return;
+  if (leaderId != currentLeader) {
+
+    Result res = checkPlanLeaderDirect(col, leaderId);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    if (!oldLeaderIdSlice.isEqualString(currentLeader)) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN, "old leader not as expected");
+      return;
+    }
+
+    col->followers()->setTheLeader(leaderId);
   }
 
-  col->followers()->setTheLeader(leaderId);
-  LOG_DEVEL << "Set leader for " << shard.copyString() << " to " << leaderId;
 
   VPackBuilder b;
   {
@@ -2937,18 +2934,6 @@ uint64_t RestReplicationHandler::determineChunkSize() const {
   return chunkSize;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief Grant temporary restore rights
-//////////////////////////////////////////////////////////////////////////////
-void RestReplicationHandler::grantTemporaryRights() {
-  if (ExecContext::CURRENT != nullptr) {
-    if (ExecContext::CURRENT->databaseAuthLevel() == auth::Level::RW) {
-      // If you have administrative access on this database,
-      // we grant you everything for restore.
-      ExecContext::CURRENT = nullptr;
-    }
-  }
-}
 
 ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
   global = _request->parsedValue("global", false);

@@ -33,6 +33,10 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 //
 // structure used to store expected states of action properties
 //

@@ -29,12 +29,12 @@
 * License Name: MIT License
 * License Id: MIT
 
-### Curl 7.63.0
+### Curl 7.65.3
 
 * Name: Curl
-* Version: 7.63.0
+* Version: 7.65.3
 * Project Home: https://curl.haxx.se/
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.5/3rdParty/curl/curl-7.63.0/COPYING
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/curl/curl-7.65.3/COPYING
 * License Comment: free as-is license
 
 ### date 2.4
@@ -150,7 +150,7 @@
 ### jemalloc
 
 * Name: jemalloc
-* Version: 5.2.0
+* Version: 5.2.1
 * Project Home: https://github.com/jemalloc/jemalloc
 * License: https://raw.githubusercontent.com/jemalloc/jemalloc/dev/COPYING
 * License Comment: free as-is license
@@ -218,14 +218,24 @@ exception from the GPL license:
 * License: https://raw.githubusercontent.com/madler/zlib/master/README
 * License Comment: free as-is license
 
-### HTTP Parser
+### llhttp
 
-* Name: HTTP Parser
-* Version: 2.4.0
-* Project Home: https://github.com/nodejs/http-parser
-* License: https://raw.githubusercontent.com/nodejs/http-parser/master/LICENSE-MIT
+* Name: llhttp
+* Version: 1.1.1
+* Project Home: https://github.com/nodejs/llhttp
+* License: https://raw.githubusercontent.com/nodejs/llhttp/master/LICENSE-MIT
 * License Name: MIT License
 * License Id: MIT
+
+### GeographicLib
+
+* Name: GeographicLib
+* Version: 1.49
+* Project Home: https://geographiclib.sourceforge.io/
+* License: https://geographiclib.sourceforge.io/html/LICENSE.txt
+* License Name: MIT License
+* License Id: MIT
+
 
 ## Programs
 

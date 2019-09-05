@@ -32,6 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Transaction/Methods.h"
+#include "Transaction/Status.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -235,8 +236,20 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id, int errorCod
   // to register the transaction with the current context and adjust
   // the debugging counters for transactions:
   if (errorCode == TRI_ERROR_NO_ERROR) {
-    // commit the operation
-    queryInfo->_query->trx()->commit();
+    // commit the operation if necessary
+    auto trx = queryInfo->_query->trx();
+
+    if (trx->status() == transaction::Status::RUNNING) {
+      Result res = trx->commit();
+
+      if (res.fail()) {
+        // not much we can do here except logging the error
+        LOG_TOPIC("440a1", ERR, arangodb::Logger::AQL) 
+          << "unable to commit query with id " << id 
+          << ": " << res.errorMessage() 
+          << ", current status: " << transaction::statusString(trx->status());
+      }
+    }
   }
   LOG_TOPIC("6756c", DEBUG, arangodb::Logger::AQL) << "query with id " << id << " is now destroyed";
 }

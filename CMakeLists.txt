@@ -6,16 +6,9 @@
 
 cmake_minimum_required(VERSION 3.9)
 
-# TODO This might be an alternative to increasing the required cmake version.
-# TODO Otherwise, remove it.
-#if (POLICY CMP0069)
-#  # LTO / INTERPROCEDURAL_OPTIMIZATION
-#  cmake_policy(SET CMP0069 NEW)
-#endif ()
-
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release
-      CACHE string
+      CACHE STRING
       "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
       FORCE
   )
@@ -33,7 +26,7 @@ endif ()
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
 
 if (NOT CMAKE_OSX_DEPLOYMENT_TARGET)
-  set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your sysem")
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your system")
 endif ()
 
 # where to find CMAKE modules
@@ -270,7 +263,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(STATIC_EXECUTABLES "produce static executables" OFF)
 if (STATIC_EXECUTABLES)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
-  set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+  if (WINDOWS)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
+  else ()
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+  endif ()
 endif()
 
 # enable enterprise features
@@ -297,19 +294,14 @@ set(ARANGODB_CONTACT         "hackers@arangodb.com")
 set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model NoSQL database")
 
 # MSVC
-set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test program")
+set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test tool")
 set(ARANGO_BACKUP_FRIENDLY_STRING  "arangobackup - hot backup tool")
-set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - export")
-set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - importer")
-set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - datae xporter")
-set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - TSV/CSV/JSON importer")
+set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - data and configuration dumping tool")
+set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - data and configuration restoration tool")
+set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - data exporter")
+set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - data importer")
 set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
-set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - vpack printer")
-
-# libraries
-set(LIB_ARANGO        arango)
-set(LIB_ARANGO_GEO    arango_geo)
-set(LIB_ARANGO_V8     arango_v8)
+set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - VelocyPack formatter")
 
 # binaries
 set(BIN_ARANGOBENCH   arangobench)
@@ -412,7 +404,7 @@ option(HOMEBREW
 if (WIN32)
   set(WINDOWS TRUE)
   set(MSBUILD TRUE)
-  add_definitions(-D_USE_MATH_DEFINES -DNOMINMAX -D_WIN32_WINNT=_WIN32_WINNT_VISTA -DINCL_EXTRA_HTON_FUNCTIONS -DPSAPI_VERSION=1)
+  add_definitions(-D_USE_MATH_DEFINES -DNOMINMAX -D_WIN32_WINNT=0x600 -DINCL_EXTRA_HTON_FUNCTIONS -DPSAPI_VERSION=1)
 elseif (UNIX AND NOT APPLE)
   if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
     set(LINUX TRUE)
@@ -463,7 +455,7 @@ else ()
 endif ()
 
 if (CROSS_COMPILING)
-# curently off, need additional params to configure like --hoast=triple <params>
+# currently off, need additional params to configure like --host=triple <params>
   SET(USE_JEMALLOC OFF)
 endif()
 
@@ -651,9 +643,7 @@ endif ()
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
 
-include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/arangod)
-include_directories(${PROJECT_SOURCE_DIR}/arangosh)
 include_directories(${PROJECT_SOURCE_DIR}/lib)
 
 if (CUSTOM_INCLUDES)
@@ -718,14 +708,14 @@ endif()
 
 if (USE_BACKTRACE)
   if (MSVC)
-    set(BT_LIBS "Dbghelp" CACHE path "Debug Helper libraries")
+    set(BT_LIBS "Dbghelp" CACHE PATH "Debug Helper libraries")
   else ()
-    set(BT_LIBS ${Backtrace_LIBRARY} CACHE path "Debug Helper libraries")
+    set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
   endif ()
 
   add_definitions("-DARANGODB_ENABLE_BACKTRACE=1")
 else ()
-  set(BT_LIBS ${Backtrace_LIBRARY} CACHE path "Debug Helper libraries")
+  set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
 endif ()
 
 ################################################################################
@@ -1055,8 +1045,6 @@ endif ()
 # ------------------------------------------------------------------------------
 # IResearch
 # ------------------------------------------------------------------------------
-
-set(LIB_ARANGO_IRESEARCH arango_iresearch)
 
 # 3rdParty exports:
 #

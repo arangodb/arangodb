@@ -169,7 +169,7 @@ class ApplicationServer {
  public:
   ApplicationServer(std::shared_ptr<options::ProgramOptions>, char const* binaryPath);
 
-  ~ApplicationServer();
+  TEST_VIRTUAL ~ApplicationServer();
 
   std::string helpSection() const { return _helpSection; }
   bool helpShown() const { return !_helpSection.empty(); }
@@ -222,7 +222,7 @@ class ApplicationServer {
   std::shared_ptr<options::ProgramOptions> options() const { return _options; }
 
   // return the server state
-  State state() const { return _state; }
+  TEST_VIRTUAL State state() const { return _state; }
 
   void addReporter(ProgressHandler reporter) {
     _progressReports.emplace_back(reporter);
@@ -258,6 +258,12 @@ class ApplicationServer {
   std::vector<ApplicationFeature*> const& getOrderedFeatures() {
     return _orderedFeatures;
   }
+  
+#ifdef TEST_VIRTUAL
+  static void setStateUnsafe(State ss) {
+    server->_state = ss;
+  }
+#endif
 
  private:
   // throws an exception that a requested feature was not found

@@ -113,7 +113,7 @@ struct Collection {
   bool usesDefaultSharding() const;
 
   /// @brief set the underlying collection
-  void setCollection(arangodb::LogicalCollection* coll);
+  void setCollection(std::shared_ptr<arangodb::LogicalCollection> const& coll);
 
   /// @brief either use the set collection or get one from ClusterInfo:
   std::shared_ptr<arangodb::LogicalCollection> getCollection() const;
@@ -129,7 +129,7 @@ struct Collection {
   std::string const& smartJoinAttribute() const;
 
  private:
-  arangodb::LogicalCollection* _collection;
+  std::shared_ptr<arangodb::LogicalCollection> _collection;
 
   TRI_vocbase_t* _vocbase;
 

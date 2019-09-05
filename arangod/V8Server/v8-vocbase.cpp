@@ -181,10 +181,9 @@ static void JS_Transactions(v8::FunctionCallbackInfo<v8::Value> const& args) {
     
   bool const fanout = ServerState::instance()->isCoordinator();
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
-  auto context = arangodb::ExecContext::CURRENT;
   std::string user;
-  if (context != nullptr || arangodb::ExecContext::isAuthEnabled()) {
-    user = context->user();
+  if (arangodb::ExecContext::isAuthEnabled()) {
+    user = ExecContext::current().user();
   }
   mgr->toVelocyPack(builder, vocbase.name(), user, fanout);
  
@@ -1622,9 +1621,7 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
-  ExecContext const* exec = ExecContext::CURRENT;
-
-  if (exec != nullptr && exec->systemAuthLevel() != auth::Level::RW) {
+  if (!ExecContext::current().isAdminUser()) {
     events::DropDatabase("", TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
@@ -1789,10 +1786,10 @@ void JS_ArangoDBContext(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
+  ExecContext const& exec = ExecContext::current();
+  if (!exec.user().empty()) {
     result->Set(TRI_V8_ASCII_STRING(isolate, "user"),
-                TRI_V8_STD_STRING(isolate, exec->user()));
+                TRI_V8_STD_STRING(isolate, exec.user()));
   }
 
   TRI_V8_RETURN(result);

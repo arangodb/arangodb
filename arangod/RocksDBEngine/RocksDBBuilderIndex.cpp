@@ -237,6 +237,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
 
     if (numDocsWritten % 200 == 0) {  // commit buffered writes
       commitLambda();
+      // cppcheck-suppress identicalConditionAfterEarlyExit
       if (res.fail()) {
         break;
       }
@@ -497,9 +498,10 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
   }
 
   s = iterator->status();
-  // we can ignore it if we get a try again when we have exclusive access,
-  // because that indicates a write to another collection
-  if (!s.ok() && res.ok() && !(haveExclusiveAccess && s.IsTryAgain())) {
+  // we can ignore it if we get a try again return value, because that either
+  // indicates a write to another collection, or a write to this collection if
+  // we are not in exclusive mode, in which case we will call catchup again
+  if (!s.ok() && res.ok() && !s.IsTryAgain()) {
     LOG_TOPIC("8e3a4", WARN, Logger::ENGINES) << "iterator error '" <<
       s.ToString() << "'";
     res = rocksutils::convertStatus(s);

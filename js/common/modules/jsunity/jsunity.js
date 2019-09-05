@@ -523,64 +523,60 @@ var jsUnity = exports.jsUnity = (function () {
             var test = suite.tests[j];
             
             counter = 0;
-            
-            try {
-              this.results.beginSetUp(suite.scope, test.name);
-              setUp(test.name);
-              this.results.endSetUp(suite.scope, test.name);
-              
-              test.fn.call(suite.scope, test.name);
+            let didSetUp = false;
+            let didTest = false;
+            let skipTest = false;
+            let didTearDown = false;
+            let messages = [];
 
-
-              this.results.beginTeardown(suite.scope, test.name);
-              tearDown(test.name);
-              this.results.endTeardown(suite.scope, test.name);
-
-              this.results.pass(j + 1, test.name);
-
-              results.passed++;
-            } catch (e) {
+            while (1) {
               try {
-                tearDown(test.name); // if tearDown above throws exc, will call again!
-              }
-              catch (x) {
-                var xstack; 
-                if (x.stack !== undefined) {
-                  xstack = x.stack;
+                if (!didSetUp) {
+                  this.results.beginSetUp(suite.scope, test.name);
+                  setUp(test.name);
+                  this.results.endSetUp(suite.scope, test.name);
+                  didSetUp = true;
                 }
-                if (e.stack !== undefined) {
-                  this.results.fail(j + 1,
-                                    test.name,
-                                    e + " - " + String(e.stack) + 
-                                    " - teardown failed - " +
-                                    x +
-                                    " - " +
-                                    xstack);
+                if (!didTest && !skipTest) {
+                  test.fn.call(suite.scope, test.name);
+                  didTest = true;
                 }
-                else {
-                  this.results.fail(j + 1,
-                                    test.name,
-                                    e +
-                                    " - teardown failed - " +
-                                    x +
-                                    " - " +
-                                    xstack);
-                }             
-
-                this.log.error("Teardown failed (again): " +
-                              x +
-                              " - " +
-                              xstack +
-                              " aborting tests");
-
-                i = arguments.length; j = cnt; break;
-              }
-
-              if (e.stack !== undefined) {
-                this.results.fail(j + 1, test.name, e + " - " + String(e.stack));
-              }
-              else {
-                this.results.fail(j + 1, test.name, e);
+                if (!didTearDown) {
+                  this.results.beginTeardown(suite.scope, test.name);
+                  tearDown(test.name);
+                  this.results.endTeardown(suite.scope, test.name);
+                  didTearDown = true;
+                }
+ 
+                if (messages.length === 0) {
+                  this.results.pass(j + 1, test.name);
+                  results.passed++;
+                } else {
+                  this.results.fail(j + 1, test.name, messages.join('\n'));
+                }
+                break;
+              } catch (e) {
+                if ( typeof e === "string" ) {
+                  e = new Error(e);
+                }
+                if (!didSetUp) {
+                  this.results.endSetUp(suite.scope, test.name);
+                  didSetUp = true;
+                  messages.push(String(e.stack) + " - setUp failed");
+                  skipTest = true;
+                  continue;
+                }
+                if (!didTest && !skipTest) {
+                  didTest = true;
+                  messages.push(String(e.stack) + " - test failed");
+                  continue;
+                }
+                if (!didTearDown) {
+                  this.results.endTeardown(suite.scope, test.name);
+                  didTearDown = true;
+                  messages.push(String(e.stack) + " - tearDown failed");
+                  continue;
+                }
               }
             }
           }

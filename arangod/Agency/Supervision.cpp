@@ -458,8 +458,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
   // Do actual monitoring
   for (auto const& machine : machinesPlanned) {
-    std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,
-        lastStatus, serverID(machine.first), shortName;
+    std::string serverID(machine.first), shortName;
 
     // short name arrives asynchronous to machine registering, make sure
     //  it has arrived before trying to use it
@@ -619,7 +618,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       }
     } else {
       LOG_TOPIC("a55cd", INFO, Logger::SUPERVISION)
-          << "Short name for << " << serverID
+          << "Short name for " << serverID
           << " not yet available.  Skipping health check.";
     }  // else
 

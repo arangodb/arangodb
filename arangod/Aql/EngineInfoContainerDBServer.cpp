@@ -36,7 +36,6 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/Result.h"
 #include "Cluster/ClusterComm.h"
-#include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngineRegistry.h"
@@ -63,7 +62,7 @@ Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string&
             "Unexpected response from DBServer during setup"};
   }
   arangodb::velocypack::StringRef remId = key.substr(0, p);
-  remoteId = basics::StringUtils::uint64(remId.begin(), remId.length());
+  remoteId = basics::StringUtils::uint64(remId.data(), remId.length());
   if (remoteId == 0) {
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
             "Unexpected response from DBServer during setup"};

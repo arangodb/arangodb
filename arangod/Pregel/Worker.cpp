@@ -167,9 +167,13 @@ void Worker<V, E, M>::setupWorker() {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
     auto self = shared_from_this();
-    scheduler->queue(RequestLane::INTERNAL_LOW, [self, this, cb] {
+    bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self, this, cb] {
       _graphStore->loadShards(&_config, cb);
     });
+    if (!queued) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
+                                     "No available thread to load shards");
+    }
   }
 }
 
@@ -263,10 +267,10 @@ void Worker<V, E, M>::receivedMessages(VPackSlice const& data) {
     MY_READ_LOCKER(guard, _cacheRWLock);
     _writeCacheNextGSS->parseMessages(data);
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "Superstep out of sync");
     LOG_TOPIC("ecd34", ERR, Logger::PREGEL)
         << "Expected: " << _config._globalSuperstep << "Got: " << gss;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "Superstep out of sync");
   }
 }
 
@@ -330,7 +334,7 @@ void Worker<V, E, M>::_startProcessing() {
   
   auto self = shared_from_this();
   for (size_t i = 0; i < numT; i++) {
-    scheduler->queue(RequestLane::INTERNAL_LOW, [self, this, i, numT, numSegments] {
+    bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self, this, i, numT, numSegments] {
       if (_state != WorkerState::COMPUTING) {
         LOG_TOPIC("f0e3d", WARN, Logger::PREGEL) << "Execution aborted prematurely.";
         return;
@@ -345,6 +349,10 @@ void Worker<V, E, M>::_startProcessing() {
         _finishedProcessing();  // last thread turns the lights out
       }
     });
+    if (!queued) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
+                                     "No thread available to start processing");
+    }
   }
   
   // TRI_ASSERT(_runningThreads == i);
@@ -566,7 +574,8 @@ void Worker<V, E, M>::_continueAsync() {
   // wait for new messages before beginning to process
   int64_t milli = _writeCache->containedMessageCount() < _messageBatchSize ? 50 : 5;
   // start next iteration in $milli mseconds.
-  _workHandle = SchedulerFeature::SCHEDULER->queueDelay(
+  bool queued = false;
+  std::tie(queued, _workHandle) = SchedulerFeature::SCHEDULER->queueDelay(
       RequestLane::INTERNAL_LOW, std::chrono::milliseconds(milli), [this](bool cancelled) {
         if (!cancelled) {
           {  // swap these pointers atomically
@@ -584,6 +593,10 @@ void Worker<V, E, M>::_continueAsync() {
           _startProcessing();
         }
       });
+  if (!queued) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUEUE_FULL, "No thread available to continue execution.");
+  }
 }
 
 template <typename V, typename E, typename M>
@@ -704,7 +717,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   auto self = shared_from_this();
-  scheduler->queue(RequestLane::INTERNAL_LOW, [self, this] {
+  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self, this] {
     if (_state != WorkerState::RECOVERING) {
       LOG_TOPIC("554e2", WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
       return;
@@ -741,6 +754,10 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     package.close();
     _callConductor(Utils::finishedRecoveryPath, package);
   });
+  if (!queued) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUEUE_FULL, "No thread available to queue compensation.");
+  }
 }
 
 template <typename V, typename E, typename M>
@@ -769,10 +786,14 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
     auto self = shared_from_this();
-    scheduler->queue(RequestLane::INTERNAL_LOW, [self, path, message] {
+    bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self, path, message] {
       VPackBuilder response;
       PregelFeature::handleConductorRequest(path, message.slice(), response);
     });
+    if (!queued) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
+                                     "No thread available to call conductor");
+    }
   } else {
     std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
     std::string baseUrl = Utils::baseUrl(_config.database(), Utils::conductorPrefix);

@@ -842,7 +842,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
 
   RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived);
 
-  ServerStatistics serverInfo = ServerStatistics::statistics();
+  ServerStatistics const& serverInfo = ServerStatistics::statistics();
 
   V8DealerFeature* dealer =
       application_features::ApplicationServer::getFeature<V8DealerFeature>(
@@ -924,15 +924,21 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.add("server", VPackValue(VPackValueType::Object));
   builder.add("uptime", VPackValue(serverInfo._uptime));
   builder.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
+  builder.add("transactions", VPackValue(VPackValueType::Object));
+  builder.add("started", VPackValue(serverInfo._transactionsStatistics._transactionsStarted));
+  builder.add("aborted", VPackValue(serverInfo._transactionsStatistics._transactionsAborted));
+  builder.add("committed", VPackValue(serverInfo._transactionsStatistics._transactionsCommitted));
+  builder.add("intermediateCommits", VPackValue(serverInfo._transactionsStatistics._intermediateCommits));
+  builder.close();
 
   // export v8 statistics
   builder.add("v8Context", VPackValue(VPackValueType::Object));
   V8DealerFeature::Statistics v8Counters{};
-  std::vector<V8DealerFeature::MemoryStatistics> memoryStatistics;
+  // std::vector<V8DealerFeature::MemoryStatistics> memoryStatistics;
   // V8 may be turned off on a server
   if (dealer && dealer->isEnabled()) {
     v8Counters = dealer->getCurrentContextNumbers();
-    memoryStatistics = dealer->getCurrentMemoryNumbers();
+    // see below: memoryStatistics = dealer->getCurrentMemoryNumbers();
   }
   builder.add("available", VPackValue(v8Counters.available));
   builder.add("busy", VPackValue(v8Counters.busy));
@@ -960,7 +966,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.add("threads", VPackValue(VPackValueType::Object));
   SchedulerFeature::SCHEDULER->toVelocyPack(builder);
   builder.close();
-  
+
   // export ttl statistics
   TtlFeature* ttlFeature =
       application_features::ApplicationServer::getFeature<TtlFeature>("Ttl");

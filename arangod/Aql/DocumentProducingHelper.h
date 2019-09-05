@@ -86,18 +86,18 @@ struct DocumentProducingFunctionContext {
                                    transaction::Methods* trxPtr,
                                    std::vector<size_t> const& coveringIndexAttributePositions,
                                    bool allowCoveringIndexOptimization,
-                                   bool useRawDocumentPointers, bool checkUniqueness)
+                                   bool useRawDocumentPointers,
+                                   bool checkUniqueness)
       : _inputRow(inputRow),
         _outputRow(outputRow),
+        _trxPtr(trxPtr),
+        _projections(projections),
+        _coveringIndexAttributePositions(coveringIndexAttributePositions),
+        _numScanned(0),
         _outputRegister(outputRegister),
         _produceResult(produceResult),
-        _projections(projections),
-        _trxPtr(trxPtr),
-        _coveringIndexAttributePositions(coveringIndexAttributePositions),
-        _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
         _useRawDocumentPointers(useRawDocumentPointers),
-        _numScanned(0),
-        _alreadyReturned(),
+        _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
         _isLastIndex(false),
         _checkUniqueness(checkUniqueness) {}
 
@@ -126,7 +126,7 @@ struct DocumentProducingFunctionContext {
   bool getUseRawDocumentPointers() const noexcept {
     return _useRawDocumentPointers;
   }
-
+  
   void setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization) noexcept {
     _allowCoveringIndexOptimization = allowCoveringIndexOptimization;
   }
@@ -176,18 +176,18 @@ struct DocumentProducingFunctionContext {
  private:
   InputAqlItemRow const& _inputRow;
   OutputAqlItemRow* _outputRow;
-  RegisterId const _outputRegister;
-  bool const _produceResult;
-  std::vector<std::string> const& _projections;
   transaction::Methods* const _trxPtr;
+  std::vector<std::string> const& _projections;
   std::vector<size_t> const& _coveringIndexAttributePositions;
-  bool _allowCoveringIndexOptimization;
-  bool const _useRawDocumentPointers;
   size_t _numScanned;
 
   /// @brief set of already returned documents. Used to make the result distinct
   std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
-
+  
+  RegisterId const _outputRegister;
+  bool const _produceResult;
+  bool const _useRawDocumentPointers;
+  bool _allowCoveringIndexOptimization;
   /// @brief Flag if the current index pointer is the last of the list.
   ///        Used in uniqueness checks.
   bool _isLastIndex;
@@ -216,6 +216,7 @@ inline DocumentProducingFunction getCallback(DocumentProducingCallbackVariant::W
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
+    
     transaction::BuilderLeaser b(context.getTrxPtr());
     b->openObject(true);
 
@@ -256,7 +257,7 @@ inline DocumentProducingFunction getCallback(DocumentProducingCallbackVariant::W
       handleProjections(context.getProjections(), context.getTrxPtr(), slice,
                         *b.get(), context.getUseRawDocumentPointers());
     }
-
+   
     b->close();
     AqlValue v(b.get());
     AqlValueGuard guard{v, true};
@@ -281,10 +282,13 @@ inline DocumentProducingFunction getCallback(DocumentProducingCallbackVariant::W
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
+    
     transaction::BuilderLeaser b(context.getTrxPtr());
     b->openObject(true);
+
     handleProjections(context.getProjections(), context.getTrxPtr(), slice,
                       *b.get(), context.getUseRawDocumentPointers());
+    
     b->close();
 
     AqlValue v(b.get());
@@ -311,7 +315,7 @@ inline DocumentProducingFunction getCallback(DocumentProducingCallbackVariant::D
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
     uint8_t const* vpack = slice.begin();
-    // With NoCopy we do not clone anyways
+    // With NoCopy we do not clone
     TRI_ASSERT(!output.isFull());
     AqlValue v{AqlValueHintDocumentNoCopy{vpack}};
     AqlValueGuard guard{v, false};

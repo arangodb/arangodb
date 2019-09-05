@@ -465,6 +465,12 @@ Result MMFilesHashIndex::insert(transaction::Methods& trx, LocalDocumentId const
 /// @brief removes an entry from the hash array part of the hash index
 Result MMFilesHashIndex::remove(transaction::Methods& trx, LocalDocumentId const& documentId,
                                 velocypack::Slice const& doc, Index::OperationMode mode) {
+  TRI_IF_FAILURE("BreakHashIndexRemove") {
+    if (type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+      // intentionally  break index removal
+      return Result(TRI_ERROR_INTERNAL, "BreakHashIndexRemove failure point triggered");
+    }
+  }
   Result res;
   std::vector<MMFilesHashIndexElement*> elements;
   int r = fillElement<MMFilesHashIndexElement>(elements, documentId, doc);

@@ -66,7 +66,11 @@ SslServerFeature::SslServerFeature(application_features::ApplicationServer& serv
       _keyfile(),
       _sessionCache(false),
       _cipherList("HIGH:!EXPORT:!aNULL@STRENGTH"),
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+      _sslProtocol(TLS_V13),
+#else
       _sslProtocol(TLS_V12),
+#endif
       _sslOptions(asio_ns::ssl::context::default_workarounds | asio_ns::ssl::context::single_dh_use),
       _ecdhCurve("prime256v1") {
   setOptional(true);
@@ -153,6 +157,7 @@ void SslServerFeature::verifySslOptions() {
   }
 
   // validate protocol
+  // cppcheck-suppress unsignedLessThanZero
   if (_sslProtocol <= SSL_UNKNOWN || _sslProtocol >= SSL_LAST) {
     LOG_TOPIC("1f48b", FATAL, arangodb::Logger::SSL)
         << "invalid SSL protocol version specified. Please use a valid "

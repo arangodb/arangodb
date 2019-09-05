@@ -563,10 +563,6 @@ class ClusterComm {
                          bool retryOnCollNotFound,
                          bool retryOnBackendUnavailable = true);
 
-  typedef std::function<void(std::vector<ClusterCommRequest> const&, size_t, size_t)> AsyncCallback;
-  void performAsyncRequests(std::vector<ClusterCommRequest>&&, ClusterCommTimeout timeout,
-                            bool retryOnCollNotFound, AsyncCallback const&);
-
   void addAuthorization(std::unordered_map<std::string, std::string>* headers);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -576,11 +572,10 @@ class ClusterComm {
   void disable();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief push all libcurl callback work to Scheduler threads.  It is a
-  ///  public static function that any object can use.
+  /// @brief push all libcurl callback work to Scheduler threads.
   //////////////////////////////////////////////////////////////////////////////
 
-  static void scheduleMe(std::function<void()> task);
+  static bool scheduleMe(std::function<void()> task);
 
  protected:  // protected members are for unit test purposes
   /// @brief Constructor for test cases.

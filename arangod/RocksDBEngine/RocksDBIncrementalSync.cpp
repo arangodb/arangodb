@@ -501,13 +501,17 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
               return res;
             }
 
+            options.indexOperationMode = Index::OperationMode::normal;
             res = physical->insert(trx, it, mdr, options,
                                    /*lock*/false, nullptr, nullptr);
+            options.indexOperationMode = Index::OperationMode::internal;
             if (res.fail()) {
               return res;
             }
             // fall-through
           } else {
+            int errorNumber = res.errorNumber();
+            res.reset(errorNumber, std::string(TRI_errno_string(errorNumber)) + ": " + res.errorMessage());
             return res;
           }
         }
@@ -528,13 +532,17 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
             if (inner.fail()) {
               return res;
             }
+            options.indexOperationMode = Index::OperationMode::normal;
             res = physical->replace(trx, it, mdr, options,
                                     /*lock*/false, previous);
+            options.indexOperationMode = Index::OperationMode::internal;
             if (res.fail()) {
               return res;
             }
             // fall-through
           } else {
+            int errorNumber = res.errorNumber();
+            res.reset(errorNumber, std::string(TRI_errno_string(errorNumber)) + ": " + res.errorMessage());
             return res;
           }
         }
@@ -681,7 +689,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       }
 
       syncer.setProgress(std::string("processing keys chunk ") + std::to_string(currentChunkId) +
-                         " for collection '" + col->name() + "'");
+          " of " + std::to_string(numChunks) + " for collection '" + col->name() + "'");
 
       // read remote chunk
       TRI_ASSERT(chunkSlice.isArray());
@@ -846,7 +854,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           col->numberDocuments(&trx, transaction::CountType::Normal);
       syncer.setProgress(
           std::string("number of remaining documents in collection '") +
-          col->name() + "' " + std::to_string(numberDocumentsAfterSync) +
+          col->name() + "': " + std::to_string(numberDocumentsAfterSync) +
           ", number of documents due to collection count: " +
           std::to_string(numberDocumentsDueToCounter));
 
@@ -861,8 +869,9 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         // patch the document counter of the collection and the transaction
         int64_t diff = static_cast<int64_t>(numberDocumentsAfterSync) -
                        static_cast<int64_t>(numberDocumentsDueToCounter);
+        auto seq = rocksutils::latestSequenceNumber();
         static_cast<RocksDBCollection*>(trx.documentCollection()->getPhysical())
-            ->adjustNumberDocuments(0, diff);
+            ->meta().adjustNumberDocuments(seq, /*revId*/0, diff);
       }
     }
 

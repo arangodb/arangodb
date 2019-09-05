@@ -2070,13 +2070,12 @@ std::string TRI_HomeDirectory() {
 int TRI_Crc32File(char const* path, uint32_t* crc) {
   FILE* fin;
   void* buffer;
-  int bufferSize;
   int res;
   int res2;
 
   *crc = TRI_InitialCrc32();
 
-  bufferSize = 4096;
+  constexpr int bufferSize = 4096;
   buffer = TRI_Allocate((size_t)bufferSize);
 
   if (buffer == nullptr) {
@@ -2328,9 +2327,16 @@ std::string TRI_GetTempPath() {
         try {
           long systemError;
           std::string systemErrorStr;
-          TRI_CreateRecursiveDirectory(SystemTempPath.get(), systemError, systemErrorStr);
+          std::string baseDirectory = TRI_Dirname(SystemTempPath.get());
+          if (baseDirectory.size() <= 1) {
+            baseDirectory = SystemTempPath.get();
+          }
+          // create base directory if it does not yet exist
+          TRI_CreateRecursiveDirectory(baseDirectory.data(), systemError, systemErrorStr);
         } catch (...) {}
 
+        // fill template string (XXXXXX) with some pseudo-random value and create
+        // the directory
         res = mkDTemp(SystemTempPath.get(), system.size() + 1);
       }
 
@@ -2546,6 +2552,7 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
 #endif
 #endif
 
+  // cppcheck-suppress knownConditionTrueFalse
   if (res != TRI_ERROR_NO_ERROR) {
     // either fallocate failed or it is not there...
 

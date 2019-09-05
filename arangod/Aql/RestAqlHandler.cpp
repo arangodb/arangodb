@@ -229,8 +229,8 @@ void RestAqlHandler::setupClusterQuery() {
   }
   collectionBuilder.close();
 
-  // creates a StandaloneContext or a leasing context
-  auto ctx = createAQLTransactionContext();
+  // creates a StandaloneContext or a leased context
+  auto ctx = createTransactionContext();
 
   VPackBuilder answerBuilder;
   answerBuilder.openObject();
@@ -275,9 +275,6 @@ bool RestAqlHandler::registerSnippets(VPackSlice const snippetsSlice,
     planBuilder->openObject();
     planBuilder->add(VPackValue("collections"));
     planBuilder->add(collectionSlice);
-
-    // hard-code initialize: false
-    planBuilder->add("initialize", VPackValue(false));
 
     planBuilder->add(VPackValue("nodes"));
     planBuilder->add(it.value.get("nodes"));

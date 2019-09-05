@@ -44,8 +44,7 @@ LocalTask::LocalTask(std::shared_ptr<LocalTaskQueue> const& queue)
 ////////////////////////////////////////////////////////////////////////////////
 
 void LocalTask::dispatch() {
-  auto self = shared_from_this();
-  _queue->post([self, this]() {
+  _queue->post([self = shared_from_this(), this]() {
     _queue->startTask();
     try {
       run();
@@ -54,6 +53,7 @@ void LocalTask::dispatch() {
       _queue->stopTask();
       throw;
     }
+    return true;
   });
 }
 
@@ -82,8 +82,10 @@ void LocalCallbackTask::run() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void LocalCallbackTask::dispatch() {
-  auto self = shared_from_this();
-  _queue->post([self, this]() { run(); });
+  _queue->post([self = shared_from_this(), this]() { 
+    run(); 
+    return true;
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,7 +142,12 @@ void LocalTaskQueue::enqueueCallback(std::shared_ptr<LocalCallbackTask> task) {
 /// by task dispatch.
 //////////////////////////////////////////////////////////////////////////////
 
-void LocalTaskQueue::post(std::function<void()> fn) { _poster(fn); }
+void LocalTaskQueue::post(std::function<bool()> fn) { 
+  bool result = _poster(fn); 
+  if (!result) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief join a single task. reduces the number of waiting tasks and wakes

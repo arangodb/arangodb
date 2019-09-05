@@ -24,7 +24,7 @@ UUID is created for this part of the ID.
 The time in seconds that the operation tries to get a consistent
 snapshot. The default is 120 seconds. 
 
-@RESTBODYPARAM{forceBackup,boolean,optional,boolean}
+@RESTBODYPARAM{allowInconsistent,boolean,optional,boolean}
 If this flag is set to `true` and no global transaction lock can be
 acquired within the given timeout, a possibly inconsistent backup
 is taken. The default for this flag is `false` and in this case

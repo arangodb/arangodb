@@ -48,12 +48,9 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/TtlFeature.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/ClusterUtils.h"
-#include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -769,6 +766,8 @@ void HeartbeatThread::runSingleServer() {
             << "start initial sync from leader";
         config._requireFromPresent = true;
         config._incremental = true;
+        config._idleMinWaitTime = 250 * 1000; // 250ms
+        config._idleMaxWaitTime = 3 * 1000 * 1000; // 3s
         TRI_ASSERT(!config._skipCreateDrop);
         config._includeFoxxQueues = true;  // sync _queues and _jobs
 
