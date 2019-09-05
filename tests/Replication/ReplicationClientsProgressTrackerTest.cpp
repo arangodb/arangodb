@@ -25,10 +25,10 @@
 
 #include "gtest/gtest.h"
 
+#include "Logger/LogMacros.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/SyncerId.h"
 
-#include <lib/Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 

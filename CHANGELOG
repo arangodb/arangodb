@@ -10,6 +10,9 @@ devel
   above inconsistencies. Also creation of databases are now secured against
   coordinator outages, they will either be fully created or not visible and
   eventually dropped. This does not require any change on the client code.
+  
+* Added UI support to create documents in a collection using smartGraphAttribute
+  and/or smartJoinAttribute. 
 
 * Allowing inconsistent rather than forcing hot backups
 

@@ -648,9 +648,7 @@ endif ()
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
 
-include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/arangod)
-include_directories(${PROJECT_SOURCE_DIR}/arangosh)
 include_directories(${PROJECT_SOURCE_DIR}/lib)
 
 if (CUSTOM_INCLUDES)
