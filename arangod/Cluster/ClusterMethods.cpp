@@ -3211,10 +3211,16 @@ arangodb::Result hotBackupList(
   }
 
   // Perform the requests
-  cc->performRequests(
+  auto nrGood = cc->performRequests(
     requests, CL_DEFAULT_TIMEOUT, Logger::BACKUP, false, false);
 
-  LOG_TOPIC("410a1", DEBUG, Logger::BACKUP) << "Getting list of local backups";
+  LOG_TOPIC("410a1", DEBUG, Logger::BACKUP) << "Got " << nrGood << " lists of local backups";
+
+  if (nrGood < requests.size()) {
+    return arangodb::Result(
+      TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL,
+      std::string("not all db servers could be reached for backup listing"));
+  }
 
   // Now listen to the results:
   for (auto const& req : requests) {
@@ -3224,7 +3230,7 @@ arangodb::Result hotBackupList(
     if (commError != TRI_ERROR_NO_ERROR) {
       return arangodb::Result(
         commError,
-        std::string("Communication error while getting list of backups from ")
+        std::string("communication error while getting list of backups from ")
         + req.destination);
     }
 
@@ -4256,10 +4262,31 @@ arangodb::Result listHotBackupsOnCoordinator(
   } // allow continuation with None slice
 
   VPackBuilder dummy;
-  arangodb::Result result = hotBackupList(dbServers, payload, list, dummy);
 
-  if (!result.ok()) {
-    return result;
+  using namespace std::chrono;
+  auto timeout = steady_clock::now() + duration<double>(120.0);
+
+
+  // Try to get complete listing for 2 minutes
+  arangodb::Result result;
+  std::chrono::duration<double> wait(1.0);
+  while (true) {
+    if (application_features::ApplicationServer::isStopping()) {
+      return Result(TRI_ERROR_SHUTTING_DOWN, "server is shutting down");
+    }
+
+    result = hotBackupList(dbServers, payload, list, dummy);
+
+    if (!result.ok()) {
+      if (steady_clock::now() > timeout) {
+        return arangodb::Result(
+          TRI_ERROR_CLUSTER_TIMEOUT, "timeout waiting for all db servers to report backup list");
+      } else {
+        LOG_TOPIC("f9u3f", DEBUG, Logger::BACKUP) << "failed to get a hot backup listing from all db servers waiting " << wait.count() << " seconds";
+        std::this_thread::sleep_for(wait);
+        wait *= 1.1;
+      }
+    }
   }
 
   {

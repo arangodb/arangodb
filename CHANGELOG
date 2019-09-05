@@ -1,12 +1,14 @@
 devel
 -----
 
+* Retry hot backup list in cluster for 2 minutes before reporting error
+
 * Added UI support to create documents in a collection using smartGraphAttribute
-  and/or smartJoinAttribute. 
+  and/or smartJoinAttribute.
 
 * Allowing inconsistent rather than forcing hot backups
 
-* Fixed adding an orphan collections as the first collection in a SmartGraph. 
+* Fixed adding an orphan collections as the first collection in a SmartGraph.
 
 * Fixed issue #9862: ServerException: RestHandler/RestCursorHandler.cpp:279
 
