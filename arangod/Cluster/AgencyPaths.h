@@ -114,6 +114,14 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
  public:
   class Arango : public StaticComponent<Arango, Root> {
+    // TODO The following entries are still missing from arango:
+    // - SystemCollectionsCreated
+    // - Sync
+    // - Bootstrap
+    // - Cluster
+    // - Agency
+    // - InitDone
+
    public:
     constexpr char const* component() const noexcept { return "arango"; }
 
