@@ -405,6 +405,239 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
     std::shared_ptr<Supervision const> supervision() const {
       return Supervision::make_shared(shared_from_this());
     }
+
+    class Target : public StaticComponent<Target, Arango> {
+     public:
+      constexpr char const* component() const noexcept { return "Target"; }
+
+      using BaseType::StaticComponent;
+
+      class ToDo : public StaticComponent<ToDo, Target> {
+       public:
+        constexpr char const* component() const noexcept { return "ToDo"; }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<ToDo const> toDo() const {
+        return ToDo::make_shared(shared_from_this());
+      }
+
+      class ToBeCleanedServers : public StaticComponent<ToBeCleanedServers, Target> {
+       public:
+        constexpr char const* component() const noexcept {
+          return "ToBeCleanedServers";
+        }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<ToBeCleanedServers const> toBeCleanedServers() const {
+        return ToBeCleanedServers::make_shared(shared_from_this());
+      }
+
+      class Pending : public StaticComponent<Pending, Target> {
+       public:
+        constexpr char const* component() const noexcept { return "Pending"; }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<Pending const> pending() const {
+        return Pending::make_shared(shared_from_this());
+      }
+
+      class NumberOfDBServers : public StaticComponent<NumberOfDBServers, Target> {
+       public:
+        constexpr char const* component() const noexcept {
+          return "NumberOfDBServers";
+        }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<NumberOfDBServers const> numberOfDBServers() const {
+        return NumberOfDBServers::make_shared(shared_from_this());
+      }
+
+      class LatestDbServerId : public StaticComponent<LatestDbServerId, Target> {
+       public:
+        constexpr char const* component() const noexcept {
+          return "LatestDBServerId";
+        }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<LatestDbServerId const> latestDBServerId() const {
+        return LatestDbServerId::make_shared(shared_from_this());
+      }
+
+      class Failed : public StaticComponent<Failed, Target> {
+       public:
+        constexpr char const* component() const noexcept { return "Failed"; }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<Failed const> failed() const {
+        return Failed::make_shared(shared_from_this());
+      }
+
+      class CleanedServers : public StaticComponent<CleanedServers, Target> {
+       public:
+        constexpr char const* component() const noexcept {
+          return "CleanedServers";
+        }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<CleanedServers const> cleanedServers() const {
+        return CleanedServers::make_shared(shared_from_this());
+      }
+
+      class LatestCoordinatorId : public StaticComponent<LatestCoordinatorId, Target> {
+       public:
+        constexpr char const* component() const noexcept {
+          return "LatestCoordinatorId";
+        }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<LatestCoordinatorId const> latestCoordinatorId() const {
+        return LatestCoordinatorId::make_shared(shared_from_this());
+      }
+
+      class MapUniqueToShortId : public StaticComponent<MapUniqueToShortId, Target> {
+       public:
+        constexpr char const* component() const noexcept {
+          return "MapUniqueToShortID";
+        }
+
+        using BaseType::StaticComponent;
+
+        class DbServer : public DynamicComponent<DbServer, MapUniqueToShortId, ServerID> {
+         public:
+          constexpr char const* component() const noexcept {
+            return value().c_str();
+          }
+
+          using BaseType::DynamicComponent;
+
+          class TransactionId : public StaticComponent<TransactionId, DbServer> {
+           public:
+            constexpr char const* component() const noexcept {
+              return "TransactionID";
+            }
+
+            using BaseType::StaticComponent;
+          };
+
+          std::shared_ptr<TransactionId const> transactionID() const {
+            return TransactionId::make_shared(shared_from_this());
+          }
+
+          class ShortName : public StaticComponent<ShortName, DbServer> {
+           public:
+            constexpr char const* component() const noexcept {
+              return "ShortName";
+            }
+
+            using BaseType::StaticComponent;
+          };
+
+          std::shared_ptr<ShortName const> shortName() const {
+            return ShortName::make_shared(shared_from_this());
+          }
+        };
+
+        std::shared_ptr<DbServer const> dbServer(ServerID name) const {
+          return DbServer::make_shared(shared_from_this(), std::move(name));
+        }
+      };
+
+      std::shared_ptr<MapUniqueToShortId const> mapUniqueToShortID() const {
+        return MapUniqueToShortId::make_shared(shared_from_this());
+      }
+
+      class FailedServers : public StaticComponent<FailedServers, Target> {
+       public:
+        constexpr char const* component() const noexcept {
+          return "FailedServers";
+        }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<FailedServers const> failedServers() const {
+        return FailedServers::make_shared(shared_from_this());
+      }
+
+      class MapLocalToId : public StaticComponent<MapLocalToId, Target> {
+       public:
+        constexpr char const* component() const noexcept {
+          return "MapLocalToID";
+        }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<MapLocalToId const> mapLocalToID() const {
+        return MapLocalToId::make_shared(shared_from_this());
+      }
+
+      class NumberOfCoordinators : public StaticComponent<NumberOfCoordinators, Target> {
+       public:
+        constexpr char const* component() const noexcept {
+          return "NumberOfCoordinators";
+        }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<NumberOfCoordinators const> numberOfCoordinators() const {
+        return NumberOfCoordinators::make_shared(shared_from_this());
+      }
+
+      class Finished : public StaticComponent<Finished, Target> {
+       public:
+        constexpr char const* component() const noexcept { return "Finished"; }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<Finished const> finished() const {
+        return Finished::make_shared(shared_from_this());
+      }
+
+      class Version : public StaticComponent<Version, Target> {
+       public:
+        constexpr char const* component() const noexcept { return "Version"; }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<Version const> version() const {
+        return Version::make_shared(shared_from_this());
+      }
+
+      class Lock : public StaticComponent<Lock, Target> {
+       public:
+        constexpr char const* component() const noexcept { return "Lock"; }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<Lock const> lock() const {
+        return Lock::make_shared(shared_from_this());
+      }
+    };
+
+    std::shared_ptr<Target const> target() const {
+      return Target::make_shared(shared_from_this());
+    }
   };
 
   std::shared_ptr<Arango const> arango() const {

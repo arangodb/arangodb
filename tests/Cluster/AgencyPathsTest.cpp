@@ -64,6 +64,25 @@ static_assert(!std::is_default_constructible<Root::Arango::Supervision::Health::
 static_assert(!std::is_default_constructible<Root::Arango::Supervision::Health::DbServer::Status>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Supervision::Health::DbServer::ShortName>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Supervision::Health::DbServer::Endpoint>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target::ToDo>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target::ToBeCleanedServers>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target::Pending>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target::NumberOfDBServers>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target::LatestDbServerId>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target::Failed>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target::CleanedServers>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target::LatestCoordinatorId>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target::MapUniqueToShortId>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target::MapUniqueToShortId::DbServer>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target::MapUniqueToShortId::DbServer::TransactionId>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target::MapUniqueToShortId::DbServer::ShortName>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target::FailedServers>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target::MapLocalToId>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target::NumberOfCoordinators>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target::Finished>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target::Version>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Target::Lock>::value, CONSTRUCTIBLE_MESSAGE);
 
 // Exclude these on windows, because the constructor is made public there.
 #ifndef _WIN32
@@ -93,11 +112,30 @@ static_assert(!std::is_constructible<Root::Arango::Supervision::Health::DbServer
 static_assert(!std::is_constructible<Root::Arango::Supervision::Health::DbServer::Status, Root::Arango::Supervision::Health::DbServer>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Supervision::Health::DbServer::ShortName, Root::Arango::Supervision::Health::DbServer>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Supervision::Health::DbServer::Endpoint, Root::Arango::Supervision::Health::DbServer>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target, Root::Arango>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::ToDo, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::ToBeCleanedServers, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::Pending, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::NumberOfDBServers, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::LatestDbServerId, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::Failed, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::CleanedServers, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::LatestCoordinatorId, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId::DbServer, Root::Arango::Target::MapUniqueToShortId>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId::DbServer::TransactionId, Root::Arango::Target::MapUniqueToShortId::DbServer>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId::DbServer::ShortName, Root::Arango::Target::MapUniqueToShortId::DbServer>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::FailedServers, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::MapLocalToId, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::NumberOfCoordinators, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::Finished, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::Version, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::Lock, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
 
-
-// Third, constructors with parent and an additional string where applicable
+// Third, constructors for dynamic components with parent and an additional string where applicable
 static_assert(!std::is_constructible<Root::Arango::Plan::Databases::Database, Root::Arango::Plan::Databases, DatabaseID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Supervision::Health::DbServer, Root::Arango::Supervision::Health, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId::DbServer, Root::Arango::Target::MapUniqueToShortId, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
 
 #endif
 // clang-format on
@@ -133,6 +171,25 @@ class AgencyPathsTest : public ::testing::Test {
       {{"arango", "Supervision", "Health", "CRDN-1234", "Status"}, root()->arango()->supervision()->health()->dbServer("CRDN-1234")->status()},
       {{"arango", "Supervision", "Health", "CRDN-1234", "ShortName"}, root()->arango()->supervision()->health()->dbServer("CRDN-1234")->shortName()},
       {{"arango", "Supervision", "Health", "CRDN-1234", "Endpoint"}, root()->arango()->supervision()->health()->dbServer("CRDN-1234")->endpoint()},
+      {{"arango", "Target"}, root()->arango()->target()},
+      {{"arango", "Target", "ToDo"}, root()->arango()->target()->toDo()},
+      {{"arango", "Target", "ToBeCleanedServers"}, root()->arango()->target()->toBeCleanedServers()},
+      {{"arango", "Target", "Pending"}, root()->arango()->target()->pending()},
+      {{"arango", "Target", "NumberOfDBServers"}, root()->arango()->target()->numberOfDBServers()},
+      {{"arango", "Target", "LatestDBServerId"}, root()->arango()->target()->latestDBServerId()},
+      {{"arango", "Target", "Failed"}, root()->arango()->target()->failed()},
+      {{"arango", "Target", "CleanedServers"}, root()->arango()->target()->cleanedServers()},
+      {{"arango", "Target", "LatestCoordinatorId"}, root()->arango()->target()->latestCoordinatorId()},
+      {{"arango", "Target", "MapUniqueToShortID"}, root()->arango()->target()->mapUniqueToShortID()},
+      {{"arango", "Target", "MapUniqueToShortID", "PRMR-1234"}, root()->arango()->target()->mapUniqueToShortID()->dbServer("PRMR-1234")},
+      {{"arango", "Target", "MapUniqueToShortID", "CRDN-5678", "TransactionID"}, root()->arango()->target()->mapUniqueToShortID()->dbServer("CRDN-5678")->transactionID()},
+      {{"arango", "Target", "MapUniqueToShortID", "PRMR-1234", "ShortName"}, root()->arango()->target()->mapUniqueToShortID()->dbServer("PRMR-1234")->shortName()},
+      {{"arango", "Target", "FailedServers"}, root()->arango()->target()->failedServers()},
+      {{"arango", "Target", "MapLocalToID"}, root()->arango()->target()->mapLocalToID()},
+      {{"arango", "Target", "NumberOfCoordinators"}, root()->arango()->target()->numberOfCoordinators()},
+      {{"arango", "Target", "Finished"}, root()->arango()->target()->finished()},
+      {{"arango", "Target", "Version"}, root()->arango()->target()->version()},
+      {{"arango", "Target", "Lock"}, root()->arango()->target()->lock()},
       // clang-format on
   };
 };
