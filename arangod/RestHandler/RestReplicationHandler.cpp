@@ -1299,7 +1299,8 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     // not desired, so it is hardcoded to false
     auto cols =
         ClusterMethods::createCollectionOnCoordinator(_vocbase, merged, ignoreDistributeShardsLikeErrors,
-                                                      createWaitsForSyncReplication, false, false, nullptr);
+                                                      createWaitsForSyncReplication,
+                                                      false, false, nullptr);
     ExecContext const* exe = ExecContext::CURRENT;
     TRI_ASSERT(cols.size() == 1);
     if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
@@ -1914,9 +1915,8 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
 
     VPackBuilder tmp;
 
-    res = ci->ensureIndexCoordinator(*col,
-        idxDef, true, tmp,
-        cluster->indexCreationTimeout());
+    res = ci->ensureIndexCoordinator(*col, idxDef, true, tmp,
+                                     cluster->indexCreationTimeout());
 
     if (res.fail()) {
       return res.reset(res.errorNumber(), "could not create index: " + res.errorMessage());
@@ -2053,8 +2053,6 @@ void RestReplicationHandler::handleCommandSync() {
 
   // will throw if invalid
   config.validate();
-
-  TRI_ASSERT(!config._skipCreateDrop);
   std::shared_ptr<InitialSyncer> syncer;
 
   if (isGlobal) {
@@ -2532,7 +2530,8 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
   }
 
   if (!oldLeaderIdSlice.isEqualString(currentLeader)) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN, "old leader not as expected");
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "old leader not as expected");
     return;
   }
 
