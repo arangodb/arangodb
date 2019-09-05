@@ -579,7 +579,7 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
     auto ctx = mgr->leaseManagedTrx(tid, type);
     if (!ctx) {
       LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NOT_FOUND);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid) + "' not found");
     }
     return std::make_unique<SingleCollectionTransaction>(ctx, collectionName, type);
   } else {
@@ -632,7 +632,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
   auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
   if (!ctx) {
     LOG_TOPIC("2cfed", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid) + "' not found");
   }
   return ctx;
 }
