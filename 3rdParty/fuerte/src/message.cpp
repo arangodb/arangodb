@@ -298,7 +298,6 @@ std::shared_ptr<velocypack::Buffer<uint8_t>> Response::stealPayload() {
   buffer->append(_payload.data() + _payloadOffset,
                  _payload.byteSize() - _payloadOffset);
   _payload.clear();
-
   _payloadOffset = 0;
   return buffer;
 }

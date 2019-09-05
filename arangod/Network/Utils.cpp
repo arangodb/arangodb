@@ -56,7 +56,7 @@ int resolveDestination(DestinationId const& dest, std::string& endpoint) {
   // is looked up, both can fail and immediately lead to a CL_COMM_ERROR
   // state.
   ServerID serverID;
-  if (dest.find("shard:") == 0) {
+  if (dest.compare(0, 6, "shard:", 6) == 0) {
     ShardID shardID = dest.substr(6);
     {
       std::shared_ptr<std::vector<ServerID>> resp = ci->getResponsibleServer(shardID);
@@ -69,7 +69,7 @@ int resolveDestination(DestinationId const& dest, std::string& endpoint) {
       }
     }
     LOG_TOPIC("64670", DEBUG, Logger::CLUSTER) << "Responsible server: " << serverID;
-  } else if (dest.find("server:") == 0) {
+  } else if (dest.compare(0, 7, "server:", 7) == 0) {
     serverID = dest.substr(7);
   } else {
     std::string errorMessage = "did not understand destination '" + dest + "'";
@@ -199,7 +199,9 @@ int fuerteToArangoErrorCode(network::Response const& res) {
   // returns TRI_ERROR_NO_ERROR.
   // If TRI_ERROR_NO_ERROR is returned, then the result was CL_COMM_RECEIVED
   // and .answer can safely be inspected.
-
+  
+  
+  LOG_TOPIC_IF("abcde", ERR, Logger::CLUSTER, res.error != fuerte::Error::NoError) << fuerte::to_string(res.error);
   switch (res.error) {
     case fuerte::Error::NoError:
       return TRI_ERROR_NO_ERROR;
@@ -247,6 +249,24 @@ OperationResult clusterResultInsert(arangodb::fuerte::StatusCode code,
       return network::opResultFromBody(*body, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     case fuerte::StatusConflict:
       return network::opResultFromBody(*body, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+    default:
+      return network::opResultFromBody(*body, TRI_ERROR_INTERNAL);
+  }
+}
+
+/// @brief Create Cluster Communication result for document
+OperationResult clusterResultDocument(arangodb::fuerte::StatusCode code,
+                                      std::shared_ptr<VPackBuffer<uint8_t>> body,
+                                      OperationOptions const& options,
+                                      std::unordered_map<int, size_t> const& errorCounter) {
+  switch (code) {
+    case fuerte::StatusOK:
+      return OperationResult(Result(), std::move(body), nullptr, options, errorCounter);
+    case fuerte::StatusPreconditionFailed:
+      return OperationResult(Result(TRI_ERROR_ARANGO_CONFLICT), std::move(body),
+                             nullptr, options, errorCounter);
+    case fuerte::StatusNotFound:
+      return network::opResultFromBody(*body, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default:
       return network::opResultFromBody(*body, TRI_ERROR_INTERNAL);
   }
