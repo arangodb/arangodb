@@ -4278,6 +4278,8 @@ arangodb::Result listHotBackupsOnCoordinator(VPackSlice const payload, VPackBuil
         std::this_thread::sleep_for(wait);
         wait *= 1.1;
       }
+    } else {
+      break;
     }
   }
 
