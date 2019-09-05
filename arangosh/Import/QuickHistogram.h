@@ -188,7 +188,7 @@ QuickHistogram()
         oss << std::put_time(&tm, "%m-%d-%Y %H:%M:%S");
         auto str = oss.str();
 
-        LOG_TOPIC(8a76c,INFO, arangodb::Logger::FIXME) << Logger::FIXED(fp_measuring,3) << ","
+        LOG_TOPIC("8a76c",INFO, arangodb::Logger::FIXME) << Logger::FIXED(fp_measuring,3) << ","
                                                  << Logger::FIXED(fp_interval,3) << ","
                                                  << num << ","
                                                  << ((0 != num) ? _readingLatencies->at(0).count() : 0) << ","
