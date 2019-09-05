@@ -39,7 +39,15 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
 #include <velocypack/StringRef.h>
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
