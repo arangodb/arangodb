@@ -1765,6 +1765,9 @@ function ReplicationSuite () {
       db._drop(sysCn, {isSystem: true});
 
       connectToSlave();
+      try {
+        db._dropView(cn + 'View');
+      } catch (ignored) {}
       db._drop(cn);
       db._drop(sysCn, {isSystem: true});
     }
