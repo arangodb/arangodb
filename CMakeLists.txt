@@ -303,11 +303,6 @@ set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - data importer")
 set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
 set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - VelocyPack formatter")
 
-# libraries
-set(LIB_ARANGO        arango)
-set(LIB_ARANGO_GEO    arango_geo)
-set(LIB_ARANGO_V8     arango_v8)
-
 # binaries
 set(BIN_ARANGOBENCH   arangobench)
 set(BIN_ARANGOBACKUP  arangobackup)
@@ -1015,8 +1010,6 @@ endif ()
 # ------------------------------------------------------------------------------
 # IResearch
 # ------------------------------------------------------------------------------
-
-set(LIB_ARANGO_IRESEARCH arango_iresearch)
 
 # 3rdParty exports:
 #

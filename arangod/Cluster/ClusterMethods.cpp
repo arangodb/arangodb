@@ -30,7 +30,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/conversions.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
@@ -41,7 +40,6 @@
 #include "Network/Methods.h"
 #include "Network/Utils.h"
 #include "StorageEngine/HotBackupCommon.h"
-#include "Indexes/Index.h"
 #include "RestServer/TtlFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -52,12 +50,12 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Version.h"
 #include "VocBase/ticks.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
 #endif
 #include "Rest/Version.h"
-#include "VocBase/Methods/Version.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Collection.h>
