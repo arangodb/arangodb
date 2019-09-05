@@ -111,7 +111,7 @@ if (USE_LOCAL_CLOCK_GETTIME)
   set(LIB_CLOCK_GETTIME Utilities/clock_gettime.cpp)
 endif ()
 
-add_library(${LIB_ARANGO} STATIC
+add_library(arango STATIC
   ${LIB_ARANGO_APPLE}
   ${LIB_ARANGO_MSVC}
   ${LIB_ARANGO_POSIX}
@@ -263,23 +263,25 @@ add_library(${LIB_ARANGO} STATIC
   ${ADDITIONAL_LIB_ARANGO_SOURCES}
 )
 
-target_link_libraries(${LIB_ARANGO}
-    s2
-    boost_system
-    boost_boost
+target_link_libraries(arango
+  s2
+  boost_system
+  boost_boost
+  ${V8_LIBS}
+  ${SYSTEM_LIBRARIES}
 )
 
 # Enterprise
 if (USE_ENTERPRISE)
-  target_compile_definitions(${LIB_ARANGO} PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(${LIB_ARANGO} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+  target_compile_definitions(arango PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
 ################################################################################
 ## LIB_ARANGO_GEO
 ################################################################################
 
-add_library(${LIB_ARANGO_GEO} STATIC
+add_library(arango_geo STATIC
   Geo/Ellipsoid.cpp
   Geo/GeoJson.cpp
   Geo/GeoParams.cpp
@@ -291,27 +293,28 @@ add_library(${LIB_ARANGO_GEO} STATIC
   Geo/S2/S2MultiPolyline.cpp
 )
 
-target_link_libraries(${LIB_ARANGO_GEO}
-    ${LIB_ARANGO}
-    boost_system
-    boost_boost
+target_link_libraries(arango_geo
+  arango
+  boost_system
+  boost_boost
+  s2
 )
 
 if (WINDOWS)
-  target_compile_options(${LIB_ARANGO_GEO} PUBLIC "-J")
+  target_compile_options(arango_geo PUBLIC "-J")
 endif()
 
 # Enterprise
 if (USE_ENTERPRISE)
-  target_compile_definitions(${LIB_ARANGO_GEO} PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(${LIB_ARANGO_GEO} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+  target_compile_definitions(arango_geo PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(arango_geo PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
 ################################################################################
 ## LIB_ARANGO_V8
 ################################################################################
 
-add_library(${LIB_ARANGO_V8} STATIC
+add_library(arango_v8 STATIC
   ApplicationFeatures/V8SecurityFeature.cpp
   V8/JavaScriptSecurityContext.cpp
   V8/JSLoader.cpp
@@ -326,26 +329,26 @@ add_library(${LIB_ARANGO_V8} STATIC
   V8/v8-environment.cpp
 )
 
-target_link_libraries(${LIB_ARANGO_V8}
+target_link_libraries(arango_v8
     boost_system
     boost_boost
 )
 
 # Enterprise
 if (USE_ENTERPRISE)
-  target_compile_definitions(${LIB_ARANGO_V8} PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(${LIB_ARANGO_V8} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+  target_compile_definitions(arango_v8 PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(arango_v8 PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
 
 if(MSVC)
-  target_compile_options(${LIB_ARANGO_V8} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  target_compile_options(${LIB_ARANGO_GEO} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  target_compile_options(${LIB_ARANGO} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arango_v8 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arango_geo PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arango PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
 if (DARWIN)
-  target_compile_options(${LIB_ARANGO_V8} PRIVATE -Werror)
-  target_compile_options(${LIB_ARANGO_GEO} PRIVATE -Werror)
-  target_compile_options(${LIB_ARANGO} PRIVATE -Werror)
+  target_compile_options(arango_v8 PRIVATE -Werror)
+  target_compile_options(arango_geo PRIVATE -Werror)
+  target_compile_options(arango PRIVATE -Werror)
 endif()

@@ -33,8 +33,8 @@
 #include "Agency/FailedFollower.h"
 #include "Agency/MoveShard.h"
 #include "Agency/Node.h"
-#include "lib/Basics/StringUtils.h"
-#include "lib/Random/RandomGenerator.h"
+#include "Basics/StringUtils.h"
+#include "Random/RandomGenerator.h"
 
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>

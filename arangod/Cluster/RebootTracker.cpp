@@ -22,12 +22,12 @@
 
 #include "RebootTracker.h"
 
+#include "Basics/Exceptions.h"
+#include "Basics/MutexLocker.h"
+#include "Basics/ScopeGuard.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "lib/Basics/Exceptions.h"
-#include "lib/Basics/MutexLocker.h"
-#include "lib/Basics/ScopeGuard.h"
-#include "lib/Logger/LogMacros.h"
-#include "lib/Logger/Logger.h"
 
 #include <algorithm>
 

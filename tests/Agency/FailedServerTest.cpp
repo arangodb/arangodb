@@ -34,7 +34,7 @@
 #include "Agency/FailedServer.h"
 #include "Agency/MoveShard.h"
 #include "Agency/Node.h"
-#include "lib/Basics/StringUtils.h"
+#include "Basics/StringUtils.h"
 
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
