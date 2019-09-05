@@ -582,17 +582,9 @@ bool ServerState::checkEngineEquality(AgencyComm& comm) {
   return true;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief create an id for a specified role
-//////////////////////////////////////////////////////////////////////////////
-
-bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum const& role) {
+bool ServerState::checkIfAgencyInitialized(AgencyComm& comm,
+                                           ServerState::RoleEnum const& role) {
   std::string const agencyListKey = roleToAgencyListKey(role);
-  std::string const latestIdKey = "Latest" + roleToAgencyKey(role) + "Id";
-
-  VPackBuilder builder;
-  builder.add(VPackValue("none"));
-
   AgencyCommResult result = comm.getValues("Plan/" + agencyListKey);
   if (!result.successful()) {
     LOG_TOPIC("0f327", FATAL, Logger::STARTUP)
@@ -604,8 +596,26 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum
   VPackSlice servers = result.slice()[0].get(
       std::vector<std::string>({AgencyCommManager::path(), "Plan", agencyListKey}));
   if (!servers.isObject()) {
-    LOG_TOPIC("6507f", FATAL, Logger::STARTUP) << "Plan/" << agencyListKey << " in agency is no object. "
-                                      << "Agency not initialized?";
+    LOG_TOPIC("6507f", FATAL, Logger::STARTUP)
+        << "Plan/" << agencyListKey << " in agency is no object. "
+        << "Agency not initialized?";
+    return false;
+  }
+  return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief create an id for a specified role
+//////////////////////////////////////////////////////////////////////////////
+
+bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum const& role) {
+  std::string const agencyListKey = roleToAgencyListKey(role);
+  std::string const latestIdKey = "Latest" + roleToAgencyKey(role) + "Id";
+
+  VPackBuilder builder;
+  builder.add(VPackValue("none"));
+
+  if(!checkIfAgencyInitialized(comm, role)) {
     return false;
   }
 
@@ -627,7 +637,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum
   AgencyWriteTransaction creg(
       {AgencyOperation(currentUrl, AgencyValueOperationType::SET, builder.slice()),
        AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP)},
-      AgencyPrecondition(currentUrl, AgencyPrecondition::Type::EMPTY, true));
+       AgencyPrecondition(currentUrl, AgencyPrecondition::Type::EMPTY, true));
   // ok to fail..if it failed we are already registered
   AgencyCommResult cregResult = comm.sendTransactionWithFailover(creg, 0.0);
   if (!cregResult.successful()) {
