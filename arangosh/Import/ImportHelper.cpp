@@ -382,6 +382,8 @@ bool ImportHelper::importJson(std::string const& collectionName,
   double nextProgress = ProgressStep;
 
   static int const BUFFER_SIZE = 32768;
+  _rowOffset = 0;
+  _rowsRead = 0;
 
   while (!_hasError) {
     // reserve enough room to read more data
@@ -434,17 +436,25 @@ bool ImportHelper::importJson(std::string const& collectionName,
 
       // send all data before last '\n'
       char const* first = _outputBuffer.c_str();
-      char* pos = (char*)memrchr(first, '\n', _outputBuffer.length());
+      char const * pos = static_cast<char const*>(memrchr(first, '\n', _outputBuffer.length()));
 
       if (pos != nullptr) {
         size_t len = pos - first + 1;
+        char const * cursor = first;
+        do {
+          ++cursor;
+          cursor = static_cast<char const*>(memchr(cursor, '\n', pos - cursor));
+          ++_rowsRead;
+        } while (nullptr != cursor);
         sendJsonBuffer(first, len, isObject);
         _outputBuffer.erase_front(len);
+        _rowOffset = _rowsRead;
       }
     }
   }
 
   if (_outputBuffer.length() > 0) {
+    ++_rowsRead;
     sendJsonBuffer(_outputBuffer.c_str(), _outputBuffer.length(), isObject);
   }
 
@@ -886,7 +896,7 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
   if (t != nullptr) {
     _tempBuffer.reset();
     _tempBuffer.appendText(str, len);
-    t->sendData(url, &_tempBuffer);
+    t->sendData(url, &_tempBuffer, _rowOffset +1, _rowsRead);
     addPeriodByteCount(len + url.length());
   }
 }
