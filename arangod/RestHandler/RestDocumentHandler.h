@@ -59,16 +59,16 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   RestStatus insertDocument();
 
   // reads a single or all documents
-  bool readDocument();
+  RestStatus readDocument();
 
   // reads a single document
-  bool readSingleDocument(bool generateBody);
+  RestStatus readSingleDocument(bool generateBody);
 
   // reads multiple documents
   bool readManyDocuments();
 
   // reads a single document head
-  bool checkDocument();
+  RestStatus checkDocument();
 
   // replaces a document
   bool replaceDocument();
