@@ -23,6 +23,8 @@
 
 #include "MaintenanceFeature.h"
 
+#include "Agency/AgencyComm.h"
+#include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
@@ -30,6 +32,8 @@
 #include "Basics/WriteLocker.h"
 #include "Cluster/Action.h"
 #include "Cluster/ActionDescription.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "Cluster/ServerState.h"
@@ -55,9 +59,9 @@ bool findNotDoneActions(std::shared_ptr<maintenance::Action> const& action) {
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Maintenance"),
       _forceActivation(false),
-      _maintenanceThreadsMax(2) {
   // the number of threads will be adjusted later. it's just that we want to initialize all members properly
-
+      _maintenanceThreadsMax(2),
+      _resignLeadershipOnShutdown(false) {
   // this feature has to know the role of this server in its `start`. The role
   // is determined by `ClusterFeature::validateOptions`, hence the following
   // line of code is not required. For philosophical reasons we added it to the
@@ -105,6 +109,11 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
       new Int32Parameter(&_secondsActionsLinger),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
+  options->addOption("--cluster.resign-leadership-on-shutdown",
+                    "create resign leader ship job for this dbsever on shutdown",
+                    new BooleanParameter(&_resignLeadershipOnShutdown),
+                    arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+
 }  // MaintenanceFeature::collectOptions
 
 void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -151,6 +160,83 @@ void MaintenanceFeature::start() {
 }  // MaintenanceFeature::start
 
 void MaintenanceFeature::beginShutdown() {
+  if (_resignLeadershipOnShutdown && ServerState::instance()->isDBServer()) {
+
+    struct callback_data {
+      uint64_t _jobId;              // initialised before callback
+      bool _completed;              // populated by the callback
+      std::mutex _mutex;            // mutex used by callback and loop to sync access to callback_data
+      std::condition_variable _cv;  // signaled if callback has found something
+
+      callback_data(uint64_t jobId) : _jobId(jobId), _completed(false) {}
+    };
+
+    // create common shared memory with jobid
+    auto shared = std::make_shared<callback_data>(ClusterInfo::instance()->uniqid());
+
+    AgencyComm am;
+
+    std::string serverId = ServerState::instance()->getId();
+    VPackBuilder jobDesc;
+    {
+      VPackObjectBuilder jobObj(&jobDesc);
+      jobDesc.add("type", VPackValue("resignLeadership"));
+      jobDesc.add("server", VPackValue(serverId));
+      jobDesc.add("jobId", VPackValue(std::to_string(shared->_jobId)));
+      jobDesc.add("timeCreated", VPackValue(timepointToString(std::chrono::system_clock::now())));
+      jobDesc.add("creator", VPackValue(serverId));
+    }
+
+    LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) <<
+      "Starting resigning leadership of shards";
+    am.setValue("Target/ToDo/" + std::to_string(shared->_jobId), jobDesc.slice(), 0.0);
+
+    using clock = std::chrono::steady_clock;
+
+    auto startTime = clock::now();
+    auto timeout = std::chrono::seconds(120);
+
+    auto endtime = startTime + timeout;
+
+    auto checkAgencyPathExists = [&am](std::string const& path, uint64_t jobId) -> bool {
+      try {
+        AgencyCommResult result = am.getValues("Target/" + path + "/" + std::to_string(jobId));
+        if (result.successful()) {
+          VPackSlice value = result.slice()[0].get(std::vector<std::string>{AgencyCommManager::path(), "Target", path, std::to_string(jobId)});
+          if (value.isObject() && value.hasKey("jobId") && value.get("jobId").isEqualString(std::to_string(jobId))) {
+            return true;
+          }
+        }
+      } catch(...) {
+        LOG_TOPIC(ERR, arangodb::Logger::CLUSTER) <<
+          "Exception when checking for job completion";
+      }
+
+      return false;
+    };
+
+    // we can not test for application_features::ApplicationServer::isRetryOK() because it is never okay in shutdown
+    while (clock::now() < endtime) {
+
+      bool completed = checkAgencyPathExists ("Failed", shared->_jobId)
+        || checkAgencyPathExists ("Finished", shared->_jobId);
+
+      if (completed) {
+        break;
+      }
+
+      std::unique_lock<std::mutex> lock(shared->_mutex);
+      shared->_cv.wait_for(lock, std::chrono::seconds(1));
+
+      if (shared->_completed) {
+        break ;
+      }
+    }
+
+    LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) <<
+      "Resigning leadership completed (finished, failed or timed out)";
+  }
+
   _isShuttingDown = true;
   CONDITION_LOCKER(cLock, _actionRegistryCond);
   _actionRegistryCond.broadcast();
@@ -369,7 +455,7 @@ std::shared_ptr<Action> MaintenanceFeature::findFirstActionHash(size_t hash,
   READ_LOCKER(rLock, _actionRegistryLock);
 
   return findFirstActionHashNoLock(hash, predicate);
-}  
+}
 
 std::shared_ptr<Action> MaintenanceFeature::findFirstActionHashNoLock(size_t hash,
     std::function<bool(std::shared_ptr<maintenance::Action> const&)> const& predicate) {
@@ -387,7 +473,7 @@ std::shared_ptr<Action> MaintenanceFeature::findActionId(uint64_t id) {
   READ_LOCKER(rLock, _actionRegistryLock);
 
   return findActionIdNoLock(id);
-} 
+}
 
 std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
   // assert to test lock held?
@@ -426,7 +512,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
         // contain any fast track, so we can idle.
         break;
       }
- 
+
       // When we get here, there is currently nothing to do, so we might
       // as well clean up those jobs in the _actionRegistry, which are
       // in state DONE:
@@ -451,7 +537,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
 
   return ret_ptr;
 
-} 
+}
 
 VPackBuilder MaintenanceFeature::toVelocyPack() const {
   VPackBuilder vb;
@@ -733,4 +819,46 @@ void MaintenanceFeature::delShardVersion(std::string const& shname) {
   if (it != _shardVersion.end()) {
     _shardVersion.erase(it);
   }
+}
+
+uint64_t MaintenanceFeature::getCurrentCounter() const {
+  // It is guaranteed that getCurrentCounter is not executed
+  // concurrent to increase / wait.
+  // This guarantee is created by the following:
+  // 1) There is one inifinite loop that will call
+  //    PhaseOne and PhaseTwo in exactly this ordering.
+  //    It is guaranteed that only one thread at a time is
+  //    in this loop.
+  //    Between PhaseOne and PhaseTwo the increaseCurrentCounter is called
+  //    Within PhaseOne this getCurrentCounter is called, but never after.
+  //    so getCurrentCounter and increaseCurrentCounter are strictily serialized.
+  // 2) waitForLargerCurrentCounter can be called in concurrent threads at any time.
+  //    It is read-only, so it is save to have it concurrent to getCurrentCounter
+  //    without any locking.
+  //    However we need locking for increase and waitFor in order to guarantee
+  //    it's functionallity.
+  // For now we actually do not need this guard, but as this is NOT performance
+  // critical we can simply get it, just to be save for later use.
+  std::unique_lock<std::mutex> guard(_currentCounterLock);
+  return _currentCounter;
+}
+
+void MaintenanceFeature::increaseCurrentCounter() {
+  std::unique_lock<std::mutex> guard(_currentCounterLock);
+  _currentCounter++;
+  _currentCounterCondition.notify_all();
+}
+
+void MaintenanceFeature::waitForLargerCurrentCounter(uint64_t old) {
+  std::unique_lock<std::mutex> guard(_currentCounterLock);
+  // Just to be sure we get not woken up for other reasons.
+  while (_currentCounter <= old) {
+    // We might miss a shutdown check here.
+    // This is ok, as we will not be able to do much anyways.
+    if (_isShuttingDown) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+    _currentCounterCondition.wait(guard);
+  }
+  TRI_ASSERT(_currentCounter > old);
 }

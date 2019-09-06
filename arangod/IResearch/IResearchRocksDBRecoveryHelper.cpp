@@ -295,48 +295,50 @@ void IResearchRocksDBRecoveryHelper::prepare() {
 void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
                                            const rocksdb::Slice& key,
                                            const rocksdb::Slice& value) {
-  if (column_family_id == _documentCF) {
-    auto coll = lookupCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));
-
-    if (coll == nullptr) {
-      return;
-    }
-
-    auto const links = lookupLinks(*coll);
-
-    if (links.empty()) {
-      return;
-    }
-
-    auto docId = RocksDBKey::documentId(key);
-    auto doc = RocksDBValue::data(value);
-    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(coll->vocbase()),
-                                    *coll, arangodb::AccessMode::Type::WRITE);
-
-    trx.begin();
-
-    for (auto link : links) {
-      IndexId indexId(coll->vocbase().id(), coll->id(), link->id());
-
-      // optimization: avoid insertion of recovered documents twice,
-      //               first insertion done during index creation
-      if (!link || _recoveredIndexes.find(indexId) != _recoveredIndexes.end()) {
-        continue;  // index was already populated when it was created
-      }
-
-      link->insert(&trx, docId, doc, Index::OperationMode::internal);
-    }
-
-    trx.commit();
-
+  if (column_family_id != _documentCF) {
     return;
   }
+  
+  auto coll = lookupCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));
+
+  if (coll == nullptr) {
+    return;
+  }
+
+  auto const links = lookupLinks(*coll);
+
+  if (links.empty()) {
+    return;
+  }
+
+  auto docId = RocksDBKey::documentId(key);
+  auto doc = RocksDBValue::data(value);
+  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(coll->vocbase()),
+                                  *coll, arangodb::AccessMode::Type::WRITE);
+
+  trx.begin();
+
+  for (auto link : links) {
+    IndexId indexId(coll->vocbase().id(), coll->id(), link->id());
+
+    // optimization: avoid insertion of recovered documents twice,
+    //               first insertion done during index creation
+    if (!link || _recoveredIndexes.find(indexId) != _recoveredIndexes.end()) {
+      continue;  // index was already populated when it was created
+    }
+
+    link->insert(&trx, docId, doc, Index::OperationMode::internal);
+  }
+
+  trx.commit();
+
+  return;
 }
 
 // common implementation for DeleteCF / SingleDeleteCF
 void IResearchRocksDBRecoveryHelper::handleDeleteCF(uint32_t column_family_id,
                                                     const rocksdb::Slice& key) {
-  if (column_family_id == _documentCF) {
+  if (column_family_id != _documentCF) {
     return;
   }
   auto coll = lookupCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));

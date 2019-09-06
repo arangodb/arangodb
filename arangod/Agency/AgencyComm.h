@@ -236,6 +236,12 @@ class AgencyCommResult {
   AgencyCommResult(int code, std::string const& message,
                    std::string const& transactionId = std::string());
 
+  AgencyCommResult(AgencyCommResult const& other) = delete;
+  AgencyCommResult& operator=(AgencyCommResult const& other) = delete;
+  
+  AgencyCommResult(AgencyCommResult&& other) noexcept;
+  AgencyCommResult& operator=(AgencyCommResult&& other) noexcept;
+
   ~AgencyCommResult() = default;
 
  public:
@@ -266,6 +272,10 @@ class AgencyCommResult {
   void setVPack(std::shared_ptr<velocypack::Builder> const& vpack) {
     _vpack = vpack;
   }
+
+  void toVelocyPack(VPackBuilder& builder) const;
+
+  VPackBuilder toVelocyPack() const;
 
  public:
   std::string _location;
@@ -701,5 +711,9 @@ class AgencyComm {
   bool shouldInitializeStructure();
 };
 }  // namespace arangodb
+
+namespace std {
+ostream& operator<<(ostream& o, arangodb::AgencyCommResult const& a);
+}
 
 #endif

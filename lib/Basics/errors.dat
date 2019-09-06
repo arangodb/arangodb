@@ -319,6 +319,7 @@ ERROR_SERVICE_INVALID_NAME,1750,"invalid service name","Will be raised when an i
 ERROR_SERVICE_INVALID_MOUNT,1751,"invalid mount","Will be raised when an invalid mount is specified."
 ERROR_SERVICE_DOWNLOAD_FAILED,1752,"service download failed","Will be raised when a service download from the central repository failed."
 ERROR_SERVICE_UPLOAD_FAILED,1753,"service upload failed","Will be raised when a service upload from the client to the ArangoDB server failed."
+ERROR_SERVICE_API_DISABLED,3099,"service api disabled","The API for managing Foxx services has been disabled on this server."
 
 ################################################################################
 ## LDAP errors

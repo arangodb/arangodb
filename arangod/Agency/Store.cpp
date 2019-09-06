@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -327,26 +326,32 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
     // Callback
 
     for (auto const& url : urls) {
-      Builder body;  // host
+
+      auto body = std::make_shared<VPackBuilder>();  // host
       {
-        VPackObjectBuilder b(&body);
-        body.add("term", VPackValue(term));
-        body.add("index", VPackValue(index));
+        VPackObjectBuilder b(body.get());
+        body->add("term", VPackValue(term));
+        body->add("index", VPackValue(index));
+
         auto ret = in.equal_range(url);
-        std::map<std::string,std::map<std::string, std::string>> result;
+
         // key -> (modified -> op)
+        // using the map to make sure no double key entries end up in document
+        std::map<std::string,std::map<std::string, std::string>> result;
         for (auto it = ret.first; it != ret.second; ++it) {
           result[it->second->key][it->second->modified] = it->second->oper;
         }
+
+        // Work the map into JSON
         for (auto const& m : result) {
-          body.add(VPackValue(m.first));
+          body->add(VPackValue(m.first));
           {
-            VPackObjectBuilder guard(&body);
+            VPackObjectBuilder guard(body.get());
             for (auto const& m2 : m.second) {
-              body.add(VPackValue(m2.first));
+              body->add(VPackValue(m2.first));
               {
-                VPackObjectBuilder guard2(&body);
-                body.add("op", VPackValue(m2.second));
+                VPackObjectBuilder guard2(body.get());
+                body->add("op", VPackValue(m2.second));
               }
             }
           }
@@ -359,8 +364,8 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
 
         arangodb::ClusterComm::instance()->asyncRequest(
             "1", 1, endpoint, rest::RequestType::POST, path,
-            std::make_shared<std::string>(body.toString()), headerFields,
-            std::make_shared<StoreCallback>(path, body.toJson()), 1.0, true, 0.01);
+            std::make_shared<std::string>(body->toString()), headerFields,
+            std::make_shared<StoreCallback>(url, body, _agent), 1.0, true, 0.01);
 
       } else {
         LOG_TOPIC(WARN, Logger::AGENCY) << "Malformed URL " << url;
@@ -641,7 +646,7 @@ void Store::dumpToBuilder(Builder& builder) const {
       clean[i.second] = ts;
     } else if (ts < it->second) {
       it->second = ts;
-    }      
+    }
   }
   {
     VPackObjectBuilder guard(&builder);
@@ -692,7 +697,51 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
     Slice value = transaction.get(key);
 
     if (value.isObject() && value.hasKey("op")) {
-      _node.hasAsWritableNode(abskeys.at(i)).first.applieOp(value);
+      if (value.get("op").isEqualString("delete") ||
+          value.get("op").isEqualString("replace") ||
+          value.get("op").isEqualString("erase")) {
+        if (!_node.has(abskeys.at(i))) {
+          continue;
+        }
+      }
+      auto uri = Node::normalize(abskeys.at(i));
+      if (value.get("op").isEqualString("observe")) {
+        bool found = false;
+        if (value.hasKey("url") && value.get("url").isString()) {
+          auto url = value.get("url").copyString();
+          auto ret = _observerTable.equal_range(url);
+          for (auto it = ret.first; it != ret.second; ++it) {
+            if (it->second == uri) {
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            _observerTable.emplace(std::pair<std::string, std::string>(url, uri));
+            _observedTable.emplace(std::pair<std::string, std::string>(uri, url));
+          }
+        }
+      } else if (value.get("op").isEqualString("unobserve")) {
+        if (value.hasKey("url") && value.get("url").isString()) {
+          auto url = value.get("url").copyString();
+          auto ret = _observerTable.equal_range(url);
+          for (auto it = ret.first; it != ret.second; ++it) {
+            if (it->second == uri) {
+              _observerTable.erase(it);
+              break;
+            }
+          }
+          ret = _observedTable.equal_range(uri);
+          for (auto it = ret.first; it != ret.second; ++it) {
+            if (it->second == url) {
+              _observedTable.erase(it);
+              break;
+            }
+          }
+        }
+      } else {
+        _node.hasAsWritableNode(abskeys.at(i)).first.applieOp(value);
+      }
     } else {
       _node.hasAsWritableNode(abskeys.at(i)).first.applies(value);
     }
@@ -733,7 +782,7 @@ Store& Store::operator=(VPackSlice const& s) {
       }
     }
   }
-  
+
   TRI_ASSERT(slice[2].isArray());
   for (auto const& entry : VPackArrayIterator(slice[2])) {
     TRI_ASSERT(entry.isObject());

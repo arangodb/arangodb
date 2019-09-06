@@ -3109,12 +3109,12 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
     }
 #if 0
   } else if (func->name == "LIKE") {
-    // optimize a LIKE(x, y) into a plain x == y or a range scan in case the 
+    // optimize a LIKE(x, y) into a plain x == y or a range scan in case the
     // search is case-sensitive and the pattern is either a full match or a
     // left-most prefix
 
     // this is desirable in 99.999% of all cases, but would cause the following incompatibilities:
-    // - the AQL LIKE function will implicitly cast its operands to strings, whereas 
+    // - the AQL LIKE function will implicitly cast its operands to strings, whereas
     //   operator == in AQL will not do this. So LIKE(1, '1') would behave differently
     //   when executed via the AQL LIKE function or via 1 == '1'
     // - for left-most prefix searches (e.g. LIKE(text, 'abc%')) we need to determine
@@ -3135,7 +3135,7 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
         caseInsensitive = caseArg->isTrue();
       }
     }
-      
+
     auto patternArg = args->getMember(1);
 
     if (!caseInsensitive && patternArg->isStringValue()) {
@@ -3168,7 +3168,7 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
 
         AstNode* op = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, lhs, rhs);
         if (wildcardIsLastChar) {
-          // replace LIKE with >= && <= 
+          // replace LIKE with >= && <=
           return op;
         }
         // add >= && <=, but keep LIKE in place

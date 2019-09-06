@@ -1444,11 +1444,6 @@ int IResearchView::insert(transaction::Methods& trx, TRI_voc_cid_t cid,
     return TRI_ERROR_BAD_PARAMETER;  // 'trx' and transaction state required
   }
 
-  if (trx.isSingleOperationTransaction()) {
-    auto ctx = _storePersisted._writer->documents();
-    return insertImpl(ctx);
-  }
-
   auto& state = *(trx.state());
   auto* ctx = ViewStateHelper::write(state, *this);
 

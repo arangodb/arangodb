@@ -779,6 +779,8 @@ void HeartbeatThread::runSingleServer() {
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "start initial sync from leader";
         config._requireFromPresent = true;
         config._incremental = true;
+        config._idleMinWaitTime = 250 * 1000; // 250ms
+        config._idleMaxWaitTime = 3 * 1000 * 1000; // 3s
         TRI_ASSERT(!config._skipCreateDrop);
         config._includeFoxxQueues = true; // sync _queues and _jobs
 

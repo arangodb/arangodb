@@ -1301,6 +1301,11 @@ constexpr int TRI_ERROR_SERVICE_DOWNLOAD_FAILED                                 
 /// failed.
 constexpr int TRI_ERROR_SERVICE_UPLOAD_FAILED                                   = 1753;
 
+/// 3099: ERROR_SERVICE_API_DISABLED
+/// "service api disabled"
+/// The API for managing Foxx services has been disabled on this server.
+constexpr int TRI_ERROR_SERVICE_API_DISABLED                                    = 3099;
+
 /// 1800: ERROR_LDAP_CANNOT_INIT
 /// "cannot init a LDAP connection"
 /// can not init a LDAP connection

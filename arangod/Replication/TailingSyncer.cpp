@@ -1302,12 +1302,12 @@ retry:
         res.is(TRI_ERROR_REPLICATION_NO_START_TICK)) {
       if (res.is(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
         LOG_TOPIC(WARN, Logger::REPLICATION)
-            << "replication applier stopped for database '" << _state.databaseName
-            << "' because required tick is not present on master";
+            << "replication applier stopped for " << _applier->databaseName()
+            << " because required tick is not present on master";
       } else {
         LOG_TOPIC(WARN, Logger::REPLICATION)
-            << "replication applier stopped for database '" << _state.databaseName
-            << "': " << res.errorMessage();
+            << "replication applier stopped for " << _applier->databaseName() 
+            << ": " << res.errorMessage();
       }
 
       // remove previous applier state
@@ -1320,8 +1320,8 @@ retry:
         WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
         LOG_TOPIC(DEBUG, Logger::REPLICATION)
-            << "stopped replication applier for database '" << _state.databaseName
-            << "' with lastProcessedContinuousTick: " << _applier->_state._lastProcessedContinuousTick
+            << "stopped replication applier for " << _applier->databaseName()
+            << " with lastProcessedContinuousTick: " << _applier->_state._lastProcessedContinuousTick
             << ", lastAppliedContinuousTick: " << _applier->_state._lastAppliedContinuousTick
             << ", safeResumeTick: " << _applier->_state._safeResumeTick;
 
@@ -1340,7 +1340,7 @@ retry:
 
       if (!_state.applier._autoResync) {
         LOG_TOPIC(INFO, Logger::REPLICATION)
-            << "Auto resync disabled, applier will stop";
+            << "Auto resync disabled, applier for " << _applier->databaseName() << " will stop";
         _applier->stop(res);
         return res;
       }
@@ -1358,12 +1358,12 @@ retry:
         if (_state.applier._autoResyncRetries > 0) {
           // message only makes sense if there's at least one retry
           LOG_TOPIC(WARN, Logger::REPLICATION)
-              << "aborting automatic resynchronization for database '" << _state.databaseName
-              << "' after " << _state.applier._autoResyncRetries << " short-term retries";
+              << "aborting automatic resynchronization for " << _applier->databaseName()
+              << " after " << _state.applier._autoResyncRetries << " short-term retries";
         } else {
           LOG_TOPIC(WARN, Logger::REPLICATION)
-              << "aborting automatic resynchronization for database '"
-              << _state.databaseName << "' because autoResyncRetries is 0";
+              << "aborting automatic resynchronization for " << _applier->databaseName()
+              << " because autoResyncRetries is 0";
         }
 
         // always abort if we get here
@@ -1373,8 +1373,8 @@ retry:
       
       // do an automatic full resync
       LOG_TOPIC(WARN, Logger::REPLICATION)
-          << "restarting initial synchronization for database '" << _state.databaseName
-          << "' because autoResync option is set. retry #" << shortTermFailsInRow 
+          << "restarting initial synchronization for " << _applier->databaseName()
+          << " because autoResync option is set. retry #" << shortTermFailsInRow 
           << " of " << _state.applier._autoResyncRetries;
 
       {
@@ -1397,9 +1397,8 @@ retry:
         if (r.ok()) {
           TRI_voc_tick_t lastLogTick = syncer->getLastLogTick();
           LOG_TOPIC(INFO, Logger::REPLICATION)
-              << "automatic resynchronization for database '" << _state.databaseName
-              << "' finished. restarting continuous replication applier from "
-                 "tick "
+              << "automatic resynchronization for " << _applier->databaseName()
+              << " finished. restarting continuous replication applier from tick "
               << lastLogTick;
           _initialTick = lastLogTick;
           _useTick = true;
@@ -1413,7 +1412,7 @@ retry:
         }
         res.reset(r.errorNumber(), r.errorMessage());
         LOG_TOPIC(WARN, Logger::REPLICATION)
-            << "initial replication failed: " << res.errorMessage();
+            << "initial replication for " << _applier->databaseName() << " failed: " << res.errorMessage();
         // fall through otherwise
       } catch (...) {
         res.reset(TRI_ERROR_INTERNAL,
@@ -1468,8 +1467,8 @@ void TailingSyncer::getLocalState() {
 
 /// @brief perform a continuous sync with the master
 Result TailingSyncer::runContinuousSync() {
-  constexpr uint64_t MinWaitTime = 300 * 1000;        //  0.30 seconds
-  constexpr uint64_t MaxWaitTime = 60 * 1000 * 1000;  // 60    seconds
+  constexpr uint64_t MinWaitTime = 250 * 1000;        // 0.25 seconds
+  constexpr uint64_t MaxWaitTime = 60 * 1000 * 1000;  // 60 seconds
   uint64_t connectRetries = 0;
   uint64_t inactiveCycles = 0;
 
@@ -1521,6 +1520,16 @@ Result TailingSyncer::runContinuousSync() {
   if (safeResumeTick <= 0 || safeResumeTick != fromTick) {
     // adjust fetchTick so we can tail starting from the tick containing
     // the open transactions we did not commit locally
+    if (safeResumeTick > 0) {
+      // important: we must not resume tailing in the middle of a RocksDB transaction,
+      // as this would mean we would be missing the transaction begin marker. this would
+      // cause "unexpected transaction errors"
+      std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
+      if (engineName == "rocksdb" && _state.master.engine == engineName) {
+        fromTick = safeResumeTick;
+      }
+    }
+
     Result res = fetchOpenTransactions(safeResumeTick, fromTick, fetchTick);
 
     if (res.fail()) {
@@ -1592,13 +1601,6 @@ Result TailingSyncer::runContinuousSync() {
       }
     } else {
       connectRetries = 0;
-
-      {
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-
-        _applier->_state._failedConnects = connectRetries;
-        _applier->_state._totalRequests++;
-      }
 
       if (res.fail()) {
         // some other error we will not ignore
@@ -1704,7 +1706,7 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tic
 
   if (!fromIncluded && fromTick > 0 &&
       (!_state.master.simulate32Client() || fromTick != readTick)) {
-    Result r = handleRequiredFromPresentFailure(fromTick, readTick);
+    Result r = handleRequiredFromPresentFailure(fromTick, readTick, "initial");
     TRI_ASSERT(_ongoingTransactions.empty());
 
     if (r.fail()) {
@@ -1814,7 +1816,7 @@ void TailingSyncer::fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> shar
 
     std::unique_ptr<httpclient::SimpleHttpResult> response;
     double time = TRI_microtime();
-
+    
     _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
       response.reset(client->request(rest::RequestType::PUT, url, body.c_str(),
                                      body.size()));
@@ -1828,6 +1830,7 @@ void TailingSyncer::fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> shar
           replutils::buildHttpError(response.get(), url, _state.connection), time);
     } else {
       // success!
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "fetching master log from tick " + StringUtils::itoa(fetchTick) + " took " << time << " s";
       sharedStatus->gotResponse(std::move(response), time);
     }
   } catch (basics::Exception const& ex) {
@@ -1851,6 +1854,7 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
   TRI_ASSERT(mustFetchBatch || _workInParallel);
 
   if (mustFetchBatch) {
+    TRI_ASSERT(!sharedStatus->gotResponse());
     fetchMasterLog(sharedStatus, fetchTick, lastScannedTick, firstRegularTick);
   }
 
@@ -1960,7 +1964,7 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
 
   if (!fromIncluded && fetchTick > 0 &&
       (!_state.master.simulate32Client() || originalFetchTick != tick)) {
-    Result r = handleRequiredFromPresentFailure(fetchTick, tick);
+    Result r = handleRequiredFromPresentFailure(fetchTick, tick, "ongoing");
     TRI_ASSERT(_ongoingTransactions.empty());
 
     if (r.fail()) {
@@ -1989,15 +1993,23 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
 
   if (r.fail()) {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "applyLog failed with error: " << r.errorMessage();
-  } else {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "applyLog successful, lastAppliedTick: " << lastAppliedTick << ", firstRegularTick: " << firstRegularTick << ", processedMarkers: " << applyStats.processedMarkers;
+    return r;
   }
+
+  // success!
+
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "applyLog successful, lastAppliedTick: " << lastAppliedTick << ", firstRegularTick: " << firstRegularTick << ", processedMarkers: " << applyStats.processedMarkers << ", took: " << time << " s";
+     
+  // we grab the write-lock here and hold it until the end of this function
+  WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+
+  _applier->_state._failedConnects = 0;
+  _applier->_state._totalRequests++;
+
 
   // cppcheck-suppress *
   if (applyStats.processedMarkers > 0) {
     worked = true;
-
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
     _applier->_state._totalApplyTime += time;
     _applier->_state._totalApplyInstances++;
@@ -2012,7 +2024,6 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
     
     TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >= _applier->_state._lastAppliedContinuousTick);
   } else if (bumpTick) {
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
     if (_applier->_state._lastProcessedContinuousTick < tick) {
       _applier->_state._lastProcessedContinuousTick = tick;
@@ -2038,8 +2049,6 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
     // write state at least once so the start tick gets saved
     _hasWrittenState = true;
 
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-
     _applier->_state._lastAppliedContinuousTick = firstRegularTick;
     _applier->_state._lastProcessedContinuousTick = firstRegularTick;
 
@@ -2052,17 +2061,11 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
     TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >= _applier->_state._lastAppliedContinuousTick);
   }
 
-  if (r.fail()) {
-    return r;
+  if (!worked && checkMore) {
+    worked = true;
   }
 
-  if (!worked) {
-    if (checkMore) {
-      worked = true;
-    }
-  }
-
-  return Result();
+  return r;
 }
 
 void TailingSyncer::checkParallel() {
@@ -2089,23 +2092,24 @@ void TailingSyncer::checkParallel() {
 }
 
 Result TailingSyncer::handleRequiredFromPresentFailure(TRI_voc_tick_t fromTick,
-                                                       TRI_voc_tick_t readTick) {
+                                                       TRI_voc_tick_t readTick,
+                                                       char const* type) {
   std::string const msg =
-        std::string("required init tick value '") + StringUtils::itoa(fromTick) +
+        std::string("required ") + type + " tick value '" + StringUtils::itoa(fromTick) +
         "' is not present (anymore?) on master at " + _state.master.endpoint +
         ". Last tick available on master is '" + StringUtils::itoa(readTick) +
         "'. It may be required to do a full resync and increase the number "
         "of historic logfiles/WAL file timeout or archive size on the master.";
+  LOG_TOPIC(WARN, Logger::REPLICATION) << msg;
+
   if (_requireFromPresent) {  // hard fail
     abortOngoingTransactions();
-    setProgress(msg);
     return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, msg);
   }
 
   // only print a warning about the failure, abort ongoing transactions and go on...
   // we may have data loss and follow-up failures here, but at least all these
   // will be either logged or make the replication fail later on
-  LOG_TOPIC(WARN, Logger::REPLICATION) << msg;
     
   // we have to abort any running ongoing transactions, as they will be
   // holding exclusive locks on the underlying collection(s)

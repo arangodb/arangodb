@@ -129,6 +129,16 @@ class AgencyCallback {
   std::shared_ptr<VPackBuilder> _lastData;
   bool const _needsValue;
 
+  /// @brief this flag is set if there was an attempt to signal the callback's
+  /// condition variable - this is necessary to catch all signals that happen
+  /// before the caller is going into the wait state, i.e. to prevent this
+  ///  1) register callback
+  ///  2a) execute callback
+  ///  2b) execute callback signaling
+  ///  3) caller going into condition.wait() (and not woken up)
+  /// this variable is protected by the condition variable! 
+  bool _wasSignaled;
+
   // execute callback with current value data:
   bool execute(std::shared_ptr<VPackBuilder>);
   // execute callback without any data:
