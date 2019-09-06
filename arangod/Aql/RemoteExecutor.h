@@ -27,9 +27,8 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Basics/Mutex.h"
 #include "Cluster/ClusterComm.h"
-
-#include <lib/Rest/CommonDefines.h>
-#include <lib/SimpleHttpClient/SimpleHttpResult.h>
+#include "Rest/CommonDefines.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 
 namespace arangodb {
 namespace aql {

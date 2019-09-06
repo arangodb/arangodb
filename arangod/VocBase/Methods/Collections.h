@@ -30,6 +30,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 #include <functional>
 
 namespace arangodb {
@@ -87,15 +88,21 @@ struct Collections {
       arangodb::velocypack::Slice const& properties,  // collection properties
       bool createWaitsForSyncReplication,             // replication wait flag
       bool enforceReplicationFactor,                  // replication factor flag
-      FuncCallback callback  // invoke on collection creation
-  );
+      bool isNewDatabase,
+      FuncCallback callback);  // invoke on collection creation
 
   /// Create many collections, ownership of collections in callback is
   /// transferred to callee
   static Result create(TRI_vocbase_t&, std::vector<CollectionCreationInfo> const& infos,
                        bool createWaitsForSyncReplication,
-                       bool enforceReplicationFactor, MultiFuncCallback const&);
-  static Result createSystem(TRI_vocbase_t& vocbase, std::string const& name);
+                       bool enforceReplicationFactor, bool isNewDatabase,
+                       std::shared_ptr<LogicalCollection> const& colPtr,
+                       MultiFuncCallback const&);
+
+  static std::pair<Result, std::shared_ptr<LogicalCollection>> createSystem(
+      TRI_vocbase_t& vocbase, std::string const& name, bool isNewDatabase);
+  static void createSystemCollectionProperties(std::string collectionName,
+                                               VPackBuilder& builder, bool isSystem);
 
   static Result load(TRI_vocbase_t& vocbase, LogicalCollection* coll);
   static Result unload(TRI_vocbase_t* vocbase, LogicalCollection* coll);

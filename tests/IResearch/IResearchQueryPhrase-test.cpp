@@ -161,7 +161,7 @@ class IResearchQueryPhraseTest : public ::testing::Test {
     auto sysVocBasePtr = sysVocBaseFeature->use();
     arangodb::methods::Collections::createSystem(
         *sysVocBasePtr, 
-        arangodb::tests::AnalyzerCollectionName);
+        arangodb::tests::AnalyzerCollectionName, false);
 
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
@@ -171,7 +171,7 @@ class IResearchQueryPhraseTest : public ::testing::Test {
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     arangodb::methods::Collections::createSystem(
         *vocbase, 
-        arangodb::tests::AnalyzerCollectionName);
+        arangodb::tests::AnalyzerCollectionName, false);
     analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
                        VPackParser::fromJson("\"abc\"")->slice(), 
                        irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
@@ -674,14 +674,42 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
-  // FIXME currently optimizer tries to evaluate ANALYZER function
+  // constexpr ANALYZER function (true)
   {
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[7].slice(),  insertedDocs[8].slice(),
+        insertedDocs[13].slice(), insertedDocs[19].slice(),
+        insertedDocs[22].slice(), insertedDocs[24].slice(),
+        insertedDocs[29].slice(),
+    };
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH ANALYZER(1==1, 'test_analyzer') && ANALYZER(PHRASE(d.duplicated, 'z'), "
         "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_FALSE(result.result.ok());
-    ASSERT_TRUE(result.result.is(TRI_ERROR_NOT_IMPLEMENTED));
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+                                                                    resolved, true)));
+    }
+    EXPECT_TRUE((i == expected.size()));
+  }
+
+  // constexpr ANALYZER function (false)
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        "FOR d IN testView SEARCH ANALYZER(1==2, 'test_analyzer') && ANALYZER(PHRASE(d.duplicated, 'z'), "
+        "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    ASSERT_EQ(0, slice.length());
   }
 
   // test custom analyzer

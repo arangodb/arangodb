@@ -173,18 +173,6 @@ ExternalProcess::~ExternalProcess() {
 ExternalProcessStatus::ExternalProcessStatus()
     : _status(TRI_EXT_NOT_STARTED), _exitStatus(0), _errorMessage() {}
 
-static ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid) {
-  {
-    MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
-    auto found = std::find_if(ExternalProcesses.begin(), ExternalProcesses.end(),
-                              [pid](const ExternalProcess * m) -> bool { return m->_pid == pid; });
-    if (found != ExternalProcesses.end()) {
-      return *found;
-    }
-  }
-  return nullptr;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates pipe pair
 ////////////////////////////////////////////////////////////////////////////////
@@ -680,14 +668,13 @@ static time_t _FileTime_to_POSIX(FILETIME* ft) {
   return (ts - 116444736000000000) / 10000000;
 }
 
-ProcessInfo TRI_ProcessInfoH(HANDLE processHandle, TRI_pid_t pid) {
+ProcessInfo TRI_ProcessInfoSelf() {
   ProcessInfo result;
-
   PROCESS_MEMORY_COUNTERS_EX pmc;
   pmc.cb = sizeof(PROCESS_MEMORY_COUNTERS_EX);
   // compiler warning wird in kauf genommen!c
   // http://msdn.microsoft.com/en-us/library/windows/desktop/ms684874(v=vs.85).aspx
-  if (GetProcessMemoryInfo(processHandle, (PPROCESS_MEMORY_COUNTERS)&pmc, pmc.cb)) {
+  if (GetProcessMemoryInfo(GetCurrentProcess(), (PPROCESS_MEMORY_COUNTERS)&pmc, pmc.cb)) {
     result._majorPageFaults = pmc.PageFaultCount;
     // there is not any corresponce to minflt in linux
     result._minorPageFaults = 0;
@@ -712,7 +699,7 @@ ProcessInfo TRI_ProcessInfoH(HANDLE processHandle, TRI_pid_t pid) {
   }
   /// computing times
   FILETIME creationTime, exitTime, kernelTime, userTime;
-  if (GetProcessTimes(processHandle, &creationTime, &exitTime, &kernelTime, &userTime)) {
+  if (GetProcessTimes(GetCurrentProcess(), &creationTime, &exitTime, &kernelTime, &userTime)) {
     // see remarks in
     // http://msdn.microsoft.com/en-us/library/windows/desktop/ms683223(v=vs.85).aspx
     // value in seconds
@@ -723,7 +710,8 @@ ProcessInfo TRI_ProcessInfoH(HANDLE processHandle, TRI_pid_t pid) {
     // the function '_FileTime_to_POSIX' should be called
   }
   /// computing number of threads
-  HANDLE snapShot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, pid);
+  DWORD myPID = GetCurrentProcessId();
+  HANDLE snapShot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, myPID);
 
   if (snapShot != INVALID_HANDLE_VALUE) {
     THREADENTRY32 te32;
@@ -731,35 +719,16 @@ ProcessInfo TRI_ProcessInfoH(HANDLE processHandle, TRI_pid_t pid) {
     if (Thread32First(snapShot, &te32)) {
       result._numberThreads++;
       while (Thread32Next(snapShot, &te32)) {
-        if (te32.th32OwnerProcessID == pid) {
+        if (te32.th32OwnerProcessID == myPID) {
           result._numberThreads++;
         }
       }
     }
-    else {
-      LOG_TOPIC("66667", ERR, arangodb::Logger::FIXME) << "failed to acquire thread from snapshot - " << GetLastError();
-    }
     CloseHandle(snapShot);
-  }
-  else {
-    LOG_TOPIC("66668", ERR, arangodb::Logger::FIXME) << "failed to acquire process threads count - " << GetLastError();
   }
 
   return result;
 }
-
-ProcessInfo TRI_ProcessInfoSelf() {
-  return TRI_ProcessInfoH(GetCurrentProcess(), GetCurrentProcessId());
-}
-
-ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
-  auto external = TRI_LookupSpawnedProcess(pid);
-  if (external != nullptr) {
-    return TRI_ProcessInfoH(external->_process, pid);
-  }
-  return {};
-}
-
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -926,7 +895,7 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
 }
 
 #else
-#ifndef _WIN32
+
 ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
   ProcessInfo result;
 
@@ -934,7 +903,7 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
 
   return result;
 }
-#endif
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1027,7 +996,17 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32
   status._status = TRI_EXT_NOT_FOUND;
   status._exitStatus = 0;
 
-  auto external = TRI_LookupSpawnedProcess(pid._pid);
+  ExternalProcess* external = nullptr;
+  {
+    MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+
+    for (auto& it : ExternalProcesses) {
+      if (it->_pid == pid._pid) {
+        external = it;
+        break;
+      }
+    }
+  }
 
   if (external == nullptr) {
     status._errorMessage =

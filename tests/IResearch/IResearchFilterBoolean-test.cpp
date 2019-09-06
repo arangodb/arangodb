@@ -176,14 +176,11 @@ class IResearchFilterBooleanTest : public ::testing::Test {
     TRI_vocbase_t* vocbase;
 
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-    arangodb::methods::Collections::createSystem(
-        *vocbase, 
-        arangodb::tests::AnalyzerCollectionName);
+    arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
+                                                 false);
     analyzers->emplace(
-      result,
-      "testVocbase::test_analyzer",
-      "TestAnalyzer",
-      arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\" }")->slice()); // cache analyzer
+        result, "testVocbase::test_analyzer", "TestAnalyzer",
+        arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\" }")->slice());  // cache analyzer
   }
 
   ~IResearchFilterBooleanTest() {
@@ -493,11 +490,25 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         "LET c=41 FOR d IN collection FILTER not ANALYZER(TO_STRING(c+1) == "
         "d['a']['b'][23]['c'], 'test_analyzer') RETURN d",
         expected, &ctx);
+  }
+  // filter with constexpr analyzer
+  {
+    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
+    arangodb::aql::AqlValueGuard guard(value, true);
 
-    assertFilterExecutionFail(
-        "LET c=41 FOR d IN collection FILTER not (ANALYZER(TO_STRING(c+1), "
-        "'test_analyzer') == d['a']['b'][23]['c']) RETURN d",
-        &ctx);
+    ExpressionContextMock ctx;
+    ctx.vars.emplace(var.name, value);
+    irs::Or expected;
+    expected.add<irs::Not>()
+      .filter<irs::And>()
+      .add<irs::by_term>()
+      .field(mangleStringIdentity("a.b[23].c"))
+      .term("42");
+    assertFilterSuccess(
+      "LET c=41 FOR d IN collection FILTER not (ANALYZER(TO_STRING(c+1), "
+      "'test_analyzer') == d['a']['b'][23]['c']) RETURN d",
+      expected, &ctx);
   }
 
   // dynamic complex attribute name
