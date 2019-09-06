@@ -107,17 +107,21 @@ RestStatus RestCursorHandler::continueExecute() {
 
 void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
   TRI_DEFER(RestVocbaseBaseHandler::shutdownExecute(isFinalized));
-  auto const type = _request->requestType();
 
   // request not done yet
   if (_state == HandlerState::PAUSED) {
     return;
   }
-
+  
   // only trace create cursor requests
-  if (type != rest::RequestType::POST) {
+  if (_request->requestType() != rest::RequestType::POST) {
     return;
   }
+  
+  // destroy the query context.
+  // this is needed because the context is managing resources (e.g. leases
+  // for a managed transaction) that we want to free as early as possible
+  _queryResult.context.reset();
 
   if (!_isValidForFinalize || _auditLogged) {
     // set by RestCursorHandler before
@@ -270,13 +274,6 @@ RestStatus RestCursorHandler::processQuery() {
 }
 
 RestStatus RestCursorHandler::handleQueryResult() {
-  auto guard = scopeGuard([this]() {
-    // destroy the query context as soon as we leave this method.
-    // this is needed because the context is managing resources (e.g. leases
-    // for a managed transaction) that we want to free as early as possible
-    _queryResult.context.reset();
-  });
-
   if (_queryResult.result.fail()) {
     if (_queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
         (_queryResult.result.is(TRI_ERROR_QUERY_KILLED) && wasCanceled())) {
@@ -362,8 +359,6 @@ RestStatus RestCursorHandler::handleQueryResult() {
     CursorRepository* cursors = _vocbase.cursorRepository();
     TRI_ASSERT(cursors != nullptr);
     TRI_ASSERT(_queryResult.data.get() != nullptr);
-    // context is needed for longer, so cancel the guard 
-    guard.cancel();
     // steal the query result, cursor will take over the ownership
     Cursor* cursor =
         cursors->createFromQueryResult(std::move(_queryResult), batchSize, ttl, count);
