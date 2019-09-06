@@ -73,6 +73,10 @@ OperationResult clusterResultInsert(fuerte::StatusCode responsecode,
                                     std::shared_ptr<velocypack::Buffer<uint8_t>> body,
                                     OperationOptions const& options,
                                     std::unordered_map<int, size_t> const& errorCounter);
+OperationResult clusterResultDocument(arangodb::fuerte::StatusCode code,
+                                      std::shared_ptr<VPackBuffer<uint8_t>> body,
+                                      OperationOptions const& options,
+                                      std::unordered_map<int, size_t> const& errorCounter);
 
 }  // namespace network
 }  // namespace arangodb
