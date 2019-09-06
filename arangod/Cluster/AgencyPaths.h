@@ -159,7 +159,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
         class Database : public DynamicComponent<Database, Views, DatabaseID> {
          public:
-          constexpr char const* component() const noexcept {
+          char const* component() const noexcept {
             return value().c_str();
           }
 
@@ -198,7 +198,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
         class Server : public DynamicComponent<Server, Coordinators, ServerID> {
          public:
-          constexpr char const* component() const noexcept {
+          char const* component() const noexcept {
             return value().c_str();
           }
 
@@ -244,7 +244,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
         class Server : public DynamicComponent<Server, DbServers, ServerID> {
          public:
-          constexpr char const* component() const noexcept {
+          char const* component() const noexcept {
             return value().c_str();
           }
 
@@ -270,7 +270,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
         class Database : public DynamicComponent<Database, Collections, DatabaseID> {
          public:
-          constexpr char const* component() const noexcept {
+          char const* component() const noexcept {
             return value().c_str();
           }
 
@@ -278,7 +278,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
           class Collection : public DynamicComponent<Collection, Database, CollectionID> {
            public:
-            constexpr char const* component() const noexcept {
+            char const* component() const noexcept {
               return value().c_str();
             }
 
@@ -333,7 +333,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
               class Shard : public DynamicComponent<Shard, Shards, ShardID> {
                public:
-                constexpr char const* component() const noexcept {
+                char const* component() const noexcept {
                   return value().c_str();
                 }
 
@@ -661,7 +661,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
         class Server : public DynamicComponent<Server, ServersKnown, ServerID> {
          public:
-          constexpr char const* component() const noexcept {
+          char const* component() const noexcept {
             return value().c_str();
           }
 
@@ -750,7 +750,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
         class Server : public DynamicComponent<Server, ServersRegistered, ServerID> {
          public:
-          constexpr char const* component() const noexcept {
+          char const* component() const noexcept {
             return value().c_str();
           }
 
@@ -891,7 +891,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
         class Server : public DynamicComponent<Server, Coordinators, ServerID> {
          public:
-          constexpr char const* component() const noexcept {
+          char const* component() const noexcept {
             return value().c_str();
           }
 
@@ -937,7 +937,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
         class Server : public DynamicComponent<Server, DbServers, ServerID> {
          public:
-          constexpr char const* component() const noexcept {
+          char const* component() const noexcept {
             return value().c_str();
           }
 
@@ -963,7 +963,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
         class Database : public DynamicComponent<Database, Collections, DatabaseID> {
          public:
-          constexpr char const* component() const noexcept {
+          char const* component() const noexcept {
             return value().c_str();
           }
 
@@ -971,7 +971,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
           class Collection : public DynamicComponent<Collection, Database, CollectionID> {
            public:
-            constexpr char const* component() const noexcept {
+            char const* component() const noexcept {
               return value().c_str();
             }
 
@@ -979,7 +979,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
             class Shard : public DynamicComponent<Shard, Collection, ShardID> {
              public:
-              constexpr char const* component() const noexcept {
+              char const* component() const noexcept {
                 return value().c_str();
               }
 
@@ -1091,7 +1091,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
         class Database : public DynamicComponent<Database, Databases, DatabaseID> {
          public:
-          constexpr char const* component() const noexcept {
+          char const* component() const noexcept {
             return value().c_str();
           }
 
@@ -1099,7 +1099,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
           class Server : public DynamicComponent<Server, Database, ServerID> {
            public:
-            constexpr char const* component() const noexcept {
+            char const* component() const noexcept {
               return value().c_str();
             }
 
@@ -1520,7 +1520,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
         class Server : public DynamicComponent<Server, MapUniqueToShortId, ServerID> {
          public:
-          constexpr char const* component() const noexcept {
+          char const* component() const noexcept {
             return value().c_str();
           }
 

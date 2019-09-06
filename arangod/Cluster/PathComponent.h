@@ -150,7 +150,7 @@ class DynamicComponent : public std::enable_shared_from_this<T> /* (sic) */, pub
     return std::make_shared<ConstructibleT const>(std::move(parent), std::move(value));
   }
 
-  V const& value() const { return _value; }
+  V const& value() const noexcept { return _value; }
 
  private:
   // Accessor to our subclass
