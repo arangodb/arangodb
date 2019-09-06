@@ -778,7 +778,7 @@ function runArangoshCmd (options, instanceInfo, addArgs, cmds, coreCheck = false
 
   internal.env.INSTANCEINFO = JSON.stringify(instanceInfo);
   const argv = toArgv(args).concat(cmds);
-  return executeAndWait(ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir, false, coreCheck);
+  return executeAndWait(ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -829,7 +829,7 @@ function runArangoImport (options, instanceInfo, what, coreCheck = false) {
     args['remove-attribute'] = what.removeAttribute;
   }
 
-  return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, false, coreCheck);
+  return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, coreCheck);
 }
 
 
@@ -841,7 +841,7 @@ function runArangoDumpRestoreCfg (config, options, rootDir, coreCheck) {
   if (options.extremeVerbosity === true) {
     config.print();
   }
-  return executeAndWait(config.getExe(), config.toArgv(), options, 'arangorestore', rootDir, false, coreCheck);
+  return executeAndWait(config.getExe(), config.toArgv(), options, 'arangorestore', rootDir, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -894,7 +894,7 @@ function runArangoBackup (options, instanceInfo, which, cmds, rootDir, coreCheck
   
   args['flatCommands'] = [which];
 
-  return executeAndWait(ARANGOBACKUP_BIN, toArgv(args), options, 'arangobackup', instanceInfo.rootDir, false, coreCheck);
+  return executeAndWait(ARANGOBACKUP_BIN, toArgv(args), options, 'arangobackup', instanceInfo.rootDir, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -919,7 +919,7 @@ function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = f
     args['flatCommands'] = ['--quiet'];
   }
 
-  return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir, false, coreCheck);
+  return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
