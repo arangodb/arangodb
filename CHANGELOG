@@ -1,4 +1,4 @@
-v3.4.8 (2019-09-09)
+v3.4.9 (2019-09-XX)
 -------------------
 
 * Bugfix: Save distinct WAL ticks for multiple replication clients from the same
@@ -10,6 +10,9 @@ v3.4.8 (2019-09-09)
   /_api/replication/batch, /_api/replication/logger-follow and the internal
   route /_api/replication/addFollower. The new field `syncerId` is also added to
   the response of /_api/replication/logger-state.
+
+v3.4.8 (2019-09-09)
+-------------------
 
 * Drop collection action to timeout more quickly to stay on fast lane.
 
