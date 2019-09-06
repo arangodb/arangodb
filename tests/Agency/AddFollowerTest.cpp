@@ -29,15 +29,16 @@
 
 #include "fakeit.hpp"
 
+#include "Agency/AddFollower.h"
+#include "Agency/AgentInterface.h"
+#include "Agency/Node.h"
+#include "Basics/StringUtils.h"
+#include "Random/RandomGenerator.h"
+
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include <iostream>
-#include "Agency/AddFollower.h"
-#include "Agency/AgentInterface.h"
-#include "Agency/Node.h"
-#include "lib/Basics/StringUtils.h"
-#include "lib/Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

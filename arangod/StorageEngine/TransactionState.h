@@ -55,12 +55,10 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 namespace transaction {
-class Context;
 class Methods;
 struct Options;
 }  // namespace transaction
 
-class ExecContext;
 class TransactionCollection;
 
 /// @brief transaction type

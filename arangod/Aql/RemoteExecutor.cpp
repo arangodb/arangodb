@@ -31,8 +31,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
+#include "Rest/CommonDefines.h"
 
-#include <lib/Rest/CommonDefines.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 

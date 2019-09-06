@@ -110,15 +110,12 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force
 
 static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& col,
                                     std::string const& claimLeaderId) {
-
-  std::vector<std::string> agencyPath = {
-    "Plan",
-    "Collections",
-    col->vocbase().name(),
-    std::to_string(col->planId()),
-    "shards",
-    col->name()
-  };
+  std::vector<std::string> agencyPath = {"Plan",
+                                         "Collections",
+                                         col->vocbase().name(),
+                                         std::to_string(col->planId()),
+                                         "shards",
+                                         col->name()};
 
   std::string shardAgencyPathString = StringUtils::join(agencyPath, '/');
 
@@ -126,7 +123,6 @@ static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& co
   AgencyCommResult res = ac.getValues(shardAgencyPathString);
 
   if (res.successful()) {
-
     // This is bullshit. Why does the *fancy* AgencyComm Manager
     // prepend the agency url with `arango` but in the end returns an object
     // that is prepended by `arango`! WTF!?
@@ -1302,7 +1298,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     // not desired, so it is hardcoded to false
     auto cols =
         ClusterMethods::createCollectionOnCoordinator(_vocbase, merged, ignoreDistributeShardsLikeErrors,
-                                                      createWaitsForSyncReplication, false);
+                                                      createWaitsForSyncReplication, false, false, nullptr);
     ExecContext const& exec = ExecContext::current();
     TRI_ASSERT(cols.size() == 1);
     if (name[0] != '_' && !exec.isSuperuser()) {
@@ -1917,8 +1913,8 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
 
     VPackBuilder tmp;
 
-    res = ci->ensureIndexCoordinator(  // result
-        dbName, std::to_string(col->id()), idxDef, true, tmp,
+    res = ci->ensureIndexCoordinator(*col,
+        idxDef, true, tmp,
         cluster->indexCreationTimeout());
 
     if (res.fail()) {
@@ -2485,9 +2481,9 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
   generateResult(rest::ResponseCode::OK, b.slice());
 }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief update the leader of a shard
-  //////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+/// @brief update the leader of a shard
+//////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandSetTheLeader() {
   TRI_ASSERT(ServerState::instance()->isDBServer());
@@ -2529,20 +2525,19 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
   }
 
   if (leaderId != currentLeader) {
-
     Result res = checkPlanLeaderDirect(col, leaderId);
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
     if (!oldLeaderIdSlice.isEqualString(currentLeader)) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN, "old leader not as expected");
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                    "old leader not as expected");
       return;
     }
 
     col->followers()->setTheLeader(leaderId);
   }
-
 
   VPackBuilder b;
   {

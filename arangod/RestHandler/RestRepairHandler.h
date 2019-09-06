@@ -25,9 +25,9 @@
 
 #include "Agency/AgencyComm.h"
 #include "Cluster/ClusterRepairs.h"
+#include "Cluster/ResultT.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "RestHandler/RestBaseHandler.h"
-#include "arangod/Cluster/ResultT.h"
 
 namespace arangodb {
 namespace rest {

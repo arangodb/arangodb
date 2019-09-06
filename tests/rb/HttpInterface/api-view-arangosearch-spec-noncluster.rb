@@ -16,6 +16,10 @@ describe ArangoDB do
     context "error handling:" do
 
       context "creation:" do
+        after do
+          ArangoDB.log_delete("#{prefix}-teardown", api + '/test')
+          ArangoDB.log_delete("#{prefix}-teardown", api + '/dup')
+        end
 
         it "creating a view without body" do
           cmd = api
@@ -132,6 +136,12 @@ describe ArangoDB do
       end
 
       context "rename:" do
+        after do
+          ArangoDB.log_delete("#{prefix}-teardown", api + '/testView')
+          ArangoDB.log_delete("#{prefix}-teardown", api + '/newName')
+          ArangoDB.log_delete("#{prefix}-teardown", api + '/dup')
+          ArangoDB.log_delete("#{prefix}-teardown", api + '/dup2')
+        end
 
         it "valid change" do
           cmd1 = api
@@ -287,7 +297,6 @@ describe ArangoDB do
       end
 
       context "deletion:" do
-
         it "deleting a non-existent view" do
           cmd = api + "/foobar"
           doc = ArangoDB.log_delete("#{prefix}-delete-non-existent", cmd)
@@ -302,7 +311,6 @@ describe ArangoDB do
       end
 
       context "retrieval:" do
-
         it "getting a non-existent view" do
           cmd = api + "/foobar"
           doc = ArangoDB.log_get("#{prefix}-get-non-existent", cmd)
@@ -328,6 +336,9 @@ describe ArangoDB do
       end
 
       context "modification:" do
+        after do
+          ArangoDB.log_delete("#{prefix}-teardown", api + '/lemon')
+        end
 
         it "modifying view directly, not properties" do
           cmd = api + "/foobar"
@@ -398,6 +409,10 @@ describe ArangoDB do
     end
 
     context "add/drop:" do
+      after do
+        ArangoDB.log_delete("#{prefix}-teardown", api + '/abc')
+      end
+
       it "creating a view" do
         cmd = api
         body = <<-JSON
@@ -414,6 +429,16 @@ describe ArangoDB do
       end
 
       it "dropping a view" do
+        cmd = api
+        body = <<-JSON
+               { "name": "abc",
+                 "type": "arangosearch",
+                 "properties": {} }
+               JSON
+        doc = ArangoDB.log_post("#{prefix}-create-a-view", cmd, :body => body)
+
+        doc.code.should eq(201)
+
         cmd1 = api + "/abc"
         doc1 = ArangoDB.log_delete("#{prefix}-drop-a-view", cmd1)
 
@@ -431,6 +456,10 @@ describe ArangoDB do
     end
 
     context "add with link to non-existing collection:" do
+      after do
+        ArangoDB.log_delete("#{prefix}-teardown", api + '/abc')
+      end
+
       it "creating a view with link to non-existing collection" do
         cmd = api
         body = <<-JSON
@@ -459,6 +488,7 @@ describe ArangoDB do
       end
 
       after do
+        ArangoDB.log_delete("#{prefix}-teardown", api + '/abc')
         ArangoDB.drop_collection(cn)
       end
 
@@ -480,6 +510,17 @@ describe ArangoDB do
       end
 
       it "dropping a view" do
+        cmd = api
+        body = <<-JSON
+               { "name": "abc",
+                 "type": "arangosearch",
+                 "links": { "right" : { "includeAllFields": true } } 
+               }
+               JSON
+        doc = ArangoDB.log_post("#{prefix}-create-a-view", cmd, :body => body)
+
+        doc.code.should eq(201)
+
         cmd1 = api + "/abc"
         doc1 = ArangoDB.log_delete("#{prefix}-drop-a-view", cmd1)
 
@@ -497,6 +538,11 @@ describe ArangoDB do
     end
 
     context "retrieval:" do
+      after do
+        ArangoDB.log_delete("#{prefix}-teardown", api + '/abc')
+        ArangoDB.log_delete("#{prefix}-teardown", api + '/def')
+      end
+
       it "empty list" do
         cmd = api
         doc = ArangoDB.log_get("#{prefix}-empty-list", cmd)
@@ -545,6 +591,29 @@ describe ArangoDB do
       end
 
       it "individual views" do
+        cmd1 = api
+        body1 = <<-JSON
+               { "name": "abc",
+                 "type": "arangosearch",
+                 "consolidationIntervalMsec": 10
+               }
+               JSON
+        doc1 = ArangoDB.log_post("#{prefix}-short-list", cmd1, :body => body1)
+        doc1.code.should eq(201)
+        doc1.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc1.parsed_response['name'].should eq("abc")
+        doc1.parsed_response['type'].should eq("arangosearch")
+
+        cmd2 = api
+        body2 = <<-JSON
+               { "name": "def",
+                 "type": "arangosearch",
+                 "consolidationIntervalMsec": 10
+               }
+               JSON
+        doc2 = ArangoDB.log_post("#{prefix}-short-list", cmd2, :body => body2)
+        doc2.code.should eq(201)
+
         cmd1 = api + '/abc'
         doc1 = ArangoDB.log_get("#{prefix}-individual-views", cmd1)
         doc1.code.should eq(200)
@@ -575,8 +644,25 @@ describe ArangoDB do
     end
 
     context "modification:" do
+      after do
+        ArangoDB.log_delete("#{prefix}-teardown", api + '/abc')
+      end
 
       it "change properties" do
+        cmd1 = api
+        body1 = <<-JSON
+               { "name": "abc",
+                 "type": "arangosearch",
+                 "consolidationIntervalMsec": 10
+               }
+               JSON
+        doc1 = ArangoDB.log_post("#{prefix}-short-list", cmd1, :body => body1)
+        doc1.code.should eq(201)
+
+        cmd1 = api + '/abc'
+        doc1 = ArangoDB.log_get("#{prefix}-individual-views", cmd1)
+        doc1.code.should eq(200)
+        
         cmd1 = api + '/abc/properties'
         body1 = <<-JSON
                 { "consolidationIntervalMsec": 7 }
@@ -596,6 +682,20 @@ describe ArangoDB do
       end
 
       it "ignore extra properties" do
+        cmd1 = api
+        body1 = <<-JSON
+               { "name": "abc",
+                 "type": "arangosearch",
+                 "consolidationIntervalMsec": 10
+               }
+               JSON
+        doc1 = ArangoDB.log_post("#{prefix}-short-list", cmd1, :body => body1)
+        doc1.code.should eq(201)
+
+        cmd1 = api + '/abc'
+        doc1 = ArangoDB.log_get("#{prefix}-individual-views", cmd1)
+        doc1.code.should eq(200)
+
         cmd1 = api + '/abc/properties'
         body1 = <<-JSON
                 { "consolidationIntervalMsec": 10, "extra": "foobar" }
@@ -617,6 +717,16 @@ describe ArangoDB do
       end
 
       it "accept updates via PATCH as well" do
+        cmd1 = api
+        body1 = <<-JSON
+               { "name": "abc",
+                 "type": "arangosearch",
+                 "consolidationIntervalMsec": 10
+               }
+               JSON
+        doc1 = ArangoDB.log_post("#{prefix}-short-list", cmd1, :body => body1)
+        doc1.code.should eq(201)
+
         cmd1 = api + '/abc/properties'
         body1 = <<-JSON
                 { "consolidationIntervalMsec": 3 }
