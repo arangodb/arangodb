@@ -34,72 +34,88 @@
 #include <string>
 #include <vector>
 
-namespace arangodb {
-namespace cluster {
-namespace paths {
-
 /**
- * Note that no class here may be instantiated directly! You can only call root() and work your way down from there.
+ * @brief Build agency paths in a compile-time safe manner.
  *
- * Use e.g. as
+ * Usage:
+ *
+ *   using namespace arangodb::cluster::paths;
+ *
  *   std::string path = root()->arango()->plan()->databases()->database("_system")->str();
  *   // path == "/arango/Plan/Databases/_system"
- * or
+ *   ...
  *   std::vector<std::string> path = root()->arango()->plan()->databases()->database("_system")->vec();
  *   // path == {"arango", "Plan", "Databases", "_system"}
- * or
+ *   ...
  *   std::stringstream stream;
  *   stream << *root()->arango()->plan()->databases()->database("_system");
  *   // stream.str() == "/arango/Plan/Databases/_system"
- * or
+ *   ...
  *   std::stringstream stream;
  *   root()->arango()->plan()->databases()->database("_system")->toStream(stream);
  *   // stream.str() == "/arango/Plan/Databases/_system"
  *
+ * Or use shorthands:
+ *
+ *   using namespace arangodb::cluster::paths::aliases;
+ *
+ *   arango()->initCollectionsDone();
+ *   plan()->databases();
+ *   current()->serversKnown();
+ *   target()->pending();
+ *   supervision()->health();
+ *
+ * @details
+ * Note that no class here may be instantiated directly! You can only call root() and work your way down from there.
+ *
  * If you add anything, make sure to add tests in tests/Cluster/AgencyPathsTest.cpp.
  *
  * An example for a static component looks like this:
- * class SomeOuterClass {
- * ...
- *   // Add your component
- *   class YourComponent : public StaticComponent<YourComponent, SomeOuterClass> {
- *    public:
- *     constexpr char const* component() const noexcept { return "YourComponent"; }
+ *   class SomeOuterClass {
+ *   ...
+ *     // Add your component
+ *     class YourComponent : public StaticComponent<YourComponent, SomeOuterClass> {
+ *      public:
+ *       constexpr char const* component() const noexcept { return "YourComponent"; }
  *
- *     // Inherit constructors
- *     using BaseType::StaticComponent;
+ *       // Inherit constructors
+ *       using BaseType::StaticComponent;
  *
- *     // Add possible inner classes here
- *   };
+ *       // Add possible inner classes here
+ *     };
  *
- *   // Add an accessor to it in the outer class
- *   std::shared_ptr<YourComponent const> yourComponent() const {
- *     return YourComponent::make_shared(shared_from_this());
+ *     // Add an accessor to it in the outer class
+ *     std::shared_ptr<YourComponent const> yourComponent() const {
+ *       return YourComponent::make_shared(shared_from_this());
+ *     }
+ *   ...
  *   }
- * ...
- * }
  *
  * An example for a dynamic component looks like this, here holding a value of type SomeType:
- * class SomeOuterClass {
- * ...
- *   // Add your component
- *   class YourComponent : public DynamicComponent<YourComponent, SomeOuterClass, SomeType> {
- *    public:
- *     // Access your SomeType value with value():
- *     char const* component() const noexcept { return value().c_str(); }
+ *   class SomeOuterClass {
+ *   ...
+ *     // Add your component
+ *     class YourComponent : public DynamicComponent<YourComponent, SomeOuterClass, SomeType> {
+ *      public:
+ *       // Access your SomeType value with value():
+ *       char const* component() const noexcept { return value().c_str(); }
  *
- *     // Inherit constructors
- *     using BaseType::DynamicComponent;
- *   };
+ *       // Inherit constructors
+ *       using BaseType::DynamicComponent;
+ *     };
  *
- *   // Add an accessor to it in the outer class
- *   std::shared_ptr<YourComponent const> yourComponent(DatabaseID name) const {
- *     return YourComponent::make_shared(shared_from_this(), std::move(name));
+ *     // Add an accessor to it in the outer class
+ *     std::shared_ptr<YourComponent const> yourComponent(DatabaseID name) const {
+ *       return YourComponent::make_shared(shared_from_this(), std::move(name));
+ *     }
+ *   ...
  *   }
- * ...
- * }
  *
  */
+
+namespace arangodb {
+namespace cluster {
+namespace paths {
 
 class Root;
 
@@ -1785,6 +1801,28 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 };
 
 std::shared_ptr<Root const> root() { return Root::make_shared(); }
+
+namespace aliases {
+
+std::shared_ptr<Root::Arango const> arango() { return root()->arango(); }
+
+std::shared_ptr<Root::Arango::Plan const> plan() {
+  return root()->arango()->plan();
+}
+
+std::shared_ptr<Root::Arango::Current const> current() {
+  return root()->arango()->current();
+}
+
+std::shared_ptr<Root::Arango::Target const> target() {
+  return root()->arango()->target();
+}
+
+std::shared_ptr<Root::Arango::Supervision const> supervision() {
+  return root()->arango()->supervision();
+}
+
+}  // namespace aliases
 
 }  // namespace paths
 }  // namespace cluster

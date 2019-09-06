@@ -36,6 +36,7 @@ using namespace arangodb::cluster::paths;
 // We don't want any class in the hierarchy to be publicly constructible.
 // However, we can only check for specific constructors.
 #define CONSTRUCTIBLE_MESSAGE "This class should not be publicly constructible!"
+// Turn autoformat off here, to allow for easy multiline editing!
 // clang-format off
 
 // First, default constructors
@@ -339,10 +340,23 @@ static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId::S
 // clang-format on
 #undef CONSTRUCTIBLE_MESSAGE
 
+// Check the types of aliases, so we need only basic tests for them later.
+static_assert(std::is_same<typeof(root()->arango()), typeof(aliases::arango())>::value,
+              "Aliases should have the same type as the aliased expression!");
+static_assert(std::is_same<typeof(root()->arango()->plan()), typeof(aliases::plan())>::value,
+              "Aliases should have the same type as the aliased expression!");
+static_assert(std::is_same<typeof(root()->arango()->current()), typeof(aliases::current())>::value,
+              "Aliases should have the same type as the aliased expression!");
+static_assert(std::is_same<typeof(root()->arango()->target()), typeof(aliases::target())>::value,
+              "Aliases should have the same type as the aliased expression!");
+static_assert(std::is_same<typeof(root()->arango()->supervision()), typeof(aliases::supervision())>::value,
+              "Aliases should have the same type as the aliased expression!");
+
 class AgencyPathsTest : public ::testing::Test {
  protected:
   // Vector of {expected, actual} pairs.
   std::vector<std::pair<std::vector<std::string> const, std::shared_ptr<Path const> const>> const ioPairs{
+      // Turn autoformat off here, to allow for easy multiline editing!
       // clang-format off
       {{"arango"}, root()->arango()},
       {{"arango", "Plan"}, root()->arango()->plan()},
@@ -492,6 +506,12 @@ class AgencyPathsTest : public ::testing::Test {
       {{"arango", "Agency"}, root()->arango()->agency()},
       {{"arango", "Agency", "Definition"}, root()->arango()->agency()->definition()},
       {{"arango", "InitDone"}, root()->arango()->initDone()},
+      // Aliases:
+      {{"arango"}, aliases::arango()},
+      {{"arango", "Plan"}, aliases::plan()},
+      {{"arango", "Current"}, aliases::current()},
+      {{"arango", "Target"}, aliases::target()},
+      {{"arango", "Supervision"}, aliases::supervision()},
       // clang-format on
   };
 };
