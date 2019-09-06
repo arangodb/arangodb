@@ -33,6 +33,10 @@
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
 
+#include "VocBase/LogicalCollection.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
+
 #include <algorithm>
 
 using namespace arangodb;
@@ -83,7 +87,8 @@ class arangodb::aql::ConstrainedLessThan {
   std::vector<arangodb::aql::SortRegister>& _sortRegisters;
 };  // ConstrainedLessThan
 
-arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow& input) {
+template<typename OutputRowImpl>
+arangodb::Result ConstrainedSortExecutor<OutputRowImpl>::pushRow(InputAqlItemRow& input) {
   using arangodb::aql::AqlItemBlock;
   using arangodb::aql::AqlValue;
   using arangodb::aql::RegisterId;
@@ -116,7 +121,8 @@ arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow& input) {
   return TRI_ERROR_NO_ERROR;
 }
 
-bool ConstrainedSortExecutor::compareInput(size_t const& rowPos, InputAqlItemRow& row) const {
+template<typename OutputRowImpl>
+bool ConstrainedSortExecutor<OutputRowImpl>::compareInput(size_t const& rowPos, InputAqlItemRow& row) const {
   for (auto const& reg : _infos.sortRegisters()) {
     auto const& lhs = _heapBuffer->getValueReference(rowPos, reg.reg);
     auto const& rhs = row.getValue(reg.reg);
@@ -132,7 +138,8 @@ bool ConstrainedSortExecutor::compareInput(size_t const& rowPos, InputAqlItemRow
   return false;
 }
 
-ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
+template<typename OutputRowImpl>
+ConstrainedSortExecutor<OutputRowImpl>::ConstrainedSortExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
       _state(ExecutionState::HASMORE),
@@ -143,15 +150,18 @@ ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorI
       _cmpHeap(std::make_unique<ConstrainedLessThan>(_infos.trx(), _infos.sortRegisters())),
       _heapOutputRow{_heapBuffer, make_shared_unordered_set(),
                      make_shared_unordered_set(_infos.numberOfOutputRegisters()),
-                     _infos.registersToClear()} {
+                     _infos.registersToClear()},
+      _outputImpl(_infos) {
   TRI_ASSERT(_infos._limit > 0);
   _rows.reserve(infos._limit);
   _cmpHeap->setBuffer(_heapBuffer.get());
 };
 
-ConstrainedSortExecutor::~ConstrainedSortExecutor() = default;
+template<typename OutputRowImpl>
+ConstrainedSortExecutor<OutputRowImpl>::~ConstrainedSortExecutor() = default;
 
-std::pair<ExecutionState, NoStats> ConstrainedSortExecutor::produceRows(OutputAqlItemRow& output) {
+template<typename OutputRowImpl>
+std::pair<ExecutionState, NoStats> ConstrainedSortExecutor<OutputRowImpl>::produceRows(OutputAqlItemRow& output) {
   while (_state != ExecutionState::DONE) {
     TRI_IF_FAILURE("SortBlock::doSorting") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -188,14 +198,15 @@ std::pair<ExecutionState, NoStats> ConstrainedSortExecutor::produceRows(OutputAq
   InputAqlItemRow heapRow(_heapBuffer, heapRowPosition);
   TRI_ASSERT(heapRow.isInitialized());
   TRI_ASSERT(heapRowPosition < _rowsPushed);
-  output.copyRow(heapRow);
+  _outputImpl.outputRow(heapRow, output);
   if (_returnNext == _rows.size()) {
     return {ExecutionState::DONE, NoStats{}};
   }
   return {ExecutionState::HASMORE, NoStats{}};
 }
 
-std::pair<ExecutionState, size_t> ConstrainedSortExecutor::expectedNumberOfRows(size_t) const {
+template<typename OutputRowImpl>
+std::pair<ExecutionState, size_t> ConstrainedSortExecutor<OutputRowImpl>::expectedNumberOfRows(size_t) const {
   // This block cannot support atMost
   size_t rowsLeft = 0;
   if (_state != ExecutionState::DONE) {
@@ -218,3 +229,6 @@ std::pair<ExecutionState, size_t> ConstrainedSortExecutor::expectedNumberOfRows(
   }
   return {ExecutionState::DONE, rowsLeft};
 }
+
+template class arangodb::aql::ConstrainedSortExecutor<arangodb::aql::CopyRowProducer>;
+template class arangodb::aql::ConstrainedSortExecutor<arangodb::aql::MaterializerProducer>;

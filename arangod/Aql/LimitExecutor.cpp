@@ -335,6 +335,8 @@ void LimitLateMaterializedExecutor::outputRow(const InputAqlItemRow& input, Outp
     collection->readDocumentWithCallback(infos().trx(),
       LocalDocumentId(input.getValue(infos().inputNonMaterializedDocRegId()).toInt64()),
       _readDocumentContext.callback);
+    // take all other used later registers with us
+    _readDocumentContext.outputRow->copyRow(input);
 }
 
 

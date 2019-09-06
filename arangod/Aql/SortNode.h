@@ -58,13 +58,20 @@ class SortNode : public ExecutionNode {
       : ExecutionNode(plan, id),
         _reinsertInCluster(true),
         _elements(elements),
-        _stable(stable) {}
+        _stable(stable),
+        _inNonMaterializedDocId(nullptr), _inNonMaterializedColPtr(nullptr),
+        _outMaterializedDocument(nullptr) {}
 
   SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
            SortElementVector const& elements, bool stable);
 
   /// @brief if non-zero, limits the number of elements that the node will return
   void setLimit(size_t limit) { _limit = limit; }
+
+  void setOffset(size_t offset) {
+    TRI_ASSERT(offset <= _limit);
+    _offset = offset;
+  }
 
   /// @brief return the type of the node
   NodeType getType() const override final { return SORT; }
@@ -73,7 +80,7 @@ class SortNode : public ExecutionNode {
   inline bool isStable() const { return _stable; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -82,21 +89,27 @@ class SortNode : public ExecutionNode {
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final {
-    return cloneHelper(std::make_unique<SortNode>(plan, _id, _elements, _stable),
-                       withDependencies, withProperties);
-  }
+                       bool withProperties) const override final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
-  /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
-    for (auto& p : _elements) {
-      vars.emplace(p.var);
-    }
-  }
 
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  inline void SortNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const;
+
+  std::vector<arangodb::aql::Variable const*> getVariablesSetHere() const override final;
+
+  void doMaterializationOf(
+    aql::Variable const* colPtrVariable,
+    aql::Variable const* docIdVariable,
+    aql::Variable const* outDocument) noexcept {
+    TRI_ASSERT((docIdVariable != nullptr) == (colPtrVariable != nullptr));
+    TRI_ASSERT((docIdVariable != nullptr) == (outDocument != nullptr));
+    _inNonMaterializedDocId = docIdVariable;
+    _inNonMaterializedColPtr = colPtrVariable;
+    _outMaterializedDocument = outDocument;
+  }
   /// @brief get Variables Used Here including ASC/DESC
   SortElementVector const& elements() const { return _elements; }
 
@@ -123,6 +136,9 @@ class SortNode : public ExecutionNode {
   bool _reinsertInCluster;
 
  private:
+  std::unique_ptr<ExecutionBlock> wrapWithLateMaterialization(
+      std::unique_ptr<ExecutionBlock> base) const;
+
   /// @brief pairs, consisting of variable and sort direction
   /// (true = ascending | false = descending)
   SortElementVector _elements;
@@ -132,8 +148,23 @@ class SortNode : public ExecutionNode {
 
   /// the maximum number of items to return if non-zero; if zero, unlimited
   size_t _limit = 0;
-};
 
+  /// the maximum number of items to skip if non-zero; if zero, none skipped
+  size_t _offset = 0;
+
+  // Following three variables should be set coherently.
+  // Info is split between 2 registers to allow constructing
+  // AqlValue with type VPACK_INLINE, which is much faster.
+  // CollectionPtr  is needed for materialization -
+  // as view could return documents from different collections.
+
+  /// @brief output variable to write only non-materialized document ids
+  aql::Variable const* _inNonMaterializedDocId;
+  /// @brief output variable to write only non-materialized collection ptrs
+  aql::Variable const* _inNonMaterializedColPtr;
+  /// @brief finally materialized document
+  aql::Variable const* _outMaterializedDocument;
+};
 }  // namespace aql
 }  // namespace arangodb
 

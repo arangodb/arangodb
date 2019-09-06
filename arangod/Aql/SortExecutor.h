@@ -30,6 +30,8 @@
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
+#include "Indexes/IndexIterator.h"
+
 
 #include <memory>
 
@@ -53,7 +55,8 @@ class SortExecutorInfos : public ExecutorInfos {
                     AqlItemBlockManager& manager, RegisterId nrInputRegisters,
                     RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
                     std::unordered_set<RegisterId> registersToKeep,
-                    transaction::Methods* trx, bool stable);
+                    transaction::Methods* trx, bool stable,
+                    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters = nullptr);
 
   SortExecutorInfos() = delete;
   SortExecutorInfos(SortExecutorInfos&&) = default;
@@ -75,10 +78,83 @@ class SortExecutorInfos : public ExecutorInfos {
   bool _stable;
 };
 
+class SortMaterializingExecutorInfos : public SortExecutorInfos {
+ public:
+   SortMaterializingExecutorInfos(std::vector<SortRegister> sortRegisters, std::size_t limit,
+     AqlItemBlockManager& manager, RegisterId nrInputRegisters,
+     RegisterId nrOutputRegisters, const std::unordered_set<RegisterId>& registersToClear,
+     const std::unordered_set<RegisterId>& registersToKeep,
+     transaction::Methods* trx, bool stable,
+     RegisterId inNonMaterializedColRegId,
+     RegisterId inNonMaterializedDocRegId, RegisterId outMaterializedDocumentRegId);
+
+   SortMaterializingExecutorInfos() = delete;
+   SortMaterializingExecutorInfos(SortMaterializingExecutorInfos&&) = default;
+   SortMaterializingExecutorInfos(SortMaterializingExecutorInfos const&) = delete;
+    ~SortMaterializingExecutorInfos() = default;
+
+
+   inline RegisterId inputNonMaterializedDocRegId() const noexcept {
+     return _inNonMaterializedDocRegId;
+   }
+
+   inline RegisterId inputNonMaterializedColRegId() const noexcept {
+     return _inNonMaterializedColRegId;
+   }
+
+   inline RegisterId outputMaterializedDocumentRegId() const noexcept {
+     return _outMaterializedDocumentRegId;
+   }
+
+ private:
+     /// @brief register to store raw collection pointer
+  RegisterId const _inNonMaterializedColRegId;
+  /// @brief register to store local document id
+  RegisterId const _inNonMaterializedDocRegId;
+  /// @brief register to store materialized document
+  RegisterId const _outMaterializedDocumentRegId;
+};
+
+class CopyRowProducer {
+  public:
+  using Infos = SortExecutorInfos;
+  CopyRowProducer(Infos&) {}
+  void outputRow(const InputAqlItemRow& input, OutputAqlItemRow& output);
+};
+
+class MaterializerProducer  {
+ public:
+  using Infos = SortMaterializingExecutorInfos;
+
+  MaterializerProducer(Infos& infos) : 
+    _readDocumentContext(infos){}
+
+  void outputRow(const InputAqlItemRow& input, OutputAqlItemRow& output);
+ protected:
+  class ReadContext {
+  public:
+    explicit ReadContext(Infos& infos)
+      : _infos(&infos),
+      _inputRow(nullptr),
+      _outputRow(nullptr),
+      _callback(copyDocumentCallback(*this)) {}
+
+    const Infos* _infos;
+    const arangodb::aql::InputAqlItemRow* _inputRow;
+    arangodb::aql::OutputAqlItemRow* _outputRow;
+    arangodb::IndexIterator::DocumentCallback const _callback;
+
+  private:
+    static arangodb::IndexIterator::DocumentCallback copyDocumentCallback(ReadContext& ctx);
+  };
+  ReadContext _readDocumentContext;
+};
+
 /**
  * @brief Implementation of Sort Node
  */
-class SortExecutor {
+template<typename OutputRowImpl>
+class SortExecutor  {
  public:
   struct Properties {
     static const bool preservesOrder = false;
@@ -86,10 +162,10 @@ class SortExecutor {
     static const bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = AllRowsFetcher;
-  using Infos = SortExecutorInfos;
+  using Infos = typename OutputRowImpl::Infos; // SortExecutorInfos;
   using Stats = NoStats;
 
-  SortExecutor(Fetcher& fetcher, Infos&);
+  SortExecutor(Fetcher& fetcher, Infos& infos);
   ~SortExecutor();
 
   /**
@@ -115,7 +191,10 @@ class SortExecutor {
   std::vector<AqlItemMatrix::RowIndex> _sortedIndexes;
 
   size_t _returnNext;
+
+  OutputRowImpl _outputImpl;
 };
+
 }  // namespace aql
 }  // namespace arangodb
 

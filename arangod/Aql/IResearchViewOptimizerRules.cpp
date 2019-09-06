@@ -125,8 +125,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, Query& query, Executio
     auto filterCreated = FilterFactory::filter(
       nullptr,
       { query.trx(), nullptr, nullptr, nullptr, &viewNode.outVariable() },
-      *searchCondition.root()
-    );
+      *searchCondition.root());
 
     if (filterCreated.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(filterCreated.errorNumber(),
@@ -281,7 +280,7 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
       // currently only arangosearch view node supports late materialization
   if (!plan->contains(EN::ENUMERATE_IRESEARCH_VIEW) ||
       // we need sort node  to be present  (without sort it will be just skip, nothing to optimize)
-      !plan->contains(EN::SORT) || 
+      !plan->contains(EN::SORT) ||
       // limit node is key point there  - it will do actual materialization
       !plan->contains(EN::LIMIT)) {
     return;
@@ -294,34 +293,33 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
     auto loop = const_cast<ExecutionNode*>(node->getLoop());
     if (arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
       auto & viewNode = *EN::castTo<IResearchViewNode*>(loop);
-      std::cerr << " Found View:" << viewNode.view()->name() << std::endl; //!!!!
       ExecutionNode* current = node->getFirstDependency();
-      bool hasSortNode = false; 
-      bool docBodyUsed = false; 
-      while(current != loop) { 
-        if (!hasSortNode || arangodb::aql::ExecutionNode::SORT == current->getType()) {
-          std::cerr << " Found SORT NODE" << std::endl; //!!!!
-          hasSortNode = true;
+      SortNode* sortNode = nullptr;
+      bool docBodyUsed = false;
+      while (current != loop) {
+        if (arangodb::aql::ExecutionNode::SORT == current->getType()) {
+          sortNode = EN::castTo<SortNode*>(current);
         }
         arangodb::HashSet<Variable const*> currentUsedVars;
         current->getVariablesUsedHere(currentUsedVars);
         if (currentUsedVars.find(&viewNode.outVariable()) != currentUsedVars.end()) {
-          std::cerr << " Variable used in node " << current->getTypeString() << std::endl;//!!!!
           docBodyUsed = true;
           break; // this means we can not optimize. Nothing to look anymore.
         }
         current = current->getFirstDependency();  // inspect next node
       }
-      if(hasSortNode && !docBodyUsed) {
+      if (sortNode && !docBodyUsed) {
         // we could apply late materialization
         // 1. We need to notify view - it should not materialize documents, but produce only localDocIds
-        // 2. We need to tell limit node to do materialization  right before returning actually sorted&limited documents
+        // 2. We need to tell sort node to do materialization and skip (if asked by limit node)
         Ast* ast = plan->getAst();
         auto* localDocIdTmp = ast->variables()->createTemporaryVariable();
         auto* localColPtrTmp = ast->variables()->createTemporaryVariable();
         auto& limitNode = *EN::castTo<LimitNode*>(node);
         viewNode.skipMaterializationTo(localColPtrTmp, localDocIdTmp);
-        limitNode.doMaterializationOf(localColPtrTmp, localDocIdTmp, &viewNode.outVariable());
+        sortNode->doMaterializationOf(localColPtrTmp, localDocIdTmp, &viewNode.outVariable());
+        sortNode->setOffset(limitNode.offset()); //!!!! Move up as parameter fo late materialization?
+        //limitNode.doMaterializationOf(localColPtrTmp, localDocIdTmp, &viewNode.outVariable());
         modified = true;
       }
     }

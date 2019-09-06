@@ -60,7 +60,13 @@ SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
       _reinsertInCluster(true),
       _elements(elements),
       _stable(stable),
-      _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)) {}
+      _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)),
+      _inNonMaterializedColPtr(
+          aql::Variable::varFromVPack(plan->getAst(), base, "inNmColPtr", true)),
+      _inNonMaterializedDocId(
+          aql::Variable::varFromVPack(plan->getAst(), base, "inNmDocId", true)),
+      _outMaterializedDocument(
+          aql::Variable::varFromVPack(plan->getAst(), base, "outDocument", true)) {}
 
 /// @brief toVelocyPack, for SortNode
 void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
@@ -87,7 +93,18 @@ void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   nodes.add("stable", VPackValue(_stable));
   nodes.add("limit", VPackValue(_limit));
   nodes.add("strategy", VPackValue(sorterTypeName(sorterType())));
-
+  if (_inNonMaterializedColPtr != nullptr) {
+    nodes.add(VPackValue("inNmColPtr"));
+      _inNonMaterializedColPtr->toVelocyPack(nodes);
+  }
+  if (_inNonMaterializedDocId != nullptr) {
+    nodes.add(VPackValue("inNmDocId"));
+    _inNonMaterializedDocId->toVelocyPack(nodes);
+  }
+  if (_outMaterializedDocument != nullptr) {
+    nodes.add(VPackValue("outDocument"));
+    _outMaterializedDocument->toVelocyPack(nodes);
+  }
   // And close it:
   nodes.close();
 }
@@ -227,21 +244,84 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   std::vector<SortRegister> sortRegs;
-  for(auto const& element : _elements){
+  for (auto const& element : _elements) {
     auto it = getRegisterPlan()->varInfo.find(element.var->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     RegisterId id = it->second.registerId;
     sortRegs.push_back(SortRegister{id, element});
   }
-  SortExecutorInfos infos(std::move(sortRegs), _limit, engine.itemBlockManager(),
-                          getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                          getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                          calcRegsToKeep(), engine.getQuery()->trx(), _stable);
-  if (sorterType() == SorterType::Standard){
-    return std::make_unique<ExecutionBlockImpl<SortExecutor>>(&engine, this, std::move(infos));
+  if (_outMaterializedDocument) {
+    RegisterId inColRegId = 0;
+    RegisterId inDocRegId = 0;
+    RegisterId outDocRegId = 0;
+    //auto inputRegisters = std::make_shared < std::unordered_set<RegisterId>>();
+    //auto outputRegisters = std::make_shared < std::unordered_set<RegisterId>>();
+    {
+      auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedColPtr->id);
+      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+      inColRegId = it->second.registerId;
+      //inputRegisters->insert(inColRegId);
+    }
+    {
+      auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedDocId->id);
+      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+      inDocRegId = it->second.registerId;
+      //inputRegisters->insert(inDocRegId);
+    }
+    {
+      auto it = getRegisterPlan()->varInfo.find(_outMaterializedDocument->id);
+      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+      outDocRegId = it->second.registerId;
+      //outputRegisters->insert(outDocRegId);
+    }
+    SortMaterializingExecutorInfos infos(
+        std::move(sortRegs), _limit, engine.itemBlockManager(),
+        getRegisterPlan()->nrRegs[previousNode->getDepth()],
+        getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+        calcRegsToKeep(), engine.getQuery()->trx(), _stable,
+        inColRegId, inDocRegId, outDocRegId);
+    if (sorterType() == SorterType::Standard) {
+      return  std::make_unique<ExecutionBlockImpl<SortExecutor<MaterializerProducer>>>(&engine, this, std::move(infos));
+    } else {
+      return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor<MaterializerProducer>>>(&engine, this, std::move(infos));
+    }
   } else {
-    return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor>>(&engine, this, std::move(infos));
+    SortExecutorInfos infos(std::move(sortRegs), _limit, engine.itemBlockManager(),
+      getRegisterPlan()->nrRegs[previousNode->getDepth()],
+      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+      calcRegsToKeep(), engine.getQuery()->trx(), _stable);
+    if (sorterType() == SorterType::Standard) {
+        return std::make_unique<ExecutionBlockImpl<SortExecutor<CopyRowProducer>>>(&engine, this, std::move(infos));
+    } else {
+       return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor<CopyRowProducer>>>(&engine, this, std::move(infos));
+    }
   }
+}
+
+/// @brief clone ExecutionNode recursively
+
+inline ExecutionNode * arangodb::aql::SortNode::clone(ExecutionPlan * plan, bool withDependencies, bool withProperties) const {
+  auto* inNonMaterializedDocId = _inNonMaterializedDocId;
+  auto* inNonMaterializedColPtr = _inNonMaterializedColPtr;
+  auto* outMaterializedDocument = _outMaterializedDocument;
+  if (withProperties) {
+    if (_inNonMaterializedDocId != nullptr) {
+      inNonMaterializedDocId = plan->getAst()->variables()->createVariable(inNonMaterializedDocId);
+    }
+    if (_inNonMaterializedColPtr != nullptr) {
+      inNonMaterializedColPtr = plan->getAst()->variables()->createVariable(inNonMaterializedColPtr);
+    }
+    if (_outMaterializedDocument != nullptr) {
+      outMaterializedDocument = plan->getAst()->variables()->createVariable(outMaterializedDocument);
+    }
+  }
+  auto c = std::make_unique<SortNode>(plan, _id, _elements, _stable);
+  if (outMaterializedDocument != nullptr) {
+    c->doMaterializationOf(inNonMaterializedColPtr, inNonMaterializedDocId,
+      outMaterializedDocument);
+  }
+  return cloneHelper(std::move(c),
+    withDependencies, withProperties);
 }
 
 /// @brief estimateCost
@@ -254,6 +334,25 @@ CostEstimate SortNode::estimateCost() const {
                               std::log2(static_cast<double>(estimate.estimatedNrItems));
   }
   return estimate;
+}
+
+/// @brief getVariablesUsedHere, modifying the set in-place
+inline void arangodb::aql::SortNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
+  for (auto& p : _elements) {
+    vars.emplace(p.var);
+  }
+  if (_inNonMaterializedColPtr != nullptr && _inNonMaterializedDocId != nullptr) {
+    vars.insert(_inNonMaterializedColPtr);
+    vars.insert(_inNonMaterializedDocId);
+  }
+}
+
+std::vector<arangodb::aql::Variable const*> arangodb::aql::SortNode::getVariablesSetHere() const {
+  if (_outMaterializedDocument != nullptr) {
+    return std::vector<arangodb::aql::Variable const*>{_outMaterializedDocument};
+  } else {
+    return std::vector<arangodb::aql::Variable const*>{};
+  }
 }
 
 SortNode::SorterType SortNode::sorterType() const {

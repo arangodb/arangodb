@@ -733,25 +733,25 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
 /// @brief static analysis debugger
 #if 0
 struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
-  RegisterPlanningDebugger ()
+  RegisterPlanningDebugger()
     : indent(0) {
   }
 
-  ~RegisterPlanningDebugger () {
+  ~RegisterPlanningDebugger() {
   }
 
   int indent;
 
-  bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
     indent++;
     return true;
   }
 
-  void leaveSubquery (ExecutionNode*, ExecutionNode*) override final {
+  void leaveSubquery(ExecutionNode*, ExecutionNode*) override final {
     indent--;
   }
 
-  void after (ExecutionNode* ep) override final {
+  void after(ExecutionNode* ep) override final {
     for (int i = 0; i < indent; i++) {
       std::cout << " ";
     }
@@ -995,7 +995,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       // sort sorts in place and does not produce new registers
       break;
     }
- 
+
     case ExecutionNode::RETURN: {
       // return is special. it produces a result but is the last step in the
       // pipeline
@@ -1065,7 +1065,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
       break;
     }
-    
+
     default: {
       // should not reach this point
       TRI_ASSERT(false);
@@ -1229,7 +1229,7 @@ std::unordered_set<RegisterId> ExecutionNode::calcRegsToKeep() const {
   }
 
   return regsToKeep;
-};
+}
 
 RegisterId ExecutionNode::variableToRegisterId(Variable const* variable) const {
   TRI_ASSERT(variable != nullptr);
@@ -1517,10 +1517,10 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
   // Fullcount must only be enabled on the last limit node on the main level
   TRI_ASSERT(!_fullCount || !::isInSubQuery(this));
 
-  if (_inNonMaterializedColPtr != nullptr && 
+  if (_inNonMaterializedColPtr != nullptr &&
      // Coodrinators always works with late-materialized docs returned by DBServers
      // so just ignore late materialization at this stage
-     !ServerState::instance()->isCoordinator()) { 
+     !ServerState::instance()->isCoordinator()) {
     auto inputRegisters = std::make_shared < std::unordered_set<RegisterId>>();
     auto outputRegisters = std::make_shared < std::unordered_set<RegisterId>>();
     RegisterId inColRegId = 0;
@@ -1546,7 +1546,7 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
     }
     LimitLateMaterializedExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                              getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                                             calcRegsToKeep(), _offset, _limit, _fullCount, 
+                                             calcRegsToKeep(), _offset, _limit, _fullCount,
                                              inColRegId, inDocRegId, outDocRegId, inputRegisters,
                                              outputRegisters,  engine.getQuery()->trx());
     return std::make_unique<ExecutionBlockImpl<LimitLateMaterializedExecutor>>(&engine, this,
@@ -1589,14 +1589,14 @@ ExecutionNode* LimitNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 void LimitNode::getVariablesUsedHere(
     arangodb::HashSet<arangodb::aql::Variable const*>& vars) const {
-  if(_inNonMaterializedColPtr != nullptr && _inNonMaterializedDocId != nullptr) {
+  if (_inNonMaterializedColPtr != nullptr && _inNonMaterializedDocId != nullptr) {
     vars.insert(_inNonMaterializedColPtr);
     vars.insert(_inNonMaterializedDocId);
   }
 }
 
 std::vector<arangodb::aql::Variable const*> LimitNode::getVariablesSetHere() const {
-  if(_outMaterializedDocument != nullptr){
+  if (_outMaterializedDocument != nullptr) {
     return std::vector<arangodb::aql::Variable const*>{_outMaterializedDocument};
   } else {
     return std::vector<arangodb::aql::Variable const*>{};
@@ -1739,12 +1739,12 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   TRI_ASSERT(expression() != nullptr);
 
   CalculationExecutorInfos infos(
-      outputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
-      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
-      *engine.getQuery() /* used for v8 contexts and in expression */,
-      *expression(), std::move(expInVars) /* required by expression.execute */,
-      std::move(expInRegs) /* required by expression.execute */
-  );
+    outputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
+    getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
+    *engine.getQuery() /* used for v8 contexts and in expression */,
+    *expression(), std::move(expInVars) /* required by expression.execute */,
+    std::move(expInRegs)); /* required by expression.execute */
+
 
   if (isReference) {
     return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>>(
