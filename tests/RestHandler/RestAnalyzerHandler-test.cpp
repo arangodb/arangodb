@@ -1102,8 +1102,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
     TRI_vocbase_t* vocbase;
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", vocbase)));
+    ASSERT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
     sysDatabase->start();  // get system database from DatabaseFeature
     arangodb::methods::Collections::createSystem(
         *vocbase, 

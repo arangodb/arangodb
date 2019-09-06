@@ -249,9 +249,8 @@ TEST_F(ClusterInfoTest, test_drop_database) {
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     // create database
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase", vocbase)));
-    ASSERT_TRUE((nullptr != vocbase));
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
+    ASSERT_NE(nullptr, vocbase);
 
     // simulate heartbeat thread
     ASSERT_TRUE(arangodb::AgencyComm().setValue("Current/Databases/testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
