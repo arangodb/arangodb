@@ -40,6 +40,10 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/VocBase/VirtualCollection.h"
+#endif
+
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -307,7 +311,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   }
 
   auto fillColls = [](VPackSlice const& slice, std::vector<std::string>& cols) {
-    if (slice.isNone()) {  // ignore nonexistant keys
+    if (slice.isNone()) {  // ignore nonexistent keys
       return true;
     } else if (slice.isString()) {
       cols.emplace_back(slice.copyString());
@@ -394,6 +398,29 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                   std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) +
                       ":" + cname);
       } else {
+#ifdef USE_ENTERPRISE
+        if (state->isCoordinator()) {
+          std::shared_ptr<LogicalCollection> col = resolver.getCollection(cname);
+          if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
+            auto theEdge = dynamic_cast<arangodb::VirtualSmartEdgeCollection*>(col.get());
+            if (theEdge == nullptr) {
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot cast collection to smart edge collection");
+            }
+            res.reset(state->addCollection(theEdge->getLocalCid(), "_local_" + cname, mode, /*nestingLevel*/ 0, false));
+            if (res.fail()) {
+              return false;
+            }
+            res.reset(state->addCollection(theEdge->getFromCid(), "_from_" + cname, mode, /*nestingLevel*/ 0, false));
+            if (res.fail()) {
+              return false;
+            }
+            res.reset(state->addCollection(theEdge->getToCid(), "_to_" + cname, mode, /*nestingLevel*/ 0, false));
+            if (res.fail()) {
+              return false;
+            }
+          }
+        }
+#endif
         res.reset(state->addCollection(cid, cname, mode, /*nestingLevel*/ 0, false));
       }
 
