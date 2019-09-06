@@ -33,6 +33,10 @@
 #include "Basics/Result.h"
 #include "Rest/CommonDefines.h"
 
+#ifdef USE_ENTERPRISE
+#include "Auth/Handler.h"
+#endif
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 

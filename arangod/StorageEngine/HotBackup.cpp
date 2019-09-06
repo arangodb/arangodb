@@ -22,16 +22,19 @@
 
 #include "HotBackup.h"
 
-#include "Cluster/ServerState.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ServerState.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
+#include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
-#include "StorageEngine/EngineSelectorFeature.h"
 
 namespace arangodb {
 
-HotBackup::HotBackup() {
+HotBackup::HotBackup(application_features::ApplicationServer& server)
+    : _server(server) {
   if (ServerState::instance()->isCoordinator()) {
     _engine = BACKUP_ENGINE::CLUSTER;
   } else if (EngineSelectorFeature::isRocksDB()) {
@@ -64,7 +67,8 @@ arangodb::Result HotBackup::executeRocksDB(
 
 #ifdef USE_ENTERPRISE
   std::shared_ptr<RocksDBHotBackup> operation;
-  operation = RocksDBHotBackup::operationFactory(command, payload, report);
+  auto& feature = _server.getFeature<HotBackupFeature>();
+  operation = RocksDBHotBackup::operationFactory(feature, command, payload, report);
 
   if (operation->valid()) {
     operation->execute();

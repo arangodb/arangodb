@@ -71,6 +71,7 @@
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
 
 #include <velocypack/Builder.h>
@@ -270,6 +271,10 @@ static void SetupAqlPhase(MockServer& server) {
   server.addFeature<arangodb::aql::OptimizerRulesFeature>(true);
   server.addFeature<arangodb::AqlFeature>(true);
   server.addFeature<arangodb::TraverserEngineRegistryFeature>(false);
+
+#ifdef USE_ENTERPRISE
+  server.addFeature<arangodb::HotBackupFeature>(false);
+#endif
 }
 
 MockServer::MockServer()

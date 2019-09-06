@@ -157,7 +157,8 @@ void AuthenticationFeature::prepare() {
 #if USE_ENTERPRISE
     if (server().getFeature<LdapFeature>().isEnabled()) {
       _userManager.reset(
-          new auth::UserManager(server(), std::make_unique<LdapAuthenticationHandler>()));
+          new auth::UserManager(server(), std::make_unique<LdapAuthenticationHandler>(
+                                              server().getFeature<LdapFeature>())));
     } else {
       _userManager.reset(new auth::UserManager(server()));
     }
