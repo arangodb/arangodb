@@ -163,6 +163,18 @@ static_assert(!std::is_default_constructible<Root::Arango::Target::NumberOfCoord
 static_assert(!std::is_default_constructible<Root::Arango::Target::Finished>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Target::Version>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Target::Lock>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::SystemCollectionsCreated>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Sync>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Sync::UserVersion>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Sync::ServerStates>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Sync::Problems>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Sync::HeartbeatIntervalMs>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Sync::LatestId>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Bootstrap>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Cluster>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Agency>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Agency::Definition>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::InitDone>::value, CONSTRUCTIBLE_MESSAGE);
 
 // Exclude these on windows, because the constructor is made public there.
 #ifndef _WIN32
@@ -290,6 +302,18 @@ static_assert(!std::is_constructible<Root::Arango::Target::NumberOfCoordinators,
 static_assert(!std::is_constructible<Root::Arango::Target::Finished, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Target::Version, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Target::Lock, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::SystemCollectionsCreated, Root::Arango>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Sync, Root::Arango>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Sync::UserVersion, Root::Arango::Sync>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Sync::ServerStates, Root::Arango::Sync>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Sync::Problems, Root::Arango::Sync>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Sync::HeartbeatIntervalMs, Root::Arango::Sync>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Sync::LatestId, Root::Arango::Sync>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Bootstrap, Root::Arango>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Cluster, Root::Arango>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Agency, Root::Arango>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Agency::Definition, Root::Arango::Agency>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::InitDone, Root::Arango>::value, CONSTRUCTIBLE_MESSAGE);
 
 // Third, constructors for dynamic components with parent and an additional string where applicable
 static_assert(!std::is_constructible<Root::Arango::Current::ServersKnown::Server, Root::Arango::Current::ServersKnown, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
@@ -456,6 +480,18 @@ class AgencyPathsTest : public ::testing::Test {
       {{"arango", "Target", "Finished"}, root()->arango()->target()->finished()},
       {{"arango", "Target", "Version"}, root()->arango()->target()->version()},
       {{"arango", "Target", "Lock"}, root()->arango()->target()->lock()},
+      {{"arango", "SystemCollectionsCreated"}, root()->arango()->systemCollectionsCreated()},
+      {{"arango", "Sync"}, root()->arango()->sync()},
+      {{"arango", "Sync", "UserVersion"}, root()->arango()->sync()->userVersion()},
+      {{"arango", "Sync", "ServerStates"}, root()->arango()->sync()->serverStates()},
+      {{"arango", "Sync", "Problems"}, root()->arango()->sync()->problems()},
+      {{"arango", "Sync", "HeartbeatIntervalMs"}, root()->arango()->sync()->heartbeatIntervalMs()},
+      {{"arango", "Sync", "LatestID"}, root()->arango()->sync()->latestID()},
+      {{"arango", "Bootstrap"}, root()->arango()->bootstrap()},
+      {{"arango", "Cluster"}, root()->arango()->cluster()},
+      {{"arango", "Agency"}, root()->arango()->agency()},
+      {{"arango", "Agency", "Definition"}, root()->arango()->agency()->definition()},
+      {{"arango", "InitDone"}, root()->arango()->initDone()},
       // clang-format on
   };
 };

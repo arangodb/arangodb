@@ -101,7 +101,6 @@ namespace paths {
  *
  */
 
-
 class Root;
 
 inline std::shared_ptr<Root const> root();
@@ -114,14 +113,6 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
  public:
   class Arango : public StaticComponent<Arango, Root> {
-    // TODO The following entries are still missing from arango:
-    // - SystemCollectionsCreated
-    // - Sync
-    // - Bootstrap
-    // - Cluster
-    // - Agency
-    // - InitDone
-
    public:
     constexpr char const* component() const noexcept { return "arango"; }
 
@@ -1630,6 +1621,149 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
     std::shared_ptr<Target const> target() const {
       return Target::make_shared(shared_from_this());
+    }
+
+    class SystemCollectionsCreated
+        : public StaticComponent<SystemCollectionsCreated, Arango> {
+     public:
+      constexpr char const* component() const noexcept {
+        return "SystemCollectionsCreated";
+      }
+
+      using BaseType::StaticComponent;
+    };
+
+    std::shared_ptr<SystemCollectionsCreated const> systemCollectionsCreated() const {
+      return SystemCollectionsCreated::make_shared(shared_from_this());
+    }
+
+    class Sync : public StaticComponent<Sync, Arango> {
+     public:
+      constexpr char const* component() const noexcept { return "Sync"; }
+
+      using BaseType::StaticComponent;
+
+      class UserVersion : public StaticComponent<UserVersion, Sync> {
+       public:
+        constexpr char const* component() const noexcept {
+          return "UserVersion";
+        }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<UserVersion const> userVersion() const {
+        return UserVersion::make_shared(shared_from_this());
+      }
+
+      class ServerStates : public StaticComponent<ServerStates, Sync> {
+       public:
+        constexpr char const* component() const noexcept {
+          return "ServerStates";
+        }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<ServerStates const> serverStates() const {
+        return ServerStates::make_shared(shared_from_this());
+      }
+
+      class Problems : public StaticComponent<Problems, Sync> {
+       public:
+        constexpr char const* component() const noexcept { return "Problems"; }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<Problems const> problems() const {
+        return Problems::make_shared(shared_from_this());
+      }
+
+      class HeartbeatIntervalMs : public StaticComponent<HeartbeatIntervalMs, Sync> {
+       public:
+        constexpr char const* component() const noexcept {
+          return "HeartbeatIntervalMs";
+        }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<HeartbeatIntervalMs const> heartbeatIntervalMs() const {
+        return HeartbeatIntervalMs::make_shared(shared_from_this());
+      }
+
+      class LatestId : public StaticComponent<LatestId, Sync> {
+       public:
+        constexpr char const* component() const noexcept { return "LatestID"; }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<LatestId const> latestID() const {
+        return LatestId::make_shared(shared_from_this());
+      }
+    };
+
+    std::shared_ptr<Sync const> sync() const {
+      return Sync::make_shared(shared_from_this());
+    }
+
+    class Bootstrap : public StaticComponent<Bootstrap, Arango> {
+     public:
+      constexpr char const* component() const noexcept { return "Bootstrap"; }
+
+      using BaseType::StaticComponent;
+    };
+
+    std::shared_ptr<Bootstrap const> bootstrap() const {
+      return Bootstrap::make_shared(shared_from_this());
+    }
+
+    class Cluster : public StaticComponent<Cluster, Arango> {
+     public:
+      constexpr char const* component() const noexcept { return "Cluster"; }
+
+      using BaseType::StaticComponent;
+    };
+
+    std::shared_ptr<Cluster const> cluster() const {
+      return Cluster::make_shared(shared_from_this());
+    }
+
+    class Agency : public StaticComponent<Agency, Arango> {
+     public:
+      constexpr char const* component() const noexcept { return "Agency"; }
+
+      using BaseType::StaticComponent;
+
+      class Definition : public StaticComponent<Definition, Agency> {
+       public:
+        constexpr char const* component() const noexcept {
+          return "Definition";
+        }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<Definition const> definition() const {
+        return Definition::make_shared(shared_from_this());
+      }
+    };
+
+    std::shared_ptr<Agency const> agency() const {
+      return Agency::make_shared(shared_from_this());
+    }
+
+    class InitDone : public StaticComponent<InitDone, Arango> {
+     public:
+      constexpr char const* component() const noexcept { return "InitDone"; }
+
+      using BaseType::StaticComponent;
+    };
+
+    std::shared_ptr<InitDone const> initDone() const {
+      return InitDone::make_shared(shared_from_this());
     }
   };
 
