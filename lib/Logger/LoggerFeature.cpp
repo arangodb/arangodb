@@ -222,6 +222,21 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         << "cannot combine `--log.time-format` with either `--log.use-microtime` or `--log.use-local-time`";
     FATAL_ERROR_EXIT();
   }
+       
+  // convert the deprecated options into the new timeformat
+  if (options->processingResult().touched("log.use-local-time")) {
+    _timeFormatString = "local-datestring";
+    // the following call ensures the string is actually valid.
+    // if not valid, the following call will throw an exception and
+    // abort the startup
+    LogTimeFormats::formatFromName(_timeFormatString);
+  } else if (options->processingResult().touched("log.use-microtime")) {
+    _timeFormatString = "timestamp-micros";
+    // the following call ensures the string is actually valid.
+    // if not valid, the following call will throw an exception and
+    // abort the startup
+    LogTimeFormats::formatFromName(_timeFormatString);
+  }
 
   if (!_fileMode.empty()) {
     try {

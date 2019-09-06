@@ -204,7 +204,7 @@ class IResearchQueryScorerTest : public ::testing::Test {
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     arangodb::methods::Collections::createSystem(
         *vocbase, 
-        arangodb::tests::AnalyzerCollectionName);
+        arangodb::tests::AnalyzerCollectionName, false);
     analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
                        VPackParser::fromJson("\"abc\"")->slice());  // cache analyzer
     analyzers->emplace(result, "testVocbase::test_csv_analyzer",
@@ -461,17 +461,27 @@ TEST_F(IResearchQueryScorerTest, test) {
     ASSERT_FALSE(queryResult.result.ok());
     ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
-
-  // FIXME currently optimizer tries to evaluate BOOST function
+  // constexpr BOOST (true)
   {
     std::string const query =
       "FOR d IN testView SEARCH BOOST(1==1, 42) "
       "LIMIT 1 "
       "RETURN { d, score: BOOSTSCORER(d) }";
-
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    ASSERT_FALSE(queryResult.result.ok());
-    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_NOT_IMPLEMENTED));
+    ASSERT_TRUE(queryResult.result.ok());
+    ASSERT_TRUE(queryResult.data->slice().isArray());
+    ASSERT_EQ(1, queryResult.data->slice().length());
+  }
+  // constexpr BOOST (false)
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH BOOST(1==2, 42) "
+      "LIMIT 1 "
+      "RETURN { d, score: BOOSTSCORER(d) }";
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    ASSERT_TRUE(queryResult.result.ok());
+    ASSERT_TRUE(queryResult.data->slice().isArray());
+    ASSERT_EQ(0, queryResult.data->slice().length());
   }
 
   {

@@ -103,7 +103,6 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/AgencyPathsTest.cpp
   Cluster/ClusterCommTest.cpp
   Cluster/ClusterHelpersTest.cpp
-  Cluster/ClusterInfo-test.cpp
   Cluster/ClusterRepairsTest.cpp
   Cluster/RebootTrackerTest.cpp
   Futures/Future-test.cpp
@@ -235,11 +234,14 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 endif()
 
 target_link_libraries(arangodbtests
+  arango_mmfiles
+  arango_rocksdb
+  arango_cluster_engine
   arangoserver
-  rocksdb
   fuerte
-  gtest
+  rocksdb
   snappy
+  gtest
 )
 
 target_include_directories(arangodbtests PRIVATE

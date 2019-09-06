@@ -56,11 +56,9 @@ RestStatus RestDocumentHandler::execute() {
       removeDocument();
       break;
     case rest::RequestType::GET:
-      readDocument();
-      break;
+      return readDocument();
     case rest::RequestType::HEAD:
-      checkDocument();
-      break;
+      return checkDocument();
     case rest::RequestType::POST:
       return insertDocument();
     case rest::RequestType::PUT:
@@ -183,7 +181,7 @@ RestStatus RestDocumentHandler::insertDocument() {
 
   return waitForFuture(
       _activeTrx->insertAsync(cname, body, opOptions)
-          .thenValue([=, cname = std::move(cname)](OperationResult&& opres) {
+          .thenValue([=](OperationResult&& opres) {
             // Will commit if no error occured.
             // or abort if an error occured.
             // result stays valid!
@@ -211,7 +209,7 @@ RestStatus RestDocumentHandler::insertDocument() {
 /// Either readSingleDocument or readAllDocuments.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::readDocument() {
+RestStatus RestDocumentHandler::readDocument() {
   size_t const len = _request->suffixes().size();
 
   switch (len) {
@@ -219,14 +217,14 @@ bool RestDocumentHandler::readDocument() {
     case 1:
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                     "expecting GET /_api/document/<document-handle>");
-      return false;
+      return RestStatus::DONE;
     case 2:
       return readSingleDocument(true);
 
     default:
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                     "expecting GET /_api/document/<document-handle>");
-      return false;
+      return RestStatus::DONE;
   }
 }
 
@@ -234,7 +232,7 @@ bool RestDocumentHandler::readDocument() {
 /// @brief was docuBlock REST_DOCUMENT_READ
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::readSingleDocument(bool generateBody) {
+RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   // split the document reference
@@ -269,67 +267,66 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  auto trx = createTransaction(collection, AccessMode::Type::READ);
+  _activeTrx = createTransaction(collection, AccessMode::Type::READ);
 
-  trx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   // ...........................................................................
   // inside read transaction
   // ...........................................................................
 
-  Result res = trx->begin();
+  Result res = _activeTrx->begin();
 
   if (!res.ok()) {
     generateTransactionError(collection, res, "");
-    return false;
+    return RestStatus::DONE;
   }
 
-  OperationResult result = trx->document(collection, search, options);
+  return waitForFuture(
+      _activeTrx->documentAsync(collection, search, options).thenValue([=](OperationResult opRes) {
+        auto res = _activeTrx->finish(opRes.result);
 
-  res = trx->finish(result.result);
+        if (!opRes.ok()) {
+          if (opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+            generateDocumentNotFound(collection, key);
+          } else if (ifRid != 0 && opRes.is(TRI_ERROR_ARANGO_CONFLICT)) {
+            generatePreconditionFailed(opRes.slice());
+          } else {
+            generateTransactionError(collection, res, key);
+          }
+          return;
+        }
 
-  if (!result.ok()) {
-    if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-      generateDocumentNotFound(collection, key);
-      return false;
-    } else if (ifRid != 0 && result.is(TRI_ERROR_ARANGO_CONFLICT)) {
-      generatePreconditionFailed(result.slice());
-    } else {
-      generateTransactionError(collection, res, key);
-    }
-    return false;
-  }
+        if (!res.ok()) {
+          generateTransactionError(collection, res, key);
+          return;
+        }
 
-  if (!res.ok()) {
-    generateTransactionError(collection, res, key);
-    return false;
-  }
+        if (ifNoneRid != 0) {
+          TRI_voc_rid_t const rid = TRI_ExtractRevisionId(opRes.slice());
+          if (ifNoneRid == rid) {
+            generateNotModified(rid);
+            return;
+          }
+        }
 
-  if (ifNoneRid != 0) {
-    TRI_voc_rid_t const rid = TRI_ExtractRevisionId(result.slice());
-    if (ifNoneRid == rid) {
-      generateNotModified(rid);
-      return true;
-    }
-  }
-
-  // use default options
-  generateDocument(result.slice(), generateBody,
-                   trx->transactionContextPtr()->getVPackOptionsForDump());
-  return true;
+        // use default options
+        generateDocument(opRes.slice(), generateBody,
+                         _activeTrx->transactionContextPtr()->getVPackOptionsForDump());
+      }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock REST_DOCUMENT_READ_HEAD
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::checkDocument() {
+RestStatus RestDocumentHandler::checkDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() != 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting URI /_api/document/<document-handle>");
-    return false;
+    return RestStatus::DONE;
   }
 
   return readSingleDocument(false);

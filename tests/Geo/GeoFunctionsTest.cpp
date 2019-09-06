@@ -36,8 +36,6 @@
 #include "Basics/SmallVector.h"
 #include "Transaction/Methods.h"
 
-#include "lib/Random/RandomGenerator.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>

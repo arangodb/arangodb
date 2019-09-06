@@ -303,11 +303,6 @@ set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - data importer")
 set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
 set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - VelocyPack formatter")
 
-# libraries
-set(LIB_ARANGO        arango)
-set(LIB_ARANGO_GEO    arango_geo)
-set(LIB_ARANGO_V8     arango_v8)
-
 # binaries
 set(BIN_ARANGOBENCH   arangobench)
 set(BIN_ARANGOBACKUP  arangobackup)
@@ -409,7 +404,7 @@ option(HOMEBREW
 if (WIN32)
   set(WINDOWS TRUE)
   set(MSBUILD TRUE)
-  add_definitions(-D_USE_MATH_DEFINES -DNOMINMAX -D_WIN32_WINNT=_WIN32_WINNT_VISTA -DINCL_EXTRA_HTON_FUNCTIONS -DPSAPI_VERSION=1)
+  add_definitions(-D_USE_MATH_DEFINES -DNOMINMAX -D_WIN32_WINNT=0x600 -DINCL_EXTRA_HTON_FUNCTIONS -DPSAPI_VERSION=1)
 elseif (UNIX AND NOT APPLE)
   if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
     set(LINUX TRUE)
@@ -648,9 +643,7 @@ endif ()
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
 
-include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/arangod)
-include_directories(${PROJECT_SOURCE_DIR}/arangosh)
 include_directories(${PROJECT_SOURCE_DIR}/lib)
 
 if (CUSTOM_INCLUDES)
@@ -1017,8 +1010,6 @@ endif ()
 # ------------------------------------------------------------------------------
 # IResearch
 # ------------------------------------------------------------------------------
-
-set(LIB_ARANGO_IRESEARCH arango_iresearch)
 
 # 3rdParty exports:
 #
