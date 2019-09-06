@@ -1212,7 +1212,7 @@
           window.modalView.createCheckboxEntry(
             'new-app-flag-teardown',
             'Run teardown?',
-            true,
+            false,
             "Should the existing service's teardown script be executed before replacing the service?",
             false
           )
@@ -1234,7 +1234,7 @@
           window.modalView.createCheckboxEntry(
             'new-app-flag-replace',
             'Discard configuration and dependency files?',
-            true,
+            false,
             "Should this service's existing configuration and settings be removed completely before replacing the service?",
             false
           )
