@@ -31,23 +31,19 @@ namespace arangodb {
 namespace methods {
 
 /// Code to create and initialize databases
-/// Replaces ugrade-database.js for good
+/// Replaces upgrade-database.js for good
 struct UpgradeTasks {
-  static bool upgradeGeoIndexes(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
-  static bool setupGraphs(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
-  static bool setupUsers(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
-  static bool createUsersIndex(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
+                                                velocypack::Slice const& slice);
+  static bool createStatisticsCollectionsAndIndices(TRI_vocbase_t& vocbase,
+                                                    velocypack::Slice const& slice);
   static bool addDefaultUserOther(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
-  static bool setupAqlFunctions(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
-  static bool setupQueues(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
-  static bool setupJobs(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
-  static bool createJobsIndex(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
-  static bool setupApps(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
-  static bool createAppsIndex(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
-  static bool setupAppBundles(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
   static bool persistLocalDocumentIds(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
   static bool renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
                                                  velocypack::Slice const& slice);
+  static bool setupAnalyzersCollection(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool dropLegacyAnalyzersCollection(TRI_vocbase_t& vocbase,
+                                            velocypack::Slice const& slice);
 };
 
 }  // namespace methods

@@ -86,14 +86,14 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                      new UInt64Parameter(&_connectionTtlMilli));
   options->addOption("--network.verify-hosts", "verify hosts when using TLS",
                      new BooleanParameter(&_verifyHosts));
-  
-  _gcfunc = [this] (bool canceled) {
+
+  _gcfunc = [this](bool canceled) {
     if (canceled) {
       return;
     }
-    
+
     _pool->pruneConnections();
-    
+
     auto* ci = ClusterInfo::instance();
     if (ci != nullptr) {
       auto failed = ci->getFailedServers();
@@ -101,7 +101,7 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
         _pool->cancelConnections(f);
       }
     }
-    
+
     if (!application_features::ApplicationServer::isStopping() && !canceled) {
       auto off = std::chrono::seconds(3);
       ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
@@ -129,7 +129,7 @@ void NetworkFeature::prepare() {
   _pool = std::make_unique<network::ConnectionPool>(config);
   _poolPtr.store(_pool.get(), std::memory_order_release);
 }
-  
+
 void NetworkFeature::start() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler != nullptr) {  // is nullptr in catch tests
@@ -147,6 +147,12 @@ void NetworkFeature::beginShutdown() {
   if (_pool) {
     _pool->shutdown();
   }
+}
+
+void NetworkFeature::stop() {
+  // we might have posted another workItem during shutdown.
+  std::lock_guard<std::mutex> guard(_workItemMutex);
+  _workItem.reset();
 }
 
 }  // namespace arangodb

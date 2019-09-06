@@ -322,6 +322,9 @@ class VelocyPackHelper {
   static uint64_t stringUInt64(VPackSlice const& slice, char const* name) {
     return stringUInt64(slice.get(name));
   }
+  static uint64_t stringUInt64(VPackSlice const& slice, std::string const& name) {
+    return stringUInt64(slice.get(name));
+  }
 
   /// @brief parses a json file to VelocyPack
   static VPackBuilder velocyPackFromFile(std::string const&);
