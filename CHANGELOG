@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed the removal (including a collection drop) of an orphanCollection from a
+  graph definition when using the arango shell. The boolean
+  flag whether to drop the collection or not was not transferred properly.
+
 * Retry hot backup list in cluster for 2 minutes before reporting error
 
 * Improved database creation within the cluster. In the case of coordinator outages
