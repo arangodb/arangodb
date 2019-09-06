@@ -23,13 +23,12 @@
 #ifndef ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H
 #define ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H 1
 
-#include <memory>
-
 #include "GeneralServer/AsioSocket.h"
 #include "GeneralServer/GeneralCommTask.h"
 
 #include <llhttp.h>
 #include <velocypack/StringRef.h>
+#include <memory>
 
 namespace arangodb {
 class HttpRequest;
@@ -99,6 +98,8 @@ private:
   bool _lastHeaderWasValue;
   bool _shouldKeepAlive;  /// keep connection open
   bool _messageDone;
+
+  bool const _allowMethodOverride;  /// allow method override
 };
 }  // namespace rest
 }  // namespace arangodb

@@ -26,7 +26,6 @@
 #include "Aql/AstNode.h"
 #include "Aql/CollectNode.h"
 #include "Aql/CollectOptions.h"
-#include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
@@ -51,7 +50,6 @@
 #include "VocBase/AccessMode.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;

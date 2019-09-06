@@ -78,7 +78,7 @@ function GeneralGraphCreationSuite() {
     vc5 = "UnitTestEdgeDefDeleteVertexCol5",
     vc6 = "UnitTestEdgeDefDeleteVertexCol6";
 
-  var sortEdgeDefinition = function(edgeDefinition) {
+  var sortEdgeDefinition = function (edgeDefinition) {
     return {
       collection: edgeDefinition.collection,
       from: edgeDefinition.from.slice().sort(),
@@ -88,19 +88,19 @@ function GeneralGraphCreationSuite() {
 
   return {
 
-    setUp: function() {
+    setUp: function () {
       try {
         graph._drop(gN1, true);
-      } catch(ignore) {
+      } catch (ignore) {
       }
       try {
         graph._drop(gN2, true);
-      } catch(ignore) {
+      } catch (ignore) {
       }
 
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop("UnitTestsGraphRenamed1");
       db._drop("UnitTestsGraphRenamed2");
       db._drop("UnitTestsGraphRenamed3");
@@ -115,11 +115,11 @@ function GeneralGraphCreationSuite() {
       db._drop(vc6);
       try {
         graph._drop(gN1, true);
-      } catch(ignore) {
+      } catch (ignore) {
       }
       try {
         graph._drop(gN2, true);
-      } catch(ignore) {
+      } catch (ignore) {
       }
       if (db._collection("_graphs").exists(gn1)) {
         db._collection("_graphs").remove(gn1);
@@ -132,9 +132,9 @@ function GeneralGraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: rename
 ////////////////////////////////////////////////////////////////////////////////
-    
-    test_collectionRenameEdge: function() {
-      if ((cluster && cluster.isCluster && cluster.isCluster()) || (! cluster || ! cluster.isCluster)) {
+
+    test_collectionRenameEdge: function () {
+      if ((cluster && cluster.isCluster && cluster.isCluster()) || (!cluster || !cluster.isCluster)) {
         return;
       }
 
@@ -149,29 +149,29 @@ function GeneralGraphCreationSuite() {
       assertEqual(1, doc.edgeDefinitions.length);
       assertEqual(rn1, doc.edgeDefinitions[0].collection);
       assertEqual(2, doc.edgeDefinitions[0].from.length);
-      assertEqual([ vn1, vn2 ], doc.edgeDefinitions[0].from.sort());
+      assertEqual([vn1, vn2], doc.edgeDefinitions[0].from.sort());
       assertEqual(2, doc.edgeDefinitions[0].to.length);
-      assertEqual([ vn3, vn4 ], doc.edgeDefinitions[0].to.sort());
-      assertEqual([ ], doc.orphanCollections);
+      assertEqual([vn3, vn4], doc.edgeDefinitions[0].to.sort());
+      assertEqual([], doc.orphanCollections);
 
       db._collection(rn1).rename("UnitTestsGraphRenamed1");
-      
+
       doc = db._graphs.document(gN1);
       assertEqual(1, doc.edgeDefinitions.length);
       assertEqual("UnitTestsGraphRenamed1", doc.edgeDefinitions[0].collection);
       assertEqual(2, doc.edgeDefinitions[0].from.length);
-      assertEqual([ vn1, vn2 ], doc.edgeDefinitions[0].from.sort());
+      assertEqual([vn1, vn2], doc.edgeDefinitions[0].from.sort());
       assertEqual(2, doc.edgeDefinitions[0].to.length);
-      assertEqual([ vn3, vn4 ], doc.edgeDefinitions[0].to.sort());
-      assertEqual([ ], doc.orphanCollections);
+      assertEqual([vn3, vn4], doc.edgeDefinitions[0].to.sort());
+      assertEqual([], doc.orphanCollections);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: rename
 ////////////////////////////////////////////////////////////////////////////////
-    
-    test_collectionRenameVertex: function() {
-      if ((cluster && cluster.isCluster && cluster.isCluster()) || (! cluster || ! cluster.isCluster)) {
+
+    test_collectionRenameVertex: function () {
+      if ((cluster && cluster.isCluster && cluster.isCluster()) || (!cluster || !cluster.isCluster)) {
         return;
       }
 
@@ -183,23 +183,23 @@ function GeneralGraphCreationSuite() {
       );
 
       db._collection(vn1).rename("UnitTestsGraphRenamed1");
-      
+
       var doc = db._graphs.document(gN1);
       assertEqual(1, doc.edgeDefinitions.length);
       assertEqual(rn1, doc.edgeDefinitions[0].collection);
       assertEqual(2, doc.edgeDefinitions[0].from.length);
-      assertEqual([ "UnitTestsGraphRenamed1", vn2 ].sort(), doc.edgeDefinitions[0].from.sort());
+      assertEqual(["UnitTestsGraphRenamed1", vn2].sort(), doc.edgeDefinitions[0].from.sort());
       assertEqual(2, doc.edgeDefinitions[0].to.length);
-      assertEqual([ vn3, vn4 ], doc.edgeDefinitions[0].to.sort());
-      assertEqual([ ], doc.orphanCollections);
+      assertEqual([vn3, vn4], doc.edgeDefinitions[0].to.sort());
+      assertEqual([], doc.orphanCollections);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: rename
 ////////////////////////////////////////////////////////////////////////////////
-    
-    test_collectionRenameVertices: function() {
-      if ((cluster && cluster.isCluster && cluster.isCluster()) || (! cluster || ! cluster.isCluster)) {
+
+    test_collectionRenameVertices: function () {
+      if ((cluster && cluster.isCluster && cluster.isCluster()) || (!cluster || !cluster.isCluster)) {
         return;
       }
 
@@ -213,24 +213,24 @@ function GeneralGraphCreationSuite() {
       db._collection(rn1).rename("UnitTestsGraphRenamed1");
       db._collection(vn1).rename("UnitTestsGraphRenamed2");
       db._collection(vn4).rename("UnitTestsGraphRenamed3");
-      
+
       var doc = db._graphs.document(gN1);
       assertEqual(1, doc.edgeDefinitions.length);
       assertEqual("UnitTestsGraphRenamed1", doc.edgeDefinitions[0].collection);
       assertEqual(2, doc.edgeDefinitions[0].from.length);
-      assertEqual([ "UnitTestsGraphRenamed2", vn2 ].sort(), doc.edgeDefinitions[0].from.sort());
+      assertEqual(["UnitTestsGraphRenamed2", vn2].sort(), doc.edgeDefinitions[0].from.sort());
       assertEqual(2, doc.edgeDefinitions[0].to.length);
-      assertEqual([ vn3, "UnitTestsGraphRenamed3" ].sort(), doc.edgeDefinitions[0].to.sort());
-      assertEqual([ ], doc.orphanCollections);
+      assertEqual([vn3, "UnitTestsGraphRenamed3"].sort(), doc.edgeDefinitions[0].to.sort());
+      assertEqual([], doc.orphanCollections);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: rename with module function renameCollection
 ////////////////////////////////////////////////////////////////////////////////
-    
-    test_collectionRenameCollectionsWithModule1: function() {
+
+    test_collectionRenameCollectionsWithModule1: function () {
       // tests edge collection name from vertex and to vertex collections
-      if ((cluster && cluster.isCluster && cluster.isCluster()) || (! cluster || ! cluster.isCluster)) {
+      if ((cluster && cluster.isCluster && cluster.isCluster()) || (!cluster || !cluster.isCluster)) {
         return;
       }
 
@@ -244,20 +244,20 @@ function GeneralGraphCreationSuite() {
       graph._renameCollection("UnitTestRelationName1", "UnitTestsGraphRenamed1");
       graph._renameCollection("UnitTestVertices1", "UnitTestsGraphRenamed2");
       graph._renameCollection("UnitTestVertices4", "UnitTestsGraphRenamed3");
-      
+
       var doc = db._graphs.document(gN1);
       assertEqual(1, doc.edgeDefinitions.length);
       assertEqual("UnitTestsGraphRenamed1", doc.edgeDefinitions[0].collection);
       assertEqual(2, doc.edgeDefinitions[0].from.length);
-      assertEqual([ "UnitTestsGraphRenamed2", vn2 ].sort(), doc.edgeDefinitions[0].from.sort());
+      assertEqual(["UnitTestsGraphRenamed2", vn2].sort(), doc.edgeDefinitions[0].from.sort());
       assertEqual(2, doc.edgeDefinitions[0].to.length);
-      assertEqual([ vn3, "UnitTestsGraphRenamed3" ].sort(), doc.edgeDefinitions[0].to.sort());
-      assertEqual([ ], doc.orphanCollections);
+      assertEqual([vn3, "UnitTestsGraphRenamed3"].sort(), doc.edgeDefinitions[0].to.sort());
+      assertEqual([], doc.orphanCollections);
     },
 
-    test_collectionRenameCollectionsWithModule2: function() {
+    test_collectionRenameCollectionsWithModule2: function () {
       // tests orpahns rename in one graph
-      if ((cluster && cluster.isCluster && cluster.isCluster()) || (! cluster || ! cluster.isCluster)) {
+      if ((cluster && cluster.isCluster && cluster.isCluster()) || (!cluster || !cluster.isCluster)) {
         return;
       }
 
@@ -280,7 +280,7 @@ function GeneralGraphCreationSuite() {
       g2._addVertexCollection("mj7");
 
       graph._renameCollection("mj7", "MarcelJansen");
-      
+
       var doc = db._graphs.document(gN1);
       assertEqual(1, doc.orphanCollections.length);
       assertEqual("MarcelJansen", doc.orphanCollections[0]);
@@ -300,7 +300,7 @@ function GeneralGraphCreationSuite() {
 /// @brief test: Graph Creation
 ////////////////////////////////////////////////////////////////////////////////
 
-    test_undirectedRelation : function () {
+    test_undirectedRelation: function () {
       var r = graph._relation(rn, [vn1, vn2], [vn1, vn2]);
 
       assertEqual(r, {
@@ -311,7 +311,7 @@ function GeneralGraphCreationSuite() {
 
     },
 
-    test_undirectedRelationWithSingleCollection : function () {
+    test_undirectedRelationWithSingleCollection: function () {
       var r = graph._relation(rn, vn1, vn1);
 
       assertEqual(r, {
@@ -322,27 +322,25 @@ function GeneralGraphCreationSuite() {
 
     },
 
-    test_undirectedRelationWithMissingName : function () {
+    test_undirectedRelationWithMissingName: function () {
       try {
         graph._relation("", [vn1, vn2], [vn1, vn2]);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(err.errorMessage, "Invalid parameter type. arg1 must be non empty string");
       }
     },
 
-    test_relationWithTooFewArgs : function () {
+    test_relationWithTooFewArgs: function () {
       try {
         graph._relation([vn1, vn2]);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(err.errorMessage, "Invalid number of arguments. Expected: 3");
       }
     },
 
-    test_collectionSorting: function() {
+    test_collectionSorting: function () {
       var g = graph._create(
         gn,
         graph._edgeDefinitions(
@@ -354,9 +352,9 @@ function GeneralGraphCreationSuite() {
       assertEqual([vn3, vn4], g.__edgeDefinitions[0].to);
     },
 
-    test_directedRelation : function () {
+    test_directedRelation: function () {
       var r = graph._relation(rn,
-          [vn1, vn2], [vn3, vn4]);
+        [vn1, vn2], [vn3, vn4]);
 
       assertEqual(r, {
         collection: rn,
@@ -366,54 +364,50 @@ function GeneralGraphCreationSuite() {
 
     },
 
-    test_directedRelationWithMissingName : function () {
+    test_directedRelationWithMissingName: function () {
       try {
         graph._relation("",
           [vn1, vn2], [vn3, vn4]);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(err.errorMessage, "Invalid parameter type. arg1 must be non empty string");
       }
     },
 
-    test_directedRelationWithTooFewArgs : function () {
+    test_directedRelationWithTooFewArgs: function () {
       try {
         graph._relation([vn1, vn2], [vn3, vn4]);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(err.errorMessage, "Invalid number of arguments. Expected: 3");
       }
     },
 
-    test_relationWithInvalidSecondArg : function () {
+    test_relationWithInvalidSecondArg: function () {
       try {
         var param = {};
         param[vn1] = vn2;
         graph._relation(rn, param, vn3);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(err.errorMessage, "Invalid parameter type. arg2 must be non empty string or array");
       }
 
 
     },
 
-    test_relationWithInvalidThirdArg : function () {
+    test_relationWithInvalidThirdArg: function () {
       try {
         var param = {};
         param[vn1] = vn2;
         graph._relation(rn, vn3, param);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(err.errorMessage, "Invalid parameter type. arg3 must be non empty string or array");
       }
     },
 
-    testEdgeDefinitions : function () {
+    testEdgeDefinitions: function () {
 
       //with empty args
       assertEqual(graph._edgeDefinitions(), []);
@@ -437,7 +431,7 @@ function GeneralGraphCreationSuite() {
       ]);
     },
 
-    testExtendEdgeDefinitions : function () {
+    testExtendEdgeDefinitions: function () {
       //with empty args
       assertEqual(graph._edgeDefinitions(), []);
 
@@ -450,7 +444,7 @@ function GeneralGraphCreationSuite() {
       graph._extendEdgeDefinitions(ed,
         graph._relation("relationName", "vertexC1", "vertexC1")
       );
-      assertEqual(ed,  [
+      assertEqual(ed, [
         {
           collection: "relationName",
           from: ["vertexC1"],
@@ -469,7 +463,7 @@ function GeneralGraphCreationSuite() {
       ]);
     },
 
-    test_create : function () {
+    test_create: function () {
       if (db._collection("_graphs").exists(gn)) {
         db._collection("_graphs").remove(gn);
       }
@@ -487,31 +481,31 @@ function GeneralGraphCreationSuite() {
       assertTrue(a.__edgeCollections.hasOwnProperty(rn));
       assertTrue(a.__edgeCollections.hasOwnProperty(rn1));
       assertEqual(a.__edgeDefinitions, [
-        {
-          "collection" : rn,
-          "from" : [
-            vn1
-          ],
-          "to" : [
-            vn1
-          ]
-        },
-        {
-          "collection" : rn1,
-          "from" : [
-            vn1,
-            vn2
-          ],
-          "to" : [
-            vn3,
-            vn4
-          ]
-        }
-      ]
+          {
+            "collection": rn,
+            "from": [
+              vn1
+            ],
+            "to": [
+              vn1
+            ]
+          },
+          {
+            "collection": rn1,
+            "from": [
+              vn1,
+              vn2
+            ],
+            "to": [
+              vn3,
+              vn4
+            ]
+          }
+        ]
       );
     },
 
-    test_create_WithOut_EdgeDefiniton : function () {
+    test_create_WithOut_EdgeDefiniton: function () {
       if (db._collection("_graphs").exists(gn)) {
         db._collection("_graphs").remove(gn);
       }
@@ -521,7 +515,7 @@ function GeneralGraphCreationSuite() {
       assertEqual(g.__edgeDefinitions, []);
     },
 
-    test_create_WithEmpty_from_to_EdgeDefiniton : function () {
+    test_create_WithEmpty_from_to_EdgeDefiniton: function () {
       if (db._collection("_graphs").exists(gn)) {
         db._collection("_graphs").remove(gn);
       }
@@ -548,7 +542,7 @@ function GeneralGraphCreationSuite() {
       }
     },
 
-    test_create_WithOut_Name : function () {
+    test_create_WithOut_Name: function () {
       if (db._collection("_graphs").exists(gn)) {
         db._collection("_graphs").remove(gn);
       }
@@ -568,7 +562,7 @@ function GeneralGraphCreationSuite() {
       }
     },
 
-    test_create_With_Already_Existing_Graph : function () {
+    test_create_With_Already_Existing_Graph: function () {
       if (db._collection("_graphs").exists(gn)) {
         db._collection("_graphs").remove(gn);
       }
@@ -639,7 +633,7 @@ function GeneralGraphCreationSuite() {
       graph._create(gn2, edgeDefs2);
     },
 
-    test_get_graph : function () {
+    test_get_graph: function () {
       if (db._collection("_graphs").exists(gn)) {
         db._collection("_graphs").remove(gn);
       }
@@ -653,31 +647,31 @@ function GeneralGraphCreationSuite() {
       assertTrue(a.__edgeCollections.hasOwnProperty(rn));
       assertTrue(a.__edgeCollections.hasOwnProperty(rn1));
       assertEqual(a.__edgeDefinitions, [
-        {
-          "collection" : rn,
-          "from" : [
-            vn1
-          ],
-          "to" : [
-            vn1
-          ]
-        },
-        {
-          "collection" : rn1,
-          "from" : [
-            vn1,
-            vn2
-          ],
-          "to" : [
-            vn3,
-            vn4
-          ]
-        }
-      ]
+          {
+            "collection": rn,
+            "from": [
+              vn1
+            ],
+            "to": [
+              vn1
+            ]
+          },
+          {
+            "collection": rn1,
+            "from": [
+              vn1,
+              vn2
+            ],
+            "to": [
+              vn3,
+              vn4
+            ]
+          }
+        ]
       );
     },
 
-    test_get_graph_without_hit : function () {
+    test_get_graph_without_hit: function () {
       try {
         graph._graph(gn + "UnknownExtension");
         fail();
@@ -687,8 +681,8 @@ function GeneralGraphCreationSuite() {
       }
     },
 
-    test_creationOfGraphShouldNotAffectCollections: function() {
-      if(graph._exists(gn)) {
+    test_creationOfGraphShouldNotAffectCollections: function () {
+      if (graph._exists(gn)) {
         graph._drop(gn, true);
       }
       var edgeDef2 = [graph._relation(rn, vn1, vn2)];
@@ -728,7 +722,7 @@ function GeneralGraphCreationSuite() {
     },
 
 
-    test_deleteEdgeDefinitionFromExistingGraph1: function() {
+    test_deleteEdgeDefinitionFromExistingGraph1: function () {
       var dr1 = graph._relation(ec1, [vc1], [vc1, vc2]),
         g1 = graph._create(gN1, [dr1]);
 
@@ -743,7 +737,7 @@ function GeneralGraphCreationSuite() {
 
     },
 
-    test_deleteEdgeDefinitionFromExistingGraph2: function() {
+    test_deleteEdgeDefinitionFromExistingGraph2: function () {
 
       var dr1 = graph._relation(ec1, [vc1], [vc1, vc2]),
         dr2 = graph._relation(ec2, [vc3], [vc4, vc5]),
@@ -768,7 +762,7 @@ function GeneralGraphCreationSuite() {
       assertTrue(db._collection(ec2) !== null);
     },
 
-    test_deleteEdgeDefinitionFromExistingGraphAndDropIt: function() {
+    test_deleteEdgeDefinitionFromExistingGraphAndDropIt: function () {
 
       var dr1 = graph._relation(ec1, [vc1], [vc1, vc2]),
         dr2 = graph._relation(ec2, [vc3], [vc4, vc5]),
@@ -792,12 +786,12 @@ function GeneralGraphCreationSuite() {
       assertEqual([vc1, vc2, vc3].sort(), g1._orphanCollections().sort());
       assertTrue(db._collection(ec2) === null);
     },
-    
-    test_extendEdgeDefinitionFromExistingGraph1: function() {
+
+    test_extendEdgeDefinitionFromExistingGraph1: function () {
 
       try {
         graph._drop(gN1, true);
-      } catch(ignore) {
+      } catch (ignore) {
       }
 
       var dr1 = graph._relation(ec1, [vc1], [vc2]),
@@ -816,12 +810,12 @@ function GeneralGraphCreationSuite() {
 
       try {
         graph._drop(gN1, true);
-      } catch(ignore) {
+      } catch (ignore) {
       }
 
     },
 
-    test_extendEdgeDefinitionFromExistingGraph2: function() {
+    test_extendEdgeDefinitionFromExistingGraph2: function () {
 
       var dr1 = graph._relation(ec1, [vc1], [vc1, vc2]),
         dr2 = graph._relation(ec2, [vc3], [vc4, vc5]),
@@ -840,23 +834,23 @@ function GeneralGraphCreationSuite() {
 
       try {
         graph._drop(gN1, true);
-      } catch(ignore) {
+      } catch (ignore) {
       }
       try {
         graph._drop(gN2, true);
-      } catch(ignore) {
+      } catch (ignore) {
       }
 
     },
 
-    test_extendEdgeDefinitionFromExistingGraph3: function() {
+    test_extendEdgeDefinitionFromExistingGraph3: function () {
       try {
         graph._drop(gN1, true);
-      } catch(ignore) {
+      } catch (ignore) {
       }
       try {
         graph._drop(gN2, true);
-      } catch(ignore) {
+      } catch (ignore) {
       }
 
       var dr1 = graph._relation(ec1, [vc1], [vc1, vc2]),
@@ -866,7 +860,7 @@ function GeneralGraphCreationSuite() {
       graph._create(gN2, [dr2]);
 
       const loadG1 = () => graph._graph(gN1);
-      let sortEdgeDefinitions = function (a,b) {
+      let sortEdgeDefinitions = function (a, b) {
         if (a.collection < b.collection) {
           return -1;
         }
@@ -875,7 +869,7 @@ function GeneralGraphCreationSuite() {
         }
         return 0;
       };
- 
+
       assertEqual([dr1], g1.__edgeDefinitions);
       g1._addVertexCollection(vc3);
       assertEqual([vc3], g1._orphanCollections());
@@ -890,14 +884,14 @@ function GeneralGraphCreationSuite() {
       assertEqual([dr1, dr3, dr2].sort(sortEdgeDefinitions), loadG1().__edgeDefinitions);
     },
 
-    test_extendEdgeDefinitionFromExistingGraph4: function() {
+    test_extendEdgeDefinitionFromExistingGraph4: function () {
       try {
         graph._drop(gN1, true);
-      } catch(ignore) {
+      } catch (ignore) {
       }
       try {
         graph._drop(gN2, true);
-      } catch(ignore) {
+      } catch (ignore) {
       }
 
       var dr1 = graph._relation(ec1, [vc1], [vc1, vc2]),
@@ -919,8 +913,8 @@ function GeneralGraphCreationSuite() {
       assertEqual(edgeDefinition.to, [vc1, vc2, vc3, vc4]);
     },
 
-    
-    test_editEdgeDefinitionFromExistingGraph1: function() {
+
+    test_editEdgeDefinitionFromExistingGraph1: function () {
       var dr1 = graph._relation(ec1, [vc1], [vc1, vc2]),
         dr2 = graph._relation(ec2, [vc3], [vc4, vc5]),
         g1 = graph._create(gN1, [dr1]);
@@ -936,7 +930,7 @@ function GeneralGraphCreationSuite() {
 
     },
 
-    test_editEdgeDefinitionFromExistingGraph2: function() {
+    test_editEdgeDefinitionFromExistingGraph2: function () {
 
       var dr1 = graph._relation(ec1, _.cloneDeep([vc1, vc2]), _.cloneDeep([vc3, vc4])),
         dr2 = graph._relation(ec2, _.cloneDeep([vc1]), _.cloneDeep([vc4])),
@@ -956,8 +950,7 @@ function GeneralGraphCreationSuite() {
       assertEqual(g2._orphanCollections().sort(), [vc1, vc2, vc3, vc4].sort());
     },
 
-    test_editEdgeDefinitionFromExistingGraph3: function() {
-
+    test_editEdgeDefinitionFromExistingGraph3: function () {
       var dr1 = graph._relation(ec1, _.cloneDeep([vc1]), _.cloneDeep([vc1, vc2])),
         dr2 = graph._relation(ec1, _.cloneDeep([vc3]), _.cloneDeep([vc4, vc5])),
         dr3 = graph._relation(ec2, _.cloneDeep([vc2]), _.cloneDeep([vc2, vc3])),
@@ -979,16 +972,34 @@ function GeneralGraphCreationSuite() {
 
       try {
         graph._drop(gN1, true);
-      } catch(ignore) {
+      } catch (ignore) {
       }
       try {
         graph._drop(gN2, true);
-      } catch(ignore) {
+      } catch (ignore) {
       }
+    },
 
-    }
-
-
+    test_createGraphAndDropAVertexCollectionAfterwards: function () {
+      try {
+        var gr = graph._create("gg",
+          [graph._relation("edges", "verts", "verts")],
+          ["other"]
+        );
+        assertTrue(db["other"].name() === "other");
+        gr._removeVertexCollection("other", true);
+        var collections = db._collections();
+        var found = false;
+        _.each(collections, function (collection) {
+          if (collection.name() === "other") {
+            found = true;
+          }
+        });
+        assertFalse(found);
+      } finally {
+        graph._drop("gg", true);
+      }
+    },
   };
 }
 
@@ -1008,7 +1019,7 @@ function EdgesAndVerticesSuite() {
 
   var ids = {};
 
-  var fillCollections = function() {
+  var fillCollections = function () {
     var vertex = g[vc1].save({first_name: "Tam"});
     ids.vId11 = vertex._id;
     vertex = g[vc1].save({first_name: "Tem"});
@@ -1071,7 +1082,7 @@ function EdgesAndVerticesSuite() {
 
   return {
 
-    setUp : function() {
+    setUp: function () {
       try {
         graph._drop(unitTestGraphName, true);
       } catch (ignore) {
@@ -1087,18 +1098,18 @@ function EdgesAndVerticesSuite() {
       );
     },
 
-    tearDown : function() {
+    tearDown: function () {
       graph._drop(unitTestGraphName, true);
     },
 
-    test_connectingEdges : function () {
+    test_connectingEdges: function () {
       fillCollections();
       var query = `${pickStartByName("Tam")} FOR v, e IN ANY start GRAPH "${unitTestGraphName}" FILTER v.first_name == "Tem" RETURN e`;
       var res = db._query(query).toArray();
       assertEqual(res.length, 3);
     },
 
-    test_connectingEdgesWithEdgeCollectionRestriction : function () {
+    test_connectingEdgesWithEdgeCollectionRestriction: function () {
       fillCollections();
       var query = `${pickStartByName("Tam")} FOR v, e IN ANY start GRAPH "${unitTestGraphName}" RETURN DISTINCT e`;
       var res = db._query(query).toArray();
@@ -1109,7 +1120,7 @@ function EdgesAndVerticesSuite() {
       assertEqual(res.length, 5);
     },
 
-    test_connectingEdgesWithVertexCollectionRestriction : function () {
+    test_connectingEdgesWithVertexCollectionRestriction: function () {
       fillCollections();
       var query = `FOR start IN ${vc1} FOR v, e IN ANY start GRAPH "${unitTestGraphName}" RETURN DISTINCT e`;
       var res = db._query(query).toArray();
@@ -1119,14 +1130,14 @@ function EdgesAndVerticesSuite() {
       assertEqual(res.length, 5);
     },
 
-    test_connectingEdgesWithIds : function () {
+    test_connectingEdgesWithIds: function () {
       var ids = fillCollections();
       var query = `FOR v, e IN ANY "${ids.vId11}" GRAPH "${unitTestGraphName}" FILTER v._id == "${ids.vId13}" RETURN e`;
       var res = db._query(query).toArray();
       assertEqual(res.length, 2);
     },
 
-    test_dropGraph1 : function () {
+    test_dropGraph1: function () {
       var myGraphName = unitTestGraphName + "2";
       var myEdgeColName = "unitTestEdgeCollection4711";
       var myVertexColName = vc1;
@@ -1145,7 +1156,7 @@ function EdgesAndVerticesSuite() {
       assertTrue(db._collection(myEdgeColName) === null);
     },
 
-    test_dropGraph2 : function () {
+    test_dropGraph2: function () {
       var myGraphName = unitTestGraphName + "2";
       var myEdgeColName = "unitTestEdgeCollection4711";
       var myVertexColName = vc1;
@@ -1161,7 +1172,7 @@ function EdgesAndVerticesSuite() {
       assertTrue(db._collection(myEdgeColName) !== null);
     },
 
-    test_createGraphWithCollectionDuplicateOK : function () {
+    test_createGraphWithCollectionDuplicateOK: function () {
       var myGraphName = unitTestGraphName + "2";
       graph._create(
         myGraphName,
@@ -1176,12 +1187,12 @@ function EdgesAndVerticesSuite() {
       assertTrue(db._collection(ec1) !== null);
     },
 
-    test_createGraphWithMalformedEdgeDefinitions : function () {
+    test_createGraphWithMalformedEdgeDefinitions: function () {
       var myGraphName = unitTestGraphName + "2";
       try {
         graph._create(
           myGraphName,
-          [ "foo" ]
+          ["foo"]
         );
       } catch (e) {
         assertEqual(
@@ -1192,7 +1203,7 @@ function EdgesAndVerticesSuite() {
       assertFalse(graph._exists(myGraphName));
     },
 
-    test_createGraphWithCollectionDuplicateNOK1 : function () {
+    test_createGraphWithCollectionDuplicateNOK1: function () {
       var myGraphName = unitTestGraphName + "2";
       try {
         graph._create(
@@ -1212,13 +1223,19 @@ function EdgesAndVerticesSuite() {
       assertTrue(db._collection(ec1) !== null);
     },
 
-    test_createGraphWithCollectionDuplicateNOK2 : function () {
+    test_createGraphWithCollectionDuplicateNOK2: function () {
       var myGraphName = unitTestGraphName + "2";
       var myED = "unitTestEdgeCollection4711";
       var myVD1 = "unitTestVertexCollection4711";
       var myVD2 = "unitTestVertexCollection4712";
-      try {graph._drop(myGraphName, true);} catch (ignore){}
-      try {db._drop(myED);} catch (ignore){}
+      try {
+        graph._drop(myGraphName, true);
+      } catch (ignore) {
+      }
+      try {
+        db._drop(myED);
+      } catch (ignore) {
+      }
       try {
         graph._create(
           myGraphName,
@@ -1237,14 +1254,14 @@ function EdgesAndVerticesSuite() {
       assertTrue(db._collection(myED) === null);
     },
 
-    test_edgeCollections : function () {
+    test_edgeCollections: function () {
 
       var edgeCollections = g._edgeCollections();
       assertEqual(edgeCollections[0].name(), ec1);
       assertEqual(edgeCollections[1].name(), ec2);
     },
 
-    test_vertexCollections : function () {
+    test_vertexCollections: function () {
 
       var vertexCollections = g._vertexCollections();
       assertEqual(vertexCollections[0].name(), vc1);
@@ -1253,7 +1270,7 @@ function EdgesAndVerticesSuite() {
       assertEqual(vertexCollections[3].name(), vc4);
     },
 
-    test_vC_save : function () {
+    test_vC_save: function () {
       var vertex = g[vc1].save({first_name: "Tom"});
       assertFalse(vertex.error);
       vertexId1 = vertex._id;
@@ -1261,7 +1278,7 @@ function EdgesAndVerticesSuite() {
       assertEqual(vertexObj.first_name, "Tom");
     },
 
-    test_vC_replace : function () {
+    test_vC_replace: function () {
       var vertex = g[vc1].save({first_name: "Tom"});
       var vertexId = vertex._id;
       vertex = g[vc1].replace(vertexId, {first_name: "Tim"});
@@ -1270,7 +1287,7 @@ function EdgesAndVerticesSuite() {
       assertEqual(vertexObj.first_name, "Tim");
     },
 
-    test_vC_update : function () {
+    test_vC_update: function () {
       var vertex = g[vc1].save({first_name: "Tim"});
       var vertexId = vertex._id;
       vertex = g[vc1].update(vertexId, {age: 42});
@@ -1280,7 +1297,7 @@ function EdgesAndVerticesSuite() {
       assertEqual(vertexObj.age, 42);
     },
 
-    test_vC_remove : function () {
+    test_vC_remove: function () {
       var col = g[vc1];
       var counter = col.count();
       var vertex = col.save({first_name: "Tim"});
@@ -1291,7 +1308,7 @@ function EdgesAndVerticesSuite() {
       assertTrue(result);
     },
 
-    test_vC_remove_by_key : function () {
+    test_vC_remove_by_key: function () {
       var col = g[vc1];
       var counter = col.count();
       var vertex = col.save({first_name: "Tim"});
@@ -1302,7 +1319,7 @@ function EdgesAndVerticesSuite() {
       assertTrue(result);
     },
 
-    test_vC_removeWithEdge : function () {
+    test_vC_removeWithEdge: function () {
       var vertex1 = g[vc1].save({first_name: "Tim"});
       var vId1 = vertex1._id;
       var vertex2 = g[vc1].save({first_name: "Tom"});
@@ -1316,7 +1333,7 @@ function EdgesAndVerticesSuite() {
       assertTrue(result);
     },
 
-    test_eC_save_undirected : function() {
+    test_eC_save_undirected: function () {
       var vertex1 = g[vc1].save({first_name: "Tom"});
       var vId1 = vertex1._id;
       var vertex2 = g[vc1].save({first_name: "Tim"});
@@ -1331,7 +1348,7 @@ function EdgesAndVerticesSuite() {
       g[vc1].remove(vId2);
     },
 
-    test_eC_save_directed : function() {
+    test_eC_save_directed: function () {
       var vertex1 = g[vc2].save({first_name: "Tom"});
       vertexId1 = vertex1._id;
       var vertex2 = g[vc4].save({first_name: "Tim"});
@@ -1347,7 +1364,7 @@ function EdgesAndVerticesSuite() {
       g[vc4].remove(vertexId2);
     },
 
-    test_eC_save_withError : function() {
+    test_eC_save_withError: function () {
       var vertex1 = g[vc1].save({first_name: "Tom"});
       vertexId1 = vertex1._id;
       var vertex2 = g[vc2].save({first_name: "Tim"});
@@ -1370,7 +1387,7 @@ function EdgesAndVerticesSuite() {
       g[vc2].remove(vertexId2);
     },
 
-    test_eC_replace : function() {
+    test_eC_replace: function () {
       var vertex1 = g[vc1].save({first_name: "Tom"});
       var vertexId1 = vertex1._id;
       var vertex2 = g[vc1].save({first_name: "Tim"});
@@ -1384,7 +1401,7 @@ function EdgesAndVerticesSuite() {
       assertEqual(edgeObj._id, edgeId1);
     },
 
-    test_eC_update : function () {
+    test_eC_update: function () {
       var vertex1 = g[vc1].save({first_name: "Tom"});
       var vertexId1 = vertex1._id;
       var vertex2 = g[vc1].save({first_name: "Tim"});
@@ -1400,7 +1417,7 @@ function EdgesAndVerticesSuite() {
       assertEqual(edgeObj._id, edgeId1);
     },
 
-    test_eC_remove : function () {
+    test_eC_remove: function () {
       var vertex1 = g[vc1].save({first_name: "Tom"});
       var vertexId1 = vertex1._id;
       var vertex2 = g[vc1].save({first_name: "Tim"});
@@ -1411,7 +1428,7 @@ function EdgesAndVerticesSuite() {
       assertTrue(edge);
     },
 
-    test_eC_remove_by_key : function () {
+    test_eC_remove_by_key: function () {
       var vertex1 = g[vc1].save({first_name: "Tom"});
       var vertexId1 = vertex1._id;
       var vertex2 = g[vc1].save({first_name: "Tim"});
@@ -1425,7 +1442,7 @@ function EdgesAndVerticesSuite() {
       assertEqual(g[ec1].count(), counter);
     },
 
-    test_eC_removeWithEdgesAsVertices : function () {
+    test_eC_removeWithEdgesAsVertices: function () {
 
       var myGraphName = unitTestGraphName + "0815";
       var myEC02 = "unitTestEdgeCollection02";
@@ -1461,7 +1478,7 @@ function EdgesAndVerticesSuite() {
       assertFalse(graph._exists(myGraphName));
     },
 
-    test_eC_removeWithEdgesAsVerticesCircle : function () {
+    test_eC_removeWithEdgesAsVerticesCircle: function () {
       var gN1 = "unitTestGraphCircle1";
       var gN2 = "unitTestGraphCircle2";
       var gN3 = "unitTestGraphCircle3";
@@ -1562,13 +1579,12 @@ function EdgesAndVerticesSuite() {
       graph._drop(gN4, true);
     },
 
-    test_eC_malformedId : function() {
-      [ null, "foo", [ ] ].forEach(function(v) {
+    test_eC_malformedId: function () {
+      [null, "foo", []].forEach(function (v) {
         try {
           g[ec2].save(v, v, {});
           fail();
-        }
-        catch (e) {
+        } catch (e) {
           assertEqual(
             e.errorMessage,
             arangodb.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
@@ -1577,13 +1593,13 @@ function EdgesAndVerticesSuite() {
       });
     },
 
-    test_getInVertex : function() {
+    test_getInVertex: function () {
       var ids = fillCollections();
       var result = g._fromVertex(ids.eId11);
       assertEqual(result._id, ids.vId11);
     },
 
-    test_getOutVertex : function() {
+    test_getOutVertex: function () {
       var ids = fillCollections();
       var result = g._toVertex(ids.eId11);
       assertEqual(result._id, ids.vId12);
@@ -1591,29 +1607,26 @@ function EdgesAndVerticesSuite() {
       assertEqual(result._id, ids.vId35);
     },
 
-    test_getFromVertexInvalidHandle : function() {
+    test_getFromVertexInvalidHandle: function () {
       try {
         g._fromVertex("foobar");
-      }
-      catch (e) {
+      } catch (e) {
         assertEqual(e.errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code);
       }
     },
 
-    test_getFromVertexInvalidCollectionType : function() {
+    test_getFromVertexInvalidCollectionType: function () {
       try {
         g._fromVertex(vc1 + "/foobar");
-      }
-      catch (e) {
+      } catch (e) {
         assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST.code);
       }
     },
 
-    test_getFromVertexNonexistingCollection : function() {
+    test_getFromVertexNonexistingCollection: function () {
       try {
         g._fromVertex("UnitTestsCollectionDoesNotExist/foobar");
-      }
-      catch (e) {
+      } catch (e) {
         assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST.code);
       }
     }
@@ -1637,7 +1650,7 @@ function GeneralGraphCommonNeighborsSuite() {
   var v7;
   var v8;
 
-  var createKeyValueObject = function(key, value) {
+  var createKeyValueObject = function (key, value) {
     var res = {};
     res[key] = value;
     return res;
@@ -1658,17 +1671,17 @@ function GeneralGraphCommonNeighborsSuite() {
       var vertex2 = db._create(v2ColName);
       var edge1 = db._createEdgeCollection(eColName);
 
-      v1 = vertex1.save({ _key: "v1" , hugo : true})._id;
-      v2 = vertex1.save({ _key: "v2" ,hugo : true})._id;
-      v3 = vertex1.save({ _key: "v3" , heinz : 1})._id;
-      v4 = vertex1.save({ _key: "v4" , harald : "meier"})._id;
-      v5 = vertex2.save({ _key: "v5" , ageing : true})._id;
-      v6 = vertex2.save({ _key: "v6" , harald : "meier", ageing : true})._id;
-      v7 = vertex2.save({ _key: "v7" ,harald : "meier"})._id;
-      v8 = vertex2.save({ _key: "v8" ,heinz : 1, harald : "meier"})._id;
+      v1 = vertex1.save({_key: "v1", hugo: true})._id;
+      v2 = vertex1.save({_key: "v2", hugo: true})._id;
+      v3 = vertex1.save({_key: "v3", heinz: 1})._id;
+      v4 = vertex1.save({_key: "v4", harald: "meier"})._id;
+      v5 = vertex2.save({_key: "v5", ageing: true})._id;
+      v6 = vertex2.save({_key: "v6", harald: "meier", ageing: true})._id;
+      v7 = vertex2.save({_key: "v7", harald: "meier"})._id;
+      v8 = vertex2.save({_key: "v8", heinz: 1, harald: "meier"})._id;
 
       function makeEdge(from, to, collection) {
-        collection.save(from, to, { what: from.split("/")[1] + "->" + to.split("/")[1] });
+        collection.save(from, to, {what: from.split("/")[1] + "->" + to.split("/")[1]});
       }
 
       makeEdge(v1, v2, edge1);
@@ -1732,7 +1745,7 @@ function GeneralGraphCommonNeighborsSuite() {
 
 
     testCommonNeighborsAny: function () {
-      actual = testGraph._commonNeighbors(v3 , v6);
+      actual = testGraph._commonNeighbors(v3, v6);
       assertEqual(actual.length, 1);
       assertEqual(actual[0].left, v3);
       assertEqual(actual[0].right, v6);
@@ -1740,18 +1753,18 @@ function GeneralGraphCommonNeighborsSuite() {
       actual[0].neighbors.sort();
       assertEqual(actual[0].neighbors[0], v2);
       assertEqual(actual[0].neighbors[1], v7);
-      actual = testGraph._countCommonNeighbors(v3 , v6);
-      assertEqual(actual[0][v3][0][v6] , 2);
+      actual = testGraph._countCommonNeighbors(v3, v6);
+      assertEqual(actual[0][v3][0][v6], 2);
     },
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks GRAPH_COMMON_NEIGHBORS()
 ////////////////////////////////////////////////////////////////////////////////
 
     testCommonNeighborsIn: function () {
-      actual = testGraph._commonNeighbors({} , {},  {direction : 'inbound'},  {direction : 'inbound'});
+      actual = testGraph._commonNeighbors({}, {}, {direction: 'inbound'}, {direction: 'inbound'});
       assertEqual(actual.length, 8);
 
-      actual = testGraph._countCommonNeighbors({} , {},  {direction : 'inbound'},  {direction : 'inbound'});
+      actual = testGraph._countCommonNeighbors({}, {}, {direction: 'inbound'}, {direction: 'inbound'});
       assertEqual(actual.length, 5);
 
     },
@@ -1768,7 +1781,7 @@ function GeneralGraphCommonNeighborsSuite() {
         {direction: 'outbound', minDepth: 1, maxDepth: 3}
       );
 
-      actual.sort(function(a ,b) {
+      actual.sort(function (a, b) {
         if (a.left < b.left) {
           return -1;
         }
@@ -1801,7 +1814,7 @@ function GeneralGraphCommonNeighborsSuite() {
       assertEqual(actual[3].neighbors.length, 3);
 
       actual = testGraph._countCommonNeighbors(
-        {hugo: true }, {heinz: 1},
+        {hugo: true}, {heinz: 1},
         {direction: 'outbound', minDepth: 1, maxDepth: 3},
         {direction: 'outbound', minDepth: 1, maxDepth: 3}
       );
@@ -1814,7 +1827,7 @@ function GeneralGraphCommonNeighborsSuite() {
           assertEqual(actual[0][v1][1][v8], 3);
         }
 
-        if(actual[1][v2][0].hasOwnProperty(v8)) {
+        if (actual[1][v2][0].hasOwnProperty(v8)) {
           assertEqual(actual[1][v2][0][v8], 3);
           assertEqual(actual[1][v2][1][v3], 4);
         } else {
@@ -1822,7 +1835,7 @@ function GeneralGraphCommonNeighborsSuite() {
           assertEqual(actual[1][v2][1][v8], 3);
         }
       } else {
-        if(actual[0][v2][0].hasOwnProperty(v8)) {
+        if (actual[0][v2][0].hasOwnProperty(v8)) {
           assertEqual(actual[0][v2][0][v8], 3);
           assertEqual(actual[0][v2][1][v3], 4);
         } else {
@@ -1845,10 +1858,10 @@ function GeneralGraphCommonNeighborsSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCommonProperties: function () {
-      actual = testGraph._commonProperties({} ,{} ,{});
-      assertEqual(actual.length, 8 );
+      actual = testGraph._commonProperties({}, {}, {});
+      assertEqual(actual.length, 8);
 
-      actual = testGraph._countCommonProperties({} ,{} ,{});
+      actual = testGraph._countCommonProperties({}, {}, {});
       assertEqual(actual, [
         createKeyValueObject(v1, 1),
         createKeyValueObject(v2, 1),
@@ -1862,17 +1875,17 @@ function GeneralGraphCommonNeighborsSuite() {
     },
 
     testCommonPropertiesWithFilters: function () {
-      actual = testGraph._commonProperties({ageing : true} , {harald : 'meier'},  {});
-      assertEqual(actual[0][v5][0]._id  , v6);
+      actual = testGraph._commonProperties({ageing: true}, {harald: 'meier'}, {});
+      assertEqual(actual[0][v5][0]._id, v6);
       var proV6 = actual[1][v6];
-      proV6.sort(function(a, b) {
+      proV6.sort(function (a, b) {
         return a._id > b._id;
       });
       assertEqual(proV6[0]._id, v4);
       assertEqual(proV6[1]._id, v7);
       assertEqual(proV6[2]._id, v8);
 
-      actual = testGraph._countCommonProperties({ageing : true} , {harald : 'meier'},  {});
+      actual = testGraph._countCommonProperties({ageing: true}, {harald: 'meier'}, {});
       assertEqual(actual, [
         createKeyValueObject(v5, 1),
         createKeyValueObject(v6, 3)
@@ -1881,16 +1894,16 @@ function GeneralGraphCommonNeighborsSuite() {
     },
 
     testCommonPropertiesWithFiltersAndIgnoringKeyHarald: function () {
-      actual = testGraph._commonProperties( {} , {},  {ignoreProperties : 'harald'});
+      actual = testGraph._commonProperties({}, {}, {ignoreProperties: 'harald'});
 
-      assertEqual(actual[0][v1][0]._id  , v2);
-      assertEqual(actual[1][v2][0]._id  , v1);
-      assertEqual(actual[2][v3][0]._id  , v8);
-      assertEqual(actual[3][v5][0]._id  , v6);
-      assertEqual(actual[4][v6][0]._id  , v5);
-      assertEqual(actual[5][v8][0]._id  , v3);
+      assertEqual(actual[0][v1][0]._id, v2);
+      assertEqual(actual[1][v2][0]._id, v1);
+      assertEqual(actual[2][v3][0]._id, v8);
+      assertEqual(actual[3][v5][0]._id, v6);
+      assertEqual(actual[4][v6][0]._id, v5);
+      assertEqual(actual[5][v8][0]._id, v3);
 
-      actual = testGraph._countCommonProperties({} , {},  {ignoreProperties : 'harald'});
+      actual = testGraph._countCommonProperties({}, {}, {ignoreProperties: 'harald'});
       assertEqual(actual, [
         createKeyValueObject(v1, 1),
         createKeyValueObject(v2, 1),
@@ -1920,7 +1933,7 @@ function OrphanCollectionSuite() {
 
   return {
 
-    setUp : function() {
+    setUp: function () {
       try {
         arangodb.db._collection("_graphs").remove(gN1);
       } catch (ignore) {
@@ -1947,31 +1960,35 @@ function OrphanCollectionSuite() {
       );
     },
 
-    tearDown : function() {
+    tearDown: function () {
       try {
         graph._drop(gN1, true);
-      } catch(ignore) { }
+      } catch (ignore) {
+      }
       try {
         graph._drop(gN2, true);
-      } catch(ignore) { }
+      } catch (ignore) {
+      }
       try {
         db[vC1].drop();
-      } catch (ignore) {}
+      } catch (ignore) {
+      }
       try {
         db[vC4].drop();
-      } catch (ignore) {}
+      } catch (ignore) {
+      }
     },
 
-    test_getOrphanCollection: function() {
+    test_getOrphanCollection: function () {
       assertEqual(g1._orphanCollections(), []);
     },
 
-    test_addVertexCollection1: function() {
+    test_addVertexCollection1: function () {
       g1._addVertexCollection(vC5, true);
       assertEqual(g1._orphanCollections(), [vC5]);
     },
 
-    test_addVertexCollection2: function() {
+    test_addVertexCollection2: function () {
       try {
         g1._addVertexCollection(vC4, false);
       } catch (e) {
@@ -1983,7 +2000,7 @@ function OrphanCollectionSuite() {
       assertEqual(g1._orphanCollections(), []);
     },
 
-    test_addVertexCollection3: function() {
+    test_addVertexCollection3: function () {
       try {
         g1._addVertexCollection(eC1, false);
       } catch (e) {
@@ -1994,7 +2011,7 @@ function OrphanCollectionSuite() {
       assertEqual(g1._orphanCollections(), []);
     },
 
-    test_addVertexCollection4: function() {
+    test_addVertexCollection4: function () {
       try {
         g1._addVertexCollection(vC1);
       } catch (e) {
@@ -2003,7 +2020,7 @@ function OrphanCollectionSuite() {
       }
     },
 
-    test_removeVertexCollection1: function() {
+    test_removeVertexCollection1: function () {
       var name = "completelyNonsenseNameForACollectionBLUBBBBB";
       try {
         g1._removeVertexCollection(name);
@@ -2013,7 +2030,7 @@ function OrphanCollectionSuite() {
       }
     },
 
-    test_removeVertexCollection2: function() {
+    test_removeVertexCollection2: function () {
       g1._addVertexCollection(vC4, true);
       g1._addVertexCollection(vC5, true);
       assertEqual(g1._orphanCollections().sort(), [vC4, vC5].sort());
@@ -2029,7 +2046,7 @@ function OrphanCollectionSuite() {
       }
     },
 
-    test_doNotDropOrphanCollectionsUsedInOtherEdgedefinitions: function() {
+    test_doNotDropOrphanCollectionsUsedInOtherEdgedefinitions: function () {
       assertTrue(db._collection(vC3) !== null);
       g1._addVertexCollection(vC3, true);
       assertTrue(db._collection(vC3) !== null);
@@ -2040,7 +2057,7 @@ function OrphanCollectionSuite() {
       assertTrue(db._collection(vC3) === null);
     },
 
-    test_doNotDropCollectionsIfUsedAsOrphansInOtherGraphs: function() {
+    test_doNotDropCollectionsIfUsedAsOrphansInOtherGraphs: function () {
       assertTrue(db._collection(vC3) !== null);
       g1._addVertexCollection(vC3, true);
       assertTrue(db._collection(vC3) !== null);
@@ -2051,7 +2068,7 @@ function OrphanCollectionSuite() {
       assertTrue(db._collection(vC3) === null);
     },
 
-    test_doNotDropOrphanCollectionsUsedAsOrphansInOtherGraphs: function() {
+    test_doNotDropOrphanCollectionsUsedAsOrphansInOtherGraphs: function () {
       assertTrue(db._collection(vC4) === null);
       g1._addVertexCollection(vC4, true);
       g2._addVertexCollection(vC4, true);
@@ -2063,12 +2080,12 @@ function OrphanCollectionSuite() {
       assertTrue(db._collection(vC4) === null);
     },
 
-    test_doNotAddTheSameOrphanCollectionMultipleTimes: function() {
+    test_doNotAddTheSameOrphanCollectionMultipleTimes: function () {
       g1._addVertexCollection(vC4, true);
       try {
         g1._addVertexCollection(vC4, true);
         fail();
-      } catch(err) {
+      } catch (err) {
         assertEqual(err.errorNum, arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS.code);
         assertEqual(err.errorMessage,
           arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS.message);
@@ -2089,11 +2106,11 @@ function MeasurementsSuite() {
   var vc2 = "unitTestVertexCollection2";
 
 
-  var fillCollections = function() {
+  var fillCollections = function () {
     var ids = {};
     var vertex = g[vc1].save({first_name: "Tam"});
     ids.vId11 = vertex._id;
-    vertex = g[vc1].save({first_name: "Tem", age : 20});
+    vertex = g[vc1].save({first_name: "Tem", age: 20});
     ids.vId12 = vertex._id;
     vertex = g[vc1].save({first_name: "Tim"});
     ids.vId13 = vertex._id;
@@ -2105,7 +2122,7 @@ function MeasurementsSuite() {
     ids.vId31 = vertex._id;
     vertex = g[vc2].save({first_name: "Tem"});
     ids.vId32 = vertex._id;
-    vertex = g[vc2].save({first_name: "Tim", age : 24});
+    vertex = g[vc2].save({first_name: "Tim", age: 24});
     ids.vId33 = vertex._id;
     vertex = g[vc2].save({first_name: "Tom"});
     ids.vId34 = vertex._id;
@@ -2132,7 +2149,7 @@ function MeasurementsSuite() {
 
   return {
 
-    setUp : function() {
+    setUp: function () {
       g = graph._create(
         unitTestGraphName,
         graph._edgeDefinitions(
@@ -2144,43 +2161,43 @@ function MeasurementsSuite() {
       allIds = fillCollections();
     },
 
-    tearDown : function() {
-      try  {
+    tearDown: function () {
+      try {
         graph._drop(unitTestGraphName, true);
       } catch (e) {
 
       }
     },
 
-    test_radius : function () {
+    test_radius: function () {
       var a = g._radius({});
-      assertEqual(a , 3);
+      assertEqual(a, 3);
     },
-    test_diameter : function () {
+    test_diameter: function () {
       var a = g._diameter({});
-      assertEqual(a , 5);
+      assertEqual(a, 5);
     },
 
-    test_shortestPaths : function () {
+    test_shortestPaths: function () {
       var a = g._shortestPath([
-        {first_name: 'Tim', age : 24},
+        {first_name: 'Tim', age: 24},
         {first_name: 'Tom'}
       ], [
         {first_name: 'Tam'},
-        {first_name: 'Tem', age : 20}
+        {first_name: 'Tem', age: 20}
       ]);
-      assertEqual(a.length , 9);
+      assertEqual(a.length, 9);
     },
 
-    test_distanceTo : function () {
+    test_distanceTo: function () {
       var a = g._distanceTo([
-        {first_name: 'Tim', age : 24},
+        {first_name: 'Tim', age: 24},
         {first_name: 'Tom'}
       ], [
         {first_name: 'Tam'},
-        {first_name: 'Tem', age : 20}
+        {first_name: 'Tem', age: 20}
       ]);
-      assertEqual(a.length , 9);
+      assertEqual(a.length, 9);
     }
   };
 }
@@ -2227,13 +2244,13 @@ function MeasurementsMovedFromAQLSuite() {
       db._createEdgeCollection(KenntAnderenBerliner);
       db._createEdgeCollection(KenntAnderen);
 
-      var Anton = Berlin.save({ _key: "Anton", gender: "male", age: 20});
-      var Berta = Berlin.save({ _key: "Berta", gender: "female", age: 25});
-      var Caesar = Hamburg.save({ _key: "Caesar", gender: "male", age: 30});
-      var Dieter = Hamburg.save({ _key: "Dieter", gender: "male", age: 20});
-      var Emil = Frankfurt.save({ _key: "Emil", gender: "male", age: 25});
-      var Fritz = Frankfurt.save({ _key: "Fritz", gender: "male", age: 30});
-      var Gerda = Leipzig.save({ _key: "Gerda", gender: "female", age: 40});
+      var Anton = Berlin.save({_key: "Anton", gender: "male", age: 20});
+      var Berta = Berlin.save({_key: "Berta", gender: "female", age: 25});
+      var Caesar = Hamburg.save({_key: "Caesar", gender: "male", age: 30});
+      var Dieter = Hamburg.save({_key: "Dieter", gender: "male", age: 20});
+      var Emil = Frankfurt.save({_key: "Emil", gender: "male", age: 25});
+      var Fritz = Frankfurt.save({_key: "Fritz", gender: "male", age: 30});
+      var Gerda = Leipzig.save({_key: "Gerda", gender: "female", age: 40});
 
       vertexIds.Anton = Anton._id;
       vertexIds.Berta = Berta._id;
@@ -2259,7 +2276,7 @@ function MeasurementsMovedFromAQLSuite() {
       );
 
       function makeEdge(from, to, collection, distance) {
-        collection.save(from, to, { what: from.split("/")[1] + "->" + to.split("/")[1], entfernung: distance});
+        collection.save(from, to, {what: from.split("/")[1] + "->" + to.split("/")[1], entfernung: distance});
       }
 
       makeEdge(Berta._id, Anton._id, g[KenntAnderenBerliner], 0.1);
@@ -2365,7 +2382,11 @@ function MeasurementsMovedFromAQLSuite() {
     },
 
     testAbsoluteEccentricityInboundWeight: function () {
-      var actual = g._absoluteEccentricity(vertexIds.Anton, {direction: "inbound", weightAttribute: "entfernung", defaultWeight: 80});
+      var actual = g._absoluteEccentricity(vertexIds.Anton, {
+        direction: "inbound",
+        weightAttribute: "entfernung",
+        defaultWeight: 80
+      });
       var expected = {};
       expected[vertexIds.Anton] = 250.2;
       validateNumericValues(actual, expected);
@@ -2379,7 +2400,11 @@ function MeasurementsMovedFromAQLSuite() {
     },
 
     testAbsoluteEccentricityOutboundWeight: function () {
-      var actual = g._absoluteEccentricity(vertexIds.Gerda, {direction: "outbound", weightAttribute: "entfernung", defaultWeight: 80});
+      var actual = g._absoluteEccentricity(vertexIds.Gerda, {
+        direction: "outbound",
+        weightAttribute: "entfernung",
+        defaultWeight: 80
+      });
       var expected = {};
       expected[vertexIds.Gerda] = 380.2;
 
@@ -2396,7 +2421,11 @@ function MeasurementsMovedFromAQLSuite() {
     },
 
     testAbsoluteEccentricityExampleWeight: function () {
-      var actual = g._absoluteEccentricity({gender: "female"}, {direction: "outbound", weightAttribute: "entfernung", defaultWeight: 80});
+      var actual = g._absoluteEccentricity({gender: "female"}, {
+        direction: "outbound",
+        weightAttribute: "entfernung",
+        defaultWeight: 80
+      });
       var expected = {};
       expected[vertexIds.Berta] = 580.2;
       expected[vertexIds.Gerda] = 380.2;
@@ -2419,7 +2448,11 @@ function MeasurementsMovedFromAQLSuite() {
     },
 
     testAbsoluteEccentricityAllWeight: function () {
-      var actual = g._absoluteEccentricity({}, {direction: "outbound", weightAttribute: "entfernung", defaultWeight: 80});
+      var actual = g._absoluteEccentricity({}, {
+        direction: "outbound",
+        weightAttribute: "entfernung",
+        defaultWeight: 80
+      });
       var expected = {};
       expected[vertexIds.Anton] = 0;
       expected[vertexIds.Berta] = 580.2;
@@ -2436,7 +2469,7 @@ function MeasurementsMovedFromAQLSuite() {
       var actual = g._eccentricity({direction: "outbound"});
       var expected = {};
       expected[vertexIds.Anton] = 0;
-      expected[vertexIds.Berta] =  1 / 4;
+      expected[vertexIds.Berta] = 1 / 4;
       expected[vertexIds.Caesar] = 1 / 5;
       expected[vertexIds.Dieter] = 1 / 2;
       expected[vertexIds.Emil] = 1 / 1;
@@ -2462,14 +2495,14 @@ function MeasurementsMovedFromAQLSuite() {
 
     testFarness: function () {
       var actual = g._farness(vertexIds.Anton);
-      var expected = { };
+      var expected = {};
       expected[vertexIds.Anton] = 16;
       validateNumericValues(actual, expected);
     },
 
     testFarnessOutbound: function () {
       var actual = g._farness(vertexIds.Anton, {direction: "outbound"});
-      var expected = { };
+      var expected = {};
       expected[vertexIds.Anton] = 0;
       validateNumericValues(actual, expected);
     },
@@ -2491,7 +2524,7 @@ function MeasurementsMovedFromAQLSuite() {
 
     testFarnessAll: function () {
       var actual = g._farness({});
-      var expected = { };
+      var expected = {};
       expected[vertexIds.Anton] = 16;
       expected[vertexIds.Berta] = 12;
       expected[vertexIds.Caesar] = 16;
@@ -2504,7 +2537,7 @@ function MeasurementsMovedFromAQLSuite() {
 
     testFarnessAllOutbound: function () {
       var actual = g._farness({}, {direction: "outbound"});
-      var expected = { };
+      var expected = {};
       expected[vertexIds.Anton] = 0;
       expected[vertexIds.Berta] = 11;
       expected[vertexIds.Caesar] = 16;
@@ -2517,7 +2550,7 @@ function MeasurementsMovedFromAQLSuite() {
 
     testClosenessDefault: function () {
       var actual = g._closeness();
-      var expected = { };
+      var expected = {};
       expected[vertexIds.Anton] = 11 / 16;
       expected[vertexIds.Berta] = 11 / 12;
       expected[vertexIds.Caesar] = 11 / 16;
@@ -2530,7 +2563,7 @@ function MeasurementsMovedFromAQLSuite() {
 
     testClosenessOutbound: function () {
       var actual = g._closeness({direction: "outbound"});
-      var expected = { };
+      var expected = {};
       expected[vertexIds.Anton] = 0;
       expected[vertexIds.Berta] = 1 / 11;
       expected[vertexIds.Caesar] = 1 / 16;
@@ -2543,14 +2576,14 @@ function MeasurementsMovedFromAQLSuite() {
 
     testAbsoluteBetweeness: function () {
       var actual = g._absoluteBetweenness(vertexIds.Anton);
-      var expected = { };
+      var expected = {};
       expected[vertexIds.Anton] = 0;
       validateNumericValues(actual, expected);
     },
-    
+
     testAbsoluteBetweenessAll: function () {
       var actual = g._absoluteBetweenness({});
-      var expected = { };
+      var expected = {};
       expected[vertexIds.Anton] = 0;
       expected[vertexIds.Berta] = 8;
       expected[vertexIds.Caesar] = 0;
@@ -2560,18 +2593,18 @@ function MeasurementsMovedFromAQLSuite() {
       expected[vertexIds.Gerda] = 9;
       validateNumericValues(actual, expected);
     },
-    
+
     testAbsoluteBetweenessExample: function () {
       var actual = g._absoluteBetweenness({gender: "female"});
-      var expected = { };
+      var expected = {};
       expected[vertexIds.Berta] = 8;
       expected[vertexIds.Gerda] = 9;
       validateNumericValues(actual, expected);
     },
- 
+
     testAbsoluteBetweenessAllOutbound: function () {
       var actual = g._absoluteBetweenness({}, {direction: "outbound"});
-      var expected = { };
+      var expected = {};
       expected[vertexIds.Anton] = 0;
       expected[vertexIds.Berta] = 4;
       expected[vertexIds.Caesar] = 0;
@@ -2584,7 +2617,7 @@ function MeasurementsMovedFromAQLSuite() {
 
     testAbsoluteBetweenessAllInbound: function () {
       var actual = g._absoluteBetweenness({}, {direction: "inbound"});
-      var expected = { };
+      var expected = {};
       expected[vertexIds.Anton] = 0;
       expected[vertexIds.Berta] = 4;
       expected[vertexIds.Caesar] = 0;
@@ -2597,7 +2630,7 @@ function MeasurementsMovedFromAQLSuite() {
 
     testBetweenessAny: function () {
       var actual = g._betweenness();
-      var expected = { };
+      var expected = {};
       expected[vertexIds.Anton] = 0;
       expected[vertexIds.Berta] = 8 / 9;
       expected[vertexIds.Caesar] = 0;
@@ -2607,10 +2640,10 @@ function MeasurementsMovedFromAQLSuite() {
       expected[vertexIds.Gerda] = 9 / 9;
       validateNumericValues(actual, expected);
     },
-    
+
     testBetweenessOutbound: function () {
       var actual = g._betweenness({direction: "outbound"});
-      var expected = { };
+      var expected = {};
       expected[vertexIds.Anton] = 0;
       expected[vertexIds.Berta] = 4 / 6;
       expected[vertexIds.Caesar] = 0;
@@ -2623,7 +2656,7 @@ function MeasurementsMovedFromAQLSuite() {
 
     testBetweenessInbound: function () {
       var actual = g._betweenness({direction: "inbound"});
-      var expected = { };
+      var expected = {};
       expected[vertexIds.Anton] = 0;
       expected[vertexIds.Berta] = 4 / 6;
       expected[vertexIds.Caesar] = 0;
