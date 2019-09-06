@@ -583,7 +583,7 @@ function killWithCoreDump (options, instanceInfo) {
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
 
-function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCores, coreCheck = false, timeout = 0) {
+function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = false, timeout = 0) {
   if (valgrindTest && options.valgrind) {
     let valgrindOpts = {};
 
@@ -610,7 +610,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
   }
 
   if (options.extremeVerbosity) {
-    print(Date() + ' executeAndWait: cmd =', cmd, 'args =', args, 'circumventCores = ', circumventCores);
+    print(Date() + ' executeAndWait: cmd =', cmd, 'args =', args);
   }
 
   const startTime = time();
