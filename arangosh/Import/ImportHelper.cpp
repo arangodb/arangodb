@@ -294,7 +294,6 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   _rowsRead = 0;
 
   char buffer[32768];
-  // int64_t totalRead = 0;
 
   while (!_hasError) {
     ssize_t n = fd->read(buffer, sizeof(buffer));
@@ -313,7 +312,6 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
       break;
     }
 
-    // totalRead += static_cast<int64_t>(n);
     reportProgress(totalLength, fd->offset(), nextProgress);
 
     TRI_ParseCsvString(&parser, buffer, n);
@@ -378,7 +376,6 @@ bool ImportHelper::importJson(std::string const& collectionName,
   }
 
   // progress display control variables
-  // int64_t totalRead = 0;
   double nextProgress = ProgressStep;
 
   static int const BUFFER_SIZE = 32768;
@@ -422,7 +419,6 @@ bool ImportHelper::importJson(std::string const& collectionName,
       checkedFront = true;
     }
 
-    // totalRead += static_cast<int64_t>(n);
     reportProgress(totalLength, fd->offset(), nextProgress);
 
     if (_outputBuffer.length() > _maxUploadSize) {

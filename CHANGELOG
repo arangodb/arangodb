@@ -1,7 +1,7 @@
 devel
 -----
 
-* Add count of objects to latency reporting in arangoimport
+* Add count of objects to latency reporting in arangoimport.
 
 * Retry hot backup list in cluster for 2 minutes before reporting error
 
