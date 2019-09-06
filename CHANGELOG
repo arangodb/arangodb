@@ -1,5 +1,20 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
+* Fixed internal issue #633: made ArangoSearch functions BOOST, ANALYZER, MIN_MATCH
+  callable with constant arguments. This will allow running queries where all arguments
+  for these functions are deterministic and do not depend on loop variables.
+
+* Automatically turn values for deprecated startup option parameters 
+  `--log.use-microtime` and `--log.use-local-time` into equivalent option values
+  of the new, preferred option `--log.time-format`.
+
+* Drop collection action to timeout more quickly to stay on fast lane.
+
+* Make arangorestore restore data into the `_users` collection last. This is to
+  ensure that arangorestore does not overwrite the credentials of its invoker while
+  the restore is running, but only at the very end of the process.
+  This change also makes arangorestore restore the `_system` database last if it
+  is started with the `--all-databases` option.
 
 * Fixed the removal (including a collection drop) of an orphanCollection from a
   graph definition when using the arango shell. The boolean flag whether to drop
