@@ -1173,9 +1173,26 @@ ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous, AstNode co
     en = registerNode(new FilterNode(this, nextId(), v));
   } else {
     // operand is some misc expression
-    auto calc = createTemporaryCalculation(expression, previous);
-    en = registerNode(new FilterNode(this, nextId(), getOutVariable(calc)));
-    previous = calc;
+    if (expression->isTrue()) {
+      // filter expression is known to be always true, so 
+      // remove the filter entirely
+      return previous;
+    }
+
+    // note: if isTrue() is false above, it is not necessarily the case that
+    // isFalse() is true next. The reason is that isTrue() and isFalse() only
+    // return true in case of absolulete certainty. this requires expressions
+    // to be based on query compile-time values only, but it will not work
+    // for expressions that need to be evaluated at query runtime
+    if (expression->isFalse()) {
+      // filter expression is known to be always false, so
+      // replace the FILTER with a NoResultsNode
+      en = registerNode(new NoResultsNode(this, nextId()));
+    } else {
+      auto calc = createTemporaryCalculation(expression, previous);
+      en = registerNode(new FilterNode(this, nextId(), getOutVariable(calc)));
+      previous = calc;
+    }
   }
 
   return addDependency(previous, en);
