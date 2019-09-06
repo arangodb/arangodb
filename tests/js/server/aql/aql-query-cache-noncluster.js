@@ -47,8 +47,6 @@ function ahuacatlQueryCacheTestSuite () {
       cacheProperties = AQL_QUERY_CACHE_PROPERTIES();
       AQL_QUERY_CACHE_INVALIDATE();
 
-      db._dropView("UnitTestsView");
-      db._dropView("UnitTestsViewRenamed");
       db._drop("UnitTestsAhuacatlQueryCache1");
       db._drop("UnitTestsAhuacatlQueryCache2");
 
@@ -63,8 +61,6 @@ function ahuacatlQueryCacheTestSuite () {
     tearDown : function () {
       db._drop("UnitTestsAhuacatlQueryCache1");
       db._drop("UnitTestsAhuacatlQueryCache2");
-      db._dropView("UnitTestsView");
-      db._dropView("UnitTestsViewRenamed");
 
       c1 = null;
       c2 = null;
@@ -986,6 +982,7 @@ function ahuacatlQueryCacheViewTestSuite () {
       db._drop("UnitTestsAhuacatlQueryCache1");
       db._drop("UnitTestsAhuacatlQueryCache2");
       db._dropView("UnitTestsView");
+      db._dropView("UnitTestsViewRenamed");
 
       c1 = db._create("UnitTestsAhuacatlQueryCache1");
       c2 = db._create("UnitTestsAhuacatlQueryCache2");
@@ -995,6 +992,7 @@ function ahuacatlQueryCacheViewTestSuite () {
 
     tearDown : function () {
       db._dropView("UnitTestsView");
+      db._dropView("UnitTestsViewRenamed");
       db._drop("UnitTestsAhuacatlQueryCache1");
       db._drop("UnitTestsAhuacatlQueryCache2");
 
