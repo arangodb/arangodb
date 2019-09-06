@@ -352,13 +352,13 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
   if (databaseFeature == nullptr) {
     events::CreateDatabase(info.getName(), TRI_ERROR_INTERNAL);
-    return Result(TRI_ERROR_INTERNAL);
+    return {TRI_ERROR_INTERNAL};
   }
 
   TRI_vocbase_t* vocbase = nullptr;
-  int createDBres = databaseFeature->createDatabase(info.getId(), info.getName(), vocbase);
-  if (createDBres != TRI_ERROR_NO_ERROR) {
-    return Result(createDBres);
+  Result createResult = databaseFeature->createDatabase(info.getId(), info.getName(), vocbase);
+  if (createResult.fail()) {
+    return createResult;
   }
 
   TRI_ASSERT(vocbase != nullptr);
