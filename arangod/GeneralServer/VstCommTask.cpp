@@ -240,6 +240,13 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
       this->_auth->userManager()->refreshUser(this->_authToken._username);
     }
     
+    LOG_TOPIC("92fd6", INFO, Logger::REQUESTS)
+    << "\"vst-request-begin\",\"" << (void*)this << "\",\""
+    << this->_connectionInfo.clientAddress << "\",\""
+    << VstRequest::translateMethod(req->requestType()) << "\",\""
+    << (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath())
+    << "\"";
+    
     CommTask::Flow cont = this->prepareExecution(*req.get());
     if (cont == CommTask::Flow::Continue) {
       auto resp = std::make_unique<VstResponse>(rest::ResponseCode::SERVER_ERROR, messageId);

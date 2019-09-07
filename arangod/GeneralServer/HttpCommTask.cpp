@@ -386,7 +386,7 @@ void HttpCommTask<T>::processRequest() {
   this->_protocol->timer.cancel();
   
   {
-    LOG_TOPIC("6e770", DEBUG, Logger::REQUESTS)
+    LOG_TOPIC("6e770", INFO, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
         << this->_connectionInfo.clientAddress << "\",\""
         << HttpRequest::translateMethod(_request->requestType()) << "\",\""

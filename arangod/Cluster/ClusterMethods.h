@@ -219,12 +219,10 @@ int getFilteredEdgesOnCoordinator(transaction::Methods const& trx,
 /// @brief modify a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int modifyDocumentOnCoordinator(
-    transaction::Methods& trx, std::string const& collname,
+futures::Future<OperationResult> modifyDocumentOnCoordinator(
+    transaction::Methods& trx, LogicalCollection& coll,
     arangodb::velocypack::Slice const& slice, OperationOptions const& options,
-    bool isPatch, std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
-    arangodb::rest::ResponseCode& responseCode, std::unordered_map<int, size_t>& errorCounter,
-    std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
+                                                             bool isPatch);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncate a cluster collection on a coordinator
