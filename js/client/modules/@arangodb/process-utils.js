@@ -1811,6 +1811,7 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
     let instanceArgs = _.clone(addArgs);
     instanceArgs['log.file'] = fs.join(rootDir, 'log' + String(i));
     instanceArgs['javascript.enabled'] = 'false';
+    instanceArgs['javascript.app-path'] = fs.join(rootDir, 'app' + String(i));
     instanceArgs['agency.activate'] = 'true';
     instanceArgs['agency.size'] = String(N);
     instanceArgs['agency.pool-size'] = String(N);
