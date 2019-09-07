@@ -1591,7 +1591,7 @@ Result ClusterInfo::waitForDatabaseInCurrent(methods::CreateDatabaseInfo const& 
       agencyCallback->executeByCallbackOrTimeout(getReloadServerListTimeout() / interval);
 
       if (application_features::ApplicationServer::isStopping()) {
-        return Result(TRI_ERROR_CLUSTER_TIMEOUT);
+        return Result(TRI_ERROR_SHUTTING_DOWN);
       }
     }
   }
@@ -1729,7 +1729,7 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(methods::CreateDatabaseInfo 
     }
 
     if (application_features::ApplicationServer::isStopping()) {
-      return Result(TRI_ERROR_CLUSTER_TIMEOUT);
+      return Result(TRI_ERROR_SHUTTING_DOWN);
     }
   } while(!res.successful());
 
@@ -1826,7 +1826,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
       agencyCallback->executeByCallbackOrTimeout(interval);
 
       if (application_features::ApplicationServer::isStopping()) {
-        return Result(TRI_ERROR_CLUSTER_TIMEOUT);
+        return Result(TRI_ERROR_SHUTTING_DOWN);
       }
     }
   }
@@ -2487,8 +2487,8 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
       agencyCallback->executeByCallbackOrTimeout(interval);
 
       if (application_features::ApplicationServer::isStopping()) {
-        events::DropCollection(dbName, collectionID, TRI_ERROR_CLUSTER_TIMEOUT);
-        return Result(TRI_ERROR_CLUSTER_TIMEOUT);
+        events::DropCollection(dbName, collectionID, TRI_ERROR_SHUTTING_DOWN);
+        return Result(TRI_ERROR_SHUTTING_DOWN);
       }
     }
   }
@@ -3458,7 +3458,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
       agencyCallback->executeByCallbackOrTimeout(interval);
 
       if (application_features::ApplicationServer::isStopping()) {
-        return Result(TRI_ERROR_CLUSTER_TIMEOUT);
+        return Result(TRI_ERROR_SHUTTING_DOWN);
       }
     }
   }
