@@ -100,7 +100,7 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::REMOTESINGLE),
      "SingleRemoteOperationNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW),
-     "EnumerateViewNode"}
+     "EnumerateViewNode"},
 };
 
 // FIXME -- this temporary function should be
@@ -1499,14 +1499,7 @@ LimitNode::LimitNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     : ExecutionNode(plan, base),
       _offset(base.get("offset").getNumericValue<decltype(_offset)>()),
       _limit(base.get("limit").getNumericValue<decltype(_limit)>()),
-      _fullCount(base.get("fullCount").getBoolean()),
-      _inNonMaterializedColPtr(
-          aql::Variable::varFromVPack(plan->getAst(), base, "inNmColPtr", true)),
-      _inNonMaterializedDocId(
-          aql::Variable::varFromVPack(plan->getAst(), base, "inNmDocId", true)),
-      _outMaterializedDocument(
-          aql::Variable::varFromVPack(plan->getAst(), base, "outDocument", true))
-      {}
+      _fullCount(base.get("fullCount").getBoolean()) {}
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
@@ -1517,90 +1510,11 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
   // Fullcount must only be enabled on the last limit node on the main level
   TRI_ASSERT(!_fullCount || !::isInSubQuery(this));
 
-  if (_inNonMaterializedColPtr != nullptr &&
-     // Coodrinators always works with late-materialized docs returned by DBServers
-     // so just ignore late materialization at this stage
-     !ServerState::instance()->isCoordinator()) {
-    auto inputRegisters = std::make_shared < std::unordered_set<RegisterId>>();
-    auto outputRegisters = std::make_shared < std::unordered_set<RegisterId>>();
-    RegisterId inColRegId = 0;
-    RegisterId inDocRegId = 0;
-    RegisterId outDocRegId = 0;
-    {
-      auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedColPtr->id);
-      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-      inColRegId = it->second.registerId;
-      inputRegisters->insert(inColRegId);
-    }
-    {
-      auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedDocId->id);
-      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-      inDocRegId = it->second.registerId;
-      inputRegisters->insert(inDocRegId);
-    }
-    {
-      auto it = getRegisterPlan()->varInfo.find(_outMaterializedDocument->id);
-      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-      outDocRegId = it->second.registerId;
-      outputRegisters->insert(outDocRegId);
-    }
-    LimitLateMaterializedExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                             getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                                             calcRegsToKeep(), _offset, _limit, _fullCount,
-                                             inColRegId, inDocRegId, outDocRegId, inputRegisters,
-                                             outputRegisters,  engine.getQuery()->trx());
-    return std::make_unique<ExecutionBlockImpl<LimitLateMaterializedExecutor>>(&engine, this,
-                                                             std::move(infos));
-  }
   LimitExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
-    getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-    calcRegsToKeep(), _offset, _limit, _fullCount);
-    return std::make_unique<ExecutionBlockImpl<LimitExecutor>>(&engine, this,
+                           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                           calcRegsToKeep(), _offset, _limit, _fullCount);
+  return std::make_unique<ExecutionBlockImpl<LimitExecutor>>(&engine, this,
                                                              std::move(infos));
-}
-
-ExecutionNode* LimitNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                bool withProperties) const {
-  auto* inNonMaterializedDocId = _inNonMaterializedDocId;
-  auto* inNonMaterializedColPtr = _inNonMaterializedColPtr;
-  auto* outMaterializedDocument = _outMaterializedDocument;
-  if (withProperties) {
-    if (_inNonMaterializedDocId != nullptr) {
-        inNonMaterializedDocId = plan->getAst()->variables()->createVariable(inNonMaterializedDocId);
-    }
-    if (_inNonMaterializedColPtr != nullptr) {
-      inNonMaterializedColPtr = plan->getAst()->variables()->createVariable(inNonMaterializedColPtr);
-    }
-    if (_outMaterializedDocument != nullptr) {
-      outMaterializedDocument = plan->getAst()->variables()->createVariable(outMaterializedDocument);
-    }
-  }
-  auto c = std::make_unique<LimitNode>(plan, _id, _offset, _limit);
-
-  if (_fullCount) {
-    c->setFullCount();
-  }
-  if (outMaterializedDocument != nullptr) {
-    c->doMaterializationOf(inNonMaterializedColPtr, inNonMaterializedDocId,
-                          outMaterializedDocument);
-  }
-  return cloneHelper(std::move(c), withDependencies, withProperties);
-}
-
-void LimitNode::getVariablesUsedHere(
-    arangodb::HashSet<arangodb::aql::Variable const*>& vars) const {
-  if (_inNonMaterializedColPtr != nullptr && _inNonMaterializedDocId != nullptr) {
-    vars.insert(_inNonMaterializedColPtr);
-    vars.insert(_inNonMaterializedDocId);
-  }
-}
-
-std::vector<arangodb::aql::Variable const*> LimitNode::getVariablesSetHere() const {
-  if (_outMaterializedDocument != nullptr) {
-    return std::vector<arangodb::aql::Variable const*>{_outMaterializedDocument};
-  } else {
-    return std::vector<arangodb::aql::Variable const*>{};
-  }
 }
 
 // @brief toVelocyPack, for LimitNode
@@ -1610,18 +1524,7 @@ void LimitNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   nodes.add("offset", VPackValue(_offset));
   nodes.add("limit", VPackValue(_limit));
   nodes.add("fullCount", VPackValue(_fullCount));
-  if (_inNonMaterializedColPtr != nullptr) {
-    nodes.add(VPackValue("inNmColPtr"));
-      _inNonMaterializedColPtr->toVelocyPack(nodes);
-  }
-  if (_inNonMaterializedDocId != nullptr) {
-    nodes.add(VPackValue("inNmDocId"));
-    _inNonMaterializedDocId->toVelocyPack(nodes);
-  }
-  if (_outMaterializedDocument != nullptr) {
-    nodes.add(VPackValue("outDocument"));
-    _outMaterializedDocument->toVelocyPack(nodes);
-  }
+
   // And close it:
   nodes.close();
 }
@@ -1739,12 +1642,11 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   TRI_ASSERT(expression() != nullptr);
 
   CalculationExecutorInfos infos(
-    outputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
-    getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
-    *engine.getQuery() /* used for v8 contexts and in expression */,
-    *expression(), std::move(expInVars) /* required by expression.execute */,
-    std::move(expInRegs)); /* required by expression.execute */
-
+      outputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
+      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
+      *engine.getQuery() /* used for v8 contexts and in expression */,
+      *expression(), std::move(expInVars) /* required by expression.execute */,
+      std::move(expInRegs)); /* required by expression.execute */
 
   if (isReference) {
     return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>>(

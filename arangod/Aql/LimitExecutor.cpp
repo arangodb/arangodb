@@ -29,9 +29,6 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
-#include "VocBase/LogicalCollection.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
 #include "Basics/Common.h"
 #include "Logger/LogMacros.h"
 
@@ -45,53 +42,23 @@ LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId n
                                        std::unordered_set<RegisterId> registersToClear,
                                        // cppcheck-suppress passedByValue
                                        std::unordered_set<RegisterId> registersToKeep,
-                                       size_t offset, size_t limit, bool fullCount,
-                                       std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-                                       std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters)
-    : ExecutorInfos(readableInputRegisters,
-                    writeableOutputRegisters,
+                                       size_t offset, size_t limit, bool fullCount)
+    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
+                    std::make_shared<std::unordered_set<RegisterId>>(),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _offset(offset),
       _limit(limit),
       _fullCount(fullCount) {}
 
-LimitLateMaterializedExecutorInfos::LimitLateMaterializedExecutorInfos(
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToClear,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep,
-    size_t offset, size_t limit, bool fullCount,
-    RegisterId inNonMaterializedColRegId,
-    RegisterId inNonMaterializedDocRegId,
-    RegisterId outMaterializedDocumentRegId,
-    // cppcheck-suppress passedByValue
-    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-    // cppcheck-suppress passedByValue
-    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-    transaction::Methods* trx) 
-  : LimitExecutorInfos(nrInputRegisters, nrOutputRegisters, 
-                       std::move(registersToClear),
-                       std::move(registersToKeep),
-                       offset, limit, fullCount, 
-                       readableInputRegisters, 
-                       writeableOutputRegisters),
-    _inNonMaterializedColRegId(inNonMaterializedColRegId),
-    _inNonMaterializedDocRegId(inNonMaterializedDocRegId),
-    _outMaterializedDocumentRegId(outMaterializedDocumentRegId),
-    _trx(trx){}
-
-template<typename Impl, typename InfosType>
-LimitExecutorBase<Impl, InfosType>::LimitExecutorBase(Fetcher& fetcher, Infos& infos)
+LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
       _lastRowToOutput(CreateInvalidInputRowHint{}),
       _stateOfLastRowToOutput(ExecutionState::HASMORE) {}
+LimitExecutor::~LimitExecutor() = default;
 
-
-template<typename Impl, typename InfosType>
-std::pair<ExecutionState, LimitStats> LimitExecutorBase<Impl, InfosType>::skipOffset() {
+std::pair<ExecutionState, LimitStats> LimitExecutor::skipOffset() {
   ExecutionState state;
   size_t skipped;
   std::tie(state, skipped) = _fetcher.skipRows(maxRowsLeftToSkip());
@@ -109,8 +76,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutorBase<Impl, InfosType>::skipOf
   return {state, stats};
 }
 
-template<typename Impl, typename InfosType>
-std::pair<ExecutionState, LimitStats> LimitExecutorBase<Impl, InfosType>::skipRestForFullCount() {
+std::pair<ExecutionState, LimitStats> LimitExecutor::skipRestForFullCount() {
   ExecutionState state;
   size_t skipped;
   LimitStats stats{};
@@ -132,8 +98,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutorBase<Impl, InfosType>::skipRe
   return {state, stats};
 }
 
-template<typename Impl, typename InfosType>
-std::pair<ExecutionState, LimitStats> LimitExecutorBase<Impl, InfosType>::produceRows(OutputAqlItemRow& output) {
+std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("LimitExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -169,7 +134,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutorBase<Impl, InfosType>::produc
     }
 
     // Return one row
-    static_cast<Impl*>(this)->outputRow(input, output);
+    output.copyRow(input);
     return {state, stats};
   }
 
@@ -223,8 +188,8 @@ std::pair<ExecutionState, LimitStats> LimitExecutorBase<Impl, InfosType>::produc
     if (infos().isFullCountEnabled()) {
       stats.incrFullCount();
     }
- 
-    static_cast<Impl*>(this)->outputRow(input, output);
+
+    output.copyRow(input);
     return {ExecutionState::DONE, stats};
   }
 
@@ -237,8 +202,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutorBase<Impl, InfosType>::produc
   return {ExecutionState::DONE, stats};
 }
 
-template<typename Impl, typename InfosType>
-std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutorBase<Impl, InfosType>::fetchBlockForPassthrough(size_t atMost) {
+std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fetchBlockForPassthrough(size_t atMost) {
   switch (currentState()) {
     case LimitState::LIMIT_REACHED:
       // We are done with our rows!
@@ -279,7 +243,7 @@ std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutorBase<
     }
     case LimitState::RETURNING_LAST_ROW:
     case LimitState::RETURNING:
-      auto rv =_fetcher.fetchBlockForPassthrough(std::min(atMost, maxRowsLeftToFetch()));
+      auto rv = _fetcher.fetchBlockForPassthrough(std::min(atMost, maxRowsLeftToFetch()));
       return { rv.first, LimitStats{}, std::move(rv.second) };
   }
   // The control flow cannot reach this. It is only here to make MSVC happy,
@@ -288,8 +252,7 @@ std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutorBase<
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
 }
 
-template<typename Impl, typename InfosType>
-std::tuple<ExecutionState, LimitExecutor::Stats, size_t> LimitExecutorBase<Impl, InfosType>::skipRows(size_t const toSkipRequested) {
+std::tuple<ExecutionState, LimitExecutor::Stats, size_t> LimitExecutor::skipRows(size_t const toSkipRequested) {
   // fullCount can only be enabled on the last top-level LIMIT block. Thus
   // skip cannot be called on it! If this requirement is changed for some
   // reason, the current implementation will not work.
@@ -324,61 +287,4 @@ std::tuple<ExecutionState, LimitExecutor::Stats, size_t> LimitExecutorBase<Impl,
 
   return std::make_tuple(state, LimitStats{}, reportSkipped);
 }
-
-void LimitLateMaterializedExecutor::outputRow(const InputAqlItemRow& input, OutputAqlItemRow& output) {
-    auto collection = reinterpret_cast<LogicalCollection const*>(
-        input.getValue(infos().inputNonMaterializedColRegId()).toInt64());
-    TRI_ASSERT(collection != nullptr);
-    _readDocumentContext.inputRow = &input;
-    _readDocumentContext.outputRow = &output;
-    collection->readDocumentWithCallback(infos().trx(),
-      LocalDocumentId(input.getValue(infos().inputNonMaterializedDocRegId()).toInt64()),
-      _readDocumentContext.callback);
-    // take all other used later registers with us
-    _readDocumentContext.outputRow->copyRow(input);
-}
-
-
-IndexIterator::DocumentCallback
-LimitLateMaterializedExecutor::ReadContext::copyDocumentCallback(
-  LimitLateMaterializedExecutor::ReadContext& ctx) {
-  auto* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine);
-
-  typedef std::function<IndexIterator::DocumentCallback(ReadContext&)> CallbackFactory;
-
-  static CallbackFactory const callbackFactories[]{
-      [](ReadContext& ctx) {
-        // capture only one reference to potentially avoid heap allocation
-        return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
-          TRI_ASSERT(ctx.outputRow);
-          TRI_ASSERT(ctx.inputRow);
-          TRI_ASSERT(ctx.inputRow->isInitialized());
-          AqlValue a{AqlValueHintCopy(doc.begin())};
-          bool mustDestroy = true;
-          AqlValueGuard guard{a, mustDestroy};
-          ctx.outputRow->moveValueInto(ctx.docOutReg, *ctx.inputRow, guard);
-        };
-      },
-
-      [](ReadContext& ctx) {
-        // capture only one reference to potentially avoid heap allocation
-        return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
-          TRI_ASSERT(ctx.outputRow);
-          TRI_ASSERT(ctx.inputRow);
-          TRI_ASSERT(ctx.inputRow->isInitialized());
-          AqlValue a{AqlValueHintDocumentNoCopy(doc.begin())};
-          bool mustDestroy = true;
-          AqlValueGuard guard{a, mustDestroy};
-          ctx.outputRow->moveValueInto(ctx.docOutReg, *ctx.inputRow, guard);
-        };
-      }};
-  return callbackFactories[size_t(engine->useRawDocumentPointers())](ctx);
-}
-
-// template implicit instationation
-template class ::arangodb::aql::LimitExecutorBase<::arangodb::aql::LimitExecutor, arangodb::aql::LimitExecutorInfos>;
-template class ::arangodb::aql::LimitExecutorBase<::arangodb::aql::LimitLateMaterializedExecutor, 
-                                                  ::arangodb::aql::LimitLateMaterializedExecutorInfos>;
-
 
