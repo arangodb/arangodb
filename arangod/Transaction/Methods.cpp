@@ -1487,7 +1487,7 @@ Future<OperationResult> transaction::Methods::insertCoordinator(std::string cons
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
   
-  return arangodb::createDocumentOnCoordinator(*this, *colptr, options, value);
+  return arangodb::createDocumentOnCoordinator(*this, *colptr, value, options);
 }
 #endif
 

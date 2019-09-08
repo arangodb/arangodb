@@ -1221,8 +1221,8 @@ static void collectResponsesFromAllShards(
 
 Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& trx,
                                                     LogicalCollection& coll,
-                                                    arangodb::OperationOptions const& options,
-                                                    VPackSlice slice) {
+                                                    VPackSlice const slice,
+                                                    arangodb::OperationOptions const& options) {
   ClusterInfo* ci = ClusterInfo::instance();
   TRI_ASSERT(ci != nullptr);
 
