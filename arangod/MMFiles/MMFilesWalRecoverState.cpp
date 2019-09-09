@@ -1222,12 +1222,12 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         MMFilesPersistentIndexFeature::dropDatabase(databaseId);
 
         vocbase = nullptr;
-        int res = state->databaseFeature->createDatabase(databaseId, nameString, vocbase);
+        Result res = state->databaseFeature->createDatabase(databaseId, nameString, vocbase);
 
-        if (res != TRI_ERROR_NO_ERROR) {
+        if (res.fail()) {
           LOG_TOPIC("9c045", WARN, arangodb::Logger::ENGINES)
               << "cannot create database " << databaseId << ": "
-              << TRI_errno_string(res);
+              << res.errorMessage();
           ++state->errorCount;
           return state->canContinue();
         }
