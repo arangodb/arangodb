@@ -35,9 +35,7 @@
     checkLockedCollections: function () {
       var callback = function (error, lockedCollections) {
         var self = this;
-        if (error) {
-          console.log('Could not check locked collections');
-        } else {
+        if (!error) {
           this.collection.each(function (model) {
             model.set('locked', false);
           });
@@ -373,7 +371,7 @@
             if (frontendConfig.isEnterprise && $('#smart-join-attribute').val() !== '') {
               smartJoinAttribute = $('#smart-join-attribute').val().trim();
             }
-            if (frontendConfig.isEnterprise && $('#distribute-shards-like').val() !== '') {
+            if (frontendConfig.isEnterprise) {
               distributeShardsLike = $('#distribute-shards-like').val().trim();
             }
 
@@ -456,9 +454,8 @@
             tmpObj.smartJoinAttribute = smartJoinAttribute;
           }
 
-          if (distributeShardsLike !== '') {
-            tmpObj.distributeShardsLike = distributeShardsLike;
-          } else if (window.App.isCluster) {
+          tmpObj.distributeShardsLike = distributeShardsLike;
+          if (distributeShardsLike === '' && window.App.isCluster) {
             // if we are in the cluster and are not using distribute shards like
             // then we want to make use of the replication factor
             tmpObj.replicationFactor = replicationFactor === "satellite" ? replicationFactor : Number(replicationFactor);
@@ -485,7 +482,6 @@
           contentType: 'application/json',
           processData: false,
           success: function (data) {
-            console.log("options when creating collection: " + JSON.stringify(data));
             self.createNewCollectionModalReal(data.result);
           },
           error: function () {
@@ -545,7 +541,7 @@
             tableContent.push(
               window.modalView.createTextEntry(
                 'new-collection-shards',
-                'Shards',
+                'Number of shards',
                 '',
                 'The number of shards to create. You cannot change this afterwards. ',
                 '',
@@ -563,6 +559,25 @@
                 false
               )
             );
+          
+            if (window.App.isCluster) {
+              tableContent.push(
+                window.modalView.createTextEntry(
+                  'new-replication-factor',
+                  'Replication factor',
+                  ['', 'flexible'].indexOf(properties.sharding) !== -1 ? properties.replicationFactor : '',
+                  'Numeric value. Must be at least 1. Total number of copies of the data in the cluster',
+                  '',
+                  false,
+                  [
+                    {
+                      rule: Joi.string().allow('').optional().regex(/^([1-9]|10)$/),
+                      msg: 'Must be a number between 1 and 10.'
+                    }
+                  ]
+                )
+              );
+            }
           }
 
           buttons.push(
@@ -610,26 +625,9 @@
 
             advancedTableContent.push(
               window.modalView.createTextEntry(
-                'new-replication-factor',
-                'Replication factor',
-                properties.sharding === '' ? properties.replicationFactor : '',
-                'Numeric value. Must be at least 1. Total number of copies of the data in the cluster',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional().regex(/^([1-9]|10)$/),
-                    msg: 'Must be a number between 1 and 10.'
-                  }
-                ]
-              )
-            );
-
-            advancedTableContent.push(
-              window.modalView.createTextEntry(
                 'new-min-replication-factor',
                 'Mininum replication factor',
-                properties.sharding === '' ? properties.minReplicationFactor : '',
+                ['', 'flexible'].indexOf(properties.sharding) !== -1 ? properties.minReplicationFactor : '',
                 'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
                 '',
                 false,
