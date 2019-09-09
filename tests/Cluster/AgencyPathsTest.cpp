@@ -341,15 +341,15 @@ static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId::S
 #undef CONSTRUCTIBLE_MESSAGE
 
 // Check the types of aliases, so we need only basic tests for them later.
-static_assert(std::is_same<typeof(root()->arango()), typeof(aliases::arango())>::value,
+static_assert(std::is_same<decltype(root()->arango()), decltype(aliases::arango())>::value,
               "Aliases should have the same type as the aliased expression!");
-static_assert(std::is_same<typeof(root()->arango()->plan()), typeof(aliases::plan())>::value,
+static_assert(std::is_same<decltype(root()->arango()->plan()), decltype(aliases::plan())>::value,
               "Aliases should have the same type as the aliased expression!");
-static_assert(std::is_same<typeof(root()->arango()->current()), typeof(aliases::current())>::value,
+static_assert(std::is_same<decltype(root()->arango()->current()), decltype(aliases::current())>::value,
               "Aliases should have the same type as the aliased expression!");
-static_assert(std::is_same<typeof(root()->arango()->target()), typeof(aliases::target())>::value,
+static_assert(std::is_same<decltype(root()->arango()->target()), decltype(aliases::target())>::value,
               "Aliases should have the same type as the aliased expression!");
-static_assert(std::is_same<typeof(root()->arango()->supervision()), typeof(aliases::supervision())>::value,
+static_assert(std::is_same<decltype(root()->arango()->supervision()), decltype(aliases::supervision())>::value,
               "Aliases should have the same type as the aliased expression!");
 
 class AgencyPathsTest : public ::testing::Test {
