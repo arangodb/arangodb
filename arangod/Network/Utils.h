@@ -44,15 +44,21 @@ namespace network {
 int resolveDestination(DestinationId const& dest, std::string&);
 
 /// @brief extract the error from a cluster response
-OperationResult errorFromBody(arangodb::velocypack::Buffer<uint8_t> const& body,
-                              int defaultErrorCode);
+OperationResult opResultFromBody(arangodb::velocypack::Buffer<uint8_t> const& body,
+                                 int defaultErrorCode);
 /// @brief extract the error from a cluster response
-OperationResult errorFromBody(std::shared_ptr<arangodb::velocypack::Builder> const&, int defaultErrorCode);
+OperationResult opResultFromBody(std::shared_ptr<arangodb::velocypack::Builder> const&,
+                                 int defaultErrorCode);
 /// @brief extract the error from a cluster response
-OperationResult errorFromBody(arangodb::velocypack::Slice const& body, int defaultErrorCode);
+OperationResult opResultFromBody(arangodb::velocypack::Slice body, int defaultErrorCode);
+  
+Result resultFromBody(std::shared_ptr<arangodb::velocypack::Builder> const& body,
+                      int defaultError);
+Result resultFromBody(arangodb::velocypack::Slice body,
+                      int defaultError);
 
 /// @brief extract the error code form the body
-int errorCodeFromBody(arangodb::velocypack::Slice const& body);
+int errorCodeFromBody(arangodb::velocypack::Slice body);
 
 /// @brief Extract all error baby-style error codes and store them in a map
 void errorCodesFromHeaders(network::Headers headers,
@@ -67,6 +73,10 @@ OperationResult clusterResultInsert(fuerte::StatusCode responsecode,
                                     std::shared_ptr<velocypack::Buffer<uint8_t>> body,
                                     OperationOptions const& options,
                                     std::unordered_map<int, size_t> const& errorCounter);
+OperationResult clusterResultDocument(arangodb::fuerte::StatusCode code,
+                                      std::shared_ptr<VPackBuffer<uint8_t>> body,
+                                      OperationOptions const& options,
+                                      std::unordered_map<int, size_t> const& errorCounter);
 
 }  // namespace network
 }  // namespace arangodb

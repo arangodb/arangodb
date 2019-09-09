@@ -345,7 +345,7 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
   AgencyComm ac;
   do {
     if (_docColl->deleted() || _docColl->vocbase().isDropped()) {
-      LOG_TOPIC("8972a", WARN, Logger::CLUSTER) << "giving up persisting follower info for dropped collection"; 
+      LOG_TOPIC("8972a", INFO, Logger::CLUSTER) << "giving up persisting follower info for dropped collection"; 
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
     AgencyReadTransaction trx(std::vector<std::string>(

@@ -220,6 +220,18 @@ struct ClusterCommResult {
   /// @brief stringify the internal error state
   std::string stringifyErrorMessage() const;
 
+  /// @brief return if request was successful, use this on the request
+  /// results after a `performRequest`:
+  bool successful() const {
+    if (status != CL_COMM_RECEIVED) {
+      return false;
+    }
+    return answer_code == rest::ResponseCode::OK ||
+           answer_code == rest::ResponseCode::CREATED ||
+           answer_code == rest::ResponseCode::ACCEPTED ||
+           answer_code == rest::ResponseCode::NO_CONTENT;
+  }
+
   /// @brief return an error code for a result
   int getErrorCode() const;
 
@@ -295,18 +307,33 @@ struct ClusterCommResult {
       if (status == CL_COMM_ERROR) {
         try {
           auto body = result->getBodyVelocyPack(VPackOptions());
-          if (body->slice().isObject() &&
-              body->slice().hasKey("errorMessage")) {
-            errorMessage = body->slice().get("errorMessage").copyString();
-            errorCode = body->slice().get("errorNum").getNumber<int>();
+          if (body->slice().isObject()) {
+            if (body->slice().hasKey(arangodb::StaticStrings::ErrorMessage)) {
+              errorMessage = body->slice().get(arangodb::StaticStrings::ErrorMessage).copyString();
+            }
+            if (body->slice().hasKey(arangodb::StaticStrings::ErrorNum)) {
+              errorCode = body->slice().get(arangodb::StaticStrings::ErrorNum).getNumber<int>();
+            }
           }
         } catch (...) {
         }
       }
     } else {
-      // mop: actually it will never be an ERROR here...this is and was a dirty
-      // hack :S
       status = CL_COMM_RECEIVED;
+      // Get error message and code out of body if possible:
+      try {
+        auto options = VPackOptions();
+        VPackSlice body = request->payload(&options);
+        if (body.isObject()) {
+          if (body.hasKey(arangodb::StaticStrings::ErrorMessage)) {
+            errorMessage = body.get(arangodb::StaticStrings::ErrorMessage).copyString();
+          }
+          if (body.hasKey(arangodb::StaticStrings::ErrorNum)) {
+            errorCode = body.get(arangodb::StaticStrings::ErrorNum).getNumber<int>();
+          }
+        }
+      } catch (...) {
+      }
     }
   }
 };
@@ -572,11 +599,10 @@ class ClusterComm {
   void disable();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief push all libcurl callback work to Scheduler threads.  It is a
-  ///  public static function that any object can use.
+  /// @brief push all libcurl callback work to Scheduler threads.
   //////////////////////////////////////////////////////////////////////////////
 
-  static void scheduleMe(std::function<void()> task);
+  static bool scheduleMe(std::function<void()> task);
 
  protected:  // protected members are for unit test purposes
   /// @brief Constructor for test cases.

@@ -48,8 +48,8 @@ ConnectionPool::~ConnectionPool() { shutdown(); }
 /// is always the same, we do not do any post-processing
 ConnectionPool::Ref ConnectionPool::leaseConnection(EndpointSpec const& str) {
   fuerte::ConnectionBuilder builder;
-  builder.protocolType(_config.protocol);
   builder.endpoint(str);
+  builder.protocolType(_config.protocol); // always overwrite protocol
 
   std::string endpoint = builder.normalizedEndpoint();
   
@@ -153,6 +153,7 @@ void ConnectionPool::pruneConnections() {
         if (list.connections.size() <= _config.maxOpenConnections) {
           break;
         }
+        continue;
       }
       it++;
     }
@@ -162,8 +163,8 @@ void ConnectionPool::pruneConnections() {
 /// @brief cancel connections to this endpoint
 void ConnectionPool::cancelConnections(EndpointSpec const& str) {
   fuerte::ConnectionBuilder builder;
-  builder.protocolType(_config.protocol);
   builder.endpoint(str);
+  builder.protocolType(_config.protocol); // always overwrite protocol
   
   std::string endpoint = builder.normalizedEndpoint();
   
@@ -216,8 +217,7 @@ ConnectionPool::Ref ConnectionPool::selectConnection(ConnectionList& list,
 
   for (auto& c : list.connections) {
     const auto state = c->fuerte->state();
-    if (state == fuerte::Connection::State::Disconnected ||
-        state == fuerte::Connection::State::Failed) {
+    if (state == fuerte::Connection::State::Failed) {
       continue;
     }
 
@@ -225,7 +225,6 @@ ConnectionPool::Ref ConnectionPool::selectConnection(ConnectionList& list,
     // TODO: make configurable ?
     if ((builder.protocolType() == fuerte::ProtocolType::Http && num == 0) ||
         (builder.protocolType() == fuerte::ProtocolType::Vst && num < 4)) {
-      c->numLeased.fetch_add(1);
       return Ref(c.get());
     }
   }
@@ -251,8 +250,7 @@ ConnectionPool::Ref& ConnectionPool::Ref::operator=(Ref&& other) {
   if (_conn) {
     _conn->numLeased.fetch_sub(1);
   }
-  _conn = other._conn;
-  other._conn = nullptr;
+  _conn = std::move(other._conn);
   return *this;
 }
 

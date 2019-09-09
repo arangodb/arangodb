@@ -161,7 +161,7 @@ class IResearchQueryMinMatchTest : public ::testing::Test {
     auto sysVocBasePtr = sysVocBaseFeature->use();
     arangodb::methods::Collections::createSystem(
         *sysVocBasePtr, 
-        arangodb::tests::AnalyzerCollectionName);
+        arangodb::tests::AnalyzerCollectionName, false);
 
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
@@ -171,7 +171,7 @@ class IResearchQueryMinMatchTest : public ::testing::Test {
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     arangodb::methods::Collections::createSystem(
         *vocbase, 
-        arangodb::tests::AnalyzerCollectionName);
+        arangodb::tests::AnalyzerCollectionName, false);
     analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
                        VPackParser::fromJson("\"abc\"")->slice(), 
                        irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
@@ -489,16 +489,30 @@ TEST_F(IResearchQueryMinMatchTest, test) {
     ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
-  // FIXME currently optimizer tries to evaluate MIN_MATCH function
+  // constexpr min match (true)
   {
     std::string const query =
       "FOR d IN testView SEARCH MIN_MATCH(1==1, 2==2, 3==3, 2) "
       "SORT d.seq "
       "RETURN d";
-
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    ASSERT_FALSE(queryResult.result.ok());
-    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_NOT_IMPLEMENTED));
+    ASSERT_TRUE(queryResult.result.ok());
+    auto slice = queryResult.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    ASSERT_EQ(insertedDocs.size(), slice.length());
+  }
+
+  // constexpr min match (false)
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH MIN_MATCH(1==5, 2==6, 3==3, 2) "
+      "SORT d.seq "
+      "RETURN d";
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    ASSERT_TRUE(queryResult.result.ok());
+    auto slice = queryResult.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    ASSERT_EQ(0, slice.length());
   }
 
   // same as disjunction

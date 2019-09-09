@@ -361,7 +361,10 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
       ++stats.numDocsRemoved;
     }
 
-    trx.commit();
+    res = trx.commit();
+    if (res.fail()) {
+      return res;
+    }
   }
 
   size_t nextStart = 0;

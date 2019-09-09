@@ -59,7 +59,11 @@ struct MessageHeader {
   void addMeta(StringMap const&);
 
   // Get value for header metadata key, returns empty string if not found.
-  std::string const& metaByKey(std::string const& key) const;
+  std::string const& metaByKey(std::string const& key) const {
+    bool unused;
+    return this->metaByKey(key, unused);
+  }
+  std::string const& metaByKey(std::string const& key, bool& found) const;
 
   // content type accessors
   inline std::string const& contentTypeString() const {
@@ -260,6 +264,7 @@ class Response final : public Message {
   asio_ns::const_buffer payload() const override;
   std::size_t payloadSize() const override;
   std::shared_ptr<velocypack::Buffer<uint8_t>> copyPayload() const;
+  std::shared_ptr<velocypack::Buffer<uint8_t>> stealPayload();
 
   /// @brief move in the payload
   void setPayload(velocypack::Buffer<uint8_t> buffer,

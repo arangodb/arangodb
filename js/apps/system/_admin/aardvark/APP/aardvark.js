@@ -372,15 +372,6 @@ authRouter.post('/graph-examples/create/:name', function (req, res) {
 
 authRouter.post('/job', function (req, res) {
   let frontend = db._collection('_frontend');
-  if (!frontend) {
-    frontend = db._create('_frontend', { 
-      isSystem: true,
-      waitForSync: false,
-      journalSize: 1024 * 1024, 
-      replicationFactor: internal.DEFAULT_REPLICATION_FACTOR_SYSTEM,
-      distributeShardsLike: '_graphs' 
-    });
-  }
   frontend.save(Object.assign(req.body, {model: 'job'}));
   res.json(true);
 })
@@ -573,14 +564,9 @@ authRouter.get('/graph/:name', function (req, res) {
   if (!verticesCollections || verticesCollections.length === 0) {
     res.throw('bad request', 'no vertex collections found for graph');
   }
-  var vertexName;
-  try {
-    vertexName = verticesCollections[Math.floor(Math.random() * verticesCollections.length)].name();
-  } catch (err) {
-    res.throw('bad request', 'vertex collection of graph not found');
-  }
 
   var vertexCollections = [];
+
   _.each(graph._vertexCollections(), function (vertex) {
     vertexCollections.push({
       name: vertex.name(),
@@ -588,7 +574,6 @@ authRouter.get('/graph/:name', function (req, res) {
     });
   });
 
-  var startVertex;
   var config;
 
   try {
@@ -597,25 +582,40 @@ authRouter.get('/graph/:name', function (req, res) {
     res.throw('bad request', e.message, {cause: e});
   }
 
-  var getPseudoRandomStartVertex = function (collName) {
-    let maxDoc = db[collName].count();
-    if (maxDoc === 0) {
-      return null;
-    }
-    if (maxDoc > 1000) {
-      maxDoc = 1000;
-    }
-    let randDoc = Math.floor(Math.random() * maxDoc);
+  var getPseudoRandomStartVertex = function () {
+    for (var i = 0; i < graph._vertexCollections().length; i++) {
+      var vertexCollection = graph._vertexCollections()[i];
+      let maxDoc = db[vertexCollection.name()].count();
 
-    return db._query(
-      'FOR vertex IN @@vertexCollection LIMIT @skipN, 1 RETURN vertex',
-      {
-        '@vertexCollection': collName,
-        'skipN': randDoc
+      if (maxDoc === 0) {
+        continue;
       }
-    ).toArray()[0];
+
+      if (maxDoc > 1000) {
+        maxDoc = 1000;
+      }
+
+      let randDoc = Math.floor(Math.random() * maxDoc);
+
+      let potentialVertex = db._query(
+        'FOR vertex IN @@vertexCollection LIMIT @skipN, 1 RETURN vertex',
+        {
+          '@vertexCollection': vertexCollection.name(),
+          'skipN': randDoc
+        }
+      ).toArray()[0];
+
+      if (potentialVertex) {
+        return potentialVertex;
+      }
+    }
+
+    return null;
   };
+
   var multipleIds;
+  var startVertex; // will be "randomly" choosen if no start vertex is specified
+
   if (config.nodeStart) {
     if (config.nodeStart.indexOf(' ') > -1) {
       multipleIds = config.nodeStart.split(' ');
@@ -626,11 +626,11 @@ authRouter.get('/graph/:name', function (req, res) {
         res.throw('bad request', e.message, {cause: e});
       }
       if (!startVertex) {
-        startVertex = getPseudoRandomStartVertex(vertexName);
+        startVertex = getPseudoRandomStartVertex();
       }
     }
   } else {
-    startVertex = getPseudoRandomStartVertex(vertexName);
+    startVertex = getPseudoRandomStartVertex();
   }
 
   var limit = 0;
@@ -644,7 +644,7 @@ authRouter.get('/graph/:name', function (req, res) {
   if (startVertex === null) {
     toReturn = {
       empty: true,
-      msg: 'Your graph is empty',
+      msg: 'Your graph is empty. We did not find a document in any available vertex collection.',
       settings: {
         vertexCollections: vertexCollections
       }

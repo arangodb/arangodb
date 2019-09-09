@@ -34,8 +34,7 @@ namespace network {
 class ConnectionPool;
 }
 
-class NetworkFeature final : public std::enable_shared_from_this<NetworkFeature>,
-                             public application_features::ApplicationFeature {
+class NetworkFeature final : public application_features::ApplicationFeature {
  public:
   explicit NetworkFeature(application_features::ApplicationServer& server);
 
@@ -44,6 +43,7 @@ class NetworkFeature final : public std::enable_shared_from_this<NetworkFeature>
   void prepare() override;
   void start() override;
   void beginShutdown() override;
+  void stop() override;
 
   /// @brief global connection pool
   static arangodb::network::ConnectionPool* pool() {
@@ -57,12 +57,11 @@ class NetworkFeature final : public std::enable_shared_from_this<NetworkFeature>
 #endif
 
  private:
-  
   uint32_t _numIOThreads;
   uint64_t _maxOpenConnections;
   uint64_t _connectionTtlMilli;
   bool _verifyHosts;
-  
+
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
   /// @brief where rhythm is life, and life is rhythm :)

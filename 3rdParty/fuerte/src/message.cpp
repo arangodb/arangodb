@@ -46,16 +46,19 @@ void MessageHeader::addMeta(StringMap const& map) {
 }
 
 // Get value for header metadata key, returns empty string if not found.
-std::string const& MessageHeader::metaByKey(std::string const& key) const {
+std::string const& MessageHeader::metaByKey(std::string const& key, bool& found) const {
   static std::string emptyString("");
   if (meta.empty()) {
+    found = false;
     return emptyString;
   }
-  auto const& found = meta.find(key);
-  if (found == meta.end()) {
+  auto const& it = meta.find(key);
+  if (it == meta.end()) {
+    found = false;
     return emptyString;
   } else {
-    return found->second;
+    found = true;
+    return it->second;
   }
 }
   
@@ -285,7 +288,20 @@ std::shared_ptr<velocypack::Buffer<uint8_t>> Response::copyPayload() const {
                  _payload.byteSize() - _payloadOffset);
   return buffer;
 }
-  
+
+std::shared_ptr<velocypack::Buffer<uint8_t>> Response::stealPayload() {
+  if (_payloadOffset == 0) {
+    return std::make_shared<velocypack::Buffer<uint8_t>>(std::move(_payload));
+  }
+
+  auto buffer = std::make_shared<velocypack::Buffer<uint8_t>>();
+  buffer->append(_payload.data() + _payloadOffset,
+                 _payload.byteSize() - _payloadOffset);
+  _payload.clear();
+  _payloadOffset = 0;
+  return buffer;
+}
+
 void Response::setPayload(VPackBuffer<uint8_t> buffer, size_t payloadOffset) {
   _payloadOffset = payloadOffset;
   _payload = std::move(buffer);

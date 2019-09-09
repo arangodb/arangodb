@@ -45,6 +45,15 @@ using namespace arangodb::fuerte;
 
 using PromiseRes = arangodb::futures::Promise<network::Response>;
 
+/// @brief shardId or empty
+std::string Response::destinationShard() const {
+  if (this->destination.size() > 6 &&
+      this->destination.compare(0, 6, "shard:", 6) == 0) {
+    return this->destination.substr(6);
+  }
+  return StaticStrings::Empty;
+}
+
 template <typename T>
 auto prepareRequest(RestVerb type, std::string const& path, T&& payload,
                     Timeout timeout, Headers const& headers) {
@@ -121,7 +130,7 @@ FutureRes sendRequest(DestinationId const& destination, RestVerb type,
 
 /// Handler class with enough information to keep retrying
 /// a request until an overall timeout is hit (or the request succeeds)
-class RequestsState : public std::enable_shared_from_this<RequestsState> {
+class RequestsState final : public std::enable_shared_from_this<RequestsState> {
  public:
   RequestsState(DestinationId const& destination, RestVerb type,
                 std::string const& path, velocypack::Buffer<uint8_t>&& payload,
@@ -137,6 +146,8 @@ class RequestsState : public std::enable_shared_from_this<RequestsState> {
         _endTime(_startTime +
                  std::chrono::duration_cast<std::chrono::steady_clock::duration>(timeout)),
         _retryOnCollNotFound(retryNotFound) {}
+  
+  ~RequestsState() = default;
 
  private:
   DestinationId _destination;
@@ -145,8 +156,9 @@ class RequestsState : public std::enable_shared_from_this<RequestsState> {
   velocypack::Buffer<uint8_t> _payload;
   Headers _headers;
   std::shared_ptr<arangodb::Scheduler::WorkItem> _workItem;
-  futures::Promise<network::Response> _promise;
-  
+  futures::Promise<network::Response> _promise;  /// promise called
+  std::unique_ptr<fuerte::Response> _response;   /// temporary response
+
   std::chrono::steady_clock::time_point const _startTime;
   std::chrono::steady_clock::time_point const _endTime;
   const bool _retryOnCollNotFound;
@@ -209,9 +221,9 @@ class RequestsState : public std::enable_shared_from_this<RequestsState> {
                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                        network::errorCodeFromBody(res->slice())) {
           LOG_TOPIC("5a8e9", DEBUG, Logger::COMMUNICATION) << "retrying request";
-        } else {
+        } else { // a "proper error" which has to be returned to the client
           LOG_TOPIC("5a8d9", DEBUG, Logger::COMMUNICATION) << "canceling request";
-          callResponse(Error::Canceled, std::move(res));
+          callResponse(err, std::move(res));
           break;
         }
 #ifndef _MSC_VER
@@ -220,6 +232,7 @@ class RequestsState : public std::enable_shared_from_this<RequestsState> {
       }
 
       case fuerte::Error::CouldNotConnect:
+      case fuerte::Error::ConnectionClosed:
       case fuerte::Error::Timeout: {
         // Note that this case includes the refusal of a leader to accept
         // the operation, in which case we have to flush ClusterInfo:
@@ -231,40 +244,58 @@ class RequestsState : public std::enable_shared_from_this<RequestsState> {
         } else if (tryAgainAfter > std::chrono::seconds(3)) {
           tryAgainAfter = std::chrono::seconds(3);
         }
+
         if ((now + tryAgainAfter) >= _endTime) { // cancel out
           callResponse(err, std::move(res));
-          break;
-        }
-
-        auto* sch = SchedulerFeature::SCHEDULER;
-        auto self = RequestsState::shared_from_this();
-        auto cb = [self](bool canceled) {
-          if (canceled) {
-            self->callResponse(Error::Canceled, nullptr);
-          } else {
-            self->startRequest();
-          }
-        };
-        bool queued;
-        std::tie(queued, _workItem) = sch->queueDelay(RequestLane::CLUSTER_INTERNAL,
-                                                      tryAgainAfter, std::move(cb));
-        if (!queued) {
-          // scheduler queue is full, cannot requeue
-          callResponse(Error::QueueCapacityExceeded, nullptr);
+        } else {
+          retryLater(tryAgainAfter);
         }
         break;
       }
 
       default:  // a "proper error" which has to be returned to the client
+        _response = std::move(res);
         callResponse(err, std::move(res));
         break;
     }
   }
-  
-  
-  void callResponse(Error err,
-                    std::unique_ptr<fuerte::Response> res) {
-    _promise.setValue(Response{_destination, err, std::move(res)});
+
+  /// @broef schedule calling the response promise
+  void callResponse(Error err, std::unique_ptr<fuerte::Response> res) {
+    Scheduler* sch = SchedulerFeature::SCHEDULER;
+    if (ADB_UNLIKELY(sch == nullptr)) {  // mostly relevant for testing
+      _promise.setValue(Response{std::move(_destination), err, std::move(res)});
+      return;
+    }
+
+    _response = std::move(res);
+    bool queued =
+        sch->queue(RequestLane::CLUSTER_INTERNAL, [self = shared_from_this(), err]() {
+          self->_promise.setValue(Response{std::move(self->_destination), err,
+                                           std::move(self->_response)});
+        });
+    if (ADB_UNLIKELY(!queued)) {
+      _promise.setValue(Response{std::move(_destination), err, std::move(res)});
+    }
+  }
+
+  void retryLater(std::chrono::steady_clock::duration tryAgainAfter) {
+    auto* sch = SchedulerFeature::SCHEDULER;
+    auto self = RequestsState::shared_from_this();
+    auto cb = [self](bool canceled) {
+      if (canceled) {
+        self->_promise.setValue(Response{self->_destination, Error::Canceled, nullptr});
+      } else {
+        self->startRequest();
+      }
+    };
+    bool queued;
+    std::tie(queued, _workItem) =
+        sch->queueDelay(RequestLane::CLUSTER_INTERNAL, tryAgainAfter, std::move(cb));
+    if (!queued) {
+      // scheduler queue is full, cannot requeue
+      _promise.setValue(Response{_destination, Error::QueueCapacityExceeded, nullptr});
+    }
   }
 };
 

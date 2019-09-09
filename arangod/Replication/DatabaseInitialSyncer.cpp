@@ -33,11 +33,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Indexes/Index.h"
-#include "Indexes/IndexIterator.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/utilities.h"
-#include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -54,7 +52,6 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Validator.h>
@@ -386,6 +383,8 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
                                                   LogicalCollection* coll,
                                                   httpclient::SimpleHttpResult* response,
                                                   uint64_t& markersProcessed) {
+  TRI_ASSERT(!trx.isSingleOperationTransaction());
+
   basics::StringBuffer const& data = response->getBody();
   char const* p = data.begin();
   char const* end = p + data.length();
@@ -410,6 +409,8 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
 
         VPackSlice marker(reinterpret_cast<uint8_t const*>(p));
         Result r = parseCollectionDumpMarker(trx, coll, marker);
+        
+        TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
         if (r.fail()) {
           r.reset(r.errorNumber(),
                   std::string("received invalid dump data for collection '") +
@@ -456,6 +457,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
       p = q + 1;
 
       Result r = parseCollectionDumpMarker(trx, coll, builder.slice());
+      TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
       if (r.fail()) {
         return r;
       }
@@ -771,9 +773,11 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     trx.pinData(coll->id());  // will throw when it fails
 
     double t = TRI_microtime();
+    TRI_ASSERT(!trx.isSingleOperationTransaction());
     res = parseCollectionDump(trx, coll, dumpResponse.get(), markersProcessed);
 
     if (res.fail()) {
+      TRI_ASSERT(!res.is(TRI_ERROR_ARANGO_TRY_AGAIN));
       return res;
     }
 

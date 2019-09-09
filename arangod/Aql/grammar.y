@@ -4,7 +4,7 @@
 %defines
 %parse-param { arangodb::aql::Parser* parser }
 %lex-param { void* scanner }
-%error-verbose
+%define parse.error verbose
 
 %{
 // we are using alloca here explicitly because we may
@@ -256,7 +256,6 @@ static AstNode* TransformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_NOT "not operator"
 %token T_AND "and operator"
 %token T_OR "or operator"
-%token T_NIN "not in operator"
 
 %token T_REGEX_MATCH "~= operator"
 %token T_REGEX_NON_MATCH "~! operator"
@@ -309,12 +308,12 @@ static AstNode* TransformOutputVariables(Parser* parser, AstNode const* names) {
 %left T_AND
 %nonassoc T_OUTBOUND T_INBOUND T_ANY T_ALL T_NONE
 %left T_EQ T_NE T_LIKE T_REGEX_MATCH T_REGEX_NON_MATCH
-%left T_IN T_NIN
+%left T_IN T_NOT 
 %left T_LT T_GT T_LE T_GE
 %left T_RANGE
 %left T_PLUS T_MINUS
 %left T_TIMES T_DIV T_MOD
-%right UMINUS UPLUS T_NOT
+%right UMINUS UPLUS UNEGATION
 %left FUNCCALL
 %left REFERENCE
 %left INDEXED
@@ -1333,7 +1332,7 @@ operator_unary:
   | T_MINUS expression %prec UMINUS {
       $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_MINUS, $2);
     }
-  | T_NOT expression %prec T_NOT {
+  | T_NOT expression %prec UNEGATION {
       $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, $2);
     }
   ;
@@ -1381,8 +1380,8 @@ operator_binary:
   | expression T_IN expression {
       $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, $1, $3);
     }
-  | expression T_NIN expression {
-      $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, $1, $3);
+  | expression T_NOT T_IN expression {
+      $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, $1, $4);
     }
   | expression T_LIKE expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
@@ -1424,8 +1423,17 @@ operator_binary:
   | expression quantifier T_IN expression {
       $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN, $1, $4, $2);
     }
-  | expression quantifier T_NIN expression {
-      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $4, $2);
+  | expression T_ALL T_NOT T_IN expression {
+      auto quantifier = parser->ast()->createNodeQuantifier(Quantifier::ALL);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $5, quantifier);
+    }
+  | expression T_ANY T_NOT T_IN expression {
+      auto quantifier = parser->ast()->createNodeQuantifier(Quantifier::ANY);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $5, quantifier);
+    }
+  | expression T_NONE T_NOT T_IN expression {
+      auto quantifier = parser->ast()->createNodeQuantifier(Quantifier::NONE);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $5, quantifier);
     }
   ;
 
@@ -1758,8 +1766,7 @@ reference:
         // now try special variables
         if (ast->scopes()->canUseCurrentVariable() && strcmp($1.value, "CURRENT") == 0) {
           variable = ast->scopes()->getCurrentVariable();
-        }
-        else if (strcmp($1.value, Variable::NAME_CURRENT) == 0) {
+        } else if (strcmp($1.value, Variable::NAME_CURRENT) == 0) {
           variable = ast->scopes()->getCurrentVariable();
         }
       }

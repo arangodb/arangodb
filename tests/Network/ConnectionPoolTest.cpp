@@ -34,8 +34,6 @@
 using namespace arangodb;
 using namespace arangodb::network;
 
-#ifndef _WIN32
-
 TEST(NetworkConnectionPoolTest, acquire_endpoint) {
   ConnectionPool::Config config;
   config.numIOThreads = 1;
@@ -169,5 +167,3 @@ TEST(NetworkConnectionPoolTest, checking_min_and_max_connections) {
   
   ASSERT_TRUE(pool.numOpenConnections() == 1);
 }
-
-#endif

@@ -32,15 +32,14 @@
 #include "Scheduler/SchedulerFeature.h"
 
 namespace {
-void queueGarbageCollection(std::shared_ptr<arangodb::NetworkFeature> feature,
-                            std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
+void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
                             std::function<void(bool)>& gcfunc, std::chrono::seconds offset) {
   bool queued = false;
   {
     std::lock_guard<std::mutex> guard(mutex);
     std::tie(queued, workItem) =
         arangodb::basics::function_utils::retryUntilTimeout<arangodb::Scheduler::WorkHandle>(
-            [feature, &gcfunc, offset]() -> std::pair<bool, arangodb::Scheduler::WorkHandle> {
+            [&gcfunc, offset]() -> std::pair<bool, arangodb::Scheduler::WorkHandle> {
               return arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::INTERNAL_LOW,
                                                                        offset, gcfunc);
             },
@@ -71,6 +70,7 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
       _verifyHosts(false) {
   setOptional(true);
   startsAfter("Server");
+  startsAfter("Scheduler");
 }
 
 void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -86,14 +86,14 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                      new UInt64Parameter(&_connectionTtlMilli));
   options->addOption("--network.verify-hosts", "verify hosts when using TLS",
                      new BooleanParameter(&_verifyHosts));
-  
-  _gcfunc = [this] (bool canceled) {
+
+  _gcfunc = [this](bool canceled) {
     if (canceled) {
       return;
     }
-    
+
     _pool->pruneConnections();
-    
+
     auto* ci = ClusterInfo::instance();
     if (ci != nullptr) {
       auto failed = ci->getFailedServers();
@@ -101,10 +101,10 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
         _pool->cancelConnections(f);
       }
     }
-    
+
     if (!application_features::ApplicationServer::isStopping() && !canceled) {
       auto off = std::chrono::seconds(3);
-      ::queueGarbageCollection(shared_from_this(), _workItemMutex, _workItem, _gcfunc, off);
+      ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
     }
   };
 }
@@ -129,12 +129,12 @@ void NetworkFeature::prepare() {
   _pool = std::make_unique<network::ConnectionPool>(config);
   _poolPtr.store(_pool.get(), std::memory_order_release);
 }
-  
+
 void NetworkFeature::start() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler != nullptr) {  // is nullptr in catch tests
     auto off = std::chrono::seconds(1);
-    ::queueGarbageCollection(shared_from_this(), _workItemMutex, _workItem, _gcfunc, off);
+    ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
   }
 }
 
@@ -147,6 +147,12 @@ void NetworkFeature::beginShutdown() {
   if (_pool) {
     _pool->shutdown();
   }
+}
+
+void NetworkFeature::stop() {
+  // we might have posted another workItem during shutdown.
+  std::lock_guard<std::mutex> guard(_workItemMutex);
+  _workItem.reset();
 }
 
 }  // namespace arangodb

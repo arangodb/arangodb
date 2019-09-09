@@ -139,7 +139,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(aql::QueryRegistry* queryRegi
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContextScope scope(ExecContext::superuser());
+  ExecContextSuperuserScope scope;
   std::string const queryStr("FOR user IN _users RETURN user");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
   arangodb::aql::Query query(false, *vocbase, arangodb::aql::QueryString(queryStr),
@@ -276,7 +276,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContextScope scope(ExecContext::superuser());
+  ExecContextSuperuserScope scope;
   auto ctx = transaction::StandaloneContext::Create(*vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS, AccessMode::Type::WRITE);
 
@@ -628,7 +628,7 @@ static Result RemoveUserInternal(auth::User const& entry) {
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContextScope scope(ExecContext::superuser());
+  ExecContextSuperuserScope scope;
   auto ctx = transaction::StandaloneContext::Create(*vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS, AccessMode::Type::WRITE);
 

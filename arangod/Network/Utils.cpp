@@ -56,7 +56,7 @@ int resolveDestination(DestinationId const& dest, std::string& endpoint) {
   // is looked up, both can fail and immediately lead to a CL_COMM_ERROR
   // state.
   ServerID serverID;
-  if (dest.find("shard:") == 0) {
+  if (dest.compare(0, 6, "shard:", 6) == 0) {
     ShardID shardID = dest.substr(6);
     {
       std::shared_ptr<std::vector<ServerID>> resp = ci->getResponsibleServer(shardID);
@@ -69,7 +69,7 @@ int resolveDestination(DestinationId const& dest, std::string& endpoint) {
       }
     }
     LOG_TOPIC("64670", DEBUG, Logger::CLUSTER) << "Responsible server: " << serverID;
-  } else if (dest.find("server:") == 0) {
+  } else if (dest.compare(0, 7, "server:", 7) == 0) {
     serverID = dest.substr(7);
   } else {
     std::string errorMessage = "did not understand destination '" + dest + "'";
@@ -92,22 +92,22 @@ int resolveDestination(DestinationId const& dest, std::string& endpoint) {
   return TRI_ERROR_NO_ERROR;
 }
 
-OperationResult errorFromBody(arangodb::velocypack::Buffer<uint8_t> const& body,
-                              int defaultErrorCode) {
+OperationResult opResultFromBody(arangodb::velocypack::Buffer<uint8_t> const& body,
+                                 int defaultErrorCode) {
   if (body.size() > 0) {
-    return errorFromBody(VPackSlice(body.data()), defaultErrorCode);
+    return opResultFromBody(VPackSlice(body.data()), defaultErrorCode);
   }
   return OperationResult(defaultErrorCode);
 }
 
-OperationResult errorFromBody(std::shared_ptr<VPackBuilder> const& body, int defaultErrorCode) {
+OperationResult opResultFromBody(std::shared_ptr<VPackBuilder> const& body, int defaultErrorCode) {
   if (body) {
-    return errorFromBody(body->slice(), defaultErrorCode);
+    return opResultFromBody(body->slice(), defaultErrorCode);
   }
   return OperationResult(defaultErrorCode);
 }
 
-OperationResult errorFromBody(VPackSlice const& body, int defaultErrorCode) {
+OperationResult opResultFromBody(VPackSlice body, int defaultErrorCode) {
   // read the error number from the response and use it if present
   if (body.isObject()) {
     VPackSlice num = body.get(StaticStrings::ErrorNum);
@@ -126,7 +126,7 @@ OperationResult errorFromBody(VPackSlice const& body, int defaultErrorCode) {
 }
 
 /// @brief extract the error code form the body
-int errorCodeFromBody(arangodb::velocypack::Slice const& body) {
+int errorCodeFromBody(arangodb::velocypack::Slice body) {
   if (body.isObject()) {
     VPackSlice num = body.get(StaticStrings::ErrorNum);
     if (num.isNumber()) {
@@ -135,6 +135,35 @@ int errorCodeFromBody(arangodb::velocypack::Slice const& body) {
     }
   }
   return TRI_ERROR_ILLEGAL_NUMBER;
+}
+  
+Result resultFromBody(std::shared_ptr<arangodb::velocypack::Builder> const& body,
+                      int defaultError) {
+  
+  // read the error number from the response and use it if present
+  if (body) {
+    return resultFromBody(body->slice(), defaultError);
+  }
+
+  return Result(defaultError);
+}
+  
+Result resultFromBody(arangodb::velocypack::Slice slice,
+                      int defaultError) {
+  // read the error number from the response and use it if present
+  if (slice.isObject()) {
+    VPackSlice num = slice.get(StaticStrings::ErrorNum);
+    VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
+    if (num.isNumber()) {
+      if (msg.isString()) {
+        // found an error number and an error message, so let's use it!
+        return Result(num.getNumericValue<int>(), msg.copyString());
+      }
+      // we found an error number, so let's use it!
+      return Result(num.getNumericValue<int>());
+    }
+  }
+  return Result(defaultError);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -170,7 +199,9 @@ int fuerteToArangoErrorCode(network::Response const& res) {
   // returns TRI_ERROR_NO_ERROR.
   // If TRI_ERROR_NO_ERROR is returned, then the result was CL_COMM_RECEIVED
   // and .answer can safely be inspected.
-
+  
+  
+  LOG_TOPIC_IF("abcde", ERR, Logger::CLUSTER, res.error != fuerte::Error::NoError) << fuerte::to_string(res.error);
   switch (res.error) {
     case fuerte::Error::NoError:
       return TRI_ERROR_NO_ERROR;
@@ -211,15 +242,33 @@ OperationResult clusterResultInsert(arangodb::fuerte::StatusCode code,
       return OperationResult(Result(), std::move(body), nullptr, copy, errorCounter);
     }
     case fuerte::StatusPreconditionFailed:
-      return network::errorFromBody(*body, TRI_ERROR_ARANGO_CONFLICT);
+      return network::opResultFromBody(*body, TRI_ERROR_ARANGO_CONFLICT);
     case fuerte::StatusBadRequest:
-      return network::errorFromBody(*body, TRI_ERROR_INTERNAL);
+      return network::opResultFromBody(*body, TRI_ERROR_INTERNAL);
     case fuerte::StatusNotFound:
-      return network::errorFromBody(*body, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      return network::opResultFromBody(*body, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     case fuerte::StatusConflict:
-      return network::errorFromBody(*body, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+      return network::opResultFromBody(*body, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     default:
-      return network::errorFromBody(*body, TRI_ERROR_INTERNAL);
+      return network::opResultFromBody(*body, TRI_ERROR_INTERNAL);
+  }
+}
+
+/// @brief Create Cluster Communication result for document
+OperationResult clusterResultDocument(arangodb::fuerte::StatusCode code,
+                                      std::shared_ptr<VPackBuffer<uint8_t>> body,
+                                      OperationOptions const& options,
+                                      std::unordered_map<int, size_t> const& errorCounter) {
+  switch (code) {
+    case fuerte::StatusOK:
+      return OperationResult(Result(), std::move(body), nullptr, options, errorCounter);
+    case fuerte::StatusPreconditionFailed:
+      return OperationResult(Result(TRI_ERROR_ARANGO_CONFLICT), std::move(body),
+                             nullptr, options, errorCounter);
+    case fuerte::StatusNotFound:
+      return network::opResultFromBody(*body, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    default:
+      return network::opResultFromBody(*body, TRI_ERROR_INTERNAL);
   }
 }
 }  // namespace network

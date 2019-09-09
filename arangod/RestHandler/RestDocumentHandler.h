@@ -28,9 +28,12 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
+class Methods;
+  
 class RestDocumentHandler : public RestVocbaseBaseHandler {
  public:
   RestDocumentHandler(GeneralRequest*, GeneralResponse*);
+  ~RestDocumentHandler();
 
  public:
   RestStatus execute() override final;
@@ -46,26 +49,26 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
     return RequestLane::CLIENT_SLOW;
   }
 
-  void shutdownExecute(bool isFinalized) noexcept override;
+  void shutdownExecute(bool isFinalized) noexcept override final;
 
  protected:
-  virtual uint32_t forwardingTarget() override;
+  uint32_t forwardingTarget() override final;
 
  private:
   // inserts a document
-  bool insertDocument();
+  RestStatus insertDocument();
 
   // reads a single or all documents
-  bool readDocument();
+  RestStatus readDocument();
 
   // reads a single document
-  bool readSingleDocument(bool generateBody);
+  RestStatus readSingleDocument(bool generateBody);
 
   // reads multiple documents
   bool readManyDocuments();
 
   // reads a single document head
-  bool checkDocument();
+  RestStatus checkDocument();
 
   // replaces a document
   bool replaceDocument();
@@ -78,6 +81,10 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
 
   // removes a document
   bool removeDocument();
+  
+private:
+  std::unique_ptr<SingleCollectionTransaction> _activeTrx;
+  std::string _cname;
 };
 }  // namespace arangodb
 

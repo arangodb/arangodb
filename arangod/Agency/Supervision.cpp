@@ -618,7 +618,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       }
     } else {
       LOG_TOPIC("a55cd", INFO, Logger::SUPERVISION)
-          << "Short name for << " << serverID
+          << "Short name for " << serverID
           << " not yet available.  Skipping health check.";
     }  // else
 
@@ -1129,6 +1129,9 @@ bool Supervision::handleJobs() {
   LOG_TOPIC("00789", TRACE, Logger::SUPERVISION) << "Begin readyOrphanedIndexCreations";
   readyOrphanedIndexCreations();
 
+  LOG_TOPIC("00790", TRACE, Logger::SUPERVISION) << "Begin checkBrokenCreatedDatabases";
+  checkBrokenCreatedDatabases();
+
   LOG_TOPIC("00aab", TRACE, Logger::SUPERVISION) << "Begin workJobs";
   workJobs();
 
@@ -1275,7 +1278,118 @@ void Supervision::workJobs() {
       .run(dummy);
     LOG_TOPIC("99006", TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
   }
+}
 
+
+bool Supervision::verifyCoordinatorRebootID(std::string coordinatorID, uint64_t wantedRebootID) {
+  // check if the coordinator exists in health
+  std::string const& health = serverHealth(coordinatorID);
+  LOG_TOPIC("44432", DEBUG, Logger::SUPERVISION)
+    << "verifyCoordinatorRebootID: coordinatorID="
+    << coordinatorID << " health=" << health;
+  // if the server is not found, health is an empty string
+  if (health != "GOOD" && health != "BAD") {
+    return false;
+  }
+
+  // now lookup reboot id
+  std::pair<uint64_t, bool> rebootID = _snapshot.hasAsUInt(curServersKnown + coordinatorID + "/" + StaticStrings::RebootId);
+  LOG_TOPIC("54326", DEBUG, Logger::SUPERVISION)
+    << "verifyCoordinatorRebootID: rebootId=" << rebootID.first
+    << " bool=" << rebootID.second;
+  return rebootID.second && rebootID.first == wantedRebootID;
+}
+
+void Supervision::deleteBrokenDatabase(std::string const& database, std::string const& coordinatorID, uint64_t rebootID) {
+  auto envelope = std::make_shared<Builder>();
+  {
+    VPackArrayBuilder trxs(envelope.get());
+    {
+      VPackArrayBuilder trx(envelope.get());
+      {
+        VPackObjectBuilder operation(envelope.get());
+
+        // increment Plan Version
+        {
+          VPackObjectBuilder o(envelope.get(), _agencyPrefix + "/" + PLAN_VERSION);
+          envelope->add("op", VPackValue("increment"));
+        }
+
+        // delete the database from Plan/Databases
+        {
+          VPackObjectBuilder o(envelope.get(), _agencyPrefix + planDBPrefix + database);
+          envelope->add("op", VPackValue("delete"));
+        }
+
+        // delete the database from Plan/Collections
+        {
+          VPackObjectBuilder o(envelope.get(), _agencyPrefix + planColPrefix + database);
+          envelope->add("op", VPackValue("delete"));
+        }
+      }
+      {
+        // precondition that this database is still in Plan and is building
+        VPackObjectBuilder precondition(envelope.get());
+        envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::DatabaseIsBuilding, VPackValue(true));
+        envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::DatabaseCoordinatorRebootId, VPackValue(rebootID));
+        envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::DatabaseCoordinator, VPackValue(coordinatorID));
+      }
+    }
+  }
+
+
+  write_ret_t res = _agent->write(envelope);
+  if (!res.successful()) {
+    LOG_TOPIC("38482", DEBUG, Logger::SUPERVISION)
+        << "failed to delete broken database in agency. Will retry.";
+  }
+}
+
+void Supervision::checkBrokenCreatedDatabases() {
+  _lock.assertLockedByCurrentThread();
+
+  // check if snapshot has databases
+  std::pair<Node const&, bool> databases = _snapshot.hasAsNode(planDBPrefix);
+  if (!databases.second) {
+    return;
+  }
+
+  // dbpair is <std::string, std::shared_ptr<Node>>
+  for (auto const& dbpair : databases.first.children()) {
+    std::shared_ptr<Node> const& db = dbpair.second;
+
+    LOG_TOPIC("24152", DEBUG, Logger::SUPERVISION)
+      << "checkBrokenDbs: " << *db;
+
+    // check if isBuilding is set and it is true
+    std::pair<bool, bool> isBuilding = db->hasAsBool(StaticStrings::DatabaseIsBuilding);
+    if (isBuilding.first && isBuilding.second) {
+
+      // this database is currently being built
+      //  check if the coordinator exists and its reboot is the same as specified
+      std::pair<uint64_t, bool> rebootID = db->hasAsUInt(StaticStrings::DatabaseCoordinatorRebootId);
+      std::pair<std::string, bool> coordinatorID = db->hasAsString(StaticStrings::DatabaseCoordinator);
+
+      bool keepDatabase = true;
+
+      if (rebootID.second && coordinatorID.second) {
+        keepDatabase = verifyCoordinatorRebootID(coordinatorID.first, rebootID.first);
+        // incomplete data, should not happen
+      } else {
+        //          v---- Please note this awesome log-id
+        LOG_TOPIC("dbbad", WARN, Logger::SUPERVISION)
+          << "database has set `isBuilding` but is missing coordinatorID and rebootID";
+      }
+
+      // check if the server is still able to finish the initalisation
+      if (!keepDatabase) {
+        LOG_TOPIC("fe522", INFO, Logger::SUPERVISION)
+          << "checkBrokenCreatedDatabases: removing skeleton database with name " << dbpair.first;
+        // delete this database and all of its collections
+        deleteBrokenDatabase(dbpair.first, coordinatorID.first, rebootID.first);
+      }
+    }
+  }
 }
 
 void Supervision::readyOrphanedIndexCreations() {
@@ -1374,7 +1488,7 @@ void Supervision::readyOrphanedIndexCreations() {
 
           write_ret_t res = _agent->write(envelope);
           if (!res.successful()) {
-            LOG_TOPIC("38482", DEBUG, Logger::SUPERVISION)
+            LOG_TOPIC("3848f", DEBUG, Logger::SUPERVISION)
                 << "failed to report ready index to agency. Will retry.";
           }
         }

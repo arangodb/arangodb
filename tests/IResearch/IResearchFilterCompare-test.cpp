@@ -179,7 +179,7 @@ class IResearchFilterCompareTest : public ::testing::Test {
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     arangodb::methods::Collections::createSystem(
         *vocbase, 
-        arangodb::tests::AnalyzerCollectionName);
+        arangodb::tests::AnalyzerCollectionName, false);
     analyzers->emplace(
       result,
       "testVocbase::test_analyzer",
