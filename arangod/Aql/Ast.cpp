@@ -1659,7 +1659,8 @@ void Ast::injectBindParameters(BindParameters& parameters,
                                       node->getString().c_str());
       } else if (node->type == NODE_TYPE_TRAVERSAL) {
         extractCollectionsFromGraph(node->getMember(2));
-      } else if (node->type == NODE_TYPE_SHORTEST_PATH) {
+      } else if (node->type == NODE_TYPE_SHORTEST_PATH ||
+                 node->type == NODE_TYPE_K_SHORTEST_PATHS) {
         extractCollectionsFromGraph(node->getMember(3));
       }
 
