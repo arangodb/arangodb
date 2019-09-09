@@ -1168,12 +1168,12 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         // database does not yet exist, create it now
 
         // create a local database object...
-        int res = databaseFeature->createDatabase(id, name, vocbase);
+        Result res = databaseFeature->createDatabase(id, name, vocbase);
 
-        if (res != TRI_ERROR_NO_ERROR) {
+        if (res.fail()) {
           LOG_TOPIC("ca877", ERR, arangodb::Logger::HEARTBEAT)
               << "creating local database '" << name
-              << "' failed: " << TRI_errno_string(res);
+              << "' failed: " << res.errorMessage();
         } else {
           HasRunOnce.store(true, std::memory_order_release);
         }
