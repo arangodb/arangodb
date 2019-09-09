@@ -190,6 +190,7 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   systemCollections.push_back(StaticStrings::AppBundlesCollection);
   systemCollections.push_back(StaticStrings::FrontendCollection);
   systemCollections.push_back(StaticStrings::ModulesCollection);
+  systemCollections.push_back(StaticStrings::FishbowlCollection);
 
   TRI_IF_FAILURE("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions") {
     VPackBuilder testOptions;
@@ -215,14 +216,6 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
           createdCollections.insert(std::end(createdCollections),
                                     std::begin(cols), std::end(cols));
         });
-  }
-
-  // check wether we need fishbowl collection, or not.
-  ServerSecurityFeature* security =
-      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
-          "ServerSecurity");
-  if (!security->isFoxxStoreDisabled()) {
-    systemCollections.push_back(StaticStrings::FishbowlCollection);
   }
 
   std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> buffers;
@@ -267,7 +260,7 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
 
 Result createSystemStatisticsCollections(TRI_vocbase_t& vocbase,
                                          std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
-  if (vocbase.isSystem() && StatisticsFeature::enabled()) {
+  if (vocbase.isSystem()) {
     typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> FuncCallback;
     FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
 
@@ -345,7 +338,7 @@ static Result createIndex(std::string const name, Index::IndexType type,
 Result createSystemStatisticsIndices(TRI_vocbase_t& vocbase,
                                      std::vector<std::shared_ptr<LogicalCollection>>& collections) {
   Result res;
-  if (vocbase.isSystem() && StatisticsFeature::enabled()) {
+  if (vocbase.isSystem()) {
     res = ::createIndex(StaticStrings::StatisticsCollection,
                         arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
                         false, false, collections);
