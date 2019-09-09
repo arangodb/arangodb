@@ -120,7 +120,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 
   std::string serverId = ClusterInfo::instance()->getCoordinatorByShortID(shortId);
 
-  if ("" == serverId) {
+  if (serverId.empty()) {
     // no mapping in agency, try to handle the request here
     return futures::makeFuture(Result());
   }

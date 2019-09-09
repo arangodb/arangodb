@@ -313,7 +313,7 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
       continue;  // skip content-length header
     }
 
-    if (pair.first == "Authorization" || pair.first == "authorization") {
+    if (boost::iequals("authorization", pair.first))
       haveAuth = true;
     }
 
