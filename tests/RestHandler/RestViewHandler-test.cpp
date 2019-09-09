@@ -179,7 +179,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::RestViewHandler handler(requestPtr.release(), responcePtr.release());
+    arangodb::RestViewHandler handler(server, requestPtr.release(), responcePtr.release());
 
     request.setRequestType(arangodb::rest::RequestType::POST);
     request._payload.openObject();
@@ -295,7 +295,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::RestViewHandler handler(requestPtr.release(), responcePtr.release());
+    arangodb::RestViewHandler handler(server, requestPtr.release(), responcePtr.release());
 
     request.addSuffix("testView");
     request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
@@ -404,7 +404,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::RestViewHandler handler(requestPtr.release(), responcePtr.release());
+    arangodb::RestViewHandler handler(server, requestPtr.release(), responcePtr.release());
 
     request.addSuffix("testView");
     request.addSuffix("rename");
@@ -565,7 +565,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::RestViewHandler handler(requestPtr.release(), responcePtr.release());
+    arangodb::RestViewHandler handler(server, requestPtr.release(), responcePtr.release());
 
     request.addSuffix("testView");
     request.addSuffix("properties");
@@ -796,7 +796,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::RestViewHandler handler(requestPtr.release(), responcePtr.release());
+    arangodb::RestViewHandler handler(server, requestPtr.release(), responcePtr.release());
 
     request.addSuffix("testView");
     request.setRequestType(arangodb::rest::RequestType::GET);
@@ -944,7 +944,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::RestViewHandler handler(requestPtr.release(), responcePtr.release());
+    arangodb::RestViewHandler handler(server, requestPtr.release(), responcePtr.release());
 
     request.addSuffix("testView");
     request.addSuffix("properties");
@@ -1097,7 +1097,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::RestViewHandler handler(requestPtr.release(), responcePtr.release());
+    arangodb::RestViewHandler handler(server, requestPtr.release(), responcePtr.release());
 
     request.setRequestType(arangodb::rest::RequestType::GET);
 

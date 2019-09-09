@@ -43,9 +43,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestCursorHandler::RestCursorHandler(GeneralRequest* request, GeneralResponse* response,
+RestCursorHandler::RestCursorHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response,
                                      arangodb::aql::QueryRegistry* queryRegistry)
-    : RestVocbaseBaseHandler(request, response),
+    : RestVocbaseBaseHandler(server, request, response),
       _query(nullptr),
       _queryResult(),
       _queryRegistry(queryRegistry),

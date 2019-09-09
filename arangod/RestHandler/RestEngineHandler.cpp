@@ -33,8 +33,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestEngineHandler::RestEngineHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestEngineHandler::RestEngineHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestEngineHandler::execute() {
   // extract the sub-request type

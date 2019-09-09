@@ -223,12 +223,12 @@ class ApplicationServer {
    template <typename T, typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, int>::type = 0>
    void addFeature(std::unique_ptr<T>&& feature) {
      // TODO TRI_ASSERT(feature->state() == ApplicationFeature::State::UNINITIALIZED);
-     _features.emplace(typeid(T), std::move(feature));
+     _features.emplace(std::type_index(typeid(T)), std::move(feature));
    }
 
    // checks for the existence of a feature by type. will not throw when used
    // for a non-existing feature
-   bool hasFeature(std::type_index const& type) const {
+   bool hasFeature(std::type_index type) const {
      return (_features.find(type) != _features.end());
    }
 
@@ -236,13 +236,13 @@ class ApplicationServer {
    // a non-existing feature
    template <typename T, typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, int>::type = 0>
    bool hasFeature() const {
-     return hasFeature(typeid(T));
+     return hasFeature(std::type_index(typeid(T)));
    }
 
    // returns a reference to a feature given the type. will throw when used for
    // a non-existing feature
    template <typename T, typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, int>::type = 0>
-   T& getFeature(std::type_index const& type) {
+   T& getFeature(std::type_index type) const {
      auto it = _features.find(type);
      if (it == _features.end()) {
        throwFeatureNotFoundException(type.name());
@@ -253,15 +253,8 @@ class ApplicationServer {
    // returns a const reference to a feature. will throw when used for
    // a non-existing feature
    template <typename T, typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, int>::type = 0>
-   T const& getFeature() const {
-     return getFeature<T>();
-   }
-
-   // returns a reference to a feature. will throw when used for
-   // a non-existing feature
-   template <typename T, typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, int>::type = 0>
-   T& getFeature() {
-     auto it = _features.find(typeid(T));
+   T& getFeature() const {
+     auto it = _features.find(std::type_index(typeid(T)));
      if (it == _features.end()) {
        throwFeatureNotFoundException(typeid(T).name());
      }
@@ -271,7 +264,7 @@ class ApplicationServer {
    // returns the feature with the given name if known and enabled
    // throws otherwise
    template <typename T, typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, int>::type = 0>
-   T& getEnabledFeature() {
+   T& getEnabledFeature() const {
      T& feature = getFeature<T>();
      if (!feature.isEnabled()) {
        throwFeatureNotEnabledException(typeid(T).name());
@@ -284,10 +277,10 @@ class ApplicationServer {
 
   private:
    // throws an exception that a requested feature was not found
-   [[noreturn]] static void throwFeatureNotFoundException(std::string const&);
+   [[noreturn]] static void throwFeatureNotFoundException(char const*);
 
    // throws an exception that a requested feature is not enabled
-   [[noreturn]] static void throwFeatureNotEnabledException(std::string const&);
+   [[noreturn]] static void throwFeatureNotEnabledException(char const*);
 
    void disableFeatures(std::vector<std::type_index> const& types, bool force);
 

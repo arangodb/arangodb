@@ -33,6 +33,9 @@
 #include <thread>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace basics {
 class Exception;
 }
@@ -61,7 +64,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   static thread_local RestHandler const* CURRENT_HANDLER;
 
  public:
-  RestHandler(GeneralRequest*, GeneralResponse*);
+  RestHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
   virtual ~RestHandler();
 
  public:
@@ -75,6 +78,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::unique_ptr<GeneralResponse> stealResponse() {
     return std::move(_response);
   }
+
+  application_features::ApplicationServer& server() { return _server; };
 
   RequestStatistics* statistics() const { return _statistics.load(); }
   RequestStatistics* stealStatistics() { return _statistics.exchange(nullptr); }
@@ -190,10 +195,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   };
 
   std::atomic<bool> _canceled;
-
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
-
+  application_features::ApplicationServer& _server;
   std::atomic<RequestStatistics*> _statistics;
   HandlerState _state;
 

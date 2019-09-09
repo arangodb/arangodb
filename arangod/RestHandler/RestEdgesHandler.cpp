@@ -22,9 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestEdgesHandler.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/Graphs.h"
 #include "Aql/Variable.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/StandaloneContext.h"
@@ -38,8 +41,9 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestEdgesHandler::RestEdgesHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestEdgesHandler::RestEdgesHandler(application_features::ApplicationServer& server,
+                                   GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestEdgesHandler::execute() {
   // extract the sub-request type
@@ -195,8 +199,9 @@ bool RestEdgesHandler::readEdges() {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder resultDocument(buffer);
     resultDocument.openObject();
-    int res = getFilteredEdgesOnCoordinator(*trx, collectionName, vertexString, direction,
-                                            responseCode, resultDocument);
+    auto& cf = server().getFeature<ClusterFeature>();
+    int res = getFilteredEdgesOnCoordinator(cf, *trx, collectionName, vertexString,
+                                            direction, responseCode, resultDocument);
 
     if (res != TRI_ERROR_NO_ERROR) {
       generateError(responseCode, res);
@@ -335,8 +340,9 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     for (auto const& it : VPackArrayIterator(body)) {
       if (it.isString()) {
         std::string vertexString(it.copyString());
-        int res = getFilteredEdgesOnCoordinator(*trx, collectionName, vertexString, direction,
-                                                responseCode, resultDocument);
+        auto& cf = server().getFeature<ClusterFeature>();
+        int res = getFilteredEdgesOnCoordinator(cf, *trx, collectionName, vertexString,
+                                                direction, responseCode, resultDocument);
 
         if (res != TRI_ERROR_NO_ERROR) {
           generateError(responseCode, res);

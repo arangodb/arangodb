@@ -149,10 +149,13 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (!_restServer) {
-    server().disableFeatures(std::vector<std::type_index>{
-        typeid(DaemonFeature), typeid(HttpEndpointProvider),
-        typeid(GeneralServerFeature), typeid(SslServerFeature),
-        typeid(StatisticsFeature), typeid(SupervisorFeature)});
+    server().disableFeatures(
+        std::vector<std::type_index>{std::type_index(typeid(DaemonFeature)),
+                                     std::type_index(typeid(HttpEndpointProvider)),
+                                     std::type_index(typeid(GeneralServerFeature)),
+                                     std::type_index(typeid(SslServerFeature)),
+                                     std::type_index(typeid(StatisticsFeature)),
+                                     std::type_index(typeid(SupervisorFeature))});
 
     if (!options->processingResult().touched("replication.auto-start")) {
       // turn off replication applier when we do not have a rest server
@@ -164,8 +167,9 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (_operationMode == OperationMode::MODE_CONSOLE) {
-    server().disableFeatures(std::vector<std::type_index>{typeid(DaemonFeature),
-                                                          typeid(SupervisorFeature)});
+    server().disableFeatures(
+        std::vector<std::type_index>{std::type_index(typeid(DaemonFeature)),
+                                     std::type_index(typeid(SupervisorFeature))});
     v8dealer.setMinimumContexts(2);
   }
 

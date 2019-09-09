@@ -30,6 +30,7 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/Graph.h"
@@ -98,7 +99,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 
     // First determine whether all edge collections are smart and sharded
     // like a common collection:
-    auto ci = ClusterInfo::instance();
+    auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
     if (ServerState::instance()->isRunningInCluster()) {
       _isSmart = true;
       std::string distributeShardsLike;
@@ -108,7 +109,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
           col = col->getMember(1);  // The first member always is the collection
         }
         std::string n = col->getString();
-        auto c = ci->getCollection(_vocbase->name(), n);
+        auto c = ci.getCollection(_vocbase->name(), n);
         if (!c->isSmart() || c->distributeShardsLike().empty()) {
           _isSmart = false;
           break;
@@ -162,7 +163,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 
       _graphInfo.add(VPackValue(eColName));
       if (ServerState::instance()->isRunningInCluster()) {
-        auto c = ci->getCollection(_vocbase->name(), eColName);
+        auto c = ci.getCollection(_vocbase->name(), eColName);
         if (!c->isSmart()) {
           addEdgeCollection(eColName, dir);
         } else {
@@ -200,12 +201,12 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 
         // First determine whether all edge collections are smart and sharded
         // like a common collection:
-        auto ci = ClusterInfo::instance();
+        auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
         if (ServerState::instance()->isRunningInCluster()) {
           _isSmart = true;
           std::string distributeShardsLike;
           for (auto const& n : eColls) {
-            auto c = ci->getCollection(_vocbase->name(), n);
+            auto c = ci.getCollection(_vocbase->name(), n);
             if (!c->isSmart() || c->distributeShardsLike().empty()) {
               _isSmart = false;
               break;
@@ -221,7 +222,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 
         for (const auto& n : eColls) {
           if (ServerState::instance()->isRunningInCluster()) {
-            auto c = ci->getCollection(_vocbase->name(), n);
+            auto c = ci.getCollection(_vocbase->name(), n);
             if (!c->isSmart()) {
               addEdgeCollection(n, _defaultDirection);
             } else {

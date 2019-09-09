@@ -93,8 +93,8 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   server().forceDisableFeatures(_nonServerFeatures);
   std::vector<std::type_index> otherFeaturesToDisable = {
-      typeid(BootstrapFeature),
-      typeid(HttpEndpointProvider),
+      std::type_index(typeid(BootstrapFeature)),
+      std::type_index(typeid(HttpEndpointProvider)),
   };
   server().forceDisableFeatures(otherFeaturesToDisable);
 

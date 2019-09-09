@@ -51,6 +51,7 @@ namespace application_features {
 class ApplicationServer;
 }
 class ClusterCommThread;
+class ClusterInfo;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a coordinator transaction ID
@@ -218,7 +219,7 @@ struct ClusterCommResult {
   /// @brief routine to set the destination
   //////////////////////////////////////////////////////////////////////////////
 
-  void setDestination(std::string const& dest, bool logConnectionErrors);
+  void setDestination(ClusterInfo& ci, std::string const& dest, bool logConnectionErrors);
 
   /// @brief stringify the internal error state
   std::string stringifyErrorMessage() const;

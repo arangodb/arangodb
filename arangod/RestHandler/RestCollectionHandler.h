@@ -33,7 +33,8 @@ class LogicalCollection;
 
 class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestCollectionHandler(GeneralRequest*, GeneralResponse*);
+  RestCollectionHandler(application_features::ApplicationServer&,
+                        GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestCollectionHandler"; }

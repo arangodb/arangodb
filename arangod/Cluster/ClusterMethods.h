@@ -44,6 +44,7 @@
 namespace arangodb {
 
 struct ClusterCommResult;
+class ClusterFeature;
 struct OperationOptions;
 class TransactionState;
 struct TtlStatistics;
@@ -73,34 +74,36 @@ bool smartJoinAttributeChanged(LogicalCollection const& collection, VPackSlice c
 /// @brief returns revision for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int revisionOnCoordinator(std::string const& dbname,
+int revisionOnCoordinator(ClusterFeature&, std::string const& dbname,
                           std::string const& collname, TRI_voc_rid_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Warmup index caches on Shards
 ////////////////////////////////////////////////////////////////////////////////
 
-int warmupOnCoordinator(std::string const& dbname, std::string const& cid);
+int warmupOnCoordinator(ClusterFeature&, std::string const& dbname, std::string const& cid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns figures for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
+int figuresOnCoordinator(ClusterFeature&, std::string const& dbname,
+                         std::string const& collname,
                          std::shared_ptr<arangodb::velocypack::Builder>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts number of documents in a coordinator, by shard
 ////////////////////////////////////////////////////////////////////////////////
 
-int countOnCoordinator(transaction::Methods& trx, std::string const& collname,
+int countOnCoordinator(ClusterFeature&, transaction::Methods& trx, std::string const& collname,
                        std::vector<std::pair<std::string, uint64_t>>& result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the selectivity estimates from DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string const& collname,
+int selectivityEstimatesOnCoordinator(ClusterFeature&, std::string const& dbname,
+                                      std::string const& collname,
                                       std::unordered_map<std::string, double>& result,
                                       TRI_voc_tick_t tid = 0);
 
@@ -108,17 +111,17 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
 /// @brief creates a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& trx,
-                                                             LogicalCollection&,
-                                                             OperationOptions const& options,
-                                                             VPackSlice slice);
+futures::Future<OperationResult> createDocumentOnCoordinator(
+    ClusterFeature&, transaction::Methods const& trx, LogicalCollection&,
+    OperationOptions const& options, VPackSlice slice);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int deleteDocumentOnCoordinator(transaction::Methods& trx, std::string const& collname,
-                                VPackSlice const slice, OperationOptions const& options,
+int deleteDocumentOnCoordinator(ClusterFeature&, transaction::Methods& trx,
+                                std::string const& collname, VPackSlice const slice,
+                                OperationOptions const& options,
                                 arangodb::rest::ResponseCode& responseCode,
                                 std::unordered_map<int, size_t>& errorCounters,
                                 std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
@@ -127,8 +130,9 @@ int deleteDocumentOnCoordinator(transaction::Methods& trx, std::string const& co
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int getDocumentOnCoordinator(transaction::Methods& trx, std::string const& collname,
-                             VPackSlice slice, OperationOptions const& options,
+int getDocumentOnCoordinator(ClusterFeature&, transaction::Methods& trx,
+                             std::string const& collname, VPackSlice slice,
+                             OperationOptions const& options,
                              arangodb::rest::ResponseCode& responseCode,
                              std::unordered_map<int, size_t>& errorCounter,
                              std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
@@ -211,7 +215,7 @@ void fetchVerticesFromEngines(
 ///        Also returns the result in VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-int getFilteredEdgesOnCoordinator(transaction::Methods const& trx,
+int getFilteredEdgesOnCoordinator(ClusterFeature&, transaction::Methods const& trx,
                                   std::string const& collname, std::string const& vertex,
                                   TRI_edge_direction_e const& direction,
                                   arangodb::rest::ResponseCode& responseCode,
@@ -222,7 +226,7 @@ int getFilteredEdgesOnCoordinator(transaction::Methods const& trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 int modifyDocumentOnCoordinator(
-    transaction::Methods& trx, std::string const& collname,
+    ClusterFeature&, transaction::Methods& trx, std::string const& collname,
     arangodb::velocypack::Slice const& slice, OperationOptions const& options,
     bool isPatch, std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::rest::ResponseCode& responseCode, std::unordered_map<int, size_t>& errorCounter,
@@ -232,23 +236,25 @@ int modifyDocumentOnCoordinator(
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string const& collname);
+Result truncateCollectionOnCoordinator(ClusterFeature&, transaction::Methods& trx,
+                                       std::string const& collname);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush Wal on all DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector,
-                           double maxWaitTime = -1.0);
+int flushWalOnAllDBServers(ClusterFeature&, bool waitForSync,
+                           bool waitForCollector, double maxWaitTime = -1.0);
 
 /// @brief get TTL statistics from all DBservers and aggregate them
-Result getTtlStatisticsFromAllDBServers(TtlStatistics& out);
+Result getTtlStatisticsFromAllDBServers(ClusterFeature&, TtlStatistics& out);
 
 /// @brief get TTL properties from all DBservers
-Result getTtlPropertiesFromAllDBServers(arangodb::velocypack::Builder& out);
+Result getTtlPropertiesFromAllDBServers(ClusterFeature&, arangodb::velocypack::Builder& out);
 
 /// @brief set TTL properties on all DBservers
-Result setTtlPropertiesOnAllDBServers(arangodb::velocypack::Slice const& properties,
+Result setTtlPropertiesOnAllDBServers(ClusterFeature&,
+                                      arangodb::velocypack::Slice const& properties,
                                       arangodb::velocypack::Builder& out);
 
 //////////////////////////////////////////////////////////////////////////////
@@ -262,27 +268,31 @@ enum HotBackupMode { CONSISTENT, DIRTY };
  * @param mode    Backup mode: consistent, dirty
  * @param timeout Wait for this attempt and bail out if not met
  */
-arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& report);
+arangodb::Result hotBackupCoordinator(ClusterFeature&, VPackSlice const payload,
+                                      VPackBuilder& report);
 
 /**
  * @brief Restore specific hot backup on coordinators
  * @param mode    Backup mode: consistent, dirty
  * @param timeout Wait for this attempt and bail out if not met
  */
-arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& report);
+arangodb::Result hotRestoreCoordinator(ClusterFeature&, VPackSlice const payload,
+                                       VPackBuilder& report);
 
 /**
  * @brief List all
  * @param mode    Backup mode: consistent, dirty
  * @param timeout Wait for this attempt and bail out if not met
  */
-arangodb::Result listHotBackupsOnCoordinator(VPackSlice const payload, VPackBuilder& report);
+arangodb::Result listHotBackupsOnCoordinator(ClusterFeature&, VPackSlice const payload,
+                                             VPackBuilder& report);
 
 /**
  * @brief Delete specific hot backup
  * @param backupId  BackupId to delete
  */
-arangodb::Result deleteHotBackupsOnCoordinator(VPackSlice const payload, VPackBuilder& report);
+arangodb::Result deleteHotBackupsOnCoordinator(ClusterFeature&, VPackSlice const payload,
+                                               VPackBuilder& report);
 
 #ifdef USE_ENTERPRISE
 /**
@@ -351,9 +361,10 @@ class ClusterMethods {
   ////////////////////////////////////////////////////////////////////////////////
 
   static std::vector<std::shared_ptr<LogicalCollection>> persistCollectionsInAgency(
-      std::vector<std::shared_ptr<LogicalCollection>>& col, bool ignoreDistributeShardsLikeErrors,
-      bool waitForSyncReplication, bool enforceReplicationFactor,
-      bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colPtr);
+      ClusterFeature&, std::vector<std::shared_ptr<LogicalCollection>>& col,
+      bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
+      bool enforceReplicationFactor, bool isNewDatabase,
+      std::shared_ptr<LogicalCollection> const& colPtr);
 };
 
 }  // namespace arangodb

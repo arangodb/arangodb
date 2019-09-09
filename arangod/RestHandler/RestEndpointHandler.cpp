@@ -32,8 +32,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestEndpointHandler::RestEndpointHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestEndpointHandler::RestEndpointHandler(application_features::ApplicationServer& server,
+                                         GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestEndpointHandler::execute() {
   // extract the sub-request type

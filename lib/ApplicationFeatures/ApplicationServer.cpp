@@ -28,6 +28,8 @@
 #include <unordered_set>
 #include <utility>
 
+#include <boost/core/demangle.hpp>
+
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -62,6 +64,8 @@ static void failCallback(std::string const& message) {
   LOG_TOPIC("85b08", FATAL, arangodb::Logger::FIXME) << "error. cannot proceed. reason: " << message;
   FATAL_ERROR_EXIT();
 }
+
+ApplicationServer* OLD_INSTANCE = nullptr;
 }  // namespace
 
 ApplicationServer* ApplicationServer::INSTANCE(nullptr);
@@ -81,16 +85,14 @@ ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
   // register callback function for failures
   fail = failCallback;
 
-  if (ApplicationServer::INSTANCE != nullptr) {
-    LOG_TOPIC("fbe91", ERR, arangodb::Logger::FIXME)
-        << "ApplicationServer initialized twice";
-  }
+  ::OLD_INSTANCE = ApplicationServer::INSTANCE;
 
   ApplicationServer::INSTANCE = this;
 }
 
 ApplicationServer::~ApplicationServer() {
-  ApplicationServer::INSTANCE = nullptr;
+  ApplicationServer::INSTANCE = OLD_INSTANCE;
+  OLD_INSTANCE = nullptr;
 }
 
 bool ApplicationServer::isPrepared() {
@@ -114,14 +116,16 @@ bool ApplicationServer::isStoppingState(State state) {
          state == State::ABORTED; 
 }
 
-void ApplicationServer::throwFeatureNotFoundException(std::string const& name) {
+void ApplicationServer::throwFeatureNotFoundException(char const* name) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "unknown feature '" + name + "'");
+                                 "unknown feature '" +
+                                     boost::core::demangle(name) + "'");
 }
 
-void ApplicationServer::throwFeatureNotEnabledException(std::string const& name) {
+void ApplicationServer::throwFeatureNotEnabledException(char const* name) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "feature '" + name + "' is not enabled");
+                                 "feature '" + boost::core::demangle(name) +
+                                     "' is not enabled");
 }
 
 void ApplicationServer::disableFeatures(std::vector<std::type_index> const& types) {
@@ -419,7 +423,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
         }
         continue;
       }
-      getFeature<ApplicationFeature>(other).startsAfter(typeid(*it.second));
+      getFeature<ApplicationFeature>(other).startsAfter(std::type_index(typeid(*it.second)));
     }
   }
 
@@ -456,10 +460,10 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
 
     for (size_t i = features.size(); i > 0; --i) {
       auto const& other = features[i - 1].get();
-      if (us.doesStartBefore(typeid(other))) {
+      if (us.doesStartBefore(std::type_index(typeid(other)))) {
         // we start before the other feature. so move ourselves up
         insertPosition = features.begin() + (i - 1);
-      } else if (other.doesStartBefore(typeid(us))) {
+      } else if (other.doesStartBefore(std::type_index(typeid(us)))) {
         // the other feature starts before us. so stop moving up
         break;
       } else {
@@ -480,8 +484,8 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
 
     std::string dependencies;
     if (!startsAfter.empty()) {
-      std::function<std::string(std::type_index const&)> cb =
-          [](std::type_index const& type) -> std::string { return type.name(); };
+      std::function<std::string(std::type_index)> cb =
+          [](std::type_index type) -> std::string { return type.name(); };
       dependencies = " - depends on: " + StringUtils::join(startsAfter, ", ", cb);
     }
     LOG_TOPIC("b2ad5", TRACE, Logger::STARTUP)

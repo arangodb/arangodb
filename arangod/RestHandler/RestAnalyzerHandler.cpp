@@ -37,11 +37,10 @@
 namespace arangodb {
 namespace iresearch {
 
-RestAnalyzerHandler::RestAnalyzerHandler(
-    arangodb::GeneralRequest* request,
-    arangodb::GeneralResponse* response
-): RestVocbaseBaseHandler(request, response) {
-}
+RestAnalyzerHandler::RestAnalyzerHandler(application_features::ApplicationServer& server,
+                                         arangodb::GeneralRequest* request,
+                                         arangodb::GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 void RestAnalyzerHandler::createAnalyzer( // create
     IResearchAnalyzerFeature& analyzers

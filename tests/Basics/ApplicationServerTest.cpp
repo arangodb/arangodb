@@ -91,10 +91,9 @@ TEST(ApplicationServerTest, test_startsAfterValid) {
                                      std::vector<std::type_index>{}));
   auto& feature1 = server.getFeature<TestFeatureA>();
 
-  server.addFeature<TestFeatureB>(
-      std::make_unique<TestFeatureB>(server, "feature2",
-                                     std::vector<std::type_index>{typeid(TestFeatureA)},
-                                     std::vector<std::type_index>{}));
+  server.addFeature<TestFeatureB>(std::make_unique<TestFeatureB>(
+      server, "feature2", std::vector<std::type_index>{std::type_index(typeid(TestFeatureA))},
+      std::vector<std::type_index>{}));
   auto& feature2 = server.getFeature<TestFeatureB>();
 
   server.setupDependencies(true);
@@ -122,14 +121,12 @@ TEST(ApplicationServerTest, test_startsAfterCyclic) {
   application_features::ApplicationServer server(options, "path");
   server.registerFailCallback(callback);
 
-  server.addFeature<TestFeatureA>(
-      std::make_unique<TestFeatureA>(server, "feature1",
-                                     std::vector<std::type_index>{typeid(TestFeatureB)},
-                                     std::vector<std::type_index>{}));
-  server.addFeature<TestFeatureB>(
-      std::make_unique<TestFeatureB>(server, "feature2",
-                                     std::vector<std::type_index>{typeid(TestFeatureA)},
-                                     std::vector<std::type_index>{}));
+  server.addFeature<TestFeatureA>(std::make_unique<TestFeatureA>(
+      server, "feature1", std::vector<std::type_index>{std::type_index(typeid(TestFeatureB))},
+      std::vector<std::type_index>{}));
+  server.addFeature<TestFeatureB>(std::make_unique<TestFeatureB>(
+      server, "feature2", std::vector<std::type_index>{std::type_index(typeid(TestFeatureA))},
+      std::vector<std::type_index>{}));
 
   try {
     server.setupDependencies(true);
@@ -152,12 +149,12 @@ TEST(ApplicationServerTest, test_startsBeforeCyclic) {
   application_features::ApplicationServer server(options, "path");
   server.registerFailCallback(callback);
 
-  server.addFeature<TestFeatureA>(
-      std::make_unique<TestFeatureA>(server, "feature1", std::vector<std::type_index>{},
-                                     std::vector<std::type_index>{typeid(TestFeatureB)}));
-  server.addFeature<TestFeatureB>(
-      std::make_unique<TestFeatureB>(server, "feature2", std::vector<std::type_index>{},
-                                     std::vector<std::type_index>{typeid(TestFeatureA)}));
+  server.addFeature<TestFeatureA>(std::make_unique<TestFeatureA>(
+      server, "feature1", std::vector<std::type_index>{},
+      std::vector<std::type_index>{std::type_index(typeid(TestFeatureB))}));
+  server.addFeature<TestFeatureB>(std::make_unique<TestFeatureB>(
+      server, "feature2", std::vector<std::type_index>{},
+      std::vector<std::type_index>{std::type_index(typeid(TestFeatureA))}));
 
   try {
     server.setupDependencies(true);

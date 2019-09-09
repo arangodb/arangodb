@@ -43,7 +43,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 // required for QuerySetup
-#include "../Mocks/Servers.h"
+#include "Mocks/Servers.h"
 
 // Query
 #include "RestServer/AqlFeature.h"

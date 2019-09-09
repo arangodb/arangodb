@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/fasthash.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
@@ -859,8 +860,9 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
 
   if (ServerState::instance()->isCoordinator()) {
     // We need to inform the cluster as well
-    return ClusterInfo::instance()->setCollectionPropertiesCoordinator(
-        vocbase().name(), std::to_string(id()), this);
+    auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+    return ci.setCollectionPropertiesCoordinator(vocbase().name(),
+                                                 std::to_string(id()), this);
   }
 
   engine.changeCollection(vocbase(), *this, doSync);

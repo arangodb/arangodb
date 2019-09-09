@@ -1431,7 +1431,7 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
                                     arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
                                     arangodb::LogLevel::DEFAULT);
-    arangodb::ClusterInfo::cleanup();  // reset ClusterInfo::instance() before DatabaseFeature::unprepare()
+    server.getFeature<arangodb::ClusterFeature>().clusterInfo().cleanup();  // reset ClusterInfo::instance() before DatabaseFeature::unprepare()
 
     // destroy application features
     for (auto f = orderedFeatures.rbegin(); f != orderedFeatures.rend(); ++f) {
@@ -1529,12 +1529,12 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index) {
                                                    arangodb::velocypack::Slice const& definition,
                                                    TRI_idx_iid_t id,
                                                    bool isClusterConstructor) const override {
-        auto* ci = arangodb::ClusterInfo::instance();
-        EXPECT_NE(nullptr, ci);
+        auto& ci =
+            collection.vocbase().server().getFeature<arangodb::ClusterFeature>().clusterInfo();
         EXPECT_TRUE(collection.vocbase().server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>());
         auto& feature =
             collection.vocbase().server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-        ci->invalidatePlan();  // invalidate plan to test recursive lock aquisition in ClusterInfo::loadPlan()
+        ci.invalidatePlan();  // invalidate plan to test recursive lock aquisition in ClusterInfo::loadPlan()
         EXPECT_EQ(nullptr, feature.get(arangodb::StaticStrings::SystemDatabase + "::missing",
                                        "TestAnalyzer", VPackSlice::noneSlice(),
                                        irs::flags()));
@@ -1563,13 +1563,13 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index) {
 
     ClusterCommMock clusterComm(server);
     auto scopedClusterComm = ClusterCommMock::setInstance(clusterComm);
-    auto* ci = arangodb::ClusterInfo::instance();
-    ASSERT_NE(nullptr, ci);
+    auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
-    ASSERT_TRUE((ci->createCollectionCoordinator(system()->name(), collectionId, 0, 1, 1, false,
-                                                 createCollectionJson->slice(), 0.0, false, nullptr)
-                     .ok()));
-    auto logicalCollection = ci->getCollection(system()->name(), collectionId);
+    ASSERT_TRUE(
+        (ci.createCollectionCoordinator(system()->name(), collectionId, 0, 1, 1, false,
+                                        createCollectionJson->slice(), 0.0, false, nullptr)
+             .ok()));
+    auto logicalCollection = ci.getCollection(system()->name(), collectionId);
     ASSERT_NE(nullptr, logicalCollection);
 
     // simulate heartbeat thread
@@ -1591,11 +1591,11 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index) {
           arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
       auto const versionPath = "/Plan/Version";
       auto const versionValue =
-          VPackParser::fromJson(std::to_string(ci->getPlanVersion() + 1));
+          VPackParser::fromJson(std::to_string(ci.getPlanVersion() + 1));
       EXPECT_TRUE((arangodb::AgencyComm()
                        .setValue(versionPath, versionValue->slice(), 0.0)
                        .successful()));  // force loadPlan() update
-      ci->invalidateCurrent();           // force reload of 'Current'
+      ci.invalidateCurrent();            // force reload of 'Current'
     }
 
     // insert response for expected analyzer lookup

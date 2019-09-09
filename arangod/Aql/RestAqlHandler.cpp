@@ -51,9 +51,10 @@ using namespace arangodb::aql;
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
-RestAqlHandler::RestAqlHandler(GeneralRequest* request, GeneralResponse* response,
+RestAqlHandler::RestAqlHandler(application_features::ApplicationServer& server,
+                               GeneralRequest* request, GeneralResponse* response,
                                std::pair<QueryRegistry*, traverser::TraverserEngineRegistry*>* registries)
-    : RestVocbaseBaseHandler(request, response),
+    : RestVocbaseBaseHandler(server, request, response),
       _queryRegistry(registries->first),
       _traverserRegistry(registries->second),
       _qId(0) {

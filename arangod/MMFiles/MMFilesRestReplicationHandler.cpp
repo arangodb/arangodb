@@ -54,9 +54,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-MMFilesRestReplicationHandler::MMFilesRestReplicationHandler(GeneralRequest* request,
-                                                             GeneralResponse* response)
-    : RestReplicationHandler(request, response) {}
+MMFilesRestReplicationHandler::MMFilesRestReplicationHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
+    : RestReplicationHandler(server, request, response) {}
 
 MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() = default;
 

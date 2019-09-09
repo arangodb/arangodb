@@ -31,9 +31,10 @@
 #include "Network/NetworkFeature.h"
 
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Mocks/Servers.h"
 #include "RestServer/FileDescriptorsFeature.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
@@ -88,7 +89,8 @@ struct NetworkMethodsTest : public ::testing::Test {
 protected:
   
   void SetUp() override {
-    NetworkFeature::setPoolTesting(&this->pool);
+    auto& feature = server.server().getFeature<arangodb::NetworkFeature>();
+    feature.setPoolTesting(&this->pool);
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
   
@@ -102,8 +104,8 @@ protected:
     config.verifyHosts = false;
     return config;
   }
-  
-  
+
+  tests::mocks::MockCoordinator server;
   DummyPool pool;
 };
 
@@ -119,9 +121,10 @@ TEST_F(NetworkMethodsTest, simple_request) {
   pool._conn->_response->setPayload(*(std::move(resBuffer).get()), 0);
   
   VPackBuffer<uint8_t> buffer;
-  auto f = network::sendRequest("tcp://example.org:80", fuerte::RestVerb::Get, "/",
-                                buffer, network::Timeout(60.0));
-  
+  auto& feature = server.server().getFeature<arangodb::NetworkFeature>();
+  auto f = network::sendRequest(feature, "tcp://example.org:80", fuerte::RestVerb::Get,
+                                "/", buffer, network::Timeout(60.0));
+
   network::Response res = std::move(f).get();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
@@ -133,65 +136,25 @@ TEST_F(NetworkMethodsTest, request_failure) {
   pool._conn->_err = fuerte::Error::ConnectionClosed;
   
   VPackBuffer<uint8_t> buffer;
-  auto f = network::sendRequest("tcp://example.org:80", fuerte::RestVerb::Get, "/",
-                                buffer, network::Timeout(60.0));
-  
+  auto& feature = server.server().getFeature<NetworkFeature>();
+  auto f = network::sendRequest(feature, "tcp://example.org:80", fuerte::RestVerb::Get,
+                                "/", buffer, network::Timeout(60.0));
+
   network::Response res = std::move(f).get();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::ConnectionClosed);
   ASSERT_EQ(res.response, nullptr);
 }
 
-struct SchedulerTestSetup {
-  arangodb::application_features::ApplicationServer server;
-  
-  SchedulerTestSetup() : server(nullptr, nullptr) {
-    using namespace arangodb::application_features;
-
-    server.addFeature<GreetingsFeaturePhase>(std::make_unique<GreetingsFeaturePhase>(server, false));
-    server.addFeature<arangodb::FileDescriptorsFeature>(std::make_unique<arangodb::FileDescriptorsFeature>(server));
-    server.addFeature<arangodb::SchedulerFeature>(std::make_unique<arangodb::SchedulerFeature>(server));
-    
-    server.setupDependencies(false);
-    
-    server.setStateUnsafe(ApplicationServer::State::IN_WAIT);
-    auto orderedFeatures = server.getOrderedFeatures();
-    server.getFeature<arangodb::SchedulerFeature>().validateOptions(nullptr);
-    for (auto& f : orderedFeatures) {
-      f.get().prepare();
-    }
-    for (auto& f : orderedFeatures) {
-      f.get().start();
-    }
-  }
-  
-  ~SchedulerTestSetup() {
-    using namespace arangodb::application_features;
-    server.setStateUnsafe(ApplicationServer::State::IN_STOP);
-    
-    auto orderedFeatures = server.getOrderedFeatures();
-    for (auto& f : orderedFeatures) {
-      f.get().beginShutdown();
-    }
-    for (auto& f : orderedFeatures) {
-      f.get().stop();
-    }
-    for (auto& f : orderedFeatures) {
-      f.get().unprepare();
-    }
-  }
-};
-
 TEST_F(NetworkMethodsTest, request_with_retry_after_error) {
-  SchedulerTestSetup setup;
-  
   // Step 1: Provoke a connection error
   pool._conn->_err = fuerte::Error::CouldNotConnect;
   
   VPackBuffer<uint8_t> buffer;
-  auto f = network::sendRequestRetry("tcp://example.org:80", fuerte::RestVerb::Get, "/",
-                                     buffer, network::Timeout(5.0));
-  
+  auto& feature = server.server().getFeature<NetworkFeature>();
+  auto f = network::sendRequestRetry(feature, "tcp://example.org:80", fuerte::RestVerb::Get,
+                                     "/", buffer, network::Timeout(5.0));
+
   // the default behaviour should be to retry after 200 ms
   std::this_thread::sleep_for(std::chrono::milliseconds(5));
   ASSERT_FALSE(f.isReady());
@@ -219,8 +182,6 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_error) {
 }
 
 TEST_F(NetworkMethodsTest, request_with_retry_after_not_found_error) {
-    SchedulerTestSetup setup;
-    
     // Step 1: Provoke a data source not found error
     pool._conn->_err = fuerte::Error::NoError;
     fuerte::ResponseHeader header;
@@ -232,9 +193,11 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_not_found_error) {
     pool._conn->_response->setPayload(*(std::move(resBuffer).get()), 0);
     
     VPackBuffer<uint8_t> buffer;
-    auto f = network::sendRequestRetry("tcp://example.org:80", fuerte::RestVerb::Get, "/",
-                                       buffer, network::Timeout(5.0), {}, true);
-    
+    auto& feature = server.server().getFeature<NetworkFeature>();
+    auto f = network::sendRequestRetry(feature, "tcp://example.org:80",
+                                       fuerte::RestVerb::Get, "/", buffer,
+                                       network::Timeout(5.0), {}, true);
+
     // the default behaviour should be to retry after 200 ms
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
     ASSERT_FALSE(f.isReady());

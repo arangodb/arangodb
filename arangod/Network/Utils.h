@@ -37,11 +37,12 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 }
+class NetworkFeature;
 
 namespace network {
 
 /// @brief resolve 'shard:' or 'server:' url to actual endpoint
-int resolveDestination(DestinationId const& dest, std::string&);
+int resolveDestination(NetworkFeature&, DestinationId const& dest, std::string&);
 
 /// @brief extract the error from a cluster response
 OperationResult opResultFromBody(arangodb::velocypack::Buffer<uint8_t> const& body,

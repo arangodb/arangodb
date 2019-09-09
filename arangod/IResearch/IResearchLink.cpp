@@ -21,18 +21,28 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchCommon.h"
-#include "IResearchFeature.h"
-#include "IResearchLinkHelper.h"
-#include "IResearchPrimaryKeyFilter.h"
-#include "IResearchView.h"
-#include "IResearchViewCoordinator.h"
-#include "VelocyPackHelper.h"
+#include <index/column_info.hpp>
+#include <store/mmap_directory.hpp>
+#include <store/store_utils.hpp>
+#include <utils/encryption.hpp>
+#include <utils/lz4compression.hpp>
+#include <utils/singleton.hpp>
+
+#include "IResearchLink.h"
+
 #include "Aql/QueryCache.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLinkHelper.h"
+#include "IResearch/IResearchPrimaryKeyFilter.h"
+#include "IResearch/IResearchView.h"
+#include "IResearch/IResearchViewCoordinator.h"
+#include "IResearch/VelocyPackHelper.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -42,15 +52,6 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-
-#include "IResearchLink.h"
-
-#include "index/column_info.hpp"
-#include "store/mmap_directory.hpp"
-#include "store/store_utils.hpp"
-#include "utils/lz4compression.hpp"
-#include "utils/encryption.hpp"
-#include "utils/singleton.hpp"
 
 using namespace std::literals;
 
@@ -796,16 +797,15 @@ Result IResearchLink::init(
   bool const sorted = !meta._sort.empty();
 
   if (ServerState::instance()->isCoordinator()) { // coordinator link
-    auto* ci = ClusterInfo::instance();
-
-    if (!ci) {
+    if (!vocbase.server().hasFeature<arangodb::ClusterFeature>()) {
       return {
         TRI_ERROR_INTERNAL,
         "failure to get cluster info while initializing arangosearch link '" + std::to_string(_id) + "'"
       };
     }
+    auto& ci = vocbase.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
 
-    auto logicalView = ci->getView(vocbase.name(), viewId);
+    auto logicalView = ci.getView(vocbase.name(), viewId);
 
     // if there is no logicalView present yet then skip this step
     if (logicalView) {
@@ -838,14 +838,13 @@ Result IResearchLink::init(
       }
     }
   } else if (ServerState::instance()->isDBServer()) { // db-server link
-    auto* ci = ClusterInfo::instance();
-
-    if (!ci) {
+    if (!!vocbase.server().hasFeature<arangodb::ClusterFeature>()) {
       return {
         TRI_ERROR_INTERNAL,
         "failure to get cluster info while initializing arangosearch link '" + std::to_string(_id) + "'"
       };
     }
+    auto& ci = vocbase.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
 
     // cluster-wide link
     auto clusterWideLink = _collection.id() == _collection.planId() && _collection.isAStub();
@@ -861,7 +860,7 @@ Result IResearchLink::init(
     }
 
     // valid to call ClusterInfo (initialized in ClusterFeature::prepare()) even from Databasefeature::start()
-    auto logicalView = ci->getView(vocbase.name(), viewId);
+    auto logicalView = ci.getView(vocbase.name(), viewId);
 
     // if there is no logicalView present yet then skip this step
     if (logicalView) {

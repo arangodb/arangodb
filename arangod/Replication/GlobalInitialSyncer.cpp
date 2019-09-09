@@ -251,7 +251,8 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
 
     if (vocbase == nullptr) {
       // database is missing. we need to create it now
-      Result r = methods::Databases::create(dbName, VPackSlice::emptyArraySlice(),
+      Result r = methods::Databases::create(_state.applier._server, dbName,
+                                            VPackSlice::emptyArraySlice(),
                                             VPackSlice::emptyObjectSlice());
       if (r.fail()) {
         LOG_TOPIC("cf124", WARN, Logger::REPLICATION)

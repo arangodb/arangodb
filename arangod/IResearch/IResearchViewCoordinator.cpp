@@ -71,15 +71,14 @@ namespace iresearch {
 struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
   virtual arangodb::Result create(arangodb::LogicalView::ptr& view, TRI_vocbase_t& vocbase,
                                   arangodb::velocypack::Slice const& definition) const override {
-    auto* ci = ClusterInfo::instance();
-
-    if (!ci) {
+    if (!vocbase.server().hasFeature<ClusterFeature>()) {
       return arangodb::Result(
           TRI_ERROR_INTERNAL,
           std::string("failure to find 'ClusterInfo' instance while creating "
                       "arangosearch View in database '") +
               vocbase.name() + "'");
     }
+    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
     auto& properties = definition.isObject()
                            ? definition
@@ -133,8 +132,8 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
           << impl->name() << "'";
     }
 
-    view = ci->getView(vocbase.name(),
-                       std::to_string(impl->id()));  // refresh view from Agency
+    view = ci.getView(vocbase.name(),
+                      std::to_string(impl->id()));  // refresh view from Agency
 
     if (view) {
       view->open();  // open view to match the behavior in
@@ -336,14 +335,13 @@ bool IResearchViewCoordinator::visitCollections(CollectionVisitor const& visitor
 
 arangodb::Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
                                                       bool partialUpdate) {
-  auto* engine = arangodb::ClusterInfo::instance();
-
-  if (!engine) {
+  if (!vocbase().server().hasFeature<ClusterFeature>()) {
     return arangodb::Result(TRI_ERROR_INTERNAL,
                             std::string("failure to get storage engine while "
                                         "updating arangosearch view '") +
                                 name() + "'");
   }
+  auto& engine = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
   try {
     auto links = slice.hasKey(StaticStrings::LinksField)
@@ -361,7 +359,7 @@ arangodb::Result IResearchViewCoordinator::properties(velocypack::Slice const& s
       // check existing links
       for (auto& entry : _collections) {
         auto collection =
-            engine->getCollection(vocbase().name(), std::to_string(entry.first));
+            engine.getCollection(vocbase().name(), std::to_string(entry.first));
 
         if (collection &&
             !exe.canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
@@ -479,14 +477,13 @@ arangodb::Result IResearchViewCoordinator::properties(velocypack::Slice const& s
 }
 
 Result IResearchViewCoordinator::dropImpl() {
-  auto* engine = arangodb::ClusterInfo::instance();
-
-  if (!engine) {
+  if (!vocbase().server().hasFeature<ClusterFeature>()) {
     return arangodb::Result(TRI_ERROR_INTERNAL,
                             std::string("failure to get storage engine while "
                                         "dropping arangosearch view '") +
                                 name() + "'");
   }
+  auto& engine = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
   // drop links first
   {
@@ -501,7 +498,7 @@ Result IResearchViewCoordinator::dropImpl() {
     ExecContext const& exe = ExecContext::current();
     if (!exe.isSuperuser()) {
       for (auto& entry : currentCids) {
-        auto collection = engine->getCollection(vocbase().name(), std::to_string(entry));
+        auto collection = engine.getCollection(vocbase().name(), std::to_string(entry));
 
         if (collection &&
             !exe.canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {

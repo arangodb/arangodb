@@ -120,8 +120,9 @@ void ClusterEngine::start() {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 }
 
-std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager() {
-  return std::make_unique<transaction::Manager>(/*keepData*/ false);
+std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(
+    transaction::ManagerFeature& feature) {
+  return std::make_unique<transaction::Manager>(feature, /*keepData*/ false);
 }
 
 std::unique_ptr<transaction::ContextData> ClusterEngine::createTransactionContextData() {

@@ -49,6 +49,7 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -279,9 +280,7 @@ void transaction::Methods::IndexHandle::toVelocyPack(
   _index->toVelocyPack(builder, flags);
 }
 
-TRI_vocbase_t& transaction::Methods::vocbase() const {
-  return _state->vocbase();
-}
+TRI_vocbase_t& transaction::Methods::vocbase() const { return vocbase(); }
 
 /// @brief whether or not the transaction consists of a single operation only
 bool transaction::Methods::isSingleOperationTransaction() const {
@@ -1410,8 +1409,10 @@ OperationResult transaction::Methods::documentCoordinator(std::string const& col
     }
   }
 
-  int res = arangodb::getDocumentOnCoordinator(*this, collectionName, value, options,
-                                               responseCode, errorCounter, resultBody);
+  auto& feature = vocbase().server().getFeature<ClusterFeature>();
+  int res = arangodb::getDocumentOnCoordinator(feature, *this, collectionName,
+                                               value, options, responseCode,
+                                               errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultDocument(responseCode, resultBody, errorCounter);
@@ -1537,13 +1538,13 @@ Future<OperationResult> transaction::Methods::insertAsync(std::string const& cna
 Future<OperationResult> transaction::Methods::insertCoordinator(std::string const& collectionName,
                                                                 VPackSlice const value,
                                                                 OperationOptions const& options) {
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto colptr = ci->getCollectionNT(vocbase().name(), collectionName);
+  auto& feature = vocbase().server().getFeature<ClusterFeature>();
+  auto colptr = feature.clusterInfo().getCollectionNT(vocbase().name(), collectionName);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
-  
-  return arangodb::createDocumentOnCoordinator(*this, *colptr, options, value);
+
+  return arangodb::createDocumentOnCoordinator(feature, *this, *colptr, options, value);
 }
 #endif
 
@@ -1856,9 +1857,11 @@ OperationResult transaction::Methods::updateCoordinator(std::string const& colle
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  int res = arangodb::modifyDocumentOnCoordinator(*this, collectionName, newValue,
-                                                  options, true /* isPatch */, headers,
-                                                  responseCode, errorCounter, resultBody);
+  auto& feature = vocbase().server().getFeature<ClusterFeature>();
+  int res =
+      arangodb::modifyDocumentOnCoordinator(feature, *this, collectionName, newValue,
+                                            options, true /* isPatch */, headers,
+                                            responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultModify(responseCode, resultBody, errorCounter);
@@ -1914,10 +1917,11 @@ OperationResult transaction::Methods::replaceCoordinator(std::string const& coll
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  int res = arangodb::modifyDocumentOnCoordinator(*this, collectionName, newValue,
-                                                  options, false /* isPatch */,
-                                                  headers, responseCode,
-                                                  errorCounter, resultBody);
+  auto& feature = vocbase().server().getFeature<ClusterFeature>();
+  int res =
+      arangodb::modifyDocumentOnCoordinator(feature, *this, collectionName, newValue,
+                                            options, false /* isPatch */, headers,
+                                            responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultModify(responseCode, resultBody, errorCounter);
@@ -2187,8 +2191,9 @@ OperationResult transaction::Methods::removeCoordinator(std::string const& colle
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  int res = arangodb::deleteDocumentOnCoordinator(*this, collectionName, value,
-                                                  options, responseCode,
+  auto& feature = vocbase().server().getFeature<ClusterFeature>();
+  int res = arangodb::deleteDocumentOnCoordinator(feature, *this, collectionName,
+                                                  value, options, responseCode,
                                                   errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -2489,7 +2494,9 @@ OperationResult transaction::Methods::truncate(std::string const& collectionName
 #ifndef USE_ENTERPRISE
 OperationResult transaction::Methods::truncateCoordinator(std::string const& collectionName,
                                                           OperationOptions& options) {
-  return OperationResult(arangodb::truncateCollectionOnCoordinator(*this, collectionName));
+  auto& feature = vocbase().server().getFeature<ClusterFeature>();
+  return OperationResult(
+      arangodb::truncateCollectionOnCoordinator(feature, *this, collectionName));
 }
 #endif
 
@@ -2651,15 +2658,16 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countCoordinator(std::string const& collectionName,
                                                        transaction::CountType type) {
-  ClusterInfo* ci = ClusterInfo::instance();
+  auto& feature = vocbase().server().getFeature<ClusterFeature>();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
     return OperationResult(TRI_ERROR_SHUTTING_DOWN);
   }
+  ClusterInfo& ci = feature.clusterInfo();
 
   // First determine the collection ID from the name:
-  auto collinfo = ci->getCollectionNT(vocbase().name(), collectionName);
+  auto collinfo = ci.getCollectionNT(vocbase().name(), collectionName);
   if (collinfo == nullptr) {
     return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
@@ -2686,7 +2694,8 @@ OperationResult transaction::Methods::countCoordinatorHelper(
   if (documents == CountCache::NotPopulated) {
     // no cache hit, or detailed results requested
     std::vector<std::pair<std::string, uint64_t>> count;
-    auto res = arangodb::countOnCoordinator(*this, collectionName, count);
+    auto& feature = vocbase().server().getFeature<ClusterFeature>();
+    auto res = arangodb::countOnCoordinator(feature, *this, collectionName, count);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return OperationResult(res);
@@ -3139,8 +3148,8 @@ int transaction::Methods::lockCollections() {
 /// @brief Get all indexes for a collection name, coordinator case
 std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
     std::string const& name, std::string const& id) const {
-  auto ci = arangodb::ClusterInfo::instance();
-  auto collection = ci->getCollection(vocbase().name(), name);
+  auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto collection = ci.getCollection(vocbase().name(), name);
   TRI_idx_iid_t iid = basics::StringUtils::uint64(id);
   return collection->lookupIndex(iid);
 }
@@ -3148,8 +3157,8 @@ std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
 /// @brief Get all indexes for a collection name, coordinator case
 std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollectionCoordinator(
     std::string const& name) const {
-  auto ci = arangodb::ClusterInfo::instance();
-  auto collection = ci->getCollection(vocbase().name(), name);
+  auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto collection = ci.getCollection(vocbase().name(), name);
 
   // update selectivity estimates if they were expired
   if (_state->hasHint(Hints::Hint::GLOBAL_MANAGED)) {  // hack to fix mmfiles
@@ -3330,6 +3339,7 @@ Future<Result> Methods::replicateOperations(
   std::vector<Future<network::Response>> futures;
   futures.reserve(followers->size());
   network::Timeout const timeout(chooseTimeout(count, payload->size()));
+  auto& networkFeature = vocbase().server().getFeature<NetworkFeature>();
   for (auto const& f : *followers) {
     // TODO we could steal the payload at least once
     VPackBuffer<uint8_t> buffer;
@@ -3337,8 +3347,9 @@ Future<Result> Methods::replicateOperations(
     
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(*this, f, headers);
-    auto future = network::sendRequestRetry("server:" + f, requestType,
-                                            path, std::move(buffer), timeout, headers, /*retryNotFound*/true);
+    auto future = network::sendRequestRetry(networkFeature, "server:" + f, requestType,
+                                            path, std::move(buffer), timeout,
+                                            headers, /*retryNotFound*/ true);
     futures.emplace_back(std::move(future));
   }
   

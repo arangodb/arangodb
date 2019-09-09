@@ -29,6 +29,7 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -116,7 +117,8 @@ std::atomic<int> arangodb::ClusterComm::_theInstanceInit(0);
 /// @brief routine to set the destination
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterCommResult::setDestination(std::string const& dest, bool logConnectionErrors) {
+void ClusterCommResult::setDestination(ClusterInfo& ci, std::string const& dest,
+                                       bool logConnectionErrors) {
   // This sets result.shardId, result.serverId and result.endpoint,
   // depending on what dest is. Note that if a shardID is given, the
   // responsible server is looked up, if a serverID is given, the endpoint
@@ -125,8 +127,7 @@ void ClusterCommResult::setDestination(std::string const& dest, bool logConnecti
   if (dest.substr(0, 6) == "shard:") {
     shardID = dest.substr(6);
     {
-      std::shared_ptr<std::vector<ServerID>> resp =
-          ClusterInfo::instance()->getResponsibleServer(shardID);
+      std::shared_ptr<std::vector<ServerID>> resp = ci.getResponsibleServer(shardID);
       if (!resp->empty()) {
         serverID = (*resp)[0];
       } else {
@@ -165,8 +166,7 @@ void ClusterCommResult::setDestination(std::string const& dest, bool logConnecti
     return;
   }
   // Now look up the actual endpoint:
-  auto ci = ClusterInfo::instance();
-  endpoint = ci->getServerEndpoint(serverID);
+  endpoint = ci.getServerEndpoint(serverID);
   if (endpoint.empty()) {
     status = CL_COMM_BACKEND_UNAVAILABLE;
     if (serverID.find(',') != std::string::npos) {
@@ -277,10 +277,10 @@ ClusterComm::ClusterComm(application_features::ApplicationServer& server)
       _logConnectionErrors(false),
       _authenticationEnabled(false),
       _jwtAuthorization("") {
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  TRI_ASSERT(af != nullptr);
-  if (af->isActive()) {
-    std::string token = af->tokenCache().jwtToken();
+  TRI_ASSERT(server.hasFeature<AuthenticationFeature>());
+  AuthenticationFeature& af = server.getFeature<AuthenticationFeature>();
+  if (af.isActive()) {
+    std::string token = af.tokenCache().jwtToken();
     TRI_ASSERT(!token.empty());
     _authenticationEnabled = true;
     _jwtAuthorization = "bearer " + token;
@@ -1006,7 +1006,8 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
                  (res.status == CL_COMM_TIMEOUT && !res.sendWasComplete)) {
         // Note that this case includes the refusal of a leader to accept
         // the operation, in which we have to flush ClusterInfo:
-        ClusterInfo::instance()->loadCurrent();
+        auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
+        ci.loadCurrent();
         requests[index].result = res;
         now = TRI_microtime();
 
@@ -1077,7 +1078,8 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(
     std::unordered_map<std::string, std::string> const& headerFields) {
   HttpRequest* request = nullptr;
   auto result = std::make_unique<ClusterCommResult>();
-  result->setDestination(destination, logConnectionErrors());
+  auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
+  result->setDestination(ci, destination, logConnectionErrors());
   if (result->endpoint.empty()) {
     return std::make_pair(result.release(), request);
   }
@@ -1201,8 +1203,8 @@ void ClusterCommThread::beginShutdown() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterCommThread::abortRequestsToFailedServers() {
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto failedServers = ci->getFailedServers();
+  ClusterInfo& ci = _server.getFeature<ClusterFeature>().clusterInfo();
+  auto failedServers = ci.getFailedServers();
   if (failedServers.size() > 0) {
     auto ticketIds = _cc->activeServerTickets(failedServers);
     for (auto const& ticketId : ticketIds) {

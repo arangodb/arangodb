@@ -42,8 +42,10 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-MaintenanceRestHandler::MaintenanceRestHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+MaintenanceRestHandler::MaintenanceRestHandler(application_features::ApplicationServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus MaintenanceRestHandler::execute() {
   // extract the sub-request type

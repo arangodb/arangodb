@@ -29,6 +29,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/asio_ns.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchLinkCoordinator.h"
@@ -40,6 +41,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -1053,8 +1055,9 @@ std::unique_ptr<arangodb::transaction::ContextData> StorageEngineMock::createTra
   return std::unique_ptr<arangodb::transaction::ContextData>();
 }
 
-std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransactionManager() {
-  return std::make_unique<arangodb::transaction::Manager>(/*keepData*/ false);
+std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransactionManager(
+    arangodb::transaction::ManagerFeature& feature) {
+  return std::make_unique<arangodb::transaction::Manager>(feature, /*keepData*/ false);
 }
 
 std::unique_ptr<arangodb::TransactionState> StorageEngineMock::createTransactionState(
@@ -1396,10 +1399,12 @@ int TransactionCollectionMock::use(int nestingLevel) {
 
   if (!_collection) {
     if (arangodb::ServerState::instance()->isCoordinator()) {
-      auto* ci = arangodb::ClusterInfo::instance();
-      TRI_ASSERT(ci);
+      auto& ci = _transaction->vocbase()
+                     .server()
+                     .getFeature<arangodb::ClusterFeature>()
+                     .clusterInfo();
       _collection =
-          ci->getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
+          ci.getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
     } else {
       _collection = _transaction->vocbase().useCollection(_cid, status);
     }

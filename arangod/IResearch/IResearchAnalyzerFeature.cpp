@@ -72,6 +72,7 @@
 #include "Basics/system-compiler.h"
 #include "Basics/voc-errors.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
@@ -679,10 +680,11 @@ std::shared_ptr<arangodb::LogicalCollection> getAnalyzerCollection( // get colle
   }
 
   try {
-    auto* ci = arangodb::ClusterInfo::instance();
-
-    if (ci) {
-      return ci->getCollectionNT(vocbase.name(), ANALYZER_COLLECTION_NAME);
+    if (vocbase.server().hasFeature<arangodb::ClusterFeature>()) {
+      return vocbase.server()
+          .getFeature<arangodb::ClusterFeature>()
+          .clusterInfo()
+          .getCollectionNT(vocbase.name(), ANALYZER_COLLECTION_NAME);
     }
 
     LOG_TOPIC("00001", WARN, arangodb::iresearch::TOPIC)

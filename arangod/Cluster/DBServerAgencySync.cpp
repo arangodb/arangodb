@@ -157,8 +157,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   Result tmp;
   VPackBuilder rb;
-  auto clusterInfo = ClusterInfo::instance();
-  auto plan = clusterInfo->getPlan();
+  auto& clusterInfo = _server.getFeature<ClusterFeature>().clusterInfo();
+  auto plan = clusterInfo.getPlan();
   auto serverId = arangodb::ServerState::instance()->getId();
 
   if (plan == nullptr) {
@@ -202,7 +202,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    auto current = clusterInfo->getCurrent();
+    auto current = clusterInfo.getCurrent();
     if (current == nullptr) {
       // TODO increase log level, except during shutdown?
       LOG_TOPIC("ab562", DEBUG, Logger::MAINTENANCE)
@@ -285,7 +285,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
           } else {
             LOG_TOPIC("9b0b3", DEBUG, Logger::MAINTENANCE)
                 << "Invalidating current in ClusterInfo";
-            clusterInfo->invalidateCurrent();
+            clusterInfo.invalidateCurrent();
           }
         }
       }

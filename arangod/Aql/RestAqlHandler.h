@@ -44,7 +44,7 @@ class QueryRegistry;
 /// @brief shard control request handler
 class RestAqlHandler : public RestVocbaseBaseHandler {
  public:
-  RestAqlHandler(GeneralRequest*, GeneralResponse*,
+  RestAqlHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*,
                  std::pair<QueryRegistry*, traverser::TraverserEngineRegistry*>*);
 
  public:

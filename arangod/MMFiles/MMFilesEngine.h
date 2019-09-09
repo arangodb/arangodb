@@ -107,7 +107,7 @@ class MMFilesEngine final : public StorageEngine {
                     std::shared_ptr<VPackBuilder>& builderSPtr) override;
   WalAccess const* walAccess() const override;
 
-  std::unique_ptr<transaction::Manager> createTransactionManager() override;
+  std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
   std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
   std::unique_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TRI_voc_tick_t, transaction::Options const& options) override;

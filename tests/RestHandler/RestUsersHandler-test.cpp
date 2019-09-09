@@ -218,13 +218,15 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
   auto& revokeWildcardRequest = *revokeWildcardRequestPtr;
   auto revokeWildcardResponcePtr = std::make_unique<GeneralResponseMock>();
   auto& revokeWildcardResponce = *revokeWildcardResponcePtr;
-  arangodb::RestUsersHandler grantHandler(grantRequestPtr.release(),
+  arangodb::RestUsersHandler grantHandler(server.server(), grantRequestPtr.release(),
                                           grantResponcePtr.release());
-  arangodb::RestUsersHandler grantWildcardHandler(grantWildcardRequestPtr.release(),
+  arangodb::RestUsersHandler grantWildcardHandler(server.server(),
+                                                  grantWildcardRequestPtr.release(),
                                                   grantWildcardResponcePtr.release());
-  arangodb::RestUsersHandler revokeHandler(revokeRequestPtr.release(),
+  arangodb::RestUsersHandler revokeHandler(server.server(), revokeRequestPtr.release(),
                                            revokeResponcePtr.release());
-  arangodb::RestUsersHandler revokeWildcardHandler(revokeWildcardRequestPtr.release(),
+  arangodb::RestUsersHandler revokeWildcardHandler(server.server(),
+                                                   revokeWildcardRequestPtr.release(),
                                                    revokeWildcardResponcePtr.release());
 
   grantRequest.addSuffix("testUser");

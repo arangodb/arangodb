@@ -76,6 +76,7 @@ namespace transaction {
 class Context;
 class ContextData;
 class Manager;
+class ManagerFeature;
 struct Options;
 
 }  // namespace transaction
@@ -104,7 +105,7 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   virtual bool supportsDfdb() const = 0;
 
-  virtual std::unique_ptr<transaction::Manager> createTransactionManager() = 0;
+  virtual std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) = 0;
   virtual std::unique_ptr<transaction::ContextData> createTransactionContextData() = 0;
   virtual std::unique_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TRI_voc_tid_t, transaction::Options const& options) = 0;

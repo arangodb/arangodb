@@ -96,7 +96,8 @@ void InitDatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> option
 
     // we can turn off all warnings about environment here, because they
     // wil show up on a regular start later anyway
-    server().disableFeatures(std::vector<std::type_index>{typeid(EnvironmentFeature)});
+    server().disableFeatures(
+        std::vector<std::type_index>{std::type_index(typeid(EnvironmentFeature))});
   }
 }
 

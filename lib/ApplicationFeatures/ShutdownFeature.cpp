@@ -39,7 +39,7 @@ ShutdownFeature::ShutdownFeature(application_features::ApplicationServer& server
   startsAfter<application_features::GreetingsFeaturePhase>();
 
   for (auto feature : features) {
-    if (feature != typeid(LoggerFeature)) {
+    if (feature != std::type_index(typeid(LoggerFeature))) {
       startsAfter(feature);
     }
   }

@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
     server.addFeature<RandomFeature>(std::make_unique<RandomFeature>(server));
     server.addFeature<ShellColorsFeature>(std::make_unique<ShellColorsFeature>(server));
     server.addFeature<ShutdownFeature>(std::make_unique<ShutdownFeature>(
-        server, std::vector<std::type_index>{typeid(BenchFeature)}));
+        server, std::vector<std::type_index>{std::type_index(typeid(BenchFeature))}));
     server.addFeature<SslFeature>(std::make_unique<SslFeature>(server));
     server.addFeature<TempFeature>(
         std::make_unique<TempFeature>(server, "arangobench"));

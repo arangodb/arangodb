@@ -42,6 +42,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -106,8 +107,7 @@ class IResearchLinkCoordinatorTest : public ::testing::Test {
 
 TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
   arangodb::ServerState::instance()->setRebootId(1); // Hack.
-  auto* ci = arangodb::ClusterInfo::instance();
-  ASSERT_TRUE(nullptr != ci);
+  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
@@ -122,15 +122,15 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
         "{ \"name\": \"testCollection\", \"replicationFactor\":1, "
         "\"shards\":{} }");
 
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1,
-                                                 false, collectionJson->slice(), 0.0, false, nullptr)
+    EXPECT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
 
-    logicalCollection = ci->getCollection(vocbase->name(), collectionId);
+    logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((nullptr != logicalCollection));
   }
 
-  ci->loadCurrent();
+  ci.loadCurrent();
 
   // no view specified
   {
@@ -185,7 +185,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
 
     // get new version from plan
     auto updatedCollection0 =
-        ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
+        ci.getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
     ASSERT_TRUE((updatedCollection0));
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection0, *logicalView);
     EXPECT_TRUE(link);
@@ -244,14 +244,14 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
 
     // get new version from plan
     auto updatedCollection1 =
-        ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
+        ci.getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
     ASSERT_TRUE((updatedCollection1));
     EXPECT_TRUE((!arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection1,
                                                                  *logicalView)));
 
     // drop view
     EXPECT_TRUE(logicalView->drop().ok());
-    EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), viewId));
+    EXPECT_TRUE(nullptr == ci.getView(vocbase->name(), viewId));
 
     // old index remains valid
     {
@@ -305,7 +305,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
 
     // get new version from plan
     auto updatedCollection =
-        ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
+        ci.getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
     ASSERT_TRUE(updatedCollection);
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *logicalView);
     EXPECT_TRUE(link);

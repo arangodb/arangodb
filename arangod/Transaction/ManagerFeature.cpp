@@ -95,7 +95,7 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
 void ManagerFeature::prepare() {
   TRI_ASSERT(MANAGER.get() == nullptr);
   TRI_ASSERT(server().getFeature<EngineSelectorFeature>().selected());
-  MANAGER = server().getFeature<EngineSelectorFeature>().engine().createTransactionManager();
+  MANAGER = server().getFeature<EngineSelectorFeature>().engine().createTransactionManager(*this);
 }
   
 void ManagerFeature::start() {

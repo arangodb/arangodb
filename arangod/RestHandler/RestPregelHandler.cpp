@@ -35,8 +35,9 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::pregel;
 
-RestPregelHandler::RestPregelHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestPregelHandler::RestPregelHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestPregelHandler::execute() {
   try {

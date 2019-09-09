@@ -58,6 +58,8 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
+
+  startsAfter<AuthenticationFeature>();
 }
 
 ClusterFeature::~ClusterFeature() {
@@ -273,7 +275,8 @@ void ClusterFeature::prepare() {
   _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(agencyCallbacksPath()));
 
   // Initialize ClusterInfo library:
-  ClusterInfo::createInstance(server(), _agencyCallbackRegistry.get());
+  _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get());
+  TRI_ASSERT(_clusterInfo);
 
   // create an instance (this will not yet create a thread)
   ClusterComm::instance();
@@ -350,7 +353,6 @@ void ClusterFeature::prepare() {
   // otherwise we can do very little, in particular, we cannot create
   // any collection:
   if (role == ServerState::ROLE_COORDINATOR) {
-    auto ci = ClusterInfo::instance();
     double start = TRI_microtime();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -364,8 +366,8 @@ void ClusterFeature::prepare() {
     while (true) {
       LOG_TOPIC("d4db4", INFO, arangodb::Logger::CLUSTER)
           << "Waiting for DBservers to show up...";
-      ci->loadCurrentDBServers();
-      std::vector<ServerID> DBServers = ci->getCurrentDBServers();
+      _clusterInfo->loadCurrentDBServers();
+      std::vector<ServerID> DBServers = _clusterInfo->getCurrentDBServers();
       if (DBServers.size() >= 1 &&
           (DBServers.size() > 1 || TRI_microtime() - start > waitTime)) {
         LOG_TOPIC("22f55", INFO, arangodb::Logger::CLUSTER)
@@ -548,7 +550,7 @@ void ClusterFeature::unprepare() {
 
   AgencyCommManager::MANAGER->stop();
 
-  ClusterInfo::cleanup();
+  _clusterInfo->cleanup();
 }
 
 void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {
@@ -585,4 +587,11 @@ void ClusterFeature::syncDBServerStatusQuo() {
 
 std::shared_ptr<HeartbeatThread> ClusterFeature::heartbeatThread() {
   return _heartbeatThread;
+}
+
+ClusterInfo& ClusterFeature::clusterInfo() {
+  if (!_clusterInfo) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+  return *_clusterInfo;
 }

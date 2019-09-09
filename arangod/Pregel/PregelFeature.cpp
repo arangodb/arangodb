@@ -118,7 +118,8 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
   for (std::string const& name : vertexCollections) {
     if (ss->isCoordinator()) {
       try {
-        auto coll = ClusterInfo::instance()->getCollection(vocbase.name(), name);
+        auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+        auto coll = ci.getCollection(vocbase.name(), name);
 
         if (coll->system()) {
           return std::make_pair(
@@ -151,7 +152,8 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
   for (std::string const& name : edgeCollections) {
     if (ss->isCoordinator()) {
       try {
-        auto coll = ClusterInfo::instance()->getCollection(vocbase.name(), name);
+        auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+        auto coll = ci.getCollection(vocbase.name(), name);
 
         if (coll->system()) {
           return std::make_pair(
@@ -249,7 +251,8 @@ void PregelFeature::start() {
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    _recoveryManager.reset(new RecoveryManager());
+    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+    _recoveryManager.reset(new RecoveryManager(ci));
   }
 }
 

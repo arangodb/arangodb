@@ -193,7 +193,7 @@ class EngineInfoContainerDBServer {
   };
 
  public:
-  explicit EngineInfoContainerDBServer(Query* query) noexcept;
+  explicit EngineInfoContainerDBServer(Query& query) noexcept;
 
   // Insert a new node into the last engine on the stack
   // If this Node contains Collections, they will be added into the map
@@ -283,7 +283,7 @@ class EngineInfoContainerDBServer {
   };
 
   // @brief The query that is executed. We are not responsible for it
-  Query* _query;
+  Query& _query;
 
   // @brief Reference to the last inserted EngineInfo, used for back linking of
   // QueryIds

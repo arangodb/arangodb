@@ -28,6 +28,7 @@
 #include "Agency/Store.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 
 struct TRI_vocbase_t;
 

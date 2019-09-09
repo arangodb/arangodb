@@ -319,8 +319,9 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   rest::ContentType const respType = request->contentTypeResponse();
   // create a handler, this takes ownership of request and response
+  auto& server = _server.server();
   std::shared_ptr<RestHandler> handler(
-      GeneralServerFeature::HANDLER_FACTORY->createHandler(std::move(request),
+      GeneralServerFeature::HANDLER_FACTORY->createHandler(server, std::move(request),
                                                            std::move(response)));
 
   // give up, if we cannot find a handler

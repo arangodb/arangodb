@@ -20,11 +20,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <boost/core/demangle.hpp>
+
 #include "ApplicationFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb::options;
@@ -87,18 +90,18 @@ std::unordered_set<std::type_index> ApplicationFeature::ancestors() const {
   return _ancestors;
 }
 
-void ApplicationFeature::startsAfter(std::type_index const& type) {
+void ApplicationFeature::startsAfter(std::type_index type) {
   _startsAfter.emplace(type);
 }
 
-void ApplicationFeature::startsBefore(std::type_index const& type) {
+void ApplicationFeature::startsBefore(std::type_index type) {
   _startsBefore.emplace(type);
 }
 
-bool ApplicationFeature::doesStartBefore(std::type_index const& type) const {
+bool ApplicationFeature::doesStartBefore(std::type_index type) const {
   auto otherAncestors = _server.getFeature<ApplicationFeature>(type).ancestors();
 
-  if (otherAncestors.find(typeid(*this)) != otherAncestors.end()) {
+  if (otherAncestors.find(std::type_index(typeid(*this))) != otherAncestors.end()) {
     // we are an ancestor of the other feature
     return true;
   }
@@ -120,40 +123,45 @@ void ApplicationFeature::determineAncestors() {
     return;
   }
 
+  // TODO memoize for performance
+  std::type_index rootType = std::type_index(typeid(*this));
+  // LOG_DEVEL << "DETERMINING ANCESTORS OF " << boost::core::demangle(rootType.name());
   std::vector<std::type_index> path;
+  std::vector<std::type_index> toProcess{rootType};
+  while (!toProcess.empty()) {
+    std::type_index type = toProcess.back();
+    toProcess.pop_back();
+    path.emplace_back(type);
+    // LOG_DEVEL << " - processing " << boost::core::demangle(type.name());
 
-  std::function<void(std::type_index const&)> build =
-      [this, &build, &path](std::type_index const& type) {
-        // lookup the feature first. it may not exist
-        if (!this->server().hasFeature(type)) {
-          // feature not found. no worries
-          return;
+    if (server().hasFeature(type)) {
+      ApplicationFeature& feature = server().getFeature<ApplicationFeature>(type);
+      for (auto ancestorType : feature.startsAfter()) {
+        if (ancestorType == rootType) {
+          // dependencies are cyclic
+          path.emplace_back(ancestorType);  // make sure we show the duplicate
+          std::function<std::string(std::type_index)> cb =
+              [](std::type_index t) -> std::string { return t.name(); };
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL,
+              "dependencies for feature '" + _name +
+                  "' are cyclic: " + basics::StringUtils::join(path, " <= ", cb));
         }
+        // LOG_DEVEL << "   - found that " << boost::core::demangle(type.name()) << " starts after " << boost::core::demangle(ancestorType.name());
+        _ancestors.emplace(ancestorType);
+        toProcess.emplace_back(ancestorType);
+      }
+    }
 
-        auto& other = this->server().getFeature<ApplicationFeature>(type);
+    path.pop_back();
+  }
 
-        path.emplace_back(type);
-        for (auto& ancestor : other.startsAfter()) {
-          if (_ancestors.emplace(ancestor).second) {
-            if (ancestor == typeid(*this)) {
-              path.emplace_back(ancestor);
-              std::function<std::string(std::type_index const&)> cb =
-                  [](std::type_index const& type) -> std::string {
-                return type.name();
-              };
-              THROW_ARANGO_EXCEPTION_MESSAGE(
-                  TRI_ERROR_INTERNAL,
-                  "dependencies for feature '" + _name +
-                      "' are cyclic: " + basics::StringUtils::join(path, " <= ", cb));
-            }
-            build(ancestor);
-          }
-          path.pop_back();
-        }
-      };
-
-  build(typeid(*this));
   _ancestorsDetermined = true;
+
+  /*LOG_DEVEL << " - DETERMINED TO BE:";
+  for (auto ancestorType : _ancestors) {
+    LOG_DEVEL << "   - " << boost::core::demangle(ancestorType.name());
+  }*/
 }
 
 }  // namespace application_features

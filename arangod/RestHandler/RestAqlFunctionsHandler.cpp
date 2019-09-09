@@ -30,9 +30,10 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAqlFunctionsHandler::RestAqlFunctionsHandler(GeneralRequest* request,
+RestAqlFunctionsHandler::RestAqlFunctionsHandler(application_features::ApplicationServer& server,
+                                                 GeneralRequest* request,
                                                  GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAqlFunctionsHandler::execute() {
   // extract the sub-request type

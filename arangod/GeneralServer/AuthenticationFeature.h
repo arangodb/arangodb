@@ -59,6 +59,9 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
 
   /// @return Cache to deal with authentication tokens
   inline auth::TokenCache& tokenCache() const noexcept {
+    if (!_authCache) {
+      *reinterpret_cast<int*>(0) = 0;
+    }
     TRI_ASSERT(_authCache);
     return *_authCache.get();
   }

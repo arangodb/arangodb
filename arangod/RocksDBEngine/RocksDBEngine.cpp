@@ -844,8 +844,9 @@ void RocksDBEngine::unprepare() {
   shutdownRocksDBInstance();
 }
 
-std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager() {
-  return std::make_unique<transaction::Manager>(/*keepData*/ false);
+std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
+    transaction::ManagerFeature& feature) {
+  return std::make_unique<transaction::Manager>(feature, /*keepData*/ false);
 }
 
 std::unique_ptr<transaction::ContextData> RocksDBEngine::createTransactionContextData() {

@@ -25,9 +25,10 @@
 
 #include <velocypack/Exception.h>
 
-#include "Basics/StringUtils.h"
 #include "Basics/RecursiveLocker.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -48,10 +49,12 @@ thread_local RestHandler const* RestHandler::CURRENT_HANDLER = nullptr;
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
+RestHandler::RestHandler(application_features::ApplicationServer& server,
+                         GeneralRequest* request, GeneralResponse* response)
     : _canceled(false),
       _request(request),
       _response(response),
+      _server(server),
       _statistics(nullptr),
       _state(HandlerState::PREPARE),
       _handlerId(0) {}
@@ -116,9 +119,10 @@ bool RestHandler::forwardRequest() {
     return false;
   }
 
-  std::string serverId = ClusterInfo::instance()->getCoordinatorByShortID(shortId);
+  std::string serverId =
+      server().getFeature<ClusterFeature>().clusterInfo().getCoordinatorByShortID(shortId);
 
-  if ("" == serverId) {
+  if (serverId.empty()) {
     // no mapping in agency, try to handle the request here
     return false;
   }

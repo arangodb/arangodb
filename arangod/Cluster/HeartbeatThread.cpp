@@ -35,6 +35,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "Cluster/ServerState.h"
@@ -427,8 +428,9 @@ void HeartbeatThread::runDBServer() {
             for (auto const& server : VPackObjectIterator(failedServersSlice)) {
               failedServers.push_back(server.key.copyString());
             }
-            ClusterInfo::instance()->setFailedServers(failedServers);
-            transaction::cluster::abortTransactionsWithFailedServers();
+            auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
+            ci.setFailedServers(failedServers);
+            transaction::cluster::abortTransactionsWithFailedServers(ci);
           } else {
             LOG_TOPIC("80491", WARN, Logger::HEARTBEAT)
                 << "FailedServers is not an object. ignoring for now";
@@ -531,8 +533,8 @@ void HeartbeatThread::runSingleServer() {
   TRI_ASSERT(replication != nullptr);
 
   GlobalReplicationApplier* applier = replication->globalReplicationApplier();
-  ClusterInfo* ci = ClusterInfo::instance();
-  TRI_ASSERT(applier != nullptr && ci != nullptr);
+  TRI_ASSERT(applier != nullptr && _server.hasFeature<ClusterFeature>());
+  ClusterInfo& ci = _server.getFeature<ClusterFeature>().clusterInfo();
 
   TtlFeature& ttlFeature = _server.getFeature<TtlFeature>();
 
@@ -717,7 +719,7 @@ void HeartbeatThread::runSingleServer() {
       ServerState::instance()->setFoxxmaster(leaderStr);  // leader is foxxmater
       ServerState::instance()->setReadOnly(true);  // Disable writes with dirty-read header
 
-      std::string endpoint = ci->getServerEndpoint(leaderStr);
+      std::string endpoint = ci.getServerEndpoint(leaderStr);
       if (endpoint.empty()) {
         LOG_TOPIC("05196", ERR, Logger::HEARTBEAT)
             << "Failed to resolve leader endpoint";
@@ -836,6 +838,7 @@ void HeartbeatThread::updateServerMode(VPackSlice const& readOnlySlice) {
 
 void HeartbeatThread::runCoordinator() {
   AuthenticationFeature& af = _server.getFeature<AuthenticationFeature>();
+  auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
 
   // invalidate coordinators every 2nd call
   bool invalidateCoordinators = true;
@@ -978,7 +981,7 @@ void HeartbeatThread::runCoordinator() {
                 << " which is newer than " << lastCurrentVersionNoticed;
             lastCurrentVersionNoticed = currentVersion;
 
-            ClusterInfo::instance()->invalidateCurrent();
+            ci.invalidateCurrent();
             invalidateCoordinators = false;
           }
         }
@@ -991,8 +994,8 @@ void HeartbeatThread::runCoordinator() {
           for (auto const& server : VPackObjectIterator(failedServersSlice)) {
             failedServers.push_back(server.key.copyString());
           }
-          ClusterInfo::instance()->setFailedServers(failedServers);
-          transaction::cluster::abortTransactionsWithFailedServers();
+          ci.setFailedServers(failedServers);
+          transaction::cluster::abortTransactionsWithFailedServers(ci);
 
           std::shared_ptr<pregel::PregelFeature> prgl = pregel::PregelFeature::instance();
           if (prgl) {
@@ -1016,13 +1019,13 @@ void HeartbeatThread::runCoordinator() {
       // the Foxx stuff needs an updated list of coordinators
       // and this is only updated when current version has changed
       if (invalidateCoordinators) {
-        ClusterInfo::instance()->invalidateCurrentCoordinators();
+        ci.invalidateCurrentCoordinators();
       }
       invalidateCoordinators = !invalidateCoordinators;
 
       // Periodically update the list of DBServers:
       if (++DBServerUpdateCounter >= 60) {
-        ClusterInfo::instance()->loadCurrentDBServers();
+        ci.loadCurrentDBServers();
         DBServerUpdateCounter = 0;
       }
 
@@ -1203,7 +1206,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   }
 
   // invalidate our local cache
-  ClusterInfo::instance()->flush();
+  auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
+  ci.flush();
 
   // turn on error logging now
   auto cc = ClusterComm::instance();
@@ -1252,12 +1256,12 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
   }
 
   // First invalidate the caches in ClusterInfo:
-  auto ci = ClusterInfo::instance();
-  if (_desiredVersions->plan > ci->getPlanVersion()) {
-    ci->invalidatePlan();
+  auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
+  if (_desiredVersions->plan > ci.getPlanVersion()) {
+    ci.invalidatePlan();
   }
-  if (_desiredVersions->current > ci->getCurrentVersion()) {
-    ci->invalidateCurrent();
+  if (_desiredVersions->current > ci.getCurrentVersion()) {
+    ci.invalidateCurrent();
   }
 
   // schedule a job for the change:

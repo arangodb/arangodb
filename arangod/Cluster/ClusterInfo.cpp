@@ -120,8 +120,6 @@ using namespace arangodb;
 using namespace arangodb::cluster;
 using namespace arangodb::methods;
 
-static std::unique_ptr<ClusterInfo> _instance;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a local helper to report errors and messages
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,21 +175,6 @@ CollectionInfoCurrent::CollectionInfoCurrent(uint64_t currentVersion)
 CollectionInfoCurrent::~CollectionInfoCurrent() {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the clusterinfo instance
-////////////////////////////////////////////////////////////////////////////////
-
-void ClusterInfo::createInstance(application_features::ApplicationServer& server,
-                                 AgencyCallbackRegistry* agencyCallbackRegistry) {
-  _instance.reset(new ClusterInfo(server, agencyCallbackRegistry));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns an instance of the cluster info class
-////////////////////////////////////////////////////////////////////////////////
-
-ClusterInfo* ClusterInfo::instance() { return _instance.get(); }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a cluster info object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -223,30 +206,25 @@ ClusterInfo::~ClusterInfo() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterInfo::cleanup() {
-  ClusterInfo* theInstance = instance();
-  if (theInstance == nullptr) {
-    return;
-  }
-
   while (true) {
     {
-      MUTEX_LOCKER(mutexLocker, theInstance->_idLock);
-      if (!theInstance->_uniqid._backgroundJobIsRunning) {
+      MUTEX_LOCKER(mutexLocker, _idLock);
+      if (!_uniqid._backgroundJobIsRunning) {
         break;
       }
     }
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
-  MUTEX_LOCKER(mutexLocker, theInstance->_planProt.mutex);
+  MUTEX_LOCKER(mutexLocker, _planProt.mutex);
 
-  TRI_ASSERT(theInstance->_newPlannedViews.empty());  // only non-empty during loadPlan()
-  theInstance->_plannedViews.clear();
-  theInstance->_plannedCollections.clear();
-  theInstance->_shards.clear();
-  theInstance->_shardKeys.clear();
-  theInstance->_shardIds.clear();
-  theInstance->_currentCollections.clear();
+  TRI_ASSERT(_newPlannedViews.empty());  // only non-empty during loadPlan()
+  _plannedViews.clear();
+  _plannedCollections.clear();
+  _shards.clear();
+  _shardKeys.clear();
+  _shardIds.clear();
+  _currentCollections.clear();
 }
 
 void ClusterInfo::triggerBackgroundGetIds() {

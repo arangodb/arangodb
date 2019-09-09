@@ -218,8 +218,10 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   return Result{TRI_ERROR_NO_ERROR};
 }
 
-RestReplicationHandler::RestReplicationHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestReplicationHandler::RestReplicationHandler(application_features::ApplicationServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestReplicationHandler::~RestReplicationHandler() {}
 
@@ -762,8 +764,8 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   std::string const& dbName = _request->databaseName();
   bool includeSystem = _request->parsedValue("includeSystem", true);
 
-  ClusterInfo* ci = ClusterInfo::instance();
-  std::vector<std::shared_ptr<LogicalCollection>> cols = ci->getCollections(dbName);
+  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  std::vector<std::shared_ptr<LogicalCollection>> cols = ci.getCollections(dbName);
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
@@ -773,7 +775,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     std::shared_ptr<ShardMap> shardMap = c->shardIds();
     // shardMap is an unordered_map from ShardId (string) to a vector of
     // servers (strings), wrapped in a shared_ptr
-    auto cic = ci->getCollectionCurrent(dbName, basics::StringUtils::itoa(c->id()));
+    auto cic = ci.getCollectionCurrent(dbName, basics::StringUtils::itoa(c->id()));
     // Check all shards:
     bool isReady = true;
     bool allInSync = true;
@@ -1089,15 +1091,15 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   }
 
   auto& dbName = _vocbase.name();
-  ClusterInfo* ci = ClusterInfo::instance();
+  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
 
   try {
     // in a cluster, we only look up by name:
-    std::shared_ptr<LogicalCollection> col = ci->getCollection(dbName, name);
+    std::shared_ptr<LogicalCollection> col = ci.getCollection(dbName, name);
 
     // drop an existing collection if it exists
     if (dropExisting) {
-      auto result = ci->dropCollectionCoordinator(dbName, std::to_string(col->id()), 0.0);
+      auto result = ci.dropCollectionCoordinator(dbName, std::to_string(col->id()), 0.0);
 
       if (TRI_ERROR_FORBIDDEN == result.errorNumber()  // forbidden
           || TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE ==
@@ -1145,7 +1147,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   toMerge.openObject();
 
   // We always need a new id
-  TRI_voc_tick_t newIdTick = ci->uniqid(1);
+  TRI_voc_tick_t newIdTick = ci.uniqid(1);
   std::string newId = StringUtils::itoa(newIdTick);
   toMerge.add("id", VPackValue(newId));
 
@@ -1885,8 +1887,8 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
   auto& dbName = _vocbase.name();
 
   // in a cluster, we only look up by name:
-  ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<LogicalCollection> col = ci->getCollectionNT(dbName, name);
+  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  std::shared_ptr<LogicalCollection> col = ci.getCollectionNT(dbName, name);
   if (col == nullptr) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
             ClusterInfo::getCollectionNotFoundMsg(dbName, name)};
@@ -1908,9 +1910,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
 
     VPackBuilder tmp;
 
-    res = ci->ensureIndexCoordinator(*col,
-        idxDef, true, tmp,
-        cluster.indexCreationTimeout());
+    res = ci.ensureIndexCoordinator(*col, idxDef, true, tmp, cluster.indexCreationTimeout());
 
     if (res.fail()) {
       return res.reset(res.errorNumber(), "could not create index: " + res.errorMessage());

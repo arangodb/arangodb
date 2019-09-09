@@ -27,6 +27,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -809,10 +810,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
 
   if (fanout) {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
-    auto ci = ClusterInfo::instance();
-    if (ci == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-    }
+    auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
 
     std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
     if (cc == nullptr) {
@@ -822,7 +820,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
     std::vector<ClusterCommRequest> requests;
     auto auth = AuthenticationFeature::instance();
 
-    for (auto const& coordinator : ci->getCurrentCoordinators()) {
+    for (auto const& coordinator : ci.getCurrentCoordinators()) {
       if (coordinator == ServerState::instance()->getId()) {
         // ourselves!
         continue;

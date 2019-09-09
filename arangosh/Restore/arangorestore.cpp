@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
     server.addFeature<RestoreFeature>(std::make_unique<RestoreFeature>(server, ret));
     server.addFeature<ShellColorsFeature>(std::make_unique<ShellColorsFeature>(server));
     server.addFeature<ShutdownFeature>(std::make_unique<ShutdownFeature>(
-        server, std::vector<std::type_index>{typeid(RestoreFeature)}));
+        server, std::vector<std::type_index>{std::type_index(typeid(RestoreFeature))}));
     server.addFeature<SslFeature>(std::make_unique<SslFeature>(server));
     server.addFeature<TempFeature>(
         std::make_unique<TempFeature>(server, "arangorestore"));

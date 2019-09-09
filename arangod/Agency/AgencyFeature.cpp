@@ -250,18 +250,20 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
 
   std::vector<std::type_index> disabledFeatures(
-      {typeid(MMFilesPersistentIndexFeature), typeid(iresearch::IResearchFeature),
-       typeid(iresearch::IResearchAnalyzerFeature), typeid(StatisticsFeature),
-       typeid(ActionFeature), typeid(ScriptFeature), typeid(FoxxQueuesFeature),
-       typeid(FrontendFeature)});
+      {std::type_index(typeid(MMFilesPersistentIndexFeature)),
+       std::type_index(typeid(iresearch::IResearchFeature)),
+       std::type_index(typeid(iresearch::IResearchAnalyzerFeature)),
+       std::type_index(typeid(StatisticsFeature)), std::type_index(typeid(ActionFeature)),
+       std::type_index(typeid(ScriptFeature)), std::type_index(typeid(FoxxQueuesFeature)),
+       std::type_index(typeid(FrontendFeature))});
 
   if (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) {
     // specifiying --console requires JavaScript, so we can only turn it off
     // if not specified
 
     // console mode inactive. so we can turn off V8
-    disabledFeatures.emplace_back(typeid(V8PlatformFeature));
-    disabledFeatures.emplace_back(typeid(V8DealerFeature));
+    disabledFeatures.emplace_back(std::type_index(typeid(V8PlatformFeature)));
+    disabledFeatures.emplace_back(std::type_index(typeid(V8DealerFeature)));
   }
 
   server().disableFeatures(disabledFeatures);

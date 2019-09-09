@@ -51,6 +51,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -1280,9 +1281,9 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
   std::shared_ptr<arangodb::LogicalCollection> collection;
 
   if (ServerState::instance()->isCoordinator()) {
-    auto* ci = arangodb::ClusterInfo::instance();
-    if (ci) {
-      collection = ci->getCollectionNT(vocbase.name(), std::string(key));
+    if (vocbase.server().hasFeature<ClusterFeature>()) {
+      collection = vocbase.server().getFeature<ClusterFeature>().clusterInfo().getCollectionNT(
+          vocbase.name(), std::string(key));
     }
   } else {
     collection = vocbase.lookupCollection(std::string(key));
@@ -1586,7 +1587,8 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const dbName = TRI_ObjectToString(isolate, args[0]);
-  Result res = methods::Databases::create(dbName, users.slice(), options.slice());
+  Result res = methods::Databases::create(vocbase.server(), dbName,
+                                          users.slice(), options.slice());
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);

@@ -32,6 +32,7 @@
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/CommTask.h"
 #include "GeneralServer/GeneralDefinitions.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/SslServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -49,9 +50,9 @@ using namespace arangodb::rest;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-GeneralServer::GeneralServer(uint64_t numIoThreads)
-    : _endpointList(nullptr), _contexts() {
-  auto& server = application_features::ApplicationServer::server();
+GeneralServer::GeneralServer(GeneralServerFeature& feature, uint64_t numIoThreads)
+    : _feature(feature), _endpointList(nullptr), _contexts() {
+  auto& server = feature.server();
   for (size_t i = 0; i < numIoThreads; ++i) {
     _contexts.emplace_back(server);
   }
@@ -171,4 +172,8 @@ asio_ns::ssl::context& GeneralServer::sslContext() {
     _sslContext.reset(new asio_ns::ssl::context(SslServerFeature::SSL->createSslContext()));
   }
   return *_sslContext;
+}
+
+application_features::ApplicationServer& GeneralServer::server() const {
+  return _feature.server();
 }

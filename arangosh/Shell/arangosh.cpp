@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
       server.addFeature<ShellColorsFeature>(std::make_unique<ShellColorsFeature>(server));
       server.addFeature<ShellFeature>(std::make_unique<ShellFeature>(server, &ret));
       server.addFeature<ShutdownFeature>(std::make_unique<ShutdownFeature>(
-          server, std::vector<std::type_index>{typeid(ShellFeature)}));
+          server, std::vector<std::type_index>{std::type_index(typeid(ShellFeature))}));
       server.addFeature<SslFeature>(std::make_unique<SslFeature>(server));
       server.addFeature<TempFeature>(std::make_unique<TempFeature>(server, name));
       server.addFeature<V8PlatformFeature>(std::make_unique<V8PlatformFeature>(server));

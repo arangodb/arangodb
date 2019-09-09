@@ -145,13 +145,19 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     ApplicationServer server(options, SBIN_DIRECTORY);
 
     std::vector<std::type_index> nonServerFeatures = {
-        typeid(ActionFeature),       typeid(AgencyFeature),
-        typeid(ClusterFeature),      typeid(DaemonFeature),
-        typeid(FoxxQueuesFeature),   typeid(GeneralServerFeature),
-        typeid(GreetingsFeature),    typeid(HttpEndpointProvider),
-        typeid(LoggerBufferFeature), typeid(ServerFeature),
-        typeid(SslServerFeature),    typeid(StatisticsFeature),
-        typeid(SupervisorFeature)};
+        std::type_index(typeid(ActionFeature)),
+        std::type_index(typeid(AgencyFeature)),
+        std::type_index(typeid(ClusterFeature)),
+        std::type_index(typeid(DaemonFeature)),
+        std::type_index(typeid(FoxxQueuesFeature)),
+        std::type_index(typeid(GeneralServerFeature)),
+        std::type_index(typeid(GreetingsFeature)),
+        std::type_index(typeid(HttpEndpointProvider)),
+        std::type_index(typeid(LoggerBufferFeature)),
+        std::type_index(typeid(ServerFeature)),
+        std::type_index(typeid(SslServerFeature)),
+        std::type_index(typeid(StatisticsFeature)),
+        std::type_index(typeid(SupervisorFeature))};
 
     int ret = EXIT_FAILURE;
 
@@ -223,7 +229,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<ShardingFeature>(std::make_unique<ShardingFeature>(server));
     server.addFeature<ShellColorsFeature>(std::make_unique<ShellColorsFeature>(server));
     server.addFeature<ShutdownFeature>(std::make_unique<ShutdownFeature>(
-        server, std::vector<std::type_index>{typeid(ScriptFeature)}));
+        server, std::vector<std::type_index>{std::type_index(typeid(ScriptFeature))}));
     server.addFeature<SslFeature>(std::make_unique<SslFeature>(server));
     server.addFeature<StatisticsFeature>(std::make_unique<StatisticsFeature>(server));
     server.addFeature<StorageEngineFeature>(std::make_unique<StorageEngineFeature>(server));

@@ -24,8 +24,10 @@
 #include "Basics/Common.h"
 
 #include "Agency/AgencyComm.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -56,6 +58,9 @@ using namespace arangodb;
 using namespace arangodb::methods;
 using namespace arangodb::velocypack;
 
+CreateDatabaseInfo::CreateDatabaseInfo(application_features::ApplicationServer& server)
+    : _server(server) {}
+
 Result CreateDatabaseInfo::load(std::string const& name, VPackSlice const& options,
                                 VPackSlice const& users) {
   Result res;
@@ -81,7 +86,7 @@ Result CreateDatabaseInfo::load(std::string const& name, VPackSlice const& optio
   // on Coordinator vs Other, we have to have an if here to keep the other code
   // unified.
   if (ServerState::instance()->isCoordinator()) {
-    _id = ClusterInfo::instance()->uniqid();
+    _id = _server.getFeature<ClusterFeature>().clusterInfo().uniqid();
   } else {
     if (_options.slice().hasKey("id")) {
       _id = basics::VelocyPackHelper::stringUInt64(options, "id");
@@ -197,8 +202,8 @@ std::vector<std::string> Databases::list(std::string const& user) {
 
   if (user.empty()) {
     if (ServerState::instance()->isCoordinator()) {
-      ClusterInfo* ci = ClusterInfo::instance();
-      return ci->databases(true);
+      ClusterInfo& ci = server.getFeature<ClusterFeature>().clusterInfo();
+      return ci.databases(true);
     } else {
       // list of all databases
       return databaseFeature.getDatabaseNames();
@@ -207,6 +212,10 @@ std::vector<std::string> Databases::list(std::string const& user) {
     // slow path for user case
     return databaseFeature.getDatabaseNamesForUser(user);
   }
+}
+
+application_features::ApplicationServer& CreateDatabaseInfo::server() const {
+  return _server;
 }
 
 arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
@@ -284,8 +293,8 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
 
   // This operation enters the database as isBuilding into the agency
   // while the database is still building it is not visible.
-  ClusterInfo* ci = ClusterInfo::instance();
-  res = ci->createIsBuildingDatabaseCoordinator(info);
+  ClusterInfo& ci = info.server().getFeature<ClusterFeature>().clusterInfo();
+  res = ci.createIsBuildingDatabaseCoordinator(info);
 
   // Even entering the database as building failed; This can happen
   // because a database with this name already exists, or because we could
@@ -295,11 +304,11 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     return res;
   }
 
-  auto failureGuard = scopeGuard([ci, info]() {
+  auto failureGuard = scopeGuard([&ci, info]() {
     Result res;
     LOG_TOPIC("8cc61", ERR, Logger::FIXME)
       << "Failed to create database " << info.getName() << " rolling back.";
-    res = ci->cancelCreateDatabaseCoordinator(info);
+    res = ci.cancelCreateDatabaseCoordinator(info);
     if (!res.ok()) {
       // this cannot happen since cancelCreateDatabaseCoordinator keeps retrying
       // indefinitely until the cancellation is either successful or the cluster
@@ -328,14 +337,14 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   // make the database visible, otherwise clean up what we can.
   if (upgradeRes.ok()) {
     failureGuard.cancel();
-    res = ci->createFinalizeDatabaseCoordinator(info);
+    res = ci.createFinalizeDatabaseCoordinator(info);
     return res;
   } else {
     // We leave this handling here to be able to capture
     // error messages and return
     failureGuard.cancel();
     // Cleanup entries in agency.
-    res = ci->cancelCreateDatabaseCoordinator(info);
+    res = ci.cancelCreateDatabaseCoordinator(info);
     if (!res.ok()) {
       // this should never happen as cancelCreateDatabaseCoordinaotr keeps retrying
       // until either cancellation is successful or the cluster is shut down.
@@ -349,12 +358,11 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
 // Create a database on SingleServer, DBServer,
 Result Databases::createOther(CreateDatabaseInfo const& info) {
   // Without the database feature, we can't create a database
-  auto& server = application_features::ApplicationServer::server();
-  if (!server.hasFeature<DatabaseFeature>()) {
+  if (!info.server().hasFeature<DatabaseFeature>()) {
     events::CreateDatabase(info.getName(), TRI_ERROR_INTERNAL);
     return Result(TRI_ERROR_INTERNAL);
   }
-  DatabaseFeature& databaseFeature = server.getFeature<DatabaseFeature>();
+  DatabaseFeature& databaseFeature = info.server().getFeature<DatabaseFeature>();
 
   TRI_vocbase_t* vocbase = nullptr;
   int createDBres = databaseFeature.createDatabase(info.getId(), info.getName(), vocbase);
@@ -377,7 +385,8 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   return std::move(upgradeRes.result());
 }
 
-arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& users,
+arangodb::Result Databases::create(application_features::ApplicationServer& server,
+                                   std::string const& dbName, VPackSlice const& users,
                                    VPackSlice const& options) {
   arangodb::Result res;
 
@@ -392,7 +401,8 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   // TODO: maybe this should just be a function that produces
   //       a struct to avoid the try/catch
   //       or the object could have a .valid() method?
-  CreateDatabaseInfo createInfo;
+
+  CreateDatabaseInfo createInfo(server);
   res = createInfo.load(dbName, options, users);
 
   if (!res.ok()) {
@@ -445,8 +455,8 @@ int dropDBCoordinator(std::string const& dbName) {
 
   vocbase->release();
 
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto res = ci->dropDatabaseCoordinator(dbName, 120.0);
+  ClusterInfo& ci = vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+  auto res = ci.dropDatabaseCoordinator(dbName, 120.0);
 
   if (!res.ok()) {
     events::DropDatabase(dbName, res.errorNumber());

@@ -285,7 +285,7 @@ void GeneralServerFeature::buildServers() {
     ssl.SSL->verifySslOptions();
   }
 
-  auto server = std::make_unique<GeneralServer>(_numIoThreads);
+  auto server = std::make_unique<GeneralServer>(*this, _numIoThreads);
   server->setEndpointList(&endpointList);
   _servers.push_back(std::move(server));
 }

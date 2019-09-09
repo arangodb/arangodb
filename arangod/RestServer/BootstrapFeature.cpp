@@ -24,6 +24,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "Aql/QueryList.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
@@ -87,7 +88,7 @@ namespace {
 /// must only return if we are boostrap lead or bootstrap is done
 void raceForClusterBootstrap(BootstrapFeature& feature) {
   AgencyComm agency;
-  auto ci = ClusterInfo::instance();
+  auto& ci = feature.server().getFeature<ClusterFeature>().clusterInfo();
   while (true) {
     AgencyCommResult result = agency.getValues(boostrapKey);
     if (!result.successful()) {
@@ -133,9 +134,9 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
         << "raceForClusterBootstrap: race won, we do the bootstrap";
 
     // let's see whether a DBserver is there:
-    ci->loadCurrentDBServers();
+    ci.loadCurrentDBServers();
 
-    auto dbservers = ci->getCurrentDBServers();
+    auto dbservers = ci.getCurrentDBServers();
 
     if (dbservers.size() == 0) {
       LOG_TOPIC("0ad1c", TRACE, Logger::STARTUP)

@@ -23,6 +23,7 @@
 #include "Ttl.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/TtlFeature.h"
@@ -36,7 +37,8 @@ using namespace arangodb::methods;
 Result Ttl::getStatistics(TtlFeature& feature, VPackBuilder& out) {
   if (ServerState::instance()->isCoordinator()) {
     TtlStatistics stats;
-    Result res = getTtlStatisticsFromAllDBServers(stats);
+    auto& clusterFeature = feature.server().getFeature<ClusterFeature>();
+    Result res = getTtlStatisticsFromAllDBServers(clusterFeature, stats);
     stats.toVelocyPack(out);
     return res;
   }
@@ -47,7 +49,8 @@ Result Ttl::getStatistics(TtlFeature& feature, VPackBuilder& out) {
 
 Result Ttl::getProperties(TtlFeature& feature, VPackBuilder& out) {
   if (ServerState::instance()->isCoordinator()) {
-    return getTtlPropertiesFromAllDBServers(out);
+    auto& clusterFeature = feature.server().getFeature<ClusterFeature>();
+    return getTtlPropertiesFromAllDBServers(clusterFeature, out);
   }
 
   feature.propertiesToVelocyPack(out);
@@ -56,7 +59,8 @@ Result Ttl::getProperties(TtlFeature& feature, VPackBuilder& out) {
 
 Result Ttl::setProperties(TtlFeature& feature, VPackSlice properties, VPackBuilder& out) {
   if (ServerState::instance()->isCoordinator()) {
-    return setTtlPropertiesOnAllDBServers(properties, out);
+    auto& clusterFeature = feature.server().getFeature<ClusterFeature>();
+    return setTtlPropertiesOnAllDBServers(clusterFeature, properties, out);
   }
 
   return feature.propertiesFromVelocyPack(properties, out);

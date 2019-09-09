@@ -185,7 +185,8 @@ void MaintenanceFeature::beginShutdown() {
     };
 
     // create common shared memory with jobid
-    auto shared = std::make_shared<callback_data>(ClusterInfo::instance()->uniqid());
+    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+    auto shared = std::make_shared<callback_data>(ci.uniqid());
 
     AgencyComm am;
 

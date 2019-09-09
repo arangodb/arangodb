@@ -288,8 +288,9 @@ void MMFilesEngine::stop() {
   }
 }
 
-std::unique_ptr<transaction::Manager> MMFilesEngine::createTransactionManager() {
-  return std::make_unique<transaction::Manager>(/*keepData*/ true);
+std::unique_ptr<transaction::Manager> MMFilesEngine::createTransactionManager(
+    transaction::ManagerFeature& feature) {
+  return std::make_unique<transaction::Manager>(feature, /*keepData*/ true);
 }
 
 std::unique_ptr<transaction::ContextData> MMFilesEngine::createTransactionContextData() {

@@ -78,15 +78,16 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
 #ifdef USE_ENTERPRISE
       if (col.collection()->isSmart() && col.collection()->type() == TRI_COL_TYPE_EDGE) {
         auto names = col.collection()->realNames();
-        auto* ci = ClusterInfo::instance();
+        auto& ci =
+            col.collection().vocbase().server().getFeature<ClusterFeature>().clusterInfo();
         for (std::string const& name : names) {
-          auto cc = ci->getCollectionNT(state.vocbase().name(), name);
+          auto cc = ci.getCollectionNT(state.vocbase().name(), name);
           if (!cc) {
             continue;
           }
-          auto shards = ci->getShardList(std::to_string(cc->id()));
+          auto shards = ci.getShardList(std::to_string(cc->id()));
           for (ShardID const& shard : *shards) {
-            auto sss = ci->getResponsibleServer(shard);
+            auto sss = ci.getResponsibleServer(shard);
             if (server == sss->at(0)) {
               if (numCollections == 0) {
                 builder.add(key, VPackValue(VPackValueType::Array));

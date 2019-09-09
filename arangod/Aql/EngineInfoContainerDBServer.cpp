@@ -36,6 +36,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/Result.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngineRegistry.h"
@@ -431,7 +432,7 @@ void EngineInfoContainerDBServer::CollectionInfo::mergeShards(
   }
 }
 
-EngineInfoContainerDBServer::EngineInfoContainerDBServer(Query* query) noexcept
+EngineInfoContainerDBServer::EngineInfoContainerDBServer(Query& query) noexcept
     : _query(query) {}
 
 void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
@@ -543,7 +544,7 @@ EngineInfoContainerDBServer::CollectionInfo& EngineInfoContainerDBServer::handle
     std::unordered_set<std::string> const& restrictedShards /*= {}*/
 ) {
   auto const shards = col->shardIds(
-      restrictedShards.empty() ? _query->queryOptions().shardIds : restrictedShards);
+      restrictedShards.empty() ? _query.queryOptions().shardIds : restrictedShards);
 
   // What if we have an empty shard list here?
   if (shards->empty()) {
@@ -785,8 +786,8 @@ void EngineInfoContainerDBServer::DBServerInfo::addTraverserEngine(GraphNode* no
 }
 
 std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> EngineInfoContainerDBServer::createDBServerMapping() const {
-  auto* ci = ClusterInfo::instance();
-  TRI_ASSERT(ci);
+  TRI_ASSERT(_query.vocbase().server().hasFeature<ClusterFeature>());
+  auto& ci = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
   std::map<ServerID, DBServerInfo> dbServerMapping;
 
@@ -819,7 +820,7 @@ std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> EngineInfoContaine
     auto const& colInfo = it.second;
 
     for (auto const& shardId : colInfo.usedShards) {
-      auto const servers = ci->getResponsibleServer(shardId);
+      auto const servers = ci.getResponsibleServer(shardId);
 
       if (!servers || servers->empty()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -874,11 +875,12 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
   }
 
 #ifdef USE_ENTERPRISE
-  transaction::Methods* trx = _query->trx();
-  transaction::Options& trxOps = _query->trx()->state()->options();
+  transaction::Methods* trx = _query.trx();
+  transaction::Options& trxOps = _query.trx()->state()->options();
 #endif
 
-  auto clusterInfo = arangodb::ClusterInfo::instance();
+  auto& clusterInfo =
+      _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
   /// Typedef for a complicated mapping used in TraverserEngines.
   typedef std::unordered_map<ServerID, EngineInfoContainerDBServer::TraverserEngineShardLists> Serv2ColMap;
@@ -900,7 +902,7 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
     size_t length = edges.size();
 
     auto findServerLists = [&](ShardID const& shard) -> Serv2ColMap::iterator {
-      auto serverList = clusterInfo->getResponsibleServer(shard);
+      auto serverList = clusterInfo.getResponsibleServer(shard);
       if (serverList->empty()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
@@ -917,7 +919,7 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
     };
 
     std::unordered_set<std::string> const& restrictToShards =
-        _query->queryOptions().shardIds;
+        _query.queryOptions().shardIds;
     for (size_t i = 0; i < length; ++i) {
       auto shardIds = edges[i]->shardIds(restrictToShards);
       for (auto const& shard : *shardIds) {
@@ -934,12 +936,11 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
         knownEdges.emplace(it->name());
       }
 
-      TRI_ASSERT(_query);
-      auto& resolver = _query->resolver();
+      auto& resolver = _query.resolver();
 
       // This case indicates we do not have a named graph. We simply use
       // ALL collections known to this query.
-      std::map<std::string, Collection*> const* cs = _query->collections()->collections();
+      std::map<std::string, Collection*> const* cs = _query.collections()->collections();
       for (auto const& collection : (*cs)) {
         if (!resolver.getCollection(collection.first)) {
           // not a collection, filter out
@@ -1035,19 +1036,19 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
     return {TRI_ERROR_SHUTTING_DOWN};
   }
 
-  double ttl = _query->queryOptions().ttl;
+  double ttl = _query.queryOptions().ttl;
 
   std::string const url(
-      "/_db/" + arangodb::basics::StringUtils::urlEncode(_query->vocbase().name()) +
+      "/_db/" + arangodb::basics::StringUtils::urlEncode(_query.vocbase().name()) +
       "/_api/aql/setup?ttl=" + std::to_string(ttl));
 
   auto cleanupGuard = scopeGuard([this, &cc, &queryIds]() {
-    cleanupEngines(cc, TRI_ERROR_INTERNAL, _query->vocbase().name(), queryIds);
+    cleanupEngines(cc, TRI_ERROR_INTERNAL, _query.vocbase().name(), queryIds);
   });
 
   // Build Lookup Infos
-  VPackBuilder infoBuilder;  
-  transaction::Methods* trx = _query->trx();
+  VPackBuilder infoBuilder;
+  transaction::Methods* trx = _query.trx();
 
   // we need to lock per server in a deterministic order to avoid deadlocks
   for (auto& it : dbServerMapping) {
@@ -1055,7 +1056,7 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
 
     LOG_TOPIC("4bbe6", DEBUG, arangodb::Logger::AQL) << "Building Engine Info for " << it.first;
     infoBuilder.clear();
-    it.second.buildMessage(it.first, *this, *_query, infoBuilder);
+    it.second.buildMessage(it.first, *this, _query, infoBuilder);
     LOG_TOPIC("2f1fd", DEBUG, arangodb::Logger::AQL)
         << "Sending the Engine info: " << infoBuilder.toJson();
 
@@ -1069,7 +1070,7 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
 
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
-    _query->incHttpRequests(1);
+    _query.incHttpRequests(1);
     auto res = cc->syncRequest(coordTransactionID, serverDest, RequestType::POST,
                                url, infoBuilder.toJson(), headers, SETUP_TIMEOUT);
 
@@ -1150,12 +1151,11 @@ void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
   // Add all Vertex Collections to the Transactions, Traversals do never write
   auto& vCols = node->vertexColls();
   if (vCols.empty()) {
-    TRI_ASSERT(_query);
-    auto& resolver = _query->resolver();
+    auto& resolver = _query.resolver();
 
     // This case indicates we do not have a named graph. We simply use
     // ALL collections known to this query.
-    std::map<std::string, Collection*> const* cs = _query->collections()->collections();
+    std::map<std::string, Collection*> const* cs = _query.collections()->collections();
     for (auto const& col : *cs) {
       if (!resolver.getCollection(col.first)) {
         // not a collection, filter out
@@ -1233,7 +1233,7 @@ void EngineInfoContainerDBServer::cleanupEngines(std::shared_ptr<ClusterComm> cc
                        url + basics::StringUtils::itoa(engine.second), noBody, headers, cb,
                        shortTimeout, false, 2.0);
     }
-    _query->incHttpRequests(allEngines->size());
+    _query.incHttpRequests(allEngines->size());
   }
   
   queryIds.clear();

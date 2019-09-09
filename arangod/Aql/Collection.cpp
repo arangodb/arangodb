@@ -29,6 +29,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
@@ -76,23 +77,23 @@ TRI_voc_cid_t Collection::getPlanId() const { return getCollection()->id(); }
 
 std::unordered_set<std::string> Collection::responsibleServers() const {
   std::unordered_set<std::string> result;
-  auto clusterInfo = arangodb::ClusterInfo::instance();
+  auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
 
   auto shardIds = this->shardIds();
   for (auto const& it : *shardIds) {
-    auto servers = clusterInfo->getResponsibleServer(it);
+    auto servers = clusterInfo.getResponsibleServer(it);
     result.emplace((*servers)[0]);
   }
   return result;
 }
 
 size_t Collection::responsibleServers(std::unordered_set<std::string>& result) const {
-  auto clusterInfo = arangodb::ClusterInfo::instance();
+  auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
 
   size_t n = 0;
   auto shardIds = this->shardIds();
   for (auto const& it : *shardIds) {
-    auto servers = clusterInfo->getResponsibleServer(it);
+    auto servers = clusterInfo.getResponsibleServer(it);
     result.emplace((*servers)[0]);
     ++n;
   }
@@ -105,14 +106,14 @@ std::string Collection::distributeShardsLike() const {
 
 /// @brief returns the shard ids of a collection
 std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
-  auto clusterInfo = arangodb::ClusterInfo::instance();
+  auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
   auto coll = getCollection();
   if (coll->isSmart() && coll->type() == TRI_COL_TYPE_EDGE) {
     auto names = coll->realNamesForRead();
     auto res = std::make_shared<std::vector<std::string>>();
     for (auto const& n : names) {
-      auto collectionInfo = clusterInfo->getCollection(_vocbase->name(), n);
-      auto list = clusterInfo->getShardList(
+      auto collectionInfo = clusterInfo.getCollection(_vocbase->name(), n);
+      auto list = clusterInfo.getShardList(
           arangodb::basics::StringUtils::itoa(collectionInfo->id()));
       for (auto const& x : *list) {
         res->push_back(x);
@@ -121,7 +122,7 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
     return res;
   }
 
-  return clusterInfo->getShardList(arangodb::basics::StringUtils::itoa(getPlanId()));
+  return clusterInfo.getShardList(arangodb::basics::StringUtils::itoa(getPlanId()));
 }
 
 /// @brief returns the filtered list of shard ids of a collection
@@ -189,8 +190,8 @@ void Collection::setCollection(std::shared_ptr<arangodb::LogicalCollection> cons
 std::shared_ptr<LogicalCollection> Collection::getCollection() const {
   if (_collection == nullptr) {
     TRI_ASSERT(ServerState::instance()->isRunningInCluster());
-    auto clusterInfo = arangodb::ClusterInfo::instance();
-    return clusterInfo->getCollection(_vocbase->name(), _name);
+    auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+    return clusterInfo.getCollection(_vocbase->name(), _name);
   }
   return _collection;
 }

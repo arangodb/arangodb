@@ -205,9 +205,10 @@ struct TRI_vocbase_t {
   /// @brief determine whether a data-source name is a system data-source name
   static bool IsSystemName(std::string const& name) noexcept;
 
-  arangodb::application_features::ApplicationServer& server() {
+  arangodb::application_features::ApplicationServer& server() const {
     return _server;
   }
+
   TRI_voc_tick_t id() const { return _id; }
   std::string const& name() const { return _name; }
   std::string path() const;

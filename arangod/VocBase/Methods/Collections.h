@@ -122,7 +122,8 @@ struct Collections {
 
   static Result warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll);
 
-  static Result revisionId(Context& ctxt, TRI_voc_rid_t& rid);
+  static Result revisionId(application_features::ApplicationServer&,
+                           Context& ctxt, TRI_voc_rid_t& rid);
 
   /// @brief Helper implementation similar to ArangoCollection.all() in v8
   static arangodb::Result all(TRI_vocbase_t& vocbase, std::string const& cname,

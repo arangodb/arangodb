@@ -496,8 +496,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
       arangodb::iresearch::DATA_SOURCE_TYPE.name(),
       arangodb::iresearch::IResearchLinkCoordinator::factory()
     );
-    auto* ci = arangodb::ClusterInfo::instance();
-    ASSERT_TRUE((nullptr != ci));
+    auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
@@ -515,19 +514,19 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     }
 
     ASSERT_TRUE((arangodb::methods::Databases::create(
-                     vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
+                     server, vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
                      arangodb::velocypack::Slice::emptyObjectSlice())
                      .ok()));
 
-    ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
-                                                 collectionJson->slice(), 0.0, false, nullptr)
+    ASSERT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                                collectionJson->slice(), 0.0, false, nullptr)
                      .ok()));
 
-    auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
+    auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
     EXPECT_TRUE(
-        (ci->createViewCoordinator(vocbase->name(), viewId, viewJson->slice()).ok()));
-    auto logicalView0 = ci->getView(vocbase->name(), viewId);
+        (ci.createViewCoordinator(vocbase->name(), viewId, viewJson->slice()).ok()));
+    auto logicalView0 = ci.getView(vocbase->name(), viewId);
     ASSERT_TRUE((false == !logicalView0));
 
     // simulate heartbeat thread (create index in current)
@@ -544,7 +543,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     ASSERT_TRUE((arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
                                                          linkJson->slice(), true, tmp)
                      .ok()));
-    logicalCollection = ci->getCollection(vocbase->name(), collectionId);
+    logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
     auto link0 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection,
                                                                 *logicalView0);
@@ -571,9 +570,9 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
       EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
     }
     EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok()));  // run upgrade
-    auto logicalCollection2 = ci->getCollection(vocbase->name(), collectionId);
+    auto logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection2));
-    auto logicalView1 = ci->getView(vocbase->name(), viewId);
+    auto logicalView1 = ci.getView(vocbase->name(), viewId);
     EXPECT_TRUE((false == !logicalView1));  // ensure view present after upgrade
     EXPECT_TRUE((logicalView0->id() == logicalView1->id()));  // ensure same id for view
     auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2,

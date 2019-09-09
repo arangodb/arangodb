@@ -33,9 +33,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminStatisticsHandler::RestAdminStatisticsHandler(GeneralRequest* request,
+RestAdminStatisticsHandler::RestAdminStatisticsHandler(application_features::ApplicationServer& server,
+                                                       GeneralRequest* request,
                                                        GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminStatisticsHandler::execute() {
   if (_request->requestType() != rest::RequestType::GET) {

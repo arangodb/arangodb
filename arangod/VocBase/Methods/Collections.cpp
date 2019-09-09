@@ -116,8 +116,9 @@ LogicalCollection* Collections::Context::coll() const { return &_coll; }
 void Collections::enumerate(TRI_vocbase_t* vocbase,
                             std::function<void(std::shared_ptr<LogicalCollection> const&)> const& func) {
   if (ServerState::instance()->isCoordinator()) {
+    auto& ci = vocbase->server().getFeature<ClusterFeature>().clusterInfo();
     std::vector<std::shared_ptr<LogicalCollection>> colls =
-        ClusterInfo::instance()->getCollections(vocbase->name());
+        ci.getCollections(vocbase->name());
 
     for (std::shared_ptr<LogicalCollection> const& c : colls) {
       if (!c->deleted()) {
@@ -144,17 +145,16 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
 
   if (ServerState::instance()->isCoordinator()) {
     try {
-      auto ci = ClusterInfo::instance();
-
-      if (!ci) {
+      if (!vocbase.server().hasFeature<ClusterFeature>()) {
         return arangodb::Result(  // result
             TRI_ERROR_INTERNAL,   // code
             "failure to find 'ClusterInfo' instance while searching for "
             "collection"  // message
         );
       }
+      auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
-      auto coll = ci->getCollectionNT(vocbase.name(), name);
+      auto coll = ci.getCollectionNT(vocbase.name(), name);
 
       if (coll) {
         // check authentication after ensuring the collection exists
@@ -470,11 +470,10 @@ Result Collections::load(TRI_vocbase_t& vocbase, LogicalCollection* coll) {
     return ULColCoordinatorEnterprise(coll->vocbase().name(),
                                       std::to_string(coll->id()), TRI_VOC_COL_STATUS_LOADED);
 #else
-    auto ci = ClusterInfo::instance();
-
-    return ci->setCollectionStatusCoordinator(coll->vocbase().name(),
-                                              std::to_string(coll->id()),
-                                              TRI_VOC_COL_STATUS_LOADED);
+    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+    return ci.setCollectionStatusCoordinator(coll->vocbase().name(),
+                                             std::to_string(coll->id()),
+                                             TRI_VOC_COL_STATUS_LOADED);
 #endif
   }
 
@@ -495,11 +494,9 @@ Result Collections::unload(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
     return ULColCoordinatorEnterprise(vocbase->name(), std::to_string(coll->id()),
                                       TRI_VOC_COL_STATUS_UNLOADED);
 #else
-    auto ci = ClusterInfo::instance();
-
-    return ci->setCollectionStatusCoordinator(vocbase->name(),
-                                              std::to_string(coll->id()),
-                                              TRI_VOC_COL_STATUS_UNLOADED);
+    auto& ci = vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+    return ci.setCollectionStatusCoordinator(vocbase->name(), std::to_string(coll->id()),
+                                             TRI_VOC_COL_STATUS_UNLOADED);
 #endif
   }
 
@@ -552,9 +549,10 @@ Result Collections::updateProperties(LogicalCollection& collection,
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    ClusterInfo* ci = ClusterInfo::instance();
-    auto info = ci->getCollection(collection.vocbase().name(),
-                                  std::to_string(collection.id()));
+    ClusterInfo& ci =
+        collection.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+    auto info = ci.getCollection(collection.vocbase().name(),
+                                 std::to_string(collection.id()));
 
     return info->properties(props, partialUpdate);
   } else {
@@ -681,8 +679,9 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 
   auto& databaseName = collection->vocbase().name();
   auto cid = std::to_string(collection->id());
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto res = ci->dropCollectionCoordinator(databaseName, cid, 300.0);
+  ClusterInfo& ci =
+      collection->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto res = ci.dropCollectionCoordinator(databaseName, cid, 300.0);
 
   if (!res.ok()) {
     return res;
@@ -748,7 +747,8 @@ Result Collections::warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll
 
   if (ServerState::instance()->isCoordinator()) {
     auto cid = std::to_string(coll.id());
-    return warmupOnCoordinator(vocbase.name(), cid);
+    auto& feature = vocbase.server().getFeature<ClusterFeature>();
+    return warmupOnCoordinator(feature, vocbase.name(), cid);
   }
 
   auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, false);
@@ -781,11 +781,13 @@ Result Collections::warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll
   return res;
 }
 
-Result Collections::revisionId(Context& ctxt, TRI_voc_rid_t& rid) {
+Result Collections::revisionId(application_features::ApplicationServer& server,
+                               Context& ctxt, TRI_voc_rid_t& rid) {
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = ctxt.coll()->vocbase().name();
     auto cid = std::to_string(ctxt.coll()->id());
-    return revisionOnCoordinator(databaseName, cid, rid);
+    auto& feature = server.getFeature<ClusterFeature>();
+    return revisionOnCoordinator(feature, databaseName, cid, rid);
   }
 
   rid = ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true, true));

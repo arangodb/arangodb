@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
     server.addFeature<RandomFeature>(std::make_unique<RandomFeature>(server));
     server.addFeature<ShellColorsFeature>(std::make_unique<ShellColorsFeature>(server));
     server.addFeature<ShutdownFeature>(std::make_unique<ShutdownFeature>(
-        server, std::vector<std::type_index>{typeid(DumpFeature)}));
+        server, std::vector<std::type_index>{std::type_index(typeid(DumpFeature))}));
     server.addFeature<SslFeature>(std::make_unique<SslFeature>(server));
     server.addFeature<VersionFeature>(std::make_unique<VersionFeature>(server));
 

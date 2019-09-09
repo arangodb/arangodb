@@ -73,7 +73,7 @@ class RestTransactionHandlerTest : public ::testing::Test {
         request(*requestPtr),
         responcePtr(std::make_unique<GeneralResponseMock>()),
         responce(*responcePtr),
-        handler(requestPtr.release(), responcePtr.release()),
+        handler(setup.server, requestPtr.release(), responcePtr.release()),
         parser(request._payload) {
     EXPECT_TRUE((vocbase.collections(false).empty()));
   }

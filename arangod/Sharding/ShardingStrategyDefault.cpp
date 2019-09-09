@@ -26,6 +26,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/hashes.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Sharding/ShardingInfo.h"
@@ -271,8 +272,9 @@ void ShardingStrategyHashBase::determineShards() {
   }
 
   // determine all available shards (which will stay const afterwards)
-  auto ci = ClusterInfo::instance();
-  auto shards = ci->getShardList(std::to_string(_sharding->collection()->id()));
+  auto& ci =
+      _sharding->collection()->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto shards = ci.getShardList(std::to_string(_sharding->collection()->id()));
 
   _shards = *shards;
 

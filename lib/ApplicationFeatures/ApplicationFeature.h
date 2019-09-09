@@ -106,13 +106,13 @@ class ApplicationFeature {
   // whether the feature starts before another
   template <typename T>
   bool doesStartBefore() const {
-    return doesStartBefore(typeid(T));
+    return doesStartBefore(std::type_index(typeid(T)));
   }
 
   // whether the feature starts after another
   template <typename T>
   bool doesStartAfter() const {
-    return !doesStartBefore(typeid(T));
+    return !doesStartBefore(std::type_index(typeid(T)));
   }
 
   // add the feature's options to the global list of options. this method will
@@ -168,31 +168,31 @@ class ApplicationFeature {
   void setOptional(bool value) { _optional = value; }
 
   // note that this feature requires another to be present
-  void requires(std::type_index const& other) { _requires.emplace_back(other); }
+  void requires(std::type_index other) { _requires.emplace_back(other); }
 
   // register a start dependency upon another feature
   template <typename T>
   void startsAfter() {
-    startsAfter(typeid(T));
+    startsAfter(std::type_index(typeid(T)));
   }
 
   // register a start dependency upon another feature by typeid
-  void startsAfter(std::type_index const& type);
+  void startsAfter(std::type_index type);
 
   // register a start dependency upon another feature
   template <typename T>
   void startsBefore() {
-    startsBefore(typeid(T));
+    startsBefore(std::type_index(typeid(T)));
   }
 
-  void startsBefore(std::type_index const& type);
+  void startsBefore(std::type_index type);
 
   // determine all direct and indirect ancestors of a feature
   std::unordered_set<std::type_index> ancestors() const;
 
   template <typename T>
   void onlyEnabledWith() {
-    _onlyEnabledWith.emplace(typeid(T));
+    _onlyEnabledWith.emplace(std::type_index(typeid(T)));
   }
 
   // return the list of other features that this feature depends on
@@ -202,7 +202,7 @@ class ApplicationFeature {
 
  private:
   // whether the feature starts before another
-  bool doesStartBefore(std::type_index const& type) const;
+  bool doesStartBefore(std::type_index type) const;
 
   // set a feature's state. this method should be called by the
   // application server only

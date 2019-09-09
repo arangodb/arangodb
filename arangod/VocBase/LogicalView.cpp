@@ -25,6 +25,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/DatabaseFeature.h"
@@ -167,16 +168,15 @@ Result LogicalView::drop() {
     return true;
   }
 
-  auto* engine = arangodb::ClusterInfo::instance();
-
-  if (!engine) {
+  if (!vocbase.server().hasFeature<ClusterFeature>()) {
     LOG_TOPIC("694fd", ERR, Logger::VIEWS)
         << "failure to get storage engine while enumerating views";
 
     return false;
   }
+  auto& engine = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
-  for (auto& view : engine->getViews(vocbase.name())) {
+  for (auto& view : engine.getViews(vocbase.name())) {
     if (!callback(view)) {
       return false;
     }
@@ -233,14 +233,13 @@ Result LogicalView::rename(std::string&& newName) {
                                                           TRI_vocbase_t& vocbase,
                                                           velocypack::Slice const& definition) noexcept {
   try {
-    auto* engine = ClusterInfo::instance();
-
-    if (!engine) {
+    if (!vocbase.server().hasFeature<ClusterFeature>()) {
       return Result(TRI_ERROR_INTERNAL,
                     std::string("failure to find storage engine while creating "
                                 "arangosearch View in database '") +
                         vocbase.name() + "'");
     }
+    auto& engine = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
     LogicalView::ptr impl;
     auto res = LogicalView::instantiate(impl, vocbase, definition);
@@ -270,16 +269,16 @@ Result LogicalView::rename(std::string&& newName) {
     }
 
     builder.close();
-    res = engine->createViewCoordinator( // create view
-      vocbase.name(), std::to_string(impl->id()), builder.slice() // args
+    res = engine.createViewCoordinator(  // create view
+        vocbase.name(), std::to_string(impl->id()), builder.slice()  // args
     );
 
     if (!res.ok()) {
       return res;
     }
 
-    view = engine->getView(vocbase.name(),
-                           std::to_string(impl->id()));  // refresh view from Agency
+    view = engine.getView(vocbase.name(),
+                          std::to_string(impl->id()));  // refresh view from Agency
 
     if (view) {
       view->open();  // open view to match the behavior in
@@ -304,17 +303,16 @@ Result LogicalView::rename(std::string&& newName) {
 
 /*static*/ Result LogicalViewHelperClusterInfo::drop(LogicalView const& view) noexcept {
   try {
-    auto* engine = ClusterInfo::instance();
-
-    if (!engine) {
+    if (!view.vocbase().server().hasFeature<ClusterFeature>()) {
       return Result(
           TRI_ERROR_INTERNAL,
           std::string("failure to find storage engine while dropping view '") +
               view.name() + "' from database '" + view.vocbase().name() + "'");
     }
+    auto& engine = view.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
-    return engine->dropViewCoordinator( // drop view
-      view.vocbase().name(), std::to_string(view.id()) // args
+    return engine.dropViewCoordinator(                    // drop view
+        view.vocbase().name(), std::to_string(view.id())  // args
     );
   } catch (basics::Exception const& e) {
     return Result(e.code());  // noexcept constructor
@@ -332,15 +330,14 @@ Result LogicalView::rename(std::string&& newName) {
 
 /*static*/ Result LogicalViewHelperClusterInfo::properties(LogicalView const& view) noexcept {
   try {
-    auto* engine = ClusterInfo::instance();
-
-    if (!engine) {
+    if (!view.vocbase().server().hasFeature<ClusterFeature>()) {
       return Result(TRI_ERROR_INTERNAL,
                     std::string("failure to find storage engine while updating "
                                 "definition of view '") +
                         view.name() + "' from database '" +
                         view.vocbase().name() + "'");
     }
+    auto& engine = view.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
     velocypack::Builder builder;
 
@@ -357,9 +354,9 @@ Result LogicalView::rename(std::string&& newName) {
 
     builder.close();
 
-    return engine->setViewPropertiesCoordinator(view.vocbase().name(),
-                                                std::to_string(view.id()),
-                                                builder.slice());
+    return engine.setViewPropertiesCoordinator(view.vocbase().name(),
+                                               std::to_string(view.id()),
+                                               builder.slice());
   } catch (basics::Exception const& e) {
     return Result(e.code());  // noexcept constructor
   } catch (...) {

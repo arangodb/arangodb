@@ -348,7 +348,8 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     }
 
     VPackSlice users = VPackSlice::emptyArraySlice();
-    Result res = methods::Databases::create(name, users, VPackSlice::emptyObjectSlice());
+    Result res = methods::Databases::create(_state.applier._server, name, users,
+                                            VPackSlice::emptyObjectSlice());
 
     return res;
   } else if (type == REPLICATION_DATABASE_DROP) {

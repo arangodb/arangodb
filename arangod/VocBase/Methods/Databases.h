@@ -33,12 +33,15 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace methods {
 
 
 class CreateDatabaseInfo {
  public:
-  CreateDatabaseInfo() = default;
+  CreateDatabaseInfo(application_features::ApplicationServer&);
   Result load(std::string const& name,
               VPackSlice const& options,
               VPackSlice const& users);
@@ -49,11 +52,14 @@ class CreateDatabaseInfo {
   std::string getName() const { return _name; };
   VPackSlice const& getUsers() const { return _userSlice; }
 
+  application_features::ApplicationServer& server() const;
+
  private:
   Result sanitizeUsers(VPackSlice const& users, VPackBuilder& sanitizedUsers);
   Result sanitizeOptions(VPackSlice const& options, VPackBuilder& sanitizedOptions);
 
  private:
+  application_features::ApplicationServer& _server;
   uint64_t _id;
   std::string _name;
   VPackBuilder _options;
@@ -67,8 +73,8 @@ struct Databases {
   static TRI_vocbase_t* lookup(TRI_voc_tick_t);
   static std::vector<std::string> list(std::string const& user = "");
   static arangodb::Result info(TRI_vocbase_t* vocbase, VPackBuilder& result);
-  static arangodb::Result create(std::string const& dbName,
-                                 VPackSlice const& users,
+  static arangodb::Result create(application_features::ApplicationServer& server,
+                                 std::string const& dbName, VPackSlice const& users,
                                  VPackSlice const& options);
   static arangodb::Result drop(TRI_vocbase_t* systemVocbase, std::string const& dbName);
 

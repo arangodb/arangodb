@@ -45,9 +45,10 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkCoordinator.h"
-#include "Logger/LogTopic.h"
 #include "Logger/LogMacros.h"
+#include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
+#include "Network/NetworkFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -228,7 +229,7 @@ static void SetupBasicFeaturePhase(MockServer& server) {
 static void SetupDatabaseFeaturePhase(MockServer& server) {
   SetupBasicFeaturePhase(server);
   server.addFeature<arangodb::application_features::DatabaseFeaturePhase>(false);  // true ??
-  server.addFeature<arangodb::AuthenticationFeature>(false);  // true ??
+  server.addFeature<arangodb::AuthenticationFeature>(true);  // true ??
   server.addFeature<arangodb::DatabaseFeature>(false);
   server.addFeature<arangodb::SystemDatabaseFeature>(true);
   server.addFeature<arangodb::InitDatabaseFeature>(true, std::vector<std::type_index>{});
@@ -481,6 +482,13 @@ MockClusterServer::MockClusterServer()
 
   addFeature<arangodb::UpgradeFeature>(false, &_dummy, std::vector<std::type_index>{});
   addFeature<arangodb::ServerSecurityFeature>(false);
+
+  arangodb::network::ConnectionPool::Config config;
+  config.numIOThreads = 1;
+  config.minOpenConnections = 1;
+  config.maxOpenConnections = 8;
+  config.verifyHosts = false;
+  addFeature<arangodb::NetworkFeature>(true, config);
 }
 
 MockClusterServer::~MockClusterServer() {
@@ -549,10 +557,9 @@ MockDBServer::~MockDBServer() {}
 
 TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
   agencyCreateDatabase(name);
-  auto* ci = ClusterInfo::instance();
-  TRI_ASSERT(ci != nullptr);
-  ci->loadPlan();
-  ci->loadCurrent();
+  auto& ci = _server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+  ci.loadPlan();
+  ci.loadCurrent();
 
   // Now we must run a maintenance action to create the database locally,
   // unless it is the system database, in which case this does not work:
@@ -574,10 +581,9 @@ TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
 
 void MockDBServer::dropDatabase(std::string const& name) {
   agencyDropDatabase(name);
-  auto* ci = ClusterInfo::instance();
-  TRI_ASSERT(ci != nullptr);
-  ci->loadPlan();
-  ci->loadCurrent();
+  auto& ci = _server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+  ci.loadPlan();
+  ci.loadCurrent();
   auto& databaseFeature = _server.getFeature<arangodb::DatabaseFeature>();
   auto vocbase = databaseFeature.lookupDatabase(name);
   TRI_ASSERT(vocbase == nullptr);
@@ -602,10 +608,9 @@ MockCoordinator::~MockCoordinator() {}
 
 TRI_vocbase_t* MockCoordinator::createDatabase(std::string const& name) {
   agencyCreateDatabase(name);
-  auto* ci = ClusterInfo::instance();
-  TRI_ASSERT(ci != nullptr);
-  ci->loadPlan();
-  ci->loadCurrent();
+  auto& ci = _server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+  ci.loadPlan();
+  ci.loadCurrent();
   auto& databaseFeature = _server.getFeature<arangodb::DatabaseFeature>();
   auto vocbase = databaseFeature.lookupDatabase(name);
   TRI_ASSERT(vocbase != nullptr);
@@ -614,10 +619,9 @@ TRI_vocbase_t* MockCoordinator::createDatabase(std::string const& name) {
 
 void MockCoordinator::dropDatabase(std::string const& name) {
   agencyDropDatabase(name);
-  auto* ci = ClusterInfo::instance();
-  TRI_ASSERT(ci != nullptr);
-  ci->loadPlan();
-  ci->loadCurrent();
+  auto& ci = _server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+  ci.loadPlan();
+  ci.loadCurrent();
   auto& databaseFeature = _server.getFeature<arangodb::DatabaseFeature>();
   auto vocbase = databaseFeature.lookupDatabase(name);
   TRI_ASSERT(vocbase == nullptr);

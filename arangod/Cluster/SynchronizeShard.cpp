@@ -710,7 +710,7 @@ bool SynchronizeShard::first() {
       << "SynchronizeShard: synchronizing shard '" << database << "/" << shard
       << "' for central '" << database << "/" << planId << "'";
 
-  auto* clusterInfo = ClusterInfo::instance();
+  auto& clusterInfo = feature().server().getFeature<ClusterFeature>().clusterInfo();
   auto const ourselves = arangodb::ServerState::instance()->getId();
   auto startTime = system_clock::now();
   auto const startTimeStr = timepointToString(startTime);
@@ -726,7 +726,7 @@ bool SynchronizeShard::first() {
     }
 
     std::vector<std::string> planned;
-    auto result = clusterInfo->getShardServers(shard, planned);
+    auto result = clusterInfo.getShardServers(shard, planned);
 
     if (!result.ok() ||
         std::find(planned.begin(), planned.end(), ourselves) == planned.end() ||
@@ -740,7 +740,7 @@ bool SynchronizeShard::first() {
       return false;
     }
 
-    auto ci = clusterInfo->getCollectionNT(database, planId);
+    auto ci = clusterInfo.getCollectionNT(database, planId);
     if (ci == nullptr) {
       std::stringstream msg;
       msg << "exception in getCollection, ";
@@ -752,7 +752,7 @@ bool SynchronizeShard::first() {
 
     std::string const cid = std::to_string(ci->id());
     std::shared_ptr<CollectionInfoCurrent> cic =
-        ClusterInfo::instance()->getCollectionCurrent(database, cid);
+        clusterInfo.getCollectionCurrent(database, cid);
     std::vector<std::string> current = cic->servers(shard);
 
     if (current.empty()) {
@@ -794,7 +794,7 @@ bool SynchronizeShard::first() {
       return false;
     }
 
-    auto ep = clusterInfo->getServerEndpoint(leader);
+    auto ep = clusterInfo.getServerEndpoint(leader);
     uint64_t docCount;
     if (!collectionCount(collection, docCount).ok()) {
       std::stringstream error;

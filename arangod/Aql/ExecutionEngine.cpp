@@ -347,13 +347,11 @@ struct CoordinatorInstanciator final : public WalkerWorker<ExecutionNode> {
   EngineInfoContainerDBServer _dbserverParts;
   bool _isCoordinator;
   QueryId _lastClosed;
-  Query* _query;
+  Query& _query;
 
  public:
-  explicit CoordinatorInstanciator(Query* query) noexcept
-      : _dbserverParts(query), _isCoordinator(true), _lastClosed(0), _query(query) {
-    TRI_ASSERT(_query);
-  }
+  explicit CoordinatorInstanciator(Query& query) noexcept
+      : _dbserverParts(query), _isCoordinator(true), _lastClosed(0), _query(query) {}
 
   /// @brief before method for collection of pieces phase
   ///        Collects all nodes on the path and divides them
@@ -428,7 +426,7 @@ struct CoordinatorInstanciator final : public WalkerWorker<ExecutionNode> {
 
     auto cleanupGuard = scopeGuard([this, &queryIds]() {
       _dbserverParts.cleanupEngines(ClusterComm::instance(), TRI_ERROR_INTERNAL,
-                                    _query->vocbase().name(), queryIds);
+                                    _query.vocbase().name(), queryIds);
     });
 
     ExecutionEngineResult res = _dbserverParts.buildEngines(queryIds);
@@ -438,8 +436,8 @@ struct CoordinatorInstanciator final : public WalkerWorker<ExecutionNode> {
 
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.
-    res = _coordinatorParts.buildEngines(_query, registry, _query->vocbase().name(),
-                                         _query->queryOptions().shardIds, queryIds);
+    res = _coordinatorParts.buildEngines(_query, registry, _query.vocbase().name(),
+                                         _query.queryOptions().shardIds, queryIds);
 
     if (res.ok()) {
       cleanupGuard.cancel();
@@ -543,7 +541,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegist
 
     if (isCoordinator) {
       try {
-        CoordinatorInstanciator inst(query);
+        CoordinatorInstanciator inst(*query);
 
         plan->root()->walk(inst);
 

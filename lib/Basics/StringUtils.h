@@ -111,7 +111,7 @@ std::string join(C const& source, char delim = ',') {
 /// @brief joins a string
 template <typename C, typename T>
 std::string join(C const& source, std::string const& delim,
-                 std::function<std::string(T const&)> cb) {
+                 std::function<std::string(T)> cb) {
   std::string result;
   bool first = true;
 

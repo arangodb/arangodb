@@ -34,6 +34,7 @@
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/ServerSecurityFeature.h"
@@ -1413,7 +1414,8 @@ static int clusterSendToAllServers(std::string const& dbname,
                                    std::string const& path,  // Note: Has to be properly encoded!
                                    arangodb::rest::RequestType const& method,
                                    std::string const& body) {
-  ClusterInfo* ci = ClusterInfo::instance();
+  auto& server = application_features::ApplicationServer::server();
+  ClusterInfo& ci = server.getFeature<ClusterFeature>().clusterInfo();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     return TRI_ERROR_SHUTTING_DOWN;
@@ -1425,7 +1427,7 @@ static int clusterSendToAllServers(std::string const& dbname,
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   auto reqBodyString = std::make_shared<std::string>(body);
 
-  DBServers = ci->getCurrentDBServers();
+  DBServers = ci.getCurrentDBServers();
   std::unordered_map<std::string, std::string> headers;
   for (auto const& sid : DBServers) {
     cc->asyncRequest(coordTransactionID, "server:" + sid, method, url,
