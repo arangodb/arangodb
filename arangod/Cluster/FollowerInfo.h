@@ -187,7 +187,10 @@ class FollowerInfo {
       if (_canWrite) {
         // Someone has decided we can write, fastPath!
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        // the macro name use here is wrong. it must be ARANGODB_ENABLE_MAINTAINER_MODE
+        // and not ARANGODB_USE_MAINTAINER_MODE. @mchacki as original author of this code
+        // is informed
+#ifdef ARANGODB_USE_MAINTAINER_MODE
         // Invariant, we can only WRITE if we do not have other failover candidates
         READ_LOCKER(readLockerData, _dataLock);
         TRI_ASSERT(_followers->size() == _failoverCandidates->size());
