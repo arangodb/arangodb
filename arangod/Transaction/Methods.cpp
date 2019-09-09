@@ -1328,13 +1328,16 @@ Future<OperationResult> transaction::Methods::documentAsync(std::string const& c
   OperationResult result;
   if (_state->isCoordinator()) {
     std::string key;
+#ifdef USE_ENTERPRISE
     if (value.isObject()) {
       VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(value);
       if (keySlice.isString()) {
         key.append(reinterpret_cast<char const*>(keySlice.begin()), keySlice.byteSize());
       }
     }
-    return documentCoordinator(cname, value, options).thenValue([=, key = std::move(key)](OperationResult opRes) {
+#endif
+    return documentCoordinator(cname, value, options)
+    .thenValue([=, key = std::move(key)](OperationResult opRes) {
       VPackSlice val(reinterpret_cast<uint8_t const*>(key.data()));
       events::ReadDocument(vocbase().name(), cname, val, options, opRes.errorNumber());
       return opRes;
@@ -1463,11 +1466,22 @@ Future<OperationResult> transaction::Methods::insertAsync(std::string const& cna
   }
 
   if (_state->isCoordinator()) {
-    return insertCoordinator(cname, value, options).thenValue([this, value, cname](OperationResult&& opres) {
+    std::string key;
+#ifdef USE_ENTERPRISE
+    if (value.isObject()) {
+      VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(value);
+      if (keySlice.isString()) {
+        key.append(reinterpret_cast<char const*>(keySlice.begin()), keySlice.byteSize());
+      }
+    }
+#endif
+    return insertCoordinator(cname, value, options)
+    .thenValue([=, key = std::move(key)](OperationResult opRes) {
+      VPackSlice val(reinterpret_cast<uint8_t const*>(key.data()));
       events::CreateDocument(vocbase().name(), cname,
-                             (opres.ok() && opres._options.returnNew) ? opres.slice() : value,
-                             opres._options, opres.errorNumber());
-      return std::move(opres);
+                             (opRes.ok() && opRes._options.returnNew) ? opRes.slice() : value,
+                             opRes._options, opRes.errorNumber());
+      return opRes;
     });
   }
   OperationOptions optionsCopy = options;
@@ -1755,35 +1769,45 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 /// @brief update/patch one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-Future<OperationResult> transaction::Methods::updateAsync(std::string const& collectionName,
+Future<OperationResult> transaction::Methods::updateAsync(std::string const& cname,
                                                           VPackSlice const newValue,
                                                           OperationOptions const& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!newValue.isObject() && !newValue.isArray()) {
     // must provide a document object or an array of documents
-    events::ModifyDocument(vocbase().name(), collectionName, newValue, options,
+    events::ModifyDocument(vocbase().name(), cname, newValue, options,
                            TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (newValue.isArray() && newValue.length() == 0) {
-    events::ModifyDocument(vocbase().name(), collectionName, newValue, options,
+    events::ModifyDocument(vocbase().name(), cname, newValue, options,
                            TRI_ERROR_NO_ERROR);
     return emptyResult(options);
   }
 
-  OperationOptions optionsCopy = options;
-
   OperationResult result;
   if (_state->isCoordinator()) {
-    return modifyCoordinator(collectionName, newValue, optionsCopy,
-                               TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+    std::string key;
+#ifdef USE_ENTERPRISE
+    if (newValue.isObject()) {
+      VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(newValue);
+      if (keySlice.isString()) {
+        key.append(reinterpret_cast<char const*>(keySlice.begin()), keySlice.byteSize());
+      }
+    }
+#endif
+    return modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_UPDATE)
+    .thenValue([=, key = std::move(key)](OperationResult opRes) {
+      VPackSlice val(reinterpret_cast<uint8_t const*>(key.data()));
+      events::ModifyDocument(vocbase().name(), cname, val,
+                             opRes._options, opRes.errorNumber());
+      return opRes;
+    });
   } else {
-    return modifyLocal(collectionName, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+    OperationOptions optionsCopy = options;
+    return modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
   }
-
-//  events::ModifyDocument(vocbase().name(), collectionName, value, options,
-//                         result.errorNumber());
 }
 
 /// @brief update one or multiple documents in a collection, coordinator
@@ -1814,35 +1838,44 @@ Future<OperationResult> transaction::Methods::modifyCoordinator(
 /// @brief replace one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-Future<OperationResult> transaction::Methods::replaceAsync(std::string const& collectionName,
+Future<OperationResult> transaction::Methods::replaceAsync(std::string const& cname,
                                               VPackSlice const newValue,
                                               OperationOptions const& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!newValue.isObject() && !newValue.isArray()) {
     // must provide a document object or an array of documents
-    events::ReplaceDocument(vocbase().name(), collectionName, newValue, options,
+    events::ReplaceDocument(vocbase().name(), cname, newValue, options,
                             TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (newValue.isArray() && newValue.length() == 0) {
-    events::ReplaceDocument(vocbase().name(), collectionName, newValue, options,
+    events::ReplaceDocument(vocbase().name(), cname, newValue, options,
                             TRI_ERROR_NO_ERROR);
     return futures::makeFuture(emptyResult(options));
   }
 
   if (_state->isCoordinator()) {
-    return modifyCoordinator(collectionName, newValue, options,
-                               TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+    std::string key;
+#ifdef USE_ENTERPRISE
+    if (newValue.isObject()) {
+      VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(newValue);
+      if (keySlice.isString()) {
+        key.append(reinterpret_cast<char const*>(keySlice.begin()), keySlice.byteSize());
+      }
+    }
+#endif
+    return modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_REPLACE)
+    .thenValue([=, key = std::move(key)](OperationResult opRes) {
+      VPackSlice val(reinterpret_cast<uint8_t const*>(key.data()));
+      events::ReplaceDocument(vocbase().name(), cname, val,
+                             opRes._options, opRes.errorNumber());
+      return opRes;
+    });
   } else {
     OperationOptions optionsCopy = options;
-    return modifyLocal(collectionName, newValue, optionsCopy,
-                       TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+    return modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
   }
-//
-//  events::ReplaceDocument(vocbase().name(), collectionName, newValue, options,
-//                          result.errorNumber());
-//  return result;
 }
 
 /// @brief replace one or multiple documents in a collection, local
@@ -1905,6 +1938,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
+        events::ModifyDocument(vocbase().name(), collectionName, newValue,
+                               options, TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
       if (!followerInfo->allowedToWrite()) {
@@ -1915,6 +1950,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
             << basics::StringUtils::itoa(collection->minReplicationFactor())
             << " followers in sync. Shard  " << collection->name()
             << " is temporarily in read-only mode.";
+        events::ModifyDocument(vocbase().name(), collectionName, newValue,
+                               options, TRI_ERROR_ARANGO_READ_ONLY);
         return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
       }
 
@@ -1931,9 +1968,13 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     } else {  // we are a follower following theLeader
       replicationType = ReplicationType::FOLLOWER;
       if (options.isSynchronousReplicationFrom.empty()) {
+        events::ModifyDocument(vocbase().name(), collectionName, newValue,
+                               options, TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
       }
       if (options.isSynchronousReplicationFrom != theLeader) {
+        events::ModifyDocument(vocbase().name(), collectionName, newValue,
+                               options, TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
       }
     }
@@ -1948,6 +1989,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
   Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
 
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
+    events::ModifyDocument(vocbase().name(), collectionName, newValue,
+                           options, lockResult.errorNumber());
     return OperationResult(lockResult);
   }
   // Iff we didn't have a lock before, we got one now.
@@ -2028,6 +2071,9 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
   } else {
     res = workForOneDocument(newValue, false);
   }
+  
+  events::ModifyDocument(vocbase().name(), collectionName, newValue,
+                         options, res.errorNumber());
 
   auto resDocs = resultBuilder.steal();
   if (res.ok() && replicationType == ReplicationType::LEADER) {
