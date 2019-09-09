@@ -1079,7 +1079,7 @@ TEST_F(IResearchViewTest, test_drop_database) {
   StorageEngineMock::before = [&beforeCount]()->void { ++beforeCount; };
 
   TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
-  ASSERT_TRUE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
+  ASSERT_TRUE(databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase).ok());
   ASSERT_TRUE((nullptr != vocbase));
 
   beforeCount = 0; // reset before call to StorageEngine::createView(...)
