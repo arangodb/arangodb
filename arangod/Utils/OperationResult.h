@@ -67,21 +67,21 @@ struct OperationResult {
     }
     return *this;
   }
-
+  
   // create result with details
-  OperationResult(Result&& result, std::shared_ptr<VPackBuffer<uint8_t>> const& buffer,
-                  std::shared_ptr<VPackCustomTypeHandler> const& handler,
-                  OperationOptions const& options = {},
-                  std::unordered_map<int, size_t> const& countErrorCodes =
+  OperationResult(Result result, std::shared_ptr<VPackBuffer<uint8_t>> buffer,
+                  std::shared_ptr<VPackCustomTypeHandler> handler,
+                  OperationOptions options = {},
+                  std::unordered_map<int, size_t> countErrorCodes =
                       std::unordered_map<int, size_t>())
       : result(std::move(result)),
-        buffer(buffer),
-        customTypeHandler(handler),
-        _options(options),
-        countErrorCodes(countErrorCodes) {
+        buffer(std::move(buffer)),
+        customTypeHandler(std::move(handler)),
+        _options(std::move(options)),
+        countErrorCodes(std::move(countErrorCodes)) {
     if (result.ok()) {
-      TRI_ASSERT(buffer != nullptr);
-      TRI_ASSERT(buffer->data() != nullptr);
+      TRI_ASSERT(this->buffer != nullptr);
+      TRI_ASSERT(this->buffer->data() != nullptr);
     }
   }
 

@@ -1790,16 +1790,6 @@ constexpr int TRI_ERROR_AGENCY_CANNOT_REBUILD_DBS                               
 /// General supervision failure.
 constexpr int TRI_ERROR_SUPERVISION_GENERAL_FAILURE                             = 20501;
 
-/// 21001: ERROR_DISPATCHER_IS_STOPPING
-/// "dispatcher stopped"
-/// Will be returned if a shutdown is in progress.
-constexpr int TRI_ERROR_DISPATCHER_IS_STOPPING                                  = 21001;
-
-/// 21002: ERROR_QUEUE_UNKNOWN
-/// "named queue does not exist"
-/// Will be returned if a queue with this name does not exist.
-constexpr int TRI_ERROR_QUEUE_UNKNOWN                                           = 21002;
-
 /// 21003: ERROR_QUEUE_FULL
 /// "named queue is full"
 /// Will be returned if a queue with this name is full.
@@ -1875,6 +1865,11 @@ constexpr int TRI_ERROR_LOCAL_LOCK_RETRY                                        
 /// " "hot backup conflict""
 ///  "Conflict of multiple hot backup processes."
 constexpr int TRI_ERROR_HOT_BACKUP_CONFLICT                                     =  7011;
+
+///  7012: ERROR_HOT_BACKUP_DBSERVERS_AWOL
+/// " "hot backup not all db servers reachable""
+///  "One or more db servers could not be reached for hot backup inquiry"
+constexpr int TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL                               =  7012;
 
 
 /// register all errors for ArangoDB
