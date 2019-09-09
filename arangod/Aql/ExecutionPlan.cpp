@@ -2341,7 +2341,8 @@ bool ExecutionPlan::isDeadSimple() const {
 
     if (nodeType == ExecutionNode::SUBQUERY || nodeType == ExecutionNode::ENUMERATE_COLLECTION ||
         nodeType == ExecutionNode::ENUMERATE_LIST || nodeType == ExecutionNode::TRAVERSAL ||
-        nodeType == ExecutionNode::SHORTEST_PATH || nodeType == ExecutionNode::INDEX) {
+        nodeType == ExecutionNode::SHORTEST_PATH || nodeType == ExecutionNode::K_SHORTEST_PATHS ||
+        nodeType == ExecutionNode::INDEX) {
       // these node types are not simple
       return false;
     }
