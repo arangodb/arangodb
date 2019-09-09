@@ -98,6 +98,7 @@ void RestHandler::setStatistics(RequestStatistics* stat) {
 }
 
 futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
+  forwarded = false;
   if (!ServerState::instance()->isCoordinator()) {
     return futures::makeFuture(Result());
   }

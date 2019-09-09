@@ -332,7 +332,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   }
 
   // forward to correct server if necessary
-  bool forwarded = false;
+  bool forwarded;
   auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
     std::move(res).thenFinal([self = shared_from_this(), handler = std::move(handler)](
