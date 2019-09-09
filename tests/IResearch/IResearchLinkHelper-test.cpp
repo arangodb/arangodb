@@ -533,8 +533,8 @@ TEST_F(IResearchLinkHelperTest, test_updateLinks) {
             "Database");
     TRI_vocbase_t* vocbase;
     ASSERT_TRUE(
-        (TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "testVocbase", vocbase)));  // required for IResearchAnalyzerFeature::emplace(...)
-    ASSERT_TRUE((nullptr != vocbase));
+        dbFeature->createDatabase(1, "testVocbase", vocbase).ok());  // required for IResearchAnalyzerFeature::emplace(...)
+    ASSERT_NE(nullptr, vocbase);
     arangodb::methods::Collections::createSystem(
         *vocbase, 
         arangodb::tests::AnalyzerCollectionName);

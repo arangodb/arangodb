@@ -295,9 +295,7 @@ function ahuacatlProfilerTestSuite () {
       const genNodeList = (rows, batches) => [
         {type: SingletonBlock, calls: 1, items: 1},
         {type: CalculationBlock, calls: 1, items: 1},
-        {type: CalculationBlock, calls: 1, items: 1},
         {type: EnumerateListBlock, calls: batches, items: rows},
-        {type: FilterBlock, calls: batches, items: rows},
         {type: ReturnBlock, calls: batches, items: rows},
       ];
       profHelper.runDefaultChecks({query, genNodeList, options});
@@ -497,8 +495,8 @@ function ahuacatlProfilerTestSuite () {
       const genNodeList = () => [
         {type: SingletonBlock, calls: 0, items: 0},
         {type: CalculationBlock, calls: 0, items: 0},
+        {type: EnumerateListBlock, calls: 0, items: 0},
         {type: NoResultsBlock, calls: 1, items: 0},
-        {type: EnumerateListBlock, calls: 1, items: 0},
         {type: ReturnBlock, calls: 1, items: 0},
       ];
 

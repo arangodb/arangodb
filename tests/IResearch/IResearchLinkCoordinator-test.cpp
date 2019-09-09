@@ -273,9 +273,9 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
 
-    ASSERT_TRUE(nullptr != vocbase);
+    ASSERT_NE(nullptr, vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
