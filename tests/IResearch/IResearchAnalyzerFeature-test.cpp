@@ -983,8 +983,7 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
     ASSERT_NE(_sysVocbase, nullptr);
 
     _vocbase = nullptr;
-    auto res = _dbFeature->createDatabase(1, dbName, _vocbase);
-    ASSERT_EQ(res, TRI_ERROR_NO_ERROR);
+    ASSERT_TRUE(_dbFeature->createDatabase(1, dbName, _vocbase).ok());
     ASSERT_NE(_vocbase, nullptr);
     arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
                                                  false);
@@ -1376,8 +1375,7 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
     }
 
     _vocbase = nullptr;
-    auto res = dbFeature->createDatabase(1, _dbName, _vocbase);
-    ASSERT_EQ(res, TRI_ERROR_NO_ERROR);
+    ASSERT_TRUE(dbFeature->createDatabase(1, _dbName, _vocbase).ok());
     ASSERT_NE(_vocbase, nullptr);
 
     // Prepare analyzers
@@ -2470,8 +2468,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
     TRI_vocbase_t* vocbase;
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", vocbase)));
+    ASSERT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
     ASSERT_TRUE((nullptr != dbFeature->lookupDatabase("testVocbase")));
 
     EXPECT_TRUE((true == !feature.get("testVocbase::test_analyzer")));
@@ -3366,13 +3363,12 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
         StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
     TRI_vocbase_t* vocbase;
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", vocbase)));
+    EXPECT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
     sysDatabase->unprepare();  // unset system vocbase
     // EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
     // collections are not created in upgrade tasks within iresearch anymore. For that reason, we have
     // to create the collection here manually.
-    // TODO: We should use global system creation here instead of all the exissting manual stuff ...
+    // TODO: We should use global system creation here instead of all the existing manual stuff ...
     arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName, false);
 
     EXPECT_TRUE((false == !vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)));
@@ -3429,8 +3425,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
     std::unordered_set<std::string> expected{"abc"};
     TRI_vocbase_t* vocbase;
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", vocbase)));
+    EXPECT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
     EXPECT_TRUE((false == !vocbase->createCollection(createCollectionJson->slice())));
 
     // add document to collection
@@ -3449,7 +3444,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
     sysDatabase->unprepare();  // unset system vocbase
     // EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
-    // TODO: We should use global system creation here instead of all the exissting manual stuff ...
+    // TODO: We should use global system creation here instead of all the existing manual stuff ...
     arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName, false);
     EXPECT_TRUE((false == !vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)));
     auto result = arangodb::tests::executeQuery(*vocbase, ANALYZER_COLLECTION_QUERY);
@@ -3518,10 +3513,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
         StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
     TRI_vocbase_t* vocbase;
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", vocbase)));
+    EXPECT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
     // EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
-    // TODO: We should use global system creation here instead of all the exissting manual stuff ...
+    // TODO: We should use global system creation here instead of all the existing manual stuff ...
     arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName, false);
     EXPECT_TRUE((false == !vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)));
     auto result = arangodb::tests::executeQuery(*vocbase, ANALYZER_COLLECTION_QUERY);
@@ -3583,8 +3577,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
     std::unordered_set<std::string> expected{"abc"};
     TRI_vocbase_t* vocbase;
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", vocbase)));
+    EXPECT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
     EXPECT_TRUE((false == !vocbase->createCollection(createCollectionJson->slice())));
 
     // add document to collection
@@ -3602,7 +3595,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     }
 
     // EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
-    // TODO: We should use global system creation here instead of all the exissting manual stuff ...
+    // TODO: We should use global system creation here instead of all the existing manual stuff ...
     arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName, false);
     EXPECT_TRUE((false == !vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)));
     auto result = arangodb::tests::executeQuery(*vocbase, ANALYZER_COLLECTION_QUERY);
@@ -3686,10 +3679,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
         StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
     TRI_vocbase_t* vocbase;
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", vocbase)));
+    EXPECT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
     // EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
-    // TODO: We should use global system creation here instead of all the exissting manual stuff ...
+    // TODO: We should use global system creation here instead of all the existing manual stuff ...
     arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName, false);
     EXPECT_TRUE((false == !vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)));
     auto result = arangodb::tests::executeQuery(*vocbase, ANALYZER_COLLECTION_QUERY);
@@ -3751,8 +3743,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
     std::set<std::string> expected{"abc"};
     TRI_vocbase_t* vocbase;
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", vocbase)));
+    EXPECT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
     EXPECT_TRUE((false == !vocbase->createCollection(createCollectionJson->slice())));
 
     // add document to collection
@@ -3770,7 +3761,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     }
 
     // EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
-    // TODO: We should use global system creation here instead of all the exissting manual stuff ...
+    // TODO: We should use global system creation here instead of all the existing manual stuff ...
     arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName, false);
     EXPECT_TRUE((false == !vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)));
     auto result = arangodb::tests::executeQuery(*vocbase, ANALYZER_COLLECTION_QUERY);
@@ -3976,9 +3967,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   TRI_vocbase_t* vocbase0;
   TRI_vocbase_t* vocbase1;
   TRI_vocbase_t* vocbase2;
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "vocbase0", vocbase0)));
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "vocbase1", vocbase1)));
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "vocbase2", vocbase2)));
+  EXPECT_TRUE(dbFeature->createDatabase(1, "vocbase0", vocbase0).ok());
+  EXPECT_TRUE(dbFeature->createDatabase(1, "vocbase1", vocbase1).ok());
+  EXPECT_TRUE(dbFeature->createDatabase(1, "vocbase2", vocbase2).ok());
   arangodb::methods::Collections::createSystem(*vocbase0, arangodb::tests::AnalyzerCollectionName, false);
   arangodb::methods::Collections::createSystem(*vocbase1, arangodb::tests::AnalyzerCollectionName, false);
   arangodb::methods::Collections::createSystem(*vocbase2, arangodb::tests::AnalyzerCollectionName, false);
