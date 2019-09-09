@@ -190,6 +190,8 @@ std::string to_string(AuthenticationType type) {
       return "basic";
     case AuthenticationType::Jwt:
       return "jwt";
+    case AuthenticationType::Negotiate:
+      return "Negotiate";
   }
   return "unknown";
 }

@@ -386,7 +386,13 @@ if (MSVC AND NOT(SKIP_PACKAGING))
   )
 endif ()
 
+if (USE_ENTERPRISE)
+  set(GSS_FILES
+    ../enterprise/Enterprise/Kerberos/KerberosAuthenticationHandler.cpp
+    ../enterprise/Enterprise/Kerberos/KerberosFeature.cpp)
+endif()
 add_executable(${BIN_ARANGOSH}
+  ${GSS_FILES}
   ${ProductVersionFiles_arangosh}
   Import/AutoTuneThread.cpp
   Import/ImportHelper.cpp
@@ -402,9 +408,14 @@ add_executable(${BIN_ARANGOSH}
 )
 target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
+target_include_directories(${BIN_ARANGOSH} PUBLIC ${GSS_INCLUDE_DIR})
+if (USE_ENTERPRISE)
+  target_link_directories(${BIN_ARANGOSH} PUBLIC ${GSS_LINK_DIRECTORIES})
+endif()
 target_link_libraries(${BIN_ARANGOSH}
   arango_v8
   arango
+  ${GSS_LIBRARIES}
   ${LINENOISE_LIBS}
   ${V8_LIBS}
   fuerte

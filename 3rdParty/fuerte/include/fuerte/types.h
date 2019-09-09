@@ -150,7 +150,7 @@ std::string to_string(ContentType type);
 // --SECTION--                                                AuthenticationType
 // -----------------------------------------------------------------------------
 
-enum class AuthenticationType { None, Basic, Jwt };
+enum class AuthenticationType { None, Basic, Jwt, Negotiate };
 std::string to_string(AuthenticationType type);
 
 // -----------------------------------------------------------------------------

@@ -56,6 +56,8 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::import;
 
+namespace ip = boost::asio::ip;
+
 V8ClientConnection::V8ClientConnection()
     : _lastHttpReturnCode(0),
       _lastErrorMessage(""),
@@ -81,6 +83,7 @@ V8ClientConnection::~V8ClientConnection() {
 }
 
 std::shared_ptr<fuerte::Connection> V8ClientConnection::createConnection() {
+ 
   auto newConnection = _builder.connect(_loop);
   fuerte::StringMap params{{"details", "true"}};
   auto req = fuerte::createRequest(fuerte::RestVerb::Get, "/_api/version", params);
@@ -194,17 +197,50 @@ double V8ClientConnection::timeout() const { return _requestTimeout.count(); }
 void V8ClientConnection::timeout(double value) {
   _requestTimeout = std::chrono::duration<double>(value);
 }
+#include "Enterprise/Kerberos/KerberosAuthenticationHandler.h"
 
 void V8ClientConnection::connect(ClientFeature* client) {
-  
   TRI_ASSERT(client);
   std::lock_guard<std::recursive_mutex> guard(_lock);
   
+  boost::asio::io_service io_service;
+
+  std::string hostname = ip::host_name();
+  struct hostent* hn;
+  hn = gethostbyname(hostname.c_str());
+  std::string fqdn(hn->h_name);
+  std::cout << "xx " << hn->h_name << "\n";
+  std::transform(fqdn.begin(), fqdn.end(), fqdn.begin(), 
+                 [](unsigned char c){ return std::toupper(c); }
+                 );
+  std::string realm;
+  //  if (client->username().empty()) {
+    realm = getenv("LOGNAME");
+    /* TODO: this defaults to root...
+  } else {
+    realm = client->username();
+    }*/
+  realm += '@';
+  realm += fqdn;
+  std::cout << realm;
+  // std::cout << client->username();
+
+
+
+  std::string error;
+  std::string token = arangodb::getKerberosBase64Token(realm, error);
+  if (token.length() == 0) {
+    std::cout << error;
+    throw error;
+  }
+  
+    
   _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
   _databaseName = client->databaseName();
   _builder.endpoint(client->endpoint());
   // check jwtSecret first, as it is empty by default,
   // but username defaults to "root" in most configurations
+  /*
   if (!client->jwtSecret().empty()) {
     _builder.jwtToken(
         fuerte::jwt::generateInternalToken(client->jwtSecret(), "arangosh"));
@@ -212,7 +248,10 @@ void V8ClientConnection::connect(ClientFeature* client) {
   } else if (!client->username().empty()) {
     _builder.user(client->username()).password(client->password());
     _builder.authenticationType(fuerte::AuthenticationType::Basic);
-  }
+    }*/
+  
+  _builder.jwtToken(token);
+  _builder.authenticationType(fuerte::AuthenticationType::Negotiate);
   createConnection();
 }
 

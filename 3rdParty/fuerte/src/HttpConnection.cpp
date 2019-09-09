@@ -182,8 +182,11 @@ HttpConnection<ST>::HttpConnection(EventLoopService& loop,
     _authHeader.append("Authorization: bearer ");
     _authHeader.append(this->_config._jwtToken);
     _authHeader.append("\r\n");
+  } else if (this->_config._authenticationType == AuthenticationType::Negotiate) {
+    _authHeader.append("Authorization: Negotiate ");
+    _authHeader.append(this->_config._jwtToken);
+    _authHeader.append("\r\n");
   }
-
   FUERTE_LOG_TRACE << "creating http connection: this=" << this << "\n";
 }
 
