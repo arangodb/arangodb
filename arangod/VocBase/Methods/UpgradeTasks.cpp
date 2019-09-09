@@ -65,7 +65,7 @@ namespace {
 void createSystemCollection(TRI_vocbase_t& vocbase, std::string const& name) {
   auto const res = methods::Collections::createSystem(vocbase, name);
 
-  if (res.fail()) {
+  if (res.fail() && !res.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
     THROW_ARANGO_EXCEPTION(res);
   }
 }
