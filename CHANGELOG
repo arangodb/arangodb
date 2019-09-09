@@ -1,6 +1,9 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Added UI support to create documents in a collection using smartGraphAttribute
+  and/or smartJoinAttribute.
+  
 * Add count of objects to latency reporting in arangoimport.
 
 * Harden database creation against spurious "duplicate name" errors that
