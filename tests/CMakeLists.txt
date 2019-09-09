@@ -100,6 +100,7 @@ set(ARANGODB_TESTS_SOURCES
   Cache/TransactionalStore.cpp
   Cache/TransactionManager.cpp
   Cache/TransactionsWithBackingStore.cpp
+  Cluster/AgencyPathsTest.cpp
   Cluster/ClusterCommTest.cpp
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterRepairsTest.cpp
