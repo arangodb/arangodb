@@ -86,11 +86,14 @@ class ConstrainedSortExecutor {
    */
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
+  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkip);
+
  private:
   bool compareInput(size_t const& rosPos, InputAqlItemRow& row) const;
   arangodb::Result pushRow(InputAqlItemRow& row);
+  std::pair<ExecutionState, Stats> fetchAllRowsFromUpstream();
 
- private:
+private:
   Infos& _infos;
   Fetcher& _fetcher;
   ExecutionState _state;

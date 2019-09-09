@@ -80,34 +80,34 @@ class SortExecutorInfos : public ExecutorInfos {
 
 class SortMaterializingExecutorInfos : public SortExecutorInfos {
  public:
-   SortMaterializingExecutorInfos(std::vector<SortRegister> sortRegisters, std::size_t limit,
-     AqlItemBlockManager& manager, RegisterId nrInputRegisters,
-     RegisterId nrOutputRegisters, const std::unordered_set<RegisterId>& registersToClear,
-     const std::unordered_set<RegisterId>& registersToKeep,
-     transaction::Methods* trx, bool stable,
-     RegisterId inNonMaterializedColRegId,
-     RegisterId inNonMaterializedDocRegId, RegisterId outMaterializedDocumentRegId);
+  SortMaterializingExecutorInfos(std::vector<SortRegister> sortRegisters, std::size_t limit,
+    AqlItemBlockManager& manager, RegisterId nrInputRegisters,
+    RegisterId nrOutputRegisters, const std::unordered_set<RegisterId>& registersToClear,
+    const std::unordered_set<RegisterId>& registersToKeep,
+    transaction::Methods* trx, bool stable,
+    RegisterId inNonMaterializedColRegId,
+    RegisterId inNonMaterializedDocRegId, RegisterId outMaterializedDocumentRegId);
 
-   SortMaterializingExecutorInfos() = delete;
-   SortMaterializingExecutorInfos(SortMaterializingExecutorInfos&&) = default;
-   SortMaterializingExecutorInfos(SortMaterializingExecutorInfos const&) = delete;
-    ~SortMaterializingExecutorInfos() = default;
+  SortMaterializingExecutorInfos() = delete;
+  SortMaterializingExecutorInfos(SortMaterializingExecutorInfos&&) = default;
+  SortMaterializingExecutorInfos(SortMaterializingExecutorInfos const&) = delete;
+  ~SortMaterializingExecutorInfos() = default;
 
 
-   inline RegisterId inputNonMaterializedDocRegId() const noexcept {
-     return _inNonMaterializedDocRegId;
-   }
+  inline RegisterId inputNonMaterializedDocRegId() const noexcept {
+    return _inNonMaterializedDocRegId;
+  }
 
-   inline RegisterId inputNonMaterializedColRegId() const noexcept {
-     return _inNonMaterializedColRegId;
-   }
+  inline RegisterId inputNonMaterializedColRegId() const noexcept {
+    return _inNonMaterializedColRegId;
+  }
 
-   inline RegisterId outputMaterializedDocumentRegId() const noexcept {
-     return _outMaterializedDocumentRegId;
-   }
+  inline RegisterId outputMaterializedDocumentRegId() const noexcept {
+    return _outMaterializedDocumentRegId;
+  }
 
  private:
-     /// @brief register to store raw collection pointer
+  /// @brief register to store raw collection pointer
   RegisterId const _inNonMaterializedColRegId;
   /// @brief register to store local document id
   RegisterId const _inNonMaterializedDocRegId;
@@ -116,23 +116,27 @@ class SortMaterializingExecutorInfos : public SortExecutorInfos {
 };
 
 class CopyRowProducer {
-  public:
+ public:
   using Infos = SortExecutorInfos;
-  CopyRowProducer(Infos&) {}
+  static constexpr bool needSkipRows = false;
+
+  explicit CopyRowProducer(Infos&) {}
   void outputRow(const InputAqlItemRow& input, OutputAqlItemRow& output);
 };
 
 class MaterializerProducer  {
  public:
   using Infos = SortMaterializingExecutorInfos;
+  static constexpr bool needSkipRows = true;
 
-  MaterializerProducer(Infos& infos) : 
-    _readDocumentContext(infos){}
+  explicit MaterializerProducer(Infos& infos) :
+    _readDocumentContext(infos) {}
 
   void outputRow(const InputAqlItemRow& input, OutputAqlItemRow& output);
+
  protected:
   class ReadContext {
-  public:
+   public:
     explicit ReadContext(Infos& infos)
       : _infos(&infos),
       _inputRow(nullptr),
@@ -144,7 +148,7 @@ class MaterializerProducer  {
     arangodb::aql::OutputAqlItemRow* _outputRow;
     arangodb::IndexIterator::DocumentCallback const _callback;
 
-  private:
+   private:
     static arangodb::IndexIterator::DocumentCallback copyDocumentCallback(ReadContext& ctx);
   };
   ReadContext _readDocumentContext;
@@ -178,9 +182,12 @@ class SortExecutor  {
 
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const;
 
- private:
-  void doSorting();
+  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkip);
 
+ private:
+  std::pair<ExecutionState, NoStats> fetchAllRowsFromUpstream();
+  void doSorting();
+  
  private:
   Infos& _infos;
 

@@ -102,7 +102,7 @@ TEST_F(SortExecutorTest, no_rows_upstream_producer_doesnt_wait) {
         {}, {0}, &trx, false);
   VPackBuilder input;
   AllRowsFetcherHelper fetcher(input.steal(), false);
-  SortExecutor testee(fetcher, infos);
+  SortExecutor<CopyRowProducer> testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
   // EnumerateListExecutor::produceRows().
@@ -121,7 +121,7 @@ TEST_F(SortExecutorTest, no_rows_upstream_producer_waits) {
         {}, {0}, &trx, false);
   VPackBuilder input;
   AllRowsFetcherHelper fetcher(input.steal(), true);
-  SortExecutor testee(fetcher, infos);
+  SortExecutor<CopyRowProducer> testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
   // EnumerateListExecutor::produceRows().
@@ -145,7 +145,7 @@ TEST_F(SortExecutorTest, rows_upstream_we_are_waiting_for_list_of_numbers) {
   std::shared_ptr<VPackBuilder> input =
       VPackParser::fromJson("[[5],[3],[1],[2],[4]]");
   AllRowsFetcherHelper fetcher(input->steal(), true);
-  SortExecutor testee(fetcher, infos);
+  SortExecutor<CopyRowProducer> testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
   // EnumerateListExecutor::produceRows().

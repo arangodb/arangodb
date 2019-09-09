@@ -122,6 +122,31 @@ arangodb::Result ConstrainedSortExecutor<OutputRowImpl>::pushRow(InputAqlItemRow
 }
 
 template<typename OutputRowImpl>
+std::pair<ExecutionState, NoStats> ConstrainedSortExecutor<OutputRowImpl>::fetchAllRowsFromUpstream() {
+  while (_state != ExecutionState::DONE) {
+    TRI_IF_FAILURE("SortBlock::doSorting") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    // We need to pull rows from above, and insert them into the heap
+    InputAqlItemRow input(CreateInvalidInputRowHint{});
+
+    std::tie(_state, input) = _fetcher.fetchRow();
+    if (_state == ExecutionState::WAITING) {
+      return { _state, NoStats{} };
+    }
+    if (!input.isInitialized()) {
+      TRI_ASSERT(_state == ExecutionState::DONE);
+    } else {
+      if (_rowsPushed < _infos._limit || !compareInput(_rows.front(), input)) {
+        // Push this row into the heap
+        pushRow(input);
+      }
+    }
+  }
+  return { _state, NoStats{} };
+}
+
+template<typename OutputRowImpl>
 bool ConstrainedSortExecutor<OutputRowImpl>::compareInput(size_t const& rowPos, InputAqlItemRow& row) const {
   for (auto const& reg : _infos.sortRegisters()) {
     auto const& lhs = _heapBuffer->getValueReference(rowPos, reg.reg);
@@ -155,31 +180,17 @@ ConstrainedSortExecutor<OutputRowImpl>::ConstrainedSortExecutor(Fetcher& fetcher
   TRI_ASSERT(_infos._limit > 0);
   _rows.reserve(infos._limit);
   _cmpHeap->setBuffer(_heapBuffer.get());
-};
+}
 
 template<typename OutputRowImpl>
 ConstrainedSortExecutor<OutputRowImpl>::~ConstrainedSortExecutor() = default;
 
 template<typename OutputRowImpl>
 std::pair<ExecutionState, NoStats> ConstrainedSortExecutor<OutputRowImpl>::produceRows(OutputAqlItemRow& output) {
-  while (_state != ExecutionState::DONE) {
-    TRI_IF_FAILURE("SortBlock::doSorting") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    // We need to pull rows from above, and insert them into the heap
-    InputAqlItemRow input(CreateInvalidInputRowHint{});
-
-    std::tie(_state, input) = _fetcher.fetchRow();
-    if (_state == ExecutionState::WAITING) {
-      return {_state, NoStats{}};
-    }
-    if (!input.isInitialized()) {
-      TRI_ASSERT(_state == ExecutionState::DONE);
-    } else {
-      if (_rowsPushed < _infos._limit || !compareInput(_rows.front(), input)) {
-        // Push this row into the heap
-        pushRow(input);
-      }
+  if (_state != ExecutionState::DONE) {
+    auto fetchRes = fetchAllRowsFromUpstream();
+    if (fetchRes.first != ExecutionState::DONE) {
+      return fetchRes;
     }
   }
   if (_returnNext >= _rows.size()) {
@@ -228,6 +239,22 @@ std::pair<ExecutionState, size_t> ConstrainedSortExecutor<OutputRowImpl>::expect
     return {ExecutionState::HASMORE, rowsLeft};
   }
   return {ExecutionState::DONE, rowsLeft};
+}
+
+template<typename OutputRowImpl>
+std::tuple<ExecutionState, NoStats, size_t> ConstrainedSortExecutor<OutputRowImpl>::skipRows(size_t toSkip) {
+  if (_state != ExecutionState::DONE) {
+    auto fetchRes = fetchAllRowsFromUpstream();
+    if (fetchRes.first == ExecutionState::WAITING) {
+      return std::make_tuple(fetchRes.first, fetchRes.second, 0);
+    }
+    TRI_ASSERT(fetchRes.first == ExecutionState::DONE);
+  }
+  const size_t skipped = std::min(toSkip, _rows.size() - _returnNext);
+  _returnNext += skipped;
+  return std::make_tuple(
+    _returnNext >= _rows.size() ? ExecutionState::DONE : ExecutionState::HASMORE,
+    NoStats(), skipped);
 }
 
 template class arangodb::aql::ConstrainedSortExecutor<arangodb::aql::CopyRowProducer>;

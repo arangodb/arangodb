@@ -129,14 +129,14 @@ std::vector<SortRegister>& SortExecutorInfos::sortRegisters() {
 bool SortExecutorInfos::stable() const { return _stable; }
 
 SortMaterializingExecutorInfos::SortMaterializingExecutorInfos(
-    std::vector<SortRegister> sortRegisters, std::size_t limit, AqlItemBlockManager & manager, 
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters, 
-    const std::unordered_set<RegisterId>& registersToClear, 
-    const std::unordered_set<RegisterId>& registersToKeep, transaction::Methods * trx, 
-    bool stable, RegisterId inNonMaterializedColRegId, RegisterId inNonMaterializedDocRegId, 
+    std::vector<SortRegister> sortRegisters, std::size_t limit, AqlItemBlockManager & manager,
+    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    const std::unordered_set<RegisterId>& registersToClear,
+    const std::unordered_set<RegisterId>& registersToKeep, transaction::Methods * trx,
+    bool stable, RegisterId inNonMaterializedColRegId, RegisterId inNonMaterializedDocRegId,
     RegisterId outMaterializedDocumentRegId)
   : SortExecutorInfos(std::move(sortRegisters), limit, manager, nrInputRegisters, nrOutputRegisters,
-    registersToClear, registersToKeep, trx, stable, 
+    registersToClear, registersToKeep, trx, stable,
     std::make_shared<std::unordered_set<RegisterId>>(std::initializer_list<RegisterId>({outMaterializedDocumentRegId}))),
   _inNonMaterializedColRegId(inNonMaterializedColRegId),
   _inNonMaterializedDocRegId(inNonMaterializedDocRegId),
@@ -151,24 +151,11 @@ SortExecutor<OutputRowImpl>::~SortExecutor() = default;
 
 template<typename OutputRowImpl>
 std::pair<ExecutionState, NoStats> SortExecutor<OutputRowImpl>::produceRows(OutputAqlItemRow& output) {
-  ExecutionState state;
   if (_input == nullptr) {
-    // We need to get data
-    std::tie(state, _input) = _fetcher.fetchAllRows();
-    if (state == ExecutionState::WAITING) {
-      return {state, NoStats{}};
+    auto fetchRes = fetchAllRowsFromUpstream();
+    if (fetchRes.first == ExecutionState::WAITING) {
+      return fetchRes;
     }
-    // If the execution state was not waiting it is guaranteed that we get a
-    // matrix. Maybe empty still
-    TRI_ASSERT(_input != nullptr);
-    if (_input == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-    // After allRows the dependency has to be done
-    TRI_ASSERT(state == ExecutionState::DONE);
-
-    // Execute the sort
-    doSorting();
   }
   // If we get here we have an input matrix
   // And we have a list of sorted indexes.
@@ -186,6 +173,28 @@ std::pair<ExecutionState, NoStats> SortExecutor<OutputRowImpl>::produceRows(Outp
     return {ExecutionState::DONE, NoStats{}};
   }
   return {ExecutionState::HASMORE, NoStats{}};
+}
+
+template<typename OutputRowImpl>
+std::pair<ExecutionState, NoStats> arangodb::aql::SortExecutor<OutputRowImpl>::fetchAllRowsFromUpstream() {
+  ExecutionState state;
+  // We need to get data
+  std::tie(state, _input) = _fetcher.fetchAllRows();
+  if (state == ExecutionState::WAITING) {
+    return { state, NoStats{} };
+  }
+  // If the execution state was not waiting it is guaranteed that we get a
+  // matrix. Maybe empty still
+  TRI_ASSERT(_input != nullptr);
+  if (_input == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  // After allRows the dependency has to be done
+  TRI_ASSERT(state == ExecutionState::DONE);
+
+  // Execute the sort
+  doSorting();
+  return { state, NoStats{} };
 }
 
 template<typename OutputRowImpl>
@@ -218,6 +227,21 @@ std::pair<ExecutionState, size_t> SortExecutor<OutputRowImpl>::expectedNumberOfR
     return {ExecutionState::HASMORE, rowsLeft};
   }
   return {ExecutionState::DONE, rowsLeft};
+}
+
+template<typename OutputRowImpl>
+std::tuple<ExecutionState, NoStats, size_t> SortExecutor<OutputRowImpl>::skipRows(size_t toSkip) {
+  if (_input == nullptr) {
+    auto fetchRes = fetchAllRowsFromUpstream();
+    if (fetchRes.first == ExecutionState::WAITING) {
+      return std::make_tuple(fetchRes.first, fetchRes.second, 0);
+    }
+  }
+  const size_t skipped = std::min(toSkip, _sortedIndexes.size() - _returnNext);
+  _returnNext += skipped;
+  return std::make_tuple(
+    _returnNext >= _sortedIndexes.size() ? ExecutionState::DONE : ExecutionState::HASMORE,
+    NoStats(), skipped);
 }
 
 
