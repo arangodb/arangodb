@@ -21,7 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#if !defined(ARANGOD_AGENCY_AGENCY_STRINGS_H)
+#ifndef ARANGOD_AGENCY_AGENCY_STRINGS_H
 #define ARANGOD_AGENCY_AGENCY_STRINGS_H
 
 #include <string>

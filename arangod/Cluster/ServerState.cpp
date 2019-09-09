@@ -609,15 +609,17 @@ bool ServerState::checkIfAgencyInitialized(AgencyComm& comm,
 //////////////////////////////////////////////////////////////////////////////
 
 bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum const& role) {
+
+  // if the agency is not initialized, there is no point in continuing.
+  if(!checkIfAgencyInitialized(comm, role)) {
+    return false;
+  }
+
   std::string const agencyListKey = roleToAgencyListKey(role);
   std::string const latestIdKey = "Latest" + roleToAgencyKey(role) + "Id";
 
   VPackBuilder builder;
   builder.add(VPackValue("none"));
-
-  if(!checkIfAgencyInitialized(comm, role)) {
-    return false;
-  }
 
   std::string planUrl = "Plan/" + agencyListKey + "/" + _id;
   std::string currentUrl = "Current/" + agencyListKey + "/" + _id;
