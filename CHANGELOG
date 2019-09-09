@@ -1,6 +1,10 @@
 v3.4.8 (2019-09-09)
 -------------------
 
+* Fixed "ArangoDB is not running in cluster mode" errors in active failover setups.
+  This affected at least /_admin/cluster/health.
+
+
 * Drop collection action to timeout more quickly to stay on fast lane.
 
 * Fixed non-deterministic occurrences of "document not found" errors in sharded 
