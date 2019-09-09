@@ -156,11 +156,10 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   auto requestType =
       fuerte::from_string(GeneralRequest::translateMethod(_request->requestType()));
   auto payload = _request->toVelocyPackBuilderPtr()->steal();
-  auto future = network::sendRequestRetry("server:" + serverId, requestType,
-                                          "/_db/" + StringUtils::urlEncode(dbname) +
-                                              _request->requestPath() + params,
-                                          std::move(*payload), network::Timeout(300),
-                                          headers, /*retryNotFound*/ false);
+  auto future = network::sendRequest("server:" + serverId, requestType,
+                                     "/_db/" + StringUtils::urlEncode(dbname) +
+                                         _request->requestPath() + params,
+                                     std::move(*payload), network::Timeout(300), headers);
   auto cb = [this, serverId, useVst,
              self = shared_from_this()](network::Response&& response) -> Result {
     int res = network::fuerteToArangoErrorCode(response);
