@@ -314,8 +314,8 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   {
     auto* database = arangodb::DatabaseFeature::DATABASE;
     ASSERT_TRUE((nullptr != database));
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testVocbase", vocbase)));
-    ASSERT_TRUE((nullptr != vocbase));
+    ASSERT_TRUE(database->createDatabase(1, "testVocbase", vocbase).ok());
+    ASSERT_NE(nullptr, vocbase);
     ASSERT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
                                                arangodb::velocypack::Slice::emptyObjectSlice(), 0.0)
@@ -393,10 +393,9 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase", vocbase)));
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
 
-    ASSERT_TRUE((nullptr != vocbase));
+    ASSERT_NE(nullptr, vocbase);
     EXPECT_TRUE(("testDatabase" == vocbase->name()));
     EXPECT_TRUE((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
     EXPECT_TRUE((1 == vocbase->id()));
@@ -688,9 +687,9 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
 
-    ASSERT_TRUE(nullptr != vocbase);
+    ASSERT_NE(nullptr, vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
@@ -836,7 +835,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_EQ(TRI_ERROR_NO_ERROR, database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
 
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ("testDatabase", vocbase->name());
@@ -953,10 +952,9 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase", vocbase)));
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
 
-    ASSERT_TRUE((nullptr != vocbase));
+    ASSERT_NE(nullptr, vocbase);
     EXPECT_TRUE(("testDatabase" == vocbase->name()));
     EXPECT_TRUE((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
     EXPECT_TRUE((1 == vocbase->id()));
@@ -1084,9 +1082,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
 
-    ASSERT_TRUE(nullptr != vocbase);
+    ASSERT_NE(nullptr, vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
@@ -1255,7 +1253,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_EQ(TRI_ERROR_NO_ERROR, database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
 
     ASSERT_NE(nullptr, vocbase);
     EXPECT_EQ("testDatabase", vocbase->name());
@@ -1455,9 +1453,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
 
-    ASSERT_TRUE(nullptr != vocbase);
+    ASSERT_NE(nullptr, vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
@@ -2047,9 +2045,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
 
-    ASSERT_TRUE(nullptr != vocbase);
+    ASSERT_NE(nullptr, vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
@@ -2690,9 +2688,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
 
-    ASSERT_TRUE(nullptr != vocbase);
+    ASSERT_NE(nullptr, vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
@@ -3291,9 +3289,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
 
-    ASSERT_TRUE(nullptr != vocbase);
+    ASSERT_NE(nullptr, vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
@@ -3756,9 +3754,9 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
 
-    ASSERT_TRUE(nullptr != vocbase);
+    ASSERT_NE(nullptr, vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());
@@ -4064,10 +4062,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase", vocbase)));
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
 
-    ASSERT_TRUE((nullptr != vocbase));
+    ASSERT_NE(nullptr, vocbase);
     EXPECT_TRUE(("testDatabase" == vocbase->name()));
     EXPECT_TRUE((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
     EXPECT_TRUE((1 == vocbase->id()));
@@ -4829,10 +4826,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase", vocbase)));
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
 
-    ASSERT_TRUE((nullptr != vocbase));
+    ASSERT_NE(nullptr, vocbase);
     EXPECT_TRUE(("testDatabase" == vocbase->name()));
     EXPECT_TRUE((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
     EXPECT_TRUE((1 == vocbase->id()));
@@ -5601,9 +5597,9 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
 
-    ASSERT_TRUE(nullptr != vocbase);
+    ASSERT_NE(nullptr, vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
     EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     EXPECT_TRUE(1 == vocbase->id());

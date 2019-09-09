@@ -178,7 +178,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
     return RestStatus::DONE;
   }
 
-  // transaction protects acces onto selectivity estimates
+  // transaction protects access onto selectivity estimates
   auto trx = createTransaction(cName, AccessMode::Type::READ);
 
   Result res = trx->begin();

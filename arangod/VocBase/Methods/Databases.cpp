@@ -271,9 +271,9 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     }
 
     TRI_vocbase_t* vocbase = nullptr;
-    int res = databaseFeature->createDatabase(id, dbName, vocbase);
-    if (res != TRI_ERROR_NO_ERROR) {
-      return Result(res);
+    Result res = databaseFeature->createDatabase(id, dbName, vocbase);
+    if (res.fail()) {
+      return res;
     }
 
     TRI_ASSERT(vocbase != nullptr);

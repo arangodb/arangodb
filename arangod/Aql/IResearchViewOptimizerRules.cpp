@@ -162,6 +162,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         current->getType() == EN::ENUMERATE_COLLECTION ||
         current->getType() == EN::TRAVERSAL ||
         current->getType() == EN::SHORTEST_PATH ||
+        current->getType() == EN::K_SHORTEST_PATHS ||
         current->getType() == EN::INDEX ||
         current->getType() == EN::COLLECT) {
       // any of these node types will lead to more/less results in the output,
@@ -239,6 +240,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
           current->getType() == EN::ENUMERATE_COLLECTION ||
           current->getType() == EN::TRAVERSAL ||
           current->getType() == EN::SHORTEST_PATH ||
+          current->getType() == EN::K_SHORTEST_PATHS ||
           current->getType() == EN::INDEX ||
           current->getType() == EN::COLLECT ||
           current->getType() == EN::SORT) {
