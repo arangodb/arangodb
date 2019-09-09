@@ -37,6 +37,7 @@
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Graph/TraverserCache.h"
+#include "Graph/TraverserOptions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -54,8 +55,8 @@ namespace aql {
 
 class TokenTranslator : public TraverserCache {
  public:
-  TokenTranslator(Query* query) 
-      : TraverserCache(query),
+  TokenTranslator(Query* query, BaseOptions* opts)
+      : TraverserCache(query, opts),
          _edges(11, arangodb::basics::VelocyPackHelper::VPackHash(), arangodb::basics::VelocyPackHelper::VPackEqual()) {}
   ~TokenTranslator() {}
 
@@ -166,7 +167,7 @@ class FakePathFinder : public ShortestPathFinder {
 
 struct TestShortestPathOptions : public ShortestPathOptions {
   TestShortestPathOptions(Query* query) : ShortestPathOptions(query) {
-    std::unique_ptr<TraverserCache> cache = std::make_unique<TokenTranslator>(query);
+    std::unique_ptr<TraverserCache> cache = std::make_unique<TokenTranslator>(query, this);
     injectTestCache(std::move(cache));
   }
 };
