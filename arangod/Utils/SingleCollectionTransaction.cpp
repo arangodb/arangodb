@@ -59,7 +59,7 @@ SingleCollectionTransaction::SingleCollectionTransaction(
       _accessType(accessType) {
   // add the (sole) collection
   _cid = resolver()->getCollectionId(name);
-  Result res = addCollection(_cid, name.c_str(), _accessType);
+  Result res = addCollection(_cid, name, _accessType);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -86,11 +86,9 @@ TransactionCollection* SingleCollectionTransaction::resolveTrxCollection() {
 /// note that we have two identical versions because this is called
 /// in two different situations
 LogicalCollection* SingleCollectionTransaction::documentCollection() {
-  if (_documentCollection != nullptr) {
-    return _documentCollection;
+  if (_documentCollection == nullptr) {
+    resolveTrxCollection();
   }
-
-  resolveTrxCollection();
   TRI_ASSERT(_documentCollection != nullptr);
   return _documentCollection;
 }

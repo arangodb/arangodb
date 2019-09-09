@@ -1173,9 +1173,7 @@ void transaction::Methods::invokeOnAllElements(std::string const& collectionName
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   TransactionCollection* trxCol = trxCollection(cid, AccessMode::Type::READ);
-  if (trxCol == nullptr) {
-    throwCollectionNotFound(collectionName.c_str());
-  }
+  TRI_ASSERT(trxCol != nullptr);
   std::shared_ptr<LogicalCollection> const& collection = trxCol->collection();
   TRI_ASSERT(collection != nullptr);
   _transactionContextPtr->pinData(collection.get());
@@ -1229,11 +1227,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   }
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
-  TransactionCollection* trxColl = trxCollection(cid);
-  if (trxColl == nullptr) {
-    throwCollectionNotFound(collectionName.c_str());
-  }
-  auto const& collection = trxColl->collection();
+  auto const& collection = trxCollection(cid)->collection();
 
   pinData(cid);  // will throw when it fails
 
@@ -1280,9 +1274,7 @@ Result transaction::Methods::documentFastPathLocal(std::string const& collection
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   TransactionCollection* trxColl = trxCollection(cid);
-  if (trxColl == nullptr) {
-    throwCollectionNotFound(collectionName.c_str());
-  }
+  TRI_ASSERT(trxColl != nullptr);
   std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
   TRI_ASSERT(collection != nullptr);
   _transactionContextPtr->pinData(collection.get());  // will throw when it fails
@@ -1414,11 +1406,7 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
                                                             VPackSlice const value,
                                                             OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
-  TransactionCollection* trxColl = trxCollection(cid);
-  if (trxColl == nullptr) {
-    throwCollectionNotFound(collectionName.c_str());
-  }
-  std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
+  std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
 
   if (!options.silent) {
     pinData(cid);  // will throw when it fails
@@ -1566,11 +1554,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
                                                           VPackSlice const value,
                                                           OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(cname);
-  TransactionCollection* trxColl = trxCollection(cid);
-  if (trxColl == nullptr) {
-    throwCollectionNotFound(cname.c_str());
-  }
-  std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
+  std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
 
   bool const needsLock = !isLocked(collection.get(), AccessMode::Type::WRITE);
 
@@ -1911,11 +1895,7 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
                                                   OperationOptions& options,
                                                   TRI_voc_document_operation_e operation) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
-  TransactionCollection* trxColl = trxCollection(cid);
-  if (trxColl == nullptr) {
-    throwCollectionNotFound(collectionName.c_str());
-  }
-  auto const& collection = trxColl->collection();
+  auto const& collection = trxCollection(cid)->collection();
 
   bool const needsLock = !isLocked(collection.get(), AccessMode::Type::WRITE);
 
@@ -2186,11 +2166,7 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
                                                   VPackSlice const value,
                                                   OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
-  TransactionCollection* trxColl = trxCollection(cid);
-  if (trxColl == nullptr) {
-    throwCollectionNotFound(collectionName.c_str());
-  }
-  auto const& collection = trxColl->collection();
+  auto const& collection = trxCollection(cid)->collection();
 
   bool const needsLock = !isLocked(collection.get(), AccessMode::Type::WRITE);
   bool const isMMFiles = EngineSelectorFeature::isMMFiles();
@@ -2482,11 +2458,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
                                                     OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
 
-  TransactionCollection* trxColl = trxCollection(cid);
-  if (trxColl == nullptr) {
-    throwCollectionNotFound(collectionName.c_str());
-  }
-  auto const& collection = trxColl->collection();
+  auto const& collection = trxCollection(cid)->collection();
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
@@ -2538,7 +2510,6 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
   TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
 
   auto res = collection->truncate(*this, options);
-  ;
 
   if (res.fail()) {
     if (lockResult.is(TRI_ERROR_LOCKED)) {
@@ -2700,11 +2671,7 @@ OperationResult transaction::Methods::countCoordinatorHelper(
 OperationResult transaction::Methods::countLocal(std::string const& collectionName,
                                                  transaction::CountType type) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
-  TransactionCollection* trxColl = trxCollection(cid);
-  if (trxColl == nullptr) {
-    throwCollectionNotFound(collectionName.c_str());
-  }
-  auto const& collection = trxColl->collection();
+  auto const& collection = trxCollection(cid)->collection();
 
   Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
 
@@ -3097,7 +3064,6 @@ Result transaction::Methods::unlockRecursive(TRI_voc_cid_t cid, AccessMode::Type
                   "transaction not running on unlock");
   }
   TransactionCollection* trxColl = trxCollection(cid, type);
-  // ok to assert here, as the collection must have been locked before!
   TRI_ASSERT(trxColl != nullptr);
   return Result(trxColl->unlockRecursive(type, _state->nestingLevel()));
 }
@@ -3111,11 +3077,7 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollection(
   // For a DBserver we use the local case.
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
-  TransactionCollection* trxColl = trxCollection(cid);
-  if (trxColl == nullptr) {
-    throwCollectionNotFound(collectionName.c_str());
-  }
-  std::shared_ptr<LogicalCollection> const& document = trxColl->collection();
+  std::shared_ptr<LogicalCollection> const& document = trxCollection(cid)->collection();
   std::vector<std::shared_ptr<Index>> indexes = document->getIndexes();
   if (!withHidden) {
     indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
