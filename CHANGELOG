@@ -1,9 +1,11 @@
-v3.4.8 (2019-09-09)
+v3.4.9 (2019-XX-XX)
 -------------------
 
 * Fixed "ArangoDB is not running in cluster mode" errors in active failover setups.
   This affected at least /_admin/cluster/health.
 
+v3.4.8 (2019-09-09)
+-------------------
 
 * Drop collection action to timeout more quickly to stay on fast lane.
 
