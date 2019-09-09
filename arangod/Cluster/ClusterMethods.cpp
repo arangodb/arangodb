@@ -3236,7 +3236,7 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
       TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL,
       std::string("not all db servers could be reached for backup listing"));
   }
-  
+
   // Now check results
   for (auto const& req : requests) {
     auto res = req.result;
@@ -4253,7 +4253,7 @@ arangodb::Result listHotBackupsOnCoordinator(VPackSlice const payload, VPackBuil
     result = hotBackupList(dbServers, payload, list, dummy);
 
     if (!result.ok()) {
-      
+
       if (payload.isObject() && payload.hasKey("id") && result.is(TRI_ERROR_HTTP_NOT_FOUND)) {
         auto error = std::string("failed to locate backup ") + payload.get("id").copyString();
         LOG_TOPIC("2020b", DEBUG, Logger::BACKUP) << error;
