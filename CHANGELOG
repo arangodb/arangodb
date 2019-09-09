@@ -1,6 +1,9 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed "ArangoDB is not running in cluster mode" errors in active failover setups.
+  This affected at least /_admin/cluster/health.
+
 * Fixed the AQL sort-limit optimization which was applied in some cases it should
   not, resulting in undefined behaviour.
 
