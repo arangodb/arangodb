@@ -199,6 +199,8 @@ void V8ClientConnection::timeout(double value) {
 }
 #include "Enterprise/Kerberos/KerberosAuthenticationHandler.h"
 
+#include <netinet/in.h>
+#include <boost/asio.hpp>
 void V8ClientConnection::connect(ClientFeature* client) {
   TRI_ASSERT(client);
   std::lock_guard<std::recursive_mutex> guard(_lock);
@@ -207,37 +209,125 @@ void V8ClientConnection::connect(ClientFeature* client) {
 
   std::string hostname = ip::host_name();
   struct hostent* hn;
+
+  /*
+  std::vector < std::string > output;
+
+  try{
+    boost::asio::ip::tcp::resolver::query query(hostname, "");
+    boost::asio::ip::tcp::resolver::iterator destination = resolver_ptr.resolve(query);
+    boost::asio::ip::tcp::resolver::iterator end;
+    boost::asio::ip::tcp::endpoint endpoint;
+
+    while (destination != end){
+      endpoint = *destination++;
+      std::cout << "xx " << endpoint.address().to_string();
+      output.push_back(endpoint.address().to_string());
+    }
+  } catch(...){
+    output.push_back("Not resolved");
+  }
+  */
+
+
+  
   hn = gethostbyname(hostname.c_str());
   std::string fqdn(hn->h_name);
-  std::cout << "xx " << hn->h_name << "\n";
+  std::string realm;
+  realm = "HTTP@";
+  //realm += fqdn;
+  //realm += "@";
+
+  std::cout << "xx " << hn->h_name << "\n\n";
   std::transform(fqdn.begin(), fqdn.end(), fqdn.begin(), 
                  [](unsigned char c){ return std::toupper(c); }
                  );
-  std::string realm;
   //  if (client->username().empty()) {
-    realm = getenv("LOGNAME");
+  // realm = getenv("LOGNAME");
     /* TODO: this defaults to root...
   } else {
     realm = client->username();
     }*/
-  realm += '@';
+    //  realm += '@';
   realm += fqdn;
-  std::cout << realm;
+  std::cout << realm << "\n";
   // std::cout << client->username();
+  sockaddr_in source;
+  sockaddr_in dest;
 
-
+  dest.sin_family = AF_INET;
+  dest.sin_port = htons(3490);
+  inet_aton("192.168.173.88", (in_addr*)&dest.sin_addr.s_addr);
+  
+  source.sin_family = AF_INET;
+  source.sin_port = htons(3490);
+  inet_aton("192.168.173.88", (in_addr*)&source.sin_addr.s_addr);
 
   std::string error;
-  std::string token = arangodb::getKerberosBase64Token(realm, error);
+  std::string token = arangodb::getKerberosBase64Token(realm, error, &source,  &dest);
   if (token.length() == 0) {
-    std::cout << error;
+    std::cout << error << "\n";
     throw error;
   }
+  else {
+    std::cout << "Token: " << token << "\n";
+  }
   
-    
   _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
   _databaseName = client->databaseName();
   _builder.endpoint(client->endpoint());
+  _builder.jwtToken(token);
+  _builder.authenticationType(fuerte::AuthenticationType::Negotiate);
+
+  auto newConnection = _builder.connect(_loop);
+  fuerte::StringMap params{{"details", "true"}};
+  auto req = fuerte::createRequest(fuerte::RestVerb::Get, "/_open/auth", params);
+  req->header.database = _databaseName;
+  
+  req->timeout(std::chrono::seconds(30));
+  try {
+    auto res = newConnection->sendRequest(std::move(req));
+
+    _lastHttpReturnCode = res->statusCode();
+    if (_lastHttpReturnCode >= 400) {
+      auto const& headers = res->messageHeader().meta;
+      auto it = headers.find("http/1.1");
+      if (it != headers.end()) {
+        _lastErrorMessage = (*it).second;
+      }
+    }
+
+    if (_lastHttpReturnCode != 200) {
+      //       return nullptr;
+    }
+    std::shared_ptr<VPackBuilder> parsedBody;
+    VPackSlice body;
+    if (res->contentType() == fuerte::ContentType::VPack) {
+      body = res->slice();
+    } else {
+      parsedBody =
+          VPackParser::fromJson(reinterpret_cast<char const*>(res->payload().data()),
+                                res->payload().size());
+      body = parsedBody->slice();
+    }
+    if (!body.isObject()) {
+      _lastErrorMessage = "invalid response";
+      _lastHttpReturnCode = 503;
+    }
+    std::string jwt = VelocyPackHelper::getStringValue(body, "jwt", "");
+    std::cout << "JWT: " << jwt<< "\n";
+    _builder.jwtToken(jwt);
+    _builder.authenticationType(fuerte::AuthenticationType::Jwt);
+  } catch (fuerte::Error const& e) {  // connection error
+    _lastErrorMessage = fuerte::to_string(e);
+    _lastHttpReturnCode = 503;
+    std::cout << _lastErrorMessage << "\n";
+  }
+
+
+
+
+
   // check jwtSecret first, as it is empty by default,
   // but username defaults to "root" in most configurations
   /*
@@ -250,8 +340,6 @@ void V8ClientConnection::connect(ClientFeature* client) {
     _builder.authenticationType(fuerte::AuthenticationType::Basic);
     }*/
   
-  _builder.jwtToken(token);
-  _builder.authenticationType(fuerte::AuthenticationType::Negotiate);
   createConnection();
 }
 
