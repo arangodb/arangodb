@@ -583,7 +583,7 @@ function killWithCoreDump (options, instanceInfo) {
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
 
-function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCores, coreCheck = false, timeout = 0) {
+function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = false, timeout = 0) {
   if (valgrindTest && options.valgrind) {
     let valgrindOpts = {};
 
@@ -607,14 +607,6 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
 
     args = toArgv(valgrindOpts, true).concat([cmd]).concat(args);
     cmd = options.valgrind;
-  }
-
-  if (circumventCores) {
-    if (platform.substr(0, 3) !== 'win') {
-      // this shellscript will prevent cores from being writen on macos and linux.
-      args.unshift(cmd);
-      cmd = TOP_DIR + '/scripts/disable-cores.sh';
-    }
   }
 
   if (options.extremeVerbosity) {
@@ -786,7 +778,7 @@ function runArangoshCmd (options, instanceInfo, addArgs, cmds, coreCheck = false
 
   internal.env.INSTANCEINFO = JSON.stringify(instanceInfo);
   const argv = toArgv(args).concat(cmds);
-  return executeAndWait(ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir, false, coreCheck);
+  return executeAndWait(ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -837,7 +829,7 @@ function runArangoImport (options, instanceInfo, what, coreCheck = false) {
     args['remove-attribute'] = what.removeAttribute;
   }
 
-  return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, false, coreCheck);
+  return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, coreCheck);
 }
 
 
@@ -849,7 +841,7 @@ function runArangoDumpRestoreCfg (config, options, rootDir, coreCheck) {
   if (options.extremeVerbosity === true) {
     config.print();
   }
-  return executeAndWait(config.getExe(), config.toArgv(), options, 'arangorestore', rootDir, false, coreCheck);
+  return executeAndWait(config.getExe(), config.toArgv(), options, 'arangorestore', rootDir, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -902,7 +894,7 @@ function runArangoBackup (options, instanceInfo, which, cmds, rootDir, coreCheck
   
   args['flatCommands'] = [which];
 
-  return executeAndWait(ARANGOBACKUP_BIN, toArgv(args), options, 'arangobackup', instanceInfo.rootDir, false, coreCheck);
+  return executeAndWait(ARANGOBACKUP_BIN, toArgv(args), options, 'arangobackup', instanceInfo.rootDir, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -927,7 +919,7 @@ function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = f
     args['flatCommands'] = ['--quiet'];
   }
 
-  return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir, false, coreCheck);
+  return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1469,7 +1461,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
     ++count;
 
     instanceInfo.arangods.forEach(arangod => {
-      print("tickeling cluster node " + arangod.url);
+      print(Date() + " tickeling cluster node " + arangod.url);
       const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(instanceInfo.authOpts));
       if (!reply.error && reply.code === 200) {
         arangod.upAndRunning = true;
@@ -1627,10 +1619,10 @@ function launchFinalize(options, instanceInfo, startTime) {
     let count = 0;
     instanceInfo.arangods.forEach(arangod => {
       while (true) {
-        wait(0.5, false);
+        wait(1, false);
         if (options.useReconnect) {
           try {
-            print("reconnecting " + arangod.url);
+            print(Date() + " reconnecting " + arangod.url);
             arango.reconnect(instanceInfo.endpoint,
                              '_system',
                              options.username,
@@ -1639,9 +1631,10 @@ function launchFinalize(options, instanceInfo, startTime) {
                             );
             break;
           } catch (e) {
+            print(Date() + " caught exception: " + e.message);
           }
         } else {
-          print("tickeling " + arangod.url);
+          print(Date() + " tickeling " + arangod.url);
           const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(options));
 
           if (!reply.error && reply.code === 200) {
@@ -1900,7 +1893,6 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
       startInstanceSingleServer(instanceInfo, protocol, options,
                                 addArgs, rootDir, 'single');
     }
-
     launchFinalize(options, instanceInfo, startTime);
   } catch (e) {
     print(e, e.stack);
