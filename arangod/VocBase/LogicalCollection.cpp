@@ -769,17 +769,14 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
           rf != _sharding->replicationFactor()) {  // sanity checks
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "Cannot change replicationFactor, "
-                        "please change " +
-                            _sharding->distributeShardsLike());
+                        "cannot change replicationFactor for a collection using 'distributeShardsLike'");
         } else if (_type == TRI_COL_TYPE_EDGE && _isSmart) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
-                        "Changing replicationFactor "
+                        "changing replicationFactor is "
                         "not supported for smart edge collections");
         } else if (isSatellite()) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "Satellite collection, "
-                        "cannot change replicationFactor");
+                        "cannot change replicationFactor of a satellite collection");
         }
       }
     } else if (rfSl.isString()) {

@@ -2150,7 +2150,7 @@ VocbaseOptions arangodb::getVocbaseOptions(VPackSlice const& options) {
 void arangodb::addVocbaseOptionsToOpenObject(VPackBuilder& builder, std::string const& sharding, std::uint32_t replicationFactor, std::uint32_t minReplicationFactor) {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(StaticStrings::Sharding, VPackValue(sharding));
-  if(replicationFactor) {
+  if (replicationFactor) {
     builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
   } else { // 0 is satellite
     builder.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
