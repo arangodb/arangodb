@@ -212,7 +212,24 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
   ASSERT_TRUE((nullptr != ci));
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
+<<<<<<< HEAD
   createTestDatabase(vocbase);
+=======
+  // create database
+  {
+    // simulate heartbeat thread
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
+
+    ASSERT_NE(nullptr, vocbase);
+    EXPECT_TRUE(("testDatabase" == vocbase->name()));
+    EXPECT_TRUE((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
+    EXPECT_TRUE((1 == vocbase->id()));
+
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
+    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+                     .ok()));
+  }
+>>>>>>> origin/3.5
 
   // view definition with LogicalView (for persistence)
   {
@@ -493,7 +510,23 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
+<<<<<<< HEAD
   createTestDatabase(vocbase);
+=======
+  // create database
+  {
+    // simulate heartbeat thread
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
+
+    ASSERT_NE(nullptr, vocbase);
+    EXPECT_TRUE("testDatabase" == vocbase->name());
+    EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
+    EXPECT_TRUE(1 == vocbase->id());
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
+    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+                     .ok()));
+  }
+>>>>>>> origin/3.5
 
   // no name specified
   {
@@ -627,7 +660,24 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
   ASSERT_NE(nullptr, ci);
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
+<<<<<<< HEAD
   createTestDatabase(vocbase);
+=======
+  // create database
+  {
+    // simulate heartbeat thread
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
+
+    ASSERT_NE(nullptr, vocbase);
+    ASSERT_EQ("testDatabase", vocbase->name());
+    ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
+    ASSERT_EQ(1, vocbase->id());
+
+    ASSERT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
+    ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+                     .ok()));
+  }
+>>>>>>> origin/3.5
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", "
@@ -729,7 +779,24 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
   ASSERT_TRUE((nullptr != ci));
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
+<<<<<<< HEAD
   createTestDatabase(vocbase);
+=======
+  // create database
+  {
+    // simulate heartbeat thread
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
+
+    ASSERT_NE(nullptr, vocbase);
+    EXPECT_TRUE(("testDatabase" == vocbase->name()));
+    EXPECT_TRUE((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
+    EXPECT_TRUE((1 == vocbase->id()));
+
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
+    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+                     .ok()));
+  }
+>>>>>>> origin/3.5
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", "
@@ -843,7 +910,23 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
+<<<<<<< HEAD
   createTestDatabase(vocbase);
+=======
+  // create database
+  {
+    // simulate heartbeat thread
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
+
+    ASSERT_NE(nullptr, vocbase);
+    EXPECT_TRUE("testDatabase" == vocbase->name());
+    EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
+    EXPECT_TRUE(1 == vocbase->id());
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
+    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+                     .ok()));
+  }
+>>>>>>> origin/3.5
 
   // create view
   {
@@ -999,7 +1082,24 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
+<<<<<<< HEAD
   createTestDatabase(vocbase);
+=======
+  // create database
+  {
+    // simulate heartbeat thread
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
+
+    ASSERT_NE(nullptr, vocbase);
+    EXPECT_EQ("testDatabase", vocbase->name());
+    EXPECT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
+    EXPECT_EQ(1, vocbase->id());
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
+    EXPECT_TRUE(ci->createDatabaseCoordinator(vocbase->name(),
+                                              VPackSlice::emptyObjectSlice(), 0.0)
+                    .ok());
+  }
+>>>>>>> origin/3.5
 
   // create view
   auto json = arangodb::velocypack::Parser::fromJson(
@@ -1183,7 +1283,23 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
+<<<<<<< HEAD
   createTestDatabase(vocbase);
+=======
+  // create database
+  {
+    // simulate heartbeat thread
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
+
+    ASSERT_NE(nullptr, vocbase);
+    EXPECT_TRUE("testDatabase" == vocbase->name());
+    EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
+    EXPECT_TRUE(1 == vocbase->id());
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
+    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+                     .ok()));
+  }
+>>>>>>> origin/3.5
 
   // create collections
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
@@ -1760,7 +1876,23 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
+<<<<<<< HEAD
   createTestDatabase(vocbase);
+=======
+  // create database
+  {
+    // simulate heartbeat thread
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
+
+    ASSERT_NE(nullptr, vocbase);
+    EXPECT_TRUE("testDatabase" == vocbase->name());
+    EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
+    EXPECT_TRUE(1 == vocbase->id());
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
+    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+                     .ok()));
+  }
+>>>>>>> origin/3.5
 
   // create collections
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
@@ -2388,7 +2520,23 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
+<<<<<<< HEAD
   createTestDatabase(vocbase);
+=======
+  // create database
+  {
+    // simulate heartbeat thread
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
+
+    ASSERT_NE(nullptr, vocbase);
+    EXPECT_TRUE("testDatabase" == vocbase->name());
+    EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
+    EXPECT_TRUE(1 == vocbase->id());
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
+    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+                     .ok()));
+  }
+>>>>>>> origin/3.5
 
   // create collections
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
@@ -2974,7 +3122,23 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
+<<<<<<< HEAD
   createTestDatabase(vocbase);
+=======
+  // create database
+  {
+    // simulate heartbeat thread
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
+
+    ASSERT_NE(nullptr, vocbase);
+    EXPECT_TRUE("testDatabase" == vocbase->name());
+    EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
+    EXPECT_TRUE(1 == vocbase->id());
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
+    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+                     .ok()));
+  }
+>>>>>>> origin/3.5
 
   // create collections
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
@@ -3424,7 +3588,23 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
+<<<<<<< HEAD
   createTestDatabase(vocbase);
+=======
+  // create database
+  {
+    // simulate heartbeat thread
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
+
+    ASSERT_NE(nullptr, vocbase);
+    EXPECT_TRUE("testDatabase" == vocbase->name());
+    EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
+    EXPECT_TRUE(1 == vocbase->id());
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
+    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+                     .ok()));
+  }
+>>>>>>> origin/3.5
 
   // create collection
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection;
@@ -3718,7 +3898,23 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
   ASSERT_TRUE((nullptr != ci));
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
+<<<<<<< HEAD
   createTestDatabase(vocbase);
+=======
+  // create database
+  {
+    // simulate heartbeat thread
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
+
+    ASSERT_NE(nullptr, vocbase);
+    EXPECT_TRUE(("testDatabase" == vocbase->name()));
+    EXPECT_TRUE((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
+    EXPECT_TRUE((1 == vocbase->id()));
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
+    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+                     .ok()));
+  }
+>>>>>>> origin/3.5
 
   // modify meta params with links to missing collections
   {
@@ -4472,7 +4668,23 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
   ASSERT_TRUE((nullptr != ci));
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
+<<<<<<< HEAD
   createTestDatabase(vocbase);
+=======
+  // create database
+  {
+    // simulate heartbeat thread
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
+
+    ASSERT_NE(nullptr, vocbase);
+    EXPECT_TRUE(("testDatabase" == vocbase->name()));
+    EXPECT_TRUE((TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type()));
+    EXPECT_TRUE((1 == vocbase->id()));
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
+    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+                     .ok()));
+  }
+>>>>>>> origin/3.5
 
   // modify meta params with links to missing collections
   {
@@ -5232,7 +5444,23 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
+<<<<<<< HEAD
   createTestDatabase(vocbase);
+=======
+  // create database
+  {
+    // simulate heartbeat thread
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
+
+    ASSERT_NE(nullptr, vocbase);
+    EXPECT_TRUE("testDatabase" == vocbase->name());
+    EXPECT_TRUE(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
+    EXPECT_TRUE(1 == vocbase->id());
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(std::string("Current/Databases/") + vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
+    EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
+                     .ok()));
+  }
+>>>>>>> origin/3.5
 
   // create and drop view (no id specified)
   {

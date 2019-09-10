@@ -1962,8 +1962,10 @@ void RestReplicationHandler::handleCommandRestoreView() {
 
     if (view) {
       if (!overwrite) {
-        generateError(TRI_ERROR_ARANGO_DUPLICATE_NAME);
-
+        generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_DUPLICATE_NAME),
+                      TRI_ERROR_ARANGO_DUPLICATE_NAME, 
+                      std::string("unable to restore view '") + nameSlice.copyString() + ": " + 
+                      TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
         return;
       }
 
@@ -1971,7 +1973,6 @@ void RestReplicationHandler::handleCommandRestoreView() {
 
       if (!res.ok()) {
         generateError(res);
-
         return;
       }
     }
