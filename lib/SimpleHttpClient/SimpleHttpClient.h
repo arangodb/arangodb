@@ -105,6 +105,7 @@ struct SimpleHttpClientParams {
 
   void setJwt(std::string const& jwt) { _jwt = jwt; }
 
+  void setNegotiateToken(std::string& neg) { _kerberosToken = neg; }
   // sets username and password
   void setUserNamePassword(char const* prefix, std::string const& username,
                            std::string const& password) {
@@ -151,6 +152,8 @@ struct SimpleHttpClientParams {
   size_t _maxPacketSize = SimpleHttpClientParams::MaxPacketSize;
 
   std::string _basicAuth;
+
+  std::string _kerberosToken;
 
   std::string _jwt = "";
 

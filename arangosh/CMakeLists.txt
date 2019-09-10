@@ -2,6 +2,12 @@
 
 include_directories(.)
 
+if (USE_ENTERPRISE)
+  set(GSS_FILES
+    ../enterprise/Enterprise/Kerberos/KerberosAuthenticationHandler.cpp
+    ../enterprise/Enterprise/Kerberos/KerberosFeature.cpp)
+endif()
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 
 ################################################################################
@@ -21,6 +27,7 @@ if (MSVC AND NOT(SKIP_PACKAGING))
 endif ()
 
 add_executable(${BIN_ARANGOBENCH}
+  ${GSS_FILES}
   ${ProductVersionFiles_arangobench}
   Benchmark/BenchFeature.cpp
   Benchmark/arangobench.cpp
@@ -28,9 +35,14 @@ add_executable(${BIN_ARANGOBENCH}
   Shell/ConsoleFeature.cpp
 )
 target_include_directories(${BIN_ARANGOBENCH} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
+target_include_directories(${BIN_ARANGOBENCH} PUBLIC ${GSS_INCLUDE_DIR})
+if (USE_ENTERPRISE)
+  target_link_directories(${BIN_ARANGOBENCH} PUBLIC ${GSS_LINK_DIRECTORIES})
+endif()
 
 target_link_libraries(${BIN_ARANGOBENCH}
   arango
+  ${GSS_LIBRARIES}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
@@ -78,6 +90,7 @@ if (MSVC AND NOT(SKIP_PACKAGING))
 endif ()
 
 add_executable(${BIN_ARANGOBACKUP}
+  ${GSS_FILES}
   ${ProductVersionFiles_arangobackup}
   Backup/BackupFeature.cpp
   Backup/arangobackup.cpp
@@ -87,9 +100,14 @@ add_executable(${BIN_ARANGOBACKUP}
   ${ADDITIONAL_BIN_ARANGOBACKUP_SOURCES}
 )
 target_include_directories(${BIN_ARANGOBACKUP} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
+target_include_directories(${BIN_ARANGOBACKUP} PUBLIC ${GSS_INCLUDE_DIR})
+if (USE_ENTERPRISE)
+  target_link_directories(${BIN_ARANGOBACKUP} PUBLIC ${GSS_LINK_DIRECTORIES})
+endif()
 
 target_link_libraries(${BIN_ARANGOBACKUP}
   arango
+  ${GSS_LIBRARIES}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
@@ -138,6 +156,7 @@ endif ()
 
 add_executable(${BIN_ARANGODUMP}
   ${ProductVersionFiles_arangodump}
+  ${GSS_FILES}
   Dump/DumpFeature.cpp
   Dump/arangodump.cpp
   Shell/ClientFeature.cpp
@@ -147,9 +166,14 @@ add_executable(${BIN_ARANGODUMP}
   ${ADDITIONAL_BIN_ARANGODUMP_SOURCES}
 )
 target_include_directories(${BIN_ARANGODUMP} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
+target_include_directories(${BIN_ARANGODUMP} PUBLIC ${GSS_INCLUDE_DIR})
+if (USE_ENTERPRISE)
+  target_link_directories(${BIN_ARANGODUMP} PUBLIC ${GSS_LINK_DIRECTORIES})
+endif()
 
 target_link_libraries(${BIN_ARANGODUMP}
   arango
+  ${GSS_LIBRARIES}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
@@ -197,6 +221,7 @@ if (MSVC AND NOT(SKIP_PACKAGING))
 endif ()
 
 add_executable(${BIN_ARANGOEXPORT}
+  ${GSS_FILES}
   ${ProductVersionFiles_arangoexport}
   Export/ExportFeature.cpp
   Export/arangoexport.cpp
@@ -206,9 +231,14 @@ add_executable(${BIN_ARANGOEXPORT}
   V8Client/ArangoClientHelper.cpp
 )
 target_include_directories(${BIN_ARANGOEXPORT} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
+target_include_directories(${BIN_ARANGOEXPORT} PUBLIC ${GSS_INCLUDE_DIR})
+if (USE_ENTERPRISE)
+  target_link_directories(${BIN_ARANGOEXPORT} PUBLIC ${GSS_LINK_DIRECTORIES})
+endif()
 
 target_link_libraries(${BIN_ARANGOEXPORT}
   arango
+  ${GSS_LIBRARIES}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
@@ -257,6 +287,7 @@ endif ()
 
 add_executable(arangoimport
   ${ProductVersionFiles_arangoimport}
+  ${GSS_FILES}
   Import/AutoTuneThread.cpp
   Import/ImportFeature.cpp
   Import/ImportHelper.cpp
@@ -268,9 +299,14 @@ add_executable(arangoimport
   V8Client/ArangoClientHelper.cpp
 )
 target_include_directories(${BIN_ARANGOIMPORT} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
+target_include_directories(${BIN_ARANGOIMPORT} PUBLIC ${GSS_INCLUDE_DIR})
+if (USE_ENTERPRISE)
+  target_link_directories(${BIN_ARANGOIMPORT} PUBLIC ${GSS_LINK_DIRECTORIES})
+endif()
 
 target_link_libraries(${BIN_ARANGOIMPORT}
   arango
+  ${GSS_LIBRARIES}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   fuerte
@@ -328,6 +364,7 @@ endif ()
 
 add_executable(${BIN_ARANGORESTORE}
   ${ProductVersionFiles_arangorestore}
+  ${GSS_FILES}
   Restore/RestoreFeature.cpp
   Restore/arangorestore.cpp
   Shell/ClientFeature.cpp
@@ -337,9 +374,14 @@ add_executable(${BIN_ARANGORESTORE}
   ${ADDITIONAL_BIN_ARANGORESTORE_SOURCES}
 )
 target_include_directories(${BIN_ARANGORESTORE} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
+target_include_directories(${BIN_ARANGORESTORE} PUBLIC ${GSS_INCLUDE_DIR})
+if (USE_ENTERPRISE)
+  target_link_directories(${BIN_ARANGORESTORE} PUBLIC ${GSS_LINK_DIRECTORIES})
+endif()
 
 target_link_libraries(${BIN_ARANGORESTORE}
   arango
+  ${GSS_LIBRARIES}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
@@ -386,11 +428,6 @@ if (MSVC AND NOT(SKIP_PACKAGING))
   )
 endif ()
 
-if (USE_ENTERPRISE)
-  set(GSS_FILES
-    ../enterprise/Enterprise/Kerberos/KerberosAuthenticationHandler.cpp
-    ../enterprise/Enterprise/Kerberos/KerberosFeature.cpp)
-endif()
 add_executable(${BIN_ARANGOSH}
   ${GSS_FILES}
   ${ProductVersionFiles_arangosh}
@@ -467,15 +504,21 @@ endif ()
 
 add_executable(${BIN_ARANGOVPACK}
   ${ProductVersionFiles_arangovpack}
+  ${GSS_FILES}
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
   VPack/VPackFeature.cpp
   VPack/arangovpack.cpp
 )
 target_include_directories(${BIN_ARANGOVPACK} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
+target_include_directories(${BIN_ARANGOVPACK} PUBLIC ${GSS_INCLUDE_DIR})
+if (USE_ENTERPRISE)
+  target_link_directories(${BIN_ARANGOVPACK} PUBLIC ${GSS_LINK_DIRECTORIES})
+endif()
 
 target_link_libraries(${BIN_ARANGOVPACK}
   arango
+  ${GSS_LIBRARIES}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system

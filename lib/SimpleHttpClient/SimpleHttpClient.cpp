@@ -54,6 +54,13 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
+#include <iostream> // todo wech.
+#include "Enterprise/Kerberos/KerberosAuthenticationHandler.h"
+
+#include <netinet/in.h>
+#include <boost/asio.hpp>
+namespace ip = boost::asio::ip;
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -581,7 +588,11 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
   }
 
   // do basic authorization
-  if (!_params._jwt.empty()) {
+  if (!_params._kerberosToken.empty()) {
+    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: Negotiate "));
+    _writeBuffer.appendText(_params._kerberosToken);
+    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+  } else  if (!_params._jwt.empty()) {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: bearer "));
     _writeBuffer.appendText(_params._jwt);
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
@@ -965,58 +976,181 @@ std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult const* result
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string SimpleHttpClient::getServerVersion(int* errorCode) {
-  if (errorCode != nullptr) {
-    *errorCode = TRI_ERROR_INTERNAL;
-  }
+  while (true) {
+    if (errorCode != nullptr) {
+      *errorCode = TRI_ERROR_INTERNAL;
+    }
 
-  std::unique_ptr<SimpleHttpResult> response(
-      request(rest::RequestType::GET, "/_api/version", nullptr, 0));
+    std::unique_ptr<SimpleHttpResult> response(
+                                               request(rest::RequestType::GET, "/_api/version", nullptr, 0));
 
-  if (response == nullptr || !response->isComplete()) {
-    return "";
-  }
+    if (response == nullptr || !response->isComplete()) {
+      return "";
+    }
 
-  if (response->getHttpReturnCode() == static_cast<int>(rest::ResponseCode::OK)) {
-    // default value
-    std::string version = "arango";
+    if (response->getHttpReturnCode() == static_cast<int>(rest::ResponseCode::OK)) {
+      // default value
+      std::string version = "arango";
 
-    arangodb::basics::StringBuffer const& body = response->getBody();
-    try {
-      std::shared_ptr<VPackBuilder> builder =
+      arangodb::basics::StringBuffer const& body = response->getBody();
+      try {
+        std::shared_ptr<VPackBuilder> builder =
           VPackParser::fromJson(body.c_str(), body.length());
 
-      VPackSlice slice = builder->slice();
-      if (slice.isObject()) {
-        VPackSlice server = slice.get("server");
-        if (server.isString() && server.copyString() == "arango") {
-          // "server" value is a string and its content is "arango"
-          VPackSlice v = slice.get("version");
-          if (v.isString()) {
-            version = v.copyString();
+        VPackSlice slice = builder->slice();
+        if (slice.isObject()) {
+          VPackSlice server = slice.get("server");
+          if (server.isString() && server.copyString() == "arango") {
+            // "server" value is a string and its content is "arango"
+            VPackSlice v = slice.get("version");
+            if (v.isString()) {
+              version = v.copyString();
+            }
+          }
+        }
+
+        if (errorCode != nullptr) {
+          *errorCode = TRI_ERROR_NO_ERROR;
+        }
+        return version;
+      } catch (std::exception const& ex) {
+        setErrorMessage(ex.what(), false);
+        return "";
+      } catch (...) {
+        setErrorMessage("Unable to parse server response", false);
+        return "";
+      }
+    }
+    else if (response->getHttpReturnCode() == static_cast<int>(rest::ResponseCode::UNAUTHORIZED)) {
+      auto hdrs = response->getHeaderFields();
+      auto it = hdrs.find(StaticStrings::WwwAuthenticate);
+      if (it != hdrs.end()) {
+        std::string value = it->second;
+        std::transform(value.begin(), value.end(), value.begin(), 
+                       [](unsigned char c){ return std::tolower(c); }
+                       );
+        if (value == "negotiate") {
+          std::string hostname = ip::host_name();
+          struct hostent* hn;
+
+          /*
+            boost::asio::io_service io_service;
+
+
+
+            std::vector < std::string > output;
+
+            try{
+            boost::asio::ip::tcp::resolver::query query(hostname, "");
+            boost::asio::ip::tcp::resolver::iterator destination = resolver_ptr.resolve(query);
+            boost::asio::ip::tcp::resolver::iterator end;
+            boost::asio::ip::tcp::endpoint endpoint;
+
+            while (destination != end){
+            endpoint = *destination++;
+            std::cout << "xx " << endpoint.address().to_string();
+            output.push_back(endpoint.address().to_string());
+            }
+            } catch(...){
+            output.push_back("Not resolved");
+            }
+          */
+
+
+  
+          hn = gethostbyname(hostname.c_str());
+          std::string fqdn(hn->h_name);
+          std::string realm;
+          realm = "HTTP@";
+          //realm += fqdn;
+          //realm += "@";
+
+          std::cout << "xx " << hn->h_name << "\n\n";
+          std::transform(fqdn.begin(), fqdn.end(), fqdn.begin(), 
+                         [](unsigned char c){ return std::toupper(c); }
+                         );
+          //  if (client->username().empty()) {
+          // realm = getenv("LOGNAME");
+          /* TODO: this defaults to root...
+             } else {
+             realm = client->username();
+             }*/
+          //  realm += '@';
+          realm += fqdn;
+          std::cout << realm << "\n";
+          // std::cout << client->username();
+          sockaddr_in source;
+          sockaddr_in dest;
+
+          dest.sin_family = AF_INET;
+          dest.sin_port = htons(3490);
+          inet_aton("192.168.173.88", (in_addr*)&dest.sin_addr.s_addr);
+  
+          source.sin_family = AF_INET;
+          source.sin_port = htons(3490);
+          inet_aton("192.168.173.88", (in_addr*)&source.sin_addr.s_addr);
+
+          std::string error;
+          std::string token = arangodb::getKerberosBase64Token(realm, error, &source,  &dest);
+          if (token.length() == 0) {
+            std::cout << error << "\n";
+            throw error;
+          }
+          else {
+            std::cout << "Token: " << token << "\n";
+          }
+          _params.setNegotiateToken(token);
+          std::unique_ptr<SimpleHttpResult> response(
+                                                     request(rest::RequestType::GET, "/_open/auth", nullptr, 0));
+          if (response == nullptr || !response->isComplete()) {
+            return "";
+          }
+          if (response->getHttpReturnCode() == static_cast<int>(rest::ResponseCode::OK)) {
+            std::string jwt;
+
+            arangodb::basics::StringBuffer const& body = response->getBody();
+            try {
+              std::shared_ptr<VPackBuilder> builder =
+                VPackParser::fromJson(body.c_str(), body.length());
+
+              VPackSlice slice = builder->slice();
+              if (slice.isObject()) {
+                  VPackSlice v = slice.get("jwt");
+                  if (v.isString()) {
+                    jwt = v.copyString();
+                    _params._jwt = jwt;
+                    _params._kerberosToken = "";
+                    continue;
+                  }
+              }
+
+              if (errorCode != nullptr) {
+                *errorCode = TRI_ERROR_NO_ERROR;
+              }
+              
+            } catch (std::exception const& ex) {
+              setErrorMessage(ex.what(), false);
+              return "";
+            } catch (...) {
+              setErrorMessage("Unable to parse server response", false);
+              return "";
+            }
           }
         }
       }
-
-      if (errorCode != nullptr) {
-        *errorCode = TRI_ERROR_NO_ERROR;
-      }
-      return version;
-    } catch (std::exception const& ex) {
-      setErrorMessage(ex.what(), false);
-      return "";
-    } catch (...) {
-      setErrorMessage("Unable to parse server response", false);
+    }
+    if (response == nullptr || !response->isComplete()) {
       return "";
     }
-  }
 
-  if (response->wasHttpError()) {
-    std::string msg = getHttpErrorMessage(response.get(), errorCode);
-    setErrorMessage(msg, false);
-  }
-  _connection->disconnect();
+    if (response->wasHttpError()) {
+      std::string msg = getHttpErrorMessage(response.get(), errorCode);
+      setErrorMessage(msg, false);
+    }
+    _connection->disconnect();
 
-  return "";
+    return "";
+  }
 }
 }  // namespace httpclient
 }  // namespace arangodb

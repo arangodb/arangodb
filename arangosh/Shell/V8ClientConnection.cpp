@@ -48,8 +48,6 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 
-#include <iostream>
-
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
