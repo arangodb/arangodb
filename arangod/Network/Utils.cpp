@@ -268,10 +268,10 @@ OperationResult clusterResultModify(arangodb::fuerte::StatusCode code,
     }
     case fuerte::StatusConflict:
       return OperationResult(network::resultFromBody(body, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED),
-                             std::move(body), options, errorCounter);
+                             body, options, errorCounter);
     case fuerte::StatusPreconditionFailed:
       return OperationResult(network::resultFromBody(body, TRI_ERROR_ARANGO_CONFLICT),
-                             std::move(body), options, errorCounter);
+                             body, options, errorCounter);
     case fuerte::StatusNotFound:
       return network::opResultFromBody(body, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default: {
