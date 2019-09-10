@@ -31,7 +31,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
 
-#include "tests/Aql/RowFetcherHelper.h"
+#include "Aql/RowFetcherHelper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>

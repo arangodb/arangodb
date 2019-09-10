@@ -599,6 +599,8 @@ Result DatabaseFeature::registerPostRecoveryCallback(std::function<Result()>&& c
 int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name, VPackSlice options,
                                     TRI_vocbase_t*& result) {
 
+  TRI_ASSERT(options.isObject());
+
   result = nullptr;
 
   if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
@@ -618,7 +620,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name, 
   // create database in storage engine
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
-        
+
   // the create lock makes sure no one else is creating a database while we're
   // inside this function
   MUTEX_LOCKER(mutexLocker, _databaseCreateLock);
@@ -832,7 +834,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
 #endif
     arangodb::aql::QueryCache::instance()->invalidate(vocbase);
 
-    auto* analyzers = 
+    auto* analyzers =
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     if (analyzers != nullptr) {
       analyzers->invalidate(*vocbase);

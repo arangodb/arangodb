@@ -41,8 +41,6 @@ class RestHandlerFactory;
 class GeneralServer;
 }  // namespace rest
 
-class RestServerThread;
-
 class GeneralServerFeature final : public application_features::ApplicationFeature {
  public:
   static rest::RestHandlerFactory* HANDLER_FACTORY;

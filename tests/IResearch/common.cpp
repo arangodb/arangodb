@@ -23,7 +23,6 @@
 
 #include "utils/utf8_path.hpp"
 
-//#include "catch.hpp"
 #include "Agency/AgencyComm.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
@@ -50,7 +49,8 @@
 #include "common.h"
 #include "gtest/gtest.h"
 #include "search/scorers.hpp"
-#include "tests/Basics/icu-helper.h"
+
+#include "Basics/icu-helper.h"
 
 #include "search/boolean_filter.hpp"
 

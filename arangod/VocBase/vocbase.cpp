@@ -1806,21 +1806,20 @@ void TRI_vocbase_t::addReplicationApplier() {
 }
 
 arangodb::Result TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
-  VPackObjectBuilder b(&result);
+  {
+    VPackObjectBuilder b(&result);
 
-  result.add("name", VPackValue(_name));
-  result.add("id", VPackValue(std::to_string(_id)));
-  result.add("isSystem", VPackValue(isSystem()));
+    result.add("name", VPackValue(_name));
+    result.add("id", VPackValue(std::to_string(_id)));
+    result.add("isSystem", VPackValue(isSystem()));
 
-  if (ServerState::instance()->isCoordinator()) {
-    result.add("path", VPackValue(path()));
-    arangodb::addVocbaseOptionsToOpenObject(result, _sharding, _replicationFactor, _minReplicationFactor);
-  } else {
-    result.add("path", VPackValue("none"));
+    if (ServerState::instance()->isCoordinator()) {
+      result.add("path", VPackValue(path()));
+      arangodb::addVocbaseOptionsToOpenObject(result, _sharding, _replicationFactor, _minReplicationFactor);
+    } else {
+      result.add("path", VPackValue("none"));
+    }
   }
-
-  result.close();
-
   return Result();
 }
 
@@ -2076,6 +2075,8 @@ TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld, bool warn)
 
 
 VocbaseOptions arangodb::getVocbaseOptions(VPackSlice const& options) {
+  LOG_DEVEL << "getVocbaseOptions - options" << options.toJson();
+  TRI_ASSERT(options.isObject());
   // Invalid options will be silently ignored. Default values will be used
   // instead.
   //
@@ -2091,6 +2092,7 @@ VocbaseOptions arangodb::getVocbaseOptions(VPackSlice const& options) {
   //  sharding -- must be "", "flexible" or "single"
   //  replicationFactor must be "satellite" or a natural number
   //  minReplicationFactor must be or a natural number
+
   {
     auto shardingSlice = options.get(StaticStrings::Sharding);
     if(! (shardingSlice.isString()  &&

@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/MutexUnlocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -176,7 +177,13 @@ MMFilesEngine::MMFilesEngine(application_features::ApplicationServer& server)
   server.addFeature(new MMFilesCompactionFeature(server));
 }
 
-MMFilesEngine::~MMFilesEngine() {}
+MMFilesEngine::~MMFilesEngine() {
+  try {
+    stopAllThreads();
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("2b598", ERR, Logger::ENGINES) << "unable to shut down compactors: " << ex.what();
+  }
+}
 
 // perform a physical deletion of the database
 Result MMFilesEngine::dropDatabase(TRI_vocbase_t& database) {
@@ -270,6 +277,7 @@ void MMFilesEngine::start() {
 // write requests to the storage engine after this call
 void MMFilesEngine::stop() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
+  stopAllThreads();
 
   if (!inRecovery()) {
     auto logfileManager = MMFilesLogfileManager::instance();
@@ -2725,6 +2733,52 @@ int MMFilesEngine::stopCompactor(TRI_vocbase_t* vocbase) {
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+// stop and delete the compactor and cleanup threads for all databases
+void MMFilesEngine::stopAllThreads() {
+  {
+    // send shutdown signals to all threads
+    MUTEX_LOCKER(locker, _threadsLock);
+
+    for (auto const& it : _compactorThreads) {
+      auto& thread = it.second;
+      thread->beginShutdown();
+      thread->signal();
+    }
+    
+    for (auto const& it : _cleanupThreads) {
+      auto& thread = it.second;
+      thread->beginShutdown();
+      thread->signal();
+    }
+  }
+   
+  {
+    // wait until all threads have shut down 
+    MUTEX_LOCKER(locker, _threadsLock);
+
+    for (auto const& it : _compactorThreads) {
+      auto& thread = it.second;
+      while (thread->isRunning()) {
+        MUTEX_UNLOCKER(unlocker, _threadsLock);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
+    }
+    
+    for (auto const& it : _cleanupThreads) {
+      auto& thread = it.second;
+      while (thread->isRunning()) {
+        MUTEX_UNLOCKER(unlocker, _threadsLock);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
+    }
+  }
+
+  // finally free the thread objects
+  MUTEX_LOCKER(locker, _threadsLock);
+  _compactorThreads.clear();
+  _cleanupThreads.clear();
 }
 
 /// @brief: check the initial markers in a datafile

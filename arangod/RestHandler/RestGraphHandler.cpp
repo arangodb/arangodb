@@ -341,7 +341,7 @@ void RestGraphHandler::generateGraphRemoved(bool removed, bool wasSynchronous,
 #if 0
   // TODO fix this in a major release upgrade
   if (wasSynchronous) {
-    code = rest::ResponseCode::CREATED; 
+    code = rest::ResponseCode::CREATED;
   }
 #endif
   resetResponse(code);
@@ -585,7 +585,7 @@ Result RestGraphHandler::edgeActionRemove(Graph& graph, const std::string& defin
     return result.result;
   }
 
-  generateRemoved(true, result.options.waitForSync, result.slice().get("old"),
+  generateRemoved(true, result._options.waitForSync, result.slice().get("old"),
                   *ctx->getVPackOptionsForDump());
 
   return Result();
@@ -811,11 +811,11 @@ Result RestGraphHandler::documentModify(graph::Graph& graph, const std::string& 
 
   switch (colType) {
     case TRI_COL_TYPE_DOCUMENT:
-      generateVertexModified(result.options.waitForSync, result.slice(),
+      generateVertexModified(result._options.waitForSync, result.slice(),
                              *ctx->getVPackOptionsForDump());
       break;
     case TRI_COL_TYPE_EDGE:
-      generateEdgeModified(result.options.waitForSync, result.slice(),
+      generateEdgeModified(result._options.waitForSync, result.slice(),
                            *ctx->getVPackOptionsForDump());
       break;
     default:
@@ -854,11 +854,11 @@ Result RestGraphHandler::documentCreate(graph::Graph& graph, std::string const& 
   } else {
     switch (colType) {
       case TRI_COL_TYPE_DOCUMENT:
-        generateVertexCreated(result.options.waitForSync, result.slice(),
+        generateVertexCreated(result._options.waitForSync, result.slice(),
                               *ctx->getVPackOptionsForDump());
         break;
       case TRI_COL_TYPE_EDGE:
-        generateEdgeCreated(result.options.waitForSync, result.slice(),
+        generateEdgeCreated(result._options.waitForSync, result.slice(),
                             *ctx->getVPackOptionsForDump());
         break;
       default:
@@ -889,7 +889,7 @@ Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
     return result.result;
   }
 
-  generateRemoved(true, result.options.waitForSync, result.slice().get("old"),
+  generateRemoved(true, result._options.waitForSync, result.slice().get("old"),
                   *ctx->getVPackOptionsForDump());
 
   return Result();
@@ -918,7 +918,7 @@ Result RestGraphHandler::graphActionRemoveGraph(graph::Graph const& graph) {
   }
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
-  generateGraphRemoved(true, result.options.waitForSync, *ctx->getVPackOptionsForDump());
+  generateGraphRemoved(true, result._options.waitForSync, *ctx->getVPackOptionsForDump());
 
   return Result();
 }

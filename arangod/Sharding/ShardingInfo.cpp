@@ -424,6 +424,15 @@ std::vector<std::string> const& ShardingInfo::shardKeys() const {
 
 std::shared_ptr<ShardMap> ShardingInfo::shardIds() const { return _shardIds; }
 
+std::shared_ptr<std::vector<ShardID>> ShardingInfo::shardListAsShardID() const {
+  auto vector = std::make_shared<std::vector<ShardID>>();
+  for (auto const& mapElement : *_shardIds) {
+    vector->emplace_back(mapElement.first);
+  }
+  std::sort(vector->begin(), vector->end());
+  return vector;
+}
+
 // return a filtered list of the collection's shards
 std::shared_ptr<ShardMap> ShardingInfo::shardIds(std::unordered_set<std::string> const& includedShards) const {
   if (includedShards.empty()) {
