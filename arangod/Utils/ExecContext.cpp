@@ -22,14 +22,14 @@
 
 #include "ExecContext.h"
 
-#include "Cluster/ServerState.h"
+#include "Auth/CollectionResource.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
 thread_local ExecContext const* ExecContext::CURRENT = nullptr;
 
-ExecContext ExecContext::Superuser(ExecContext::Type::Internal);
+ExecContext ExecContext::Superuser(auth::Level::RW, auth::Level::RW);
 
 // Should always contain a reference to current user context
 /*static*/ ExecContext const& ExecContext::current() {
@@ -39,13 +39,20 @@ ExecContext ExecContext::Superuser(ExecContext::Type::Internal);
   return ExecContext::Superuser;
 }
 
-ExecContext::ExecContext(ExecContext::Type type) {
-  TRI_ASSERT(ExecContext::Type::Internal
+ExecContext::ExecContext(auth::Level systemLevel, auth::Level dbLevel)
+  : _type(ExecContext::Type::Internal),
+    _user(auth::AuthUser{""}),
+    _database(auth::DatabaseResource{""}),
+    _canceled(false),
+    _systemDbAuthLevel(systemLevel),
+    _databaseAuthLevel(dbLevel) {
+  TRI_ASSERT(_systemDbAuthLevel != auth::Level::UNDEFINED);
+  TRI_ASSERT(_databaseAuthLevel != auth::Level::UNDEFINED);
 }
 
-ExecContext::ExecContext(ExecContext::Type type, std::string const& user,
-            std::string const& database, auth::Level systemLevel, auth::Level dbLevel)
-: _type(type),
+ExecContext::ExecContext(auth::AuthUser const& user,
+			 auth::DatabaseResource&& database, auth::Level systemLevel, auth::Level dbLevel)
+: _type(ExecContext::Type::User),
   _user(user),
   _database(database),
   _canceled(false),
@@ -58,7 +65,7 @@ ExecContext::ExecContext(ExecContext::Type type, std::string const& user,
 bool ExecContext::isAuthEnabled() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
-  return af->isActive();
+  return af != nullptr && af->isActive();
 }
 
 std::unique_ptr<ExecContext> ExecContext::create(auth::AuthUser const& user,
@@ -66,12 +73,28 @@ std::unique_ptr<ExecContext> ExecContext::create(auth::AuthUser const& user,
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
 
-  if (!af->isActive()) {
-    return std::make_unique<ExecContext>(Superuser));
+  if (af == nullptr && !af->isActive()) {
+    // you cannot use make_unique here because the constructor is protected
+    return std::unique_ptr<ExecContext>(new ExecContext(Superuser));
   }
 
-  return std::make_unique <
-         ExecContext(ExecContext::Type::Default, user, std::move(database));
+  auth::UserManager* um = af->userManager();
+  TRI_ASSERT(um != nullptr);
+
+  if (um == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+				   "unable to find userManager instance");
+  }
+
+  auth::Level dbLvl = um->databaseAuthLevel(user.internalUsername(), database._database);
+  auth::Level sysLvl = dbLvl;
+
+  if (database._database != TRI_VOC_SYSTEM_DATABASE) {
+    sysLvl = um->databaseAuthLevel(user.internalUsername(), TRI_VOC_SYSTEM_DATABASE);
+  }
+
+  // you cannot use make_unique here because the constructor is protected
+  return std::unique_ptr<ExecContext>(new ExecContext(user, std::move(database), sysLvl, dbLvl));
 }
 
 auth::Level ExecContext::authLevel(auth::DatabaseResource const& database) const {
@@ -80,16 +103,53 @@ auth::Level ExecContext::authLevel(auth::DatabaseResource const& database) const
     return _databaseAuthLevel;
   }
 
-  return requested <= _user->authLevel(database);
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  TRI_ASSERT(af != nullptr);
+
+  auth::UserManager* um = af->userManager();
+  TRI_ASSERT(um != nullptr);
+
+  if (um == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+				   "unable to find userManager instance");
+  }
+
+  return um->databaseAuthLevel(_user, database._database);
 }
 
-auth::Level ExecContext::collectionAuthLevel(auth::CollectionResource const& collection) const {
+auth::Level ExecContext::authLevel(auth::CollectionResource const& collection) const {
   if (isInternal()) {
     // should be RW for superuser, RO for read-only
     return _databaseAuthLevel;
   }
 
-  return _user->authLevel(collection);
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  TRI_ASSERT(af != nullptr);
+
+  if (!af->isActive()) {
+    return auth::Level::RW;
+  }
+
+  // handle fixed permissions here outside auth module.
+  // TODO: move this block above, such that it takes effect
+  //       when authentication is disabled
+  if (collection._database == TRI_VOC_SYSTEM_DATABASE && collection._collection == TRI_COL_NAME_USERS) {
+    return auth::Level::NONE;
+  } else if (collection._collection == "_queues") {
+    return auth::Level::RO;
+  } else if (collection._collection == "_frontend") {
+    return auth::Level::RW;
+  }  // intentional fall through
+
+  auth::UserManager* um = af->userManager();
+  TRI_ASSERT(um != nullptr);
+
+  if (um == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+				   "unable to find userManager instance");
+  }
+
+  return um->collectionAuthLevel(_user, collection._database, collection._collection);
 }
 }  // namespace arangodb
 

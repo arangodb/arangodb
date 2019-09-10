@@ -24,12 +24,19 @@
 #define ARANGOD_UTILS_EXECCONTEXT_H 1
 
 #include "Auth/Common.h"
+#include "Auth/AuthUser.h"
+#include "Auth/DatabaseResource.h"
 #include "Rest/RequestContext.h"
 
 #include <memory>
 #include <string>
 
 namespace arangodb {
+namespace auth {
+class AuthUser;
+class CollectionResource;
+}
+
 namespace transaction {
 class Methods;
 }
@@ -43,12 +50,17 @@ class ExecContext : public RequestContext {
   friend struct ExecContextScope;
   friend struct ExecContextSuperuserScope;
 
- protected:
-  enum class Type { Default, Internal };
+ public:
+  static std::unique_ptr<ExecContext> create(auth::AuthUser const& user,
+                                             auth::DatabaseResource&& database);
 
-  ExecContext(ExecContext::Type type, std::string const& user, std::string const& database,
+ protected:
+  enum class Type { User, Internal };
+
+  ExecContext(auth::AuthUser const& user, auth::DatabaseResource&& database,
               auth::Level systemLevel, auth::Level dbLevel);
-  ExecContext(ExecContext const&) = delete;
+  ExecContext(auth::Level systemLevel, auth::Level dbLevel);
+  ExecContext(ExecContext const&);
   ExecContext(ExecContext&&) = delete;
 
  public:
@@ -63,10 +75,6 @@ class ExecContext : public RequestContext {
   // an internal superuser context; is a singleton instance; deleting is
   // an error
   static ExecContext const& superuser() { return ExecContext::Superuser; }
-
-  // @brief create user context, caller is responsible for deleting
-  static std::unique_ptr<ExecContext> create(auth::AuthUser const& user,
-                                             auth::DatabaseResource&& database);
 
   // an internal user is none / ro / rw for all collections / dbs
   // mainly used to override further permission resolution
@@ -110,20 +118,15 @@ class ExecContext : public RequestContext {
   }
 
   // returns true if auth level is above or equal `requested`
-  bool canUseDatabase(std::string const& db, auth::Level requested) const;
+  auth::Level authLevel(auth::DatabaseResource const&) const;
 
-  /// @brief returns auth level for user
-  auth::Level collectionAuthLevel(std::string const& dbname, std::string const& collection) const;
+  // returns auth level for user
+  auth::Level authLevel(auth::CollectionResource const&) const;
 
-  /// @brief returns true if auth levels is above or equal `requested`
-  bool canUseCollection(std::string const& collection, auth::Level requested) const {
-    return canUseCollection(_database, collection, requested);
-  }
-
-  /// @brief returns true if auth level is above or equal `requested`
-  bool canUseCollection(std::string const& db, std::string const& coll,
+  // returns true if auth level is above or equal `requested`
+  bool canUseCollection(auth::CollectionResource const& coll,
                         auth::Level requested) const {
-    return requested <= collectionAuthLevel(db, coll);
+    return requested <= authLevel(coll);
   }
 
  protected:
@@ -133,7 +136,7 @@ class ExecContext : public RequestContext {
   std::string const _user;
 
   // current database to use
-  std::string const _database;
+  auth::DatabaseResource const _database;
 
   // should be used to indicate a canceled request / thread
   bool _canceled;

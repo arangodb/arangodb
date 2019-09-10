@@ -125,12 +125,10 @@ class UserManager {
   inline bool refreshUser(std::string const& username) { return false; }
 #endif
 
- private:
   auth::Level databaseAuthLevel(std::string const& username,
                                 std::string const& dbname, bool configured = false);
   auth::Level collectionAuthLevel(std::string const& username, std::string const& dbname,
                                   std::string const& coll, bool configured = false);
- public:
 
   /// Overwrite internally cached permissions, only use
   /// for testing purposes
