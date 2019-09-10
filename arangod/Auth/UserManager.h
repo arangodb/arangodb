@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -100,8 +100,7 @@ class UserManager {
                    bool active, velocypack::Slice extras);
 
   /// Enumerate list of all users
-  Result enumerateUsers(std::function<bool(auth::User&)>&&,
-                        bool retryOnConflict);
+  Result enumerateUsers(std::function<bool(auth::User&)>&&, bool retryOnConflict);
   /// Update specific user
   Result updateUser(std::string const& user, UserCallback&&);
   /// Access user without modifying it
@@ -126,10 +125,12 @@ class UserManager {
   inline bool refreshUser(std::string const& username) { return false; }
 #endif
 
+ private:
   auth::Level databaseAuthLevel(std::string const& username,
                                 std::string const& dbname, bool configured = false);
   auth::Level collectionAuthLevel(std::string const& username, std::string const& dbname,
                                   std::string const& coll, bool configured = false);
+ public:
 
   /// Overwrite internally cached permissions, only use
   /// for testing purposes

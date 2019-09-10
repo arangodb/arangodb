@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2017-2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,19 +26,21 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "VocBase/vocbase.h"
 
-using namespace arangodb;
-
+namespace arangodb {
 thread_local ExecContext const* ExecContext::CURRENT = nullptr;
 
-ExecContext ExecContext::Superuser(ExecContext::Type::Internal, /*name*/"", /*db*/"",
-                                   auth::Level::RW, auth::Level::RW);
+ExecContext ExecContext::Superuser(ExecContext::Type::Internal);
 
-/// Should always contain a reference to current user context
+// Should always contain a reference to current user context
 /*static*/ ExecContext const& ExecContext::current() {
   if (ExecContext::CURRENT != nullptr) {
     return *ExecContext::CURRENT;
   }
   return ExecContext::Superuser;
+}
+
+ExecContext::ExecContext(ExecContext::Type type) {
+  TRI_ASSERT(ExecContext::Type::Internal
 }
 
 ExecContext::ExecContext(ExecContext::Type type, std::string const& user,
@@ -49,10 +51,9 @@ ExecContext::ExecContext(ExecContext::Type type, std::string const& user,
   _canceled(false),
   _systemDbAuthLevel(systemLevel),
   _databaseAuthLevel(dbLevel) {
-    TRI_ASSERT(_systemDbAuthLevel != auth::Level::UNDEFINED);
-    TRI_ASSERT(_databaseAuthLevel != auth::Level::UNDEFINED);
-  }
-
+  TRI_ASSERT(_systemDbAuthLevel != auth::Level::UNDEFINED);
+  TRI_ASSERT(_databaseAuthLevel != auth::Level::UNDEFINED);
+}
 
 bool ExecContext::isAuthEnabled() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
@@ -60,11 +61,46 @@ bool ExecContext::isAuthEnabled() {
   return af->isActive();
 }
 
-/// @brief an internal superuser context, is
-///        a singleton instance, deleting is an error
-ExecContext const& ExecContext::superuser() { return ExecContext::Superuser; }
+std::unique_ptr<ExecContext> ExecContext::create(auth::AuthUser const& user,
+                                                 auth::DatabaseResource&& database) {
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  TRI_ASSERT(af != nullptr);
 
-std::unique_ptr<ExecContext> ExecContext::create(std::string const& user, std::string const& dbname) {
+  if (!af->isActive()) {
+    return std::make_unique<ExecContext>(Superuser));
+  }
+
+  return std::make_unique <
+         ExecContext(ExecContext::Type::Default, user, std::move(database));
+}
+
+auth::Level ExecContext::authLevel(auth::DatabaseResource const& database) const {
+  if (isInternal() || database.equals(_database)) {
+    // should be RW for superuser, RO for read-only
+    return _databaseAuthLevel;
+  }
+
+  return requested <= _user->authLevel(database);
+}
+
+auth::Level ExecContext::collectionAuthLevel(auth::CollectionResource const& collection) const {
+  if (isInternal()) {
+    // should be RW for superuser, RO for read-only
+    return _databaseAuthLevel;
+  }
+
+  return _user->authLevel(collection);
+}
+}  // namespace arangodb
+
+// ================================================================================
+// ================================================================================
+// ================================================================================
+// ================================================================================
+// ================================================================================
+
+/*
+std::string const& user, std::string const& dbname) {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   auth::Level dbLvl = auth::Level::RW;
@@ -81,12 +117,14 @@ std::unique_ptr<ExecContext> ExecContext::create(std::string const& user, std::s
       sysLvl = um->databaseAuthLevel(user, TRI_VOC_SYSTEM_DATABASE);
     }
   }
-  auto* ptr = new ExecContext(ExecContext::Type::Default, user, dbname, sysLvl, dbLvl);
-  return std::unique_ptr<ExecContext>(ptr);
+  auto* ptr = new ExecContext(ExecContext::Type::Default, user, dbname, sysLvl,
+dbLvl); return std::unique_ptr<ExecContext>(ptr);
 }
+*/
 
-bool ExecContext::canUseDatabase(std::string const& db, auth::Level requested) const {
-  if (isInternal() || _database == db) {
+/*
+bool ExecContext::canUseDatabase(std::string const& db, auth::Level requested)
+const { if (isInternal() || _database == db) {
     // should be RW for superuser, RO for read-only
     return requested <= _databaseAuthLevel;
   }
@@ -105,7 +143,9 @@ bool ExecContext::canUseDatabase(std::string const& db, auth::Level requested) c
   }
   return true;
 }
+*/
 
+/*
 /// @brief returns auth level for user
 auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
                                              std::string const& coll) const {
@@ -138,3 +178,4 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
   }
   return um->collectionAuthLevel(_user, dbname, coll);
 }
+*/

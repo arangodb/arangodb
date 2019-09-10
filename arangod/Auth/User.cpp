@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Auth/User.h"
+
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -443,7 +444,8 @@ bool auth::User::removeDatabase(std::string const& dbname) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN, "Cannot remove access level of 'root' to _system");
   }
-  LOG_TOPIC("f1382", DEBUG, Logger::AUTHENTICATION) << _username << ": Removing grant on " << dbname;
+  LOG_TOPIC("f1382", DEBUG, Logger::AUTHENTICATION)
+      << _username << ": Removing grant on " << dbname;
   return _dbAccess.erase(dbname) > 0;
 }
 

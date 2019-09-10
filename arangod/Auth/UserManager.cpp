@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -127,7 +127,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(aql::QueryRegistry* queryRegi
   if (vocbase == nullptr) {
     LOG_TOPIC("b8c47", DEBUG, arangodb::Logger::AUTHENTICATION)
         << "system database is unknown";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "system database is unknown");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "system database is unknown");
   }
 
   // we cannot set this execution context, otherwise the transaction
@@ -151,7 +152,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(aql::QueryRegistry* queryRegi
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.result.errorNumber(),
-                                   "Error executing user query: " + queryResult.result.errorMessage());
+                                   "Error executing user query: " +
+                                       queryResult.result.errorMessage());
   }
 
   VPackSlice usersSlice = queryResult.data->slice();
@@ -326,7 +328,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
       // user was outdated, we should trigger a reload
       triggerLocalReload();
       LOG_TOPIC("cf922", DEBUG, Logger::AUTHENTICATION)
-      << "Cannot update user : '" << res.errorMessage() << "'";
+          << "Cannot update user : '" << res.errorMessage() << "'";
     }
   }
   return res;
@@ -344,7 +346,8 @@ void auth::UserManager::createRootUser() {
   WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
   UserMap::iterator const& it = _userCache.find("root");
   if (it != _userCache.end()) {
-    LOG_TOPIC("bbc97", TRACE, Logger::AUTHENTICATION) << "\"root\" already exists";
+    LOG_TOPIC("bbc97", TRACE, Logger::AUTHENTICATION)
+        << "\"root\" already exists";
     return;
   }
   TRI_ASSERT(_userCache.empty());
@@ -373,7 +376,8 @@ void auth::UserManager::createRootUser() {
         << "unable to create user \"root\": " << ex.what();
   } catch (...) {
     // No action
-    LOG_TOPIC("268eb", ERR, Logger::AUTHENTICATION) << "unable to create user \"root\"";
+    LOG_TOPIC("268eb", ERR, Logger::AUTHENTICATION)
+        << "unable to create user \"root\"";
   }
 }
 
@@ -488,20 +492,20 @@ Result auth::UserManager::enumerateUsers(std::function<bool(auth::User&)>&& func
       }
     }
   }
-  
+
   bool triggerUpdate = !toUpdate.empty();
-  
+
   Result res;
   do {
     auto it = toUpdate.begin();
-    while(it != toUpdate.end()) {
+    while (it != toUpdate.end()) {
       WRITE_LOCKER(writeGuard, _userCacheLock);
-      res = storeUserInternal(*it, /*replace*/true);
-      
+      res = storeUserInternal(*it, /*replace*/ true);
+
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && retryOnConflict) {
         res.reset();
         writeGuard.unlock();
-        loadFromDB(); // should be noop iff nothing changed
+        loadFromDB();  // should be noop iff nothing changed
         writeGuard.lock();
         UserMap::iterator it2 = _userCache.find(it->username());
         if (it2 != _userCache.end()) {
@@ -515,8 +519,8 @@ Result auth::UserManager::enumerateUsers(std::function<bool(auth::User&)>&& func
       }
       it = toUpdate.erase(it);
     }
-  } while(!toUpdate.empty() && res.ok() &&
-          !application_features::ApplicationServer::isStopping());
+  } while (!toUpdate.empty() && res.ok() &&
+           !application_features::ApplicationServer::isStopping());
 
   // cannot hold _userCacheLock while  invalidating token cache
   if (triggerUpdate) {
@@ -713,7 +717,8 @@ bool auth::UserManager::checkPassword(std::string const& username, std::string c
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (it != _userCache.end() && (it->second.source() == auth::Source::Local)) {
     if (af != nullptr && !af->localAuthentication()) {
-      LOG_TOPIC("d3220", DEBUG, Logger::AUTHENTICATION) << "Local users are forbidden";
+      LOG_TOPIC("d3220", DEBUG, Logger::AUTHENTICATION)
+          << "Local users are forbidden";
       return false;
     }
     auth::User const& user = it->second;

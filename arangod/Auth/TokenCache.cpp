@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -106,7 +106,8 @@ void auth::TokenCache::invalidateBasicCache() {
 // private
 auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(std::string const& secret) {
   if (_userManager == nullptr) {  // server does not support users
-    LOG_TOPIC("9900c", DEBUG, Logger::AUTHENTICATION) << "Basic auth not supported";
+    LOG_TOPIC("9900c", DEBUG, Logger::AUTHENTICATION)
+        << "Basic auth not supported";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
@@ -185,7 +186,8 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string con
       // would have thrown if not found
       if (entry->expired()) {
         _jwtCache.remove(jwt);
-        LOG_TOPIC("65e15", TRACE, Logger::AUTHENTICATION) << "JWT Token expired";
+        LOG_TOPIC("65e15", TRACE, Logger::AUTHENTICATION)
+            << "JWT Token expired";
         return auth::TokenCache::Entry::Unauthenticated();
       }
       if (_userManager != nullptr) {
@@ -303,12 +305,14 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
 
   VPackSlice const issSlice = bodySlice.get("iss");
   if (!issSlice.isString()) {
-    LOG_TOPIC("ce204", TRACE, arangodb::Logger::AUTHENTICATION) << "missing iss value";
+    LOG_TOPIC("ce204", TRACE, arangodb::Logger::AUTHENTICATION)
+        << "missing iss value";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
   if (issSlice.copyString() != "arangodb") {
-    LOG_TOPIC("2547e", TRACE, arangodb::Logger::AUTHENTICATION) << "invalid iss value";
+    LOG_TOPIC("2547e", TRACE, arangodb::Logger::AUTHENTICATION)
+        << "invalid iss value";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
@@ -334,19 +338,19 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
     VPackSlice const paths = bodySlice.get("allowed_paths");
     if (!paths.isArray()) {
       LOG_TOPIC("89898", TRACE, arangodb::Logger::AUTHENTICATION)
-        << "allowed_paths must be an array";
+          << "allowed_paths must be an array";
       return auth::TokenCache::Entry::Unauthenticated();
     }
     if (paths.length() == 0) {
       LOG_TOPIC("89893", TRACE, arangodb::Logger::AUTHENTICATION)
-        << "allowed_paths may not be empty";
+          << "allowed_paths may not be empty";
       return auth::TokenCache::Entry::Unauthenticated();
     }
     for (auto const& path : VPackArrayIterator(paths)) {
       if (!path.isString()) {
         LOG_TOPIC("89891", TRACE, arangodb::Logger::AUTHENTICATION)
-          << "allowed_paths may only contain strings";
-      return auth::TokenCache::Entry::Unauthenticated();
+            << "allowed_paths may only contain strings";
+        return auth::TokenCache::Entry::Unauthenticated();
       }
       authResult._allowedPaths.push_back(path.copyString());
     }
