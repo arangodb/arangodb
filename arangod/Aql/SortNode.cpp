@@ -337,7 +337,7 @@ CostEstimate SortNode::estimateCost() const {
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-inline void arangodb::aql::SortNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
+void SortNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
   for (auto& p : _elements) {
     vars.emplace(p.var);
   }
@@ -347,7 +347,7 @@ inline void arangodb::aql::SortNode::getVariablesUsedHere(arangodb::HashSet<Vari
   }
 }
 
-std::vector<arangodb::aql::Variable const*> arangodb::aql::SortNode::getVariablesSetHere() const {
+std::vector<arangodb::aql::Variable const*> SortNode::getVariablesSetHere() const {
   if (_outMaterializedDocument != nullptr) {
     return std::vector<arangodb::aql::Variable const*>{_outMaterializedDocument};
   } else {

@@ -123,7 +123,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       });
 	  assertEqual(0, expected.size);
 	}
-  }
+  };
 }
 
 jsunity.run(lateDocumentMaterializationRuleTestSuite);

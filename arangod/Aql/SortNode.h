@@ -96,7 +96,7 @@ class SortNode : public ExecutionNode {
 
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  inline void SortNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const;
+  void SortNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final;
 
   std::vector<arangodb::aql::Variable const*> getVariablesSetHere() const override final;
 
