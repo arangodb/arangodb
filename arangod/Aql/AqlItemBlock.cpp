@@ -243,7 +243,7 @@ void AqlItemBlock::destroy() noexcept {
     }
 
     for (size_t i = 0; i < numEntries(); i++) {
-      auto &it = _data[i];
+      auto& it = _data[i];
       if (it.requiresDestruction()) {
         auto it2 = _valueCount.find(it);
         if (it2 != _valueCount.end()) {  // if we know it, we are still responsible
@@ -256,7 +256,7 @@ void AqlItemBlock::destroy() noexcept {
           }
         }
       }
-        // Note that if we do not know it the thing it has been stolen from us!
+      // Note that if we do not know it the thing it has been stolen from us!
       it.erase();
     }
     _valueCount.clear();
@@ -286,7 +286,7 @@ void AqlItemBlock::shrink(size_t nrItems) {
   }
 
   decreaseMemoryUsage(sizeof(AqlValue) * (_nrItems - nrItems) * _nrRegs);
-  
+
   for (size_t i = _nrItems * _nrRegs; i < _data.size(); ++i) {
     AqlValue& a = _data[i];
     if (a.requiresDestruction()) {
@@ -339,7 +339,7 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
 
     // Values will not be re-initialized, but are expected to be that way.
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    for(size_t i = currentSize; i < targetSize; i++) {
+    for (size_t i = currentSize; i < targetSize; i++) {
       TRI_ASSERT(_data[i].isEmpty());
     }
 #endif
@@ -697,4 +697,213 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result)
 
 ResourceMonitor& AqlItemBlock::resourceMonitor() noexcept {
   return *_manager.resourceMonitor();
+}
+
+AqlItemBlock::~AqlItemBlock() {
+  TRI_ASSERT(_refCount == 0);
+  destroy();
+  decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * _nrRegs);
+}
+
+void AqlItemBlock::increaseMemoryUsage(size_t value) {
+  resourceMonitor().increaseMemoryUsage(value);
+}
+
+void AqlItemBlock::decreaseMemoryUsage(size_t value) noexcept {
+  resourceMonitor().decreaseMemoryUsage(value);
+}
+
+AqlValue AqlItemBlock::getValue(size_t index, RegisterId varNr) const {
+  TRI_ASSERT(index < _nrItems);
+  TRI_ASSERT(varNr < _nrRegs);
+  return _data[index * _nrRegs + varNr];
+}
+
+AqlValue const& AqlItemBlock::getValueReference(size_t index, RegisterId varNr) const {
+  TRI_ASSERT(index < _nrItems);
+  TRI_ASSERT(varNr < _nrRegs);
+  return _data[index * _nrRegs + varNr];
+}
+
+void AqlItemBlock::setValue(size_t index, RegisterId varNr, AqlValue const& value) {
+  TRI_ASSERT(index < _nrItems);
+  TRI_ASSERT(varNr < _nrRegs);
+  TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
+
+  // First update the reference count, if this fails, the value is empty
+  if (value.requiresDestruction()) {
+    if (++_valueCount[value] == 1) {
+      size_t mem = value.memoryUsage();
+      increaseMemoryUsage(mem);
+    }
+  }
+
+  _data[index * _nrRegs + varNr] = value;
+}
+
+template <typename... Args>
+void AqlItemBlock::emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
+  TRI_ASSERT(index < _nrItems);
+  TRI_ASSERT(varNr < _nrRegs);
+
+  AqlValue* p = &_data[index * _nrRegs + varNr];
+  TRI_ASSERT(p->isEmpty());
+  // construct the AqlValue in place
+  AqlValue* value;
+  try {
+    value = new (p) AqlValue(std::forward<Args>(args)...);
+  } catch (...) {
+    // clean up the cell
+    _data[index * _nrRegs + varNr].erase();
+    throw;
+  }
+
+  try {
+    // Now update the reference count, if this fails, we'll roll it back
+    if (value->requiresDestruction()) {
+      if (++_valueCount[*value] == 1) {
+        increaseMemoryUsage(value->memoryUsage());
+      }
+    }
+  } catch (...) {
+    // invoke dtor
+    value->~AqlValue();
+    // TODO - instead of disabling it completly we could you use
+    // a constexpr if() with c++17
+    _data[index * _nrRegs + varNr].destroy();
+    throw;
+  }
+}
+template void AqlItemBlock::emplaceValue<VPackSlice>(size_t index, RegisterId varNr,
+                                                     VPackSlice&& args);
+
+void AqlItemBlock::destroyValue(size_t index, RegisterId varNr) {
+  auto& element = _data[index * _nrRegs + varNr];
+
+  if (element.requiresDestruction()) {
+    auto it = _valueCount.find(element);
+
+    if (it != _valueCount.end()) {
+      if (--(it->second) == 0) {
+        decreaseMemoryUsage(element.memoryUsage());
+        _valueCount.erase(it);
+        element.destroy();
+        return;  // no need for an extra element.erase() in this case
+      }
+    }
+  }
+
+  element.erase();
+}
+
+void AqlItemBlock::eraseValue(size_t index, RegisterId varNr) {
+  auto& element = _data[index * _nrRegs + varNr];
+
+  if (element.requiresDestruction()) {
+    auto it = _valueCount.find(element);
+
+    if (it != _valueCount.end()) {
+      if (--(it->second) == 0) {
+        decreaseMemoryUsage(element.memoryUsage());
+        try {
+          _valueCount.erase(it);
+        } catch (...) {
+        }
+      }
+    }
+  }
+
+  element.erase();
+}
+
+void AqlItemBlock::eraseAll() {
+  for (size_t i = 0; i < numEntries(); i++) {
+    auto& it = _data[i];
+    if (!it.isEmpty()) {
+      it.erase();
+    }
+  }
+
+  for (auto const& it : _valueCount) {
+    if (it.second > 0) {
+      decreaseMemoryUsage(it.first.memoryUsage());
+    }
+  }
+  _valueCount.clear();
+}
+
+void AqlItemBlock::copyValuesFromRow(size_t currentRow, RegisterId curRegs, size_t fromRow) {
+  TRI_ASSERT(currentRow != fromRow);
+
+  for (RegisterId i = 0; i < curRegs; i++) {
+    if (_data[currentRow * _nrRegs + i].isEmpty()) {
+      // First update the reference count, if this fails, the value is empty
+      if (_data[fromRow * _nrRegs + i].requiresDestruction()) {
+        ++_valueCount[_data[fromRow * _nrRegs + i]];
+      }
+      TRI_ASSERT(_data[currentRow * _nrRegs + i].isEmpty());
+      _data[currentRow * _nrRegs + i] = _data[fromRow * _nrRegs + i];
+    }
+  }
+}
+
+void AqlItemBlock::copyValuesFromFirstRow(size_t currentRow, RegisterId curRegs) {
+  TRI_ASSERT(currentRow > 0);
+
+  if (curRegs == 0) {
+    // nothing to do
+    return;
+  }
+  TRI_ASSERT(currentRow < _nrItems);
+  TRI_ASSERT(curRegs <= _nrRegs);
+
+  copyValuesFromRow(currentRow, curRegs, 0);
+}
+
+void AqlItemBlock::copyValuesFromRow(size_t currentRow,
+                                     std::unordered_set<RegisterId> const& regs,
+                                     size_t fromRow) {
+  TRI_ASSERT(currentRow != fromRow);
+
+  for (auto const reg : regs) {
+    TRI_ASSERT(reg < getNrRegs());
+    if (getValueReference(currentRow, reg).isEmpty()) {
+      // First update the reference count, if this fails, the value is empty
+      if (getValueReference(fromRow, reg).requiresDestruction()) {
+        ++_valueCount[getValueReference(fromRow, reg)];
+      }
+      _data[currentRow * _nrRegs + reg] = getValueReference(fromRow, reg);
+    }
+  }
+}
+
+uint32_t AqlItemBlock::valueCount(AqlValue const& v) const {
+  auto it = _valueCount.find(v);
+
+  if (it == _valueCount.end()) {
+    return 0;
+  }
+  return it->second;
+}
+
+void AqlItemBlock::steal(AqlValue const& value) {
+  if (value.requiresDestruction()) {
+    if (_valueCount.erase(value)) {
+      decreaseMemoryUsage(value.memoryUsage());
+    }
+  }
+}
+
+RegisterId AqlItemBlock::getNrRegs() const noexcept { return _nrRegs; }
+size_t AqlItemBlock::size() const noexcept { return _nrItems; }
+size_t AqlItemBlock::numEntries() const { return _nrRegs * _nrItems; }
+size_t AqlItemBlock::capacity() const noexcept { return _data.capacity(); }
+AqlItemBlockManager& AqlItemBlock::aqlItemBlockManager() noexcept {
+  return _manager;
+}
+size_t AqlItemBlock::getRefCount() const noexcept { return _refCount; }
+void AqlItemBlock::incrRefCount() const noexcept { ++_refCount; }
+void AqlItemBlock::decrRefCount() const noexcept {
+  TRI_ASSERT(_refCount > 0);
+  --_refCount;
 }

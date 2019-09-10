@@ -25,7 +25,6 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/SortExecutor.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -130,4 +129,9 @@ ExecutionState AllRowsFetcher::upstreamState() {
     return ExecutionState::DONE;
   }
   return ExecutionState::HASMORE;
+}
+
+std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlockForPassthrough(size_t) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

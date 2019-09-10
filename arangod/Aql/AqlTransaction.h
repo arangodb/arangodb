@@ -53,7 +53,7 @@ class AqlTransaction : public transaction::Methods {
                                     std::unordered_set<std::string>());
 
   /// @brief end the transaction
-  ~AqlTransaction() {}
+  ~AqlTransaction() override = default;
 
   /// @brief add a list of collections to the transaction
   Result addCollections(std::map<std::string, aql::Collection*> const& collections);

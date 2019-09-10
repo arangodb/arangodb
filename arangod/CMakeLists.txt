@@ -218,9 +218,11 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
   Aql/AqlItemBlockUtils.cpp
+  Aql/AqlItemMatrix.cpp
   Aql/AqlResult.cpp
   Aql/AqlTransaction.cpp
   Aql/AqlValue.cpp
+  Aql/AqlValueGroup.cpp
   Aql/Arithmetic.cpp
   Aql/Ast.cpp
   Aql/AstNode.cpp
