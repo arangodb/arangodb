@@ -473,7 +473,7 @@ function ActiveFailoverSuite() {
       currentLead = checkForFailover(currentLead);
 
       let cc = checkData(currentLead);
-      assertTrue(cc >= atLeast, "The new Leader has too little documents");
+      assertTrue(cc >= atLeast, "The new Leader has too few documents");
       print("Number of documents is in acceptable range");
 
       assertTrue(checkInSync(currentLead, servers, oldLead));
