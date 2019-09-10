@@ -323,7 +323,9 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/SortRegister.cpp
   Aql/SortedCollectExecutor.cpp
   Aql/SortingGatherExecutor.cpp
+  Aql/SubqueryEndExecutionNode.cpp
   Aql/SubqueryExecutor.cpp
+  Aql/SubqueryStartExecutionNode.cpp
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp

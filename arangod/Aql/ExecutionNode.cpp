@@ -101,6 +101,8 @@ std::unordered_map<int, std::string const> const typeNames{
      "SingleRemoteOperationNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW),
      "EnumerateViewNode"},
+    {static_cast<int>(ExecutionNode::SUBQUERY_START), "SubqueryStartNode"},
+    {static_cast<int>(ExecutionNode::SUBQUERY_END), "SubqueryEndNode"},
 };
 
 // FIXME -- this temporary function should be
