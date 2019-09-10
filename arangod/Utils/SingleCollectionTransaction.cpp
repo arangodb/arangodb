@@ -92,6 +92,14 @@ LogicalCollection* SingleCollectionTransaction::documentCollection() {
   TRI_ASSERT(_documentCollection != nullptr);
   return _documentCollection;
 }
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+TRI_voc_cid_t SingleCollectionTransaction::addCollectionAtRuntime(std::string const& name) {
+  // sanity check
+  TRI_ASSERT(name == resolveTrxCollection()->collectionName());
+  return _cid;
+}
+#endif
 
 /// @brief get the underlying collection's name
 std::string SingleCollectionTransaction::name() {
