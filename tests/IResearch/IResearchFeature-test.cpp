@@ -504,8 +504,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     ASSERT_TRUE((nullptr != ci));
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase", vocbase)));
+    ASSERT_TRUE(database->createDatabase(1, "testDatabase", vocbase).ok());
 
     // simulate heartbeat thread (create database in current)
     // this is stupid.
