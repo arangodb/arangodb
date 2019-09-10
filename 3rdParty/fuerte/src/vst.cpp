@@ -207,6 +207,18 @@ void message::authJWT(std::string const& token,
   builder.close();
 }
 
+/// @brief creates a slice containing a VST auth message with JWT encryption
+void message::authNegotiate(std::string const& token,
+                            VPackBuffer<uint8_t>& buffer) {
+  VPackBuilder builder(buffer);
+  builder.openArray();
+  builder.add(VPackValue(1)); // version
+  builder.add(VPackValue(static_cast<int>(MessageType::Authentication)));  // type
+  builder.add(VPackValue("negotiate")); // encryption
+  builder.add(VPackValue(token)); // token
+  builder.close();
+}
+
 /// @brief creates a slice containing a VST auth message with plain enctyption
 void message::authBasic(std::string const& username,
                         std::string const& password,

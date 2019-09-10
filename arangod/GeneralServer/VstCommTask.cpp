@@ -375,6 +375,9 @@ void VstCommTask<T>::handleAuthHeader(VPackSlice header, uint64_t mId) {
     std::string pass = header.at(4).copyString();
     authString = basics::StringUtils::encodeBase64(user + ":" + pass);
     _authMethod = AuthenticationMethod::BASIC;
+  } else if (encryption == "negotiate") {
+    _authMethod = AuthenticationMethod::NEGOTIATE;
+    authString = header.at(3).copyString();
   } else {
     LOG_TOPIC("01f44", WARN, Logger::REQUESTS)
       << "Unknown VST encryption type";

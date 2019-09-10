@@ -172,6 +172,8 @@ void VstConnection<ST>::sendAuthenticationRequest() {
                             item->_buffer);
   } else if (this->_config._authenticationType == AuthenticationType::Jwt) {
     vst::message::authJWT(this->_config._jwtToken, item->_buffer);
+  } else if (this->_config._authenticationType == AuthenticationType::Negotiate) {
+    vst::message::authNegotiate(this->_config._jwtToken, item->_buffer);
   }
   assert(item->_buffer.size() < defaultMaxChunkSize);
 
