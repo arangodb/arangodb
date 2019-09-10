@@ -133,7 +133,6 @@ function lateDocumentMaterializationRuleTestSuite () {
 	  // FIXME: we need this to hold calculation node after SORT node in cluster. 
 	  // However this should be fixed in rules on cluster
 	  let plan = AQL_EXPLAIN(query, {}, {optimizer:{rules:['-move-calculations-up', '-move-calculations-up-2']}}).plan;
-	  print(plan);
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
 	  let result = AQL_EXECUTE(query, {}, {optimizer:{rules:['-move-calculations-up', '-move-calculations-up-2']}});
       assertEqual(4, result.json.length);
