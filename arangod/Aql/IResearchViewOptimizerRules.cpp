@@ -283,7 +283,7 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
   if (!plan->contains(EN::ENUMERATE_IRESEARCH_VIEW) ||
       // we need sort node  to be present  (without sort it will be just skip, nothing to optimize)
       !plan->contains(EN::SORT) ||
-      // limit node is key point there  - it will do actual materialization
+      // limit node is needed as without limit all documents will be returned anyway, nothing to optimize
       !plan->contains(EN::LIMIT)) {
     return;
   }
@@ -317,7 +317,6 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
         Ast* ast = plan->getAst();
         auto* localDocIdTmp = ast->variables()->createTemporaryVariable();
         auto* localColPtrTmp = ast->variables()->createTemporaryVariable();
-        auto& limitNode = *EN::castTo<LimitNode*>(node);
         viewNode.skipMaterializationTo(localColPtrTmp, localDocIdTmp);
         sortNode->doMaterializationOf(localColPtrTmp, localDocIdTmp, &viewNode.outVariable());
         modified = true;
