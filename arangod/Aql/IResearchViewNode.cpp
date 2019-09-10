@@ -671,12 +671,12 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, size_t id,
       _vocbase(vocbase),
       _view(view),
       _outVariable(&outVariable),
+      _outNonMaterializedDocId(nullptr),
+      _outNonMaterializedColPtr(nullptr),
       // in case if filter is not specified
       // set it to surrogate 'RETURN ALL' node
       _filterCondition(filterCondition ? filterCondition : &ALL),
-      _scorers(std::move(scorers)),
-      _outNonMaterializedDocId(nullptr),
-      _outNonMaterializedColPtr(nullptr) {
+      _scorers(std::move(scorers)) {
   TRI_ASSERT(_view);
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
   TRI_ASSERT(LogicalView::category() == _view->category());
