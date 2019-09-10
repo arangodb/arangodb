@@ -81,89 +81,226 @@ V8ClientConnection::~V8ClientConnection() {
   _builder.onFailure(nullptr);  // reset callback
   shutdownConnection();
 }
+#include "Enterprise/Kerberos/KerberosAuthenticationHandler.h"
+
+#include <netinet/in.h>
+#include <boost/asio.hpp>
 
 std::shared_ptr<fuerte::Connection> V8ClientConnection::createConnection() {
- 
-  auto newConnection = _builder.connect(_loop);
-  fuerte::StringMap params{{"details", "true"}};
-  auto req = fuerte::createRequest(fuerte::RestVerb::Get, "/_api/version", params);
-  req->header.database = _databaseName;
-  req->timeout(std::chrono::seconds(30));
-  try {
-    auto res = newConnection->sendRequest(std::move(req));
+  while (true) {
+    auto newConnection = _builder.connect(_loop);
+    fuerte::StringMap params{{"details", "true"}};
+    auto req = fuerte::createRequest(fuerte::RestVerb::Get, "/_api/version", params);
+    req->header.database = _databaseName;
+    req->timeout(std::chrono::seconds(30));
+    try {
+      auto res = newConnection->sendRequest(std::move(req));
 
-    _lastHttpReturnCode = res->statusCode();
-    if (_lastHttpReturnCode >= 400) {
-      auto const& headers = res->messageHeader().meta;
-      auto it = headers.find("http/1.1");
-      if (it != headers.end()) {
-        _lastErrorMessage = (*it).second;
+      _lastHttpReturnCode = res->statusCode();
+      if (_lastHttpReturnCode == 401) {
+        auto const& headers = res->messageHeader().meta;
+        auto it = headers.find(StaticStrings::WwwAuthenticate);
+        if (it != headers.end()) {
+          auto value = (*it).second;
+          std::transform(value.begin(), value.end(), value.begin(), 
+                         [](unsigned char c){ return std::tolower(c); }
+                         );
+          if (value == "negotiate") {
+            std::string hostname = ip::host_name();
+            struct hostent* hn;
+
+            /*
+  boost::asio::io_service io_service;
+
+
+
+              std::vector < std::string > output;
+
+              try{
+              boost::asio::ip::tcp::resolver::query query(hostname, "");
+              boost::asio::ip::tcp::resolver::iterator destination = resolver_ptr.resolve(query);
+              boost::asio::ip::tcp::resolver::iterator end;
+              boost::asio::ip::tcp::endpoint endpoint;
+
+              while (destination != end){
+              endpoint = *destination++;
+              std::cout << "xx " << endpoint.address().to_string();
+              output.push_back(endpoint.address().to_string());
+              }
+              } catch(...){
+              output.push_back("Not resolved");
+              }
+            */
+
+
+  
+            hn = gethostbyname(hostname.c_str());
+            std::string fqdn(hn->h_name);
+            std::string realm;
+            realm = "HTTP@";
+            //realm += fqdn;
+            //realm += "@";
+
+            std::cout << "xx " << hn->h_name << "\n\n";
+            std::transform(fqdn.begin(), fqdn.end(), fqdn.begin(), 
+                           [](unsigned char c){ return std::toupper(c); }
+                           );
+            //  if (client->username().empty()) {
+            // realm = getenv("LOGNAME");
+            /* TODO: this defaults to root...
+               } else {
+               realm = client->username();
+               }*/
+            //  realm += '@';
+            realm += fqdn;
+            std::cout << realm << "\n";
+            // std::cout << client->username();
+            sockaddr_in source;
+            sockaddr_in dest;
+
+            dest.sin_family = AF_INET;
+            dest.sin_port = htons(3490);
+            inet_aton("192.168.173.88", (in_addr*)&dest.sin_addr.s_addr);
+  
+            source.sin_family = AF_INET;
+            source.sin_port = htons(3490);
+            inet_aton("192.168.173.88", (in_addr*)&source.sin_addr.s_addr);
+
+            std::string error;
+            std::string token = arangodb::getKerberosBase64Token(realm, error, &source,  &dest);
+            if (token.length() == 0) {
+              std::cout << error << "\n";
+              throw error;
+            }
+            else {
+              std::cout << "Token: " << token << "\n";
+            }
+  
+            _requestTimeout = std::chrono::duration<double>(_requestTimeout);
+            _builder.jwtToken(token);
+            _builder.authenticationType(fuerte::AuthenticationType::Negotiate);
+
+            auto newConnection = _builder.connect(_loop);
+            fuerte::StringMap params{{"details", "true"}};
+            auto req = fuerte::createRequest(fuerte::RestVerb::Get, "/_open/auth", params);
+            req->header.database = _databaseName;
+  
+            req->timeout(std::chrono::seconds(30));
+            try {
+              auto res = newConnection->sendRequest(std::move(req));
+
+              _lastHttpReturnCode = res->statusCode();
+              if (_lastHttpReturnCode >= 400) {
+                auto const& headers = res->messageHeader().meta;
+                auto it = headers.find("http/1.1");
+                if (it != headers.end()) {
+                  _lastErrorMessage = (*it).second;
+                }
+              }
+
+              if (_lastHttpReturnCode != 200) {
+                //       return nullptr;
+              }
+              std::shared_ptr<VPackBuilder> parsedBody;
+              VPackSlice body;
+              if (res->contentType() == fuerte::ContentType::VPack) {
+                body = res->slice();
+              } else {
+                parsedBody =
+                  VPackParser::fromJson(reinterpret_cast<char const*>(res->payload().data()),
+                                        res->payload().size());
+                body = parsedBody->slice();
+              }
+              if (!body.isObject()) {
+                _lastErrorMessage = "invalid response";
+                _lastHttpReturnCode = 503;
+              }
+              std::string jwt = VelocyPackHelper::getStringValue(body, "jwt", "");
+              std::cout << "JWT: " << jwt<< "\n";
+              _builder.jwtToken(jwt);
+              _builder.authenticationType(fuerte::AuthenticationType::Jwt);
+            } catch (fuerte::Error const& e) {  // connection error
+              _lastErrorMessage = fuerte::to_string(e);
+              _lastHttpReturnCode = 503;
+              std::cout << _lastErrorMessage << "\n";
+              return nullptr;
+            }
+            continue;
+          }
+        }
       }
-    }
+      if (_lastHttpReturnCode >= 400) {
+        auto const& headers = res->messageHeader().meta;
+        auto it = headers.find("http/1.1");
+        if (it != headers.end()) {
+          _lastErrorMessage = (*it).second;
+        }
+      }
 
-    if (_lastHttpReturnCode != 200) {
-      return nullptr;
-    }
+      if (_lastHttpReturnCode != 200) {
+        return nullptr;
+      }
     
-    std::lock_guard<std::recursive_mutex> guard(_lock);
-    _connection = newConnection;
+      std::lock_guard<std::recursive_mutex> guard(_lock);
+      _connection = newConnection;
 
-    std::shared_ptr<VPackBuilder> parsedBody;
-    VPackSlice body;
-    if (res->contentType() == fuerte::ContentType::VPack) {
-      body = res->slice();
-    } else {
-      parsedBody =
+      std::shared_ptr<VPackBuilder> parsedBody;
+      VPackSlice body;
+      if (res->contentType() == fuerte::ContentType::VPack) {
+        body = res->slice();
+      } else {
+        parsedBody =
           VPackParser::fromJson(reinterpret_cast<char const*>(res->payload().data()),
                                 res->payload().size());
-      body = parsedBody->slice();
-    }
-    if (!body.isObject()) {
-      _lastErrorMessage = "invalid response";
-      _lastHttpReturnCode = 503;
-    }
+        body = parsedBody->slice();
+      }
+      if (!body.isObject()) {
+        _lastErrorMessage = "invalid response";
+        _lastHttpReturnCode = 503;
+      }
 
-    std::string const server =
+      std::string const server =
         VelocyPackHelper::getStringValue(body, "server", "");
 
-    // "server" value is a string and content is "arango"
-    if (server == "arango") {
-      // look up "version" value
-      _version = VelocyPackHelper::getStringValue(body, "version", "");
-      VPackSlice const details = body.get("details");
-      if (details.isObject()) {
-        VPackSlice const mode = details.get("mode");
-        if (mode.isString()) {
-          _mode = mode.copyString();
+      // "server" value is a string and content is "arango"
+      if (server == "arango") {
+        // look up "version" value
+        _version = VelocyPackHelper::getStringValue(body, "version", "");
+        VPackSlice const details = body.get("details");
+        if (details.isObject()) {
+          VPackSlice const mode = details.get("mode");
+          if (mode.isString()) {
+            _mode = mode.copyString();
+          }
+          VPackSlice role = details.get("role");
+          if (role.isString()) {
+            _role = role.copyString();
+          }
         }
-        VPackSlice role = details.get("role");
-        if (role.isString()) {
-          _role = role.copyString();
+        if (!body.hasKey("version")) {
+          // if we don't get a version number in return, the server is
+          // probably running in hardened mode
+          return newConnection;
         }
-      }
-      if (!body.hasKey("version")) {
-        // if we don't get a version number in return, the server is
-        // probably running in hardened mode
-        return newConnection;
-      }
-      std::string const versionString =
+        std::string const versionString =
           VelocyPackHelper::getStringValue(body, "version", "");
-      std::pair<int, int> version = rest::Version::parseVersionString(versionString);
-      if (version.first < 3) {
-        // major version of server is too low
-        //_client->disconnect();
-        shutdownConnection();
-        _lastErrorMessage = "Server version number ('" + versionString +
-                            "') is too low. Expecting 3.0 or higher";
-        return newConnection;
+        std::pair<int, int> version = rest::Version::parseVersionString(versionString);
+        if (version.first < 3) {
+          // major version of server is too low
+          //_client->disconnect();
+          shutdownConnection();
+          _lastErrorMessage = "Server version number ('" + versionString +
+            "') is too low. Expecting 3.0 or higher";
+          return newConnection;
+        }
       }
+    } catch (fuerte::Error const& e) {  // connection error
+      _lastErrorMessage = fuerte::to_string(e);
+      _lastHttpReturnCode = 503;
     }
-  } catch (fuerte::Error const& e) {  // connection error
-    _lastErrorMessage = fuerte::to_string(e);
-    _lastHttpReturnCode = 503;
-  }
   
-  return nullptr;
+    return nullptr;
+  }
 }
 
 void V8ClientConnection::setInterrupted(bool interrupted) {
@@ -197,140 +334,16 @@ double V8ClientConnection::timeout() const { return _requestTimeout.count(); }
 void V8ClientConnection::timeout(double value) {
   _requestTimeout = std::chrono::duration<double>(value);
 }
-#include "Enterprise/Kerberos/KerberosAuthenticationHandler.h"
-
-#include <netinet/in.h>
-#include <boost/asio.hpp>
 void V8ClientConnection::connect(ClientFeature* client) {
   TRI_ASSERT(client);
   std::lock_guard<std::recursive_mutex> guard(_lock);
   
-  boost::asio::io_service io_service;
-
-  std::string hostname = ip::host_name();
-  struct hostent* hn;
-
-  /*
-  std::vector < std::string > output;
-
-  try{
-    boost::asio::ip::tcp::resolver::query query(hostname, "");
-    boost::asio::ip::tcp::resolver::iterator destination = resolver_ptr.resolve(query);
-    boost::asio::ip::tcp::resolver::iterator end;
-    boost::asio::ip::tcp::endpoint endpoint;
-
-    while (destination != end){
-      endpoint = *destination++;
-      std::cout << "xx " << endpoint.address().to_string();
-      output.push_back(endpoint.address().to_string());
-    }
-  } catch(...){
-    output.push_back("Not resolved");
-  }
-  */
-
-
-  
-  hn = gethostbyname(hostname.c_str());
-  std::string fqdn(hn->h_name);
-  std::string realm;
-  realm = "HTTP@";
-  //realm += fqdn;
-  //realm += "@";
-
-  std::cout << "xx " << hn->h_name << "\n\n";
-  std::transform(fqdn.begin(), fqdn.end(), fqdn.begin(), 
-                 [](unsigned char c){ return std::toupper(c); }
-                 );
-  //  if (client->username().empty()) {
-  // realm = getenv("LOGNAME");
-    /* TODO: this defaults to root...
-  } else {
-    realm = client->username();
-    }*/
-    //  realm += '@';
-  realm += fqdn;
-  std::cout << realm << "\n";
-  // std::cout << client->username();
-  sockaddr_in source;
-  sockaddr_in dest;
-
-  dest.sin_family = AF_INET;
-  dest.sin_port = htons(3490);
-  inet_aton("192.168.173.88", (in_addr*)&dest.sin_addr.s_addr);
-  
-  source.sin_family = AF_INET;
-  source.sin_port = htons(3490);
-  inet_aton("192.168.173.88", (in_addr*)&source.sin_addr.s_addr);
-
-  std::string error;
-  std::string token = arangodb::getKerberosBase64Token(realm, error, &source,  &dest);
-  if (token.length() == 0) {
-    std::cout << error << "\n";
-    throw error;
-  }
-  else {
-    std::cout << "Token: " << token << "\n";
-  }
-  
   _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
   _databaseName = client->databaseName();
   _builder.endpoint(client->endpoint());
-  _builder.jwtToken(token);
-  _builder.authenticationType(fuerte::AuthenticationType::Negotiate);
-
-  auto newConnection = _builder.connect(_loop);
-  fuerte::StringMap params{{"details", "true"}};
-  auto req = fuerte::createRequest(fuerte::RestVerb::Get, "/_open/auth", params);
-  req->header.database = _databaseName;
-  
-  req->timeout(std::chrono::seconds(30));
-  try {
-    auto res = newConnection->sendRequest(std::move(req));
-
-    _lastHttpReturnCode = res->statusCode();
-    if (_lastHttpReturnCode >= 400) {
-      auto const& headers = res->messageHeader().meta;
-      auto it = headers.find("http/1.1");
-      if (it != headers.end()) {
-        _lastErrorMessage = (*it).second;
-      }
-    }
-
-    if (_lastHttpReturnCode != 200) {
-      //       return nullptr;
-    }
-    std::shared_ptr<VPackBuilder> parsedBody;
-    VPackSlice body;
-    if (res->contentType() == fuerte::ContentType::VPack) {
-      body = res->slice();
-    } else {
-      parsedBody =
-          VPackParser::fromJson(reinterpret_cast<char const*>(res->payload().data()),
-                                res->payload().size());
-      body = parsedBody->slice();
-    }
-    if (!body.isObject()) {
-      _lastErrorMessage = "invalid response";
-      _lastHttpReturnCode = 503;
-    }
-    std::string jwt = VelocyPackHelper::getStringValue(body, "jwt", "");
-    std::cout << "JWT: " << jwt<< "\n";
-    _builder.jwtToken(jwt);
-    _builder.authenticationType(fuerte::AuthenticationType::Jwt);
-  } catch (fuerte::Error const& e) {  // connection error
-    _lastErrorMessage = fuerte::to_string(e);
-    _lastHttpReturnCode = 503;
-    std::cout << _lastErrorMessage << "\n";
-  }
-
-
-
-
 
   // check jwtSecret first, as it is empty by default,
   // but username defaults to "root" in most configurations
-  /*
   if (!client->jwtSecret().empty()) {
     _builder.jwtToken(
         fuerte::jwt::generateInternalToken(client->jwtSecret(), "arangosh"));
@@ -338,7 +351,7 @@ void V8ClientConnection::connect(ClientFeature* client) {
   } else if (!client->username().empty()) {
     _builder.user(client->username()).password(client->password());
     _builder.authenticationType(fuerte::AuthenticationType::Basic);
-    }*/
+  }
   
   createConnection();
 }
