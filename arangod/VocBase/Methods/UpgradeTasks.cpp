@@ -164,11 +164,9 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
 
     createdCollections.push_back(colToDistributeShardsLike);
     systemCollections.push_back(StaticStrings::GraphsCollection);
-    if (StatisticsFeature::enabled()) {
-      systemCollections.push_back(StaticStrings::StatisticsCollection);
-      systemCollections.push_back(StaticStrings::Statistics15Collection);
-      systemCollections.push_back(StaticStrings::StatisticsRawCollection);
-    }
+    systemCollections.push_back(StaticStrings::StatisticsCollection);
+    systemCollections.push_back(StaticStrings::Statistics15Collection);
+    systemCollections.push_back(StaticStrings::StatisticsRawCollection);
   } else {
     // we will use GraphsCollection for distributeShardsLike
     // this is equal to older versions
