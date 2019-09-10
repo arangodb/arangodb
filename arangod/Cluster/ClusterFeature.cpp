@@ -58,8 +58,6 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
-
-  startsAfter<AuthenticationFeature>();
 }
 
 ClusterFeature::~ClusterFeature() {
@@ -276,7 +274,6 @@ void ClusterFeature::prepare() {
 
   // Initialize ClusterInfo library:
   _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get());
-  TRI_ASSERT(_clusterInfo);
 
   // create an instance (this will not yet create a thread)
   ClusterComm::instance();

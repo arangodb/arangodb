@@ -419,7 +419,7 @@ void Inception::run() {
   // Are we starting from persisted pool?
   if (config.startup() == "persistence") {
     if (restartingActiveAgent()) {
-      LOG_TOPIC("79fd7", INFO, Logger::AGENCY) << "Activating _agent.";
+      LOG_TOPIC("79fd7", INFO, Logger::AGENCY) << "Activating agent.";
       _agent.ready(true);
     } else {
       if (!this->isStopping()) {
@@ -444,7 +444,7 @@ void Inception::run() {
     }
   }
 
-  LOG_TOPIC("c1d8f", INFO, Logger::AGENCY) << "Activating _agent.";
+  LOG_TOPIC("c1d8f", INFO, Logger::AGENCY) << "Activating agent.";
   _agent.ready(true);
 }
 

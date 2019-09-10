@@ -80,7 +80,7 @@ std::string ensureGuid(std::string&& guid, TRI_voc_cid_t id, TRI_voc_cid_t planI
   return std::move(guid);
 }
 
-TRI_voc_cid_t ensureId(arangodb::ClusterInfo& ci, TRI_voc_cid_t id) {
+TRI_voc_cid_t ensureId(arangodb::ClusterInfo* ci, TRI_voc_cid_t id) {
   if (id) {
     return id;
   }
@@ -91,7 +91,8 @@ TRI_voc_cid_t ensureId(arangodb::ClusterInfo& ci, TRI_voc_cid_t id) {
     return TRI_NewTickServer();
   }
 
-  id = ci.uniqid(1);
+  TRI_ASSERT(ci != nullptr);
+  id = ci->uniqid(1);
 
   if (!id) {
     THROW_ARANGO_EXCEPTION_MESSAGE( // exception
@@ -178,7 +179,10 @@ LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
       _category(category),
       _type(type),
       _vocbase(vocbase),
-      _id(ensureId(vocbase.server().getFeature<ClusterFeature>().clusterInfo(), id)),
+      _id(ensureId(vocbase.server().hasFeature<ClusterFeature>()
+                       ? &vocbase.server().getFeature<ClusterFeature>().clusterInfo()
+                       : nullptr,
+                   id)),
       _planId(planId ? planId : _id),
       _planVersion(planVersion),
       _guid(ensureGuid(std::move(guid), _id, _planId, _name, system)),
