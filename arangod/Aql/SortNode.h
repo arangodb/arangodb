@@ -68,11 +68,6 @@ class SortNode : public ExecutionNode {
   /// @brief if non-zero, limits the number of elements that the node will return
   void setLimit(size_t limit) { _limit = limit; }
 
-  void setOffset(size_t offset) {
-    TRI_ASSERT(offset <= _limit);
-    _offset = offset;
-  }
-
   /// @brief return the type of the node
   NodeType getType() const override final { return SORT; }
 
@@ -148,9 +143,6 @@ class SortNode : public ExecutionNode {
 
   /// the maximum number of items to return if non-zero; if zero, unlimited
   size_t _limit = 0;
-
-  /// the maximum number of items to skip if non-zero; if zero, none skipped
-  size_t _offset = 0;
 
   // Following three variables should be set coherently.
   // Info is split between 2 registers to allow constructing

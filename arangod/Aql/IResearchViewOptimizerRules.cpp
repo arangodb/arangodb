@@ -320,8 +320,6 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
         auto& limitNode = *EN::castTo<LimitNode*>(node);
         viewNode.skipMaterializationTo(localColPtrTmp, localDocIdTmp);
         sortNode->doMaterializationOf(localColPtrTmp, localDocIdTmp, &viewNode.outVariable());
-        sortNode->setOffset(limitNode.offset()); //!!!! Move up as parameter fo late materialization?
-        //limitNode.doMaterializationOf(localColPtrTmp, localDocIdTmp, &viewNode.outVariable());
         modified = true;
       }
     }

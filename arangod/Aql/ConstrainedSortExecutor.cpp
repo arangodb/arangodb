@@ -143,6 +143,11 @@ std::pair<ExecutionState, NoStats> ConstrainedSortExecutor<OutputRowImpl>::fetch
       }
     }
   }
+  if(_returnNext == 0 && !_rows.empty()) {
+    // Only once sort the rows again, s.t. the
+    // contained list of elements is in the right ordering.
+    std::sort(_rows.begin(), _rows.end(), *_cmpHeap);
+  }
   return { _state, NoStats{} };
 }
 
@@ -197,11 +202,6 @@ std::pair<ExecutionState, NoStats> ConstrainedSortExecutor<OutputRowImpl>::produ
     // Happens if, we either have no upstream e.g. _rows is empty
     // Or if dependency is pulling too often (should not happen)
     return {ExecutionState::DONE, NoStats{}};
-  }
-  if (_returnNext == 0) {
-    // Only once sort the rows again, s.t. the
-    // contained list of elements is in the right ordering.
-    std::sort(_rows.begin(), _rows.end(), *_cmpHeap);
   }
   // Now our heap is full and sorted, we just need to return it line by line
   TRI_ASSERT(_returnNext < _rows.size());

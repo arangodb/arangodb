@@ -97,6 +97,24 @@ function lateDocumentMaterializationRuleTestSuite () {
 	  let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
 	},
+	testNotAppliedInSortedView() {
+	  let query = "FOR d IN " + svn  + " SORT d.str ASC  RETURN d ";
+	  let plan = AQL_EXPLAIN(query).plan;
+      assertEqual(-1, plan.rules.indexOf(ruleName));
+	},
+	testQueryResultsWithRandomSort() {
+	  let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2] SORT RAND() LIMIT 10 RETURN d ";
+	  let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+	  let result = AQL_EXECUTE(query);
+      assertEqual(4, result.json.length);
+	  let expectedKeys = new Set(['c1', 'c2', 'c_1', 'c_2']);
+	  result.json.forEach(function(doc) {
+        assertTrue(expectedKeys.has(doc._key));
+		expectedKeys.delete(doc._key);
+      });
+	  assertEqual(0, expectedKeys.size);
+	},
 	testQueryResultsWithMultipleCollections() {
 	  let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2] SORT BM25(d) LIMIT 10 RETURN d ";
 	  let plan = AQL_EXPLAIN(query).plan;
@@ -122,6 +140,35 @@ function lateDocumentMaterializationRuleTestSuite () {
 		expected.delete(doc);
       });
 	  assertEqual(0, expected.size);
+	},
+	testQueryResultsWithMultipleCollectionsNoSortLimit() {
+	  let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2] SORT BM25(d) LIMIT 10 RETURN d ";
+	  // run query without sort-limit optimization in order to test non constrained sort implementation
+	  let plan = AQL_EXPLAIN(query, {},{optimizer:{rules:["-sort-limit"]}}).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+	  let result = AQL_EXECUTE(query, {},{optimizer:{rules:["-sort-limit"]}});
+      assertEqual(4, result.json.length);
+	  let expectedKeys = new Set(['c1', 'c2', 'c_1', 'c_2']);
+	  result.json.forEach(function(doc) {
+        assertTrue(expectedKeys.has(doc._key));
+		expectedKeys.delete(doc._key);
+      });
+	  assertEqual(0, expectedKeys.size);
+	},
+	testQueryResultsSkipAll() {
+	  let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2] SORT BM25(d) LIMIT 5,10 RETURN d ";
+	  let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+	  let result = AQL_EXECUTE(query);
+      assertEqual(0, result.json.length);
+	},
+	testQueryResultsSkipAllNoSortLimit() {
+	  let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2] SORT BM25(d) LIMIT 5,10 RETURN d ";
+	  // run query without sort-limit optimization in order to test non constrained sort implementation
+	  let plan = AQL_EXPLAIN(query, {}, {optimizer:{rules:["-sort-limit"]}}).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+	  let result = AQL_EXECUTE(query, {},{optimizer:{rules:["-sort-limit"]}});
+      assertEqual(0, result.json.length);
 	}
   };
 }

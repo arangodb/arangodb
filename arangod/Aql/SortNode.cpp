@@ -61,10 +61,10 @@ SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
       _elements(elements),
       _stable(stable),
       _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)),
-      _inNonMaterializedColPtr(
-          aql::Variable::varFromVPack(plan->getAst(), base, "inNmColPtr", true)),
       _inNonMaterializedDocId(
           aql::Variable::varFromVPack(plan->getAst(), base, "inNmDocId", true)),
+      _inNonMaterializedColPtr(
+          aql::Variable::varFromVPack(plan->getAst(), base, "inNmColPtr", true)),
       _outMaterializedDocument(
           aql::Variable::varFromVPack(plan->getAst(), base, "outDocument", true)) {}
 
