@@ -160,12 +160,15 @@ function checkInSync(leader, servers, ignore) {
   return false;
 }
 
-function checkData(server) {
+function checkData(server, allowDirty = false) {
   print("Checking data of ", server);
   let res = request.get({
     url: getUrl(server) + "/_api/collection/" + cname + "/count",
     auth: {
       bearer: jwtRoot,
+    },
+    headers: {
+      "X-Arango-Allow-Dirty-Read": allowDirty
     },
     timeout: 300 
   });
@@ -250,31 +253,35 @@ function checkForFailover(leader) {
 function waitUntilHealthStatusIs(isHealthy, isFailed) {
   print("Waiting for health status to be healthy: ", JSON.stringify(isHealthy), " failed: ", JSON.stringify(isFailed));
   // Wait 25 seconds, sleep 5 each run
-  for (const start = Date.now(); (Date.now() - start) / 1000 > 25; internal.wait(5.0)) {
+  for (const start = Date.now(); (Date.now() - start) / 1000 < 25; internal.wait(5.0)) {
     let needToWait = false;
     let res = readAgencyValue("/arango/Supervision/Health");
     let srvHealth = res[0].arango.Supervision.Health;
-    for (const [key, srv] of Object.entries(srvHealth)) {
+    let foundFailed = 0;
+    let foundHealthy = 0;
+    for (const [_, srv] of Object.entries(srvHealth)) {
       if (srv.Status === 'FAILED') {
         // We have a FAILED server, that we do not expect
         if (!isFailed.indexOf(srv.Endpoint) === -1) {
           needToWait = true;
           break;
         }
+        foundFailed++;
       } else {
         if (!isHealthy.indexOf(srv.Endpoint) === -1) {
           needToWait = true;
           break;
         }
+        foundHealthy++;
       }
     }
-    if (!needToWait) {
+    if (!needToWait && foundHealthy === isHealthy.length && foundFailed === isFailed.length) {
       return true;
     }
   }
   print("Timing out, could not reach desired state: ", JSON.stringify(isHealthy), " failed: ", JSON.stringify(isFailed));
   print("We only got: ", JSON.stringify(readAgencyValue("/arango/Supervision/Health")[0].arango.Supervision.Health));
-  throw "Could not reach desired server states";
+  return false;
 }
 
 // Testsuite that quickly checks some of the basic premises of
@@ -436,10 +443,10 @@ function ActiveFailoverSuite() {
       while (atLeast < upper) {
         internal.wait(1.0);
         //update atLeast
-        atLeast = checkData(nextLead);
+        atLeast = checkData(nextLead, true);
       }
 
-      let healthyList = [currentLead, nextLead].append(suspended);
+      let healthyList = [currentLead, nextLead].concat(suspended.map(s => s.endpoint));
       // resume followers
       print("Resuming followers");
       suspended.forEach(arangod => {
