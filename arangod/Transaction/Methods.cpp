@@ -1312,6 +1312,30 @@ OperationResult transaction::Methods::clusterResultRemove(
   }
 }
 
+namespace {
+template<typename F>
+Future<OperationResult> addTracking(Future<OperationResult> f,
+                                    VPackSlice value,
+                                    F&& func) {
+#ifdef USE_ENTERPRISE
+  std::string key;
+  if (value.isObject()) {
+    VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(value);
+    if (keySlice.isString()) {
+      key.append(reinterpret_cast<char const*>(keySlice.begin()), keySlice.byteSize());
+    }
+  }
+  return std::move(f).thenValue([func = std::forward<F>(func),
+                      key = std::move(key)](OperationResult opRes) {
+    func(opRes, VPackSlice(reinterpret_cast<uint8_t const*>(key.c_str())));
+    return opRes;
+  });
+#else
+  return f;
+#endif
+}
+}
+
 /// @brief return one or multiple documents from a collection
 Future<OperationResult> transaction::Methods::documentAsync(std::string const& cname,
                                                             VPackSlice const value,
@@ -1327,20 +1351,9 @@ Future<OperationResult> transaction::Methods::documentAsync(std::string const& c
 
   OperationResult result;
   if (_state->isCoordinator()) {
-    std::string key;
-#ifdef USE_ENTERPRISE
-    if (value.isObject()) {
-      VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(value);
-      if (keySlice.isString()) {
-        key.append(reinterpret_cast<char const*>(keySlice.begin()), keySlice.byteSize());
-      }
-    }
-#endif
-    return documentCoordinator(cname, value, options)
-    .thenValue([=, key = std::move(key)](OperationResult opRes) {
-      VPackSlice val(reinterpret_cast<uint8_t const*>(key.data()));
-      events::ReadDocument(vocbase().name(), cname, val, options, opRes.errorNumber());
-      return opRes;
+    return addTracking(documentCoordinator(cname, value, options), value,
+                       [=](OperationResult const& opRes, VPackSlice data) {
+      events::ReadDocument(vocbase().name(), cname, data, opRes._options, opRes.errorNumber());
     });
   } else {
     return documentLocal(cname, value, options);
@@ -1442,6 +1455,7 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
   }
 
   events::ReadDocument(vocbase().name(), collectionName, value, options, res.errorNumber());
+  
   return futures::makeFuture(OperationResult(std::move(res), resultBuilder.steal(),
                                              options, countErrorCodes));
 }
@@ -1465,27 +1479,20 @@ Future<OperationResult> transaction::Methods::insertAsync(std::string const& cna
     return emptyResult(options);
   }
 
+  auto f = Future<OperationResult>::makeEmpty();
   if (_state->isCoordinator()) {
-    std::string key;
-#ifdef USE_ENTERPRISE
-    if (value.isObject()) {
-      VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(value);
-      if (keySlice.isString()) {
-        key.append(reinterpret_cast<char const*>(keySlice.begin()), keySlice.byteSize());
-      }
-    }
-#endif
-    return insertCoordinator(cname, value, options)
-    .thenValue([=, key = std::move(key)](OperationResult opRes) {
-      VPackSlice val(reinterpret_cast<uint8_t const*>(key.data()));
-      events::CreateDocument(vocbase().name(), cname,
-                             (opRes.ok() && opRes._options.returnNew) ? opRes.slice() : value,
-                             opRes._options, opRes.errorNumber());
-      return opRes;
-    });
+    f = insertCoordinator(cname, value, options);
+  } else {
+    OperationOptions optionsCopy = options;
+    f = insertLocal(cname, value, optionsCopy);
   }
-  OperationOptions optionsCopy = options;
-  return insertLocal(cname, value, optionsCopy);
+  
+  return addTracking(std::move(f), value,
+                     [=](OperationResult const& opRes, VPackSlice data) {
+                       events::CreateDocument(vocbase().name(), cname,
+                                              (opRes.ok() && opRes._options.returnNew) ? opRes.slice() : data,
+                                              opRes._options, opRes.errorNumber());
+                     });
 }
 
 /// @brief create one or multiple documents in a collection, coordinator
@@ -1732,10 +1739,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
   }
   
   auto resDocs = resultBuilder.steal();
-  events::CreateDocument(vocbase().name(), collection->name(),
-                         ((res.ok() && options.returnNew) ? VPackSlice(resDocs->data()) : value),
-                         options, res.errorNumber());
-  
   if (res.ok() && replicationType == ReplicationType::LEADER) {
     TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(followers != nullptr);
@@ -1786,28 +1789,18 @@ Future<OperationResult> transaction::Methods::updateAsync(std::string const& cna
     return emptyResult(options);
   }
 
-  OperationResult result;
+  auto f = Future<OperationResult>::makeEmpty(); 
   if (_state->isCoordinator()) {
-    std::string key;
-#ifdef USE_ENTERPRISE
-    if (newValue.isObject()) {
-      VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(newValue);
-      if (keySlice.isString()) {
-        key.append(reinterpret_cast<char const*>(keySlice.begin()), keySlice.byteSize());
-      }
-    }
-#endif
-    return modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_UPDATE)
-    .thenValue([=, key = std::move(key)](OperationResult opRes) {
-      VPackSlice val(reinterpret_cast<uint8_t const*>(key.data()));
-      events::ModifyDocument(vocbase().name(), cname, val,
-                             opRes._options, opRes.errorNumber());
-      return opRes;
-    });
+    f = modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
   } else {
     OperationOptions optionsCopy = options;
-    return modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+    f = modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
   }
+  return addTracking(std::move(f), newValue, [=](OperationResult const& opRes,
+                                                 VPackSlice data) {
+    events::ModifyDocument(vocbase().name(), cname, data,
+                           opRes._options, opRes.errorNumber());
+  });
 }
 
 /// @brief update one or multiple documents in a collection, coordinator
@@ -1854,28 +1847,19 @@ Future<OperationResult> transaction::Methods::replaceAsync(std::string const& cn
                             TRI_ERROR_NO_ERROR);
     return futures::makeFuture(emptyResult(options));
   }
-
+  
+  auto f = Future<OperationResult>::makeEmpty();
   if (_state->isCoordinator()) {
-    std::string key;
-#ifdef USE_ENTERPRISE
-    if (newValue.isObject()) {
-      VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(newValue);
-      if (keySlice.isString()) {
-        key.append(reinterpret_cast<char const*>(keySlice.begin()), keySlice.byteSize());
-      }
-    }
-#endif
-    return modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_REPLACE)
-    .thenValue([=, key = std::move(key)](OperationResult opRes) {
-      VPackSlice val(reinterpret_cast<uint8_t const*>(key.data()));
-      events::ReplaceDocument(vocbase().name(), cname, val,
-                             opRes._options, opRes.errorNumber());
-      return opRes;
-    });
+    f = modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
   } else {
     OperationOptions optionsCopy = options;
-    return modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+    f = modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
   }
+  return addTracking(std::move(f), newValue, [=](OperationResult const& opRes,
+                                                 VPackSlice data) {
+    events::ReplaceDocument(vocbase().name(), cname, data,
+                           opRes._options, opRes.errorNumber());
+  });
 }
 
 /// @brief replace one or multiple documents in a collection, local
@@ -1938,8 +1922,6 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
-        events::ModifyDocument(vocbase().name(), collectionName, newValue,
-                               options, TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
       if (!followerInfo->allowedToWrite()) {
@@ -1950,8 +1932,6 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
             << basics::StringUtils::itoa(collection->minReplicationFactor())
             << " followers in sync. Shard  " << collection->name()
             << " is temporarily in read-only mode.";
-        events::ModifyDocument(vocbase().name(), collectionName, newValue,
-                               options, TRI_ERROR_ARANGO_READ_ONLY);
         return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
       }
 
@@ -1968,13 +1948,9 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     } else {  // we are a follower following theLeader
       replicationType = ReplicationType::FOLLOWER;
       if (options.isSynchronousReplicationFrom.empty()) {
-        events::ModifyDocument(vocbase().name(), collectionName, newValue,
-                               options, TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
       }
       if (options.isSynchronousReplicationFrom != theLeader) {
-        events::ModifyDocument(vocbase().name(), collectionName, newValue,
-                               options, TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
       }
     }
@@ -1989,8 +1965,6 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
   Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
 
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
-    events::ModifyDocument(vocbase().name(), collectionName, newValue,
-                           options, lockResult.errorNumber());
     return OperationResult(lockResult);
   }
   // Iff we didn't have a lock before, we got one now.
@@ -2071,9 +2045,6 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
   } else {
     res = workForOneDocument(newValue, false);
   }
-  
-  events::ModifyDocument(vocbase().name(), collectionName, newValue,
-                         options, res.errorNumber());
 
   auto resDocs = resultBuilder.steal();
   if (res.ok() && replicationType == ReplicationType::LEADER) {
@@ -2095,7 +2066,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     // Now replicate the good operations on all followers:
     return replicateOperations(collection.get(), followers, options, newValue,
                                operation, resDocs)
-    .thenValue([options, errs = std::move(errorCounter), resDocs](Result&& res) -> OperationResult {
+    .thenValue([options, errs = std::move(errorCounter), resDocs](Result&& res) {
       if (!res.ok()) {
         return OperationResult{std::move(res), options};
       }
@@ -2103,7 +2074,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
         // We needed the results, but do not want to report:
         resDocs->clear();
       }
-      return OperationResult(std::move(res), std::move(resDocs), options, std::move(errs));
+      return OperationResult(std::move(res), std::move(resDocs),
+                             std::move(options), std::move(errs));
     });
   }
 
@@ -2112,7 +2084,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     resDocs->clear();
   }
 
-  return OperationResult(std::move(res), std::move(resDocs), options, errorCounter);
+  return OperationResult(std::move(res), std::move(resDocs),
+                         std::move(options), std::move(errorCounter));
 }
 
 /// @brief remove one or multiple documents in a collection
@@ -3338,9 +3311,6 @@ Future<Result> Methods::replicateOperations(
           bool found;
           std::string val = resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);
           replicationWorked = !found;
-          if (found) {
-            LOG_DEVEL << val;
-          }
         }
         didRefuse = didRefuse || resp.response->statusCode() == fuerte::StatusNotAcceptable;
       }

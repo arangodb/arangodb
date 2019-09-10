@@ -100,7 +100,6 @@ struct OperationResult {
   Result result;
   // TODO: add a slice that points to either buffer or raw data
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
-//  std::shared_ptr<VPackCustomTypeHandler> customTypeHandler;
   OperationOptions _options;
 
   // Executive summary for baby operations: reports all errors that did occur
