@@ -29,6 +29,9 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalDataSource.h"
 
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
+
 namespace arangodb {
 
 /// @brief create the transaction, using a data-source
@@ -96,7 +99,7 @@ LogicalCollection* SingleCollectionTransaction::documentCollection() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 TRI_voc_cid_t SingleCollectionTransaction::addCollectionAtRuntime(std::string const& name) {
   // sanity check
-  TRI_ASSERT(name == resolveTrxCollection()->collectionName());
+  TRI_ASSERT((!name.empty() && name[0] >= '1' && name[0] <= '9') || name == resolveTrxCollection()->collectionName());
   return _cid;
 }
 #endif
