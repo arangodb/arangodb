@@ -35,8 +35,6 @@
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/LogicalCollection.h"
 
-#include "Logger/LogMacros.h"
-
 namespace arangodb {
 
 namespace velocypack {
