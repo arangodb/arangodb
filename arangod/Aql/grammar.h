@@ -1,9 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.3.2.  */
+/* A Bison parser, made by GNU Bison 3.0.5.  */
 
 /* Bison interface for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2019 Free Software Foundation,
-   Inc.
+   Copyright (C) 1984, 1989-1990, 2000-2015, 2018 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -30,9 +29,6 @@
 
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
-
-/* Undocumented macros, especially those whose name start with YY_,
-   are private implementation details.  Do not rely on them.  */
 
 #ifndef YY_AQL_AQL_GRAMMAR_HPP_INCLUDED
 # define YY_AQL_AQL_GRAMMAR_HPP_INCLUDED
@@ -130,7 +126,7 @@ extern int Aqldebug;
 
 union YYSTYPE
 {
-#line 35 "Aql/grammar.y" /* yacc.c:1921  */
+#line 35 "Aql/grammar.y" /* yacc.c:1910  */
 
   arangodb::aql::AstNode*  node;
   struct {
@@ -140,7 +136,7 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 144 "Aql/grammar.hpp" /* yacc.c:1921  */
+#line 140 "Aql/grammar.hpp" /* yacc.c:1910  */
 };
 
 typedef union YYSTYPE YYSTYPE;

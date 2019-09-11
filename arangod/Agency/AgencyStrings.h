@@ -41,5 +41,7 @@ constexpr char const* PLAN_VERSION = "Plan/Version";
 constexpr char const* PLAN_COLLECTIONS = "Plan/Collections/";
 constexpr char const* PLAN_DATABASES = "Plan/Databases/";
 
+constexpr char const* TARGET_HOTBACKUP = "Target/HotBackup";
+
 }  // namespace consensus
 }  // namespace arangodb

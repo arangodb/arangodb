@@ -111,7 +111,12 @@ void Manager::unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> con
 }
 
 void Manager::registerTransaction(TRI_voc_tid_t transactionId,
-                                  std::unique_ptr<TransactionData> data) {
+                                  std::unique_ptr<TransactionData> data,
+                                  bool isReadOnlyTransaction) {
+  if (!isReadOnlyTransaction) {
+    _rwLock.readLock();
+  }
+
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
 
   if (_keepTransactionData) {
@@ -131,7 +136,7 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
 }
 
 // unregisters a transaction
-void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed) {
+void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed, bool isReadOnlyTransaction) {
   uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
   TRI_ASSERT(r > 0);
 
@@ -145,6 +150,9 @@ void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFail
     if (markAsFailed) {
       _transactions[bucket]._failedTransactions.emplace(transactionId);
     }
+  }
+  if (!isReadOnlyTransaction) {
+    _rwLock.unlockRead();
   }
 }
 
@@ -244,14 +252,14 @@ void Manager::registerAQLTrx(TransactionState* state) {
   if (_disallowInserts.load(std::memory_order_acquire)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
-  
+
   TRI_ASSERT(state != nullptr);
   auto const tid = state->id();
   size_t const bucket = getBucket(tid);
   {
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
-    
+
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
     if (it != buck._managed.end()) {

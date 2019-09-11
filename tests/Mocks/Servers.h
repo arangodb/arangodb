@@ -23,8 +23,11 @@
 #ifndef ARANGODB_TESTS_MOCKS_SERVERS_H
 #define ARANGODB_TESTS_MOCKS_SERVERS_H 1
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "StorageEngineMock.h"
+
+#include "Agency/Store.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ServerState.h"
 
 struct TRI_vocbase_t;
 
@@ -45,50 +48,43 @@ class ApplicationFeature;
 namespace tests {
 namespace mocks {
 
-class MockApplicationServer : public arangodb::application_features::ApplicationServer {
- public:
-  MockApplicationServer(std::shared_ptr<options::ProgramOptions> options, char const* binaryPath)
-      : ApplicationServer(std::move(options), binaryPath) {}
-  ~MockApplicationServer() override = default;
-
-  // Appear to be started
-  State state() const override { return State::IN_START; }
-};
-
 class MockServer {
- public:
+ protected:
+  // You can only create specialized types
   MockServer();
   virtual ~MockServer();
 
+ public:
   void init();
 
   TRI_vocbase_t& getSystemDatabase() const;
+  std::string const testFilesystemPath() const {
+    return _testFilesystemPath;
+  }
 
  protected:
   // Implementation knows the place when all features are included
-  void startFeatures();
+  virtual void startFeatures();
 
  private:
   // Will be called by destructor
   void stopFeatures();
 
  protected:
-  MockApplicationServer _server;
-  StorageEngineMock _engine;
-  std::unique_ptr<TRI_vocbase_t> _system;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> _features;
-};
 
-class MockEmptyServer : public MockServer {
- public:
-  MockEmptyServer();
-  ~MockEmptyServer() override;
+  arangodb::application_features::ApplicationServer::State
+    _oldApplicationServerState;
+  arangodb::application_features::ApplicationServer _server;
+  StorageEngineMock _engine;
+  std::unordered_map<arangodb::application_features::ApplicationFeature*, bool> _features;
+  std::string _testFilesystemPath;
+
 };
 
 class MockAqlServer : public MockServer {
  public:
   MockAqlServer();
-  ~MockAqlServer() override;
+  ~MockAqlServer();
 
   std::shared_ptr<arangodb::transaction::Methods> createFakeTransaction() const;
   std::unique_ptr<arangodb::aql::Query> createFakeQuery() const;
@@ -97,7 +93,48 @@ class MockAqlServer : public MockServer {
 class MockRestServer : public MockServer {
  public:
   MockRestServer();
-  ~MockRestServer() override;
+  ~MockRestServer();
+};
+
+class MockClusterServer : public MockServer {
+ public:
+  virtual TRI_vocbase_t* createDatabase(std::string const& name) = 0;
+  virtual void dropDatabase(std::string const& name) = 0;
+  arangodb::consensus::Store& getAgencyStore() { return _agencyStore; };
+
+  // You can only create specialized types
+ protected:
+  MockClusterServer();
+  ~MockClusterServer();
+
+ protected:
+  // Implementation knows the place when all features are included
+  void startFeatures() override;
+  void agencyTrx(std::string const& key, std::string const& value);
+  void agencyCreateDatabase(std::string const& name);
+  void agencyDropDatabase(std::string const& name);
+
+ private:
+  arangodb::consensus::Store _agencyStore;
+  arangodb::ServerState::RoleEnum _oldRole;
+};
+
+class MockDBServer : public MockClusterServer {
+ public:
+  MockDBServer();
+  ~MockDBServer();
+
+  TRI_vocbase_t* createDatabase(std::string const& name) override;
+  void dropDatabase(std::string const& name) override;
+};
+
+class MockCoordinator : public MockClusterServer {
+ public:
+  MockCoordinator();
+  ~MockCoordinator();
+
+  TRI_vocbase_t* createDatabase(std::string const& name) override;
+  void dropDatabase(std::string const& name) override;
 };
 
 }  // namespace mocks

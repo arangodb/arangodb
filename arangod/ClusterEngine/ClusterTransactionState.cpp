@@ -73,7 +73,8 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   // all valid
   if (nestingLevel() == 0) {
     updateStatus(transaction::Status::RUNNING);
-    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr);
+    
+    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr, isReadOnlyTransaction());
     ServerStatistics::statistics()._transactionsStatistics._transactionsStarted++;
 
     setRegistered();

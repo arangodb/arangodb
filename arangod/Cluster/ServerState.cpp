@@ -33,6 +33,7 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include "Agency/AgencyComm.h"
+#include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
@@ -737,19 +738,12 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum
 bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersistedId) {
   TRI_ASSERT(!_id.empty() && !_myEndpoint.empty());
     
-  std::string const serverRegistrationPath = currentServersRegisteredPref + _id;
-  std::string const rebootIdPath = "/Current/ServersKnown/" + _id + "/rebootId";
-  
-  // If we generated a new UUID, this *must not* exist in the Agency, so we
-  // should fail to register.
-  std::vector<AgencyPrecondition> pre;
-  if (!hadPersistedId) {
-    pre.emplace_back(AgencyPrecondition(rebootIdPath, AgencyPrecondition::Type::EMPTY, true));
-  }
-
   while (!application_features::ApplicationServer::isStopping()) {
+    std::string const serverRegistrationPath = currentServersRegisteredPref + _id;
+    std::string const rebootIdPath = "/Current/ServersKnown/" + _id + "/rebootId";
+  
     VPackBuilder builder;
-    {
+    try {
       VPackObjectBuilder b(&builder);
       builder.add("endpoint", VPackValue(_myEndpoint));
       builder.add("advertisedEndpoint", VPackValue(_advertisedEndpoint));
@@ -757,8 +751,19 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
       builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
       builder.add("versionString", VPackValue(rest::Version::getServerVersion()));
       builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
+      builder.add("timestamp", VPackValue(timepointToString(std::chrono::system_clock::now())));
+    } catch (...) {
+      LOG_TOPIC("de625", FATAL, arangodb::Logger::CLUSTER) << "out of memory";
+      FATAL_ERROR_EXIT();
     }
-    
+
+    // If we generated a new UUID, this *must not* exist in the Agency, so we
+    // should fail to register.
+    std::vector<AgencyPrecondition> pre;
+    if (!hadPersistedId) {
+      pre.emplace_back(AgencyPrecondition(rebootIdPath, AgencyPrecondition::Type::EMPTY, true));
+    }
+
     AgencyWriteTransaction trx(
         {AgencyOperation(serverRegistrationPath, AgencyValueOperationType::SET,
                          builder.slice()),

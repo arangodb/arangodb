@@ -187,7 +187,7 @@ function dumpTestSuite () {
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
 
-      assertEqual(8, c.getIndexes().length);
+      assertEqual(9, c.getIndexes().length);
       assertEqual("primary", c.getIndexes()[0].type);
 
       assertEqual("hash", c.getIndexes()[1].type);
@@ -223,6 +223,10 @@ function dumpTestSuite () {
       assertFalse(c.getIndexes()[7].unique);
       assertEqual("fulltext", c.getIndexes()[7].type);
       assertEqual([ "a_f" ], c.getIndexes()[7].fields);
+
+      assertEqual("geo", c.getIndexes()[8].type);
+      assertEqual([ "a_la", "a_lo" ], c.getIndexes()[8].fields);
+      assertFalse(c.getIndexes()[8].unique);
 
       assertEqual(0, c.count());
     },
@@ -332,7 +336,16 @@ function dumpTestSuite () {
       assertTrue(Math.abs(props.consolidationPolicy.threshold - 0.3) < 0.001);
       assertEqual(props.consolidationPolicy.type, "bytes_accum");
 
-      var res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
+      var startTime = new Date();
+      var res;
+      while (new Date() - startTime < 60000) {
+        res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
+        if (res.length === 5000) {
+          break;
+        }
+        console.log("Waiting for arangosearch index to be built...");
+        internal.wait(1);
+      }
       assertEqual(5000, res.length);
 
       res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();

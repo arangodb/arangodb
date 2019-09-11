@@ -44,6 +44,7 @@
 #include "Replication/GlobalInitialSyncer.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -109,15 +110,12 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force
 
 static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& col,
                                     std::string const& claimLeaderId) {
-
-  std::vector<std::string> agencyPath = {
-    "Plan",
-    "Collections",
-    col->vocbase().name(),
-    std::to_string(col->planId()),
-    "shards",
-    col->name()
-  };
+  std::vector<std::string> agencyPath = {"Plan",
+                                         "Collections",
+                                         col->vocbase().name(),
+                                         std::to_string(col->planId()),
+                                         "shards",
+                                         col->name()};
 
   std::string shardAgencyPathString = StringUtils::join(agencyPath, '/');
 
@@ -1197,7 +1195,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     if (replFactorSlice.isString() &&
         replFactorSlice.isEqualString("satellite")) {
       minReplicationFactor = 0;
-    } else if (minReplicationFactor <= 0) {
+    } else if (minReplicationFactor == 0) {
       minReplicationFactor = 1;
     }
     TRI_ASSERT(minReplicationFactor <= replicationFactor);
@@ -1301,7 +1299,8 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     // not desired, so it is hardcoded to false
     auto cols =
         ClusterMethods::createCollectionOnCoordinator(_vocbase, merged, ignoreDistributeShardsLikeErrors,
-                                                      createWaitsForSyncReplication, false);
+                                                      createWaitsForSyncReplication,
+                                                      false, false, nullptr);
     ExecContext const* exe = ExecContext::CURRENT;
     TRI_ASSERT(cols.size() == 1);
     if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
@@ -1916,9 +1915,8 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
 
     VPackBuilder tmp;
 
-    res = ci->ensureIndexCoordinator(  // result
-        dbName, std::to_string(col->id()), idxDef, true, tmp,
-        cluster->indexCreationTimeout());
+    res = ci->ensureIndexCoordinator(*col, idxDef, true, tmp,
+                                     cluster->indexCreationTimeout());
 
     if (res.fail()) {
       return res.reset(res.errorNumber(), "could not create index: " + res.errorMessage());
@@ -2056,7 +2054,6 @@ void RestReplicationHandler::handleCommandSync() {
 
   // will throw if invalid
   config.validate();
-
   std::shared_ptr<InitialSyncer> syncer;
 
   if (isGlobal) {
@@ -2485,9 +2482,9 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
   generateResult(rest::ResponseCode::OK, b.slice());
 }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief update the leader of a shard
-  //////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+/// @brief update the leader of a shard
+//////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandSetTheLeader() {
   TRI_ASSERT(ServerState::instance()->isDBServer());
@@ -2534,7 +2531,8 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
   }
 
   if (!oldLeaderIdSlice.isEqualString(currentLeader)) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN, "old leader not as expected");
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "old leader not as expected");
     return;
   }
 
