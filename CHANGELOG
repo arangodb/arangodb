@@ -1,6 +1,12 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* Fixed output of `_listObjects()` function of "general-graph" and "smart-graph" 
+  modules, which did not print the `_id` values of the return graphs correctly.
+
+* Fixed undefined behavior in single server mode when trying to create a smart 
+  graph.
+
 * Add count of objects to latency reporting in arangoimport.
 
 * Fixed adding an orphan collections as the first collection in a SmartGraph.
