@@ -1121,8 +1121,17 @@ function processQuery(query, explain, planIndex) {
             return variableName(scorer) + ' = ' + buildExpression(scorer.node);
           }).join(', ');
         }
-
-        return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') + view(node.view) + condition + sortCondition + scorers + '   ' + annotation('/* view query */');
+		    let materialization = '';
+        let viewAnnotation = '/* view query';
+        if(node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
+          materialization += ', ' + variableName(node.outNmColPtr) + ', ' + 
+                            variableName(node.outNmDocId);
+          viewAnnotation += ' with late materialization';
+        }
+        viewAnnotation +=  ' */';
+        return keyword('FOR ') + variableName(node.outVariable) + materialization + keyword(' IN ') + 
+               view(node.view) + condition + sortCondition + scorers +
+               '   ' + annotation(viewAnnotation);
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
@@ -1442,9 +1451,16 @@ function processQuery(query, explain, planIndex) {
           '   ' + annotation('/* ' + node.collectOptions.method + ' */');
         return collect;
       case 'SortNode':
+        let sortMaterialization = '';
+        if (node.hasOwnProperty('inNmDocId') && node.hasOwnProperty('inNmColPtr') && 
+            node.hasOwnProperty('outDocument')) {
+          sortMaterialization += ' ' + variableName(node.outDocument) + ' = ' +
+                            'materialize(' + variableName(node.inNmColPtr) +
+                            ', ' + variableName(node.inNmDocId) + ')';
+        }
         return keyword('SORT') + ' ' + node.elements.map(function (node) {
           return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-        }).join(', ') + annotation(`   /* sorting strategy: ${node.strategy.split("-").join(" ")} */`);
+        }).join(', ') + sortMaterialization + annotation(`   /* sorting strategy: ${node.strategy.split("-").join(" ")} */`);
       case 'LimitNode':
         return keyword('LIMIT') + ' ' + value(JSON.stringify(node.offset)) + ', ' + value(JSON.stringify(node.limit)) + (node.fullCount ? '  ' + annotation('/* fullCount */') : '');
       case 'ReturnNode':
