@@ -251,8 +251,10 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
 
 // Grant permissions on newly created database to current user
 // to be able to run the upgrade script
-arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
+arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, double timeout) {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  
+  Result res;
 
   if (um != nullptr) {
     ExecContext const* exec = ExecContext::CURRENT;
@@ -261,21 +263,34 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
       // called us, or when authentication is off), granting rights
       // will fail. We hence ignore it here, but issue a warning below
       if (!exec->isAdminUser()) {
-        return um->updateUser(exec->user(), [&](auth::User& entry) {
-          entry.grantDatabase(info.getName(), auth::Level::RW);
-          entry.grantCollection(info.getName(), "*", auth::Level::RW);
-          return TRI_ERROR_NO_ERROR;
-        });
+        double const endTime = TRI_microtime() + timeout;
+        while (true) {
+          res = um->updateUser(exec->user(), [&](auth::User& entry) {
+            entry.grantDatabase(info.getName(), auth::Level::RW);
+            entry.grantCollection(info.getName(), "*", auth::Level::RW);
+            return TRI_ERROR_NO_ERROR;
+          });
+          if (res.ok() || 
+              !res.is(TRI_ERROR_ARANGO_CONFLICT) ||
+              TRI_microtime() >= endTime) {
+            break;
+          }
+
+          if (application_features::ApplicationServer::isStopping()) {
+            res.reset(TRI_ERROR_SHUTTING_DOWN);
+            break;
+          }
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
       } else {
         LOG_TOPIC("2a4dd", DEBUG, Logger::FIXME)
           << "current ExecContext's user() is empty."
           << "Database will be created without any user having permissions";
-       return Result();
       }
     }
   }
 
-  return Result();
+  return res;
 }
 
 // Create database on cluster;
@@ -311,7 +326,7 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     }
   });
 
-  res = grantCurrentUser(info);
+  res = grantCurrentUser(info, 5.0);
   if (!res.ok()) {
     return res;
   }
@@ -366,7 +381,7 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
 
   TRI_DEFER(vocbase->release());
 
-  Result res = grantCurrentUser(info);
+  Result res = grantCurrentUser(info, 10.0);
   if (!res.ok()) {
     return res;
   }
