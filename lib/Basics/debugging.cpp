@@ -39,7 +39,15 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
 #include <velocypack/StringRef.h>
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
@@ -88,19 +96,23 @@ std::set<std::string, ::Comparer> failurePoints(comparer);
 
 /// @brief cause a segmentation violation
 /// this is used for crash and recovery tests
-void TRI_SegfaultDebugging(char const* message) {
+void TRI_TerminateDebugging(char const* message) {
   LOG_TOPIC("bde58", WARN, arangodb::Logger::FIXME) << "" << message << ": summon Baal!";
   // make sure the latest log messages are flushed
   TRI_FlushDebugging();
 
   // and now crash
-#ifndef __APPLE__
-  // on MacOS, the following statement makes the server hang but not crash
-  *((char*)-1) = '!';
+#ifdef WIN32
+  auto hSelf = GetCurrentProcess();
+  TerminateProcess(hSelf, -999);
+  // TerminateProcess is async, alright wait here  for selfdestruct (we will never exit wait)
+  WaitForSingleObject(hSelf, INFINITE);
+#else
+  kill(getpid(), SIGKILL);  //to kill the complete process tree.
 #endif
 
   // ensure the process is terminated
-  abort();
+  TRI_ASSERT(false);
 }
 
 /// @brief check whether we should fail at a specific failure point

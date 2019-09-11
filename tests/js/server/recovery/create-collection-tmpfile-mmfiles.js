@@ -60,7 +60,7 @@ function runSetup () {
   // and remove parameter.json
   fs.remove(fs.join(path, "parameter.json"));
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

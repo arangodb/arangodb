@@ -37,7 +37,7 @@ function runSetup () {
   v = db._createView('UnitTestsRecovery', 'arangosearch', {});
   db._dropView('UnitTestsRecovery');
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

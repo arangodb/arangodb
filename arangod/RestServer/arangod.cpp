@@ -335,7 +335,7 @@ namespace arangodb {
 int main(int argc, char* argv[]) {
   std::string workdir(arangodb::basics::FileUtils::currentDirectory().result());
 #ifdef __linux__
-#if USE_ENTERPRISE
+#ifdef USE_ENTERPRISE
   arangodb::checkLicenseKey();
 #endif
 #endif

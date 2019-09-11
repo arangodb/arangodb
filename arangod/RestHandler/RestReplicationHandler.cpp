@@ -838,7 +838,6 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
 
   bool overwrite = _request->parsedValue<bool>("overwrite", false);
   bool force = _request->parsedValue<bool>("force", false);
-  ;
   bool ignoreDistributeShardsLikeErrors =
       _request->parsedValue<bool>("ignoreDistributeShardsLikeErrors", false);
   uint64_t numberOfShards =
@@ -1258,7 +1257,6 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     changes.push_back(
         std::string("changed 'replicationFactor' attribute value to ") +
         std::to_string(replicationFactor));
-    ;
   }
 
   if (!changes.empty()) {
