@@ -41,6 +41,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Replication/ReplicationClients.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -2228,6 +2229,14 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     for (auto const& stat : rocksdb::TickersNameMap) {
       builder.add(stat.second, VPackValue(_options.statistics->getTickerCount(stat.first)));
     }
+
+    uint64_t walWrite, flushWrite, compactionWrite, userWrite;
+    walWrite = _options.statistics->getTickerCount(rocksdb::WAL_FILE_BYTES);
+    flushWrite = _options.statistics->getTickerCount(rocksdb::FLUSH_WRITE_BYTES);
+    compactionWrite = _options.statistics->getTickerCount(rocksdb::COMPACT_WRITE_BYTES);
+    userWrite = _options.statistics->getTickerCount(rocksdb::BYTES_WRITTEN);
+    builder.add("rocksdbengine.write.amplification.x100",
+                VPackValue( (0 != userWrite) ? ((walWrite+flushWrite+compactionWrite)*100)/userWrite : 100));
   }
 
   cache::Manager* manager = CacheManagerFeature::MANAGER;
@@ -2286,23 +2295,7 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& bu
   // "clients" part
   builder.add("clients", VPackValue(VPackValueType::Array));  // open
   if (vocbase != nullptr) {                                   // add clients
-    auto allClients = vocbase->getReplicationClients();
-    for (auto& it : allClients) {
-      // One client
-      builder.add(VPackValue(VPackValueType::Object));
-      builder.add("serverId", VPackValue(std::to_string(std::get<0>(it))));
-
-      char buffer[21];
-      TRI_GetTimeStampReplication(std::get<1>(it), &buffer[0], sizeof(buffer));
-      builder.add("time", VPackValue(buffer));
-
-      TRI_GetTimeStampReplication(std::get<2>(it), &buffer[0], sizeof(buffer));
-      builder.add("expires", VPackValue(buffer));
-
-      builder.add("lastServedTick", VPackValue(std::to_string(std::get<3>(it))));
-
-      builder.close();
-    }
+    vocbase->replicationClients().toVelocyPack(builder);
   }
   builder.close();  // clients
 

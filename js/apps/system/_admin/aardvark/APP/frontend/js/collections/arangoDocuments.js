@@ -13,12 +13,31 @@
     MAX_SORT: 12000,
 
     lastQuery: {},
+    type: 'document',
     sortAttribute: '',
+    smartJoinAttribute: null,
+    smartGraphAttribute: null,
 
     url: arangoHelper.databaseUrl('/_api/documents'),
     model: window.arangoDocumentModel,
 
-    loadTotal: function (callback) {
+    setSmartJoinAttribute: function (stringValue) {
+      this.smartJoinAttribute = stringValue;
+    },
+
+    getSmartJoinAttribute: function () {
+      return this.smartJoinAttribute;
+    },
+
+    setSmartGraphAttribute: function (stringValue) {
+      this.smartGraphAttribute = stringValue;
+    },
+
+    getSmartGraphAttribute: function () {
+      return this.smartGraphAttribute;
+    },
+
+    loadCollectionConfig: function (callback) {
       var self = this;
       $.ajax({
         cache: false,
@@ -27,7 +46,22 @@
         contentType: 'application/json',
         processData: false,
         success: function (data) {
-          self.setTotal(data.count);
+          if (data.count) {
+            self.setTotal(data.count);
+          }
+
+          if (data.smartJoinAttribute) {
+            self.setSmartJoinAttribute(data.smartJoinAttribute);
+          } else {
+            self.setSmartJoinAttribute(null);
+          }
+
+          if (data.smartGraphAttribute) {
+            self.setSmartGraphAttribute(data.smartGraphAttribute);
+          } else {
+            self.setSmartGraphAttribute(null);
+          }
+
           callback(false);
         },
         error: function () {
@@ -49,7 +83,7 @@
       } else {
         this.setPage(1);
       }
-      this.loadTotal(callback);
+      this.loadCollectionConfig(callback);
     },
 
     setSort: function (key) {

@@ -108,10 +108,11 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse, RequestStatistics*
 #endif
 
   finishExecution(baseResponse);
-  resetKeepAlive();
 
   // response has been queued, allow further requests
   _requestPending = false;
+  
+  resetKeepAlive();
 
   // CORS response handling
   if (!_origin.empty()) {
@@ -219,12 +220,14 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse, RequestStatistics*
 bool HttpCommTask::processRead(double startTime) {
   TRI_ASSERT(_peer->runningInThisThread());
 
-  cancelKeepAlive();
   TRI_ASSERT(_readBuffer.c_str() != nullptr);
 
   if (_requestPending) {
     return false;
   }
+  
+  // starts and extends the keep-alive timeout
+  resetKeepAlive(); // will extend the Keep-Alive timeout
 
   RequestStatistics* stat = nullptr;
   bool handleRequest = false;
@@ -597,6 +600,7 @@ bool HttpCommTask::processRead(double startTime) {
 
 void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
   TRI_ASSERT(_peer->runningInThisThread());
+  cancelKeepAlive(); // timeout will be restarted
 
   {
     LOG_TOPIC(DEBUG, Logger::REQUESTS)
