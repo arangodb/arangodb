@@ -1223,10 +1223,7 @@ static OperationResult checkResponsesFromAllShards(
       if (!slices.empty()) {
         VPackSlice answer = slices[0];
         if (VelocyPackHelper::readBooleanValue(answer, StaticStrings::Error, false)) {
-          result.reset(VelocyPackHelper::readNumericValue(answer, StaticStrings::ErrorNum,
-                                                          TRI_ERROR_TRANSACTION_INTERNAL),
-                       VelocyPackHelper::getStringValue(answer, StaticStrings::ErrorMessage,
-                                                        ""));
+          result = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
         }
       }
     }
@@ -1686,7 +1683,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
                                   "/_db/" + StringUtils::urlEncode(dbname) +
                                       "/_api/collection/" + p.first +
                                       "/truncate",
-                                  std::move(buffer), network::Timeout(CL_DEFAULT_TIMEOUT),
+                                  std::move(buffer), network::Timeout(600.0),
                                   headers, /*retryNotFound*/ true);
     futures.emplace_back(std::move(future));
   }
