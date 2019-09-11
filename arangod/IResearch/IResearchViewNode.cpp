@@ -228,10 +228,6 @@ bool parseOptions(aql::AstNode const* optionsNode,
 bool hasDependecies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
                     aql::Variable const& ref,
                     std::unordered_set<aql::Variable const*>& vars) {
-  if (!node.isDeterministic()) {
-    return false;
-  }
-
   vars.clear();
   aql::Ast::getReferencedVariables(&node, vars);
   vars.erase(&ref);  // remove "our" variable
@@ -488,8 +484,7 @@ std::pair<bool, bool> IResearchViewNode::volatility(bool force /*=false*/) const
   }
 
   return std::make_pair(irs::check_bit<0>(_volatilityMask),  // filter
-                        irs::check_bit<1>(_volatilityMask)   // sort
-  );
+                        irs::check_bit<1>(_volatilityMask));   // sort
 }
 
 /// @brief toVelocyPack, for EnumerateViewNode
