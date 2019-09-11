@@ -333,6 +333,11 @@ namespace arangodb {
 // arangodb::application_features::ApplicationServer::server->beginShutdown();
 
 int main(int argc, char* argv[]) {
+#ifdef __linux__
+  // Do not delete this! See lib/Basics/operating-system.h for details.
+  ThrowSomeException();
+#endif
+
   std::string workdir(arangodb::basics::FileUtils::currentDirectory().result());
 #ifdef __linux__
 #ifdef USE_ENTERPRISE
