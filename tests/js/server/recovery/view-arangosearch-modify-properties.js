@@ -55,7 +55,7 @@ function runSetup () {
   view.properties(meta, true); // partial update
 
   c.save({ name: 'crashme' }, { waitForSync: true });
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 ////////////////////////////////////////////////////////////////////////////////

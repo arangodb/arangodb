@@ -61,7 +61,7 @@ function version(options) {
 
   let results = { failed: 0 };
 
-  results.version = pu.executeAndWait(pu.ARANGOD_BIN, args, options, 'version', dataDir, false, options.coreCheck);
+  results.version = pu.executeAndWait(pu.ARANGOD_BIN, args, options, 'version', dataDir, options.coreCheck);
 
   print();
   results.version.failed = results.version.status ? 0 : 1;

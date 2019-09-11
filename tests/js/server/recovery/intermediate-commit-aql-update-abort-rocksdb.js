@@ -50,7 +50,7 @@ function runSetup () {
   }
           
   c.insert({ _key: 'crash' }, { waitForSync: true });
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

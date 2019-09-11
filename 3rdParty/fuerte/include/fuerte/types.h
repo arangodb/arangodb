@@ -108,6 +108,7 @@ enum class RestVerb {
   Options = 6
 };
 std::string to_string(RestVerb type);
+RestVerb from_string(std::string const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       MessageType
