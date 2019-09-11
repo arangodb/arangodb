@@ -1,6 +1,11 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* Add --server.statistics-history flag to allow disabling of only the historical
+  statistics. Also added rocksdbengine.write.amplification.x100 statistics
+  for measurement of compaction option impact. Enabled non-historical
+  statistics for agents.
+
 * Fixed output of `_listObjects()` function of "general-graph" and "smart-graph" 
   modules, which did not print the `_id` values of the return graphs correctly.
 
