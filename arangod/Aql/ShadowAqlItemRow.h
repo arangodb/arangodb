@@ -64,7 +64,7 @@ class ShadowAqlItemRow {
  private:
   inline int64_t getDepth() const {
     TRI_ASSERT(isInitialized());
-    auto value = block().getValueReference(_baseIndex, RegisterPlan::SUBQUERY_DEPTH_REGISTER);
+    auto value = block().getShadowRowDepth(_baseIndex);
     return value.toInt64();
   }
 
@@ -82,7 +82,7 @@ class ShadowAqlItemRow {
     TRI_ASSERT(_block != nullptr);
     TRI_ASSERT(getNrRegisters() > 0);
     // The value needs to always be a positive integer.
-    auto depthVal = block().getValueReference(_baseIndex, RegisterPlan::SUBQUERY_DEPTH_REGISTER);
+    auto depthVal = block().getShadowRowDepth(_baseIndex);
     TRI_ASSERT(depthVal.isNumber());
     TRI_ASSERT(depthVal.toInt64() >= 0);
     return true;

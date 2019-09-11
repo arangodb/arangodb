@@ -113,9 +113,7 @@ class InputAqlItemRow {
   bool isInitialized() const noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (_block != nullptr) {
-      // The value needs to always be none. Reserved for ShadowRows
-      auto depthVal = block().getValueReference(_baseIndex, RegisterPlan::SUBQUERY_DEPTH_REGISTER);
-      TRI_ASSERT(depthVal.isNone());
+      TRI_ASSERT(!block().isShadowRow(_baseIndex));
     }
 #endif
     return _block != nullptr;
