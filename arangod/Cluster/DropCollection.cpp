@@ -78,7 +78,7 @@ bool DropCollection::first() {
           TRI_ASSERT(coll);
           LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
               << "Dropping local collection " + collection;
-          _result = Collections::drop(vocbase, coll.get(), false, 120);
+          _result = Collections::drop(vocbase, coll.get(), false, 2.5);
         });
 
     if (found.fail()) {

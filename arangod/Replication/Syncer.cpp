@@ -417,8 +417,17 @@ bool Syncer::JobSynchronizer::hasJobInFlight() const noexcept {
   return _jobsInFlight > 0;
 }
 
+SyncerId newSyncerId() {
+  if (ServerState::instance()->isRunningInCluster()) {
+    TRI_ASSERT(ServerState::instance()->getShortId() != 0);
+    return SyncerId{TRI_NewServerSpecificTick()};
+  }
+
+  return SyncerId{0};
+}
+
 Syncer::SyncerState::SyncerState(Syncer* syncer, ReplicationApplierConfiguration const& configuration)
-    : applier{configuration}, connection{syncer, configuration}, master{configuration} {}
+    : syncerId{newSyncerId()}, applier{configuration}, connection{syncer, configuration}, master{configuration} {}
 
 Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     : _state{this, configuration} {
