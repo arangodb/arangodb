@@ -41,6 +41,7 @@
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 
 #include <velocypack/Builder.h>
@@ -583,6 +584,18 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
     if (!ctx) {
       LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid) + "' not found");
+    }
+    auto* state = ctx->getParentTransaction();
+    TRI_ASSERT(state != nullptr);
+    TRI_voc_cid_t cid = 0;
+    if (state->isCoordinator()) {
+      cid = ctx->resolver().getCollectionIdCluster(collectionName);
+    } else {  // only support local collections / shards
+      cid = ctx->resolver().getCollectionIdLocal(collectionName);
+    }
+    if (!state->containsCollection(cid, type)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, 
+                                     std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + collectionName);
     }
     return std::make_unique<SingleCollectionTransaction>(ctx, collectionName, type);
   } else {

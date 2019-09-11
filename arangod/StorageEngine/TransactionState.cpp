@@ -202,6 +202,24 @@ void TransactionState::allCollections(                     // iterate
     }
   }
 }
+  
+/// @brief whether or not the collection is used in the transaction
+bool TransactionState::containsCollection(TRI_voc_cid_t cid, AccessMode::Type accessType) {
+  size_t position = 0;
+  TransactionCollection* trxColl = findCollection(cid, position);
+  if (trxColl == nullptr) {
+    return false;
+  }
+
+  AccessMode::Type type = trxColl->accessType();
+  if (AccessMode::isWriteOrExclusive(type)) {
+    // if the collection is registered in write or exclusive mode,
+    // this will cover all user requests
+    return true;
+  }
+  // collection is registered in read-only mode.
+  return AccessMode::isRead(accessType);
+}
 
 /// @brief use all participating collections of a transaction
 Result TransactionState::useCollections(int nestingLevel) {

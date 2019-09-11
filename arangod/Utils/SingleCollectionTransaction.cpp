@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SingleCollectionTransaction.h"
+#include "Basics/StringUtils.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
@@ -99,7 +100,9 @@ LogicalCollection* SingleCollectionTransaction::documentCollection() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 TRI_voc_cid_t SingleCollectionTransaction::addCollectionAtRuntime(std::string const& name) {
   // sanity check
-  TRI_ASSERT((!name.empty() && name[0] >= '1' && name[0] <= '9') || name == resolveTrxCollection()->collectionName());
+  TRI_ASSERT(!name.empty());
+  TRI_ASSERT((name[0] >= '1' && name[0] <= '9') || name == resolveTrxCollection()->collectionName());
+  TRI_ASSERT((name[0] < '0' || name[0] > '9') || basics::StringUtils::uint64(name) == _cid);
   return _cid;
 }
 #endif
