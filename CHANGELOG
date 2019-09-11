@@ -1,6 +1,8 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* Add count of objects to latency reporting in arangoimport.
+
 * Fixed adding an orphan collections as the first collection in a SmartGraph.
 
 * The graph viewer of the web interface now tries to find a vertex document of
@@ -23,7 +25,7 @@ v3.4.8 (2019-09-09)
 
 * Drop collection action to timeout more quickly to stay on fast lane.
 
-* Fixed non-deterministic occurrences of "document not found" errors in sharded 
+* Fixed non-deterministic occurrences of "document not found" errors in sharded
   collections with custom shard keys (i.e. non-`_key`) and multi-document lookups.
 
 * Fixed issue #9798: limit with offset results in an infinite query that can't be
@@ -51,7 +53,7 @@ v3.4.8 (2019-09-09)
   is set to at least 9 (which is the recommended value). Ignore it if it is
   set to a lower value than 9, and warn the end user about it.
 
-  Previous versions of ArangoDB always silently ignored the value of this setting 
+  Previous versions of ArangoDB always silently ignored the value of this setting
   and effectively hard-coded the value to 9.
 
 * Fixed cut'n'pasting code from the documentation into arangosh.
