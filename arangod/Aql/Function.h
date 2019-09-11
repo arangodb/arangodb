@@ -50,9 +50,9 @@ struct Function {
 
     /// @brief whether or not the function may be executed on DB servers
     CanRunOnDBServer = 4,
-    
-    /// @brief exclude the function from being evaluated during AST optimizations
-    /// evaluation of function will only happen at query runtime
+
+    /// @brief exclude the function from being evaluated during AST
+    /// optimizations evaluation of function will only happen at query runtime
     NoEval = 8
   };
 
@@ -62,9 +62,7 @@ struct Function {
     return static_cast<std::underlying_type<Flags>::type>(flag) + makeFlags(args...);
   }
 
-  static inline std::underlying_type<Flags>::type makeFlags() {
-    return static_cast<std::underlying_type<Flags>::type>(Flags::None);
-  }
+  static std::underlying_type<Flags>::type makeFlags();
 
   Function() = delete;
 
@@ -74,23 +72,14 @@ struct Function {
            FunctionImplementation implementation = nullptr);
 
   /// @brief return whether a specific flag is set for the function
-  inline bool hasFlag(Flags flag) const {
-    return (flags & static_cast<std::underlying_type<Flags>::type>(flag)) != 0;
-  }
+  bool hasFlag(Flags flag) const;
 
   /// @brief return the number of required arguments
-  inline std::pair<size_t, size_t> numArguments() const {
-    return std::make_pair(minRequiredArguments, maxRequiredArguments);
-  }
+  std::pair<size_t, size_t> numArguments() const;
 
   /// @brief whether or not a positional argument needs to be converted from a
   /// collection parameter to a collection name parameter
-  inline Conversion getArgumentConversion(size_t position) const {
-    if (position >= conversions.size()) {
-      return Conversion::None;
-    }
-    return conversions[position];
-  }
+  Conversion getArgumentConversion(size_t position) const;
 
   /// @brief parse the argument list and set the minimum and maximum number of
   /// arguments

@@ -34,6 +34,29 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace {
+
+std::string const doneString = "DONE";
+std::string const hasMoreString = "HASMORE";
+std::string const waitingString = "WAITING";
+std::string const unknownString = "UNKNOWN";
+
+std::string const& stateToString(aql::ExecutionState state) {
+  switch (state) {
+    case aql::ExecutionState::DONE:
+      return doneString;
+    case aql::ExecutionState::HASMORE:
+      return hasMoreString;
+    case aql::ExecutionState::WAITING:
+      return waitingString;
+    default:
+      // just to suppress a warning ..
+      return unknownString;
+  }
+}
+
+}  // namespace
+
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
       _trx(engine->getQuery()->trx()),
@@ -102,3 +125,141 @@ std::pair<ExecutionState, Result> ExecutionBlock::shutdown(int errorCode) {
   return {ExecutionState::DONE, _shutdownResult};
 }
 
+void ExecutionBlock::traceGetSomeBegin(size_t atMost) {
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    if (_getSomeBegin <= 0.0) {
+      _getSomeBegin = TRI_microtime();
+    }
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      auto node = getPlanNode();
+      LOG_TOPIC("ca7db", INFO, Logger::QUERIES)
+          << "getSome type=" << node->getTypeString() << " atMost = " << atMost
+          << " this=" << (uintptr_t)this << " id=" << node->id();
+    }
+  }
+}
+
+std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlock::traceGetSomeEnd(
+    ExecutionState state, SharedAqlItemBlockPtr result) {
+  TRI_ASSERT(result != nullptr || state != ExecutionState::HASMORE);
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    ExecutionNode const* en = getPlanNode();
+    ExecutionStats::Node stats;
+    stats.calls = 1;
+    stats.items = result != nullptr ? result->size() : 0;
+    if (state != ExecutionState::WAITING) {
+      stats.runtime = TRI_microtime() - _getSomeBegin;
+      _getSomeBegin = 0.0;
+    }
+
+    auto it = _engine->_stats.nodes.find(en->id());
+    if (it != _engine->_stats.nodes.end()) {
+      it->second += stats;
+    } else {
+      _engine->_stats.nodes.emplace(en->id(), stats);
+    }
+
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      ExecutionNode const* node = getPlanNode();
+      LOG_TOPIC("07a60", INFO, Logger::QUERIES)
+          << "getSome done type=" << node->getTypeString() << " this=" << (uintptr_t)this
+          << " id=" << node->id() << " state=" << stateToString(state);
+
+      if (_profile >= PROFILE_LEVEL_TRACE_2) {
+        if (result == nullptr) {
+          LOG_TOPIC("daa64", INFO, Logger::QUERIES)
+              << "getSome type=" << node->getTypeString() << " result: nullptr";
+        } else {
+          VPackBuilder builder;
+          {
+            VPackObjectBuilder guard(&builder);
+            result->toVelocyPack(transaction(), builder);
+          }
+          LOG_TOPIC("fcd9c", INFO, Logger::QUERIES)
+              << "getSome type=" << node->getTypeString()
+              << " result: " << builder.toJson();
+        }
+      }
+    }
+  }
+  return {state, std::move(result)};
+}
+
+void ExecutionBlock::traceSkipSomeBegin(size_t atMost) {
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    if (_getSomeBegin <= 0.0) {
+      _getSomeBegin = TRI_microtime();
+    }
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      auto node = getPlanNode();
+      LOG_TOPIC("dba8a", INFO, Logger::QUERIES)
+          << "skipSome type=" << node->getTypeString() << " atMost = " << atMost
+          << " this=" << (uintptr_t)this << " id=" << node->id();
+    }
+  }
+}
+
+std::pair<ExecutionState, size_t> ExecutionBlock::traceSkipSomeEnd(
+    std::pair<ExecutionState, size_t> const res) {
+  ExecutionState const state = res.first;
+  size_t const skipped = res.second;
+
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    ExecutionNode const* en = getPlanNode();
+    ExecutionStats::Node stats;
+    stats.calls = 1;
+    stats.items = skipped;
+    if (state != ExecutionState::WAITING) {
+      stats.runtime = TRI_microtime() - _getSomeBegin;
+      _getSomeBegin = 0.0;
+    }
+
+    auto it = _engine->_stats.nodes.find(en->id());
+    if (it != _engine->_stats.nodes.end()) {
+      it->second += stats;
+    } else {
+      _engine->_stats.nodes.emplace(en->id(), stats);
+    }
+
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      ExecutionNode const* node = getPlanNode();
+      LOG_TOPIC("d1950", INFO, Logger::QUERIES)
+          << "skipSome done type=" << node->getTypeString() << " this=" << (uintptr_t)this
+          << " id=" << node->id() << " state=" << stateToString(state);
+    }
+  }
+  return res;
+}
+
+std::pair<ExecutionState, size_t> ExecutionBlock::traceSkipSomeEnd(ExecutionState state,
+                                                                   size_t skipped) {
+  return traceSkipSomeEnd({state, skipped});
+}
+
+ExecutionState ExecutionBlock::getHasMoreState() {
+  if (_done) {
+    return ExecutionState::DONE;
+  }
+  if (_buffer.empty() && _upstreamState == ExecutionState::DONE) {
+    _done = true;
+    return ExecutionState::DONE;
+  }
+  return ExecutionState::HASMORE;
+}
+
+ExecutionNode const* ExecutionBlock::getPlanNode() const { return _exeNode; }
+
+transaction::Methods* ExecutionBlock::transaction() const { return _trx; }
+
+bool ExecutionBlock::handleAsyncResult(ClusterCommResult* result) {
+  // This indicates that a node uses async functionality
+  // but does not react to the response.
+  TRI_ASSERT(false);
+  return true;
+}
+
+void ExecutionBlock::addDependency(ExecutionBlock* ep) {
+  TRI_ASSERT(ep != nullptr);
+  _dependencies.emplace_back(ep);
+  _dependencyPos = _dependencies.end();
+}

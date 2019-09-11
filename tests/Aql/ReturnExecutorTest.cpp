@@ -59,7 +59,7 @@ class ReturnExecutorTest : public ::testing::Test {
 
 TEST_F(ReturnExecutorTest, NoRowsUpstreamProducerDoesNotWait) {
   ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
-  auto& outputRegisters = infos.getOutputRegisters();
+  auto const& outputRegisters = infos.getOutputRegisters();
   VPackBuilder input;
   SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
   ReturnExecutor testee(fetcher, infos);
@@ -74,7 +74,7 @@ TEST_F(ReturnExecutorTest, NoRowsUpstreamProducerDoesNotWait) {
 
 TEST_F(ReturnExecutorTest, NoRowsUpstreamProducerWaits) {
   ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
-  auto& outputRegisters = infos.getOutputRegisters();
+  auto const& outputRegisters = infos.getOutputRegisters();
   VPackBuilder input;
   SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
   ReturnExecutor testee(fetcher, infos);
@@ -93,7 +93,7 @@ TEST_F(ReturnExecutorTest, NoRowsUpstreamProducerWaits) {
 
 TEST_F(ReturnExecutorTest, RowsUpstreamProducerDoesNotWait) {
   ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
-  auto& outputRegisters = infos.getOutputRegisters();
+  auto const& outputRegisters = infos.getOutputRegisters();
   auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
   SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->buffer(), false);
   ReturnExecutor testee(fetcher, infos);
@@ -133,7 +133,7 @@ TEST_F(ReturnExecutorTest, RowsUpstreamProducerDoesNotWait) {
 
 TEST_F(ReturnExecutorTest, RowsUpstreamProducerWaits) {
   ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
-  auto& outputRegisters = infos.getOutputRegisters();
+  auto const& outputRegisters = infos.getOutputRegisters();
   auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
   SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
   ReturnExecutor testee(fetcher, infos);

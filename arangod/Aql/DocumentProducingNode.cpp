@@ -81,3 +81,31 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder)
   builder.add("producesResult",
               VPackValue(dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable)));
 }
+
+Variable const* DocumentProducingNode::outVariable() const {
+  return _outVariable;
+}
+
+std::vector<std::string> const& DocumentProducingNode::projections() const noexcept {
+  return _projections;
+}
+
+void DocumentProducingNode::projections(std::vector<std::string> const& projections) {
+  _projections = projections;
+}
+
+void DocumentProducingNode::projections(std::unordered_set<std::string>&& projections) {
+  _projections.clear();
+  _projections.reserve(projections.size());
+  for (auto& it : projections) {
+    _projections.push_back(std::move(it));
+  }
+}
+
+void DocumentProducingNode::projections(std::vector<std::string>&& projections) noexcept {
+  _projections = std::move(projections);
+}
+
+std::vector<size_t> const& DocumentProducingNode::coveringIndexAttributePositions() const noexcept {
+  return _coveringIndexAttributePositions;
+}

@@ -47,12 +47,7 @@ struct ExecutionStats {
     size_t calls = 0;
     size_t items = 0;
     double runtime = 0.0;
-    ExecutionStats::Node& operator+=(ExecutionStats::Node const& other) {
-      calls += other.calls;
-      items += other.items;
-      runtime += other.runtime;
-      return *this;
-    }
+    ExecutionStats::Node& operator+=(ExecutionStats::Node const& other);
   };
 
  public:
@@ -63,26 +58,15 @@ struct ExecutionStats {
   static void toVelocyPackStatic(arangodb::velocypack::Builder&);
 
   /// @brief sets query execution time from the outside
-  void setExecutionTime(double value) { executionTime = value; }
+  void setExecutionTime(double value);
 
   /// @brief sets the peak memory usage from the outside
-  void setPeakMemoryUsage(size_t value) { peakMemoryUsage = value; }
+  void setPeakMemoryUsage(size_t value);
 
   /// @brief sumarize two sets of ExecutionStats
   void add(ExecutionStats const& summand);
 
-  void clear() {
-    writesExecuted = 0;
-    writesIgnored = 0;
-    scannedFull = 0;
-    scannedIndex = 0;
-    filtered = 0;
-    requests = 0;
-    fullCount = 0;
-    count = 0;
-    executionTime = 0.0;
-    peakMemoryUsage = 0;
-  }
+  void clear();
 
   /// @brief number of successfully executed write operations
   int64_t writesExecuted;

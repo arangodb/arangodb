@@ -37,10 +37,9 @@ class AqlItemBlock;
 
 class FixedVarExpressionContext final : public QueryExpressionContext {
  public:
-  explicit FixedVarExpressionContext(Query* query)
-      : QueryExpressionContext(query) {}
+  explicit FixedVarExpressionContext(Query* query);
 
-  ~FixedVarExpressionContext() {}
+  ~FixedVarExpressionContext() override = default;
 
   size_t numRegisters() const override;
 

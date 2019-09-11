@@ -45,29 +45,17 @@ class DocumentProducingNode {
 
  public:
   /// @brief return the out variable
-  Variable const* outVariable() const { return _outVariable; }
+  Variable const* outVariable() const;
 
-  std::vector<std::string> const& projections() const noexcept { return _projections; }
+  std::vector<std::string> const& projections() const noexcept;
 
-  void projections(std::vector<std::string> const& projections) {
-    _projections = projections;
-  }
+  void projections(std::vector<std::string> const& projections);
 
-  void projections(std::vector<std::string>&& projections) noexcept {
-    _projections = std::move(projections);
-  }
+  void projections(std::vector<std::string>&& projections) noexcept;
 
-  void projections(std::unordered_set<std::string>&& projections) {
-    _projections.clear();
-    _projections.reserve(projections.size());
-    for (auto& it : projections) {
-      _projections.push_back(std::move(it));
-    }
-  }
+  void projections(std::unordered_set<std::string>&& projections);
 
-  std::vector<size_t> const& coveringIndexAttributePositions() const noexcept {
-    return _coveringIndexAttributePositions;
-  }
+  std::vector<size_t> const& coveringIndexAttributePositions() const noexcept;
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
 

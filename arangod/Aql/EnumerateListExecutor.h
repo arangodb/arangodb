@@ -61,8 +61,8 @@ class EnumerateListExecutorInfos : public ExecutorInfos {
   EnumerateListExecutorInfos(EnumerateListExecutorInfos const&) = delete;
   ~EnumerateListExecutorInfos() = default;
 
-  RegisterId getInputRegister() const noexcept { return _inputRegister; };
-  RegisterId getOutputRegister() const noexcept { return _outputRegister; };
+  RegisterId getInputRegister() const noexcept;
+  RegisterId getOutputRegister() const noexcept;
 
  private:
   // These two are exactly the values in the parent members

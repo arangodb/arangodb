@@ -119,7 +119,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
                      typename Executor::Infos&&);
 
-  ~ExecutionBlockImpl();
+  ~ExecutionBlockImpl() override;
 
   /**
    * @brief Produce atMost many output rows, or less.
@@ -171,7 +171,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
-  Infos const& infos() const { return _infos; }
+  Infos const& infos() const;
 
   /// @brief shutdown, will be called exactly once for the whole query
   /// Special implementation for all Executors that need to implement Shutdown
@@ -203,9 +203,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr& newBlock) const;
 
-  Query const& getQuery() const { return _query; }
+  Query const& getQuery() const;
 
-  Executor& executor() { return _executor; }
+  Executor& executor();
 
   /// @brief request an AqlItemBlock from the memory manager
   SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterCount nrRegs);

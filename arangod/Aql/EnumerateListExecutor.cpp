@@ -29,8 +29,6 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 
@@ -50,6 +48,14 @@ EnumerateListExecutorInfos::EnumerateListExecutorInfos(
                     std::move(registersToClear), std::move(registersToKeep)),
       _inputRegister(inputRegister),
       _outputRegister(outputRegister) {}
+
+RegisterId EnumerateListExecutorInfos::getInputRegister() const noexcept {
+  return _inputRegister;
+}
+
+RegisterId EnumerateListExecutorInfos::getOutputRegister() const noexcept {
+  return _outputRegister;
+}
 
 EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher, EnumerateListExecutorInfos& infos)
     : _infos(infos),

@@ -623,3 +623,29 @@ ExecutionBlock* ExecutionEngine::addBlock(std::unique_ptr<ExecutionBlock>&& bloc
   _blocks.emplace_back(block.get());
   return block.release();
 }
+
+ExecutionBlock* ExecutionEngine::root() const {
+  TRI_ASSERT(_root != nullptr);
+  return _root;
+}
+
+void ExecutionEngine::root(ExecutionBlock* root) {
+  TRI_ASSERT(root != nullptr);
+  _root = root;
+}
+
+Query* ExecutionEngine::getQuery() const { return _query; }
+
+bool ExecutionEngine::initializeCursorCalled() const {
+  return _initializeCursorCalled;
+}
+
+void ExecutionEngine::resultRegister(RegisterId resultRegister) {
+  _resultRegister = resultRegister;
+}
+
+RegisterId ExecutionEngine::resultRegister() const { return _resultRegister; }
+
+AqlItemBlockManager& ExecutionEngine::itemBlockManager() {
+  return _itemBlockManager;
+}

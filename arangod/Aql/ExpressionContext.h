@@ -43,9 +43,9 @@ struct Variable;
 
 class ExpressionContext {
  public:
-  ExpressionContext() {}
+  ExpressionContext() = default;
 
-  virtual ~ExpressionContext() {}
+  virtual ~ExpressionContext() = default;
 
   virtual size_t numRegisters() const = 0;
 

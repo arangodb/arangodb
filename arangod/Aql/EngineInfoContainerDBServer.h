@@ -31,10 +31,10 @@
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/AccessMode.h"
 
+#include <boost/variant.hpp>
 #include <map>
 #include <set>
 #include <stack>
-#include <boost/variant.hpp>
 
 namespace arangodb {
 
@@ -56,12 +56,9 @@ class EngineInfoContainerDBServer {
   // information required to build traverser engines
   // on DB servers.
   struct TraverserEngineShardLists {
-    explicit TraverserEngineShardLists(size_t length) {
-      // Make sure they all have a fixed size.
-      edgeCollections.resize(length);
-    }
+    explicit TraverserEngineShardLists(size_t length);
 
-    ~TraverserEngineShardLists() {}
+    ~TraverserEngineShardLists() = default;
 
     // Mapping for edge collections to shardIds.
     // We have to retain the ordering of edge collections, all
@@ -81,8 +78,8 @@ class EngineInfoContainerDBServer {
   struct EngineInfo {
    public:
     enum class EngineType {
-      Collection, // collection based engine (per-shard)
-      View        // view based engine (per-server)
+      Collection,  // collection based engine (per-shard)
+      View         // view based engine (per-server)
     };
 
     explicit EngineInfo(size_t idOfRemoteNode) noexcept;
@@ -95,7 +92,7 @@ class EngineInfoContainerDBServer {
 #endif
     void addNode(ExecutionNode* node);
 
-    void connectQueryId(QueryId id) noexcept { _otherId = id; }
+    void connectQueryId(QueryId id) noexcept;
 
     Collection const* collection() const noexcept;
     void collection(Collection* col) noexcept;
@@ -108,42 +105,30 @@ class EngineInfoContainerDBServer {
                           bool isResponsibleForInitializeCursor) const;
 
     /// @returns type of the engine
-    EngineType type() const noexcept {
-      return static_cast<EngineType>(_source.which());
-    }
+    EngineType type() const noexcept;
 
     LogicalView const* view() const noexcept;
     void addClient(ServerID const& server);
 
-    QueryId getParentQueryId() const noexcept { return _otherId; }
+    QueryId getParentQueryId() const noexcept;
 
-    std::vector<ExecutionNode*> const& nodes() const noexcept {
-      return _nodes;
-    }
+    std::vector<ExecutionNode*> const& nodes() const noexcept;
 
    private:
     struct CollectionSource {
-      explicit CollectionSource(aql::Collection* collection)
-        : collection(collection) {}
+      explicit CollectionSource(aql::Collection* collection);
 
       aql::Collection* collection{};  // The collection used to connect to this engine
-      std::unordered_set<std::string> restrictedShards{}; // The shards this snippet is restricted to
+      std::unordered_set<std::string> restrictedShards{};  // The shards this snippet is restricted to
     };
 
     struct ViewSource {
-      ViewSource(
-          LogicalView const& view,
-          GatherNode* gather,
-          ScatterNode* scatter) noexcept
-        : view(&view),
-          gather(gather),
-          scatter(scatter) {
-      }
+      ViewSource(LogicalView const& view, GatherNode* gather, ScatterNode* scatter) noexcept;
 
       LogicalView const* view{};  // The view used to connect to this engine
-      GatherNode* gather{};  // The gather associated with the engine
-      ScatterNode* scatter{}; // The scatter associated with the engine
-      size_t numClients{}; // A number of db servers the engine is distributed across
+      GatherNode* gather{};       // The gather associated with the engine
+      ScatterNode* scatter{};     // The scatter associated with the engine
+      size_t numClients{};  // A number of db servers the engine is distributed across
     };
 
     std::vector<ExecutionNode*> _nodes;
@@ -165,8 +150,7 @@ class EngineInfoContainerDBServer {
 
     void addTraverserEngine(GraphNode* node, TraverserEngineShardLists&& shards);
 
-    void combineTraverserEngines(ServerID const& serverID,
-                                 arangodb::velocypack::Slice const ids);
+    void combineTraverserEngines(ServerID const& serverID, arangodb::velocypack::Slice ids);
 
    private:
     void injectTraverserEngines(VPackBuilder& infoBuilder) const;
@@ -188,7 +172,7 @@ class EngineInfoContainerDBServer {
 
     AccessMode::Type lockType{AccessMode::Type::NONE};
     std::vector<std::shared_ptr<EngineInfo>> engines;
-    std::vector<LogicalView const*> views; // linked views
+    std::vector<LogicalView const*> views;  // linked views
     std::unordered_set<ShardID> usedShards;
   };
 

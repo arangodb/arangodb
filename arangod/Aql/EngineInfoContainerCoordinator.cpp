@@ -101,6 +101,8 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
   return {TRI_ERROR_NO_ERROR};
 }
 
+QueryId EngineInfoContainerCoordinator::EngineInfo::queryId() const { return _id; }
+
 EngineInfoContainerCoordinator::EngineInfoContainerCoordinator() {
   // We always start with an empty coordinator snippet
   _engines.emplace_back(0, 0);

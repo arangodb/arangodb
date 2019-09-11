@@ -68,6 +68,44 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
       _produceResult(produceResult),
       _random(random) {}
 
+ExecutionEngine* EnumerateCollectionExecutorInfos::getEngine() {
+  return _engine;
+}
+
+Collection const* EnumerateCollectionExecutorInfos::getCollection() const {
+  return _collection;
+}
+
+Variable const* EnumerateCollectionExecutorInfos::getOutVariable() const {
+  return _outVariable;
+}
+
+std::vector<std::string> const& EnumerateCollectionExecutorInfos::getProjections() const noexcept {
+  return _projections;
+}
+
+transaction::Methods* EnumerateCollectionExecutorInfos::getTrxPtr() const {
+  return _trxPtr;
+}
+
+std::vector<size_t> const& EnumerateCollectionExecutorInfos::getCoveringIndexAttributePositions() const
+    noexcept {
+  return _coveringIndexAttributePositions;
+}
+
+bool EnumerateCollectionExecutorInfos::getProduceResult() const {
+  return _produceResult;
+}
+
+bool EnumerateCollectionExecutorInfos::getUseRawDocumentPointers() const {
+  return _useRawDocumentPointers;
+}
+
+bool EnumerateCollectionExecutorInfos::getRandom() const { return _random; }
+RegisterId EnumerateCollectionExecutorInfos::getOutputRegisterId() const {
+  return _outputRegisterId;
+}
+
 EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
@@ -154,7 +192,8 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
   }
 }
 
-std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollectionExecutor::skipRows(size_t const toSkip) {
+std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollectionExecutor::skipRows(
+    size_t const toSkip) {
   EnumerateCollectionStats stats{};
   TRI_IF_FAILURE("EnumerateCollectionExecutor::skipRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -164,12 +203,12 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
     std::tie(_state, _input) = _fetcher.fetchRow();
 
     if (_state == ExecutionState::WAITING) {
-      return std::make_tuple(_state, stats, 0); // tupple, cannot use initializer list due to build failure
+      return std::make_tuple(_state, stats, 0);  // tupple, cannot use initializer list due to build failure
     }
 
     if (!_input) {
       TRI_ASSERT(_state == ExecutionState::DONE);
-      return std::make_tuple(_state, stats, 0); // tupple, cannot use initializer list due to build failure
+      return std::make_tuple(_state, stats, 0);  // tupple, cannot use initializer list due to build failure
     }
 
     _cursor->reset();
@@ -184,10 +223,11 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
   stats.incrScanned(actuallySkipped);
 
   if (_state == ExecutionState::DONE && !_cursorHasMore) {
-    return std::make_tuple(ExecutionState::DONE, stats, actuallySkipped); // tupple, cannot use initializer list due to build failure
+    return std::make_tuple(ExecutionState::DONE, stats,
+                           actuallySkipped);  // tupple, cannot use initializer list due to build failure
   }
 
-  return std::make_tuple(ExecutionState::HASMORE, stats, actuallySkipped); // tupple, cannot use initializer list due to build failure
+  return std::make_tuple(ExecutionState::HASMORE, stats, actuallySkipped);  // tupple, cannot use initializer list due to build failure
 }
 
 void EnumerateCollectionExecutor::initializeCursor() {
@@ -196,6 +236,18 @@ void EnumerateCollectionExecutor::initializeCursor() {
   setAllowCoveringIndexOptimization(true);
   _cursorHasMore = false;
   _cursor->reset();
+}
+
+void EnumerateCollectionExecutor::setProducingFunction(DocumentProducingFunction const& documentProducer) {
+  _documentProducer = documentProducer;
+}
+
+void EnumerateCollectionExecutor::setAllowCoveringIndexOptimization(bool const allowCoveringIndexOptimization) {
+  _documentProducingFunctionContext.setAllowCoveringIndexOptimization(allowCoveringIndexOptimization);
+}
+
+bool EnumerateCollectionExecutor::getAllowCoveringIndexOptimization() const noexcept {
+  return _documentProducingFunctionContext.getAllowCoveringIndexOptimization();
 }
 
 #ifndef USE_ENTERPRISE

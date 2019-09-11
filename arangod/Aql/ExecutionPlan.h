@@ -82,56 +82,38 @@ class ExecutionPlan {
   void toVelocyPack(arangodb::velocypack::Builder&, Ast*, bool verbose) const;
 
   /// @brief check if the plan is empty
-  inline bool empty() const { return (_root == nullptr); }
+  bool empty() const;
 
   /// @brief note that an optimizer rule was applied
-  inline void addAppliedRule(int level) { 
-    if (_appliedRules.empty() || _appliedRules.back() != level) {
-      _appliedRules.emplace_back(level); 
-    }
-  }
+  void addAppliedRule(int level);
 
   /// @brief get a list of all applied rules
   std::vector<std::string> getAppliedRules() const;
 
   /// @brief return the next value for a node id
-  inline size_t nextId() { return ++_nextId; }
+  size_t nextId();
 
   /// @brief get a node by its id
   ExecutionNode* getNodeById(size_t id) const;
 
   /// @brief check if the node is the root node
-  inline bool isRoot(ExecutionNode const* node) const { return _root == node; }
+  bool isRoot(ExecutionNode const* node) const;
 
   /// @brief get the root node
-  inline ExecutionNode* root() const {
-    TRI_ASSERT(_root != nullptr);
-    return _root;
-  }
+  ExecutionNode* root() const;
 
   /// @brief set the root node
-  inline void root(ExecutionNode* node, bool force = false) {
-    if (!force) {
-      TRI_ASSERT(_root == nullptr);
-    }
-    _root = node;
-  }
+  void root(ExecutionNode* node, bool force = false);
 
   /// @brief invalidate all cost estimations in the plan
-  inline void invalidateCost() {
-    TRI_ASSERT(_root != nullptr);
-    _root->invalidateCost();
-  }
+  void invalidateCost();
 
   /// @brief get the estimated cost . . .
-  CostEstimate getCost() {
-    TRI_ASSERT(_root != nullptr);
-    return _root->getCost();
-  }
+  CostEstimate getCost();
 
   /// @brief this can be called by the optimizer to tell that the
   /// plan is temporarily in an invalid state
-  inline void setValidity(bool value) { _planValid = value; }
+  void setValidity(bool value);
 
   /// @brief returns true if a plan is so simple that optimizations would
   /// probably cost more than simply executing the plan
@@ -144,23 +126,12 @@ class ExecutionPlan {
 
   /// @brief note this node for being excluded from producing scatter/gather
   /// nodes
-  void excludeFromScatterGather(ExecutionNode const* node) {
-    _excludeFromScatterGather.emplace(node);
-  }
+  void excludeFromScatterGather(ExecutionNode const* node);
 
-  bool shouldExcludeFromScatterGather(ExecutionNode const* node) const {
-    return (_excludeFromScatterGather.find(node) != _excludeFromScatterGather.end());
-  }
+  bool shouldExcludeFromScatterGather(ExecutionNode const* node) const;
 
   /// @brief get the node where variable with id <id> is introduced . . .
-  ExecutionNode* getVarSetBy(VariableId id) const {
-    auto it = _varSetBy.find(id);
-
-    if (it == _varSetBy.end()) {
-      return nullptr;
-    }
-    return (*it).second;
-  }
+  ExecutionNode* getVarSetBy(VariableId id) const;
 
   /// @brief find nodes of a certain type
   void findNodesOfType(SmallVector<ExecutionNode*>& result,
@@ -180,13 +151,13 @@ class ExecutionPlan {
   bool varUsageComputed() const;
 
   /// @brief determine if the above are already set
-  void setVarUsageComputed() { _varUsageComputed = true; }
+  void setVarUsageComputed();
 
   /// @brief flush var usage calculation
-  void clearVarUsageComputed() { _varUsageComputed = false; }
+  void clearVarUsageComputed();
 
   /// @brief static analysis
-  void planRegisters() { _root->planRegisters(); }
+  void planRegisters();
 
   /// @brief unlinkNodes, note that this does not delete the removed
   /// nodes and that one cannot remove the root node of the plan.
@@ -228,7 +199,7 @@ class ExecutionPlan {
   void insertBefore(ExecutionNode* current, ExecutionNode* newNode);
 
   /// @brief get ast
-  inline Ast* getAst() const { return _ast; }
+  Ast* getAst() const;
 
   /// @brief creates an anonymous calculation node for an arbitrary expression
   ExecutionNode* createTemporaryCalculation(AstNode const*, ExecutionNode*);

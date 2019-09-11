@@ -2370,4 +2370,65 @@ void ExecutionPlan::show() {
   _root->walk(shower);
 }
 
+bool ExecutionPlan::empty() const { return (_root == nullptr); }
+
+void ExecutionPlan::addAppliedRule(int level) {
+  if (_appliedRules.empty() || _appliedRules.back() != level) {
+    _appliedRules.emplace_back(level);
+  }
+}
+
+size_t ExecutionPlan::nextId() { return ++_nextId; }
+
+bool ExecutionPlan::isRoot(ExecutionNode const* node) const { return _root == node; }
+
+ExecutionNode* ExecutionPlan::root() const {
+  TRI_ASSERT(_root != nullptr);
+  return _root;
+}
+
+void ExecutionPlan::root(ExecutionNode* node, bool force) {
+  if (!force) {
+    TRI_ASSERT(_root == nullptr);
+  }
+  _root = node;
+}
+
+void ExecutionPlan::invalidateCost() {
+  TRI_ASSERT(_root != nullptr);
+  _root->invalidateCost();
+}
+
+CostEstimate ExecutionPlan::getCost() {
+  TRI_ASSERT(_root != nullptr);
+  return _root->getCost();
+}
+
+void ExecutionPlan::setValidity(bool value) { _planValid = value; }
+
+void ExecutionPlan::excludeFromScatterGather(ExecutionNode const* node) {
+  _excludeFromScatterGather.emplace(node);
+}
+
+bool ExecutionPlan::shouldExcludeFromScatterGather(ExecutionNode const* node) const {
+  return (_excludeFromScatterGather.find(node) != _excludeFromScatterGather.end());
+}
+
+ExecutionNode* ExecutionPlan::getVarSetBy(VariableId id) const {
+  auto it = _varSetBy.find(id);
+
+  if (it == _varSetBy.end()) {
+    return nullptr;
+  }
+  return (*it).second;
+}
+
+void ExecutionPlan::setVarUsageComputed() { _varUsageComputed = true; }
+
+void ExecutionPlan::clearVarUsageComputed() { _varUsageComputed = false; }
+
+void ExecutionPlan::planRegisters() { _root->planRegisters(); }
+
+Ast* ExecutionPlan::getAst() const { return _ast; }
+
 #endif

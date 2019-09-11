@@ -72,3 +72,6 @@ void FixedVarExpressionContext::serializeAllVariables(transaction::Methods* trx,
     builder.close();
   }
 }
+
+FixedVarExpressionContext::FixedVarExpressionContext(Query* query)
+    : QueryExpressionContext(query) {}
