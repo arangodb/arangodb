@@ -190,7 +190,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
         patchCount = *_config.applier._restrictCollections.begin();
       }
 
-      r = _config.batch.start(_config.connection, _config.progress, patchCount);
+      r = batchStart(patchCount);
       if (r.fail()) {
         return r;
       }
@@ -225,7 +225,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
 
     // all done here, do not try to finish batch if master is unresponsive
     if (r.isNot(TRI_ERROR_REPLICATION_NO_RESPONSE) && !_config.isChild()) {
-      _config.batch.finish(_config.connection, _config.progress);
+      batchFinish();
     }
 
     if (r.fail()) {
@@ -241,17 +241,17 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     return r;
   } catch (arangodb::basics::Exception const& ex) {
     if (!_config.isChild()) {
-      _config.batch.finish(_config.connection, _config.progress);
+      batchFinish();
     }
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
     if (!_config.isChild()) {
-      _config.batch.finish(_config.connection, _config.progress);
+      batchFinish();
     }
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     if (!_config.isChild()) {
-      _config.batch.finish(_config.connection, _config.progress);
+      batchFinish();
     }
     return Result(TRI_ERROR_NO_ERROR, "an unknown exception occurred");
   }
@@ -263,12 +263,12 @@ Result DatabaseInitialSyncer::getInventory(VPackBuilder& builder) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
 
-  auto r = _config.batch.start(_config.connection, _config.progress);
+  auto r = batchStart();
   if (r.fail()) {
     return r;
   }
 
-  TRI_DEFER(_config.batch.finish(_config.connection, _config.progress));
+  TRI_DEFER(batchFinish());
 
   // caller did not supply an inventory, we need to fetch it
   return fetchInventory(builder);
@@ -495,7 +495,7 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
     std::string const typeString = (coll->type() == TRI_COL_TYPE_EDGE ? "edge" : "document");
 
     if (!_config.isChild()) {
-      _config.batch.extend(_config.connection, _config.progress);
+      batchExtend();
       _config.barrier.extend(_config.connection);
     }
 
@@ -564,7 +564,7 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
       // wait until we get a reasonable response
       while (true) {
         if (!_config.isChild()) {
-          _config.batch.extend(_config.connection, _config.progress);
+          batchExtend();
           _config.barrier.extend(_config.connection);
         }
 
@@ -825,7 +825,7 @@ Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* c
   using ::arangodb::basics::StringUtils::urlEncode;
 
   if (!_config.isChild()) {
-    _config.batch.extend(_config.connection, _config.progress);
+    batchExtend();
     _config.barrier.extend(_config.connection);
   }
 
@@ -870,7 +870,7 @@ Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* c
 
   while (true) {
     if (!_config.isChild()) {
-      _config.batch.extend(_config.connection, _config.progress);
+      batchExtend();
       _config.barrier.extend(_config.connection);
     }
 
@@ -1057,7 +1057,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   }
 
   if (!_config.isChild()) {
-    _config.batch.extend(_config.connection, _config.progress);
+    batchExtend();
     _config.barrier.extend(_config.connection);
   }
 
@@ -1262,7 +1262,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     VPackValueLength const numIdx = indexes.length();
     if (numIdx > 0) {
       if (!_config.isChild()) {
-        _config.batch.extend(_config.connection, _config.progress);
+        batchExtend();
         _config.barrier.extend(_config.connection);
       }
 
@@ -1326,7 +1326,7 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
 
   if (replutils::hasFailed(response.get())) {
     if (!_config.isChild()) {
-      _config.batch.finish(_config.connection, _config.progress);
+      batchFinish();
     }
     return replutils::buildHttpError(response.get(), url, _config.connection);
   }
@@ -1492,5 +1492,18 @@ Result DatabaseInitialSyncer::handleViewCreation(VPackSlice const& views) {
   }
   return {};
 }
+
+Result DatabaseInitialSyncer::batchStart(std::string const& patchCount) {
+  return _config.batch.start(_config.connection, _config.progress, _config.state.syncerId, patchCount);
+}
+
+Result DatabaseInitialSyncer::batchExtend() {
+  return _config.batch.extend(_config.connection, _config.progress, _config.state.syncerId);
+}
+
+Result DatabaseInitialSyncer::batchFinish() {
+  return _config.batch.finish(_config.connection, _config.progress, _config.state.syncerId);
+}
+
 
 }  // namespace arangodb
