@@ -1852,7 +1852,7 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
           }
 
           auto featureName = getStringRef(subEntry);
-          auto* feature = irs::attribute::type_id::get(featureName);
+          auto* feature = irs::attribute::type_id::get(featureName, false);
 
           if (!feature) {
             LOG_TOPIC("4fedc", ERR, arangodb::iresearch::TOPIC)
