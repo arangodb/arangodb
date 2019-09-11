@@ -67,8 +67,10 @@ void GeneralConnection<ST>::startConnection() {
 
 // shutdown the connection and cancel all pending messages.
 template <SocketType ST>
-void GeneralConnection<ST>::shutdownConnection(const Error err) {
-  FUERTE_LOG_DEBUG << "shutdownConnection: this=" << this << "\n";
+void GeneralConnection<ST>::shutdownConnection(const Error err,
+                                               std::string const& msg) {
+  FUERTE_LOG_DEBUG << "shutdownConnection: '" << msg
+                   << "' this=" << this << "\n";
 
   if (_state.load() != Connection::State::Failed) {
     _state.store(Connection::State::Disconnected);
@@ -86,6 +88,8 @@ void GeneralConnection<ST>::shutdownConnection(const Error err) {
   }
 
   abortOngoingRequests(err);
+  
+  onFailure(err, msg);
 
   // clear buffer of received messages
   _receiveBuffer.consume(_receiveBuffer.size());
@@ -125,9 +129,9 @@ void GeneralConnection<ST>::tryConnect(unsigned retries) {
       tryConnect(retries - 1);
     } else {
       _state.store(Connection::State::Failed, std::memory_order_release);
-      shutdownConnection(Error::CouldNotConnect);
+      shutdownConnection(Error::CouldNotConnect,
+                         "connecting failed: " + ec.message());
       drainQueue(Error::CouldNotConnect);
-      onFailure(Error::CouldNotConnect, "connecting failed: " + ec.message());
     }
   });
 }
