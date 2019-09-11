@@ -91,6 +91,7 @@ MessageID VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
     this->startConnection();
   } else if (state == Connection::State::Failed) {
     FUERTE_LOG_ERROR << "queued request on failed connection\n";
+    drainQueue(fuerte::Error::ConnectionClosed);
   }
   return mid;
 }
