@@ -27,6 +27,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -376,6 +377,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
   Result res;
   VPackBuilder builder;
   RestStatus status = RestStatus::DONE;
+  bool generateResponse = true;
   auto found = methods::Collections::lookup(  // find collection
       _vocbase,                               // vocbase to search
       name,                                   // collection name to find
@@ -428,6 +430,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
             }
           }
         } else if (sub == "truncate") {
+          generateResponse = false;
           {
             OperationOptions opts;
 
@@ -435,7 +438,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
             opts.isSynchronousReplicationFrom =
                 _request->value("isSynchronousReplication");
 
-            _activeTrx = createTransaction(coll->name(), AccessMode::Type::WRITE);
+            _activeTrx = createTransaction(coll->name(), AccessMode::Type::EXCLUSIVE);
             _activeTrx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
             _activeTrx->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
             res = _activeTrx->begin();
@@ -477,6 +480,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
                                              /*showCount*/ false,
                                              /*detailedCount*/ true);
                     generateOk(rest::ResponseCode::OK, builder);
+                    _response->setHeaderNC(StaticStrings::Location, _request->requestPath());
                   }));
             }
           }
@@ -557,14 +561,16 @@ RestStatus RestCollectionHandler::handleCommandPut() {
         }
       });
 
-  if (found.fail()) {
-    generateError(found);
-  } else if (res.ok()) {
-    // TODO react to status?
-    generateOk(rest::ResponseCode::OK, builder);
-    _response->setHeaderNC(StaticStrings::Location, _request->requestPath());
-  } else {
-    generateError(res);
+  if (generateResponse) {
+    if (found.fail()) {
+      generateError(found);
+    } else if (res.ok()) {
+      // TODO react to status?
+      generateOk(rest::ResponseCode::OK, builder);
+      _response->setHeaderNC(StaticStrings::Location, _request->requestPath());
+    } else {
+      generateError(res);
+    }
   }
 
   return status;

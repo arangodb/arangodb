@@ -2435,7 +2435,7 @@ Future<OperationResult> transaction::Methods::truncateAsync(std::string const& c
   OperationOptions optionsCopy = options;
   auto cb = [this, collectionName](OperationResult res) {
     events::TruncateCollection(vocbase().name(), collectionName, res.errorNumber());
-    return std::move(res);
+    return res;
   };
 
   if (_state->isCoordinator()) {

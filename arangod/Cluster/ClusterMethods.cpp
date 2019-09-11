@@ -1220,14 +1220,14 @@ static OperationResult checkResponsesFromAllShards(
       break;
     } else {
       std::vector<VPackSlice> const& slices = res.response->slices();
-      auto tmpBuilder = std::make_shared<VPackBuilder>();
       if (!slices.empty()) {
         VPackSlice answer = slices[0];
-        LOG_DEVEL << answer.toJson();
-        result.reset(VelocyPackHelper::readNumericValue(answer, StaticStrings::ErrorNum,
-                                                        TRI_ERROR_TRANSACTION_INTERNAL),
-                     VelocyPackHelper::getStringValue(answer, StaticStrings::ErrorMessage,
-                                                      ""));
+        if (VelocyPackHelper::readBooleanValue(answer, StaticStrings::Error, false)) {
+          result.reset(VelocyPackHelper::readNumericValue(answer, StaticStrings::ErrorNum,
+                                                          TRI_ERROR_TRANSACTION_INTERNAL),
+                       VelocyPackHelper::getStringValue(answer, StaticStrings::ErrorMessage,
+                                                        ""));
+        }
       }
     }
   }
