@@ -60,7 +60,6 @@
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"

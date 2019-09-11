@@ -549,7 +549,7 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
 std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTransaction(
     std::string const& collectionName, AccessMode::Type type) const {
   bool found = false;
-  std::string value = _request->header(StaticStrings::TransactionId, found);
+  std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (found) {
     TRI_voc_tid_t tid = 0;
     std::size_t pos = 0;
@@ -569,9 +569,9 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
       if (!ServerState::instance()->isDBServer()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
       }
-      value = _request->header(StaticStrings::TransactionBody, found);
+      std::string const& trxDef = _request->header(StaticStrings::TransactionBody, found);
       if (found) {
-        auto trxOpts = VPackParser::fromJson(value);
+        auto trxOpts = VPackParser::fromJson(trxDef);
         Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);
@@ -594,7 +594,7 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
 /// @brief create proper transaction context, inclusing the proper IDs
 std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionContext() const {
   bool found = false;
-  std::string value = _request->header(StaticStrings::TransactionId, found);
+  std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (!found) {
     return std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
   }
@@ -621,9 +621,9 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
       return std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
     } else if (value.compare(pos, std::string::npos, " begin") == 0) {
       // this means we lazily start a transaction
-      value = _request->header(StaticStrings::TransactionBody, found);
+      std::string const& trxDef = _request->header(StaticStrings::TransactionBody, found);
       if (found) {
-        auto trxOpts = VPackParser::fromJson(value);
+        auto trxOpts = VPackParser::fromJson(trxDef);
         Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);
