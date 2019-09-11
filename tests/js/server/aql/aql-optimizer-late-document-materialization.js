@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for late document materialization rule
@@ -30,6 +30,8 @@
 
 let jsunity = require("jsunity");
 let db = require("@arangodb").db;
+let isCluster = require("internal").isCluster();
+
 function lateDocumentMaterializationRuleTestSuite () {
   const ruleName = "late-document-materialization";
   const cn = "UnitTestsCollection";
@@ -37,141 +39,188 @@ function lateDocumentMaterializationRuleTestSuite () {
   const vn = "UnitTestsView";
   const svn = "SortedTestsView";
   return {
-	setUpAll : function () {
+    setUpAll : function () {
       db._dropView(vn);
-	  db._dropView(svn);
+      db._dropView(svn);
       db._drop(cn);
       db._drop(cn1);
       
       let c = db._create(cn, { numberOfShards: 3 });
       let c2 = db._create(cn1, { numberOfShards: 3 });
-	  db._createView(vn, "arangosearch", { 
-	    links: { 
-		  [cn] : { includeAllFields: true }, 
-		  [cn1] : { includeAllFields: true } 
-		}});
-	  db._createView(svn, "arangosearch", {
-	    consolidationIntervalMsec: 5000, 
-		primarySort: [{"field": "str", "direction": "asc"}], 
-		links: { 
-		  [cn] : { includeAllFields: true }, 
-		  [cn1] : { includeAllFields: true } 
-		}});
+      db._createView(vn, "arangosearch", { 
+        links: { 
+          [cn] : { includeAllFields: true }, 
+          [cn1] : { includeAllFields: true } 
+        }});
+      db._createView(svn, "arangosearch", {
+        consolidationIntervalMsec: 5000, 
+        primarySort: [{"field": "str", "direction": "asc"}], 
+        links: { 
+          [cn] : { includeAllFields: true }, 
+          [cn1] : { includeAllFields: true } 
+        }});
 
-	  for (var i = 0; i < 10; ++i) {
+      for (var i = 0; i < 10; ++i) {
         c.save({ _key: 'c' + i,  col: 'c',  str: 'str' + i , value: i });
-		c2.save({_key: 'c_' + i, col: 'c2',  str: 'ttr' + i , value: i });
+        c2.save({_key: 'c_' + i, col: 'c2',  str: 'ttr' + i , value: i + 10 });
       }
-	  // trigger view sync
-	  db._query("FOR d IN " + vn + " OPTIONS { waitForSync: true } RETURN d");
+      // trigger view sync
+      db._query("FOR d IN " + vn + " OPTIONS { waitForSync: true } RETURN d");
     },
 
     tearDownAll : function () {
-      db._dropView(vn);
-	  db._dropView(svn);
-      db._drop(cn);
-      db._drop(cn1);
+      try { db._dropView(vn); } catch(e) {}
+      try { db._dropView(svn); } catch(e) {}
+      try { db._drop(cn); } catch(e) {}
+      try { db._drop(cn1); } catch(e) {}
     }, 
-	testNotAppliedDueToFilter() {
-	  let query = "FOR d IN " + vn  + " FILTER d.value IN [1,2] SORT BM25(d) LIMIT 10 RETURN d ";
-	  let plan = AQL_EXPLAIN(query).plan;
+    testNotAppliedDueToFilter() {
+      let query = "FOR d IN " + vn  + " FILTER d.value IN [1,2] SORT BM25(d) LIMIT 10 RETURN d ";
+      let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
-	},
-	testNotAppliedDueToSort() {
-	  let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2] SORT d.value LIMIT 10 RETURN d ";
-	  let plan = AQL_EXPLAIN(query).plan;
+    },
+    testNotAppliedDueToSort() {
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2] SORT d.value LIMIT 10 RETURN d ";
+      let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
-	},
-	testNotAppliedDueToCalculation() {
-	  let query = "FOR d IN " + vn  + " LET c = d.value + RAND()  SORT BM25(d) LIMIT 10 RETURN c ";
-	  let plan = AQL_EXPLAIN(query).plan;
+    },
+    testNotAppliedDueToCalculation() {
+      let query = "FOR d IN " + vn  + " LET c = d.value + RAND()  SORT BM25(d) LIMIT 10 RETURN c ";
+      let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
-	},
-	testNotAppliedDueToNoSort() {
-	  let query = "FOR d IN " + vn  + " LIMIT 10 RETURN d ";
-	  let plan = AQL_EXPLAIN(query).plan;
+    },
+    testNotAppliedDueToNoSort() {
+      let query = "FOR d IN " + vn  + " LIMIT 10 RETURN d ";
+      let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
-	},
-	testNotAppliedDueToNoLimit() {
-	  let query = "FOR d IN " + vn  + " SORT BM25(d)  RETURN d ";
-	  let plan = AQL_EXPLAIN(query).plan;
+    },
+    testNotAppliedDueToUsedInInnerSort() {
+      let query = "FOR d IN " + vn  + " SORT d.value ASC SORT BM25(d) LIMIT 10 RETURN d ";
+      let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
-	},
-	testNotAppliedInSortedView() {
-	  let query = "FOR d IN " + svn  + " SORT d.str ASC  RETURN d ";
-	  let plan = AQL_EXPLAIN(query).plan;
+    },
+    testNotAppliedDueToNoLimit() {
+      let query = "FOR d IN " + vn  + " SORT BM25(d)  RETURN d ";
+      let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
-	},
-	testQueryResultsWithRandomSort() {
-	  let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2] SORT RAND() LIMIT 10 RETURN d ";
-	  let plan = AQL_EXPLAIN(query).plan;
+    },
+    testNotAppliedInSortedView() {
+      let query = "FOR d IN " + svn  + " SORT d.str ASC LIMIT 1,10  RETURN d ";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertEqual(-1, plan.rules.indexOf(ruleName));
+    },
+    testQueryResultsWithRandomSort() {
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11,12] SORT RAND() LIMIT 10 RETURN d ";
+      let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
-	  let result = AQL_EXECUTE(query);
+      let result = AQL_EXECUTE(query);
       assertEqual(4, result.json.length);
-	  let expectedKeys = new Set(['c1', 'c2', 'c_1', 'c_2']);
-	  result.json.forEach(function(doc) {
+      let expectedKeys = new Set(['c1', 'c2', 'c_1', 'c_2']);
+      result.json.forEach(function(doc) {
         assertTrue(expectedKeys.has(doc._key));
-		expectedKeys.delete(doc._key);
+        expectedKeys.delete(doc._key);
       });
-	  assertEqual(0, expectedKeys.size);
-	},
-	testQueryResultsWithMultipleCollections() {
-	  let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2] SORT BM25(d) LIMIT 10 RETURN d ";
-	  let plan = AQL_EXPLAIN(query).plan;
+      assertEqual(0, expectedKeys.size);
+    },
+    testQueryResultsWithMultipleCollections() {
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LIMIT 10 RETURN d ";
+      let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
-	  let result = AQL_EXECUTE(query);
+      let result = AQL_EXECUTE(query);
       assertEqual(4, result.json.length);
-	  let expectedKeys = new Set(['c1', 'c2', 'c_1', 'c_2']);
-	  result.json.forEach(function(doc) {
+      let expectedKeys = new Set(['c1', 'c2', 'c_1', 'c_2']);
+      result.json.forEach(function(doc) {
         assertTrue(expectedKeys.has(doc._key));
-		expectedKeys.delete(doc._key);
+        expectedKeys.delete(doc._key);
       });
-	  assertEqual(0, expectedKeys.size);
-	},
-	testQueryResultsWithMultipleCollectionsAfterCalc() {
-	  let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2] SORT BM25(d) LIMIT 10 LET c = CONCAT(d._key, '-C') RETURN c ";
-	  // FIXME: we need this to hold calculation node after SORT node in cluster. 
-	  // However this should be fixed in rules on cluster
-	  let plan = AQL_EXPLAIN(query, {}, {optimizer:{rules:['-move-calculations-up', '-move-calculations-up-2']}}).plan;
+      assertEqual(0, expectedKeys.size);
+    },
+    testQueryResultsWithMultipleCollectionsWithAfterSort() {
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11,12] SORT BM25(d) LIMIT 10 SORT d.value ASC RETURN d ";
+      let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
-	  let result = AQL_EXECUTE(query, {}, {optimizer:{rules:['-move-calculations-up', '-move-calculations-up-2']}});
+      let result = AQL_EXECUTE(query);
       assertEqual(4, result.json.length);
-	  let expected = new Set(['c1-C', 'c2-C', 'c_1-C', 'c_2-C']);
-	  result.json.forEach(function(doc) {
+      let expectedKeys = new Set(['c1', 'c2', 'c_1', 'c_2']);
+      let currentValue  = 0;
+      result.json.forEach(function(doc) {
+        assertTrue(expectedKeys.has(doc._key));
+        expectedKeys.delete(doc._key);
+        // check after sort asc order
+        assertTrue(currentValue < doc.value);
+        currentValue = doc.value;
+      });
+      assertEqual(0, expectedKeys.size);
+    },
+    testQueryResultsWithMultipleCollectionsWithMultiSort() {
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11,12] SORT BM25(d) SORT TFIDF(d) LIMIT 10 RETURN d ";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let materializeNodeFound = false;
+      // only one last sort node must be materializer
+      plan.nodes.forEach(function(node) {
+        if( node.type === "SortNode" && node.hasOwnProperty('outDocument')) {
+          // there should be no materializer before
+          assertFalse(materializeNodeFound);
+          materializeNodeFound = true;
+        }
+      });
+      // materilizer should be there
+      assertTrue(materializeNodeFound);
+      let result = AQL_EXECUTE(query);
+      assertEqual(4, result.json.length);
+      let expectedKeys = new Set(['c1', 'c2', 'c_1', 'c_2']);
+      result.json.forEach(function(doc) {
+        assertTrue(expectedKeys.has(doc._key));
+        expectedKeys.delete(doc._key);
+      });
+      assertEqual(0, expectedKeys.size);
+    },
+    testQueryResultsWithMultipleCollectionsAfterCalc() {
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LIMIT 10 LET c = CONCAT(d._key, '-C') RETURN c ";
+      // we need some rules disabled to hold calculation node after SORT node in cluster. 
+      // However this should be bad in general (as calculation may need collection/view data)
+      // for this test run we just need to make sure late materialixation doesn`t spoil later calculations
+      let plan = AQL_EXPLAIN(query, {}, {optimizer:{rules:['-2move-calculations-up', '-2move-calculations-up-2']}}).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let result = AQL_EXECUTE(query, {}, {optimizer:{rules:['-2move-calculations-up', '-2move-calculations-up-2']}});
+      assertEqual(4, result.json.length);
+      let expected = new Set(['c1-C', 'c2-C', 'c_1-C', 'c_2-C']);
+      result.json.forEach(function(doc) {
         assertTrue(expected.has(doc));
-		expected.delete(doc);
+        expected.delete(doc);
       });
-	  assertEqual(0, expected.size);
-	},
-	testQueryResultsWithMultipleCollectionsNoSortLimit() {
-	  let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2] SORT BM25(d) LIMIT 10 RETURN d ";
-	  // run query without sort-limit optimization in order to test non constrained sort implementation
-	  let plan = AQL_EXPLAIN(query, {},{optimizer:{rules:["-sort-limit"]}}).plan;
+      assertEqual(0, expected.size);
+    },
+    testQueryResultsWithMultipleCollectionsNoSortLimit() {
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LIMIT 10 RETURN d ";
+      // run query without sort-limit optimization in order to test non constrained sort implementation
+      let plan = AQL_EXPLAIN(query, {},{optimizer:{rules:["-sort-limit"]}}).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
-	  let result = AQL_EXECUTE(query, {},{optimizer:{rules:["-sort-limit"]}});
+      let result = AQL_EXECUTE(query, {},{optimizer:{rules:["-sort-limit"]}});
       assertEqual(4, result.json.length);
-	  let expectedKeys = new Set(['c1', 'c2', 'c_1', 'c_2']);
-	  result.json.forEach(function(doc) {
+      let expectedKeys = new Set(['c1', 'c2', 'c_1', 'c_2']);
+      result.json.forEach(function(doc) {
         assertTrue(expectedKeys.has(doc._key));
-		expectedKeys.delete(doc._key);
+        expectedKeys.delete(doc._key);
       });
-	  assertEqual(0, expectedKeys.size);
-	},
-	testQueryResultsSkipAll() {
-	  let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2] SORT BM25(d) LIMIT 5,10 RETURN d ";
-	  let plan = AQL_EXPLAIN(query).plan;
+      assertEqual(0, expectedKeys.size);
+    },
+    testQueryResultsSkipAll() {
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LIMIT 5,10 RETURN d ";
+      let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
-	  let result = AQL_EXECUTE(query);
+      let result = AQL_EXECUTE(query);
       assertEqual(0, result.json.length);
-	},
-	testQueryResultsSkipAllNoSortLimit() {
-	  let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2] SORT BM25(d) LIMIT 5,10 RETURN d ";
-	  // run query without sort-limit optimization in order to test non constrained sort implementation
-	  let plan = AQL_EXPLAIN(query, {}, {optimizer:{rules:["-sort-limit"]}}).plan;
+    },
+    testQueryResultsSkipAllNoSortLimit() {
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LIMIT 5,10 RETURN d ";
+      // run query without sort-limit optimization in order to test non constrained sort implementation
+      let plan = AQL_EXPLAIN(query, {}, {optimizer:{rules:["-sort-limit"]}}).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
-	  let result = AQL_EXECUTE(query, {},{optimizer:{rules:["-sort-limit"]}});
+      let result = AQL_EXECUTE(query, {},{optimizer:{rules:["-sort-limit"]}});
       assertEqual(0, result.json.length);
-	}
+    }
   };
 }
 

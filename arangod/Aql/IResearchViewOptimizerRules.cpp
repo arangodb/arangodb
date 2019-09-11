@@ -297,21 +297,22 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
       auto & viewNode = *EN::castTo<IResearchViewNode*>(loop);
       ExecutionNode* current = node->getFirstDependency();
       SortNode* sortNode = nullptr;
-      bool docBodyUsed = false;
+      // examinig plan. We are looking for closest to limit sort node
+      // without document body usage before that node.
+      // this node could be used as materializer
       while (current != loop) {
         if (arangodb::aql::ExecutionNode::SORT == current->getType() && 
-          sortNode == nullptr) { // we need nearest to limit sort node. Only this node will do materialization
+          sortNode == nullptr) { // we need nearest to limit sort node, so keep selected if any
           sortNode = EN::castTo<SortNode*>(current);
         }
         arangodb::HashSet<Variable const*> currentUsedVars;
         current->getVariablesUsedHere(currentUsedVars);
         if (currentUsedVars.find(&viewNode.outVariable()) != currentUsedVars.end()) {
-          docBodyUsed = true;
-          break; // this means we can not optimize. Nothing to look anymore.
+          sortNode = nullptr; // we had doc body used before selected SortNode. Forget it, let`s look for better sort to use
         }
         current = current->getFirstDependency();  // inspect next node
       }
-      if (sortNode && !docBodyUsed) {
+      if (sortNode) {
         // we could apply late materialization
         // 1. We need to notify view - it should not materialize documents, but produce only localDocIds
         // 2. We need to tell sort node to do materialization
