@@ -3660,7 +3660,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
           LEGACY_ANALYZER_COLLECTION_NAME, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE((true == trx.begin().ok()));
       EXPECT_TRUE(
-          (true == trx.insert(arangodb::tests::AnalyzerCollectionName,
+          (true == trx.insert(LEGACY_ANALYZER_COLLECTION_NAME,
                               VPackParser::fromJson("{\"name\": \"legacy\"}")->slice(), options)
                        .ok()));
       EXPECT_TRUE((trx.commit().ok()));
