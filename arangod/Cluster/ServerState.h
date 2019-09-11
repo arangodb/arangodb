@@ -277,6 +277,9 @@ class ServerState {
   /// @brief try to read the rebootID from the Agency
   ResultT<uint64_t> readRebootIdFromAgency(AgencyComm& comm);
 
+  /// @brief check whether the agency has been initalized
+  bool checkIfAgencyInitialized(AgencyComm&, RoleEnum const&);
+
   /// @brief register at agency, might already be done
   bool registerAtAgencyPhase1(AgencyComm&, RoleEnum const&);
 

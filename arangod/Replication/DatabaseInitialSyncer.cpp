@@ -33,11 +33,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Indexes/Index.h"
-#include "Indexes/IndexIterator.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/utilities.h"
-#include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -54,7 +52,6 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Validator.h>

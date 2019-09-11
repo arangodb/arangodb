@@ -26,7 +26,6 @@
 #include "Aql/AstNode.h"
 #include "Aql/CollectNode.h"
 #include "Aql/CollectOptions.h"
-#include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
@@ -51,7 +50,6 @@
 #include "VocBase/AccessMode.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -1171,9 +1169,26 @@ ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous, AstNode co
     en = registerNode(new FilterNode(this, nextId(), v));
   } else {
     // operand is some misc expression
-    auto calc = createTemporaryCalculation(expression, previous);
-    en = registerNode(new FilterNode(this, nextId(), getOutVariable(calc)));
-    previous = calc;
+    if (expression->isTrue()) {
+      // filter expression is known to be always true, so 
+      // remove the filter entirely
+      return previous;
+    }
+
+    // note: if isTrue() is false above, it is not necessarily the case that
+    // isFalse() is true next. The reason is that isTrue() and isFalse() only
+    // return true in case of absolulete certainty. this requires expressions
+    // to be based on query compile-time values only, but it will not work
+    // for expressions that need to be evaluated at query runtime
+    if (expression->isFalse()) {
+      // filter expression is known to be always false, so
+      // replace the FILTER with a NoResultsNode
+      en = registerNode(new NoResultsNode(this, nextId()));
+    } else {
+      auto calc = createTemporaryCalculation(expression, previous);
+      en = registerNode(new FilterNode(this, nextId(), getOutVariable(calc)));
+      previous = calc;
+    }
   }
 
   return addDependency(previous, en);
@@ -2035,6 +2050,9 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
   arangodb::HashSet<Variable const*> _valid;
   std::unordered_map<VariableId, ExecutionNode*>* _varSetBy;
   bool const _ownsVarSetBy;
+  
+  VarUsageFinder(VarUsageFinder const&) = delete;
+  VarUsageFinder& operator=(VarUsageFinder const&) = delete;
 
   VarUsageFinder() : _varSetBy(nullptr), _ownsVarSetBy(true) {
     _varSetBy = new std::unordered_map<VariableId, ExecutionNode*>();
@@ -2326,7 +2344,8 @@ bool ExecutionPlan::isDeadSimple() const {
 
     if (nodeType == ExecutionNode::SUBQUERY || nodeType == ExecutionNode::ENUMERATE_COLLECTION ||
         nodeType == ExecutionNode::ENUMERATE_LIST || nodeType == ExecutionNode::TRAVERSAL ||
-        nodeType == ExecutionNode::SHORTEST_PATH || nodeType == ExecutionNode::INDEX) {
+        nodeType == ExecutionNode::SHORTEST_PATH || nodeType == ExecutionNode::K_SHORTEST_PATHS ||
+        nodeType == ExecutionNode::INDEX) {
       // these node types are not simple
       return false;
     }

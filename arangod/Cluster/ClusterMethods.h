@@ -127,11 +127,9 @@ int deleteDocumentOnCoordinator(transaction::Methods& trx, std::string const& co
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int getDocumentOnCoordinator(transaction::Methods& trx, std::string const& collname,
-                             VPackSlice slice, OperationOptions const& options,
-                             arangodb::rest::ResponseCode& responseCode,
-                             std::unordered_map<int, size_t>& errorCounter,
-                             std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
+futures::Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
+                                                          LogicalCollection&, VPackSlice slice,
+                                                          OperationOptions const& options);
 
 /// @brief fetch edges from TraverserEngines
 ///        Contacts all TraverserEngines placed
@@ -251,20 +249,18 @@ Result getTtlPropertiesFromAllDBServers(arangodb::velocypack::Builder& out);
 Result setTtlPropertiesOnAllDBServers(arangodb::velocypack::Slice const& properties,
                                       arangodb::velocypack::Builder& out);
 
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief create hotbackup on a coordinator
 //////////////////////////////////////////////////////////////////////////////
 
-enum HotBackupMode {CONSISTENT, DIRTY};
+enum HotBackupMode { CONSISTENT, DIRTY };
 
 /**
  * @brief Create hot backup on coordinators
  * @param mode    Backup mode: consistent, dirty
  * @param timeout Wait for this attempt and bail out if not met
  */
-arangodb::Result hotBackupCoordinator(
-  VPackSlice const payload, VPackBuilder& report);
+arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& report);
 
 /**
  * @brief Restore specific hot backup on coordinators
@@ -307,13 +303,13 @@ arangodb::Result downloadBackupsOnCoordinator(VPackSlice const payload, VPackBui
  * @param  match      Matched db servers
  * @return            Operation's success
  */
-arangodb::Result matchBackupServers(
-  VPackSlice const planDump, std::vector<ServerID> const& dbServers,
-  std::map<std::string,std::string>& match);
+arangodb::Result matchBackupServers(VPackSlice const planDump,
+                                    std::vector<ServerID> const& dbServers,
+                                    std::map<std::string, std::string>& match);
 
 arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
-                                    std::vector<ServerID> const& dbServers,
-                                    std::map<ServerID,ServerID>& match);
+                                         std::vector<ServerID> const& dbServers,
+                                         std::map<ServerID, ServerID>& match);
 
 /**
  * @brief apply database server matches to plan
@@ -322,9 +318,9 @@ arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
  * @param  newPlan  Resulting new plan
  * @return          Operation's result
  */
-arangodb::Result applyDBServerMatchesToPlan(
-  VPackSlice const plan, std::map<ServerID,ServerID> const& matches,
-  VPackBuilder& newPlan);
+arangodb::Result applyDBServerMatchesToPlan(VPackSlice const plan,
+                                            std::map<ServerID, ServerID> const& matches,
+                                            VPackBuilder& newPlan);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the active journals for the collection on all DBservers
@@ -344,7 +340,8 @@ class ClusterMethods {
   static std::vector<std::shared_ptr<LogicalCollection>> createCollectionOnCoordinator(
       TRI_vocbase_t& vocbase, arangodb::velocypack::Slice parameters,
       bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-      bool enforceReplicationFactor);
+      bool enforceReplicationFactor, bool isNewDatabase,
+      std::shared_ptr<LogicalCollection> const& colPtr);
 
  private:
   ////////////////////////////////////////////////////////////////////////////////
@@ -353,7 +350,8 @@ class ClusterMethods {
 
   static std::vector<std::shared_ptr<LogicalCollection>> persistCollectionsInAgency(
       std::vector<std::shared_ptr<LogicalCollection>>& col, bool ignoreDistributeShardsLikeErrors,
-      bool waitForSyncReplication, bool enforceReplicationFactor);
+      bool waitForSyncReplication, bool enforceReplicationFactor,
+      bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colPtr);
 };
 
 }  // namespace arangodb

@@ -45,6 +45,15 @@ using namespace arangodb::fuerte;
 
 using PromiseRes = arangodb::futures::Promise<network::Response>;
 
+/// @brief shardId or empty
+std::string Response::destinationShard() const {
+  if (this->destination.size() > 6 &&
+      this->destination.compare(0, 6, "shard:", 6) == 0) {
+    return this->destination.substr(6);
+  }
+  return StaticStrings::Empty;
+}
+
 template <typename T>
 auto prepareRequest(RestVerb type, std::string const& path, T&& payload,
                     Timeout timeout, Headers const& headers) {
@@ -223,6 +232,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       }
 
       case fuerte::Error::CouldNotConnect:
+      case fuerte::Error::ConnectionClosed:
       case fuerte::Error::Timeout: {
         // Note that this case includes the refusal of a leader to accept
         // the operation, in which case we have to flush ClusterInfo:
@@ -244,7 +254,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       }
 
       default:  // a "proper error" which has to be returned to the client
-        _response = std::move(res);
+        TRI_ASSERT(res == nullptr);
         callResponse(err, std::move(res));
         break;
     }

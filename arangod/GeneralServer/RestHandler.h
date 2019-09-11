@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 
 #include "GeneralServer/RequestLane.h"
+#include "Network/Methods.h"
 #include "Rest/GeneralResponse.h"
 
 #include <atomic>
@@ -92,8 +93,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   void continueHandlerExecution();
 
   /// @brief forwards the request to the appropriate server
-  bool forwardRequest();
-  
+  futures::Future<Result> forwardRequest(bool& forwarded);
+
   void handleExceptionPtr(std::exception_ptr) noexcept;
 
  public:

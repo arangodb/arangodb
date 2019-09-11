@@ -38,7 +38,8 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-#include "tests/Mocks/StorageEngineMock.h"
+
+#include "Mocks/StorageEngineMock.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>

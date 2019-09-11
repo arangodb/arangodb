@@ -53,7 +53,7 @@ function CollectionSuiteErrorHandling () {
     testErrorHandlingBadNameTooLong : function () {
       try {
         // one char too long
-        db._create("a12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678");
+        db._create(Array(258).join("a"));
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
@@ -233,12 +233,13 @@ function CollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateLongName : function () {
-      var cn = "a123456789012345678901234567890123456789012345678901234567890123";
+      const cn = Array(129).join("a");
 
       db._drop(cn);
-      var c1 = db._create(cn);
-      assertEqual(cn, c1.name());
-
+      try {
+        let c1 = db._create(cn);
+        assertEqual(cn, c1.name());
+      } finally {}
       db._drop(cn);
     },
 
@@ -247,12 +248,13 @@ function CollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateLongerName : function () {
-      var cn =  "a1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567";
+      const cn = Array(257).join("a");
 
       db._drop(cn);
-      var c1 = db._create(cn);
-      assertEqual(cn, c1.name());
-
+      try {
+        let c1 = db._create(cn);
+        assertEqual(cn, c1.name());
+      } finally {}
       db._drop(cn);
     },
 

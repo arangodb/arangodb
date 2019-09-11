@@ -26,7 +26,8 @@
 
 const jsunity = require('jsunity');
 const internal = require('internal');
-const fs = require('fs');
+const console = require('console');
+const expect = require('chai').expect;
 
 const arangosh = require('@arangodb/arangosh');
 const crypto = require('@arangodb/crypto');
@@ -74,12 +75,12 @@ function getUrl(endpoint) {
 
 function baseUrl() {
   return getUrl(arango.getEndpoint());
-};
+}
 
 function connectToServer(leader) {
   arango.reconnect(leader, "_system", "root", "");
   db._flushCache();
-};
+}
 
 // getEndponts works with any server
 function getClusterEndpoints() {
@@ -477,7 +478,7 @@ function ActiveFailoverSuite() {
 
       assertTrue(checkInSync(currentLead, servers));
       assertEqual(checkData(currentLead), 10000);
-    }
+    },
 
     // Try to cleanup everything that was created
     /*testCleanup: function () {
@@ -493,6 +494,26 @@ function ActiveFailoverSuite() {
 
       assertTrue(checkInSync(lead, servers));
     }*/
+
+    // Regression test. This endpoint was broken due to added checks in v8-cluster.cpp,
+    // which allowed certain calls only in cluster mode, but not in active failover.
+    testClusterHealth: function () {
+      console.warn({currentLead: getUrl(currentLead)});
+      const res = request.get({
+        url: getUrl(currentLead) + "/_admin/cluster/health",
+        auth: {
+          bearer: jwtRoot,
+        },
+        timeout: 30
+      });
+      console.warn(JSON.stringify(res));
+      console.warn(res.json);
+      expect(res).to.be.an.instanceof(request.Response);
+      // expect(res).to.be.have.property('statusCode', 200);
+      expect(res).to.have.property('json');
+      expect(res.json).to.include({error: false, code: 200});
+      expect(res.json).to.have.property('Health');
+    },
 
   };
 }
