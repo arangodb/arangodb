@@ -356,9 +356,9 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   }
 
   TRI_vocbase_t* vocbase = nullptr;
-  int createDBres = databaseFeature->createDatabase(info.getId(), info.getName(), vocbase);
-  if (createDBres != TRI_ERROR_NO_ERROR) {
-    return Result(createDBres);
+  Result createDBres = databaseFeature->createDatabase(info.getId(), info.getName(), vocbase);
+  if (createDBres.fail()) {
+    return createDBres;
   }
 
   TRI_ASSERT(vocbase != nullptr);

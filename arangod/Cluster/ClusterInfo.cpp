@@ -592,12 +592,12 @@ void ClusterInfo::loadPlan() {
               arangodb::basics::VelocyPackHelper::stringUInt64(database.value,
                                                                StaticStrings::DatabaseId);
           // create a local database object...
-          int res = databaseFeature->createDatabase(id, name, vocbase);
+          Result res = databaseFeature->createDatabase(id, name, vocbase);
 
-          if (res != TRI_ERROR_NO_ERROR) {
+          if (res.fail()) {
             LOG_TOPIC("91870", ERR, arangodb::Logger::AGENCY)
                 << "creating local database '" << name
-                << "' failed: " << TRI_errno_string(res);
+                << "' failed: " << res.errorMessage();
           }
         }
       }
@@ -1826,7 +1826,7 @@ Result ClusterInfo::checkCollectionPreconditions(std::string const& databaseName
         if (it2 != (*it).second.end()) {
           // collection already exists!
           events::CreateCollection(databaseName, info.name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
-          return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+          return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("duplicate collection name '") + info.name + "'");
         }
       } else {
         // no collection in plan for this particular database... this may be true for
@@ -1850,7 +1850,7 @@ Result ClusterInfo::checkCollectionPreconditions(std::string const& databaseName
         if (it2 != (*it).second.end()) {
           // view already exists!
           events::CreateCollection(databaseName, info.name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
-          return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+          return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("duplicate collection name '") + info.name + "'");
         }
       }
     }
@@ -2546,7 +2546,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
         if (it2 != (*it).second.end()) {
           // view already exists!
           events::CreateView(databaseName, name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
-          return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+          return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("duplicate view name '") + name + "'");
         }
       }
     }
@@ -2559,7 +2559,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
         if (it2 != (*it).second.end()) {
           // collection already exists!
           events::CreateCollection(databaseName, name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
-          return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+          return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("duplicate view name '") + name + "'");
         }
       }
     }
