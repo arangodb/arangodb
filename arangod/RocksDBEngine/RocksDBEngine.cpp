@@ -602,7 +602,7 @@ void RocksDBEngine::start() {
   rocksdb::ColumnFamilyOptions fixedPrefCF(_options);
   fixedPrefCF.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
       rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
-  
+
   // construct column family options with prefix containing indexed value
   rocksdb::ColumnFamilyOptions dynamicPrefCF(_options);
   dynamicPrefCF.prefix_extractor = std::make_shared<RocksDBPrefixExtractor>();
@@ -1144,18 +1144,24 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openDatabase(arangodb::velocypack:
   VPackSlice idSlice = args.get("id");
   TRI_voc_tick_t id =
       static_cast<TRI_voc_tick_t>(basics::StringUtils::uint64(idSlice.copyString()));
-
   status = TRI_ERROR_NO_ERROR;
 
   return openExistingDatabase(id, args, true, isUpgrade);
 }
 
+//TODO -- should take info
 std::unique_ptr<TRI_vocbase_t> RocksDBEngine::createDatabase(
     TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) {
-  status = TRI_ERROR_NO_ERROR;
+  status = TRI_ERROR_INTERNAL;
 
-  TRI_ASSERT(!args.get("name").isNone());
-  return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, args);
+  arangodb::CreateDatabaseInfo info;
+  auto rv = info.load(id, args, VPackSlice::emptyArraySlice());
+  if(rv.fail()){
+    THROW_ARANGO_EXCEPTION(rv);
+  }
+
+  status = TRI_ERROR_NO_ERROR;
+  return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, info);
 }
 
 int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
@@ -1258,7 +1264,7 @@ std::string RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
+
   return std::string();  // no need to return a path
 }
 
@@ -1750,7 +1756,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     // we need to take its start tick into account as well, because the following
     // file's start tick can be assumed to be the end tick of the current file!
     if (f->StartSequence() < minTickToKeep &&
-        current < files.size() - 1) {      
+        current < files.size() - 1) {
       auto const& n = files[current + 1].get();
       if (n->StartSequence() < minTickToKeep) {
         // this file will be removed because it does not contain any data we
@@ -2040,7 +2046,12 @@ void RocksDBEngine::addSystemDatabase() {
 /// @brief open an existing database. internal function
 std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     TRI_voc_tick_t id, VPackSlice args, bool wasCleanShutdown, bool isUpgrade) {
-  auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, args);
+
+
+  arangodb::CreateDatabaseInfo info;
+  info.load(id, args, VPackSlice::emptyArraySlice());
+
+  auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, info);
 
   // scan the database path for views
   try {

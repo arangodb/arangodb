@@ -2029,7 +2029,13 @@ std::unique_ptr<TRI_vocbase_t> MMFilesEngine::openExistingDatabase(
     TRI_voc_tick_t id, VPackSlice args, bool wasCleanShutdown, bool isUpgrade) {
 
 
-  auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, args);
+  arangodb::CreateDatabaseInfo info;
+  auto rv = info.load(id, args, VPackSlice::emptyArraySlice());
+  if (rv.fail()) {
+    THROW_ARANGO_EXCEPTION(rv);
+  }
+
+  auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, info);
 
   // scan the database path for views
   try {
@@ -2746,16 +2752,16 @@ void MMFilesEngine::stopAllThreads() {
       thread->beginShutdown();
       thread->signal();
     }
-    
+
     for (auto const& it : _cleanupThreads) {
       auto& thread = it.second;
       thread->beginShutdown();
       thread->signal();
     }
   }
-   
+
   {
-    // wait until all threads have shut down 
+    // wait until all threads have shut down
     MUTEX_LOCKER(locker, _threadsLock);
 
     for (auto const& it : _compactorThreads) {
@@ -2765,7 +2771,7 @@ void MMFilesEngine::stopAllThreads() {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
     }
-    
+
     for (auto const& it : _cleanupThreads) {
       auto& thread = it.second;
       while (thread->isRunning()) {

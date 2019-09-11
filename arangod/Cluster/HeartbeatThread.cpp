@@ -1135,44 +1135,27 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       if (!options.value.isObject()) {
         continue;
       }
-      auto nameSlice = options.value.get("name");
-      if (nameSlice.isNone()) {
-        LOG_TOPIC("2fa12", ERR, Logger::HEARTBEAT)
-            << "Missing name in agency database plan";
-        continue;
-      }
-      std::string const name = options.value.get("name").copyString();
-      TRI_ASSERT(!name.empty());
 
-      VPackSlice const idSlice = options.value.get("id");
-      if (!idSlice.isString()) {
-        LOG_TOPIC("75f0c", ERR, Logger::HEARTBEAT)
-            << "Missing id in agency database plan";
-        TRI_ASSERT(false);
-        continue;
-      }
-      TRI_voc_tick_t id = basics::StringUtils::uint64(idSlice.copyString());
-      TRI_ASSERT(id != 0);
-      if (id == 0) {
-        LOG_TOPIC("b7556", ERR, Logger::HEARTBEAT)
-            << "Failed to convert database id string to number";
-        TRI_ASSERT(false);
-        continue;
+      arangodb::CreateDatabaseInfo info;
+      auto infoResult =  info.load(options.value, VPackSlice::emptyArraySlice());
+      if(infoResult.fail()) {
+        LOG_TOPIC("3fa12", ERR, Logger::HEARTBEAT) << "In agency database plan" << infoResult.errorMessage();
+        //TRI_ASSERT(false); -- not for missing name?!
       }
 
       // known plan IDs
-      ids.push_back(id);
+      ids.push_back(info.getId());
 
-      TRI_vocbase_t* vocbase = databaseFeature->useDatabase(name);
+      TRI_vocbase_t* vocbase = databaseFeature->useDatabase(info.getName());
       if (vocbase == nullptr) {
         // database does not yet exist, create it now
 
         // create a local database object...
-        int res = databaseFeature->createDatabase(id, name, options.value, vocbase);
+        int res = databaseFeature->createDatabase(info, vocbase);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_TOPIC("ca877", ERR, arangodb::Logger::HEARTBEAT)
-              << "creating local database '" << name
+              << "creating local database '" << info.getName()
               << "' failed: " << TRI_errno_string(res);
         } else {
           HasRunOnce.store(true, std::memory_order_release);

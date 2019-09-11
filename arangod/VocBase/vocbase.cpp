@@ -52,7 +52,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Cluster/ClusterFeature.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Basics/system-functions.h"
@@ -1686,27 +1685,21 @@ arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem
   return TRI_ERROR_NO_ERROR;
 }
 
+/// todo add tick od
 /// @brief create a vocbase object
-TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
-                           arangodb::velocypack::Slice args)
-  : _id(id),
-    _name(args.get("name").copyString()),
+TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
+                           arangodb::CreateDatabaseInfo const& info)
+  : _id(info.getId()),
+    _name(info.getName()),
     _type(type),
     _refCount(0),
     _state(TRI_vocbase_t::State::NORMAL),
     _isOwnAppsDirectory(true),
-    _replicationFactor(1) ,
-    _minReplicationFactor(1) ,
-    _sharding(),
+    _replicationFactor(info.replicationFactor()) ,
+    _minReplicationFactor(info.minReplicationFactor()) ,
+    _sharding(info.sharding()),
     _deadlockDetector(false),
     _userStructures(nullptr) {
-
-  TRI_ASSERT(args.isObject());
-
-  auto options = arangodb::getVocbaseOptions(args);
-  _sharding = std::move(options.sharding);
-  _replicationFactor = options.replicationFactor;
-  _minReplicationFactor = options.minReplicationFactor;
 
   _queries.reset(new arangodb::aql::QueryList(this));
   _cursorRepository.reset(new arangodb::CursorRepository(*this));
@@ -2073,96 +2066,6 @@ TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld, bool warn)
   return HybridLogicalClock::decodeTimeStamp(p, len);
 }
 
-
-VocbaseOptions arangodb::getVocbaseOptions(VPackSlice const& options) {
-  LOG_DEVEL << "getVocbaseOptions - options" << options.toJson();
-  TRI_ASSERT(options.isObject());
-  // Invalid options will be silently ignored. Default values will be used
-  // instead.
-  //
-  // This Function will be called twice - the second time we do not run in
-  // the risk of consulting the ClusterFeature, because defaults are provided
-  // during the first call.
-  VocbaseOptions vocbaseOptions;
-  vocbaseOptions.replicationFactor = 1;
-  vocbaseOptions.minReplicationFactor = 1;
-  vocbaseOptions.sharding = "";
-
-  //  sanitize input for vocbase creation
-  //  sharding -- must be "", "flexible" or "single"
-  //  replicationFactor must be "satellite" or a natural number
-  //  minReplicationFactor must be or a natural number
-
-  {
-    auto shardingSlice = options.get(StaticStrings::Sharding);
-    if(! (shardingSlice.isString()  &&
-          (shardingSlice.compareString("") == 0 || shardingSlice.compareString("flexible") == 0 || shardingSlice.compareString("single") == 0)
-         )) {
-      shardingSlice = VPackSlice::noneSlice();
-    } else {
-      vocbaseOptions.sharding = shardingSlice.copyString();
-    }
-  }
-
-  ClusterFeature* cluster = dynamic_cast<ClusterFeature*>(application_features::ApplicationServer::lookupFeature("Cluster"));
-  {
-    VPackSlice replicationSlice = options.get(StaticStrings::ReplicationFactor);
-    bool isSatellite = (replicationSlice.isString() && replicationSlice.compareString(StaticStrings::Satellite) == 0 );
-    bool isNumber = (replicationSlice.isNumber() && replicationSlice.getUInt() > 0 );
-    if(!isSatellite && !isNumber){
-      if(cluster) {
-        vocbaseOptions.replicationFactor = cluster->defaultReplicationFactor();
-      } else {
-        LOG_TOPIC("eeeee", ERR, Logger::CLUSTER) << "Can not access ClusterFeature to determine database replicationFactor";
-      }
-    } else if (isSatellite) {
-      vocbaseOptions.replicationFactor = 0;
-    } else if (isNumber) {
-      vocbaseOptions.replicationFactor = replicationSlice.getNumber<decltype(vocbaseOptions.replicationFactor)>();
-    }
-#ifndef USE_ENTERPRISE
-    if(vocbaseOptions.replicationFactor == 0) {
-      if(cluster) {
-        vocbaseOptions.replicationFactor = cluster->defaultReplicationFactor();
-      } else {
-        LOG_TOPIC("eeeef", ERR, Logger::CLUSTER) << "Can not access ClusterFeature to determine database replicationFactor";
-        vocbaseOptions.replicationFactor = 1;
-      }
-    }
-#endif
-  }
-
-  {
-    VPackSlice minReplicationSlice = options.get(StaticStrings::MinReplicationFactor);
-    bool isNumber = (minReplicationSlice.isNumber() && minReplicationSlice.getNumber<int>() > 0 );
-    if(!isNumber){
-      if(cluster) {
-        vocbaseOptions.minReplicationFactor = cluster->minReplicationFactor();
-      } else {
-        LOG_TOPIC("eeeed", ERR, Logger::CLUSTER) << "Can not access ClusterFeature to determine database minReplicationFactor";
-      }
-    } else if (isNumber) {
-      vocbaseOptions.minReplicationFactor = minReplicationSlice.getNumber<decltype(vocbaseOptions.replicationFactor)>();
-    }
-  }
-
-  return vocbaseOptions;
-}
-
-void arangodb::addVocbaseOptionsToOpenObject(VPackBuilder& builder, std::string const& sharding, std::uint32_t replicationFactor, std::uint32_t minReplicationFactor) {
-  TRI_ASSERT(builder.isOpenObject());
-  builder.add(StaticStrings::Sharding, VPackValue(sharding));
-  if(replicationFactor) {
-    builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
-  } else { // 0 is satellite
-    builder.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
-  }
-  builder.add(StaticStrings::MinReplicationFactor, VPackValue(minReplicationFactor));
-}
-
-void arangodb::addVocbaseOptionsToOpenObject(VPackBuilder& builder, VocbaseOptions const& opt) {
-  addVocbaseOptionsToOpenObject(builder, opt.sharding, opt.replicationFactor, opt.minReplicationFactor);
-}
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

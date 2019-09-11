@@ -40,6 +40,7 @@
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/VocbaseInfo.h"
 
 #include <velocypack/Slice.h>
 
@@ -59,10 +60,12 @@ class LogicalDataSource;
 class LogicalView;
 class ReplicationClientsProgressTracker;
 class StorageEngine;
+
 namespace velocypack {
   class Builder;
   class Slice;
 }
+
 }  // namespace arangodb
 
 /// @brief predefined collection name for users
@@ -137,7 +140,7 @@ struct TRI_vocbase_t {
   /// @brief database state
   enum class State { NORMAL = 0, SHUTDOWN_COMPACTOR = 1, SHUTDOWN_CLEANUP = 2 };
 
-  TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id, ::arangodb::velocypack::Slice args);
+  TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo const&);
   TEST_VIRTUAL ~TRI_vocbase_t();
 
  private:
@@ -419,18 +422,4 @@ void TRI_SanitizeObject(arangodb::velocypack::Slice const slice,
 void TRI_SanitizeObjectWithEdges(arangodb::velocypack::Slice const slice,
                                  arangodb::velocypack::Builder& builder);
 
-namespace arangodb {
-struct VocbaseOptions {
-  std::string sharding = "";
-  std::uint32_t replicationFactor = 1;
-  std::uint32_t minReplicationFactor = 1;
-};
-
-VocbaseOptions getVocbaseOptions(velocypack::Slice const&);
-void addVocbaseOptionsToOpenObject(velocypack::Builder& builder,
-                                   std::string const& sharding,
-                                   std::uint32_t replicationFactor,
-                                   std::uint32_t minReplicationFactor);
-void addVocbaseOptionsToOpenObject(velocypack::Builder&, VocbaseOptions const&);
-}
 #endif

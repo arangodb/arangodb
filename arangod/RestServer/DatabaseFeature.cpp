@@ -596,21 +596,15 @@ Result DatabaseFeature::registerPostRecoveryCallback(std::function<Result()>&& c
 }
 
 /// @brief create a new database
-int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name, VPackSlice options,
-                                    TRI_vocbase_t*& result) {
+int DatabaseFeature::createDatabase(CreateDatabaseInfo const& info, TRI_vocbase_t*& result){
 
-  TRI_ASSERT(options.isObject());
-
+  std::string name = info.getName();
   result = nullptr;
 
-  if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
-    events::CreateDatabase(name, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
-    return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
-  }
-
-  if (id == 0) {
+  if (info.validId()) {
+    TRI_ASSERT(false);
     TRI_ASSERT(!ServerState::instance()->isCoordinator());
-    id = TRI_NewTickServer();
+    //info.setId( TRI_NewTickServer()) ; //if it was not const - set id sooner
   }
 
   std::unique_ptr<TRI_vocbase_t> vocbase;
@@ -637,19 +631,25 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name, 
       }
     }
 
-    // we must actively copy the values to the builder that will provide the args-slice for the vocbase
-    builder.openObject();
-    builder.add("database", VPackValue(id));
-    builder.add("id", VPackValue(std::to_string(id)));
-    builder.add("name", VPackValue(name));
 
-    auto vobaseOptions = getVocbaseOptions(options);
-    addVocbaseOptionsToOpenObject(builder, vobaseOptions);
-    builder.close();
+    //OK FUCK -- id must be string and database the numeric value
+    //ask steemann if we want to always use string
+
+    // builder.add("database", VPackValue(id));
+    // builder.add("id", VPackValue(std::to_string(id)));
 
     // createDatabase must return a valid database or throw
     int status = TRI_ERROR_NO_ERROR;
-    vocbase = engine->createDatabase(id, builder.slice() /*args*/, status);
+
+    //FIXME -- use info directly
+    VPackBuilder tmpOptions;
+    {
+      VPackObjectBuilder guard(&tmpOptions);
+      info.toVelocyPack(tmpOptions);
+    }
+
+
+    vocbase = engine->createDatabase(info.getId(), tmpOptions.slice() /*args*/, status);
     TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
     TRI_ASSERT(vocbase != nullptr);
 
@@ -729,7 +729,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name, 
   int res = TRI_ERROR_NO_ERROR;
 
   if (!engine->inRecovery()) {
-    res = engine->writeCreateDatabaseMarker(id, builder.slice());
+    res = engine->writeCreateDatabaseMarker(info.getId(), builder.slice());
   }
 
   result = vocbase.release();

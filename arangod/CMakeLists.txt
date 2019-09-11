@@ -364,6 +364,7 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   VocBase/Methods/Version.cpp
   VocBase/ticks.cpp
   VocBase/vocbase.cpp
+  VocBase/VocbaseInfo.cpp
 )
 
 set(LIB_ARANGO_UTILS_SOURCES
