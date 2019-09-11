@@ -199,10 +199,10 @@ uint64_t Manager::getActiveTransactionCount() {
 
 Manager::ManagedTrx::ManagedTrx(MetaType t, TransactionState* st)
     : type(t),
+      finalStatus(Status::UNDEFINED),
       usedTimeSecs(TRI_microtime()),
       state(st),
       user(::currentUser()),
-      finalStatus(Status::UNDEFINED),
       rwlock() {}
 
 bool Manager::ManagedTrx::expired() const {

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SingleCollectionTransaction.h"
+#include "Basics/StringUtils.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
@@ -59,7 +60,7 @@ SingleCollectionTransaction::SingleCollectionTransaction(
       _accessType(accessType) {
   // add the (sole) collection
   _cid = resolver()->getCollectionId(name);
-  Result res = addCollection(_cid, name.c_str(), _accessType);
+  Result res = addCollection(_cid, name, _accessType);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -94,6 +95,16 @@ LogicalCollection* SingleCollectionTransaction::documentCollection() {
   TRI_ASSERT(_documentCollection != nullptr);
   return _documentCollection;
 }
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+TRI_voc_cid_t SingleCollectionTransaction::addCollectionAtRuntime(std::string const& name) {
+  // sanity check
+  TRI_ASSERT(!name.empty());
+  TRI_ASSERT((name[0] >= '1' && name[0] <= '9') || name == resolveTrxCollection()->collectionName());
+  TRI_ASSERT((name[0] < '0' || name[0] > '9') || basics::StringUtils::uint64(name) == _cid);
+  return _cid;
+}
+#endif
 
 /// @brief get the underlying collection's name
 std::string SingleCollectionTransaction::name() {

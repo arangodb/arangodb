@@ -1166,6 +1166,7 @@ void transaction::Methods::invokeOnAllElements(std::string const& collectionName
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   TransactionCollection* trxCol = trxCollection(cid, AccessMode::Type::READ);
+  TRI_ASSERT(trxCol != nullptr);
   LogicalCollection* collection = documentCollection(trxCol);
   TRI_ASSERT(collection != nullptr);
   _transactionContextPtr->pinData(collection);
@@ -1266,6 +1267,7 @@ Result transaction::Methods::documentFastPathLocal(std::string const& collection
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   TransactionCollection* trxColl = trxCollection(cid);
+  TRI_ASSERT(trxColl != nullptr);
   LogicalCollection* collection = documentCollection(trxColl);
   TRI_ASSERT(collection != nullptr);
   _transactionContextPtr->pinData(collection);  // will throw when it fails
@@ -2604,7 +2606,6 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
   TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
 
   auto res = collection->truncate(*this, options);
-  ;
 
   if (res.fail()) {
     if (lockResult.is(TRI_ERROR_LOCKED)) {
