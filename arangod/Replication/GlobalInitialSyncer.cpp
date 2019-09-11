@@ -54,7 +54,7 @@ GlobalInitialSyncer::GlobalInitialSyncer(ReplicationApplierConfiguration const& 
 GlobalInitialSyncer::~GlobalInitialSyncer() {
   try {
     if (!_state.isChildSyncer) {
-      _batch.finish(_state.connection, _progress);
+      _batch.finish(_state.connection, _progress, _state.syncerId);
     }
   } catch (...) {
   }
@@ -119,8 +119,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
 
   if (!_state.isChildSyncer) {
     // start batch is required for the inventory request
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "sending start batch";
-    r = _batch.start(_state.connection, _progress);
+    r = _batch.start(_state.connection, _progress, _state.syncerId);
     if (r.fail()) {
       return r;
     }
@@ -129,7 +128,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
   }
   TRI_DEFER(if (!_state.isChildSyncer) {
     _batchPingTimer->cancel();
-    _batch.finish(_state.connection, _progress);
+    _batch.finish(_state.connection, _progress, _state.syncerId);
   });
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "sending start batch done";
 
@@ -198,7 +197,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
       configurationCopy._database = nameSlice.copyString();
 
       auto syncer = std::make_shared<DatabaseInitialSyncer>(*vocbase, configurationCopy);
-      syncer->useAsChildSyncer(_state.master, _state.barrier.id,
+      syncer->useAsChildSyncer(_state.master, _state.syncerId, _state.barrier.id,
                                _state.barrier.updateTime, _batch.id, _batch.updateTime);
 
       // run the syncer with the supplied inventory collections
@@ -212,7 +211,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
       _batch.updateTime = syncer->batchUpdateTime();
 
       if (!_state.isChildSyncer) {
-        _batch.extend(_state.connection, _progress);
+        _batch.extend(_state.connection, _progress, _state.syncerId);
         _state.barrier.extend(_state.connection);
       }
     }
@@ -317,7 +316,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
     existingDBs.erase(dbName);  // remove dbs that exists on the master
 
     if (!_state.isChildSyncer) {
-      _batch.extend(_state.connection, _progress);
+      _batch.extend(_state.connection, _progress, _state.syncerId);
       _state.barrier.extend(_state.connection);
     }
   }
@@ -337,7 +336,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
     }
 
     if (!_state.isChildSyncer) {
-      _batch.extend(_state.connection, _progress);
+      _batch.extend(_state.connection, _progress, _state.syncerId);
       _state.barrier.extend(_state.connection);
     }
   }
@@ -353,12 +352,12 @@ Result GlobalInitialSyncer::getInventory(VPackBuilder& builder) {
     return Result(TRI_ERROR_SHUTTING_DOWN);
   }
 
-  auto r = _batch.start(_state.connection, _progress);
+  auto r = _batch.start(_state.connection, _progress, _state.syncerId);
   if (r.fail()) {
     return r;
   }
 
-  TRI_DEFER(_batch.finish(_state.connection, _progress));
+  TRI_DEFER(_batch.finish(_state.connection, _progress, _state.syncerId));
 
   // caller did not supply an inventory, we need to fetch it
   return fetchInventory(builder);
@@ -383,7 +382,7 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
 
   if (replutils::hasFailed(response.get())) {
     if (!_state.isChildSyncer) {
-      _batch.finish(_state.connection, _progress);
+      _batch.finish(_state.connection, _progress, _state.syncerId);
     }
     return replutils::buildHttpError(response.get(), url, _state.connection);
   }
