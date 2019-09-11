@@ -1,6 +1,10 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* Harden database creation against spurious "duplicate name" errors that
+  were caused by other parallel operations lazily creating required
+  system collections in the same database.
+
 * Fixed the removal (including a collection drop) of an orphanCollection from a
   graph definition when using the arango shell. The boolean flag whether to drop
   the collection or not was not transferred properly.
