@@ -39,38 +39,19 @@ SubqueryStartNode::SubqueryStartNode(ExecutionPlan* plan, arangodb::velocypack::
     : ExecutionNode(plan, base) {}
 
 
-/// @brief toVelocyPack, for SubqueryStartNode
+CostEstimate SubqueryStartNode::estimateCost() const {
+  TRI_ASSERT(!_dependencies.empty());
+
+  // TODO: Fill me in
+  CostEstimate estimate = _dependencies.at(0)->getCost();
+  return estimate;
+}
+
 void SubqueryStartNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
-
-  nodes.add("isConst", VPackValue(const_cast<SubqueryStartNode*>(this)->isConst()));
-
-  // And add it:
   nodes.close();
 }
 
-/// @brief invalidate the cost estimation for the node and its dependencies
-void SubqueryStartNode::invalidateCost() {
-  ExecutionNode::invalidateCost();
-}
-
-bool SubqueryStartNode::isConst() {
-  // TODO: Might be obsolete
-  return false;
-}
-
-bool SubqueryStartNode::mayAccessCollections() {
-  if (_plan->getAst()->functionsMayAccessDocuments()) {
-    // if the query contains any calls to functions that MAY access any
-    // document, then we count this as a "yes"
-    return true;
-  }
-
-  return false;
-}
-
-/// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SubqueryStartNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
@@ -84,26 +65,6 @@ ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan, bool withDependenci
                                    bool withProperties) const {
   auto c = std::make_unique<SubqueryStartNode>(plan, _id);
   return cloneHelper(std::move(c), withDependencies, withProperties);
-}
-
-/// @brief whether or not the subquery is a data-modification operation
-bool SubqueryStartNode::isModificationSubquery() const {
-  return false;
-}
-
-/// @brief estimateCost
-CostEstimate SubqueryStartNode::estimateCost() const {
-  TRI_ASSERT(!_dependencies.empty());
-
-  // TODO: Fill me in
-  CostEstimate estimate = _dependencies.at(0)->getCost();
-  return estimate;
-}
-
-bool SubqueryStartNode::isDeterministic() {
-  // TODO: ?
-
-  return false;
 }
 
 } // namespace aql

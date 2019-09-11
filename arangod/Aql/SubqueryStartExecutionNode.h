@@ -38,40 +38,20 @@ class SubqueryStartNode : public ExecutionNode {
  public:
   SubqueryStartNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
   SubqueryStartNode(ExecutionPlan* plan, size_t id)
-      : ExecutionNode(plan, id), _subqueryDepth(0) {}
+      : ExecutionNode(plan, id) {}
 
-  /// @brief return the type of the node
+  CostEstimate estimateCost() const override final;
+
   NodeType getType() const override final { return SUBQUERY_START; }
 
-  /// @brief invalidate the cost estimate for the node and its dependencies
-  void invalidateCost() override;
-
-  /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
-  /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
       std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
 
-  /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
-
-  /// @brief whether or not the subquery is a data-modification operation
-  bool isModificationSubquery() const;
-
-  /// @brief estimateCost
-  CostEstimate estimateCost() const override final;
-
-  bool isDeterministic() override final;
-
-  bool isConst();
-  bool mayAccessCollections();
-
- private:
-  // TODO: needed?
-  size_t _subqueryDepth;
 };
 
 } // namespace aql

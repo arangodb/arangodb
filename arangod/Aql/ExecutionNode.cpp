@@ -53,6 +53,8 @@
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 #include "Aql/SubqueryExecutor.h"
+#include "Aql/SubqueryEndExecutionNode.h"
+#include "Aql/SubqueryStartExecutionNode.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/system-compiler.h"
@@ -333,6 +335,10 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new SingleRemoteOperationNode(plan, slice);
     case ENUMERATE_IRESEARCH_VIEW:
       return new iresearch::IResearchViewNode(*plan, slice);
+    case SUBQUERY_START:
+      return new SubqueryStartNode(plan, slice);
+    case SUBQUERY_END:
+      return new SubqueryEndNode(plan, slice);
     default: {
       // should not reach this point
       TRI_ASSERT(false);
