@@ -22,6 +22,7 @@
 
 #include "RocksDBBackgroundThread.h"
 #include "Basics/ConditionLocker.h"
+#include "Replication/ReplicationClients.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -88,12 +89,9 @@ void RocksDBBackgroundThread::run() {
 
       if (DatabaseFeature::DATABASE != nullptr) {
         DatabaseFeature::DATABASE->enumerateDatabases([&minTick](TRI_vocbase_t& vocbase) -> void {
-          auto clients = vocbase.getReplicationClients();
-          for (auto c : clients) {
-            if (std::get<3>(c) < minTick) {
-              minTick = std::get<3>(c);
-            }
-          }
+          // lowestServedValue will return the lowest of the lastServedTick values stored,
+          // or UINT64_MAX if no clients are registered
+          minTick = std::min(minTick, vocbase.replicationClients().lowestServedValue());
         });
       }
 
