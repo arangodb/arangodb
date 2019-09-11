@@ -1,6 +1,9 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* Added UI support to create documents in a collection using smartGraphAttribute
+  and/or smartJoinAttribute.
+
 * Add --server.statistics-history flag to allow disabling of only the historical
   statistics. Also added rocksdbengine.write.amplification.x100 statistics
   for measurement of compaction option impact. Enabled non-historical
