@@ -245,17 +245,6 @@ message(STATUS "SNAP REVISION: ${ARANGODB_SNAP_REVISION}")
 #
 # ------------------------------------------------------------------------------
 
-if (WIN32)
-  # path containing the OpenSSL find-module and libraries
-  set(WIN_FIND_OPENSSL_PATH "C:/OpenSSL-ArangoDB")
-  if (EXISTS "${WIN_FIND_OPENSSL_PATH}")
-	list(APPEND CMAKE_MODULE_PATH ${WIN_FIND_OPENSSL_PATH})
-  endif()
-  project(arangodb3 LANGUAGES CXX C VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
-else ()
-  project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
-endif ()
-
 # required for clang completion in editors - must be set after creating project
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -972,6 +961,20 @@ if (APPLE AND BREW AND NOT OPENSSL_ROOT_DIR)
     COMMAND ${BREW} --prefix)
   set(OPENSSL_ROOT_DIR "${BREW_ROOT}/opt/openssl")
   message("auto-set OPENSSL_ROOT_DIR to: ${OPENSSL_ROOT_DIR}")
+endif ()
+
+if (WIN32)
+  if (NOT WIN_FIND_OPENSSL_PATH)
+    # path containing the OpenSSL find-module and libraries
+    set(WIN_FIND_OPENSSL_PATH "C:/OpenSSL-ArangoDB")
+  endif()
+
+  if (EXISTS "${WIN_FIND_OPENSSL_PATH}")
+    list(APPEND CMAKE_MODULE_PATH ${WIN_FIND_OPENSSL_PATH})
+  endif()
+  project(arangodb3 LANGUAGES CXX C VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
+else ()
+  project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 endif ()
 
 find_package(OpenSSL REQUIRED)
