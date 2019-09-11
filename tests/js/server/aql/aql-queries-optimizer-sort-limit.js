@@ -329,7 +329,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 
       const sorts = getSorts(query);
       assertEqual(sorts.length, 1);
-      assertEqual(sorts[0].limit, 10);
+      assertEqual(sorts[0].limit, 30);
       assertEqual(sorts[0].strategy, "constrained-heap");
     },
 
