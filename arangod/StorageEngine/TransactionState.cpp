@@ -23,6 +23,7 @@
 
 #include "TransactionState.h"
 
+#include "Auth/CollectionResource.h"
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
@@ -304,7 +305,7 @@ Result TransactionState::checkCollectionPermission(std::string const& cname,
   Result res;
   // no need to check for superuser, cluster_sync tests break otherwise
   if (!exec.isSuperuser()) {
-    auto level = exec.collectionAuthLevel(_vocbase.name(), cname);
+    auto level = exec.authLevel(auth::CollectionResource{_vocbase, cname});
     TRI_ASSERT(level != auth::Level::UNDEFINED);  // not allowed here
 
     if (level == auth::Level::NONE) {

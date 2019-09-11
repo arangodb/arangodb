@@ -27,19 +27,20 @@
 
 #include <velocypack/Iterator.h>
 
-#include "IResearchCommon.h"
-#include "IResearchFeature.h"
-#include "IResearchLink.h"
-#include "IResearchLinkMeta.h"
-#include "IResearchView.h"
-#include "IResearchViewCoordinator.h"
-#include "VelocyPackHelper.h"
+#include "Auth/CollectionResource.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchLinkMeta.h"
+#include "IResearch/IResearchView.h"
+#include "IResearch/IResearchViewCoordinator.h"
+#include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
-#include "RestServer/SystemDatabaseFeature.h"
+#include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
@@ -352,7 +353,7 @@ arangodb::Result modifyLinks( // modify links
     return arangodb::Result(); // nothing to update
   }
 
-  arangodb::ExecContextSuperuserScope scope; // required to remove links from non-RW collections
+  arangodb::ExecContext::SuperuserScope scope; // required to remove links from non-RW collections
 
   {
     std::unordered_set<TRI_voc_cid_t> collectionsToRemove; // track removal for potential reindex
@@ -768,7 +769,7 @@ namespace iresearch {
     }
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (!arangodb::ExecContext::current().canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
+    if (!arangodb::ExecContext::current().canUseCollection(auth::CollectionResource{vocbase, collection.get()}, arangodb::auth::Level::RO)) {
       return arangodb::Result( // result
         TRI_ERROR_FORBIDDEN, // code
         std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not authorized for read access"

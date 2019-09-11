@@ -7,13 +7,9 @@ class Permissions {
 
   static Permissions merge(Permissions const&, Permissions const&);
 
-  Level authLevel(std::string const& username,
-		  DatabaseResource const&,
-		  bool configured);
+  Level authLevel(std::string const& username, DatabaseResource const&, bool configured);
 
-  Level authLevel(std::string const& username,
-		  CollectionResource const&,
-		  bool configured);
+  Level authLevel(std::string const& username, CollectionResource const&, bool configured);
 
  private:
   std::

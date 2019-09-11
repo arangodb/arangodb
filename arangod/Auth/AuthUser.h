@@ -17,7 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -25,22 +25,18 @@
 #include <string>
 
 namespace arangodb {
-  namespace auth {
-    class AuthUser {
-    public:
-      AuthUser(std::string const& username)
-	: _username(username) {
-      }
+namespace auth {
+class AuthUser {
+ public:
+  AuthUser(std::string const& username) : _username(username) {}
 
-	std::string const& internalUsername() const {
-	  return _username;
-	}
+  std::string const& internalUsername() const { return _username; }
 
-    private:
-      std::string const _username;
-    };
-  }
-}
+ private:
+  std::string const _username;
+};
+}  // namespace auth
+}  // namespace arangodb
 
 /*
 class LoginMethod {

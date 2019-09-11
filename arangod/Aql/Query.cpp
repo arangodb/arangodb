@@ -23,6 +23,8 @@
 
 #include "Query.h"
 
+#include <velocypack/Iterator.h>
+
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExecutionBlock.h"
@@ -35,6 +37,7 @@
 #include "Aql/QueryList.h"
 #include "Aql/QueryProfile.h"
 #include "Aql/QueryRegistry.h"
+#include "Auth/CollectionResource.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -60,8 +63,6 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
-
-#include <velocypack/Iterator.h>
 
 #ifndef USE_PLAN_CACHE
 #undef USE_PLAN_CACHE
@@ -590,7 +591,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
               for (auto& dataSource : cacheEntry->_dataSources) {
                 auto const& dataSourceName = dataSource.second;
 
-                if (!exec.canUseCollection(dataSourceName, auth::Level::RO)) {
+                if (!exec.canUseCollection(auth::CollectionResource{exec.database(), dataSourceName}, auth::Level::RO)) {
                   // cannot use query cache result because of permissions
                   hasPermissions = false;
                   break;
@@ -797,7 +798,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
           for (auto const& dataSource : cacheEntry->_dataSources) {
             auto const& dataSourceName = dataSource.second;
 
-            if (!exec.canUseCollection(dataSourceName, auth::Level::RO)) {
+            if (!exec.canUseCollection(auth::CollectionResource{exec.database(), dataSourceName}, auth::Level::RO)) {
               // cannot use query cache result because of permissions
               hasPermissions = false;
               break;

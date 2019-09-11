@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesRestReplicationHandler.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/CollectionResource.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
@@ -361,7 +363,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
     }
   }
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContext::SuperuserScope escope(ExecContext::current().isAdminUser());
 
   // extract collection
   TRI_voc_cid_t cid = 0;
@@ -590,7 +592,7 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
     DatabaseFeature::DATABASE->inventory(builder, tick, nameFilter);
   } else {
     // add collections and views
-    ExecContextSuperuserScope scope(ExecContext::current().isAdminUser());
+    ExecContext::SuperuserScope scope(ExecContext::current().isAdminUser());
     _vocbase.inventory(builder, tick, nameFilter);
     TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
   }
@@ -916,7 +918,7 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
   bool includeSystem = _request->parsedValue("includeSystem", true);
   bool withTicks = _request->parsedValue("ticks", true);
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContext::SuperuserScope escope(ExecContext::current().isAdminUser());
 
   auto c = _vocbase.lookupCollection(collection);
 
@@ -926,7 +928,7 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
   }
 
   ExecContext const& execContext = ExecContext::current();
-  if (!execContext.canUseCollection(_vocbase.name(), c->name(), auth::Level::RO)) {
+  if (!execContext.canUseCollection(auth::CollectionResource{_vocbase, c.get()}, auth::Level::RO)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return;
   }

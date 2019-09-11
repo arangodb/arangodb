@@ -21,17 +21,19 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchCommon.h"
-#include "IResearchFeature.h"
-#include "IResearchLink.h"
-#include "IResearchLinkHelper.h"
-#include "VelocyPackHelper.h"
+#include "IResearchView.h"
 
 #include "Aql/AstNode.h"
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
+#include "Auth/CollectionResource.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchLinkHelper.h"
+#include "IResearch/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -43,8 +45,6 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
-
-#include "IResearchView.h"
 
 namespace {
 
@@ -574,7 +574,7 @@ arangodb::Result IResearchView::dropImpl() {
 
         if (collection &&
             !arangodb::ExecContext::current().canUseCollection(
-                vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
+              auth::CollectionResource{vocbase(), collection.get()}, arangodb::auth::Level::RO)) {
           return arangodb::Result(TRI_ERROR_FORBIDDEN);
         }
       }
@@ -1028,7 +1028,7 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
 
         if (collection &&
             !arangodb::ExecContext::current().canUseCollection(
-                vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
+              auth::CollectionResource{vocbase(), collection.get()}, arangodb::auth::Level::RO)) {
           return arangodb::Result(
               TRI_ERROR_FORBIDDEN,
               std::string("while updating arangosearch definition, error: "

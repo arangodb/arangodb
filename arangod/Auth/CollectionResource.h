@@ -27,18 +27,43 @@
 #include <string>
 
 namespace arangodb {
-  namespace auth {
-struct CollectionResource : public DatabaseResource {
-  CollectionResource(std::string const& database, 
-		     std::string const& collection)
-    : DatabaseResource(database), _collection(collection) {}
+namespace auth {
+class CollectionResource : public DatabaseResource {
+ public:
+  CollectionResource(std::string const& database, std::string const& collection)
+      : DatabaseResource(database), _collection(collection) {}
 
-  CollectionResource(std::string&& database, 
-		     std::string&& collection)
-    : DatabaseResource(std::move(database)), _collection(std::move(collection)) {}
+  CollectionResource(std::string&& database, std::string&& collection)
+      : DatabaseResource(std::move(database)), _collection(std::move(collection)) {}
+
+  CollectionResource(DatabaseResource const& database, std::string const& collection)
+      : DatabaseResource(database), _collection(collection) {}
+
+  template<typename D, typename C>
+  CollectionResource(D const& database, C const* collection)
+      : DatabaseResource(database.name()), _collection(collection->name()) {}
+
+  template<typename D, typename C>
+    CollectionResource(D const& database, std::unique_ptr<C> const& collection)
+    : DatabaseResource(database.name()), _collection(collection.get()->name()) {}
+
+  template<typename C>
+  explicit CollectionResource(C const* collection)
+    : DatabaseResource(collection->vocbase().name()), _collection(collection->name()) {}
+
+  template<typename C>
+  explicit CollectionResource(C const& collection)
+    : DatabaseResource(collection.vocbase().name()), _collection(collection.name()) {}
+
+  template<typename D>
+    CollectionResource(D const& database, std::string const& collection)
+      : DatabaseResource(database.name()), _collection(collection) {}
+
+  template<typename D>
+    CollectionResource(D const& database, std::string&& collection)
+    : DatabaseResource(database.name()), _collection(std::move(collection)) {}
 
   std::string const _collection;
 };
-  }
-}
-
+}  // namespace auth
+}  // namespace arangodb

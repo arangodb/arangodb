@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_SERVER_VOCBASE_CONTEXT_H
-#define ARANGOD_REST_SERVER_VOCBASE_CONTEXT_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -42,21 +41,21 @@ class VocbaseContext : public arangodb::ExecContext {
   static VocbaseContext* create(GeneralRequest& req, TRI_vocbase_t& vocbase);
   TEST_VIRTUAL TRI_vocbase_t& vocbase() const { return _vocbase; }
 
-  /// @brief upgrade to internal superuser
+  // upgrade to internal superuser
   void forceSuperuser();
 
-  /// @brief upgrade to internal read-only user
+  // upgrade to internal read-only user
   void forceReadOnly();
 
  private:
   TRI_vocbase_t& _vocbase;
 
-  VocbaseContext(GeneralRequest& req, TRI_vocbase_t& vocbase, ExecContext::Type type,
+  VocbaseContext(TRI_vocbase_t& vocbase,
+                 auth::Level systemLevel, auth::Level dbLevel);
+  VocbaseContext(GeneralRequest& req, TRI_vocbase_t& vocbase,
                  auth::Level systemLevel, auth::Level dbLevel);
   VocbaseContext(VocbaseContext const&) = delete;
   VocbaseContext& operator=(VocbaseContext const&) = delete;
 };
 
 }  // namespace arangodb
-
-#endif

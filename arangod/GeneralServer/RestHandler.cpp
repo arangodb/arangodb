@@ -432,7 +432,7 @@ void RestHandler::shutdownEngine() {
 
 void RestHandler::executeEngine(bool isContinue) {
   ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
-  ExecContextScope scope(exec);
+  ExecContext::Scope scope(exec);
 
   RestHandler::CURRENT_HANDLER = this;
 

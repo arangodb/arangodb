@@ -23,8 +23,7 @@
 #pragma once
 
 namespace arangodb {
-  namespace auth {
-struct Resource {
-};
-  }
-}
+namespace auth {
+struct Resource {};
+}  // namespace auth
+}  // namespace arangodb

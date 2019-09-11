@@ -25,6 +25,7 @@
 #include <atomic>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/CollectionResource.h"
 #include "Basics/MutexLocker.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -99,15 +100,15 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
     VPackSlice storeSlice = params.get("store");
     bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
     for (std::string const& vc : vertexCollections) {
-      bool canWrite = exec.canUseCollection(vc, auth::Level::RW);
-      bool canRead = exec.canUseCollection(vc, auth::Level::RO);
+      bool canWrite = exec.canUseCollection(auth::CollectionResource{vocbase, vc}, auth::Level::RW);
+      bool canRead = exec.canUseCollection(auth::CollectionResource{vocbase, vc}, auth::Level::RO);
       if ((storeResults && !canWrite) || !canRead) {
         return std::make_pair(Result{TRI_ERROR_FORBIDDEN}, 0);
       }
     }
     for (std::string const& ec : edgeCollections) {
-      bool canWrite = exec.canUseCollection(ec, auth::Level::RW);
-      bool canRead = exec.canUseCollection(ec, auth::Level::RO);
+      bool canWrite = exec.canUseCollection(auth::CollectionResource{vocbase, ec}, auth::Level::RW);
+      bool canRead = exec.canUseCollection(auth::CollectionResource{vocbase, ec}, auth::Level::RO);
       if ((storeResults && !canWrite) || !canRead) {
         return std::make_pair(Result{TRI_ERROR_FORBIDDEN}, 0);
       }

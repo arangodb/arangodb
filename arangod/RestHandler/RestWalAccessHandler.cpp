@@ -263,7 +263,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   TRI_voc_tid_t barrierId =
       _request->parsedValue("barrier", static_cast<TRI_voc_tid_t>(0));
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContext::SuperuserScope escope(ExecContext::current().isAdminUser());
 
   bool found = false;
   size_t chunkSize = 1024 * 1024;

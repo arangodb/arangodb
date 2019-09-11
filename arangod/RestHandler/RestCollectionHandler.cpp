@@ -23,7 +23,12 @@
 
 #include "RestCollectionHandler.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/CollectionResource.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -37,10 +42,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -81,7 +82,7 @@ void RestCollectionHandler::handleCommandGet() {
     builder.openArray();
     methods::Collections::enumerate(&_vocbase, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
       TRI_ASSERT(coll);
-      bool canUse = ExecContext::current().canUseCollection(coll->name(), auth::Level::RO);
+      bool canUse = ExecContext::current().canUseCollection(auth::CollectionResource{_vocbase, coll.get()}, auth::Level::RO);
 
       if (canUse && (!excludeSystem || !coll->system())) {
         // We do not need a transaction here

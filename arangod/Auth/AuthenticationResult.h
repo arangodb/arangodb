@@ -8,4 +8,3 @@ class AuthenticationResult {
     RESOURCE_TEMPORARLY_UNAVAILABLE
   };
 };
-

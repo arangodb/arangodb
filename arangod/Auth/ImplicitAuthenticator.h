@@ -4,11 +4,10 @@ class ImplicitAuthenticator : public Authorizator {
 };
 
 AuthorizationResult ImplicitAuthenticator::authorize(LoginUser& user) {
-  if (! user.isAuthenticated()) {
+  if (!user.isAuthenticated()) {
     return AuthorizationResult{NOT_AUTHENTICATED};
   }
 
   user.addRole(user.internalName());
   return AuthorizationResult{AUTHORIZED_COMPLETED};
 }
-

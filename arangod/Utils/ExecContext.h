@@ -17,7 +17,8 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Frank Celler
+/// @author Simon Grätzr
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_UTILS_EXECCONTEXT_H
@@ -47,8 +48,39 @@ class Methods;
 // convencience
 
 class ExecContext : public RequestContext {
-  friend struct ExecContextScope;
-  friend struct ExecContextSuperuserScope;
+  friend struct Scope;
+  friend struct SuperuserScope;
+
+ public:
+  // scope guard for the exec context
+  struct Scope {
+    explicit Scope(ExecContext const* exe)
+      : _old(ExecContext::CURRENT) {
+      ExecContext::CURRENT = exe;
+    }
+
+    ~Scope() { ExecContext::CURRENT = _old; }
+
+    private:
+    ExecContext const* _old;
+  };
+
+  struct SuperuserScope {
+    explicit SuperuserScope() : _old(ExecContext::CURRENT) {
+      ExecContext::CURRENT = &ExecContext::Superuser;
+    }
+
+    explicit SuperuserScope(bool cond) : _old(ExecContext::CURRENT) {
+      if (cond) {
+	ExecContext::CURRENT = &ExecContext::Superuser;
+      }
+    }
+
+    ~SuperuserScope() { ExecContext::CURRENT = _old; }
+
+    private:
+    ExecContext const* _old;
+  };
 
  public:
   static std::unique_ptr<ExecContext> create(auth::AuthUser const& user,
@@ -71,6 +103,10 @@ class ExecContext : public RequestContext {
 
   // Should always contain a reference to current user context
   static ExecContext const& current();
+
+  static bool hasAccess(auth::DatabaseResource const& database, auth::Level requested) {
+    return current().canUseDatabase(database, requested);
+  }
 
   // an internal superuser context; is a singleton instance; deleting is
   // an error
@@ -100,9 +136,9 @@ class ExecContext : public RequestContext {
   void cancel() { _canceled = true; }
 
   // current user, may be empty for internal users
-  std::string const& user() const { return _user; }
+  std::string const& user() const { return _user.internalUsername(); }
 
-  // std::string const& database() const { return _database; }
+  auth::DatabaseResource const& database() const { return _database; }
 
   // authentication level on _system. Always RW for superuser
   auth::Level systemAuthLevel() const { return _systemDbAuthLevel; };
@@ -113,6 +149,10 @@ class ExecContext : public RequestContext {
   auth::Level databaseAuthLevel() const { return _databaseAuthLevel; };
 
   // returns true if auth level is above or equal `requested`
+  bool canUseDatabase(auth::DatabaseResource const& database, auth::Level requested) const {
+    return requested <= authLevel(database);
+  }
+
   bool canUseDatabase(auth::Level requested) const {
     return requested <= _databaseAuthLevel;
   }
@@ -133,7 +173,7 @@ class ExecContext : public RequestContext {
   Type _type;
 
   // current user, may be empty for internal users
-  std::string const _user;
+  auth::AuthUser const _user;
 
   // current database to use
   auth::DatabaseResource const _database;
@@ -151,37 +191,6 @@ class ExecContext : public RequestContext {
   static ExecContext Superuser;
   static thread_local ExecContext const* CURRENT;
 };
-
-// scope guard for the exec context
-struct ExecContextScope {
-  explicit ExecContextScope(ExecContext const* exe)
-      : _old(ExecContext::CURRENT) {
-    ExecContext::CURRENT = exe;
-  }
-
-  ~ExecContextScope() { ExecContext::CURRENT = _old; }
-
- private:
-  ExecContext const* _old;
-};
-
-struct ExecContextSuperuserScope {
-  explicit ExecContextSuperuserScope() : _old(ExecContext::CURRENT) {
-    ExecContext::CURRENT = &ExecContext::Superuser;
-  }
-
-  explicit ExecContextSuperuserScope(bool cond) : _old(ExecContext::CURRENT) {
-    if (cond) {
-      ExecContext::CURRENT = &ExecContext::Superuser;
-    }
-  }
-
-  ~ExecContextSuperuserScope() { ExecContext::CURRENT = _old; }
-
- private:
-  ExecContext const* _old;
-};
-
 }  // namespace arangodb
 
 #endif

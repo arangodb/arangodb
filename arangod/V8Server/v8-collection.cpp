@@ -23,6 +23,12 @@
 
 #include "v8-collection.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/HexDump.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Auth/CollectionResource.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
@@ -62,11 +68,6 @@
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/HexDump.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 
@@ -2244,7 +2245,7 @@ static void JS_CollectionVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
 
   // check authentication after ensuring the collection exists
   auto const& exec = ExecContext::current();
-  if (!exec.canUseCollection(collection->name(), auth::Level::RO)) {
+  if (!exec.canUseCollection(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    std::string("No access to collection '") +
                                        TRI_ObjectToString(isolate, val) + "'");
@@ -2291,7 +2292,7 @@ static void JS_CollectionsVocbase(v8::FunctionCallbackInfo<v8::Value> const& arg
   for (size_t i = 0; i < n; ++i) {
     auto& coll = colls[i];
 
-    if (!exec.canUseCollection(vocbase.name(), coll->name(), auth::Level::RO)) {
+    if (!exec.canUseCollection(auth::CollectionResource{vocbase, coll->name()}, auth::Level::RO)) {
       continue;
     }
 

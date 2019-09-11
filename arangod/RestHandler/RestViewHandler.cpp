@@ -23,6 +23,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestViewHandler.h"
+
+#include <velocypack/velocypack-aliases.h>
+
+#include "Auth/DatabaseResource.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
@@ -33,15 +37,11 @@
 #include "Utils/Events.h"
 #include "VocBase/LogicalView.h"
 
-#include <velocypack/velocypack-aliases.h>
-
 namespace {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @return the specified vocbase is granted 'level' access
-////////////////////////////////////////////////////////////////////////////////
+// the specified vocbase is granted 'level' access
 bool canUse(arangodb::auth::Level level, TRI_vocbase_t const& vocbase) {
-  return arangodb::ExecContext::current().canUseDatabase(vocbase.name(), level);
+  return arangodb::ExecContext::current().canUseDatabase(arangodb::auth::DatabaseResource{vocbase}, level);
 }
 
 }  // namespace

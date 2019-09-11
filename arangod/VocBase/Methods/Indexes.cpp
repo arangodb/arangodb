@@ -21,6 +21,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+
+#include "Indexes.h"
+#include "Auth/CollectionResource.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+#include <regex>
+
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -31,7 +41,6 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Indexes.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexFactory.h"
 #include "RestServer/DatabaseFeature.h"
@@ -47,12 +56,6 @@
 #include "V8Server/v8-collection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Collection.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-#include <regex>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -342,8 +345,8 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
   ExecContext const& exec = ExecContext::current();
   if (!exec.isSuperuser()) {
     auth::Level lvl = exec.databaseAuthLevel();
-    bool canModify = exec.canUseCollection(collection->name(), auth::Level::RW);
-    bool canRead = exec.canUseCollection(collection->name(), auth::Level::RO);
+    bool canModify = exec.canUseCollection(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RW);
+    bool canRead = exec.canUseCollection(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RO);
     if ((create && (lvl != auth::Level::RW || !canModify)) ||
         (lvl == auth::Level::NONE || !canRead)) {
       events::CreateIndex(collection->vocbase().name(), collection->name(),
@@ -608,7 +611,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
   ExecContext const& exec = ExecContext::current();
   if (!exec.isSuperuser()) {
     if (exec.databaseAuthLevel() != auth::Level::RW ||
-        !exec.canUseCollection(collection->name(), auth::Level::RW)) {
+        !exec.canUseCollection(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RW)) {
       events::DropIndex(collection->vocbase().name(), collection->name(), "", TRI_ERROR_FORBIDDEN);
       return TRI_ERROR_FORBIDDEN;
     }

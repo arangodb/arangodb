@@ -33,10 +33,18 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
+VocbaseContext::VocbaseContext(TRI_vocbase_t& vocbase,
+                               auth::Level systemLevel, auth::Level dbLevel)
+    : ExecContext(systemLevel, dbLevel), _vocbase(vocbase) {
+  // _vocbase has already been refcounted for us
+  TRI_ASSERT(!_vocbase.isDangling());
+}
+
 VocbaseContext::VocbaseContext(GeneralRequest& req, TRI_vocbase_t& vocbase,
-                               ExecContext::Type type, auth::Level systemLevel,
-                               auth::Level dbLevel)
-    : ExecContext(type, req.user(), req.databaseName(), systemLevel, dbLevel),
+                               auth::Level systemLevel, auth::Level dbLevel)
+  : ExecContext(auth::AuthUser(req.user()), 
+                auth::DatabaseResource(req.databaseName()), 
+                systemLevel, dbLevel),
       _vocbase(vocbase) {
   // _vocbase has already been refcounted for us
   TRI_ASSERT(!_vocbase.isDangling());
@@ -56,7 +64,7 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
   const bool isSuperUser = req.authenticated() && req.user().empty() &&
                            req.authenticationMethod() == AuthenticationMethod::JWT;
   if (isSuperUser) {
-    return new VocbaseContext(req, vocbase, ExecContext::Type::Internal,
+    return new VocbaseContext(vocbase,
                               /*sysLevel*/ auth::Level::RW,
                               /*dbLevel*/ auth::Level::RW);
   }
@@ -66,18 +74,23 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
   if (!auth->isActive()) {
     if (ServerState::readOnly()) {
       // special read-only case
-      return new VocbaseContext(req, vocbase, ExecContext::Type::Internal,
+      return new VocbaseContext(vocbase,
                                 /*sysLevel*/ auth::Level::RO,
                                 /*dbLevel*/ auth::Level::RO);
     }
-    return new VocbaseContext(req, vocbase, req.user().empty() ?
-                              ExecContext::Type::Internal : ExecContext::Type::Default,
-                              /*sysLevel*/ auth::Level::RW,
-                              /*dbLevel*/ auth::Level::RW);
+    if (req.user().empty()) {
+      return new VocbaseContext(vocbase,
+				/*sysLevel*/ auth::Level::RW,
+				/*dbLevel*/ auth::Level::RW);
+    } else {
+      return new VocbaseContext(req, vocbase,
+				/*sysLevel*/ auth::Level::RW,
+				/*dbLevel*/ auth::Level::RW);
+    }
   }
 
   if (!req.authenticated()) {
-    return new VocbaseContext(req, vocbase, ExecContext::Type::Default,
+    return new VocbaseContext(req, vocbase,
                               /*sysLevel*/ auth::Level::NONE,
                               /*dbLevel*/ auth::Level::NONE);
   } else if (req.user().empty()) {
@@ -99,13 +112,12 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
     sysLvl = um->databaseAuthLevel(req.user(), TRI_VOC_SYSTEM_DATABASE);
   }
 
-  return new VocbaseContext(req, vocbase, ExecContext::Type::Default,
+  return new VocbaseContext(req, vocbase,
                             /*sysLevel*/ sysLvl,
                             /*dbLevel*/ dbLvl);
 }
 
 void VocbaseContext::forceSuperuser() {
-  TRI_ASSERT(_type != ExecContext::Type::Internal || _user.empty());
   _type = ExecContext::Type::Internal;
   if (ServerState::readOnly()) {
     _systemDbAuthLevel = auth::Level::RO;
@@ -117,7 +129,6 @@ void VocbaseContext::forceSuperuser() {
 }
 
 void VocbaseContext::forceReadOnly() {
-  TRI_ASSERT(_type != ExecContext::Type::Internal || _user.empty());
   _type = ExecContext::Type::Internal;
   _systemDbAuthLevel = auth::Level::RO;
   _databaseAuthLevel = auth::Level::RO;

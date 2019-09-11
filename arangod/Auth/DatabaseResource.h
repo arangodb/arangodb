@@ -27,13 +27,18 @@
 #include <string>
 
 namespace arangodb {
-  namespace auth {
-struct DatabaseResource : public Resource {
-  DatabaseResource(std::string const& database)
-    : _database(database) {}
+namespace auth {
+class DatabaseResource : public Resource {
+ public:
+  DatabaseResource() : _database() {}
 
-  DatabaseResource(std::string&& database)
-    : _database(std::move(database)) {}
+  explicit DatabaseResource(std::string const& database) : _database(database) {}
+
+  DatabaseResource(std::string&& database) : _database(std::move(database)) {}
+
+  template<typename D>
+  explicit DatabaseResource(D const& database)
+      : _database(database.name()) {}
 
   bool equals(DatabaseResource const& other) const {
     return _database == other._database;
@@ -41,6 +46,5 @@ struct DatabaseResource : public Resource {
 
   std::string const _database;
 };
-  }
-}
-
+}  // namespace auth
+}  // namespace arangodb

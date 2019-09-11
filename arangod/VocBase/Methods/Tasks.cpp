@@ -29,6 +29,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Auth/AuthUser.h"
+#include "Auth/DatabaseResource.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/system-functions.h"
@@ -285,8 +287,8 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     if (!_user.empty()) {  // not superuser
       auto& dbname = _dbGuard->database().name();
 
-      execContext.reset(ExecContext::create(_user, dbname).release());
-      allowContinue = execContext->canUseDatabase(dbname, auth::Level::RW);
+      execContext.reset(ExecContext::create(auth::AuthUser{_user}, auth::DatabaseResource{dbname}).release());
+      allowContinue = execContext->canUseDatabase(auth::DatabaseResource{dbname}, auth::Level::RW);
     }
 
     // permissions might have changed since starting this task
@@ -299,8 +301,8 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     bool queued = basics::function_utils::retryUntilTimeout(
         [this, self, execContext]() -> bool {
           return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self, this, execContext] {
-            ExecContextScope scope(_user.empty() ? &ExecContext::superuser()
-                                                 : execContext.get());
+	    ExecContext::Scope scope(_user.empty() ? &ExecContext::superuser()
+						   : execContext.get());
             work(execContext.get());
 
             if (_periodic.load() && !application_features::ApplicationServer::isStopping()) {

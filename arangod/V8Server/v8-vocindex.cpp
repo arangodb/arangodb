@@ -22,6 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-vocindex.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Auth/DatabaseResource.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -50,10 +56,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -213,7 +215,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
         "_create(<name>, <properties>, <type>, <options>)");
   }
 
-  if (!ExecContext::current().canUseDatabase(vocbase.name(), auth::Level::RW)) {
+  if (!ExecContext::current().canUseDatabase(auth::DatabaseResource{vocbase}, auth::Level::RW)) {
     events::CreateCollection(vocbase.name(), "", TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }

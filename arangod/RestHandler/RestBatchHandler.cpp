@@ -231,7 +231,7 @@ bool RestBatchHandler::executeNextHandler() {
         // start to work for this handler
         // ignore any errors here, will be handled later by inspecting the response
         try {
-          ExecContextScope scope(nullptr);  // workaround because of assertions
+	  ExecContext::Scope scope(nullptr);  // workaround because of assertions
           handler->runHandler([this, self](RestHandler* handler) {
             processSubHandlerResult(*handler);
           });

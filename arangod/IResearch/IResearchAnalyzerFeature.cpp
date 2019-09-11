@@ -53,6 +53,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 
+#include "Auth/CollectionResource.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationServerHelper.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -1168,8 +1169,8 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_feature
     arangodb::auth::Level const& level // access level
 ) {
   auto& ctx = arangodb::ExecContext::current();
-  return ctx.canUseDatabase(vocbase.name(), level) && // can use vocbase
-         ctx.canUseCollection(vocbase.name(), ANALYZER_COLLECTION_NAME, level); // can use analyzers
+  return ctx.canUseDatabase(auth::DatabaseResource{vocbase}, level) && // can use database
+    ctx.canUseCollection(auth::CollectionResource{vocbase, ANALYZER_COLLECTION_NAME}, level); // can use analyzers
 }
 
 /*static*/ bool IResearchAnalyzerFeature::canUse( // check permissions
@@ -1189,10 +1190,14 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_feature
 
   auto split = splitAnalyzerName(name);
 
-  return split.first.null() // static analyzer (always allowed)
-    || (ctx.canUseDatabase(split.first, level) // can use vocbase
-        && ctx.canUseCollection(split.first, ANALYZER_COLLECTION_NAME, level) // can use analyzers
-       );
+  if (split.first.null()) {
+    return true; // static analyzer (always allowed)
+  }
+
+  std::string database = split.first;
+
+  return ctx.canUseDatabase(auth::DatabaseResource{database}, level) // can use vocbase
+    && ctx.canUseCollection(auth::CollectionResource{database, ANALYZER_COLLECTION_NAME}, level); // can use analyzers
 }
 
 ////////////////////////////////////////////////////////////////////////////////

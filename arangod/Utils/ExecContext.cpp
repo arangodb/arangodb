@@ -27,11 +27,11 @@
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
+// should always contain a reference to current user context
 thread_local ExecContext const* ExecContext::CURRENT = nullptr;
 
 ExecContext ExecContext::Superuser(auth::Level::RW, auth::Level::RW);
 
-// Should always contain a reference to current user context
 /*static*/ ExecContext const& ExecContext::current() {
   if (ExecContext::CURRENT != nullptr) {
     return *ExecContext::CURRENT;
@@ -42,7 +42,7 @@ ExecContext ExecContext::Superuser(auth::Level::RW, auth::Level::RW);
 ExecContext::ExecContext(auth::Level systemLevel, auth::Level dbLevel)
   : _type(ExecContext::Type::Internal),
     _user(auth::AuthUser{""}),
-    _database(auth::DatabaseResource{""}),
+    _database(auth::DatabaseResource{}),
     _canceled(false),
     _systemDbAuthLevel(systemLevel),
     _databaseAuthLevel(dbLevel) {
@@ -114,7 +114,7 @@ auth::Level ExecContext::authLevel(auth::DatabaseResource const& database) const
 				   "unable to find userManager instance");
   }
 
-  return um->databaseAuthLevel(_user, database._database);
+  return um->databaseAuthLevel(_user.internalUsername(), database._database);
 }
 
 auth::Level ExecContext::authLevel(auth::CollectionResource const& collection) const {
@@ -149,7 +149,7 @@ auth::Level ExecContext::authLevel(auth::CollectionResource const& collection) c
 				   "unable to find userManager instance");
   }
 
-  return um->collectionAuthLevel(_user, collection._database, collection._collection);
+  return um->collectionAuthLevel(_user.internalUsername(), collection._database, collection._collection);
 }
 }  // namespace arangodb
 

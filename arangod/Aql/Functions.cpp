@@ -23,6 +23,26 @@
 
 #include "Functions.h"
 
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
+#include <date/date.h>
+#include <date/iso_week.h>
+#include <s2/s2loop.h>
+
+#include <unicode/schriter.h>
+#include <unicode/stsearch.h>
+#include <unicode/uchar.h>
+#include <unicode/unistr.h>
+
+#include <velocypack/Collection.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
+#include <velocypack/velocypack-aliases.h>
+#include <algorithm>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -31,6 +51,7 @@
 #include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "Aql/V8Executor.h"
+#include "Auth/CollectionResource.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Mutex.h"
@@ -67,26 +88,6 @@
 #include "V8Server/v8-collection.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
-
-#include <date/date.h>
-#include <date/iso_week.h>
-#include <s2/s2loop.h>
-
-#include <unicode/schriter.h>
-#include <unicode/stsearch.h>
-#include <unicode/uchar.h>
-#include <unicode/unistr.h>
-
-#include <velocypack/Collection.h>
-#include <velocypack/Dumper.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
-#include <velocypack/velocypack-aliases.h>
-#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -4222,8 +4223,8 @@ AqlValue Functions::Collections(ExpressionContext* expressionContext,
   for (size_t i = 0; i < n; ++i) {
     auto& coll = colls[i];
 
-    if (!exec.canUseCollection(vocbase.name(), coll->name(),
-                                                auth::Level::RO)) {
+    if (!exec.canUseCollection(auth::CollectionResource{vocbase, coll->name()},
+           auth::Level::RO)) {
       continue;
     }
 

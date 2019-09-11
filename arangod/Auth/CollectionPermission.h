@@ -1,3 +1,1 @@
-class CollectionPermission : public Permission, CollectionResource {
-};
-
+class CollectionPermission : public Permission, CollectionResource {};

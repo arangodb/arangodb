@@ -618,7 +618,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   configuration.validate();
 
   // allow access to _users if appropriate
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContext::SuperuserScope escope(ExecContext::current().isAdminUser());
 
   // forget about any existing replication applier configuration
   applier->forget();
@@ -989,7 +989,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     return Result();
   }
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContext::SuperuserScope escope(ExecContext::current().isAdminUser());
 
   auto* col = _vocbase.lookupCollection(name).get();
 
@@ -1340,7 +1340,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   }
 #endif
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContext::SuperuserScope escope(ExecContext::current().isAdminUser());
 
   if (colName == TRI_COL_NAME_USERS) {
     // We need to handle the _users in a special way
@@ -1793,7 +1793,7 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
 
   Result fres;
 
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  ExecContext::SuperuserScope escope(ExecContext::current().isAdminUser());
   READ_LOCKER(readLocker, _vocbase._inventoryLock);
 
   // look up the collection

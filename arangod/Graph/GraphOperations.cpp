@@ -31,6 +31,7 @@
 #include <boost/variant.hpp>
 #include <utility>
 
+#include "Auth/CollectionResource.h"
 #include "Aql/Query.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -955,7 +956,7 @@ bool GraphOperations::hasPermissionsFor(std::string const& collection, auth::Lev
     return true;
   }
 
-  if (execContext.canUseCollection(collection, level)) {
+  if (execContext.canUseCollection(auth::CollectionResource{execContext.database(), collection}, level)) {
     return true;
   }
 
@@ -984,11 +985,11 @@ Result GraphOperations::checkEdgeDefinitionPermissions(EdgeDefinition const& edg
   setUnion(graphCollections, edgeDefinition.getTo());
   graphCollections.emplace(edgeDefinition.getName());
 
-  bool canUseDatabaseRW = execContext.canUseDatabase(auth::Level::RW);
+  bool canUseDatabaseRW = execContext.canUseDatabase(execContext.database(), auth::Level::RW);
   for (auto const& col : graphCollections) {
     // We need RO on all collections. And, in case any collection does not
     // exist, we need RW on the database.
-    if (!execContext.canUseCollection(col, auth::Level::RO)) {
+    if (!execContext.canUseCollection(auth::CollectionResource{execContext.database(), col}, auth::Level::RO)) {
       LOG_TOPIC("e8a53", DEBUG, Logger::GRAPHS)
           << logprefix << "No read access to " << databaseName << "." << col;
       return TRI_ERROR_FORBIDDEN;

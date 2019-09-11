@@ -22,6 +22,7 @@
 
 #include "RocksDBRestCollectionHandler.h"
 
+#include "Auth/CollectionResource.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "VocBase/LogicalCollection.h"
@@ -38,7 +39,7 @@ Result RocksDBRestCollectionHandler::handleExtraCommandPut(LogicalCollection& co
                                                            std::string const& suffix,
                                                            velocypack::Builder& builder) {
   if (suffix == "recalculateCount") {
-    if (!ExecContext::current().canUseCollection(coll.name(), auth::Level::RW)) {
+    if (!ExecContext::current().canUseCollection(auth::CollectionResource{coll}, auth::Level::RW)) {
       return Result(TRI_ERROR_FORBIDDEN);
     }
 
