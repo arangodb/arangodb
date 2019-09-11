@@ -93,7 +93,7 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
   using namespace fuerte;
   if (ec) {
     if (ec != asio_ns::error::misc_errors::eof) {
-      LOG_TOPIC("495fe", DEBUG, Logger::REQUESTS)
+      LOG_TOPIC("495fe", INFO, Logger::REQUESTS)
       << "Error while reading from socket: '" << ec.message() << "'";
     }
     this->close();
@@ -240,6 +240,13 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
       this->_auth->userManager()->refreshUser(this->_authToken._username);
     }
     
+    LOG_TOPIC("92fd6", DEBUG, Logger::REQUESTS)
+    << "\"vst-request-begin\",\"" << (void*)this << "\",\""
+    << this->_connectionInfo.clientAddress << "\",\""
+    << VstRequest::translateMethod(req->requestType()) << "\",\""
+    << (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath())
+    << "\"";
+    
     CommTask::Flow cont = this->prepareExecution(*req.get());
     if (cont == CommTask::Flow::Continue) {
       auto resp = std::make_unique<VstResponse>(rest::ResponseCode::SERVER_ERROR, messageId);
@@ -282,9 +289,8 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
                                   resItem->metadata, payload,
                                   resItem->buffers);
   
-  if (stat != nullptr &&
-      arangodb::Logger::isEnabled(arangodb::LogLevel::TRACE, Logger::REQUESTS)) {
-    LOG_TOPIC("cf80d", DEBUG, Logger::REQUESTS)
+  if (stat != nullptr) {
+    LOG_TOPIC("cf80d", TRACE, Logger::REQUESTS)
     << "\"vst-request-statistics\",\"" << (void*)this << "\",\""
     << static_cast<int>(response.responseCode()) << ","
     << this->_connectionInfo.clientAddress << "\"," << stat->timingsCsv();
@@ -346,7 +352,7 @@ void VstCommTask<T>::doWrite() {
                                        size_t transferred) {
       auto* thisPtr = static_cast<VstCommTask<T>*>(self.get());
       if (ec) {
-        LOG_TOPIC("5c6b4", DEBUG, arangodb::Logger::REQUESTS)
+        LOG_TOPIC("5c6b4", INFO, arangodb::Logger::REQUESTS)
         << "asio write error: '" << ec.message() << "'";
         thisPtr->close();
       } else {
