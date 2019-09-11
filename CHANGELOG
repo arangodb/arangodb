@@ -3,7 +3,7 @@ v3.4.9 (XXXX-XX-XX)
 
 * Fixed the removal (including a collection drop) of an orphanCollection from a
   graph definition when using the arango shell. The boolean flag whether to drop
-	the collection or not was not transferred properly.
+  the collection or not was not transferred properly.
 
 * Fixed internal issue #633: made ArangoSearch functions BOOST, ANALYZER, MIN_MATCH
   callable with constant arguments. This will allow running queries where all arguments
@@ -154,6 +154,7 @@ v3.4.8 (2019-09-09)
 
 * Fixed an agency bug found in Windows tests.
 
+
 v3.4.7 (2019-07-02)
 -------------------
 
@@ -179,9 +180,9 @@ v3.4.7 (2019-07-02)
 * fixed internal issue #4172: on agent servers the RocksDB WAL files in the archive directory
   were retained due to an error. Now they are removed, eventually
 
-* fix error reporting in arangorestore. previously, when the server returned an HTTP 404 error,
-  arangorestore unconditionally translated this into a "collection not found" error, which may
-  have masked an actually different server-side error. Instead, make arangorestore return the
+* fix error reporting in arangoexport. previously, when the server returned an HTTP 404 error,
+  arangoexport unconditionally translated this into a "collection not found" error, which may
+  have masked an actually different server-side error. Instead, make arangoexport return the
   server's actual error message as is.
 
 * allow pregel to select the shard key via `shardKeyAttribute` in pregel start parameters
