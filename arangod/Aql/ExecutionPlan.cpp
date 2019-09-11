@@ -2050,6 +2050,9 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
   arangodb::HashSet<Variable const*> _valid;
   std::unordered_map<VariableId, ExecutionNode*>* _varSetBy;
   bool const _ownsVarSetBy;
+  
+  VarUsageFinder(VarUsageFinder const&) = delete;
+  VarUsageFinder& operator=(VarUsageFinder const&) = delete;
 
   VarUsageFinder() : _varSetBy(nullptr), _ownsVarSetBy(true) {
     _varSetBy = new std::unordered_map<VariableId, ExecutionNode*>();

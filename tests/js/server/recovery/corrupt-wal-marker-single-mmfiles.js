@@ -59,7 +59,7 @@ function runSetup () {
   }
   c.save({ _key: 'test199', value: 'test199' }, true); // sync 
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

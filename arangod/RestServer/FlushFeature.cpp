@@ -125,19 +125,19 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t&
   TRI_ASSERT(minTick <= engine->currentTick());
 
   TRI_IF_FAILURE("FlushCrashBeforeSyncingMinTick") {
-    TRI_SegfaultDebugging("crashing before syncing min tick");
+    TRI_TerminateDebugging("crashing before syncing min tick");
   }
 
   engine->waitForSyncTick(minTick);
 
   TRI_IF_FAILURE("FlushCrashAfterSyncingMinTick") {
-    TRI_SegfaultDebugging("crashing after syncing min tick");
+    TRI_TerminateDebugging("crashing after syncing min tick");
   }
 
   engine->releaseTick(minTick);
 
   TRI_IF_FAILURE("FlushCrashAfterReleasingMinTick") {
-    TRI_SegfaultDebugging("crashing after releasing min tick");
+    TRI_TerminateDebugging("crashing after releasing min tick");
   }
 
   return {};

@@ -54,7 +54,7 @@ function runSetup () {
     c[i].save({ _key: 'test50', a: 50, b: 'test50' });
   }
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
