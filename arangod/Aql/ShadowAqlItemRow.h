@@ -25,6 +25,7 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/Common.h"
 
@@ -48,9 +49,6 @@ namespace aql {
  */
 
 class ShadowAqlItemRow {
- private:
-  static const RegisterId SUBQUERY_DEPTH_REGISTER = 0;
-
  public:
   explicit ShadowAqlItemRow(
       // cppcheck-suppress passedByValue
@@ -66,7 +64,7 @@ class ShadowAqlItemRow {
  private:
   inline int64_t getDepth() const {
     TRI_ASSERT(isInitialized());
-    auto value = block().getValueReference(_baseIndex, SUBQUERY_DEPTH_REGISTER);
+    auto value = block().getValueReference(_baseIndex, RegisterPlan::SUBQUERY_DEPTH_REGISTER);
     return value.toInt64();
   }
 
@@ -84,7 +82,7 @@ class ShadowAqlItemRow {
     TRI_ASSERT(_block != nullptr);
     TRI_ASSERT(getNrRegisters() > 0);
     // The value needs to always be a positive integer.
-    auto depthVal = block().getValueReference(_baseIndex, SUBQUERY_DEPTH_REGISTER);
+    auto depthVal = block().getValueReference(_baseIndex, RegisterPlan::SUBQUERY_DEPTH_REGISTER);
     TRI_ASSERT(depthVal.isNumber());
     TRI_ASSERT(depthVal.toInt64() >= 0);
     return true;

@@ -121,8 +121,8 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
   OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
-      inDocRegister, ExecutionNode::MaxRegisterId, ExecutionNode::MaxRegisterId,
-      outputNew, outputOld, ExecutionNode::MaxRegisterId /*output*/,
+      inDocRegister, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
+      outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
       getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),
@@ -193,8 +193,8 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
   OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
-      inputRegister, ExecutionNode::MaxRegisterId, ExecutionNode::MaxRegisterId,
-      outputNew, outputOld, ExecutionNode::MaxRegisterId /*output*/,
+      inputRegister, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
+      outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
       getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),
@@ -284,8 +284,8 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
   OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
-      inDocRegister, inKeyRegister, ExecutionNode::MaxRegisterId, outputNew,
-      outputOld, ExecutionNode::MaxRegisterId /*output*/,
+      inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew,
+      outputOld, RegisterPlan::MaxRegisterId /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
       getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),
@@ -358,8 +358,8 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
   OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
-      inDocRegister, inKeyRegister, ExecutionNode::MaxRegisterId, outputNew,
-      outputOld, ExecutionNode::MaxRegisterId /*output*/,
+      inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew,
+      outputOld, RegisterPlan::MaxRegisterId /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
       getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),
@@ -451,7 +451,7 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
   OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
-      inDoc, insert, update, outputNew, outputOld, ExecutionNode::MaxRegisterId /*output*/,
+      inDoc, insert, update, outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/,
       getRegsToClear(), calcRegsToKeep(), _plan->getAst()->query()->trx(),

@@ -259,7 +259,7 @@ void IndexNode::initializeOnce(bool hasV8Expression, std::vector<Variable const*
       inVars.emplace_back(v);
       auto it = getRegisterPlan()->varInfo.find(v->id);
       TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-      TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+      TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
       inRegs.emplace_back(it->second.registerId);
     }
   };
@@ -435,7 +435,8 @@ CostEstimate IndexNode::estimateCost() const {
 
     if (root != nullptr && root->numMembers() > i) {
       arangodb::aql::AstNode const* condition = root->getMember(i);
-      costs = _indexes[i].getIndex()->supportsFilterCondition(std::vector<std::shared_ptr<Index>>(), condition, _outVariable, itemsInCollection);
+      costs = _indexes[i].getIndex()->supportsFilterCondition(
+          std::vector<std::shared_ptr<Index>>(), condition, _outVariable, itemsInCollection);
     }
 
     totalItems += costs.estimatedItems;

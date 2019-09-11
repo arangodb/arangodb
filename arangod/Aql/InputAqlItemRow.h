@@ -27,6 +27,7 @@
 #define ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H 1
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -109,7 +110,16 @@ class InputAqlItemRow {
     return !(*this == other);
   }
 
-  bool isInitialized() const noexcept { return _block != nullptr; }
+  bool isInitialized() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (_block != nullptr) {
+      // The value needs to always be none. Reserved for ShadowRows
+      auto depthVal = block().getValueReference(_baseIndex, RegisterPlan::SUBQUERY_DEPTH_REGISTER);
+      TRI_ASSERT(depthVal.isNone());
+    }
+#endif
+    return _block != nullptr;
+  }
 
   explicit operator bool() const noexcept { return isInitialized(); }
 
@@ -126,7 +136,6 @@ class InputAqlItemRow {
   }
 
   inline bool blockHasMoreRows() const noexcept { return !isLastRowInBlock(); }
-
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /**
@@ -148,7 +157,6 @@ class InputAqlItemRow {
   void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
 
  private:
-
   inline AqlItemBlock& block() noexcept {
     TRI_ASSERT(_block != nullptr);
     return *_block;

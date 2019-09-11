@@ -282,7 +282,7 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
                       std::move(regsToKeep));
 
   RegisterId regId;
-  RegisterId alternativeRegId = ExecutionNode::MaxRegisterId;
+  RegisterId alternativeRegId = RegisterPlan::MaxRegisterId;
 
   {  // set regId and alternativeRegId:
 
@@ -294,7 +294,7 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     regId = (*it).second.registerId;
 
-    TRI_ASSERT(regId < ExecutionNode::MaxRegisterId);
+    TRI_ASSERT(regId < RegisterPlan::MaxRegisterId);
 
     if (_alternativeVariable != _variable) {
       // use second variable
@@ -302,9 +302,9 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
       TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
       alternativeRegId = (*it).second.registerId;
 
-      TRI_ASSERT(alternativeRegId < ExecutionNode::MaxRegisterId);
+      TRI_ASSERT(alternativeRegId < RegisterPlan::MaxRegisterId);
     } else {
-      TRI_ASSERT(alternativeRegId == ExecutionNode::MaxRegisterId);
+      TRI_ASSERT(alternativeRegId == RegisterPlan::MaxRegisterId);
     }
   }
 

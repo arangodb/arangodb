@@ -442,10 +442,11 @@ TEST_F(TraversalExecutorTestInputStartVertex,
   for (std::size_t index = 0; index < 3; index++) {
     AqlValue value = block->getValue(index, outReg);
     ASSERT_TRUE(value.isObject());
-    ASSERT_TRUE(arangodb::basics::VelocyPackHelper::compare(value.slice(),
-                                                        myGraph.getVertexData(arangodb::velocypack::StringRef(
-                                                            expectedResult.at(index))),
-                                                        false) == 0);
+    ASSERT_TRUE(arangodb::basics::VelocyPackHelper::compare(
+                    value.slice(),
+                    myGraph.getVertexData(
+                        arangodb::velocypack::StringRef(expectedResult.at(index))),
+                    false) == 0);
   }
 }
 
@@ -494,7 +495,7 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
         fixed("v/1"),
         infos(inputRegisters, outputRegisters, 1, 2, {}, {0},
               std::move(traverserPtr), registerMapping, fixed,
-              ExecutionNode::MaxRegisterId, filterConditionVariables) {}
+              RegisterPlan::MaxRegisterId, filterConditionVariables) {}
 };
 
 TEST_F(TraversalExecutorTestConstantStartVertex, no_rows_upstream_producer_doesnt_wait) {
@@ -646,10 +647,11 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_waits_ed
   for (std::size_t index = 0; index < 3; index++) {
     AqlValue value = block->getValue(index, outReg);
     ASSERT_TRUE(value.isObject());
-    ASSERT_TRUE(arangodb::basics::VelocyPackHelper::compare(value.slice(),
-                                                        myGraph.getVertexData(arangodb::velocypack::StringRef(
-                                                            expectedResult.at(index))),
-                                                        false) == 0);
+    ASSERT_TRUE(arangodb::basics::VelocyPackHelper::compare(
+                    value.slice(),
+                    myGraph.getVertexData(
+                        arangodb::velocypack::StringRef(expectedResult.at(index))),
+                    false) == 0);
   }
 }
 

@@ -47,7 +47,7 @@ AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t nrItems, Registe
     // check that the nrRegs value is somewhat sensible
     // this compare value is arbitrary, but having so many registers in a single
     // query seems unlikely
-    TRI_ASSERT(nrRegs <= ExecutionNode::MaxRegisterId);
+    TRI_ASSERT(nrRegs <= RegisterPlan::MaxRegisterId);
 
     increaseMemoryUsage(sizeof(AqlValue) * nrItems * nrRegs);
     try {
@@ -243,7 +243,7 @@ void AqlItemBlock::destroy() noexcept {
     }
 
     for (size_t i = 0; i < numEntries(); i++) {
-      auto &it = _data[i];
+      auto& it = _data[i];
       if (it.requiresDestruction()) {
         auto it2 = _valueCount.find(it);
         if (it2 != _valueCount.end()) {  // if we know it, we are still responsible
@@ -256,7 +256,7 @@ void AqlItemBlock::destroy() noexcept {
           }
         }
       }
-        // Note that if we do not know it the thing it has been stolen from us!
+      // Note that if we do not know it the thing it has been stolen from us!
       it.erase();
     }
     _valueCount.clear();
@@ -286,7 +286,7 @@ void AqlItemBlock::shrink(size_t nrItems) {
   }
 
   decreaseMemoryUsage(sizeof(AqlValue) * (_nrItems - nrItems) * _nrRegs);
-  
+
   for (size_t i = _nrItems * _nrRegs; i < _data.size(); ++i) {
     AqlValue& a = _data[i];
     if (a.requiresDestruction()) {
@@ -315,7 +315,7 @@ void AqlItemBlock::shrink(size_t nrItems) {
 
 void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
   TRI_ASSERT(_valueCount.empty());
-  TRI_ASSERT(nrRegs <= ExecutionNode::MaxRegisterId);
+  TRI_ASSERT(nrRegs <= RegisterPlan::MaxRegisterId);
 
   size_t const targetSize = nrItems * nrRegs;
   size_t const currentSize = _nrItems * _nrRegs;
@@ -339,7 +339,7 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
 
     // Values will not be re-initialized, but are expected to be that way.
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    for(size_t i = currentSize; i < targetSize; i++) {
+    for (size_t i = currentSize; i < targetSize; i++) {
       TRI_ASSERT(_data[i].isEmpty());
     }
 #endif

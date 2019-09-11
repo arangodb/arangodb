@@ -61,6 +61,7 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexHint.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
@@ -120,6 +121,8 @@ typedef std::vector<SortElement> SortElementVector;
 class ExecutionNode {
   /// @brief node type
   friend class ExecutionBlock;
+  // Needs to inject sensitive RegisterInformation
+  friend struct RegisterPlan;
 
  public:
   enum NodeType : int {
@@ -441,70 +444,6 @@ class ExecutionNode {
 
   ExecutionPlan* plan() { return _plan; }
 
-  /// @brief static analysis, walker class and information collector
-  struct VarInfo {
-    unsigned int depth;
-    RegisterId registerId;
-
-    VarInfo() = delete;
-    VarInfo(int depth, RegisterId registerId)
-        : depth(depth), registerId(registerId) {
-      TRI_ASSERT(registerId < MaxRegisterId);
-    }
-  };
-
-  struct RegisterPlan final : public WalkerWorker<ExecutionNode> {
-    // The following are collected for global usage in the ExecutionBlock,
-    // although they are stored here in the node:
-
-    // map VariableIds to their depth and registerId:
-    std::unordered_map<VariableId, VarInfo> varInfo;
-
-    // number of variables in the frame of the current depth:
-    std::vector<RegisterId> nrRegsHere;
-
-    // number of variables in this and all outer frames together,
-    // the entry with index i here is always the sum of all values
-    // in nrRegsHere from index 0 to i (inclusively) and the two
-    // have the same length:
-    std::vector<RegisterId> nrRegs;
-
-    // We collect the subquery nodes to deal with them at the end:
-    std::vector<ExecutionNode*> subQueryNodes;
-
-    // Local for the walk:
-    unsigned int depth;
-    unsigned int totalNrRegs;
-
-   private:
-    // This is used to tell all nodes and share a pointer to ourselves
-    std::shared_ptr<RegisterPlan>* me;
-
-   public:
-    RegisterPlan() : depth(0), totalNrRegs(0), me(nullptr) {
-      nrRegsHere.reserve(8);
-      nrRegsHere.emplace_back(0);
-      nrRegs.reserve(8);
-      nrRegs.emplace_back(0);
-    }
-
-    void clear();
-
-    void setSharedPtr(std::shared_ptr<RegisterPlan>* shared) { me = shared; }
-
-    // Copy constructor used for a subquery:
-    RegisterPlan(RegisterPlan const& v, unsigned int newdepth);
-    ~RegisterPlan() {}
-
-    virtual bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
-      return false;  // do not walk into subquery
-    }
-
-    virtual void after(ExecutionNode* eb) override final;
-
-    RegisterPlan* clone(ExecutionPlan* otherPlan, ExecutionPlan* plan);
-  };
-
   /// @brief static analysis
   void planRegisters(ExecutionNode* super = nullptr);
 
@@ -562,7 +501,7 @@ class ExecutionNode {
     if (var) {
       return variableToRegisterId(var);
     }
-    return ExecutionNode::MaxRegisterId;
+    return RegisterPlan::MaxRegisterId;
   }
 
   virtual ExecutorInfos createRegisterInfos(
@@ -616,10 +555,6 @@ class ExecutionNode {
   std::unordered_set<RegisterId> _regsToClear;
 
  public:
-  /// @brief maximum register id that can be assigned, plus one.
-  /// this is used for assertions
-  static constexpr RegisterId MaxRegisterId = 1000;
-
   /// @brief used as "type traits" for ExecutionNodes and derived classes
   static constexpr bool IsExecutionNode = true;
 };
