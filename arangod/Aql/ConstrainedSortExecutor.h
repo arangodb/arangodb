@@ -56,8 +56,6 @@ struct SortRegister;
  */
 class ConstrainedSortExecutor {
  public:
-  friend class Sorter;
-
   struct Properties {
     static const bool preservesOrder = false;
     static const bool allowsBlockPassthrough = false;
@@ -88,6 +86,8 @@ class ConstrainedSortExecutor {
   bool compareInput(size_t const& rosPos, InputAqlItemRow& row) const;
   arangodb::Result pushRow(InputAqlItemRow& row);
 
+  ExecutionState consumeInput();
+
  private:
   Infos& _infos;
   Fetcher& _fetcher;
@@ -95,6 +95,8 @@ class ConstrainedSortExecutor {
   size_t _returnNext;
   std::vector<size_t> _rows;
   size_t _rowsPushed;
+  size_t _rowsRead;
+  size_t _skippedAfter;
   SharedAqlItemBlockPtr _heapBuffer;
   std::unique_ptr<ConstrainedLessThan> _cmpHeap;  // in pointer to avoid
   OutputAqlItemRow _heapOutputRow;

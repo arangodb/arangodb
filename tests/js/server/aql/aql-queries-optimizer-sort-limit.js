@@ -54,7 +54,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 
     setUp : function () {
       internal.db._drop(cn);
-      collection = internal.db._create(cn);
+      collection = internal.db._create(cn, {numberOfShards: 9});
 
       for (var i = 0; i < docCount; ++i) {
         collection.save({ _key: "test" + i, value : i });
@@ -312,8 +312,6 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       const query = "FOR c IN " + cn + " SORT c.value LIMIT 20, 10 RETURN c";
 
       const queryResult = AQL_EXECUTE(query, {}, {fullCount: true});
-
-      require('console').warn(JSON.stringify(queryResult));
 
       const values = queryResult.json;
       const fullCount = queryResult.stats.fullCount;

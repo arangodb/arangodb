@@ -138,6 +138,8 @@ ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorI
       _state(ExecutionState::HASMORE),
       _returnNext(0),
       _rowsPushed(0),
+      _rowsRead(0),
+      _skippedAfter(0),
       _heapBuffer(_infos._manager.requestBlock(_infos._limit,
                                                _infos.numberOfOutputRegisters())),
       _cmpHeap(std::make_unique<ConstrainedLessThan>(_infos.trx(), _infos.sortRegisters())),
@@ -147,35 +149,31 @@ ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorI
   TRI_ASSERT(_infos._limit > 0);
   _rows.reserve(infos._limit);
   _cmpHeap->setBuffer(_heapBuffer.get());
-};
+}
 
 ConstrainedSortExecutor::~ConstrainedSortExecutor() = default;
 
 std::pair<ExecutionState, NoStats> ConstrainedSortExecutor::produceRows(OutputAqlItemRow& output) {
-  while (_state != ExecutionState::DONE) {
-    TRI_IF_FAILURE("SortBlock::doSorting") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    // We need to pull rows from above, and insert them into the heap
-    InputAqlItemRow input(CreateInvalidInputRowHint{});
-
-    std::tie(_state, input) = _fetcher.fetchRow();
-    if (_state == ExecutionState::WAITING) {
-      return {_state, NoStats{}};
-    }
-    if (!input.isInitialized()) {
-      TRI_ASSERT(_state == ExecutionState::DONE);
-    } else {
-      if (_rowsPushed < _infos._limit || !compareInput(_rows.front(), input)) {
-        // Push this row into the heap
-        pushRow(input);
-      }
-    }
+  ExecutionState state = consumeInput();
+  TRI_ASSERT(state == _state);
+  if (state == ExecutionState::WAITING) {
+    return {ExecutionState::WAITING, NoStats{}};
   }
+  TRI_ASSERT(state == ExecutionState::DONE);
+
   if (_returnNext >= _rows.size()) {
-    // Happens if, we either have no upstream e.g. _rows is empty
-    // Or if dependency is pulling too often (should not happen)
-    return {ExecutionState::DONE, NoStats{}};
+    TRI_ASSERT(_returnNext == _rowsPushed);
+    if (_rowsPushed + _skippedAfter >= _rowsRead) {
+      // No we're really done
+      return {ExecutionState::DONE, NoStats{}};
+    }
+    // We get here if the LIMIT block below does a fullCount. In which case we emit
+    // empty rows. This is fine (tm), as they will not be read.
+    output.setAllowSourceRowUninitialized();
+    InputAqlItemRow invalidInput(CreateInvalidInputRowHint{});
+    output.copyRow(invalidInput);
+    ++_skippedAfter;
+    return {ExecutionState::HASMORE, NoStats{}};
   }
   if (_returnNext == 0) {
     // Only once sort the rows again, s.t. the
@@ -189,9 +187,9 @@ std::pair<ExecutionState, NoStats> ConstrainedSortExecutor::produceRows(OutputAq
   TRI_ASSERT(heapRow.isInitialized());
   TRI_ASSERT(heapRowPosition < _rowsPushed);
   output.copyRow(heapRow);
-  if (_returnNext == _rows.size()) {
-    return {ExecutionState::DONE, NoStats{}};
-  }
+
+  // Lie, we may have a possible LIMIT block with fullCount to work.
+  // We emitted at least one row at this point, so this is fine.
   return {ExecutionState::HASMORE, NoStats{}};
 }
 
@@ -213,8 +211,39 @@ std::pair<ExecutionState, size_t> ConstrainedSortExecutor::expectedNumberOfRows(
     // We have exactly the following rows available:
     rowsLeft = _rows.size() - _returnNext;
   }
-  if (rowsLeft > 0) {
-    return {ExecutionState::HASMORE, rowsLeft};
+
+  // We always report at least 1 row here, for a possible LIMIT block with fullCount to work.
+  rowsLeft = std::max<decltype(rowsLeft)>(1, rowsLeft);
+  return {ExecutionState::HASMORE, rowsLeft};
+
+  // if (rowsLeft > 0) {
+  //   return {ExecutionState::HASMORE, rowsLeft};
+  // }
+  // return {ExecutionState::DONE, rowsLeft};
+}
+
+ExecutionState ConstrainedSortExecutor::consumeInput() {
+  while (_state != ExecutionState::DONE) {
+    TRI_IF_FAILURE("SortBlock::doSorting") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    // We need to pull rows from above, and insert them into the heap
+    InputAqlItemRow input(CreateInvalidInputRowHint{});
+
+    std::tie(_state, input) = _fetcher.fetchRow();
+    if (_state == ExecutionState::WAITING) {
+      return _state;
+    }
+    if (!input.isInitialized()) {
+      TRI_ASSERT(_state == ExecutionState::DONE);
+    } else {
+      ++_rowsRead;
+      if (_rowsPushed < _infos._limit || !compareInput(_rows.front(), input)) {
+        // Push this row into the heap
+        pushRow(input);
+      }
+    }
   }
-  return {ExecutionState::DONE, rowsLeft};
+
+  return _state;
 }
