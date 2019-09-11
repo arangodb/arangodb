@@ -355,7 +355,7 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
 
       auto* feature = // feature
-        irs::attribute::type_id::get(TRI_ObjectToString(isolate, subValue));
+        irs::attribute::type_id::get(TRI_ObjectToString(isolate, subValue), false);
 
       if (!feature) {
         TRI_V8_THROW_TYPE_ERROR("<feature> not supported");
