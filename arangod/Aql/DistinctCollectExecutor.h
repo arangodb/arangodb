@@ -62,10 +62,8 @@ class DistinctCollectExecutorInfos : public ExecutorInfos {
   ~DistinctCollectExecutorInfos() = default;
 
  public:
-  std::vector<std::pair<RegisterId, RegisterId>> getGroupRegisters() const {
-    return _groupRegisters;
-  }
-  transaction::Methods* getTransaction() const { return _trxPtr; }
+  std::vector<std::pair<RegisterId, RegisterId>> getGroupRegisters() const;
+  transaction::Methods* getTransaction() const;
 
  private:
   /// @brief pairs, consisting of out register and in register
@@ -108,7 +106,7 @@ class DistinctCollectExecutor {
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
-  Infos const& infos() const noexcept { return _infos; };
+  Infos const& infos() const noexcept;;
   void destroyValues();
 
  private:

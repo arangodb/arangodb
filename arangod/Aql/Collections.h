@@ -55,7 +55,7 @@ class Collections {
 
   std::map<std::string, Collection*> const* collections() const;
 
-  bool empty() const { return _collections.empty(); }
+  bool empty() const;
 
  private:
   TRI_vocbase_t* _vocbase;

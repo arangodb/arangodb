@@ -51,9 +51,9 @@ CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
           slice.get("collection").copyString())),
       _prototypeCollection(nullptr),
       _prototypeOutVariable(nullptr) {
-    
   if (slice.get("prototype").isString()) {
-    _prototypeCollection = plan->getAst()->query()->collections()->get(slice.get("prototype").copyString());
+    _prototypeCollection =
+        plan->getAst()->query()->collections()->get(slice.get("prototype").copyString());
   }
 
   TRI_ASSERT(_collection != nullptr);
@@ -90,7 +90,7 @@ void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builde
     builder.add("prototype", VPackValue(_prototypeCollection->name()));
   }
   builder.add("satellite", VPackValue(_collection->isSatellite()));
-    
+
   if (ServerState::instance()->isCoordinator()) {
     builder.add(StaticStrings::NumberOfShards, VPackValue(_collection->numberOfShards()));
   }
@@ -107,4 +107,34 @@ void CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(arangodb::velocypac
                        [](arangodb::Index const* idx) {
                          return (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX);
                        });
+}
+
+aql::Collection const* CollectionAccessingNode::collection() const {
+  return _collection;
+}
+
+void CollectionAccessingNode::restrictToShard(std::string const& shardId) {
+  _restrictedTo = shardId;
+}
+
+bool CollectionAccessingNode::isRestricted() const {
+  return !_restrictedTo.empty();
+}
+
+std::string const& CollectionAccessingNode::restrictedShard() const {
+  return _restrictedTo;
+}
+
+void CollectionAccessingNode::setPrototype(arangodb::aql::Collection const* prototypeCollection,
+                                           arangodb::aql::Variable const* prototypeOutVariable) {
+  _prototypeCollection = prototypeCollection;
+  _prototypeOutVariable = prototypeOutVariable;
+}
+
+aql::Collection const* CollectionAccessingNode::prototypeCollection() const {
+  return _prototypeCollection;
+}
+
+aql::Variable const* CollectionAccessingNode::prototypeOutVariable() const {
+  return _prototypeOutVariable;
 }

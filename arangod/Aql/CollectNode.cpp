@@ -328,8 +328,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
           std::move(readableInputRegisters), std::move(writeableOutputRegisters),
           std::move(groupRegisters), collectRegister, expressionRegister,
-          _expressionVariable, std::move(aggregateTypes),
-          std::move(variables), std::move(aggregateRegisters), trxPtr, _count);
+          _expressionVariable, std::move(aggregateTypes), std::move(variables),
+          std::move(aggregateRegisters), trxPtr, _count);
 
       return std::make_unique<ExecutionBlockImpl<SortedCollectExecutor>>(&engine, this,
                                                                          std::move(infos));
@@ -536,4 +536,132 @@ CostEstimate CollectNode::estimateCost() const {
   }
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
+}
+
+CollectNode::CollectNode(
+    ExecutionPlan* plan, size_t id, CollectOptions const& options,
+    std::vector<std::pair<Variable const*, Variable const*>> const& groupVariables,
+    std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
+    Variable const* expressionVariable, Variable const* outVariable,
+    std::vector<Variable const*> const& keepVariables,
+    std::unordered_map<VariableId, std::string const> const& variableMap,
+    bool count, bool isDistinctCommand)
+    : ExecutionNode(plan, id),
+      _options(options),
+      _groupVariables(groupVariables),
+      _aggregateVariables(aggregateVariables),
+      _expressionVariable(expressionVariable),
+      _outVariable(outVariable),
+      _keepVariables(keepVariables),
+      _variableMap(variableMap),
+      _count(count),
+      _isDistinctCommand(isDistinctCommand),
+      _specialized(false) {
+  // outVariable can be a nullptr, but only if _count is not set
+  TRI_ASSERT(!_count || _outVariable != nullptr);
+}
+
+ExecutionNode::NodeType CollectNode::getType() const { return COLLECT; }
+
+bool CollectNode::isDistinctCommand() const { return _isDistinctCommand; }
+
+bool CollectNode::isSpecialized() const { return _specialized; }
+
+void CollectNode::specialized() { _specialized = true; }
+
+CollectOptions::CollectMethod CollectNode::aggregationMethod() const {
+  return _options.method;
+}
+
+void CollectNode::aggregationMethod(CollectOptions::CollectMethod method) {
+  _options.method = method;
+}
+
+CollectOptions& CollectNode::getOptions() { return _options; }
+
+bool CollectNode::count() const { return _count; }
+
+void CollectNode::count(bool value) { _count = value; }
+
+bool CollectNode::hasOutVariableButNoCount() const {
+  return (_outVariable != nullptr && !_count);
+}
+
+bool CollectNode::hasOutVariable() const { return _outVariable != nullptr; }
+
+Variable const* CollectNode::outVariable() const { return _outVariable; }
+
+void CollectNode::clearOutVariable() {
+  TRI_ASSERT(_outVariable != nullptr);
+  _outVariable = nullptr;
+  _count = false;
+}
+
+void CollectNode::clearAggregates(
+    std::function<bool(std::pair<Variable const*, std::pair<Variable const*, std::string>> const&)> cb) {
+  for (auto it = _aggregateVariables.begin(); it != _aggregateVariables.end();
+       /* no hoisting */) {
+    if (cb(*it)) {
+      it = _aggregateVariables.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
+bool CollectNode::hasExpressionVariable() const {
+  return _expressionVariable != nullptr;
+}
+
+void CollectNode::expressionVariable(Variable const* variable) {
+  TRI_ASSERT(!hasExpressionVariable());
+  _expressionVariable = variable;
+}
+
+bool CollectNode::hasKeepVariables() const { return !_keepVariables.empty(); }
+
+std::vector<Variable const*> const& CollectNode::keepVariables() const {
+  return _keepVariables;
+}
+
+void CollectNode::setKeepVariables(std::vector<Variable const*>&& variables) {
+  _keepVariables = std::move(variables);
+}
+
+std::unordered_map<VariableId, std::string const> const& CollectNode::variableMap() const {
+  return _variableMap;
+}
+
+std::vector<std::pair<Variable const*, Variable const*>> const& CollectNode::groupVariables() const {
+  return _groupVariables;
+}
+
+void CollectNode::groupVariables(std::vector<std::pair<Variable const*, Variable const*>> const& vars) {
+  _groupVariables = vars;
+}
+
+std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const&
+CollectNode::aggregateVariables() const {
+  return _aggregateVariables;
+}
+
+std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>>& CollectNode::aggregateVariables() {
+  return _aggregateVariables;
+}
+
+std::vector<Variable const*> CollectNode::getVariablesSetHere() const {
+  std::vector<Variable const*> v;
+  v.reserve(_groupVariables.size() + _aggregateVariables.size() +
+            (_outVariable == nullptr ? 0 : 1));
+
+  for (auto const& p : _groupVariables) {
+    v.emplace_back(p.first);
+  }
+  for (auto const& p : _aggregateVariables) {
+    v.emplace_back(p.first);
+  }
+  if (_outVariable != nullptr) {
+    v.emplace_back(_outVariable);
+  }
+  return v;
 }

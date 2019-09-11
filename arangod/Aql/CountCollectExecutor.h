@@ -59,7 +59,7 @@ class CountCollectExecutorInfos : public ExecutorInfos {
   ~CountCollectExecutorInfos() = default;
 
  public:
-  RegisterId getOutputRegisterId() const { return _collectRegister; }
+  RegisterId getOutputRegisterId() const;
 
  private:
   RegisterId _collectRegister;
@@ -92,51 +92,16 @@ class CountCollectExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
 
-  inline std::pair<ExecutionState, NoStats> produceRows(OutputAqlItemRow& output) {
-    TRI_IF_FAILURE("CountCollectExecutor::produceRows") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
+  std::pair<ExecutionState, NoStats> produceRows(OutputAqlItemRow& output);
 
-    if (_state == ExecutionState::DONE) {
-      return {_state, NoStats{}};
-    }
+  void incrCountBy(size_t incr) noexcept;
 
-    while (_state != ExecutionState::DONE) {
-      size_t skipped;
-      std::tie(_state, skipped) = _fetcher.skipRows(ExecutionBlock::SkipAllSize());
+  uint64_t getCount() noexcept;;
 
-      if (_state == ExecutionState::WAITING) {
-        TRI_ASSERT(skipped == 0);
-        return {_state, NoStats{}};
-      }
-
-      TRI_ASSERT(skipped != 0 || _state == ExecutionState::DONE);
-      incrCountBy(skipped);
-    }
-
-    // In general, we do not have an input row. In fact, we never fetch one.
-    output.setAllowSourceRowUninitialized();
-
-    // We must produce exactly one output row.
-    output.cloneValueInto(_infos.getOutputRegisterId(),
-                          InputAqlItemRow{CreateInvalidInputRowHint{}},
-                          AqlValue(AqlValueHintUInt(getCount())));
-
-    return {_state, NoStats{}};
-  }
-
-  void incrCountBy(size_t incr) noexcept { _count += incr; };
-  uint64_t getCount() noexcept { return _count; };
-
-  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {
-    if (_state == ExecutionState::DONE) {
-      return {ExecutionState::DONE, 0};
-    }
-    return {ExecutionState::HASMORE, 1};
-  }
+  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
-  Infos const& infos() const noexcept { return _infos; };
+  Infos const& infos() const noexcept;
 
  private:
   Infos const& _infos;

@@ -360,3 +360,7 @@ size_t ExecutionBlockImpl<DistributeExecutor>::sendToClient(SharedAqlItemBlockPt
 std::string ExecutionBlockImpl<DistributeExecutor>::createKey(VPackSlice input) const {
   return _collection->getCollection()->createKey(input);
 }
+
+ExecutorInfos const& ExecutionBlockImpl<DistributeExecutor>::infos() const {
+  return _infos;
+}

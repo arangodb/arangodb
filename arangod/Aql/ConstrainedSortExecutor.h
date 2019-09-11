@@ -56,8 +56,6 @@ struct SortRegister;
  */
 class ConstrainedSortExecutor {
  public:
-  friend class Sorter;
-
   struct Properties {
     static const bool preservesOrder = false;
     static const bool allowsBlockPassthrough = false;

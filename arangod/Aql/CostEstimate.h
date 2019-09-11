@@ -33,39 +33,24 @@ namespace aql {
 /// @brief a simple object containing a cost estimate for ExecutionNodes
 struct CostEstimate {
   /// @brief create the cost estimate from values
-  CostEstimate(double estimatedCost, size_t estimatedNrItems)
-      : estimatedCost(estimatedCost), estimatedNrItems(estimatedNrItems) {}
+  CostEstimate(double estimatedCost, size_t estimatedNrItems);
 
   /// @brief initialize a still-invalid cost estimate
-  CostEstimate() : CostEstimate(-1.0, 0) {}
+  CostEstimate();
 
-  bool operator==(CostEstimate const& other) const {
-    return estimatedCost == other.estimatedCost && estimatedNrItems == other.estimatedNrItems;
-  }
+  bool operator==(CostEstimate const& other) const;
 
   /// @brief return an empty but valid cost estimate
-  static CostEstimate empty() { return CostEstimate(0.0, 0); }
+  static CostEstimate empty();
 
   /// @brief invalidate the cost estimate
-  void invalidate() {
-    // a value of < 0 will mean that the cost estimation was not performed yet
-    estimatedCost = -1.0;
-    estimatedNrItems = 0;
-    TRI_ASSERT(!isValid());
-  }
+  void invalidate();
 
   /// @brief invalidate to a valid but empty estimate
-  void initialize() {
-    estimatedCost = 0.0;
-    estimatedNrItems = 0;
-    TRI_ASSERT(isValid());
-  }
+  void initialize();
 
   /// @brief whether or not the estimate is valid
-  inline bool isValid() const {
-    // a value of < 0 will mean that the cost estimation was not performed yet
-    return estimatedCost >= 0.0;
-  }
+  bool isValid() const;
 
   /// @brief estimated cost produced by the node
   double estimatedCost;

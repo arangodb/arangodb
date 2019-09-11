@@ -54,6 +54,14 @@ DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
   TRI_ASSERT(!_groupRegisters.empty());
 }
 
+std::vector<std::pair<RegisterId, RegisterId>> DistinctCollectExecutorInfos::getGroupRegisters() const {
+  return _groupRegisters;
+}
+
+transaction::Methods* DistinctCollectExecutorInfos::getTransaction() const {
+  return _trxPtr;
+}
+
 DistinctCollectExecutor::DistinctCollectExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
@@ -62,13 +70,9 @@ DistinctCollectExecutor::DistinctCollectExecutor(Fetcher& fetcher, Infos& infos)
                               _infos.getGroupRegisters().size()),
             AqlValueGroupEqual(_infos.getTransaction())) {}
 
-DistinctCollectExecutor::~DistinctCollectExecutor() {
-  destroyValues();
-}
+DistinctCollectExecutor::~DistinctCollectExecutor() { destroyValues(); }
 
-void DistinctCollectExecutor::initializeCursor() {
-  destroyValues();
-}
+void DistinctCollectExecutor::initializeCursor() { destroyValues(); }
 
 std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRows(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("DistinctCollectExecutor::produceRows") {
@@ -145,4 +149,8 @@ void DistinctCollectExecutor::destroyValues() {
     }
   }
   _seen.clear();
+}
+
+const DistinctCollectExecutor::Infos& DistinctCollectExecutor::infos() const noexcept {
+  return _infos;
 }

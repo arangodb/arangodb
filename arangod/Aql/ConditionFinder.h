@@ -37,19 +37,13 @@ struct Variable;
 class ConditionFinder : public WalkerWorker<ExecutionNode> {
  public:
   ConditionFinder(ExecutionPlan* plan, std::unordered_map<size_t, ExecutionNode*>* changes,
-                  bool* hasEmptyResult, bool viewMode)
-      : _plan(plan),
-        _variableDefinitions(),
-        _filters(),
-        _sorts(),
-        _changes(changes),
-        _hasEmptyResult(hasEmptyResult) {}
+                  bool* hasEmptyResult, bool viewMode);
 
-  ~ConditionFinder() {}
+  ~ConditionFinder() override = default;
 
-  bool before(ExecutionNode*) override final;
+  bool before(ExecutionNode*) final;
 
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final;
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) final;
 
  protected:
   bool handleFilterCondition(ExecutionNode* en, std::unique_ptr<Condition> const& condition);

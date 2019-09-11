@@ -225,6 +225,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/AqlValueGroup.cpp
   Aql/Arithmetic.cpp
   Aql/Ast.cpp
+  Aql/AstHelper.cpp
   Aql/AstNode.cpp
   Aql/AttributeAccessor.cpp
   Aql/BaseExpressionContext.cpp
@@ -242,10 +243,12 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/ConditionFinder.cpp
   Aql/ConstFetcher.cpp
   Aql/ConstrainedSortExecutor.cpp
+  Aql/CostEstimate.cpp
   Aql/CountCollectExecutor.cpp
   Aql/DependencyProxy.cpp
   Aql/DistinctCollectExecutor.cpp
   Aql/DistributeExecutor.cpp
+  Aql/DocumentProducingHelper.cpp
   Aql/DocumentProducingNode.cpp
   Aql/EngineInfoContainerCoordinator.cpp
   Aql/EngineInfoContainerDBServer.cpp

@@ -38,14 +38,11 @@ struct CollectOptions {
   enum class CollectMethod { UNDEFINED, HASH, SORTED, DISTINCT, COUNT };
 
   /// @brief constructor, using default values
-  CollectOptions() : method(CollectMethod::UNDEFINED) {}
+  CollectOptions();
 
-  CollectOptions(CollectOptions const& other) : method(other.method) {}
+  CollectOptions(CollectOptions const& other) = default;
 
-  CollectOptions& operator=(CollectOptions const& other) {
-    method = other.method;
-    return *this;
-  }
+  CollectOptions& operator=(CollectOptions const& other) = default;
 
   /// @brief constructor
   explicit CollectOptions(arangodb::velocypack::Slice const&);

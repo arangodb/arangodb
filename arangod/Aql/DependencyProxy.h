@@ -67,15 +67,7 @@ class DependencyProxy {
   DependencyProxy(std::vector<ExecutionBlock*> const& dependencies,
                   AqlItemBlockManager& itemBlockManager,
                   std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
-                  RegisterId nrInputRegisters)
-      : _dependencies(dependencies),
-        _itemBlockManager(itemBlockManager),
-        _inputRegisters(std::move(inputRegisters)),
-        _nrInputRegisters(nrInputRegisters),
-        _blockQueue(),
-        _blockPassThroughQueue(),
-        _currentDependency(0),
-        _skipped(0) {}
+                  RegisterId nrInputRegisters);
 
   TEST_VIRTUAL ~DependencyProxy() = default;
 
@@ -97,9 +89,7 @@ class DependencyProxy {
 
   std::pair<ExecutionState, size_t> skipSome(size_t atMost);
 
-  TEST_VIRTUAL inline RegisterId getNrInputRegisters() const {
-    return _nrInputRegisters;
-  }
+  TEST_VIRTUAL RegisterId getNrInputRegisters() const;
 
   // Tries to fetch a block from upstream and push it, wrapped, onto
   // _blockQueue. If it succeeds, it returns HASMORE (the returned state
@@ -108,42 +98,20 @@ class DependencyProxy {
   //  - or upstream returned a nullptr with DONE - then so does prefetchBlock().
   ExecutionState prefetchBlock(size_t atMost = ExecutionBlock::DefaultBatchSize());
 
-  TEST_VIRTUAL inline size_t numberDependencies() const {
-    return _dependencies.size();
-  }
+  TEST_VIRTUAL size_t numberDependencies() const;
 
-  inline void reset() {
-    _blockQueue.clear();
-    _blockPassThroughQueue.clear();
-    _currentDependency = 0;
-    // We shouldn't be in a half-skipped state when reset is called
-    TRI_ASSERT(_skipped == 0);
-    _skipped = 0;
-  }
+  void reset();
 
  protected:
-  inline AqlItemBlockManager& itemBlockManager() { return _itemBlockManager; }
-  inline AqlItemBlockManager const& itemBlockManager() const {
-    return _itemBlockManager;
-  }
+  AqlItemBlockManager& itemBlockManager();
+  AqlItemBlockManager const& itemBlockManager() const;
 
-  inline ExecutionBlock& upstreamBlock() {
-    return upstreamBlockForDependency(_currentDependency);
-  }
+  ExecutionBlock& upstreamBlock();
 
-  inline ExecutionBlock& upstreamBlockForDependency(size_t index) {
-    TRI_ASSERT(_dependencies.size() > index);
-    return *_dependencies[index];
-  }
+  ExecutionBlock& upstreamBlockForDependency(size_t index);
 
  private:
-  inline bool advanceDependency() {
-    if (_currentDependency + 1 >= _dependencies.size()) {
-      return false;
-    }
-    _currentDependency++;
-    return true;
-  }
+  bool advanceDependency();
 
  private:
   std::vector<ExecutionBlock*> const& _dependencies;

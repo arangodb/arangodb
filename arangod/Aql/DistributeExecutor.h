@@ -95,7 +95,7 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlocksWithClients {
   /// @brief create a new document key
   std::string createKey(arangodb::velocypack::Slice) const;
 
-  ExecutorInfos const& infos() const { return _infos; }
+  ExecutorInfos const& infos() const;
 
  private:
   ExecutorInfos _infos;

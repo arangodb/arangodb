@@ -92,3 +92,5 @@ std::string CollectOptions::methodToString(CollectOptions::CollectMethod method)
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "cannot stringify unknown aggregation method");
 }
+
+CollectOptions::CollectOptions() : method(CollectMethod::UNDEFINED) {}

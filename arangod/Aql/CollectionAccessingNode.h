@@ -52,7 +52,7 @@ class CollectionAccessingNode {
   TRI_vocbase_t* vocbase() const;
 
   /// @brief return the collection
-  aql::Collection const* collection() const { return _collection; }
+  aql::Collection const* collection() const;
 
   /// @brief modify collection after cloning
   /// should be used only in smart-graph context!
@@ -63,38 +63,35 @@ class CollectionAccessingNode {
    *
    * @param shardId The shard restricted to
    */
-  void restrictToShard(std::string const& shardId) { _restrictedTo = shardId; }
+  void restrictToShard(std::string const& shardId);
 
   /**
    * @brief Check if this Node is restricted to a single Shard (cluster only)
    *
    * @return True if we are restricted, false otherwise
    */
-  bool isRestricted() const { return !_restrictedTo.empty(); }
+  bool isRestricted() const;
 
   /**
    * @brief Get the Restricted shard for this Node
    *
    * @return The Shard this node is restricted to
    */
-  std::string const& restrictedShard() const { return _restrictedTo; }
+  std::string const& restrictedShard() const;
 
   /// @brief set the prototype collection when using distributeShardsLike
-  void setPrototype(arangodb::aql::Collection const* prototypeCollection, 
-                    arangodb::aql::Variable const* prototypeOutVariable) {
-    _prototypeCollection = prototypeCollection;
-    _prototypeOutVariable = prototypeOutVariable;
-  }
-  
-  aql::Collection const* prototypeCollection() const { return _prototypeCollection; }
-  aql::Variable const* prototypeOutVariable() const { return _prototypeOutVariable; }
+  void setPrototype(arangodb::aql::Collection const* prototypeCollection,
+                    arangodb::aql::Variable const* prototypeOutVariable);
+
+  aql::Collection const* prototypeCollection() const;
+  aql::Variable const* prototypeOutVariable() const;
 
  protected:
   aql::Collection const* _collection;
 
   /// @brief A shard this node is restricted to, may be empty
   std::string _restrictedTo;
-  
+
   /// @brief prototype collection when using distributeShardsLike
   aql::Collection const* _prototypeCollection;
   aql::Variable const* _prototypeOutVariable;

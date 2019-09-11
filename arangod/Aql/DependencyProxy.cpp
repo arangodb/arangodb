@@ -191,5 +191,69 @@ DependencyProxy<allowBlockPassthrough>::fetchBlockForPassthrough(size_t atMost) 
   return {state, std::move(block)};
 }
 
+template <bool allowBlockPassthrough>
+DependencyProxy<allowBlockPassthrough>::DependencyProxy(
+    std::vector<ExecutionBlock*> const& dependencies, AqlItemBlockManager& itemBlockManager,
+    std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
+    RegisterId nrInputRegisters)
+    : _dependencies(dependencies),
+      _itemBlockManager(itemBlockManager),
+      _inputRegisters(std::move(inputRegisters)),
+      _nrInputRegisters(nrInputRegisters),
+      _blockQueue(),
+      _blockPassThroughQueue(),
+      _currentDependency(0),
+      _skipped(0) {}
+
+template <bool allowBlockPassthrough>
+RegisterId DependencyProxy<allowBlockPassthrough>::getNrInputRegisters() const {
+  return _nrInputRegisters;
+}
+
+template <bool allowBlockPassthrough>
+size_t DependencyProxy<allowBlockPassthrough>::numberDependencies() const {
+  return _dependencies.size();
+}
+
+template <bool allowBlockPassthrough>
+void DependencyProxy<allowBlockPassthrough>::reset() {
+  _blockQueue.clear();
+  _blockPassThroughQueue.clear();
+  _currentDependency = 0;
+  // We shouldn't be in a half-skipped state when reset is called
+  TRI_ASSERT(_skipped == 0);
+  _skipped = 0;
+}
+
+template <bool allowBlockPassthrough>
+AqlItemBlockManager& DependencyProxy<allowBlockPassthrough>::itemBlockManager() {
+  return _itemBlockManager;
+}
+
+template <bool allowBlockPassthrough>
+AqlItemBlockManager const& DependencyProxy<allowBlockPassthrough>::itemBlockManager() const {
+  return _itemBlockManager;
+}
+
+template <bool allowBlockPassthrough>
+ExecutionBlock& DependencyProxy<allowBlockPassthrough>::upstreamBlock() {
+  return upstreamBlockForDependency(_currentDependency);
+}
+
+template <bool allowBlockPassthrough>
+ExecutionBlock& DependencyProxy<allowBlockPassthrough>::upstreamBlockForDependency(size_t index) {
+  TRI_ASSERT(_dependencies.size() > index);
+  return *_dependencies[index];
+}
+
+template <bool allowBlockPassthrough>
+bool DependencyProxy<allowBlockPassthrough>::advanceDependency() {
+  if (_currentDependency + 1 >= _dependencies.size()) {
+    return false;
+  }
+  _currentDependency++;
+  return true;
+}
+
 template class ::arangodb::aql::DependencyProxy<true>;
 template class ::arangodb::aql::DependencyProxy<false>;

@@ -44,6 +44,7 @@
 #include "Transaction/Methods.h"
 
 #include <type_traits>
+#include <utility>
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
@@ -166,6 +167,51 @@ CostEstimate RemoteNode::estimateCost() const {
   return estimate;
 }
 
+RemoteNode::RemoteNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+                       std::string server, std::string ownName, std::string queryId)
+    : ExecutionNode(plan, id),
+      _vocbase(vocbase),
+      _server(std::move(server)),
+      _ownName(std::move(ownName)),
+      _queryId(std::move(queryId)),
+      _isResponsibleForInitializeCursor(true) {
+  // note: server, ownName and queryId may be empty and filled later
+}
+
+void RemoteNode::isResponsibleForInitializeCursor(bool value) {
+  _isResponsibleForInitializeCursor = value;
+}
+
+bool RemoteNode::isResponsibleForInitializeCursor() const {
+  return _isResponsibleForInitializeCursor;
+}
+
+ExecutionNode::NodeType RemoteNode::getType() const { return REMOTE; }
+
+ExecutionNode* RemoteNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                 bool withProperties) const {
+  return cloneHelper(std::make_unique<RemoteNode>(plan, _id, _vocbase, _server, _ownName, _queryId),
+                     withDependencies, withProperties);
+}
+
+TRI_vocbase_t* RemoteNode::vocbase() const { return _vocbase; }
+
+std::string RemoteNode::server() const { return _server; }
+
+void RemoteNode::server(std::string const& server) { _server = server; }
+
+std::string RemoteNode::ownName() const { return _ownName; }
+
+void RemoteNode::ownName(std::string const& ownName) { _ownName = ownName; }
+
+std::string RemoteNode::queryId() const { return _queryId; }
+
+void RemoteNode::queryId(std::string const& queryId) { _queryId = queryId; }
+
+void RemoteNode::queryId(QueryId queryId) {
+  _queryId = arangodb::basics::StringUtils::itoa(queryId);
+}
+
 /// @brief construct a scatter node
 ScatterNode::ScatterNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base) {
@@ -244,6 +290,24 @@ CostEstimate ScatterNode::estimateCost() const {
   estimate.estimatedCost += estimate.estimatedNrItems * _clients.size();
   return estimate;
 }
+
+ScatterNode::ScatterNode(ExecutionPlan* plan, size_t id)
+    : ExecutionNode(plan, id) {}
+ExecutionNode::NodeType ScatterNode::getType() const { return SCATTER; }
+
+ExecutionNode* ScatterNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                  bool withProperties) const {
+  auto c = std::make_unique<ScatterNode>(plan, _id);
+  c->clients() = clients();
+
+  return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
+std::vector<std::string> const& ScatterNode::clients() const noexcept {
+  return _clients;
+}
+
+std::vector<std::string>& ScatterNode::clients() noexcept { return _clients; }
 
 /// @brief construct a distribute node
 DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -353,6 +417,44 @@ CostEstimate DistributeNode::estimateCost() const {
   return estimate;
 }
 
+DistributeNode::DistributeNode(ExecutionPlan* plan, size_t id, Collection const* collection,
+                               Variable const* variable, Variable const* alternativeVariable,
+                               bool createKeys, bool allowKeyConversionToObject)
+    : ScatterNode(plan, id),
+      CollectionAccessingNode(collection),
+      _variable(variable),
+      _alternativeVariable(alternativeVariable),
+      _createKeys(createKeys),
+      _allowKeyConversionToObject(allowKeyConversionToObject),
+      _allowSpecifiedKeys(false) {}
+ExecutionNode::NodeType DistributeNode::getType() const { return DISTRIBUTE; }
+
+ExecutionNode* DistributeNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                     bool withProperties) const {
+  auto c = std::make_unique<DistributeNode>(plan, _id, _collection, _variable,
+                                            _alternativeVariable, _createKeys,
+                                            _allowKeyConversionToObject);
+  c->clients() = clients();
+
+  return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
+void DistributeNode::variable(Variable const* variable) {
+  _variable = variable;
+}
+
+void DistributeNode::alternativeVariable(Variable const* variable) {
+  _alternativeVariable = variable;
+}
+
+void DistributeNode::setCreateKeys(bool b) { _createKeys = b; }
+
+void DistributeNode::setAllowKeyConversionToObject(bool b) {
+  _allowKeyConversionToObject = b;
+}
+
+void DistributeNode::setAllowSpecifiedKeys(bool b) { _allowSpecifiedKeys = b; }
+
 /*static*/ Collection const* GatherNode::findCollection(GatherNode const& root) noexcept {
   ExecutionNode const* node = root.getFirstDependency();
 
@@ -458,6 +560,37 @@ CostEstimate GatherNode::estimateCost() const {
   CostEstimate estimate = _dependencies[0]->getCost();
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
+}
+
+GatherNode::SortMode GatherNode::evaluateSortMode(size_t numberOfShards,
+                                                  size_t shardsRequiredForHeapMerge) noexcept {
+  return numberOfShards >= shardsRequiredForHeapMerge ? SortMode::Heap : SortMode::MinElement;
+}
+
+ExecutionNode::NodeType GatherNode::getType() const { return GATHER; }
+
+ExecutionNode* GatherNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                 bool withProperties) const {
+  return cloneHelper(std::make_unique<GatherNode>(plan, _id, _sortmode),
+                     withDependencies, withProperties);
+}
+
+void GatherNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
+  for (auto const& p : _elements) {
+    vars.emplace(p.var);
+  }
+}
+
+SortElementVector const& GatherNode::elements() const { return _elements; }
+
+SortElementVector& GatherNode::elements() { return _elements; }
+
+void GatherNode::elements(SortElementVector const& src) { _elements = src; }
+
+GatherNode::SortMode GatherNode::sortMode() const noexcept { return _sortmode; }
+
+void GatherNode::sortMode(GatherNode::SortMode sortMode) noexcept {
+  _sortmode = sortMode;
 }
 
 SingleRemoteOperationNode::SingleRemoteOperationNode(
@@ -596,3 +729,47 @@ CostEstimate SingleRemoteOperationNode::estimateCost() const {
   CostEstimate estimate = _dependencies[0]->getCost();
   return estimate;
 }
+
+SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
+                                                     arangodb::velocypack::Slice const& base)
+    : ExecutionNode(plan, base), CollectionAccessingNode(plan, base) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "single remote operation node deserialization not implemented.");
+}
+
+ExecutionNode::NodeType SingleRemoteOperationNode::getType() const {
+  return REMOTESINGLE;
+}
+
+ExecutionNode* SingleRemoteOperationNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                                bool withProperties) const {
+  return cloneHelper(std::make_unique<SingleRemoteOperationNode>(
+                         plan, _id, _mode, _replaceIndexNode, _key, collection(), _options,
+                         _inVariable, _outVariable, _outVariableOld, _outVariableNew),
+                     withDependencies, withProperties);
+}
+
+void SingleRemoteOperationNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
+  if (_inVariable) {
+    vars.emplace(_inVariable);
+  }
+}
+
+std::vector<Variable const*> SingleRemoteOperationNode::getVariablesSetHere() const {
+  std::vector<Variable const*> vec;
+
+  if (_outVariable) {
+    vec.push_back(_outVariable);
+  }
+  if (_outVariableNew) {
+    vec.push_back(_outVariableNew);
+  }
+  if (_outVariableOld) {
+    vec.push_back(_outVariableOld);
+  }
+
+  return vec;
+}
+
+std::string const& SingleRemoteOperationNode::key() const { return _key; }

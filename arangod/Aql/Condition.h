@@ -66,85 +66,19 @@ struct ConditionPart {
 
   ~ConditionPart();
 
-  inline int whichCompareOperation() const {
-    switch (operatorType) {
-      case NODE_TYPE_OPERATOR_BINARY_EQ:
-      case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
-        return 0;
-      case NODE_TYPE_OPERATOR_BINARY_NE:
-      case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
-        return 1;
-      case NODE_TYPE_OPERATOR_BINARY_LT:
-      case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
-        return 2;
-      case NODE_TYPE_OPERATOR_BINARY_LE:
-      case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
-        return 3;
-      case NODE_TYPE_OPERATOR_BINARY_GE:
-      case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
-        return 4;
-      case NODE_TYPE_OPERATOR_BINARY_GT:
-      case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
-        return 5;
-      default:
-        return 6;  // not a compare operator.
-    }
-  }
+  int whichCompareOperation() const;
 
   /// @brief returns the lower bound
-  inline AstNode const* lowerBound() const {
-    if (operatorType == NODE_TYPE_OPERATOR_BINARY_GT || operatorType == NODE_TYPE_OPERATOR_BINARY_GE ||
-        operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
-      return valueNode;
-    }
-
-    if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN && valueNode->isConstant() &&
-        valueNode->isArray() && valueNode->numMembers() > 0) {
-      // return first item from IN array.
-      // this requires IN arrays to be sorted, which they should be when
-      // we get here
-      return valueNode->getMember(0);
-    }
-
-    return nullptr;
-  }
+  AstNode const* lowerBound() const;
 
   /// @brief returns if the lower bound is inclusive
-  inline bool isLowerInclusive() const {
-    if (operatorType == NODE_TYPE_OPERATOR_BINARY_GE || operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
-        operatorType == NODE_TYPE_OPERATOR_BINARY_IN) {
-      return true;
-    }
-
-    return false;
-  }
+  bool isLowerInclusive() const;
 
   /// @brief returns the upper bound
-  inline AstNode const* upperBound() const {
-    if (operatorType == NODE_TYPE_OPERATOR_BINARY_LT || operatorType == NODE_TYPE_OPERATOR_BINARY_LE ||
-        operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
-      return valueNode;
-    }
-
-    if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN && valueNode->isConstant() &&
-        valueNode->isArray() && valueNode->numMembers() > 0) {
-      // return last item from IN array.
-      // this requires IN arrays to be sorted, which they should be when
-      // we get here
-      return valueNode->getMember(valueNode->numMembers() - 1);
-    }
-
-    return nullptr;
-  }
+  AstNode const* upperBound() const;
 
   /// @brief returns if the upper bound is inclusive
-  inline bool isUpperInclusive() const {
-    if (operatorType == NODE_TYPE_OPERATOR_BINARY_LE || operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
-        operatorType == NODE_TYPE_OPERATOR_BINARY_IN) {
-      return true;
-    }
-    return false;
-  }
+  bool isUpperInclusive() const;
 
   /// @brief true if the condition is completely covered by the other condition
   bool isCoveredBy(ConditionPart const&, bool) const;
@@ -183,20 +117,14 @@ class Condition {
                                         Index const* index, bool isFromTraverser);
 
   /// @brief return the condition root
-  inline AstNode* root() const { return _root; }
+  AstNode* root() const;
 
   /// @brief whether or not the condition is empty
-  inline bool isEmpty() const {
-    if (_root == nullptr) {
-      return true;
-    }
-
-    return (_root->numMembers() == 0);
-  }
+  bool isEmpty() const;
 
   /// @brief whether or not the condition results will be sorted (this is only
   /// relevant if the condition consists of multiple ORs)
-  inline bool isSorted() const { return _isSorted; }
+  bool isSorted() const;
 
   /// @brief export the condition as VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
@@ -244,16 +172,11 @@ class Condition {
   /// (i.e. compared with equality)
   std::vector<std::vector<arangodb::basics::AttributeName>> getConstAttributes(
       Variable const*, bool includeNull) const;
-  
+
   /// @brief get the attributes for a sub-condition that are not-null
-  arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> getNonNullAttributes(
-      Variable const*) const;
+  arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> getNonNullAttributes(Variable const*) const;
 
  private:
-  /// @brief sort ORs for the same attribute so they are in ascending value
-  /// order. this will only work if the condition is for a single attribute
-  bool sortOrs(Variable const*, std::vector<Index const*>&);
-
   /// @brief optimize the condition expression tree
   void optimize(ExecutionPlan*, bool multivalued);
 
