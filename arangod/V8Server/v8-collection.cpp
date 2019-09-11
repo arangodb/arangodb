@@ -984,13 +984,27 @@ static void JS_GetResponsibleShardVocbaseCol(v8::FunctionCallbackInfo<v8::Value>
   }
 
   VPackBuilder builder;
-  int res = TRI_V8ToVPack(isolate, builder, args[0], false);
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
+  if (args[0]->IsNumber() || args[0]->IsNumberObject()) {
+    builder.openObject();
+    builder.add(StaticStrings::KeyString, VPackValue(std::to_string(TRI_ObjectToInt64(isolate, args[0]))));
+    builder.close();
+  } else if (args[0]->IsString() || args[0]->IsStringObject()) {
+    builder.openObject();
+    builder.add(StaticStrings::KeyString, VPackValue(TRI_ObjectToString(isolate, args[0])));
+    builder.close();
+  } else {
+    int res = TRI_V8ToVPack(isolate, builder, args[0], false);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  } 
+  if (!builder.slice().isObject()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleShard(<object>)");
   }
 
   std::string shardId;
-  res = collection->getResponsibleShard(builder.slice(), false, shardId);
+  TRI_ASSERT(builder.slice().isObject());
+  int res = collection->getResponsibleShard(builder.slice(), false, shardId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
