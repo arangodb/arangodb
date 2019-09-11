@@ -25,6 +25,7 @@
 #define ARANGOD_REST_HANDLER_REST_COLLECTION_HANDLER_H 1
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/Methods/Collections.h"
 
 namespace arangodb {
@@ -59,8 +60,11 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
  private:
   void handleCommandGet();
   void handleCommandPost();
-  void handleCommandPut();
+  RestStatus handleCommandPut();
   void handleCommandDelete();
+
+ private:
+  std::unique_ptr<SingleCollectionTransaction> _activeTrx;
 };
 
 }  // namespace arangodb

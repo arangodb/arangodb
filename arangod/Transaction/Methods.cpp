@@ -2426,34 +2426,33 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
 }
 
 /// @brief remove all documents in a collection
-OperationResult transaction::Methods::truncate(std::string const& collectionName,
-                                               OperationOptions const& options) {
+Future<OperationResult> transaction::Methods::truncateAsync(std::string const& collectionName,
+                                                            OperationOptions const& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   OperationOptions optionsCopy = options;
-  OperationResult result;
+  auto cb = [this, collectionName](OperationResult res) {
+    events::TruncateCollection(vocbase().name(), collectionName, res.errorNumber());
+    return std::move(res);
+  };
 
   if (_state->isCoordinator()) {
-    result = truncateCoordinator(collectionName, optionsCopy);
-  } else {
-    result = truncateLocal(collectionName, optionsCopy);
+    return truncateCoordinator(collectionName, optionsCopy).thenValue(cb);
   }
-
-  events::TruncateCollection(vocbase().name(), collectionName, result.errorNumber());
-  return result;
+  return truncateLocal(collectionName, optionsCopy).thenValue(cb);
 }
 
 /// @brief remove all documents in a collection, coordinator
 #ifndef USE_ENTERPRISE
-OperationResult transaction::Methods::truncateCoordinator(std::string const& collectionName,
-                                                          OperationOptions& options) {
-  return OperationResult(arangodb::truncateCollectionOnCoordinator(*this, collectionName));
+Future<OperationResult> transaction::Methods::truncateCoordinator(std::string const& collectionName,
+                                                                  OperationOptions& options) {
+  return arangodb::truncateCollectionOnCoordinator(*this, collectionName);
 }
 #endif
 
 /// @brief remove all documents in a collection, local
-OperationResult transaction::Methods::truncateLocal(std::string const& collectionName,
-                                                    OperationOptions& options) {
+Future<OperationResult> transaction::Methods::truncateLocal(std::string const& collectionName,
+                                                            OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
 
   auto const& collection = trxCollection(cid)->collection();
@@ -2467,7 +2466,8 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
     std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+        return futures::makeFuture(
+            OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION));
       }
       if (!followerInfo->allowedToWrite()) {
         // We cannot fulfill minimum replication Factor.
@@ -2477,7 +2477,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
             << basics::StringUtils::itoa(collection->minReplicationFactor())
             << " followers in sync. Shard  " << collection->name()
             << " is temporarily in read-only mode.";
-        return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+        return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options));
       }
 
       // fetch followers
@@ -2489,10 +2489,11 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
     } else {  // we are a follower following theLeader
       replicationType = ReplicationType::FOLLOWER;
       if (options.isSynchronousReplicationFrom.empty()) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+        return futures::makeFuture(OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED));
       }
       if (options.isSynchronousReplicationFrom != theLeader) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+        return futures::makeFuture(
+            OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION));
       }
     }
   }  // isDBServer - early block
@@ -2502,20 +2503,19 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
   Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
 
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
-    return OperationResult(lockResult);
+    return futures::makeFuture(OperationResult(lockResult));
   }
 
   TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
 
   auto res = collection->truncate(*this, options);
-  ;
 
   if (res.fail()) {
     if (lockResult.is(TRI_ERROR_LOCKED)) {
       unlockRecursive(cid, AccessMode::Type::WRITE);
     }
 
-    return OperationResult(res);
+    return futures::makeFuture(OperationResult(res));
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -2553,7 +2553,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
       // error (note that we use the follower version, since we have
       // lost leadership):
       if (findRefusal(requests)) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+        return futures::makeFuture(OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED));
       }
       // we drop all followers that were not successful:
       for (size_t i = 0; i < followers->size(); ++i) {
@@ -2584,7 +2584,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
     res = unlockRecursive(cid, AccessMode::Type::WRITE);
   }
 
-  return OperationResult(res);
+  return futures::makeFuture(OperationResult(res));
 }
 
 /// @brief count the number of documents in a collection
