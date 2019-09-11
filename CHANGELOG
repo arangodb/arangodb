@@ -1,6 +1,9 @@
-v3.4.9 (2019-XX-XX)
+v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* The graph viewer of the web interface now tries to find a vertex document of
+  all available vertex collections before it aborts.
+  
 * Bugfix: Save distinct WAL ticks for multiple replication clients from the same
   server. Also, when a follower is added for synchronous replication, the WAL
   tick held by the client is freed immediately, rather than waiting for a
