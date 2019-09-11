@@ -42,7 +42,7 @@ InitialSyncer::~InitialSyncer() {
 
   try {
     if (!_state.isChildSyncer) {
-      _batch.finish(_state.connection, _progress);
+      _batch.finish(_state.connection, _progress, _state.syncerId);
     }
   } catch (...) {
   }
@@ -66,7 +66,7 @@ void InitialSyncer::startRecurringBatchExtension() {
   _batchPingTimer->expires_after(std::chrono::seconds(secs));
   _batchPingTimer->async_wait([this](asio_ns::error_code ec) {
     if (!ec && _batch.id != 0 && !isAborted()) {
-      _batch.extend(_state.connection, _progress);
+      _batch.extend(_state.connection, _progress, _state.syncerId);
       startRecurringBatchExtension();
     }
   });
