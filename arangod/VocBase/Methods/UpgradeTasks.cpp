@@ -95,7 +95,9 @@ bool createSystemCollection(TRI_vocbase_t* vocbase, std::string const& name) {
                               [](std::shared_ptr<LogicalCollection> const&) -> void {});
   }
 
-  if (res.fail()) {
+  // if the system collection exists by now, then some other thread
+  // has just created it between the lookup and the create
+  if (res.fail() && !res.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
     THROW_ARANGO_EXCEPTION(res);
   }
 

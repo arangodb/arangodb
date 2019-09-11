@@ -476,14 +476,61 @@ TEST_CASE("IResearchQueryTestComplexBoolean", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
     CHECK((i == expected.size()));
+  }
+
+  // constexpr BOOST (true)
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH BOOST(1 == 1, 42) "
+      "LIMIT 1 "
+      "RETURN { d }";
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result->slice().isArray());
+    CHECK(1 == queryResult.result->slice().length());
+  }
+  // constexpr BOOST (false)
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH BOOST(1==2, 42) "
+      "LIMIT 1 "
+      "RETURN { d }";
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    REQUIRE(queryResult.result->slice().isArray());
+    CHECK(0 == queryResult.result->slice().length());
+  }
+
+  // constexpr min match (true)
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH MIN_MATCH(1==1, 2==2, 3==3, 2) "
+      "SORT d.seq "
+      "RETURN d";
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    auto slice = queryResult.result->slice();
+    REQUIRE(slice.isArray());
+    CHECK(insertedDocs.size() == slice.length());
+  }
+
+  // constexpr min match (false)
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH MIN_MATCH(1==5, 2==6, 3==3, 2) "
+      "SORT d.seq "
+      "RETURN d";
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    auto slice = queryResult.result->slice();
+    REQUIRE(slice.isArray());
+    CHECK(0 == slice.length());
   }
 }
 
