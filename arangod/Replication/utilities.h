@@ -45,6 +45,7 @@ class SimpleHttpResult;
 
 class Endpoint;
 class ReplicationApplierConfiguration;
+struct SyncerId;
 class Syncer;
 
 namespace replutils {
@@ -146,15 +147,15 @@ struct BatchInfo {
   /// @brief send a "start batch" command
   /// @param patchCount try to patch count of this collection
   ///        only effective with the incremental sync
-  Result start(Connection& connection, ProgressInfo& progress,
-               std::string const& patchCount = "");
+  Result start(Connection const& connection, ProgressInfo& progress,
+               SyncerId syncerId, std::string const& patchCount = "");
 
   /// @brief send an "extend batch" command
-  Result extend(Connection& connection, ProgressInfo& progress);
+  Result extend(Connection const& connection, ProgressInfo& progress, SyncerId syncerId);
 
   /// @brief send a "finish batch" command
   // TODO worker-safety
-  Result finish(Connection& connection, ProgressInfo& progress);
+  Result finish(Connection const& connection, ProgressInfo& progress, SyncerId syncerId);
 };
 
 struct MasterInfo {

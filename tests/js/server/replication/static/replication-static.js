@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, arango, ARGUMENTS */
+/* global ARGUMENTS */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test the replication
@@ -29,15 +29,19 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
+const {assertEqual, assertFalse, assertInstanceOf, assertNotEqual,
+  assertNotNull, assertNull, assertTrue, fail } = jsunity.jsUnity.assertions;
 const arangodb = require('@arangodb');
 const errors = arangodb.errors;
 const db = arangodb.db;
+const _ = require('lodash');
 
 const replication = require('@arangodb/replication');
 const compareTicks = require('@arangodb/replication-common').compareTicks;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const console = require('console');
 const internal = require('internal');
+const arango = internal.arango;
 const masterEndpoint = arango.getEndpoint();
 const slaveEndpoint = ARGUMENTS[0];
 const mmfilesEngine = (db._engine().name === 'mmfiles');
@@ -2097,7 +2101,94 @@ function BaseTestConfig () {
           assertTrue(props.links.hasOwnProperty(cn));
         }
       );
-    }
+    },
+
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief Check that different syncer IDs and their WAL ticks are tracked
+    //         separately
+    // /////////////////////////////////////////////////////////////////////////////
+
+    testWalRetain: function () {
+      // Doesn't affect MMFiles, which uses barriers instead
+      if (db._engine().name !== "rocksdb") {
+        return;
+      }
+
+      connectToMaster();
+
+      const dbPrefix = db._name() === '_system' ? '' : '/_db/' + db._name();
+      const http = {
+        GET: (route) => arango.GET(dbPrefix + route),
+        POST: (route, body) => arango.POST(dbPrefix + route, body),
+        DELETE: (route) => arango.DELETE(dbPrefix + route),
+      };
+
+      // The previous tests will have leftover entries in the
+      // ReplicationClientsProgressTracker. So first, we look these up to not
+      // choose a duplicate id, and be able to ignore them later.
+
+      const existingClientSyncerIds = (() => {
+        const {state:{running}, clients} = http.GET(`/_api/replication/logger-state`);
+        assertTrue(running);
+        assertInstanceOf(Array, clients);
+
+        return new Set(clients.map(client => client.syncerId));
+      })();
+      const maxExistingSyncerId = Math.max(0, ...existingClientSyncerIds);
+
+      const [syncer0, syncer1, syncer2] = _.range(maxExistingSyncerId + 1, maxExistingSyncerId + 4);
+
+      // Get a snapshot
+      const {lastTick: snapshotTick, id: replicationContextId}
+        = http.POST(`/_api/replication/batch?syncerId=${syncer0}`, {ttl: 120});
+
+      const callWailTail = (tick, syncerId) => {
+        const result = http.GET(`/_api/wal/tail?from=${tick}&syncerId=${syncerId}`);
+        assertFalse(result.error, `Expected call to succeed, but got ${JSON.stringify(result)}`);
+        assertEqual(204, result.code, `Unexpected response ${JSON.stringify(result)}`);
+      };
+
+      callWailTail(snapshotTick, syncer1);
+      callWailTail(snapshotTick, syncer2);
+
+      // Now that the WAL should be held, release the snapshot.
+      http.DELETE(`/_api/replication/batch/${replicationContextId}`);
+
+      const getClients = () => {
+        // e.g.
+        // { "state": {"running": true, "lastLogTick": "71", "lastUncommittedLogTick": "71", "totalEvents": 71, "time": "2019-07-02T14:33:32Z"},
+        //   "server": {"version": "3.5.0-devel", "serverId": "172021658338700", "engine": "rocksdb"},
+        //   "clients": [
+        //     {"syncerId": "102", "serverId": "", "time": "2019-07-02T14:33:32Z", "expires": "2019-07-02T16:33:32Z", "lastServedTick": "71"},
+        //     {"syncerId": "101", "serverId": "", "time": "2019-07-02T14:33:32Z", "expires": "2019-07-02T16:33:32Z", "lastServedTick": "71"}
+        //   ]}
+        let {state:{running}, clients} = http.GET(`/_api/replication/logger-state`);
+        assertTrue(running);
+        assertInstanceOf(Array, clients);
+        // remove clients that existed at the start of the test
+        clients = clients.filter(client => !existingClientSyncerIds.has(client.syncerId));
+        // sort ascending by syncerId
+        clients.sort((a, b) => a.syncerId - b.syncerId);
+
+        return clients;
+      };
+
+      let clients = getClients();
+      assertEqual([syncer0, syncer1, syncer2], clients.map(client => client.syncerId));
+      assertEqual(snapshotTick, clients[0].lastServedTick);
+      assertEqual(snapshotTick, clients[1].lastServedTick);
+      assertEqual(snapshotTick, clients[2].lastServedTick);
+
+      // Update ticks
+      callWailTail(parseInt(snapshotTick) + 1, syncer1);
+      callWailTail(parseInt(snapshotTick) + 2, syncer2);
+
+      clients = getClients();
+      assertEqual([syncer0, syncer1, syncer2], clients.map(client => client.syncerId));
+      assertEqual(snapshotTick, clients[0].lastServedTick);
+      assertEqual((parseInt(snapshotTick) + 1).toString(), clients[1].lastServedTick);
+      assertEqual((parseInt(snapshotTick) + 2).toString(), clients[2].lastServedTick);
+    },
   };
 }
 
