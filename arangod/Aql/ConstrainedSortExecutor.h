@@ -76,6 +76,8 @@ class ConstrainedSortExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
+  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkipRequested);
+
   /**
    * @brief This Executor knows how many rows it will produce and most by itself
    *        It also knows that it could produce less if the upstream only has fewer rows.
@@ -85,6 +87,14 @@ class ConstrainedSortExecutor {
  private:
   bool compareInput(size_t const& rosPos, InputAqlItemRow& row) const;
   arangodb::Result pushRow(InputAqlItemRow& row);
+
+  // We're done producing when we've emitted all rows from our heap.
+  bool doneProducing() const noexcept;
+
+  // We're done skipping when we've emitted all rows from our heap,
+  // AND emitted (in this case, skipped) all rows that were dropped during the
+  // sort as well. This is for fullCount queries only.
+  bool doneSkipping() const noexcept;
 
   ExecutionState consumeInput();
 
