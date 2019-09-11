@@ -486,6 +486,30 @@ function IResearchAqlTestSuite(args) {
         assertEqual(doc.c, res.c);
       });
     },
+	
+    testViewInInnerLoopSortByAttributeWithNonDeterministic : function() {
+      var expected = [];
+      expected.push({ a: "bar", b: "foo", c: 1 });
+      expected.push({ a: "baz", b: "foo", c: 1 });
+      expected.push({ a: "foo", b: "bar", c: 0 });
+      expected.push({ a: "foo", b: "baz", c: 0 });
+
+      var result = db._query(
+        "FOR adoc IN AnotherUnitTestsCollection " +
+        "FOR doc IN UnitTestsView SEARCH RAND() != -10 && STARTS_WITH(doc['a'], adoc.a) && adoc.id == doc.c OPTIONS { waitForSync : true } " +
+        "SORT doc.c DESC, doc.a, doc.b " +
+        "RETURN doc"
+      ).toArray();
+
+      assertEqual(result.length, expected.length);
+      var i = 0;
+      result.forEach(function(res) {
+        var doc = expected[i++];
+        assertEqual(doc.a, res.a);
+        assertEqual(doc.b, res.b);
+        assertEqual(doc.c, res.c);
+      });
+    },
 
     testWithKeywordForViewInGraph : function() {
       var results = [];
@@ -778,7 +802,33 @@ function IResearchAqlTestSuite(args) {
 
       assertEqual(result.length, 0);
     },
-
+    testAnalyzerFunctionPrematureCall : function () {
+      assertEqual(
+        db._query("FOR d in UnitTestsView SEARCH ANALYZER(d.a IN TOKENS('#', 'text_en'), 'text_en') OPTIONS { waitForSync : true } RETURN d").toArray().length,
+        0);
+      assertEqual(
+        db._query("FOR d in UnitTestsView SEARCH ANALYZER(d.a NOT IN TOKENS('#', 'text_en'), 'text_en') OPTIONS { waitForSync : true } RETURN d").toArray().length,
+        28);
+    },
+    testBoostFunctionPrematureCall : function () {
+      assertEqual(
+        db._query("FOR d in UnitTestsView SEARCH BOOST(d.a IN TOKENS('#', 'text_en'), 2) OPTIONS { waitForSync : true }  SORT BM25(d) RETURN d").toArray().length,
+        0);
+      assertEqual(
+        db._query("FOR d in UnitTestsView SEARCH BOOST(d.a NOT IN TOKENS('#', 'text_en'), 2) OPTIONS { waitForSync : true }  SORT BM25(d) RETURN d").toArray().length,
+        28);
+    },
+    testMinMatchFunctionPrematureCall : function () {
+      assertEqual(
+        db._query("FOR d in UnitTestsView SEARCH MIN_MATCH(d.a IN TOKENS('#', 'text_en'), d.a IN TOKENS('#', 'text_de'), 1) OPTIONS { waitForSync : true } RETURN d").toArray().length,
+        0);
+      assertEqual(
+        db._query("FOR d in UnitTestsView SEARCH MIN_MATCH(false, true, true, 2) OPTIONS { waitForSync : true }  RETURN d").toArray().length,
+        28);
+      assertEqual(
+        db._query("FOR d in UnitTestsView SEARCH MIN_MATCH(false, false, false, 0) OPTIONS { waitForSync : true }  RETURN d").toArray().length,
+        28);
+    },
     testViewWithInterruptedInserts : function() {
       let docsCollectionName = "docs";
       let docsViewName  = "docs_view";
