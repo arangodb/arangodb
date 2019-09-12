@@ -606,12 +606,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo const& info, TRI_vocba
     return {TRI_ERROR_ARANGO_DATABASE_NAME_INVALID};
   }
 
-  if (info.validId()) {
-    TRI_ASSERT(false);
-    TRI_ASSERT(!ServerState::instance()->isCoordinator());
-    //info.setId( TRI_NewTickServer()) ; //if it was not const - set id sooner
-  }
-
   std::unique_ptr<TRI_vocbase_t> vocbase;
   // a new builder is created to prevent blind copying of options
   VPackBuilder builder;

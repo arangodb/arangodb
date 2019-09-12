@@ -53,13 +53,32 @@ Result CreateDatabaseInfo::load(VPackSlice const& options,
   return res;
 };
 
-Result CreateDatabaseInfo::load(uint64_t id,
-            VPackSlice const& options,
-            VPackSlice const& users) {
-
+Result CreateDatabaseInfo::load(uint64_t id, VPackSlice const& options, VPackSlice const& users) {
   _id = id;
 
   Result res = extractOptions(options, false /*getId*/, true /*getUser*/);
+  if (!res.ok()) {
+    return res;
+  }
+
+  res = extractUsers(users);
+  if (!res.ok()) {
+    return res;
+  }
+
+#ifdef  ARANGODB_ENABLE_MAINTAINER_MODE
+  _vaild = true;
+#endif
+
+  return res;
+}
+
+Result CreateDatabaseInfo::load(std::string const& name,
+                                VPackSlice const& options,
+                                VPackSlice const& users) {
+  _name = name;
+
+  Result res = extractOptions(options, true /*getId*/, false /*getName*/);
   if (!res.ok()) {
     return res;
   }
@@ -126,7 +145,6 @@ void CreateDatabaseInfo::UsersToVelocyPack(VPackBuilder& builder) const {
 }
 
 Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
-  TRI_ASSERT(users.isArray());
   if (users.isNone() || users.isNull()) {
     return Result();
   } else if (!users.isArray()) {
@@ -236,7 +254,7 @@ Result CreateDatabaseInfo::checkOptions() {
     _vaildId = false;
   }
 
-  if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(_name))) {
+  if (!TRI_vocbase_t::IsAllowedName(true /*TODO _isSystemDB*/, arangodb::velocypack::StringRef(_name))) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 

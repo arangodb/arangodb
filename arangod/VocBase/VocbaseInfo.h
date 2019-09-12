@@ -79,6 +79,10 @@ class CreateDatabaseInfo {
               VPackSlice const& users = VPackSlice::emptyArraySlice() );
 
   Result load(std::string const& name,
+              VPackSlice const& options,
+              VPackSlice const& users = VPackSlice::emptyArraySlice() );
+
+  Result load(std::string const& name,
               uint64_t id,
               VPackSlice const& options,
               VPackSlice const& users);
@@ -146,6 +150,7 @@ class CreateDatabaseInfo {
 #ifdef  ARANGODB_ENABLE_MAINTAINER_MODE
   bool _vaild = false;
 #endif
+  // bool _isSystemDB;
 };
 
 struct VocbaseOptions {

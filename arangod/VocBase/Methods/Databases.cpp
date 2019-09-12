@@ -284,9 +284,8 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     return Result(TRI_ERROR_FORBIDDEN);
   }
 
-  //TODO -- ensure valid Id
   CreateDatabaseInfo createInfo;
-  res = createInfo.load(dbName, 0, options, users);
+  res = createInfo.load(dbName, options, users);
 
   if (!res.ok()) {
     LOG_TOPIC("15580", ERR, Logger::FIXME)
@@ -297,13 +296,13 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
 
   if (ServerState::instance()->isCoordinator()) {
     if(!createInfo.validId()){
-      TRI_ASSERT(false);
-      createInfo.setId(1337);
-      // create id here?
+      createInfo.setId(ClusterInfo::instance()->uniqid());
     }
-
     res = createCoordinator(createInfo);
   } else {  // Single, DBServer, Agency
+    if(!createInfo.validId()){
+      createInfo.setId(TRI_NewTickServer());
+    }
     res = createOther(createInfo);
   }
 

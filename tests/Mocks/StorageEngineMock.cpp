@@ -955,7 +955,7 @@ std::function<void()> StorageEngineMock::recoveryTickCallback = []() -> void {};
 StorageEngineMock::StorageEngineMock(arangodb::application_features::ApplicationServer& server)
     : StorageEngine(server, "Mock", "",
                     std::unique_ptr<arangodb::IndexFactory>(new IndexFactoryMock())),
-      vocbaseCount(0),
+      vocbaseCount(1),
       _releasedTick(0) {}
 
 arangodb::WalAccess const* StorageEngineMock::walAccess() const {
@@ -1238,7 +1238,11 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
   status = TRI_ERROR_NO_ERROR;
 
   arangodb::CreateDatabaseInfo info;
-  info.load(vocbaseCount++, args, VPackSlice::emptyArraySlice());
+  auto rv = info.load(++vocbaseCount, args, VPackSlice::emptyArraySlice());
+  if(rv.fail()) {
+    THROW_ARANGO_EXCEPTION(rv);
+  }
+
 
   return std::make_unique<TRI_vocbase_t>(
     TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
