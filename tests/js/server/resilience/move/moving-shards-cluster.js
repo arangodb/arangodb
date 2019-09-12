@@ -49,7 +49,7 @@ function getDBServers() {
   return servers;
 }
 
-const servers = getDBServers();
+var servers = getDBServers();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
