@@ -280,7 +280,9 @@ void transaction::Methods::IndexHandle::toVelocyPack(
   _index->toVelocyPack(builder, flags);
 }
 
-TRI_vocbase_t& transaction::Methods::vocbase() const { return vocbase(); }
+TRI_vocbase_t& transaction::Methods::vocbase() const {
+  return _state->vocbase();
+}
 
 /// @brief whether or not the transaction consists of a single operation only
 bool transaction::Methods::isSingleOperationTransaction() const {

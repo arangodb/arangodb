@@ -65,6 +65,12 @@ void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 }
 
 void EngineSelectorFeature::prepare() {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  if (_selected.load()) {
+    // already set in the test code
+    return;
+  }
+#endif
   // read engine from file in database_directory ENGINE (mmfiles/rocksdb)
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
   auto path = databasePathFeature.directory();
@@ -217,5 +223,13 @@ bool EngineSelectorFeature::isMMFiles() {
 bool EngineSelectorFeature::isRocksDB() {
   return engineName() == RocksDBEngine::EngineName;
 }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+void EngineSelectorFeature::setEngineTesting(StorageEngine* input) {
+  TRI_ASSERT((input == nullptr) != (ENGINE == nullptr));
+  _selected.store(input != nullptr);
+  ENGINE = input;
+}
+#endif
 
 }  // namespace arangodb

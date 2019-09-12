@@ -67,7 +67,6 @@ namespace graph {
 
 class KShortestPathsFinderTest : public ::testing::Test {
  protected:
-  application_features::ApplicationServer server;
   GraphTestSetup s;
   MockGraphDatabase gdb;
 
@@ -76,8 +75,7 @@ class KShortestPathsFinderTest : public ::testing::Test {
 
   KShortestPathsFinder* finder;
 
-  KShortestPathsFinderTest()
-      : server(nullptr, nullptr), gdb(server, "testVocbase") {
+  KShortestPathsFinderTest() : gdb(s.server, "testVocbase") {
     gdb.addVertexCollection("v", 100);
     gdb.addEdgeCollection(
         "e", "v",

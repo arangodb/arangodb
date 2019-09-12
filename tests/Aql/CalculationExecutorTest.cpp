@@ -90,6 +90,7 @@ class CalculationExecutorTest : public ::testing::Test {
 
   CalculationExecutorTest()
       : itemBlockManager(&monitor),
+        server(),
         fakedQuery(server.createFakeQuery()),
         ast(fakedQuery.get()),
         one(ast.createNodeValueInt(1)),

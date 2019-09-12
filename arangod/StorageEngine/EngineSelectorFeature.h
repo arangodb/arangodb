@@ -61,6 +61,10 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
   // after prepare() and before unprepare()
   static StorageEngine* ENGINE;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void setEngineTesting(StorageEngine*);
+#endif
+
  private:
   std::string _engine;
   std::string _engineFilePath;

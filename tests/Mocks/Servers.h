@@ -63,14 +63,28 @@ class MockServer {
   std::string const testFilesystemPath() const {
     return _testFilesystemPath;
   }
-  
+
+  // add a feature to the underlying server, keep track of it;
+  // all added features will be prepared in startFeatures(), and unprepared in
+  // stopFeatures(); if start == true, then it will also be started and stopped
+  // in those methods; after startFeatures() is called, this method can no
+  // longer be called, and additional features must be added via
+  // addFeatureUntracked(), and will not be managed by this class
   template <typename Type, typename As = Type, typename... Args>
-  void addFeature(bool start, Args&&... args) {
+  As& addFeature(bool start, Args&&... args) {
+    TRI_ASSERT(!_started);
     _server.addFeature<As>(std::make_unique<Type>(_server, std::forward<Args>(args)...));
-    _features.emplace(&_server.getFeature<As>(), start);
+    As& feature = _server.getFeature<As>();
+    _features.emplace(&feature, start);
+    return feature;
   }
 
- protected:
+  template <typename Type, typename As = Type, typename... Args>
+  As& addFeatureUntracked(Args&&... args) {
+    _server.addFeature<As>(std::make_unique<Type>(_server, std::forward<Args>(args)...));
+    return _server.getFeature<As>();
+  }
+
   // Implementation knows the place when all features are included
   virtual void startFeatures();
 
@@ -87,11 +101,19 @@ class MockServer {
   std::unordered_map<arangodb::application_features::ApplicationFeature*, bool> _features;
   std::string _testFilesystemPath;
 
+ private:
+  bool _started;
+};
+
+class MockV8Server : public MockServer {
+ public:
+  MockV8Server(bool startFeatures = true);
+  ~MockV8Server();
 };
 
 class MockAqlServer : public MockServer {
  public:
-  MockAqlServer();
+  MockAqlServer(bool startFeatures = true);
   ~MockAqlServer();
 
   std::shared_ptr<arangodb::transaction::Methods> createFakeTransaction() const;
@@ -100,7 +122,7 @@ class MockAqlServer : public MockServer {
 
 class MockRestServer : public MockServer {
  public:
-  MockRestServer();
+  MockRestServer(bool startFeatures = true);
   ~MockRestServer();
 };
 
@@ -130,7 +152,7 @@ class MockClusterServer : public MockServer {
 
 class MockDBServer : public MockClusterServer {
  public:
-  MockDBServer();
+  MockDBServer(bool startFeatures = true);
   ~MockDBServer();
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;
@@ -139,7 +161,7 @@ class MockDBServer : public MockClusterServer {
 
 class MockCoordinator : public MockClusterServer {
  public:
-  MockCoordinator();
+  MockCoordinator(bool startFeatures = true);
   ~MockCoordinator();
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;

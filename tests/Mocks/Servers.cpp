@@ -20,6 +20,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
+
 #include "Servers.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
@@ -229,8 +231,9 @@ static void SetupBasicFeaturePhase(MockServer& server) {
 static void SetupDatabaseFeaturePhase(MockServer& server) {
   SetupBasicFeaturePhase(server);
   server.addFeature<arangodb::application_features::DatabaseFeaturePhase>(false);  // true ??
-  server.addFeature<arangodb::AuthenticationFeature>(true);  // true ??
+  server.addFeature<arangodb::AuthenticationFeature>(true);
   server.addFeature<arangodb::DatabaseFeature>(false);
+  server.addFeature<arangodb::EngineSelectorFeature>(false);
   server.addFeature<arangodb::SystemDatabaseFeature>(true);
   server.addFeature<arangodb::InitDatabaseFeature>(true, std::vector<std::type_index>{});
   server.addFeature<arangodb::ViewTypesFeature>(false);  // true ??
@@ -280,8 +283,8 @@ static void SetupAqlPhase(MockServer& server) {
 
 MockServer::MockServer()
     : _server(std::make_shared<arangodb::options::ProgramOptions>("", "", "", nullptr), nullptr),
-      _engine(_server) {
-  arangodb::EngineSelectorFeature::ENGINE = &_engine;
+      _engine(_server),
+      _started(false) {
   init();
 }
 
@@ -289,7 +292,6 @@ MockServer::~MockServer() {
   stopFeatures();
   ClusterCommResetter::reset();
   _server.setStateUnsafe(_oldApplicationServerState);
-  arangodb::EngineSelectorFeature::ENGINE = nullptr;
   arangodb::AgencyCommManager::MANAGER.reset();
 }
 
@@ -305,8 +307,16 @@ void MockServer::init() {
 }
 
 void MockServer::startFeatures() {
+  using arangodb::application_features::ApplicationFeature;
+
+  // user can no longer add features with addFeature, must add them directly
+  // to underlying server()
+  _started = true;
+
   _server.setupDependencies(false);
   auto orderedFeatures = _server.getOrderedFeatures();
+
+  _server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(&_engine);
 
   if (_server.hasFeature<arangodb::SchedulerFeature>()) {
     auto& sched = _server.getFeature<arangodb::SchedulerFeature>();
@@ -314,12 +324,17 @@ void MockServer::startFeatures() {
     sched.validateOptions(std::make_shared<arangodb::options::ProgramOptions>("", "", "", nullptr));
   }
 
-  for (auto& f : orderedFeatures) {
-    if (f.get().name() == "Endpoint") {
+  for (ApplicationFeature& f : orderedFeatures) {
+    if (f.name() == "Endpoint") {
       // We need this feature to be there but do not use it.
       continue;
     }
-    f.get().prepare();
+    try {
+      f.prepare();
+    } catch (...) {
+      LOG_DEVEL << "unexpected exception in "
+                << boost::core::demangle(typeid(f).name()) << "::prepare";
+    }
   }
 
   if (_server.hasFeature<arangodb::DatabaseFeature>()) {
@@ -330,12 +345,17 @@ void MockServer::startFeatures() {
     dbFeature.loadDatabases(databases->slice());
   }
 
-  for (auto& f : orderedFeatures) {
-    auto info = _features.find(&f.get());
+  for (ApplicationFeature& f : orderedFeatures) {
+    auto info = _features.find(&f);
     // We only start those features...
     TRI_ASSERT(info != _features.end());
     if (info->second) {
-      f.get().start();
+      try {
+        f.start();
+      } catch (...) {
+        LOG_DEVEL << "unexpected exception in "
+                  << boost::core::demangle(typeid(f).name()) << "::start";
+      }
     }
   }
 
@@ -352,22 +372,38 @@ void MockServer::startFeatures() {
 }
 
 void MockServer::stopFeatures() {
+  using arangodb::application_features::ApplicationFeature;
+
   if (!_testFilesystemPath.empty()) {
     TRI_RemoveDirectory(_testFilesystemPath.c_str());
   }
+
+  // need to shut down in reverse order
   auto orderedFeatures = _server.getOrderedFeatures();
+  std::reverse(orderedFeatures.begin(), orderedFeatures.end());
+
   // destroy application features
-  for (auto& f : orderedFeatures) {
-    auto info = _features.find(&f.get());
+  for (ApplicationFeature& f : orderedFeatures) {
+    auto info = _features.find(&f);
     // We only start those features...
     TRI_ASSERT(info != _features.end());
     if (info->second) {
-      f.get().stop();
+      try {
+        f.stop();
+      } catch (...) {
+        LOG_DEVEL << "unexpected exception in "
+                  << boost::core::demangle(typeid(f).name()) << "::stop";
+      }
     }
   }
 
-  for (auto& f : orderedFeatures) {
-    f.get().unprepare();
+  for (ApplicationFeature& f : orderedFeatures) {
+    try {
+      f.unprepare();
+    } catch (...) {
+      LOG_DEVEL << "unexpected exception in "
+                << boost::core::demangle(typeid(f).name()) << "::unprepare";
+    }
   }
 }
 
@@ -379,7 +415,33 @@ TRI_vocbase_t& MockServer::getSystemDatabase() const {
   return *system;
 }
 
-MockAqlServer::MockAqlServer() : MockServer() {
+MockV8Server::MockV8Server(bool start) : MockServer() {
+  // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+                                  arangodb::LogLevel::WARN);
+  // suppress log messages since tests check error conditions
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
+  arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+                                  arangodb::LogLevel::FATAL);
+  irs::logger::output_le(::iresearch::logger::IRL_FATAL, stderr);
+
+  // setup required application features
+  SetupV8Phase(*this);
+
+  if (start) {
+    startFeatures();
+  }
+}
+
+MockV8Server::~MockV8Server() {
+  arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+                                  arangodb::LogLevel::DEFAULT);
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+                                  arangodb::LogLevel::DEFAULT);
+}
+
+MockAqlServer::MockAqlServer(bool start) : MockServer() {
   // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
   arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                   arangodb::LogLevel::WARN);
@@ -392,7 +454,9 @@ MockAqlServer::MockAqlServer() : MockServer() {
   // setup required application features
   SetupAqlPhase(*this);
 
-  startFeatures();
+  if (start) {
+    startFeatures();
+  }
 }
 
 MockAqlServer::~MockAqlServer() {
@@ -428,7 +492,7 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery() const {
   return query;
 }
 
-MockRestServer::MockRestServer() : MockServer() {
+MockRestServer::MockRestServer(bool start) : MockServer() {
   // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
   arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                   arangodb::LogLevel::WARN);
@@ -441,7 +505,9 @@ MockRestServer::MockRestServer() : MockServer() {
   addFeature<arangodb::QueryRegistryFeature>(false);
 
   SetupV8Phase(*this);
-  startFeatures();
+  if (start) {
+    startFeatures();
+  }
 }
 
 MockRestServer::~MockRestServer() {
@@ -545,12 +611,14 @@ void MockClusterServer::agencyDropDatabase(std::string const& name) {
   agencyTrx("/arango/Plan/Current", R"=({"op":"increment"})=");
 }
 
-MockDBServer::MockDBServer() : MockClusterServer() {
+MockDBServer::MockDBServer(bool start) : MockClusterServer() {
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
   addFeature<arangodb::FlushFeature>(false);  // do not start the thread
   addFeature<arangodb::MaintenanceFeature>(false); // do not start the thread
-  startFeatures();
-  createDatabase("_system");
+  if (start) {
+    startFeatures();
+    createDatabase("_system");
+  }
 }
 
 MockDBServer::~MockDBServer() {}
@@ -598,10 +666,12 @@ void MockDBServer::dropDatabase(std::string const& name) {
   dd.first();   // Does the job
 }
 
-MockCoordinator::MockCoordinator() : MockClusterServer() {
+MockCoordinator::MockCoordinator(bool start) : MockClusterServer() {
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_COORDINATOR);
-  startFeatures();
-  createDatabase("_system");
+  if (start) {
+    startFeatures();
+    createDatabase("_system");
+  }
 }
 
 MockCoordinator::~MockCoordinator() {}
