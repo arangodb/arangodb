@@ -32,6 +32,88 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+ExecutionBlockImpl<IdExecutor<void>>::ExecutionBlockImpl(ExecutionEngine* engine,
+                                                         ExecutionNode const* node,
+                                                         RegisterId outputRegister, bool doCount)
+    : ExecutionBlock(engine, node),
+      _currentDependency(0),
+      _outputRegister(outputRegister),
+      _doCount(doCount) {
+  // already insert ourselves into the statistics results
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    _engine->_stats.nodes.emplace(node->id(), ExecutionStats::Node());
+  }
+}
+
+std::pair<ExecutionState, size_t> ExecutionBlockImpl<IdExecutor<void>>::skipSome(size_t atMost) {
+  traceSkipSomeBegin(atMost);
+  if (isDone()) {
+    return traceSkipSomeEnd(ExecutionState::DONE, 0);
+  }
+
+  ExecutionState state;
+  size_t skipped;
+  std::tie(state, skipped) = currentDependency().skipSome(atMost);
+
+  if (state == ExecutionState::DONE) {
+    nextDependency();
+  }
+
+  return traceSkipSomeEnd(state, skipped);
+}
+
+std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<IdExecutor<void>>::getSome(size_t atMost) {
+  traceGetSomeBegin(atMost);
+  if (isDone()) {
+    return traceGetSomeEnd(ExecutionState::DONE, nullptr);
+  }
+
+  ExecutionState state;
+  SharedAqlItemBlockPtr block;
+  std::tie(state, block) = currentDependency().getSome(atMost);
+
+  countStats(block);
+
+  if (state == ExecutionState::DONE) {
+    nextDependency();
+  }
+
+  return traceGetSomeEnd(state, block);
+}
+
+bool aql::ExecutionBlockImpl<IdExecutor<void>>::isDone() const noexcept {
+  // I'd like to assert this in the constructor, but the dependencies are
+  // added after construction.
+  TRI_ASSERT(!_dependencies.empty());
+  return _currentDependency >= _dependencies.size();
+}
+
+RegisterId ExecutionBlockImpl<IdExecutor<void>>::getOutputRegisterId() const noexcept {
+  return _outputRegister;
+}
+
+ExecutionBlock& ExecutionBlockImpl<IdExecutor<void>>::currentDependency() const {
+  TRI_ASSERT(_currentDependency < _dependencies.size());
+  TRI_ASSERT(_dependencies[_currentDependency] != nullptr);
+  return *_dependencies[_currentDependency];
+}
+
+void ExecutionBlockImpl<IdExecutor<void>>::nextDependency() noexcept {
+  ++_currentDependency;
+}
+
+bool ExecutionBlockImpl<IdExecutor<void>>::doCount() const noexcept {
+  return _doCount;
+}
+
+void ExecutionBlockImpl<IdExecutor<void>>::countStats(SharedAqlItemBlockPtr& block) {
+  if (doCount() && block != nullptr) {
+    CountStats stats;
+    stats.setCounted(block->size());
+    _engine->_stats += stats;
+  }
+}
+
 IdExecutorInfos::IdExecutorInfos(RegisterId nrInOutRegisters,
                                  // cppcheck-suppress passedByValue
                                  std::unordered_set<RegisterId> registersToKeep,
@@ -58,12 +140,12 @@ std::pair<ExecutionState, NoStats> IdExecutor<UsedFetcher>::produceRows(OutputAq
 
   if (state == ExecutionState::WAITING) {
     TRI_ASSERT(!inputRow);
-    return {state, std::move(stats)};
+    return {state, stats};
   }
 
   if (!inputRow) {
     TRI_ASSERT(state == ExecutionState::DONE);
-    return {state, std::move(stats)};
+    return {state, stats};
   }
 
   TRI_IF_FAILURE("SingletonBlock::getOrSkipSome") {
@@ -79,7 +161,14 @@ std::pair<ExecutionState, NoStats> IdExecutor<UsedFetcher>::produceRows(OutputAq
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  return {state, std::move(stats)};
+  return {state, stats};
+}
+
+template <class UsedFetcher>
+std::tuple<ExecutionState, typename IdExecutor<UsedFetcher>::Stats, SharedAqlItemBlockPtr>
+IdExecutor<UsedFetcher>::fetchBlockForPassthrough(size_t atMost) {
+  auto rv = _fetcher.fetchBlockForPassthrough(atMost);
+  return {rv.first, {}, std::move(rv.second)};
 }
 
 template class ::arangodb::aql::IdExecutor<ConstFetcher>;

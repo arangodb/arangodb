@@ -435,7 +435,8 @@ CostEstimate IndexNode::estimateCost() const {
 
     if (root != nullptr && root->numMembers() > i) {
       arangodb::aql::AstNode const* condition = root->getMember(i);
-      costs = _indexes[i].getIndex()->supportsFilterCondition(std::vector<std::shared_ptr<Index>>(), condition, _outVariable, itemsInCollection);
+      costs = _indexes[i].getIndex()->supportsFilterCondition(
+          std::vector<std::shared_ptr<Index>>(), condition, _outVariable, itemsInCollection);
     }
 
     totalItems += costs.estimatedItems;
@@ -453,3 +454,28 @@ void IndexNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) c
 
   vars.erase(_outVariable);
 }
+ExecutionNode::NodeType IndexNode::getType() const { return INDEX; }
+
+Condition* IndexNode::condition() const { return _condition.get(); }
+
+IndexIteratorOptions IndexNode::options() const { return _options; }
+
+void IndexNode::setAscending(bool value) { _options.ascending = value; }
+
+bool IndexNode::needsGatherNodeSort() const { return _needsGatherNodeSort; }
+
+void IndexNode::needsGatherNodeSort(bool value) {
+  _needsGatherNodeSort = value;
+}
+
+std::vector<Variable const*> IndexNode::getVariablesSetHere() const {
+  return std::vector<Variable const*>{_outVariable};
+}
+
+std::vector<transaction::Methods::IndexHandle> const& IndexNode::getIndexes() const {
+  return _indexes;
+}
+
+NonConstExpression::NonConstExpression(std::unique_ptr<Expression> exp,
+                                       std::vector<size_t>&& idxPath)
+    : expression(std::move(exp)), indexPath(std::move(idxPath)) {}

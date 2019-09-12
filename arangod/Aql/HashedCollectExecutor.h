@@ -65,16 +65,12 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
   ~HashedCollectExecutorInfos() = default;
 
  public:
-  std::vector<std::pair<RegisterId, RegisterId>> getGroupRegisters() const {
-    return _groupRegisters;
-  }
-  std::vector<std::pair<RegisterId, RegisterId>> getAggregatedRegisters() const {
-    return _aggregateRegisters;
-  }
-  std::vector<std::string> getAggregateTypes() const { return _aggregateTypes; }
-  bool getCount() const noexcept { return _count; }
-  transaction::Methods* getTransaction() const { return _trxPtr; }
-  RegisterId getCollectRegister() const noexcept { return _collectRegister; }
+  std::vector<std::pair<RegisterId, RegisterId>> getGroupRegisters() const;
+  std::vector<std::pair<RegisterId, RegisterId>> getAggregatedRegisters() const;
+  std::vector<std::string> getAggregateTypes() const;
+  bool getCount() const noexcept;
+  transaction::Methods* getTransaction() const;
+  RegisterId getCollectRegister() const noexcept;
 
  private:
   /// @brief aggregate types
@@ -142,7 +138,7 @@ class HashedCollectExecutor {
   using GroupMapType =
       std::unordered_map<GroupKeyType, GroupValueType, AqlValueGroupHash, AqlValueGroupEqual>;
 
-  Infos const& infos() const noexcept { return _infos; }
+  Infos const& infos() const noexcept;
 
   /**
    * @brief Shall be executed until it returns DONE, then never again.

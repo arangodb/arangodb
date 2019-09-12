@@ -52,14 +52,12 @@ struct NonConstExpression {
   std::unique_ptr<Expression> expression;
   std::vector<size_t> const indexPath;
 
-  NonConstExpression(std::unique_ptr<Expression> exp, std::vector<size_t>&& idxPath)
-      : expression(std::move(exp)), indexPath(std::move(idxPath)) {}
+  NonConstExpression(std::unique_ptr<Expression> exp, std::vector<size_t>&& idxPath);
 };
 
 /// @brief class IndexNode
 class IndexNode : public ExecutionNode, public DocumentProducingNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
-  friend class IndexBlock;
 
  public:
   IndexNode(ExecutionPlan* plan, size_t id, aql::Collection const* collection,
@@ -69,29 +67,29 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
 
   IndexNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
-  ~IndexNode();
+  ~IndexNode() override;
 
   /// @brief return the type of the node
-  NodeType getType() const override final { return INDEX; }
+  NodeType getType() const final;
 
   /// @brief return the condition for the node
-  Condition* condition() const { return _condition.get(); }
+  Condition* condition() const;
 
   /// @brief whether or not all indexes are accessed in reverse order
-  IndexIteratorOptions options() const { return _options; }
+  IndexIteratorOptions options() const;
 
   /// @brief set reverse mode
-  void setAscending(bool value) { _options.ascending = value; }
+  void setAscending(bool value);
 
   /// @brief whether or not the index node needs a post sort of the results
   /// of multiple shards in the cluster (via a GatherNode).
   /// not all queries that use an index will need to produce a sorted result
   /// (e.g. if the index is used only for filtering)
-  bool needsGatherNodeSort() const { return _needsGatherNodeSort; }
-  void needsGatherNodeSort(bool value) { _needsGatherNodeSort = value; }
+  bool needsGatherNodeSort() const;
+  void needsGatherNodeSort(bool value);
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -100,23 +98,19 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+                       bool withProperties) const final;
 
   /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const override final {
-    return std::vector<Variable const*>{_outVariable};
-  }
+  std::vector<Variable const*> getVariablesSetHere() const final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const final;
 
   /// @brief estimateCost
-  CostEstimate estimateCost() const override final;
+  CostEstimate estimateCost() const final;
 
   /// @brief getIndexes, hand out the indexes used
-  std::vector<transaction::Methods::IndexHandle> const& getIndexes() const {
-    return _indexes;
-  }
+  std::vector<transaction::Methods::IndexHandle> const& getIndexes() const;
 
   /// @brief called to build up the matching positions of the index values for
   /// the projection attributes (if any)

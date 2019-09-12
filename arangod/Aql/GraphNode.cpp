@@ -267,8 +267,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _options(nullptr),
       _optionsBuilt(false),
       _isSmart(false) {
-
-  uint64_t dir = arangodb::basics::VelocyPackHelper::stringUInt64(base.get("defaultDirection"));
+  uint64_t dir = arangodb::basics::VelocyPackHelper::stringUInt64(
+      base.get("defaultDirection"));
   _defaultDirection = uint64ToDirection(dir);
 
   // Directions
@@ -346,13 +346,13 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       Variable::varFromVPack(plan->getAst(), base, "tmpObjVariable");
 
   TRI_ASSERT(base.hasKey("tmpObjVarNode"));
-  // the plan's AST takes ownership of the newly created AstNode, so this is safe
-  // cppcheck-suppress *
+  // the plan's AST takes ownership of the newly created AstNode, so this is
+  // safe cppcheck-suppress *
   _tmpObjVarNode = new AstNode(plan->getAst(), base.get("tmpObjVarNode"));
 
   TRI_ASSERT(base.hasKey("tmpIdNode"));
-  // the plan's AST takes ownership of the newly created AstNode, so this is safe
-  // cppcheck-suppress *
+  // the plan's AST takes ownership of the newly created AstNode, so this is
+  // safe cppcheck-suppress *
   _tmpIdNode = new AstNode(plan->getAst(), base.get("tmpIdNode"));
 
   VPackSlice opts = base.get("options");
@@ -556,4 +556,38 @@ void GraphNode::addEdgeCollection(std::string const& n, TRI_edge_direction_e dir
     _edgeColls.emplace_back(
         std::make_unique<aql::Collection>(n, _vocbase, AccessMode::Type::READ));
   }
+}
+
+bool GraphNode::isSmart() const { return _isSmart; }
+
+TRI_vocbase_t* GraphNode::vocbase() const { return _vocbase; }
+
+Variable const* GraphNode::vertexOutVariable() const {
+  return _vertexOutVariable;
+}
+
+bool GraphNode::usesVertexOutVariable() const {
+  return _vertexOutVariable != nullptr;
+}
+
+void GraphNode::setVertexOutput(Variable const* outVar) {
+  _vertexOutVariable = outVar;
+}
+
+Variable const* GraphNode::edgeOutVariable() const { return _edgeOutVariable; }
+
+bool GraphNode::usesEdgeOutVariable() const {
+  return _edgeOutVariable != nullptr;
+}
+
+void GraphNode::setEdgeOutput(Variable const* outVar) {
+  _edgeOutVariable = outVar;
+}
+
+std::vector<std::unique_ptr<aql::Collection>> const& GraphNode::edgeColls() const {
+  return _edgeColls;
+}
+
+std::vector<std::unique_ptr<aql::Collection>> const& GraphNode::vertexColls() const {
+  return _vertexColls;
 }

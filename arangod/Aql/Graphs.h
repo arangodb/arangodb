@@ -72,7 +72,7 @@ class EdgeConditionBuilder {
   virtual void buildToCondition() = 0;
 
  public:
-  virtual ~EdgeConditionBuilder() {}
+  virtual ~EdgeConditionBuilder() = default;
 
   EdgeConditionBuilder(EdgeConditionBuilder const&) = delete;
   EdgeConditionBuilder(EdgeConditionBuilder&&) = delete;
@@ -98,7 +98,7 @@ class EdgeConditionBuilderContainer final : public EdgeConditionBuilder {
  public:
   EdgeConditionBuilderContainer();
 
-  ~EdgeConditionBuilderContainer();
+  ~EdgeConditionBuilderContainer() override;
 
   // Get a pointer to the used variable
   Variable const* getVariable() const;

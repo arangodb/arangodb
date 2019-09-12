@@ -55,15 +55,11 @@ struct CreateInvalidInputRowHint {
 class InputAqlItemRow {
  public:
   // The default constructor contains an invalid item row
-  explicit InputAqlItemRow(CreateInvalidInputRowHint)
-      : _block(nullptr), _baseIndex(0) {}
+  explicit InputAqlItemRow(CreateInvalidInputRowHint);
 
   InputAqlItemRow(
       // cppcheck-suppress passedByValue
-      SharedAqlItemBlockPtr block, size_t baseIndex)
-      : _block(std::move(block)), _baseIndex(baseIndex) {
-    TRI_ASSERT(_block != nullptr);
-  }
+      SharedAqlItemBlockPtr block, size_t baseIndex);
 
   /**
    * @brief Get a reference to the value of the given Variable Nr
@@ -72,11 +68,7 @@ class InputAqlItemRow {
    *
    * @return Reference to the AqlValue stored in that variable.
    */
-  inline AqlValue const& getValue(RegisterId registerId) const {
-    TRI_ASSERT(isInitialized());
-    TRI_ASSERT(registerId < getNrRegisters());
-    return block().getValueReference(_baseIndex, registerId);
-  }
+  AqlValue const& getValue(RegisterId registerId) const;
 
   /**
    * @brief Get a reference to the value of the given Variable Nr
@@ -85,47 +77,23 @@ class InputAqlItemRow {
    *
    * @return The AqlValue stored in that variable. It is invalidated in source.
    */
-  inline AqlValue stealValue(RegisterId registerId) {
-    TRI_ASSERT(isInitialized());
-    TRI_ASSERT(registerId < getNrRegisters());
-    AqlValue const& a = block().getValueReference(_baseIndex, registerId);
-    if (!a.isEmpty() && a.requiresDestruction()) {
-      // Now no one is responsible for AqlValue a
-      block().steal(a);
-    }
-    // This cannot fail, caller needs to take immediate ownership.
-    return a;
-  }
+  AqlValue stealValue(RegisterId registerId);
 
-  std::size_t getNrRegisters() const noexcept { return block().getNrRegs(); }
+  std::size_t getNrRegisters() const noexcept;
 
-  bool operator==(InputAqlItemRow const& other) const noexcept {
-    TRI_ASSERT(isInitialized());
-    return this->_block == other._block && this->_baseIndex == other._baseIndex;
-  }
+  bool operator==(InputAqlItemRow const& other) const noexcept;
 
-  bool operator!=(InputAqlItemRow const& other) const noexcept {
-    TRI_ASSERT(isInitialized());
-    return !(*this == other);
-  }
+  bool operator!=(InputAqlItemRow const& other) const noexcept;
 
-  bool isInitialized() const noexcept { return _block != nullptr; }
+  bool isInitialized() const noexcept;
 
-  explicit operator bool() const noexcept { return isInitialized(); }
+  explicit operator bool() const noexcept;
 
-  inline bool isFirstRowInBlock() const noexcept {
-    TRI_ASSERT(isInitialized());
-    TRI_ASSERT(_baseIndex < block().size());
-    return _baseIndex == 0;
-  }
+  bool isFirstRowInBlock() const noexcept;
 
-  inline bool isLastRowInBlock() const noexcept {
-    TRI_ASSERT(isInitialized());
-    TRI_ASSERT(_baseIndex < block().size());
-    return _baseIndex + 1 == block().size();
-  }
+  bool isLastRowInBlock() const noexcept;
 
-  inline bool blockHasMoreRows() const noexcept { return !isLastRowInBlock(); }
+  bool blockHasMoreRows() const noexcept;
 
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -149,15 +117,9 @@ class InputAqlItemRow {
 
  private:
 
-  inline AqlItemBlock& block() noexcept {
-    TRI_ASSERT(_block != nullptr);
-    return *_block;
-  }
+  AqlItemBlock& block() noexcept;
 
-  inline AqlItemBlock const& block() const noexcept {
-    TRI_ASSERT(_block != nullptr);
-    return *_block;
-  }
+  AqlItemBlock const& block() const noexcept;
 
  private:
   /**

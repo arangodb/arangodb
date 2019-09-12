@@ -62,6 +62,28 @@ HashedCollectExecutorInfos::HashedCollectExecutorInfos(
   TRI_ASSERT(!_groupRegisters.empty());
 }
 
+std::vector<std::pair<RegisterId, RegisterId>> HashedCollectExecutorInfos::getGroupRegisters() const {
+  return _groupRegisters;
+}
+
+std::vector<std::pair<RegisterId, RegisterId>> HashedCollectExecutorInfos::getAggregatedRegisters() const {
+  return _aggregateRegisters;
+}
+
+std::vector<std::string> HashedCollectExecutorInfos::getAggregateTypes() const {
+  return _aggregateTypes;
+}
+
+bool HashedCollectExecutorInfos::getCount() const noexcept { return _count; }
+
+transaction::Methods* HashedCollectExecutorInfos::getTransaction() const {
+  return _trxPtr;
+}
+
+RegisterId HashedCollectExecutorInfos::getCollectRegister() const noexcept {
+  return _collectRegister;
+}
+
 std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*>
 HashedCollectExecutor::createAggregatorFactories(HashedCollectExecutor::Infos const& infos) {
   std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*> aggregatorFactories;
@@ -308,4 +330,8 @@ std::pair<ExecutionState, size_t> HashedCollectExecutor::expectedNumberOfRows(si
     return {ExecutionState::HASMORE, rowsLeft};
   }
   return {ExecutionState::DONE, rowsLeft};
+}
+
+const HashedCollectExecutor::Infos& HashedCollectExecutor::infos() const noexcept {
+  return _infos;
 }
