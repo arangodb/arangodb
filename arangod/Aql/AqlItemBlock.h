@@ -356,6 +356,11 @@ class AqlItemBlock {
     return _data[getSubqueryDepthAddress(row)];
   }
 
+  void makeShadowRow(size_t row) {
+    TRI_ASSERT(!isShadowRow(row));
+    _data[getSubqueryDepthAddress(row)] = AqlValue{VPackSlice::zeroSlice()};
+  }
+
  protected:
   AqlItemBlockManager& aqlItemBlockManager() noexcept { return _manager; }
   size_t getRefCount() const noexcept { return _refCount; }

@@ -232,9 +232,7 @@ class OutputAqlItemRow {
   }
   // Use this function with caution! We need it for the SortedCollectExecutor
   // and CountCollectExecutor.
-  void setAllowSourceRowUninitialized() {
-    _allowSourceRowUninitialized = true;
-  }
+  void setAllowSourceRowUninitialized() { _allowSourceRowUninitialized = true; }
 
   // This function can be used to restore the row's invariant.
   // After setting this value numRowsWritten() rather returns
@@ -247,8 +245,9 @@ class OutputAqlItemRow {
     _baseIndex = index;
   }
 
- private:
+  void createShadowRow(InputAqlItemRow const& sourceRow);
 
+ private:
   std::unordered_set<RegisterId> const& outputRegisters() const {
     return *_outputRegisters;
   }
@@ -332,7 +331,6 @@ class OutputAqlItemRow {
 
   inline void doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing);
 };
-
 
 void OutputAqlItemRow::doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing) {
   // Note that _lastSourceRow is invalid right after construction. However, when
