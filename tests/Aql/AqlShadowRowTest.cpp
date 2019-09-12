@@ -82,15 +82,23 @@ class AqlShadowItemRowTest : public ::testing::Test {
     // Let this go out of scope before assertions, to make sure no references are bound here.
     for (size_t rowIdx = 0; rowIdx < inputBlock->size(); ++rowIdx) {
       ASSERT_FALSE(testee.isFull());
-      // simply copy over every row, and insert a shadowRow after it
-      InputAqlItemRow source{inputBlock, rowIdx};
-      testee.copyRow(source);
-      ASSERT_TRUE(testee.produced());
-      ASSERT_FALSE(testee.isFull());
-      testee.advanceRow();
-      testee.createShadowRow(source);
-      ASSERT_TRUE(testee.produced());
-      testee.advanceRow();
+      if (!inputBlock->isShadowRow(rowIdx)) {
+        // simply copy over every row, and insert a shadowRow after it
+        InputAqlItemRow source{inputBlock, rowIdx};
+        testee.copyRow(source);
+        ASSERT_TRUE(testee.produced());
+        ASSERT_FALSE(testee.isFull());
+        testee.advanceRow();
+        testee.createShadowRow(source);
+        ASSERT_TRUE(testee.produced());
+        testee.advanceRow();
+      } else {
+        // increase depth of shadowRow
+        ShadowAqlItemRow source{inputBlock, rowIdx};
+        testee.increaseShadowRowDepth(source);
+        ASSERT_TRUE(testee.produced());
+        testee.advanceRow();
+      }
     }
     ASSERT_TRUE(testee.isFull());
     ASSERT_EQ(testee.numRowsWritten(), targetNumberOfRows);
@@ -128,11 +136,20 @@ class AqlShadowItemRowTest : public ::testing::Test {
       if (inputBlock->isShadowRow(rowIdx)) {
         ShadowAqlItemRow source{inputBlock, rowIdx};
         if (source.isRelevant()) {
-          testee.cloneValueInto(numRegisters, source, shadowRowData);
+          {
+            bool mustDestroy = true;
+            AqlValue clonedValue = shadowRowData.clone();
+            AqlValueGuard guard{clonedValue, mustDestroy};
+            testee.consumeShadowRow(numRegisters, source, guard);
+          }
           ASSERT_TRUE(testee.produced());
           testee.advanceRow();
         } else {
-          ASSERT_FALSE(true) << "This is not yet implemented";
+          // decrease depth of shadowRow
+          ShadowAqlItemRow source{inputBlock, rowIdx};
+          testee.decreaseShadowRowDepth(source);
+          ASSERT_TRUE(testee.produced());
+          testee.advanceRow();
         }
       }
     }
@@ -189,6 +206,101 @@ TEST_F(AqlShadowItemRowTest, consume_shadow_rows) {
     InputAqlItemRow testResult{outputBlock, rowIdx};
     AssertResultRow(testResult, expected->slice().at(rowIdx));
   }
+}
+
+TEST_F(AqlShadowItemRowTest, multi_level_shadow_rows) {
+  auto inputBlock =
+      buildBlock<3>(itemBlockManager, {{{{1}, {2}, {3}}},
+                                       {{{4}, {5}, {6}}},
+                                       {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
+  SharedAqlItemBlockPtr outputBlock;
+  InsertNewShadowRowAfterEachDataRow(6, inputBlock, outputBlock);
+  // We validated that outputBlock is correct in first test.
+
+  // Now insert an additional level
+  inputBlock.swap(outputBlock);
+  InsertNewShadowRowAfterEachDataRow(9, inputBlock, outputBlock);
+  {
+    auto expected =
+        VPackParser::fromJson("[[1,2,3],[4,5,6],[\"a\",\"b\",\"c\"]]");
+    for (size_t rowIdx = 0; rowIdx < outputBlock->size(); ++rowIdx) {
+      switch (rowIdx % 3) {
+        case 0:
+          // First is always datarow
+          {
+            ASSERT_FALSE(outputBlock->isShadowRow(rowIdx));
+            InputAqlItemRow testResult{outputBlock, rowIdx};
+            AssertResultRow(testResult, expected->slice().at(rowIdx / 3));
+            break;
+          }
+        case 1:
+          // Second is top-level Subquery
+          {
+            ASSERT_TRUE(outputBlock->isShadowRow(rowIdx));
+            ShadowAqlItemRow testResult{outputBlock, rowIdx};
+            ASSERT_TRUE(testResult.isRelevant());
+            break;
+          }
+        case 2:
+          // Third is subquery one level lower
+          {
+            ASSERT_TRUE(outputBlock->isShadowRow(rowIdx));
+            ShadowAqlItemRow testResult{outputBlock, rowIdx};
+            ASSERT_FALSE(testResult.isRelevant());
+            break;
+          }
+      }
+    }
+  }
+
+  // Now consume the inner level of ShadowRows again
+  // In this test we simply dump datarows
+  // and create new datarows out of shadowRows, writing a new value to them
+  inputBlock.swap(outputBlock);
+  ConsumeRelevantShadowRows(6, inputBlock, outputBlock);
+
+  {
+    auto expected = VPackParser::fromJson(
+        "[[1,2,3,[]],[4,5,6,[]],[\"a\",\"b\",\"c\", []]]");
+    for (size_t rowIdx = 0; rowIdx < outputBlock->size(); ++rowIdx) {
+      switch (rowIdx % 2) {
+        case 0:
+          // First is always datarow
+          {
+            ASSERT_FALSE(outputBlock->isShadowRow(rowIdx));
+            InputAqlItemRow testResult{outputBlock, rowIdx};
+            AssertResultRow(testResult, expected->slice().at(rowIdx / 2));
+            break;
+          }
+        case 1:
+          // Second is top-level Subquery
+          {
+            ASSERT_TRUE(outputBlock->isShadowRow(rowIdx));
+            ShadowAqlItemRow testResult{outputBlock, rowIdx};
+            ASSERT_TRUE(testResult.isRelevant());
+            break;
+          }
+      }
+    }
+  }
+  /*
+  // Now consume the outer level of ShadowRows again
+  // In this test we simply dump datarows
+  // and create new datarows out of shadowRows, writing a new value to them
+  inputBlock.swap(outputBlock);
+  ConsumeRelevantShadowRows(3, inputBlock, outputBlock);
+
+  {
+    auto expected = VPackParser::fromJson(
+        "[[1,2,3,[]],[4,5,6,[]],[\"a\",\"b\",\"c\", []]]");
+    for (size_t rowIdx = 0; rowIdx < outputBlock->size(); ++rowIdx) {
+        ASSERT_FALSE(outputBlock->isShadowRow(rowIdx));
+        InputAqlItemRow testResult{outputBlock, rowIdx};
+        AssertResultRow(testResult, expected->slice().at(rowIdx));
+      }
+    }
+  }
+   */
 }
 
 }  // namespace aql

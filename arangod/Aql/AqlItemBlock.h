@@ -347,7 +347,6 @@ class AqlItemBlock {
   bool isShadowRow(size_t row) const {
     /// This value is only filled for shadowRows.
     /// And it is guaranteed to be only filled by numbers this way.
-
     return _data[getSubqueryDepthAddress(row)].isNumber();
   }
 
@@ -356,9 +355,19 @@ class AqlItemBlock {
     return _data[getSubqueryDepthAddress(row)];
   }
 
+  void setShadowRowDepth(size_t row, AqlValue const& other) {
+    _data[getSubqueryDepthAddress(row)] = other;
+    TRI_ASSERT(isShadowRow(row));
+  }
+
   void makeShadowRow(size_t row) {
     TRI_ASSERT(!isShadowRow(row));
     _data[getSubqueryDepthAddress(row)] = AqlValue{VPackSlice::zeroSlice()};
+  }
+
+  void makeDataRow(size_t row) {
+    TRI_ASSERT(isShadowRow(row));
+    _data[getSubqueryDepthAddress(row)] = AqlValue{VPackSlice::noneSlice()};
   }
 
  protected:

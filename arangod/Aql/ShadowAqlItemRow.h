@@ -92,13 +92,19 @@ class ShadowAqlItemRow {
     return block().getValueReference(_baseIndex, registerId);
   }
 
- private:
+  inline AqlValue const& getShadowDepthValue() const {
+    TRI_ASSERT(isInitialized());
+    return block().getShadowRowDepth(_baseIndex);
+  }
+
   inline int64_t getDepth() const {
     TRI_ASSERT(isInitialized());
     auto value = block().getShadowRowDepth(_baseIndex);
+    TRI_ASSERT(value.toInt64() >= 0);
     return value.toInt64();
   }
 
+ private:
   inline AqlItemBlock& block() noexcept {
     TRI_ASSERT(_block != nullptr);
     return *_block;

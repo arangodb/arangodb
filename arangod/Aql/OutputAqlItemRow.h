@@ -94,6 +94,13 @@ class OutputAqlItemRow {
     }
   }
 
+  void consumeShadowRow(RegisterId registerId, ShadowAqlItemRow const& sourceRow,
+                        AqlValueGuard& guard) {
+    TRI_ASSERT(sourceRow.isRelevant());
+    moveValueInto(registerId, sourceRow, guard);
+    block().makeDataRow(_baseIndex);
+  }
+
   // Reuses the value of the given register that has been inserted in the output
   // row before. This call cannot be used on the first row of this output block.
   // If the reusing does not work this call will return `false` caller needs to
@@ -250,6 +257,27 @@ class OutputAqlItemRow {
 
   void createShadowRow(InputAqlItemRow const& sourceRow);
 
+  void increaseShadowRowDepth(ShadowAqlItemRow const& sourceRow) {
+    doCopyRow(sourceRow, false);
+    VPackBuilder b;
+    b.add(VPackValue(sourceRow.getDepth() + 1));
+    block().setShadowRowDepth(_baseIndex, AqlValue{b.slice()});
+    // We need to fake produced state
+    _numValuesWritten = numRegistersToWrite();
+    TRI_ASSERT(produced());
+  }
+
+  void decreaseShadowRowDepth(ShadowAqlItemRow const& sourceRow) {
+    doCopyRow(sourceRow, false);
+    TRI_ASSERT(!sourceRow.isRelevant());
+    VPackBuilder b;
+    b.add(VPackValue(sourceRow.getDepth() - 1));
+    block().setShadowRowDepth(_baseIndex, AqlValue{b.slice()});
+    // We need to fake produced state
+    _numValuesWritten = numRegistersToWrite();
+    TRI_ASSERT(produced());
+  }
+
  private:
   std::unordered_set<RegisterId> const& outputRegisters() const {
     return *_outputRegisters;
@@ -339,6 +367,9 @@ class OutputAqlItemRow {
 
   template <class ItemRowType>
   inline bool testIfWeMostClone(ItemRowType const& sourceRow) const;
+
+  template <class ItemRowType>
+  inline void adjustShadowRowDepth(ItemRowType const& sourceRow);
 };
 
 template <>
@@ -359,6 +390,15 @@ inline bool OutputAqlItemRow::testIfWeMostClone<InputAqlItemRow>(InputAqlItemRow
 template <>
 inline bool OutputAqlItemRow::testIfWeMostClone<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) const {
   return true;
+}
+
+template <>
+inline void OutputAqlItemRow::adjustShadowRowDepth<InputAqlItemRow>(InputAqlItemRow const& sourceRow) {
+}
+
+template <>
+inline void OutputAqlItemRow::adjustShadowRowDepth<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) {
+  block().setShadowRowDepth(_baseIndex, sourceRow.getShadowDepthValue());
 }
 
 template <class ItemRowType>
@@ -397,6 +437,7 @@ inline void OutputAqlItemRow::doCopyRow(ItemRowType const& sourceRow, bool ignor
         }
       }
     }
+    adjustShadowRowDepth(sourceRow);
   } else {
     TRI_ASSERT(_baseIndex > 0);
     block().copyValuesFromRow(_baseIndex, registersToKeep(), _lastBaseIndex);
