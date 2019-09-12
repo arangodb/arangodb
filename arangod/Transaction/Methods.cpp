@@ -826,15 +826,6 @@ TransactionCollection* transaction::Methods::trxCollection(TRI_voc_cid_t cid,
   return _state->collection(cid, type);
 }
 
-/// @brief return the transaction collection for a document collection
-TransactionCollection* transaction::Methods::trxCollection(std::string const& name,
-                                                           AccessMode::Type type) const {
-  TRI_ASSERT(_state != nullptr);
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING ||
-             _state->status() == transaction::Status::CREATED);
-  return _state->collection(name, type);
-}
-
 /// @brief order a ditch for a collection
 void transaction::Methods::pinData(TRI_voc_cid_t cid) {
   TRI_ASSERT(_state != nullptr);
@@ -3062,22 +3053,6 @@ arangodb::LogicalCollection* transaction::Methods::documentCollection(TRI_voc_ci
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   auto trxColl = trxCollection(cid, AccessMode::Type::READ);
-  if (trxColl == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "could not find collection");
-  }
-
-  TRI_ASSERT(trxColl != nullptr);
-  TRI_ASSERT(trxColl->collection() != nullptr);
-  return trxColl->collection().get();
-}
-
-/// @brief return the collection
-arangodb::LogicalCollection* transaction::Methods::documentCollection(std::string const& name) const {
-  TRI_ASSERT(_state != nullptr);
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  auto trxColl = trxCollection(name, AccessMode::Type::READ);
   if (trxColl == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "could not find collection");

@@ -51,13 +51,15 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-  
+
+namespace {
 class SimpleTransaction : public transaction::Methods {
  public:
   SimpleTransaction(std::shared_ptr<transaction::Context>&& transactionContext,
                     transaction::Options&& options = transaction::Options())
     : Methods(std::move(transactionContext), std::move(options)) {}
 };
+} // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief agency public path
