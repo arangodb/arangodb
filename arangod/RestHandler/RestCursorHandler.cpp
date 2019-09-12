@@ -630,7 +630,6 @@ RestStatus RestCursorHandler::modifyQueryCursor() {
   }
 
   return generateCursorResult(rest::ResponseCode::OK, cursor);
-  ;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

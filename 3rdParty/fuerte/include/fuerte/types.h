@@ -72,6 +72,8 @@ enum class Error : uint16_t {
   WriteError = 1103,
 
   Canceled = 1104,
+  
+  VstUnauthorized = 2000,
 
   ProtocolError = 3000,
 };
