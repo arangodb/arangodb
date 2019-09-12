@@ -294,7 +294,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     return res;
   }
 
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::instance()->isCoordinator() /* REVIEW! && !localDatabase*/) {
     if(!createInfo.validId()){
       createInfo.setId(ClusterInfo::instance()->uniqid());
     }
