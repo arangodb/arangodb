@@ -325,7 +325,6 @@
         result.forEach(function(res) {
           assertTrue(res.c >= 2);
         });
-        assertEqual(true, false);
       },
 
       testAttributeGreaterFilter : function () {
