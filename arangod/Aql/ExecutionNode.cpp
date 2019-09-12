@@ -566,13 +566,6 @@ bool ExecutionNode::isEqualTo(ExecutionNode const& other) {
                       other._dependencies.begin(), comparator)));
 }
 
-bool ExecutionNode::isEqualTo(ExecutionNode const * other) {
-  if(other == nullptr) {
-    return false;
-  }
-  return isEqualTo(*other);
-}
-
 /// @brief invalidate the cost estimation for the node and its dependencies
 void ExecutionNode::invalidateCost() {
   _costEstimate.invalidate();

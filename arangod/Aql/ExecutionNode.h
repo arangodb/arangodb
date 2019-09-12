@@ -335,7 +335,6 @@ class ExecutionNode {
 
   /// @brief check equality of ExecutionNodes
   virtual bool isEqualTo(ExecutionNode const& other);
-  virtual bool isEqualTo(ExecutionNode const* other);
 
   /// @brief invalidate the cost estimate for the node and its dependencies
   virtual void invalidateCost();

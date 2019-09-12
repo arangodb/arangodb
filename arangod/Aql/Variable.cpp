@@ -92,3 +92,8 @@ Variable* Variable::varFromVPack(Ast* ast, arangodb::velocypack::Slice const& ba
   }
   return ast->variables()->createVariable(variable);
 }
+
+bool Variable::isEqualTo(Variable const& other) {
+  meta::details::static_assert_size<Variable, 16>();
+  return (id == other.id) && (name == other.name);
+}

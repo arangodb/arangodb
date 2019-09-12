@@ -81,5 +81,12 @@ CostEstimate SubqueryEndNode::estimateCost() const {
   return estimate;
 }
 
+bool SubqueryEndNode::isEqualTo(SubqueryEndNode const& other)
+{
+  TRI_ASSERT(_outVariable); TRI_ASSERT(other->_outVariable);
+  return ExecutionNode::isEqualTo(other) &&
+    _outVariable->isEqualTo(*other->_outVariable);
+}
+
 } // namespace aql
 } // namespace arangodb
