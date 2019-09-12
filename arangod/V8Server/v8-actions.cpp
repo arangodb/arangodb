@@ -1462,18 +1462,18 @@ static int clusterSendToAllServers(std::string const& dbname,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-static void JS_DebugSegfault(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_DebugTerminate(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // extract arguments
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("debugSegfault(<message>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("debugTerminate(<message>)");
   }
 
   std::string const message = TRI_ObjectToString(isolate, args[0]);
 
-  TRI_SegfaultDebugging(message.c_str());
+  TRI_TerminateDebugging(message.c_str());
 
   // we may get here if we are in non-maintainer mode
 
@@ -1722,7 +1722,7 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_DEBUG_SEGFAULT"), JS_DebugSegfault);
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_DEBUG_TERMINATE"), JS_DebugTerminate);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_DEBUG_SET_FAILAT"),

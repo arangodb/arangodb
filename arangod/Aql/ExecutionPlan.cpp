@@ -2050,6 +2050,9 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
   arangodb::HashSet<Variable const*> _valid;
   std::unordered_map<VariableId, ExecutionNode*>* _varSetBy;
   bool const _ownsVarSetBy;
+  
+  VarUsageFinder(VarUsageFinder const&) = delete;
+  VarUsageFinder& operator=(VarUsageFinder const&) = delete;
 
   VarUsageFinder() : _varSetBy(nullptr), _ownsVarSetBy(true) {
     _varSetBy = new std::unordered_map<VariableId, ExecutionNode*>();
@@ -2341,7 +2344,8 @@ bool ExecutionPlan::isDeadSimple() const {
 
     if (nodeType == ExecutionNode::SUBQUERY || nodeType == ExecutionNode::ENUMERATE_COLLECTION ||
         nodeType == ExecutionNode::ENUMERATE_LIST || nodeType == ExecutionNode::TRAVERSAL ||
-        nodeType == ExecutionNode::SHORTEST_PATH || nodeType == ExecutionNode::INDEX) {
+        nodeType == ExecutionNode::SHORTEST_PATH || nodeType == ExecutionNode::K_SHORTEST_PATHS ||
+        nodeType == ExecutionNode::INDEX) {
       // these node types are not simple
       return false;
     }

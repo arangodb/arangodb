@@ -691,7 +691,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
   TRI_IF_FAILURE("FailAfterAllCommits") { return Result(TRI_ERROR_DEBUG); }
   TRI_IF_FAILURE("SegfaultAfterAllCommits") {
-    TRI_SegfaultDebugging("SegfaultAfterAllCommits");
+    TRI_TerminateDebugging("SegfaultAfterAllCommits");
   }
   return Result{};
 }
