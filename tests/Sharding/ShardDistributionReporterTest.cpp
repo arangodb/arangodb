@@ -192,7 +192,7 @@ class ShardDistributionReporterTest : public ::testing::Test {
     }
 
     vocbase = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                              1, testDatabaseArgs);
+                                              testDBInfo());
     col = std::make_unique<arangodb::LogicalCollection>(*vocbase, json->slice(), true);
 
     col->setShardMap(shards);

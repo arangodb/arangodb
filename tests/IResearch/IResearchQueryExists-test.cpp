@@ -162,7 +162,7 @@ protected:
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     TRI_vocbase_t* vocbase;
 
-    dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase); // required for IResearchAnalyzerFeature::emplace(...)
+    dbFeature->createDatabase(testDBInfo(), vocbase); // required for IResearchAnalyzerFeature::emplace(...)
     analyzers->emplace(
         result, "testVocbase::text_en", "text",
         VPackParser::fromJson("{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }")->slice(),
@@ -206,7 +206,7 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(IResearchQueryExistsTest, test) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, testDatabaseArgs);
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 
@@ -1461,7 +1461,7 @@ TEST_F(IResearchQueryExistsTest, test) {
 }
 
 TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, testDatabaseArgs);
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 

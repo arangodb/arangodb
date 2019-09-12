@@ -549,15 +549,13 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_auth) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        testDatabaseArgs);
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,
                                                                     arangodb::auth::Level::RW));
 }
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_vocbase_read) {
   // no vocbase read access
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        testDatabaseArgs);
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::NONE);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -567,8 +565,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_vocbase_read) {
 
 // no collection read access (vocbase read access, no user)
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_none_collection_read_no_user) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        testDatabaseArgs);
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -578,8 +575,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_none_collection_read_no_u
 
 // no collection read access (vocbase read access)
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_none) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        testDatabaseArgs);
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::NONE);
   auto ctxt = getLoggedInContext();
@@ -592,8 +588,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_none) {
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        testDatabaseArgs);
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -604,8 +599,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_rw) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        testDatabaseArgs);
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RW);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -616,8 +610,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_rw) {
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_ro) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        testDatabaseArgs);
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -629,8 +622,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_ro) {
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_rw) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        testDatabaseArgs);
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
   userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RW);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -990,12 +982,8 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
     ASSERT_NE(_sysVocbase, nullptr);
 
     _vocbase = nullptr;
-<<<<<<< HEAD
-    auto res = _dbFeature->createDatabase(1, dbName, arangodb::velocypack::Slice::emptyObjectSlice(), _vocbase);
-    ASSERT_EQ(res, TRI_ERROR_NO_ERROR);
-=======
-    ASSERT_TRUE(_dbFeature->createDatabase(1, dbName, _vocbase).ok());
->>>>>>> 4cb08d2a0d00cefd8f626721069721f3555b7dad
+                                                            //same id?
+    ASSERT_TRUE(_dbFeature->createDatabase(createInfo(dbName,1), _vocbase).ok());
     ASSERT_NE(_vocbase, nullptr);
     arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
                                                  false);
@@ -1251,7 +1239,7 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
     buildFeatureEntry(tmpFeature = new arangodb::QueryRegistryFeature(server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(tmpFeature);  // need QueryRegistryFeature feature to be added now in order to create the system database
     _system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                                      0, systemDatabaseArgs);
+                                                      systemDBInfo());
     buildFeatureEntry(new arangodb::SystemDatabaseFeature(server, _system.get()),
                       false);  // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::RandomFeature(server), false);  // required by AuthenticationFeature
@@ -1389,12 +1377,7 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
     }
 
     _vocbase = nullptr;
-<<<<<<< HEAD
-    auto res = dbFeature->createDatabase(1, _dbName, arangodb::velocypack::Slice::emptyObjectSlice(), _vocbase);
-    ASSERT_EQ(res, TRI_ERROR_NO_ERROR);
-=======
-    ASSERT_TRUE(dbFeature->createDatabase(1, _dbName, _vocbase).ok());
->>>>>>> 4cb08d2a0d00cefd8f626721069721f3555b7dad
+    ASSERT_TRUE(dbFeature->createDatabase(createInfo(_dbName,1), _vocbase).ok());
     ASSERT_NE(_vocbase, nullptr);
 
     // Prepare analyzers
@@ -1619,9 +1602,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_identity_registered) {
 
 TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   auto builderActive = dbArgsBuilder("active");
-  TRI_vocbase_t active(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, builderActive.slice());
+  TRI_vocbase_t active(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo("active",2));
   auto builderSystem = dbArgsBuilder("system");
-  TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, builderSystem.slice());
+  TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());
 
   // normalize 'identity' (with prefix)
   {
@@ -2491,12 +2474,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
     TRI_vocbase_t* vocbase;
-<<<<<<< HEAD
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
-=======
-    ASSERT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
->>>>>>> 4cb08d2a0d00cefd8f626721069721f3555b7dad
+    ASSERT_TRUE(dbFeature->createDatabase(testDBInfo(), vocbase).ok());
     ASSERT_TRUE((nullptr != dbFeature->lookupDatabase("testVocbase")));
 
     EXPECT_TRUE((true == !feature.get("testVocbase::test_analyzer")));
@@ -3351,8 +3329,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test no system, no analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         systemDatabaseArgs);  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create befor reseting srver
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3394,12 +3371,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
         StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
     TRI_vocbase_t* vocbase;
-<<<<<<< HEAD
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
-=======
-    EXPECT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
->>>>>>> 4cb08d2a0d00cefd8f626721069721f3555b7dad
+    EXPECT_TRUE(dbFeature->createDatabase(testDBInfo(), vocbase).ok());
     sysDatabase->unprepare();  // unset system vocbase
     // EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
     // collections are not created in upgrade tasks within iresearch anymore. For that reason, we have
@@ -3417,8 +3389,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test no system, with analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         systemDatabaseArgs);  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create befor reseting srver
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3461,12 +3432,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
     std::unordered_set<std::string> expected{"abc"};
     TRI_vocbase_t* vocbase;
-<<<<<<< HEAD
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
-=======
-    EXPECT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
->>>>>>> 4cb08d2a0d00cefd8f626721069721f3555b7dad
+    EXPECT_TRUE(dbFeature->createDatabase(testDBInfo(), vocbase).ok());
     EXPECT_TRUE((false == !vocbase->createCollection(createCollectionJson->slice())));
 
     // add document to collection
@@ -3505,8 +3471,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test system, no legacy collection, no analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         systemDatabaseArgs);  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create befor reseting srver
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3554,12 +3519,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
         StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
     TRI_vocbase_t* vocbase;
-<<<<<<< HEAD
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
-=======
-    EXPECT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
->>>>>>> 4cb08d2a0d00cefd8f626721069721f3555b7dad
+    EXPECT_TRUE(dbFeature->createDatabase(testDBInfo(), vocbase).ok());
     // EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
     // TODO: We should use global system creation here instead of all the existing manual stuff ...
     arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName, false);
@@ -3573,8 +3533,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test system, no legacy collection, with analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         systemDatabaseArgs);  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create befor reseting srver
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3623,12 +3582,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
     std::unordered_set<std::string> expected{"abc"};
     TRI_vocbase_t* vocbase;
-<<<<<<< HEAD
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
-=======
-    EXPECT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
->>>>>>> 4cb08d2a0d00cefd8f626721069721f3555b7dad
+    EXPECT_TRUE(dbFeature->createDatabase(testDBInfo(), vocbase).ok());
     EXPECT_TRUE((false == !vocbase->createCollection(createCollectionJson->slice())));
 
     // add document to collection
@@ -3666,8 +3620,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test system, with legacy collection, no analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         systemDatabaseArgs);  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create befor reseting srver
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3730,12 +3683,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
         StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
     TRI_vocbase_t* vocbase;
-<<<<<<< HEAD
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
-=======
-    EXPECT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
->>>>>>> 4cb08d2a0d00cefd8f626721069721f3555b7dad
+    EXPECT_TRUE(dbFeature->createDatabase(testDBInfo(), vocbase).ok());
     // EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
     // TODO: We should use global system creation here instead of all the existing manual stuff ...
     arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName, false);
@@ -3749,8 +3697,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test system, no legacy collection, with analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         systemDatabaseArgs);  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create befor reseting srver
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3799,12 +3746,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
     std::set<std::string> expected{"abc"};
     TRI_vocbase_t* vocbase;
-<<<<<<< HEAD
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
-=======
-    EXPECT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
->>>>>>> 4cb08d2a0d00cefd8f626721069721f3555b7dad
+    EXPECT_TRUE(dbFeature->createDatabase(testDBInfo(), vocbase).ok());
     EXPECT_TRUE((false == !vocbase->createCollection(createCollectionJson->slice())));
 
     // add document to collection
@@ -4029,15 +3971,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   TRI_vocbase_t* vocbase0;
   TRI_vocbase_t* vocbase1;
   TRI_vocbase_t* vocbase2;
-<<<<<<< HEAD
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "vocbase0", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase0)));
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "vocbase1", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase1)));
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "vocbase2", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase2)));
-=======
-  EXPECT_TRUE(dbFeature->createDatabase(1, "vocbase0", vocbase0).ok());
-  EXPECT_TRUE(dbFeature->createDatabase(1, "vocbase1", vocbase1).ok());
-  EXPECT_TRUE(dbFeature->createDatabase(1, "vocbase2", vocbase2).ok());
->>>>>>> 4cb08d2a0d00cefd8f626721069721f3555b7dad
+  EXPECT_TRUE(dbFeature->createDatabase(createInfo("vocbase0",1), vocbase0).ok());
+  EXPECT_TRUE(dbFeature->createDatabase(createInfo("vocbase1",1), vocbase1).ok());
+  EXPECT_TRUE(dbFeature->createDatabase(createInfo("vocbase2",1), vocbase2).ok());
   arangodb::methods::Collections::createSystem(*vocbase0, arangodb::tests::AnalyzerCollectionName, false);
   arangodb::methods::Collections::createSystem(*vocbase1, arangodb::tests::AnalyzerCollectionName, false);
   arangodb::methods::Collections::createSystem(*vocbase2, arangodb::tests::AnalyzerCollectionName, false);

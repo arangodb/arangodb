@@ -80,9 +80,7 @@ struct GraphTestSetup {
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // must be first
     arangodb::application_features::ApplicationServer::server->addFeature(
         features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
-    auto builder = dbArgsBuilder();
-    system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                             0, builder.slice());
+    system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());
     features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()),
                           false);  // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
@@ -137,7 +135,7 @@ struct MockGraphDatabase {
   std::vector<arangodb::graph::ShortestPathOptions*> spos;
 
   MockGraphDatabase(std::string name) :
-    vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, dbArgsBuilder(name).slice())
+    vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(name, 1))
   {}
 
   ~MockGraphDatabase() {

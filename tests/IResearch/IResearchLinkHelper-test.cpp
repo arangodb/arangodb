@@ -68,14 +68,14 @@ class IResearchLinkHelperTestSingle : public ::testing::Test {
     }
     {
       TRI_vocbase_t* vocbase;
-      dbFeature->createDatabase(1, "testVocbaseWithAnalyzer", arangodb::velocypack::Slice::emptyObjectSlice(),vocbase);
+      dbFeature->createDatabase(testDBInfo("testVocbaseWithAnalyzer", 1), vocbase);
       arangodb::methods::Collections::createSystem(
         *vocbase,
          arangodb::tests::AnalyzerCollectionName, false);
     }
     {
       TRI_vocbase_t* vocbase;
-      dbFeature->createDatabase(2, "testVocbaseWithView", arangodb::velocypack::Slice::emptyObjectSlice(),vocbase);
+      dbFeature->createDatabase(testDBInfo("testVocbaseWithView",2), vocbase);
       arangodb::methods::Collections::createSystem(
         *vocbase,
         arangodb::tests::AnalyzerCollectionName, false);

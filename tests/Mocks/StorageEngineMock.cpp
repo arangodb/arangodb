@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StorageEngineMock.h"
-
 #include "Aql/AstNode.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/Result.h"
@@ -1016,12 +1015,13 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::createDatabase(
 
   status = TRI_ERROR_NO_ERROR;
 
+  arangodb::CreateDatabaseInfo info;
+  info.load(id, args, VPackSlice::emptyArraySlice());
+
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
-                                           id, args);
+    return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, info);
   }
-  return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                         id, args);
+  return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, info);
 }
 
 arangodb::Result StorageEngineMock::createLoggerState(TRI_vocbase_t*, VPackBuilder&) {
@@ -1237,10 +1237,12 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
 
   status = TRI_ERROR_NO_ERROR;
 
+  arangodb::CreateDatabaseInfo info;
+  info.load(vocbaseCount++, args, VPackSlice::emptyArraySlice());
+
   return std::make_unique<TRI_vocbase_t>(
     TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-    vocbaseCount++,
-    args
+    info
   );
 }
 
