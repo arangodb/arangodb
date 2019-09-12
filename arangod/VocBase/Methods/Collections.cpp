@@ -159,7 +159,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
 
       if (coll) {
         // check authentication after ensuring the collection exists
-        if (!ExecContext::current().canUseCollection(auth::CollectionResource{vocbase, coll->name()}, auth::Level::RO)) {
+        if (!ExecContext::current().hasAccess(auth::CollectionResource{vocbase, coll->name()}, auth::Level::RO)) {
           return Result(TRI_ERROR_FORBIDDEN,
                         "No access to collection '" + name + "'");
         }
@@ -185,7 +185,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
 
   if (coll != nullptr) {
     // check authentication after ensuring the collection exists
-    if (!ExecContext::current().canUseCollection(auth::CollectionResource{vocbase, coll->name()}, auth::Level::RO)) {
+    if (!ExecContext::current().hasAccess(auth::CollectionResource{vocbase, coll->name()}, auth::Level::RO)) {
       return Result(TRI_ERROR_FORBIDDEN,
                     "No access to collection '" + name + "'");
     }
@@ -235,7 +235,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
                            bool createWaitsForSyncReplication, bool enforceReplicationFactor,
                            MultiFuncCallback const& func) {
   ExecContext const& exec = ExecContext::current();
-  if (!exec.canUseDatabase(auth::DatabaseResource{vocbase}, auth::Level::RW)) {
+  if (!exec.hasAccess(auth::DatabaseResource{vocbase}, auth::Level::RW)) {
     for (auto const& info : infos) {
       events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_FORBIDDEN);
     }
@@ -481,8 +481,8 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
   LogicalCollection* coll = ctxt.coll();
   TRI_ASSERT(coll != nullptr);
   ExecContext const& exec = ExecContext::current();
-  bool canRead = exec.canUseCollection(auth::CollectionResource{exec.database(), coll->name()}, auth::Level::RO);
-  if (!canRead || exec.databaseAuthLevel() == auth::Level::NONE) {
+  bool canRead = exec.hasAccess(auth::CollectionResource{exec.database(), coll->name()}, auth::Level::RO);
+  if (!canRead) {
     return Result(TRI_ERROR_FORBIDDEN, "cannot access " + coll->name());
   }
 
@@ -516,9 +516,9 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 Result Collections::updateProperties(LogicalCollection& collection,
                                      velocypack::Slice const& props, bool partialUpdate) {
   ExecContext const& exec = ExecContext::current();
-  bool canModify = exec.canUseCollection(auth::CollectionResource{exec.database(), collection.name()}, auth::Level::RW);
+  bool canModify = exec.hasAccess(auth::CollectionResource{exec.database(), collection.name()}, auth::Level::RW);
 
-  if (!canModify || !exec.canUseDatabase(exec.database(), auth::Level::RW)) {
+  if (!canModify || !exec.hasAccess(exec.database(), auth::Level::RW)) {
     return TRI_ERROR_FORBIDDEN;
   }
 
@@ -596,8 +596,8 @@ Result Collections::rename(LogicalCollection& collection,
   }
 
   ExecContext const& exec = ExecContext::current();
-  if (!exec.canUseDatabase(exec.database(), auth::Level::RW) ||
-      !exec.canUseCollection(auth::CollectionResource{exec.database(), collection.name()}, auth::Level::RW)) {
+  if (!exec.hasAccess(exec.database(), auth::Level::RW) ||
+      !exec.hasAccess(auth::CollectionResource{exec.database(), collection.name()}, auth::Level::RW)) {
     return TRI_ERROR_FORBIDDEN;
   }
 
@@ -672,8 +672,8 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 ) {
   
   ExecContext const& exec = ExecContext::current();
-  if (!exec.canUseDatabase(auth::DatabaseResource{coll.vocbase()}, auth::Level::RW) || // vocbase modifiable
-      !exec.canUseCollection(auth::CollectionResource{exec.database(), coll.name()}, auth::Level::RW)) { // collection modifiable
+  if (!exec.hasAccess(auth::DatabaseResource{coll.vocbase()}, auth::Level::RW) || // vocbase modifiable
+      !exec.hasAccess(auth::CollectionResource{exec.database(), coll.name()}, auth::Level::RW)) { // collection modifiable
     events::DropCollection(coll.vocbase().name(), coll.name(), TRI_ERROR_FORBIDDEN);
     return arangodb::Result(                                     // result
         TRI_ERROR_FORBIDDEN,                                     // code
@@ -713,7 +713,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 
 Result Collections::warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll) {
   ExecContext const& exec = ExecContext::current();  // disallow expensive ops
-  if (!exec.canUseCollection(auth::CollectionResource{exec.database(), coll.name()}, auth::Level::RO)) {
+  if (!exec.hasAccess(auth::CollectionResource{exec.database(), coll.name()}, auth::Level::RO)) {
     return Result(TRI_ERROR_FORBIDDEN);
   }
 

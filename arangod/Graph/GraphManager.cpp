@@ -642,10 +642,10 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
   // Test if we are allowed to modify _graphs first.
   // Note that this check includes the following check in the loop
   //   if (!collectionExists(col) && !canUseDatabaseRW)
-  // as canUseDatabase(RW) <=> canUseCollection("_...", RW).
+  // as hasAccess(RW) <=> hasAccess("_...", RW).
   // However, in case a collection has to be created but can't, we have to throw
   // FORBIDDEN instead of READ_ONLY for backwards compatibility.
-  if (!execContext.canUseDatabase(auth::Level::RW)) {
+  if (!execContext.hasAccess(execContext.database(), auth::Level::RW)) {
     // Check for all collections: if it exists and if we have RO access to it.
     // If none fails the check above we need to return READ_ONLY.
     // Otherwise we return FORBIDDEN
@@ -657,7 +657,7 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
             << logprefix << "Cannot create collection " << databaseName << "." << col;
         return false;
       }
-      if (!execContext.canUseCollection(auth::CollectionResource{execContext.database(), col}, auth::Level::RO)) {
+      if (!execContext.hasAccess(auth::CollectionResource{execContext.database(), col}, auth::Level::RO)) {
         LOG_TOPIC("b4d48", DEBUG, Logger::GRAPHS)
             << logprefix << "No read access to " << databaseName << "." << col;
         return false;
@@ -694,7 +694,7 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
   auto checkCollectionAccess = [&](std::string const& col) -> bool {
     // We need RO on all collections. And, in case any collection does not
     // exist, we need RW on the database.
-    if (!execContext.canUseCollection(auth::CollectionResource{execContext.database(), col}, auth::Level::RO)) {
+    if (!execContext.hasAccess(auth::CollectionResource{execContext.database(), col}, auth::Level::RO)) {
       LOG_TOPIC("43c84", DEBUG, Logger::GRAPHS)
           << logprefix << "No read access to " << databaseName << "." << col;
       return false;
@@ -919,7 +919,7 @@ Result GraphManager::checkDropGraphPermissions(
 
   bool mustDropAtLeastOneCollection =
       !followersToBeRemoved.empty() || !leadersToBeRemoved.empty();
-  bool canUseDatabaseRW = execContext.canUseDatabase(auth::Level::RW);
+  bool canUseDatabaseRW = execContext.hasAccess(execContext.database(), auth::Level::RW);
 
   if (mustDropAtLeastOneCollection && !canUseDatabaseRW) {
     LOG_TOPIC("fdc57", DEBUG, Logger::GRAPHS)
@@ -930,7 +930,7 @@ Result GraphManager::checkDropGraphPermissions(
 
   for (auto const& col : boost::join(followersToBeRemoved, leadersToBeRemoved)) {
     // We need RW to drop a collection.
-    if (!execContext.canUseCollection(auth::CollectionResource{execContext.database(), col}, auth::Level::RW)) {
+    if (!execContext.hasAccess(auth::CollectionResource{execContext.database(), col}, auth::Level::RW)) {
       LOG_TOPIC("96384", DEBUG, Logger::GRAPHS)
           << logprefix << "No write access to " << databaseName << "." << col;
       return TRI_ERROR_FORBIDDEN;
@@ -939,7 +939,7 @@ Result GraphManager::checkDropGraphPermissions(
 
   // We need RW on _graphs (which is the same as RW on the database). But in
   // case we don't even have RO access, throw FORBIDDEN instead of READ_ONLY.
-  if (!execContext.canUseCollection(auth::CollectionResource{execContext.database(), StaticStrings::GraphCollection}, auth::Level::RO)) {
+  if (!execContext.hasAccess(auth::CollectionResource{execContext.database(), StaticStrings::GraphCollection}, auth::Level::RO)) {
     LOG_TOPIC("bfe63", DEBUG, Logger::GRAPHS)
         << logprefix << "No read access to " << databaseName << "."
         << StaticStrings::GraphCollection;
@@ -948,10 +948,10 @@ Result GraphManager::checkDropGraphPermissions(
 
   // Note that this check includes the following check from before
   //   if (mustDropAtLeastOneCollection && !canUseDatabaseRW)
-  // as canUseDatabase(RW) <=> canUseCollection("_...", RW).
+  // as hasAccess(RW) <=> hasAccess("_...", RW).
   // However, in case a collection has to be created but can't, we have to throw
   // FORBIDDEN instead of READ_ONLY for backwards compatibility.
-  if (!execContext.canUseCollection(auth::CollectionResource{execContext.database(), StaticStrings::GraphCollection}, auth::Level::RW)) {
+  if (!execContext.hasAccess(auth::CollectionResource{execContext.database(), StaticStrings::GraphCollection}, auth::Level::RW)) {
     LOG_TOPIC("bbb09", DEBUG, Logger::GRAPHS)
         << logprefix << "No write access to " << databaseName << "."
         << StaticStrings::GraphCollection;

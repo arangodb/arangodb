@@ -454,7 +454,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   // read lock
   // check if the collection is already loaded
   {
-    if (!ExecContext::current().canUseCollection(auth::CollectionResource{_name, collection->name()}, auth::Level::RO)) {
+    if (!ExecContext::current().hasAccess(auth::CollectionResource{_name, collection->name()}, auth::Level::RO)) {
       return TRI_set_errno(TRI_ERROR_FORBIDDEN);
     }
 
@@ -918,7 +918,7 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
       continue;
     }
 
-    if (!exec.canUseCollection(auth::CollectionResource{_name, collection->name()}, auth::Level::RO)) {
+    if (!exec.hasAccess(auth::CollectionResource{_name, collection->name()}, auth::Level::RO)) {
       continue;
     }
 

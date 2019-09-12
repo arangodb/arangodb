@@ -2245,7 +2245,7 @@ static void JS_CollectionVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
 
   // check authentication after ensuring the collection exists
   auto const& exec = ExecContext::current();
-  if (!exec.canUseCollection(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RO)) {
+  if (!exec.hasAccess(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    std::string("No access to collection '") +
                                        TRI_ObjectToString(isolate, val) + "'");
@@ -2292,7 +2292,7 @@ static void JS_CollectionsVocbase(v8::FunctionCallbackInfo<v8::Value> const& arg
   for (size_t i = 0; i < n; ++i) {
     auto& coll = colls[i];
 
-    if (!exec.canUseCollection(auth::CollectionResource{vocbase, coll->name()}, auth::Level::RO)) {
+    if (!exec.hasAccess(auth::CollectionResource{vocbase, coll->name()}, auth::Level::RO)) {
       continue;
     }
 

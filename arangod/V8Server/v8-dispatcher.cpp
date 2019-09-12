@@ -99,7 +99,9 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_GLOBALS();
 
-  if (ExecContext::current().databaseAuthLevel() != auth::Level::RW) {
+  ExecContext const& current = ExecContext::current();
+
+  if (current.hasAccess(current.database(), auth::Level::RW)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "registerTask() needs db RW permissions");
   }
@@ -271,7 +273,9 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("unregister(<id>)");
   }
 
-  if (ExecContext::current().databaseAuthLevel() != auth::Level::RW) {
+  ExecContext const& current = ExecContext::current();
+
+  if (current.hasAccess(current.database(), auth::Level::RW)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "registerTask() needs db RW permissions");
   }
@@ -331,7 +335,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto const& exec = ExecContext::current();
-  if (exec.databaseAuthLevel() != auth::Level::RW) {
+  if (exec.hasAccess(exec.database(), auth::Level::RW)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "createQueue() needs db RW permissions");
   }
@@ -397,7 +401,9 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder doc;
   doc(VPackValue(VPackValueType::Object))(StaticStrings::KeyString, VPackValue(key))();
 
-  if (ExecContext::current().databaseAuthLevel() != auth::Level::RW) {
+  ExecContext const& current = ExecContext::current();
+
+  if (current.hasAccess(current.database(), auth::Level::RW)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "deleteQueue() needs db RW permissions");
   }

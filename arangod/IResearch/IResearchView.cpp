@@ -573,7 +573,7 @@ arangodb::Result IResearchView::dropImpl() {
         auto collection = vocbase().lookupCollection(entry);
 
         if (collection &&
-            !arangodb::ExecContext::current().canUseCollection(
+            !arangodb::ExecContext::current().hasAccess(
               auth::CollectionResource{vocbase(), collection.get()}, arangodb::auth::Level::RO)) {
           return arangodb::Result(TRI_ERROR_FORBIDDEN);
         }
@@ -1027,7 +1027,7 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
         auto collection = vocbase().lookupCollection(entry.first);
 
         if (collection &&
-            !arangodb::ExecContext::current().canUseCollection(
+            !arangodb::ExecContext::current().hasAccess(
               auth::CollectionResource{vocbase(), collection.get()}, arangodb::auth::Level::RO)) {
           return arangodb::Result(
               TRI_ERROR_FORBIDDEN,

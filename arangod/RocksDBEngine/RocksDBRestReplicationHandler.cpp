@@ -683,7 +683,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 
   ExecContext::SuperuserScope escope(ExecContext::current().isAdminUser());
 
-  if (!ExecContext::current().canUseCollection(auth::CollectionResource{ExecContext::current().database(), cname}, auth::Level::RO)) {
+  if (!ExecContext::current().hasAccess(auth::CollectionResource{ExecContext::current().database(), cname}, auth::Level::RO)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return;
   }

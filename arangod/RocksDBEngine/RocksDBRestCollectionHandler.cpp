@@ -39,7 +39,7 @@ Result RocksDBRestCollectionHandler::handleExtraCommandPut(LogicalCollection& co
                                                            std::string const& suffix,
                                                            velocypack::Builder& builder) {
   if (suffix == "recalculateCount") {
-    if (!ExecContext::current().canUseCollection(auth::CollectionResource{coll}, auth::Level::RW)) {
+    if (!ExecContext::current().hasAccess(auth::CollectionResource{coll}, auth::Level::RW)) {
       return Result(TRI_ERROR_FORBIDDEN);
     }
 

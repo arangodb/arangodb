@@ -344,11 +344,9 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
   // can read indexes with RO on db and collection. Modifications require RW/RW
   ExecContext const& exec = ExecContext::current();
   if (!exec.isSuperuser()) {
-    auth::Level lvl = exec.databaseAuthLevel();
-    bool canModify = exec.canUseCollection(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RW);
-    bool canRead = exec.canUseCollection(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RO);
-    if ((create && (lvl != auth::Level::RW || !canModify)) ||
-        (lvl == auth::Level::NONE || !canRead)) {
+    bool canModify = exec.hasAccess(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RW);
+    bool canRead = exec.hasAccess(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RO);
+    if ((create && !canModify) || !canRead) {
       events::CreateIndex(collection->vocbase().name(), collection->name(),
                           input, TRI_ERROR_FORBIDDEN);
       return Result(TRI_ERROR_FORBIDDEN);
@@ -610,8 +608,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
   TRI_ASSERT(collection);
   ExecContext const& exec = ExecContext::current();
   if (!exec.isSuperuser()) {
-    if (exec.databaseAuthLevel() != auth::Level::RW ||
-        !exec.canUseCollection(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RW)) {
+    if (!exec.hasAccess(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RW)) {
       events::DropIndex(collection->vocbase().name(), collection->name(), "", TRI_ERROR_FORBIDDEN);
       return TRI_ERROR_FORBIDDEN;
     }

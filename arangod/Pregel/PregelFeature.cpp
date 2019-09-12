@@ -100,15 +100,15 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
     VPackSlice storeSlice = params.get("store");
     bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
     for (std::string const& vc : vertexCollections) {
-      bool canWrite = exec.canUseCollection(auth::CollectionResource{vocbase, vc}, auth::Level::RW);
-      bool canRead = exec.canUseCollection(auth::CollectionResource{vocbase, vc}, auth::Level::RO);
+      bool canWrite = exec.hasAccess(auth::CollectionResource{vocbase, vc}, auth::Level::RW);
+      bool canRead = exec.hasAccess(auth::CollectionResource{vocbase, vc}, auth::Level::RO);
       if ((storeResults && !canWrite) || !canRead) {
         return std::make_pair(Result{TRI_ERROR_FORBIDDEN}, 0);
       }
     }
     for (std::string const& ec : edgeCollections) {
-      bool canWrite = exec.canUseCollection(auth::CollectionResource{vocbase, ec}, auth::Level::RW);
-      bool canRead = exec.canUseCollection(auth::CollectionResource{vocbase, ec}, auth::Level::RO);
+      bool canWrite = exec.hasAccess(auth::CollectionResource{vocbase, ec}, auth::Level::RW);
+      bool canRead = exec.hasAccess(auth::CollectionResource{vocbase, ec}, auth::Level::RO);
       if ((storeResults && !canWrite) || !canRead) {
         return std::make_pair(Result{TRI_ERROR_FORBIDDEN}, 0);
       }

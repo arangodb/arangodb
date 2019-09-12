@@ -928,7 +928,7 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
   }
 
   ExecContext const& execContext = ExecContext::current();
-  if (!execContext.canUseCollection(auth::CollectionResource{_vocbase, c.get()}, auth::Level::RO)) {
+  if (!execContext.hasAccess(auth::CollectionResource{_vocbase, c.get()}, auth::Level::RO)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return;
   }

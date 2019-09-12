@@ -79,7 +79,7 @@ namespace iresearch {
 
       // check if the collection can be used
       if (arangodb::ExecContext::CURRENT &&
-          !arangodb::ExecContext::CURRENT->canUseCollection(vocbase.name(),
+          !arangodb::ExecContext::CURRENT->hasAccess(vocbase.name(),
                                                             collection->name(),
                                                             arangodb::auth::Level::RO)) {
         return nullptr;

@@ -104,8 +104,17 @@ class ExecContext : public RequestContext {
   // Should always contain a reference to current user context
   static ExecContext const& current();
 
-  static bool hasAccess(auth::DatabaseResource const& database, auth::Level requested) {
-    return current().canUseDatabase(database, requested);
+  // returns true if auth level is above or equal `requested`
+  static bool currentHasAccess(auth::DatabaseResource const& database, auth::Level requested) {
+    return current().hasAccess(database, requested);
+  }
+
+  bool hasAccess(auth::DatabaseResource const& database, auth::Level requested) const {
+    return requested <= authLevel(database);
+  }
+
+  bool hasAccess(auth::CollectionResource const& coll, auth::Level requested) const {
+    return requested <= authLevel(coll);
   }
 
   // an internal superuser context; is a singleton instance; deleting is
@@ -146,28 +155,15 @@ class ExecContext : public RequestContext {
   // Authentication level on database selected in the current
   // request scope. Should almost always contain something,
   // if this thread originated in v8 or from HTTP / VST
+ private:
   auth::Level databaseAuthLevel() const { return _databaseAuthLevel; };
-
-  // returns true if auth level is above or equal `requested`
-  bool canUseDatabase(auth::DatabaseResource const& database, auth::Level requested) const {
-    return requested <= authLevel(database);
-  }
-
-  bool canUseDatabase(auth::Level requested) const {
-    return requested <= _databaseAuthLevel;
-  }
+ public:
 
   // returns true if auth level is above or equal `requested`
   auth::Level authLevel(auth::DatabaseResource const&) const;
 
   // returns auth level for user
   auth::Level authLevel(auth::CollectionResource const&) const;
-
-  // returns true if auth level is above or equal `requested`
-  bool canUseCollection(auth::CollectionResource const& coll,
-                        auth::Level requested) const {
-    return requested <= authLevel(coll);
-  }
 
  protected:
   Type _type;

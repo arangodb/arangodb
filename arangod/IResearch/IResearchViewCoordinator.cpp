@@ -226,7 +226,7 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
     ExecContext const& exec = ExecContext::current();
     if (!exec.isSuperuser()) {
       for (auto& entry : _collections) {
-        if (!exec.canUseCollection(auth::CollectionResource{vocbase(), entry.second.first}, auth::Level::RO)) {
+        if (!exec.hasAccess(auth::CollectionResource{vocbase(), entry.second.first}, auth::Level::RO)) {
           return Result(TRI_ERROR_FORBIDDEN);
         }
       }
@@ -366,7 +366,7 @@ arangodb::Result IResearchViewCoordinator::properties(velocypack::Slice const& s
             engine->getCollection(vocbase().name(), std::to_string(entry.first));
 
         if (collection &&
-            !exe.canUseCollection(auth::CollectionResource{vocbase(), collection.get()}, arangodb::auth::Level::RO)) {
+            !exe.hasAccess(auth::CollectionResource{vocbase(), collection.get()}, arangodb::auth::Level::RO)) {
           return arangodb::Result(
               TRI_ERROR_FORBIDDEN,
               std::string("while updating arangosearch definition, error: "
@@ -506,7 +506,7 @@ Result IResearchViewCoordinator::dropImpl() {
         auto collection = engine->getCollection(vocbase().name(), std::to_string(entry));
 
         if (collection &&
-            !exe.canUseCollection(auth::CollectionResource{vocbase(), collection.get()}, arangodb::auth::Level::RO)) {
+            !exe.hasAccess(auth::CollectionResource{vocbase(), collection.get()}, arangodb::auth::Level::RO)) {
           return arangodb::Result(TRI_ERROR_FORBIDDEN);
         }
       }

@@ -769,7 +769,7 @@ namespace iresearch {
     }
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (!arangodb::ExecContext::current().canUseCollection(auth::CollectionResource{vocbase, collection.get()}, arangodb::auth::Level::RO)) {
+    if (!arangodb::ExecContext::current().hasAccess(auth::CollectionResource{vocbase, collection.get()}, arangodb::auth::Level::RO)) {
       return arangodb::Result( // result
         TRI_ERROR_FORBIDDEN, // code
         std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not authorized for read access"

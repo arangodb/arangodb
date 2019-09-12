@@ -4223,7 +4223,7 @@ AqlValue Functions::Collections(ExpressionContext* expressionContext,
   for (size_t i = 0; i < n; ++i) {
     auto& coll = colls[i];
 
-    if (!exec.canUseCollection(auth::CollectionResource{vocbase, coll->name()},
+    if (!exec.hasAccess(auth::CollectionResource{vocbase, coll->name()},
            auth::Level::RO)) {
       continue;
     }

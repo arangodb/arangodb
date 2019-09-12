@@ -89,12 +89,12 @@ Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
 
 bool LogicalView::canUse(arangodb::auth::Level const& level) {
   // as per https://github.com/arangodb/backlog/issues/459
-  return ExecContext::current().canUseDatabase(auth::DatabaseResource{vocbase()}, level); // can use vocbase
+  return ExecContext::current().hasAccess(auth::DatabaseResource{vocbase()}, level); // can use vocbase
 
   /* FIXME TODO per-view authentication checks disabled as per https://github.com/arangodb/backlog/issues/459
   return !ctx // authentication not enabled
-    || (ctx->canUseDatabase(vocbase.name(), level) // can use vocbase
-        && (ctx->canUseCollection(vocbase.name(), name(), level)) // can use view
+    || (ctx->hasAccess(vocbase.name(), level) // can use vocbase
+        && (ctx->hasAccess(vocbase.name(), name(), level)) // can use view
        );
   */
 }

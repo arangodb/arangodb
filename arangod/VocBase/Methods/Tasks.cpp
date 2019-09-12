@@ -288,7 +288,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
       auto& dbname = _dbGuard->database().name();
 
       execContext.reset(ExecContext::create(auth::AuthUser{_user}, auth::DatabaseResource{dbname}).release());
-      allowContinue = execContext->canUseDatabase(auth::DatabaseResource{dbname}, auth::Level::RW);
+      allowContinue = execContext->hasAccess(auth::DatabaseResource{dbname}, auth::Level::RW);
     }
 
     // permissions might have changed since starting this task

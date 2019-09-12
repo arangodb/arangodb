@@ -82,7 +82,7 @@ void RestCollectionHandler::handleCommandGet() {
     builder.openArray();
     methods::Collections::enumerate(&_vocbase, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
       TRI_ASSERT(coll);
-      bool canUse = ExecContext::current().canUseCollection(auth::CollectionResource{_vocbase, coll.get()}, auth::Level::RO);
+      bool canUse = ExecContext::current().hasAccess(auth::CollectionResource{_vocbase, coll.get()}, auth::Level::RO);
 
       if (canUse && (!excludeSystem || !coll->system())) {
         // We do not need a transaction here

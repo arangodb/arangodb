@@ -143,7 +143,7 @@ static void JS_RecalculateCounts(v8::FunctionCallbackInfo<v8::Value> const& args
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  if (!ExecContext::current().canUseCollection(auth::CollectionResource{*TRI_GetV8Globals(isolate)->_vocbase, collection}, auth::Level::RW)) {
+  if (!ExecContext::current().hasAccess(auth::CollectionResource{*TRI_GetV8Globals(isolate)->_vocbase, collection}, auth::Level::RW)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
