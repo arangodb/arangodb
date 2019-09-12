@@ -2100,10 +2100,15 @@ Future<OperationResult> transaction::Methods::removeAsync(std::string const& cna
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
 #ifndef USE_ENTERPRISE
-Future<OperationResult> transaction::Methods::removeCoordinator(std::string const& collectionName,
+Future<OperationResult> transaction::Methods::removeCoordinator(std::string const& cname,
                                                                 VPackSlice const value,
                                                                 OperationOptions const& options) {
-  return arangodb::removeDocumentOnCoordinator(*this, collectionName, value, options);
+  ClusterInfo* ci = ClusterInfo::instance();
+  auto colptr = ci->getCollectionNT(vocbase().name(), cname);
+  if (colptr == nullptr) {
+    return makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
+  }
+  return arangodb::removeDocumentOnCoordinator(*this, *colptr, value, options);
 }
 #endif
 
