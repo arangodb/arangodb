@@ -584,13 +584,7 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
     }
     auto* state = ctx->getParentTransaction();
     TRI_ASSERT(state != nullptr);
-    TRI_voc_cid_t cid = 0;
-    if (state->isCoordinator()) {
-      cid = ctx->resolver().getCollectionIdCluster(collectionName);
-    } else {  // only support local collections / shards
-      cid = ctx->resolver().getCollectionIdLocal(collectionName);
-    }
-    if (!AccessMode::isRead(type) && !state->containsCollection(cid, type)) {
+    if (!AccessMode::isRead(type) && !state->containsCollection(collectionName, type)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, 
                                      std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + collectionName);
     }

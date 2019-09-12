@@ -204,14 +204,16 @@ void TransactionState::allCollections(                     // iterate
 }
   
 /// @brief whether or not the collection is used in the transaction
-bool TransactionState::containsCollection(TRI_voc_cid_t cid, AccessMode::Type accessType) {
-  size_t position = 0;
-  TransactionCollection* trxColl = findCollection(cid, position);
-  if (trxColl == nullptr) {
+bool TransactionState::containsCollection(std::string const& collectionName, AccessMode::Type accessType) {
+  auto it = std::find_if(_collections.begin(), _collections.end(), [&collectionName](TransactionCollection const* trxColl) {
+    return trxColl->collectionName() == collectionName;
+  });
+
+  if (it == _collections.end()) {
     return false;
   }
 
-  AccessMode::Type type = trxColl->accessType();
+  AccessMode::Type type = (*it)->accessType();
   if (AccessMode::isWriteOrExclusive(type)) {
     // if the collection is registered in write or exclusive mode,
     // this will cover all user requests
