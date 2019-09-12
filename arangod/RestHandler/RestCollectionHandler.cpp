@@ -430,7 +430,6 @@ RestStatus RestCollectionHandler::handleCommandPut() {
             }
           }
         } else if (sub == "truncate") {
-          generateResponse = false;
           {
             OperationOptions opts;
 
@@ -444,6 +443,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
             res = _activeTrx->begin();
 
             if (res.ok()) {
+              generateResponse = false;
               status = waitForFuture(
                   _activeTrx->truncateAsync(coll->name(), opts).thenValue([this, coll](OperationResult&& opres) {
                     // Will commit if no error occured.
