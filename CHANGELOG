@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Added HotBackup feature.
+
 * Improved database creation within the cluster. In the case of
   coordinator outages during the creation of the database there was a
   chance that not all relevant system collections had been created.
