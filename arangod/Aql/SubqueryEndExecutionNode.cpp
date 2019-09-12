@@ -51,7 +51,6 @@ void SubqueryEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
 std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
-  //   // TODO: Fill me in
   TRI_ASSERT(false);
 
   return nullptr;
@@ -75,11 +74,8 @@ void SubqueryEndNode::replaceOutVariable(Variable const* var) {
 }
 
 CostEstimate SubqueryEndNode::estimateCost() const {
-  TRI_ASSERT(!_dependencies.empty());
+  TRI_ASSERT(!_dependencies.size() == 1);
 
-  // Not needed?
-
-  // This is the dependency at our start node now.
   CostEstimate estimate = _dependencies.at(0)->getCost();
 
   return estimate;

@@ -42,7 +42,6 @@ SubqueryStartNode::SubqueryStartNode(ExecutionPlan* plan, arangodb::velocypack::
 CostEstimate SubqueryStartNode::estimateCost() const {
   TRI_ASSERT(!_dependencies.empty());
 
-  // TODO: Fill me in
   CostEstimate estimate = _dependencies.at(0)->getCost();
   return estimate;
 }
@@ -55,7 +54,6 @@ void SubqueryStartNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) 
 std::unique_ptr<ExecutionBlock> SubqueryStartNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
-  // TODO: fill me in
   TRI_ASSERT(false);
 
   return nullptr;
@@ -67,5 +65,14 @@ ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan, bool withDependenci
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
+bool SubqueryStartNode::isEqualTo(SubqueryStartNode const& other) {
+  return ExecutionNode::isEqualTo(other);
+}
+
+bool SubqueryStartNode::isEqualTo(SubqueryStartNode const* other) {
+  return ExecutionNode::isEqualTo(other);
+}
+
 } // namespace aql
 } // namespace arangodb
+
