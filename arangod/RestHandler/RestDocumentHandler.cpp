@@ -73,6 +73,11 @@ RestStatus RestDocumentHandler::execute() {
 }
 
 void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
+  if (isFinalized) {
+    // reset the transaction so it releases all locks as early as possible
+    _activeTrx.reset();
+  }
+
   try {
     GeneralRequest const* request = _request.get();
     auto const type = request->requestType();
