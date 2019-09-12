@@ -893,7 +893,7 @@ void ClusterInfo::loadPlan() {
         try {
           std::shared_ptr<LogicalCollection> newCollection;
 
-#if defined(USE_ENTERPRISE)
+#ifdef USE_ENTERPRISE
           auto isSmart = collectionSlice.get(StaticStrings::IsSmart);
 
           if (isSmart.isTrue()) {

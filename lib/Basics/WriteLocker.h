@@ -30,7 +30,7 @@
 #include "Basics/Locking.h"
 #include "Basics/debugging.h"
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
 #include "Logger/Logger.h"
 #endif
 
@@ -72,14 +72,14 @@ class WriteLocker {
       : _readWriteLock(readWriteLock),
         _file(file),
         _line(line),
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
         _isLocked(false),
         _time(0.0) {
 #else
         _isLocked(false) {
 #endif
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
     // fetch current time
     double t = TRI_microtime();
 #endif
@@ -96,7 +96,7 @@ class WriteLocker {
       }
     }
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
     // add elapsed time to time tracker
     _time = TRI_microtime() - t;
 #endif
@@ -108,7 +108,7 @@ class WriteLocker {
       _readWriteLock->unlockWrite();
     }
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
     if (_time > TRI_SHOW_LOCK_THRESHOLD) {
       LOG_TOPIC("95aa0", INFO, arangodb::Logger::PERFORMANCE)
           << "WriteLocker " << _file << ":" << _line << " took " << _time << " s";
@@ -174,7 +174,7 @@ class WriteLocker {
   /// @brief whether or not the lock was acquired
   bool _isLocked;
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
   /// @brief lock time
   double _time;
 #endif

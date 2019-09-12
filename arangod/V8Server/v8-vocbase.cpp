@@ -91,7 +91,7 @@
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/Methods/Transactions.h"
 
-#if USE_ENTERPRISE
+#ifdef USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
@@ -141,7 +141,6 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // filled by function
   v8::Handle<v8::Value> result;
   v8::TryCatch tryCatch(isolate);
-  ;
   Result rv = executeTransactionJS(isolate, args[0], result, tryCatch);
 
   // do not rethrow if already canceled

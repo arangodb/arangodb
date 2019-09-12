@@ -305,7 +305,7 @@ bool IResearchLinkMeta::init( // initialize meta
               }
 
               auto featureName = getStringRef(subValue);
-              auto* feature = irs::attribute::type_id::get(featureName);
+              auto* feature = irs::attribute::type_id::get(featureName, false);
 
               if (!feature) {
                 errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]=>" + subFieldName + "=>" + std::string(featureName);

@@ -133,7 +133,7 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
 
 // Grant permissions on newly created database to current user
 // to be able to run the upgrade script
-arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, double timeout) {
+arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, int64_t timeout) {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
 
   Result res;
@@ -144,7 +144,7 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, dou
     // called us, or when authentication is off), granting rights
     // will fail. We hence ignore it here, but issue a warning below
     if (!exec.isSuperuser()) {
-      double const endTime = TRI_microtime() + timeout;
+      auto const endTime = std::chrono::steady_clock::now() + std::chrono::seconds(timeout);
       while (true) {
         res = um->updateUser(exec.user(), [&](auth::User& entry) {
           entry.grantDatabase(info.getName(), auth::Level::RW);
@@ -153,7 +153,7 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, dou
         });
         if (res.ok() ||
             !res.is(TRI_ERROR_ARANGO_CONFLICT) ||
-            TRI_microtime() >= endTime) {
+            std::chrono::steady_clock::now() > endTime) {
           break;
         }
 
@@ -204,7 +204,7 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     }
   });
 
-  res = grantCurrentUser(info, 5.0);
+  res = grantCurrentUser(info, 5);
   if (!res.ok()) {
     return res;
   }
@@ -260,7 +260,7 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
 
   TRI_DEFER(vocbase->release());
 
-  Result res = grantCurrentUser(info, 10.0);
+  Result res = grantCurrentUser(info, 10);
   if (!res.ok()) {
     return res;
   }
