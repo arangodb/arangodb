@@ -182,6 +182,10 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   std::shared_ptr<std::unordered_set<aql::RegisterId>> calcInputRegs() const;
 
+  inline bool isLateMaterialized() const {
+    return _outNonMaterializedDocId != nullptr &&
+           _outNonMaterializedColPtr != nullptr;
+  }
  private:
   /// @brief the database
   TRI_vocbase_t& _vocbase;

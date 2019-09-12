@@ -66,6 +66,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       }
       // trigger view sync
       db._query("FOR d IN " + vn + " OPTIONS { waitForSync: true } RETURN d");
+      db._query("FOR d IN " + svn + " OPTIONS { waitForSync: true } RETURN d");
     },
 
     tearDownAll : function () {
@@ -136,7 +137,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       assertEqual(0, expectedKeys.size);
     },
     testQueryResultsWithMultipleCollectionsWithAfterSort() {
-      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11,12] SORT BM25(d) LIMIT 10 SORT d.value ASC RETURN d ";
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11,12] SORT BM25(d) LIMIT 10 SORT NOOPT(d.value) ASC RETURN d ";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let result = AQL_EXECUTE(query);
@@ -177,13 +178,10 @@ function lateDocumentMaterializationRuleTestSuite () {
       assertEqual(0, expectedKeys.size);
     },
     testQueryResultsWithMultipleCollectionsAfterCalc() {
-      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LIMIT 10 LET c = CONCAT(d._key, '-C') RETURN c ";
-      // we need some rules disabled to hold calculation node after SORT node in cluster. 
-      // However this should be bad in general (as calculation may need collection/view data)
-      // for this test run we just need to make sure late materialixation doesn`t spoil later calculations
-      let plan = AQL_EXPLAIN(query, {}, {optimizer:{rules:['-2move-calculations-up', '-2move-calculations-up-2']}}).plan;
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LIMIT 10 LET c = CONCAT(NOOPT(d._key), '-C') RETURN c ";
+      let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
-      let result = AQL_EXECUTE(query, {}, {optimizer:{rules:['-2move-calculations-up', '-2move-calculations-up-2']}});
+      let result = AQL_EXECUTE(query);
       assertEqual(4, result.json.length);
       let expected = new Set(['c1-C', 'c2-C', 'c_1-C', 'c_2-C']);
       result.json.forEach(function(doc) {
@@ -206,6 +204,23 @@ function lateDocumentMaterializationRuleTestSuite () {
       });
       assertEqual(0, expectedKeys.size);
     },
+    testQueryResultsSkipSome() {
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2] SORT BM25(d) LIMIT 1,10 RETURN d ";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let result = AQL_EXECUTE(query);
+      assertEqual(1, result.json.length);
+      assertEqual(result.json[0]._key, 'c2');
+    },
+    testQueryResultsSkipSomeNoSortLimit() {
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2] SORT BM25(d) LIMIT 1,10 SORT NOOPT(d.value) RETURN d ";
+      // run query without sort-limit optimization in order to test non constrained sort implementation
+      let plan = AQL_EXPLAIN(query, {}, {optimizer:{rules:["-sort-limit"]}}).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let result = AQL_EXECUTE(query, {},{optimizer:{rules:["-sort-limit"]}});
+      assertEqual(1, result.json.length);
+      assertEqual(result.json[0]._key, 'c2');
+    },
     testQueryResultsSkipAll() {
       let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LIMIT 5,10 RETURN d ";
       let plan = AQL_EXPLAIN(query).plan;
@@ -220,7 +235,77 @@ function lateDocumentMaterializationRuleTestSuite () {
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let result = AQL_EXECUTE(query, {},{optimizer:{rules:["-sort-limit"]}});
       assertEqual(0, result.json.length);
-    }
+    },
+    testQueryResultsInSubquery() {
+      let query = "FOR c IN " + svn + " SEARCH c.value == 1 " +
+                    " FOR d IN " + vn  + " SEARCH d.value IN [c.value, c.value + 1] SORT BM25(d) LIMIT 10 RETURN d ";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let result = AQL_EXECUTE(query);
+      assertEqual(2, result.json.length);
+      let expected = new Set(['c1', 'c2']);
+      result.json.forEach(function(doc) {
+        assertTrue(expected.has(doc._key));
+        expected.delete(doc._key);
+      });
+      assertEqual(0, expected.size);
+    },
+    testQueryResultsInOuterSubquery() {
+      let query = "FOR c IN " + svn + " SEARCH c.value == 1 SORT BM25(c) LIMIT 10 " +
+                    " FOR d IN " + vn  + " SEARCH d.value IN [c.value, c.value + 1] RETURN d ";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let result = AQL_EXECUTE(query);
+      assertEqual(2, result.json.length);
+      let expected = new Set(['c1', 'c2']);
+      result.json.forEach(function(doc) {
+        assertTrue(expected.has(doc._key));
+        expected.delete(doc._key);
+      });
+      assertEqual(0, expected.size);
+    },
+    testQueryResultsMultipleLimits() {
+      let query = " FOR d IN " + vn  + " SEARCH d.value > 5 SORT BM25(d) " +
+                  " LIMIT 1, 5 SORT TFIDF(d) LIMIT 1, 3 SORT NOOPT(d.value) DESC  " +
+                  " LIMIT 1, 1 RETURN d ";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let materializeNodeFound = false;
+      // sort by TFIDF node must be materializer (identified by limit value = 4 (1 to skip and 3 to limit))
+      // as last SORT needs materialized document
+      // and SORT by BM25 is not lowest possible variant
+      // However in cluster only first sort suitable, as later sorts depend 
+      // on all db servers results and performed on coordinator
+      plan.nodes.forEach(function(node) {
+        if( node.type === "SortNode" && node.hasOwnProperty('outDocument')) {
+          assertEqual(node.limit, isCluster ? 6 : 4);
+          materializeNodeFound = true;
+        }
+      });
+      assertTrue(materializeNodeFound);
+    },
+    testQueryResultsMultipleLimits2() {
+      // almost the same but without last sort - this 
+      // will not create addition variable for sort 
+      // value but it should not affect results especially on cluster!
+      let query = " FOR d IN " + vn  + " SEARCH d.value > 5 SORT BM25(d) " +
+                  " LIMIT 1, 5 SORT TFIDF(d) LIMIT 1, 3 " +
+                  " RETURN d ";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let materializeNodeFound = false;
+      // sort by TFIDF node must be materializer (identified by limit value = 4 (1 to skip and 3 to limit))
+      // as SORT by BM25 is not lowest possible variant
+      // However in cluster only first sort suitable, as later sorts depend 
+      // on all db servers results and performed on coordinator
+      plan.nodes.forEach(function(node) {
+        if( node.type === "SortNode" && node.hasOwnProperty('outDocument')) {
+          assertEqual(node.limit, isCluster ? 6 : 4);
+          materializeNodeFound = true;
+        }
+      });
+      assertTrue(materializeNodeFound);
+    },
   };
 }
 

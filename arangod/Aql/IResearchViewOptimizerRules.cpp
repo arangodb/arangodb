@@ -295,20 +295,30 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
     auto loop = const_cast<ExecutionNode*>(node->getLoop());
     if (arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
       auto & viewNode = *EN::castTo<IResearchViewNode*>(loop);
+      if(viewNode.isLateMaterialized()) {
+        continue; // aleady optimized
+      }
       ExecutionNode* current = node->getFirstDependency();
       SortNode* sortNode = nullptr;
-      // examinig plan. We are looking for closest to limit sort node
+      // examinig plan. We are looking for SortNode closest to lowerest LimitNode
       // without document body usage before that node.
       // this node could be used as materializer
       while (current != loop) {
-        if (arangodb::aql::ExecutionNode::SORT == current->getType() && 
-          sortNode == nullptr) { // we need nearest to limit sort node, so keep selected if any
-          sortNode = EN::castTo<SortNode*>(current);
+        switch (current->getType()) {
+        case arangodb::aql::ExecutionNode::SORT:
+          if (sortNode == nullptr) { // we need nearest to limit sort node, so keep selected if any
+            sortNode = EN::castTo<SortNode*>(current);
+          }
+          break;
+        case arangodb::aql::ExecutionNode::REMOTE:
+          sortNode = nullptr; // REMOTE node is a blocker  - we do not want to make materialization calls across cluster!
+          break;
         }
         arangodb::HashSet<Variable const*> currentUsedVars;
         current->getVariablesUsedHere(currentUsedVars);
         if (currentUsedVars.find(&viewNode.outVariable()) != currentUsedVars.end()) {
-          sortNode = nullptr; // we had doc body used before selected SortNode. Forget it, let`s look for better sort to use
+          // we have a doc body used before selected SortNode. Forget it, let`s look for better sort to use
+          sortNode = nullptr;
         }
         current = current->getFirstDependency();  // inspect next node
       }

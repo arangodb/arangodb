@@ -231,8 +231,6 @@ struct OptimizerRule {
     /// Pass 9: patch update statements
     patchUpdateStatementsRule,
 
-    // move document materialization after SORT and LIMIT
-    lateDocumentMaterializationRule,
 
     /// "Pass 10": final transformations for the cluster
 
@@ -288,6 +286,9 @@ struct OptimizerRule {
     // simplify an EnumerationCollectionNode that fetches an
     // entire document to a projection of this document
     reduceExtractionToProjectionRule,
+
+    // move document materialization after SORT and LIMIT
+    lateDocumentMaterializationRule,
   };
 
   std::string name;
