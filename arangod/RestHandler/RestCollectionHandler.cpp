@@ -611,7 +611,7 @@ void RestCollectionHandler::collectionRepresentation(
     bool showProperties, bool showFigures, bool showCount, bool detailedCount) {
   if (showProperties || showCount) {
     // Here we need a transaction
-    std::unique_ptr<SingleCollectionTransaction> trx;
+    std::unique_ptr<transaction::Methods> trx;
     try {
       trx = createTransaction(coll.name(), AccessMode::Type::READ);
     } catch (basics::Exception const& ex) {

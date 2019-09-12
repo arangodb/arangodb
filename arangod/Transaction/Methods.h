@@ -379,7 +379,10 @@ class Methods {
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*, AccessMode::Type) const;
   
   /// @brief fetch the LogicalCollection by CID
-  arangodb::LogicalCollection* documentCollection(TRI_voc_cid_t) const;
+  arangodb::LogicalCollection* documentCollection(TRI_voc_cid_t cid) const;
+  
+  /// @brief fetch the LogicalCollection by name
+  arangodb::LogicalCollection* documentCollection(std::string const& name) const;
 
   /// @brief get the index by its identifier. Will either throw or
   ///        return a valid index. nullptr is impossible.
@@ -478,6 +481,9 @@ class Methods {
   /// @brief return the transaction collection for a document collection
   ENTERPRISE_VIRT TransactionCollection* trxCollection(
       TRI_voc_cid_t cid, AccessMode::Type type = AccessMode::Type::READ) const;
+  
+  TransactionCollection* trxCollection(
+      std::string const& name, AccessMode::Type type = AccessMode::Type::READ) const;
 
   OperationResult countCoordinator(std::string const& collectionName, CountType type);
 

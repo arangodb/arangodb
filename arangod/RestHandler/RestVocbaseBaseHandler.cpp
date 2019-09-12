@@ -36,9 +36,9 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
+#include "Transaction/Methods.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 
 #include <velocypack/Builder.h>
@@ -51,6 +51,13 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+  
+class SimpleTransaction : public transaction::Methods {
+ public:
+  SimpleTransaction(std::shared_ptr<transaction::Context>&& transactionContext,
+                    transaction::Options&& options = transaction::Options())
+    : Methods(std::move(transactionContext), std::move(options)) {}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief agency public path
@@ -544,7 +551,7 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
   }
 }
 
-std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTransaction(
+std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     std::string const& collectionName, AccessMode::Type type) const {
   bool found = false;
   std::string value = _request->header(StaticStrings::TransactionId, found);
@@ -582,13 +589,15 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
       LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid) + "' not found");
     }
+    /*
     auto* state = ctx->getParentTransaction();
     TRI_ASSERT(state != nullptr);
-    if (!AccessMode::isRead(type) && !state->containsCollection(collectionName, type)) {
+    if (!state->containsCollection(collectionName, type)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, 
                                      std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + collectionName);
     }
-    return std::make_unique<SingleCollectionTransaction>(ctx, collectionName, type);
+    */
+    return std::make_unique<SimpleTransaction>(std::move(ctx));
   } else {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     return std::make_unique<SingleCollectionTransaction>(ctx, collectionName, type);

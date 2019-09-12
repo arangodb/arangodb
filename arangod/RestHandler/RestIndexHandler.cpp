@@ -26,6 +26,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -180,7 +181,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
   }
 
   // transaction protects access onto selectivity estimates
-  std::unique_ptr<SingleCollectionTransaction> trx;
+  std::unique_ptr<transaction::Methods> trx;
 
   try {
     trx = createTransaction(cName, AccessMode::Type::READ);
@@ -204,7 +205,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
     return RestStatus::DONE;
   }
   
-  LogicalCollection* coll = trx->documentCollection();
+  LogicalCollection* coll = trx->documentCollection(cName);
   auto idxs = coll->getIndexes();
   
   VPackBuffer<uint8_t> buffer;

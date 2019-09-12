@@ -137,6 +137,10 @@ class TransactionState {
   /// @brief return the collection from a transaction
   TransactionCollection* collection(TRI_voc_cid_t cid,
                                     AccessMode::Type accessType) const;
+  
+  /// @brief return the collection from a transaction
+  TransactionCollection* collection(std::string const& name,
+                                    AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
   Result addCollection(TRI_voc_cid_t cid, std::string const& cname,
