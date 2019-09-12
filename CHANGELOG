@@ -1,6 +1,16 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Added support for AQL expressions such as `a NOT LIKE b`, `a NOT =~ b` and
+  `a NOT !~ b`. Previous versions of ArangoDB did not support these expressions,
+  and using them in an AQL query resulted in a parse error.
+
+* Disallow creation of TTL indexes on sub-attributes.
+
+  Creation of such indexes was not caught before, but the resulting 
+  indexes were defunct. From now on the creation of TTL indexes on sub-
+  attributes is disallowed.
+
 * Added HotBackup feature.
 
 * Improved database creation within the cluster. In the case of

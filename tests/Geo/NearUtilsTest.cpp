@@ -39,7 +39,7 @@
 #include <velocypack/velocypack-aliases.h>
 #include <cmath>
 
-#ifdef WIN32
+#ifdef _WIN32
 #undef near
 #endif
 

@@ -84,7 +84,6 @@ bool accessesSearchVariableViaReference(AstNode const* current, Variable const* 
 
 bool isTargetVariable(AstNode const* node, SmallVector<Variable const*>& searchVariables, bool& isSafeForOptimization) {
 	TRI_ASSERT(!searchVariables.empty());
-	TRI_ASSERT(node->type == NODE_TYPE_INDEXED_ACCESS || node->type == NODE_TYPE_EXPANSION);
 
   // given and expression like g3[0].`g2`[0].`g1`[0].`item1`.`_id`
   // this loop resolves subtrees of the form: .`g2`[0].`g1`[0]
