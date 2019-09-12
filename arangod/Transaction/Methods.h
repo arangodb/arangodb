@@ -308,23 +308,35 @@ class Methods {
   }
 
   /// @brief create one or multiple documents in a collection
-  /// the single-document variant of this operation will either succeed or,
+  /// The single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
   Future<OperationResult> insertAsync(std::string const& collectionName,
                                       VPackSlice const value,
                                       OperationOptions const& options);
+  
+  /// @deprecated use async variant
+  OperationResult update(std::string const& cname, VPackSlice const updateValue,
+                         OperationOptions const& options) {
+    return this->updateAsync(cname, updateValue, options).get();
+  }
 
-  /// @brief update/patch one or multiple documents in a collecti  Result
-  /// the single-document variant of this operation will either succeed or,
+  /// @brief update/patch one or multiple documents in a collection.
+  /// The single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
-  OperationResult update(std::string const& collectionName, VPackSlice const updateValue,
-                         OperationOptions const& options);
+  Future<OperationResult> updateAsync(std::string const& collectionName, VPackSlice const updateValue,
+                                      OperationOptions const& options);
+  
+  /// @deprecated use async variant
+  OperationResult replace(std::string const& cname, VPackSlice const replaceValue,
+                         OperationOptions const& options) {
+    return this->replaceAsync(cname, replaceValue, options).get();
+  }
 
-  /// @brief replace one or multiple documents in a collection
-  /// the single-document variant of this operation will either succeed or,
+  /// @brief replace one or multiple documents in a collection.
+  /// The single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
-  OperationResult replace(std::string const& collectionName, VPackSlice const updateValue,
-                          OperationOptions const& options);
+  Future<OperationResult> replaceAsync(std::string const& collectionName, VPackSlice const replaceValue,
+                                       OperationOptions const& options);
 
   /// @brief remove one or multiple documents in a collection
   /// the single-document variant of this operation will either succeed or,
@@ -418,22 +430,13 @@ class Methods {
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
 
-#ifdef USE_ENTERPRISE
-  virtual bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) {
+  ENTERPRISE_VIRT bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) {
     return false;
   }
-  virtual bool isInaccessibleCollection(std::string const& /*cid*/) {
+  ENTERPRISE_VIRT bool isInaccessibleCollection(std::string const& /*cid*/) {
     return false;
   }
-#else
-  bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) {
-    return false;
-  }
-  bool isInaccessibleCollection(std::string const& /*cid*/) {
-    return false;
-  }
-#endif
-
+  
   static int validateSmartJoinAttribute(LogicalCollection const& collinfo,
                                         arangodb::velocypack::Slice value);
 
@@ -463,13 +466,15 @@ class Methods {
   Future<OperationResult> insertLocal(std::string const& collectionName,
                                       VPackSlice const value, OperationOptions& options);
 
-  OperationResult modifyCoordinator(std::string const& collectionName,
-                                    VPackSlice const newValue, OperationOptions& options,
-                                    TRI_voc_document_operation_e operation);
+  Future<OperationResult> modifyCoordinator(std::string const& collectionName,
+                                            VPackSlice const newValue,
+                                            OperationOptions const& options,
+                                            TRI_voc_document_operation_e operation);
 
-  OperationResult modifyLocal(std::string const& collectionName,
-                              VPackSlice const newValue, OperationOptions& options,
-                              TRI_voc_document_operation_e operation);
+  Future<OperationResult> modifyLocal(std::string const& collectionName,
+                                      VPackSlice const newValue,
+                                      OperationOptions& options,
+                                      TRI_voc_document_operation_e operation);
 
   OperationResult removeCoordinator(std::string const& collectionName,
                                     VPackSlice const value,
@@ -522,12 +527,7 @@ class Methods {
   ENTERPRISE_VIRT Result unlockRecursive(TRI_voc_cid_t, AccessMode::Type);
 
  private:
-
-  /// @brief Helper create a Cluster Communication modify result
-  OperationResult clusterResultModify(rest::ResponseCode const& responseCode,
-                                      std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
-                                      std::unordered_map<int, size_t> const& errorCounter) const;
-
+  
   /// @brief Helper create a Cluster Communication remove result
   OperationResult clusterResultRemove(rest::ResponseCode const& responseCode,
                                       std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
@@ -576,7 +576,7 @@ class Methods {
   } _collectionCache;
 
   Future<Result> replicateOperations(
-      std::shared_ptr<LogicalCollection> const& collection,
+      LogicalCollection* collection,
       std::shared_ptr<const std::vector<std::string>> const& followers,
       OperationOptions const& options, VPackSlice value, TRI_voc_document_operation_e operation,
       std::shared_ptr<velocypack::Buffer<uint8_t>> const& ops);

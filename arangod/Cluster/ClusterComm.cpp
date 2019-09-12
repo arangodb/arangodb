@@ -1098,17 +1098,6 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(
     }
   }
 
-#ifdef DEBUG_CLUSTER_COMM
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#if ARANGODB_ENABLE_BACKTRACE
-  std::string bt;
-  TRI_GetBacktrace(bt);
-  std::replace(bt.begin(), bt.end(), '\n', ';');  // replace all '\n' to ';'
-  headersCopy["X-Arango-BT-SYNC"] = bt;
-#endif
-#endif
-#endif
-
   if (body == nullptr) {
     request = HttpRequest::createHttpRequest(ContentType::JSON, "", 0, headersCopy);
   } else {

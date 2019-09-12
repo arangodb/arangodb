@@ -74,7 +74,7 @@ struct Databases {
 
  private:
   /// @brief will retry for at most <timeout> seconds
-  static arangodb::Result grantCurrentUser(CreateDatabaseInfo const& info, double timeout);
+  static arangodb::Result grantCurrentUser(CreateDatabaseInfo const& info, int64_t timeout);
 
   static arangodb::Result createCoordinator(CreateDatabaseInfo const& info);
   static arangodb::Result createOther(CreateDatabaseInfo const& info);

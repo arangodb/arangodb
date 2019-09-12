@@ -163,6 +163,18 @@ std::shared_ptr<fuerte::Connection> V8ClientConnection::createConnection() {
   return nullptr;
 }
 
+std::shared_ptr<fuerte::Connection> V8ClientConnection::acquireConnection() {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  
+  _lastErrorMessage = "";
+  _lastHttpReturnCode = 0;
+  
+  if (!_connection || _connection->state() == fuerte::Connection::State::Failed) {
+    return createConnection();
+  }
+  return _connection;
+}
+
 void V8ClientConnection::setInterrupted(bool interrupted) {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   if (interrupted && _connection != nullptr) {
@@ -1499,14 +1511,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
   }
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
 
-  std::shared_ptr<fuerte::Connection> connection;
-  {
-    std::lock_guard<std::recursive_mutex> guard(_lock);
-    _lastErrorMessage = "";
-    _lastHttpReturnCode = 0;
-    connection = _connection;
-  }
-  
+  std::shared_ptr<fuerte::Connection> connection = acquireConnection();
   if (!connection || connection->state() == fuerte::Connection::State::Failed) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                  "not connected");
@@ -1527,8 +1532,6 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     v8::Isolate* isolate, fuerte::RestVerb method, arangodb::velocypack::StringRef const& location,
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
-  _lastErrorMessage = "";
-  _lastHttpReturnCode = 0;
 
   auto req = std::make_unique<fuerte::Request>();
   req->header.restVerb = method;
@@ -1565,13 +1568,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   }
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
 
-  std::shared_ptr<fuerte::Connection> connection;
-  {
-    std::lock_guard<std::recursive_mutex> guard(_lock);
-    _lastErrorMessage = "";
-    _lastHttpReturnCode = 0;
-    connection = _connection;
-  }
+  std::shared_ptr<fuerte::Connection> connection = acquireConnection();
   
   if (!connection || connection->state() == fuerte::Connection::State::Failed) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
