@@ -23,8 +23,6 @@
 
 #include "DBServerAgencySync.h"
 
-#include "Basics/system-functions.h"
-
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
@@ -67,8 +65,6 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
   using namespace arangodb::basics;
   Result result;
   DatabaseFeature* dbfeature = nullptr;
-  auto start = TRI_microtime();
-  TRI_DEFER(LOG_DEVEL << "Time taken getLocalCollections: " << TRI_microtime() - start);
 
   try {
     dbfeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
