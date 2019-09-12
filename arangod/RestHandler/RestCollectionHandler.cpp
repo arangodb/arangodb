@@ -70,6 +70,13 @@ RestStatus RestCollectionHandler::execute() {
   return RestStatus::DONE;
 }
 
+void RestCollectionHandler::shutdownExecute(bool isFinalized) noexcept {
+  if (isFinalized) {
+    // reset the transaction so it releases all locks as early as possible
+    _activeTrx.reset();
+  }
+}
+
 void RestCollectionHandler::handleCommandGet() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   VPackBuilder builder;
