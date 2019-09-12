@@ -589,14 +589,6 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
       LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid) + "' not found");
     }
-    /*
-    auto* state = ctx->getParentTransaction();
-    TRI_ASSERT(state != nullptr);
-    if (!state->containsCollection(collectionName, type)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, 
-                                     std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + collectionName);
-    }
-    */
     return std::make_unique<SimpleTransaction>(std::move(ctx));
   } else {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
