@@ -74,9 +74,14 @@ class ExecContext : public RequestContext {
   };
 
   // scope guard for the exec context
+  class AdminScope : public ScopeBase {
+   public:
+    explicit AdminScope() : ScopeBase(&ExecContext::Admin) {}
+  };
+
   class NobodyScope : public ScopeBase {
    public:
-    explicit NobodyScope(ExecContext const* exe) : ScopeBase(&ExecContext::Nobody) {}
+    explicit NobodyScope() : ScopeBase(&ExecContext::Nobody) {}
   };
 
   class SuperuserScope : public ScopeBase {
@@ -175,6 +180,7 @@ class ExecContext : public RequestContext {
  private:
   static thread_local ExecContext const* CURRENT;
 
+  static ExecContext Admin;
   static ExecContext Nobody;
   static ExecContext ReadOnlySuperuser;
   static ExecContext Superuser;

@@ -770,7 +770,7 @@ TEST_F(V8ViewsTest, test_auth) {
             arangodb::velocypack::Parser::fromJson("{ \"key\": \"value\" }")->slice()),
     };
 
-    arangodb::ExecContext::NobodyScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -1221,7 +1221,7 @@ TEST_F(V8ViewsTest, test_auth) {
 
     std::vector<v8::Local<v8::Value>> args = {};
 
-    arangodb::ExecContext::NobodyScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()

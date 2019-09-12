@@ -104,7 +104,7 @@ TEST_F(TransactionManagerTest, parsing_errors) {
 }
 
 TEST_F(TransactionManagerTest, collection_not_found) {
-  arangodb::ExecContextSuperuserScope exeScope;
+  arangodb::ExecContext::SuperuserScope exeScope;
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"33\"]}}");
@@ -430,7 +430,7 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
   }
   ASSERT_TRUE(coll != nullptr);
 
-  arangodb::ExecContext::ReadOnlySuperuserScope execContextScope(&execContext);
+  arangodb::ExecContext::ReadOnlySuperuserScope execContextScope;
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"42\"]}}");
@@ -454,7 +454,7 @@ TEST_F(TransactionManagerTest, permission_denied_forbidden) {
   }
   ASSERT_TRUE(coll != nullptr);
 
-  arangodb::ExecContext::NobodyScope execContextScope(&execContext);
+  arangodb::ExecContext::NobodyScope execContextScope;
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"42\"]}}");

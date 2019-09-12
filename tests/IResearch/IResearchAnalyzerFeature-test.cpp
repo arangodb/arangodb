@@ -523,7 +523,8 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
   }
 
   std::unique_ptr<arangodb::ExecContext> getLoggedInContext() const {
-    return arangodb::ExecContext::create("testUser", "testVocbase");
+    return arangodb::ExecContext::create(arangodb::auth::AuthUser{"testUser"},
+					 arangodb::auth::DatabaseResource{"testVocbase"});
   }
 
   std::string analyzerName() const {
@@ -551,7 +552,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_vocbase_read) {
                         "testVocbase");
   userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::NONE);
   auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt.get());
+  arangodb::ExecContext::Scope execContextScope(ctxt.get());
   EXPECT_FALSE(
       arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RO));
 }
@@ -562,7 +563,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_none_collection_read_no_u
                         "testVocbase");
   userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt.get());
+  arangodb::ExecContext::Scope execContextScope(ctxt.get());
   EXPECT_FALSE(
       arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RO));
 }
@@ -574,7 +575,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_none) {
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::NONE);
   auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt.get());
+  arangodb::ExecContext::Scope execContextScope(ctxt.get());
   // implicit RO access to collection _analyzers collection granted due to RO access to db
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,
                                                                     arangodb::auth::Level::RO));
@@ -588,7 +589,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
                         "testVocbase");
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt.get());
+  arangodb::ExecContext::Scope execContextScope(ctxt.get());
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,
                                                                     arangodb::auth::Level::RO));
   EXPECT_FALSE(
@@ -600,7 +601,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_rw) {
                         "testVocbase");
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RW);
   auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt.get());
+  arangodb::ExecContext::Scope execContextScope(ctxt.get());
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,
                                                                     arangodb::auth::Level::RO));
   EXPECT_FALSE(
@@ -612,7 +613,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_ro) {
                         "testVocbase");
   userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt.get());
+  arangodb::ExecContext::Scope execContextScope(ctxt.get());
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,
                                                                     arangodb::auth::Level::RO));
   // implicit access for system analyzers collection granted due to RW access to database
@@ -625,7 +626,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_rw) {
                         "testVocbase");
   userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RW);
   auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt.get());
+  arangodb::ExecContext::Scope execContextScope(ctxt.get());
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,
                                                                     arangodb::auth::Level::RO));
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,

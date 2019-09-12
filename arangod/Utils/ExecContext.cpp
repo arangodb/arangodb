@@ -30,6 +30,10 @@ namespace arangodb {
 // should always contain a reference to current user context
 thread_local ExecContext const* ExecContext::CURRENT = nullptr;
 
+ExecContext ExecContext::Admin(auth::AuthUser{"admin"},
+                               auth::DatabaseResource{""},
+                               auth::Level::RW,
+			       auth::Level::NONE);
 ExecContext ExecContext::Nobody(auth::AuthUser{"nobody"},
                                 auth::DatabaseResource{""},
 				auth::Level::NONE,

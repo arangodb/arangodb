@@ -731,7 +731,7 @@ TEST_F(V8AnalyzersTest, test_create) {
                                    irs::flags{irs::frequency::type()}).ok());
   }
 
-  arangodb::ExecContext::NobodyScope execContextScope(&execContext);
+  arangodb::ExecContext::NobodyScope execContextScope;
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -1429,7 +1429,7 @@ TEST_F(V8AnalyzersTest, test_get) {
                              "identity", VPackSlice::noneSlice())
                    .ok()));
 
-  arangodb::ExecContext::NobodyScope execContextScope(&execContext);
+  arangodb::ExecContext::NobodyScope execContextScope;
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -2090,7 +2090,7 @@ TEST_F(V8AnalyzersTest, test_list) {
                              VPackSlice::noneSlice())
                    .ok()));
 
-  arangodb::ExecContext::NobodyScope execContextScope(&execContext);
+  arangodb::ExecContext::NobodyScope execContextScope;
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -2571,7 +2571,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
       .ok()));
   }
 
-  arangodb::ExecContext::NobodyScope execContextScope(&execContext);
+  arangodb::ExecContext::NobodyScope execContextScope;
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()

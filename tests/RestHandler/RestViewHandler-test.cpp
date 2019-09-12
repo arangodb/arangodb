@@ -191,7 +191,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
     EXPECT_TRUE((vocbase.views().empty()));
 
-    arangodb::ExecContext::NobodyScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -294,7 +294,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     request.addSuffix("testView");
     request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
 
-    arangodb::ExecContext::NobodyScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -401,7 +401,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     request._payload.add("name", arangodb::velocypack::Value("testView1"));
     request._payload.close();
 
-    arangodb::ExecContext::NobodyScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -556,7 +556,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     request._payload.add("key", arangodb::velocypack::Value("value"));
     request._payload.close();
 
-    arangodb::ExecContext::NobodyScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -777,7 +777,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     request.addSuffix("testView");
     request.setRequestType(arangodb::rest::RequestType::GET);
 
-    arangodb::ExecContext::NobodyScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -920,7 +920,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     request.addSuffix("properties");
     request.setRequestType(arangodb::rest::RequestType::GET);
 
-    arangodb::ExecContext::NobodyScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -1065,7 +1065,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
     request.setRequestType(arangodb::rest::RequestType::GET);
 
-    arangodb::ExecContext::NobodyScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()

@@ -36,6 +36,9 @@ class CollectionResource : public DatabaseResource {
   CollectionResource(std::string&& database, std::string&& collection)
       : DatabaseResource(std::move(database)), _collection(std::move(collection)) {}
 
+  CollectionResource(std::string const& database, char const* collection)
+      : DatabaseResource(database), _collection(collection) {}
+
   CollectionResource(DatabaseResource const& database, std::string const& collection)
       : DatabaseResource(database), _collection(collection) {}
 
