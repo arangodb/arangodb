@@ -60,25 +60,25 @@ class AqlShadowItemRowTest : public ::testing::Test {
       }
     }
   }
-};
 
-TEST_F(AqlShadowItemRowTest, inject_new_shadow_rows) {
-  // Make sure this data is cleared before the assertions
-  auto inputBlock =
-      buildBlock<3>(itemBlockManager, {{{{1}, {2}, {3}}},
-                                       {{{4}, {5}, {6}}},
-                                       {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
-  SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 6, 3)};
-  // We do not add or remove anything, just move
-  auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(
-      std::initializer_list<RegisterId>{});
-  auto registersToKeep = std::make_shared<const std::unordered_set<RegisterId>>(
-      std::initializer_list<RegisterId>{0, 1, 2});
-  auto registersToClear = std::make_shared<const std::unordered_set<RegisterId>>(
-      std::initializer_list<RegisterId>{});
-  OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
-                          registersToKeep, registersToClear);
-  {
+  void InsertNewShadowRowAfterEachDataRow(size_t targetNumberOfRows,
+                                          SharedAqlItemBlockPtr const& inputBlock,
+                                          SharedAqlItemBlockPtr& outputBlock) {
+    RegisterId numRegisters = inputBlock->getNrRegs();
+    outputBlock.reset(new AqlItemBlock(itemBlockManager, targetNumberOfRows, numRegisters));
+    // We do not add or remove anything, just move
+    auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{});
+    auto registersToKeep = std::make_shared<std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{});
+    for (RegisterId r = 0; r < numRegisters; ++r) {
+      registersToKeep->emplace(r);
+    }
+    auto registersToClear = std::make_shared<const std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{});
+    OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
+                            registersToKeep, registersToClear);
+
     // Let this go out of scope before assertions, to make sure no references are bound here.
     for (size_t rowIdx = 0; rowIdx < inputBlock->size(); ++rowIdx) {
       ASSERT_FALSE(testee.isFull());
@@ -93,10 +93,20 @@ TEST_F(AqlShadowItemRowTest, inject_new_shadow_rows) {
       testee.advanceRow();
     }
     ASSERT_TRUE(testee.isFull());
+    ASSERT_EQ(testee.numRowsWritten(), targetNumberOfRows);
+    outputBlock = testee.stealBlock();
+    ASSERT_EQ(outputBlock->size(), targetNumberOfRows);
   }
-  ASSERT_EQ(testee.numRowsWritten(), 6);
-  outputBlock = testee.stealBlock();
-  ASSERT_EQ(outputBlock->size(), 6);
+};
+
+TEST_F(AqlShadowItemRowTest, inject_new_shadow_rows) {
+  // Make sure this data is cleared before the assertions
+  auto inputBlock =
+      buildBlock<3>(itemBlockManager, {{{{1}, {2}, {3}}},
+                                       {{{4}, {5}, {6}}},
+                                       {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
+  SharedAqlItemBlockPtr outputBlock;
+  InsertNewShadowRowAfterEachDataRow(6, inputBlock, outputBlock);
   auto expected =
       VPackParser::fromJson("[[1,2,3],[4,5,6],[\"a\",\"b\",\"c\"]]");
   for (size_t rowIdx = 0; rowIdx < outputBlock->size(); ++rowIdx) {
@@ -113,6 +123,8 @@ TEST_F(AqlShadowItemRowTest, inject_new_shadow_rows) {
     }
   }
 }
+
+TEST_F(AqlShadowItemRowTest, consume_shadow_rows) {}
 
 }  // namespace aql
 }  // namespace tests
