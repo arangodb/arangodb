@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed AQL constrained-heap sort in conjunction with fullCount
+
 * Fixed "ArangoDB is not running in cluster mode" errors in active failover setups.
   This affected at least /_admin/cluster/health.
 
