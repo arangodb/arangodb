@@ -204,6 +204,9 @@ int fuerteToArangoErrorCode(fuerte::Error err) {
     case fuerte::Error::Canceled:
     case fuerte::Error::ProtocolError:
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
+      
+    case fuerte::Error::VstUnauthorized:
+      return TRI_ERROR_FORBIDDEN;
   }
 
   return TRI_ERROR_INTERNAL;
