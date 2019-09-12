@@ -1,9 +1,6 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
-* The keep alive timeout specified via --http.keep-alive-timeout is now being
-  honored.
-
 * Harden database creation against spurious "duplicate name" errors that
   were caused by other parallel operations lazily creating required
   system collections in the same database.
@@ -64,7 +61,8 @@ v3.4.8 (2019-09-09)
 
 * Make minimum timeout for synchronous replication configurable via parameter
   (--cluster.synchronous-replication-timeout-minimum) and increase default value
-  to prevent dropping followers unnecessarily.
+  to 30.0 seconds to prevent dropping followers unnecessarily. Should be changed
+  only with intent and great care.
 
 * Fixed issue #9795: fix AQL `NOT IN` clause in SEARCH operations for ArangoSearch
   views.
@@ -151,8 +149,8 @@ v3.4.8 (2019-09-09)
 
 * Prevent rare cases of duplicate DDL actions being executed by Maintenance.
 
-* Fixed coordinator code that was reporting rocksdb error codes, but not the associated detail
-  message.
+* Coordinator code was reporting rocksdb error codes, but not the associated detail message.
+  Corrected.
 
 * Fixed some error reporting and logging in Maintenance.
 
