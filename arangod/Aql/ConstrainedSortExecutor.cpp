@@ -204,7 +204,6 @@ std::pair<ExecutionState, NoStats> ConstrainedSortExecutor::produceRows(OutputAq
   }
 
   if (doneProducing()) {
-    TRI_ASSERT(_returnNext == _rowsPushed);
     if (doneSkipping()) {
       // No we're really done
       return {ExecutionState::DONE, NoStats{}};
@@ -302,7 +301,7 @@ std::tuple<ExecutionState, NoStats, size_t> ConstrainedSortExecutor::skipRows(si
   // Skip rows we've dropped
   if (skipped < toSkipRequested && !doneSkipping()) {
     TRI_ASSERT(doneProducing());
-    auto const rowsLeftToSkip = _rowsRead - (_rowsPushed + _skippedAfter);
+    auto const rowsLeftToSkip = _rowsRead - (_rows.size() + _skippedAfter);
     auto const skipNum = (std::min)(toSkipRequested, rowsLeftToSkip);
     _skippedAfter += skipNum;
     skipped += skipNum;
