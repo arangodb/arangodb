@@ -333,7 +333,9 @@ TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info,
   return iid;
 }
 
-Result IndexFactory::validateFieldsDefinition(VPackSlice definition, size_t minFields, size_t maxFields) {
+Result IndexFactory::validateFieldsDefinition(VPackSlice definition, 
+                                              size_t minFields, size_t maxFields,
+                                              bool allowSubAttributes) {
   if (basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::Error, false)) {
     // We have an error here.
     return Result(TRI_ERROR_BAD_PARAMETER);
@@ -364,7 +366,12 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition, size_t minF
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "duplicate attribute name in index fields list");
       }
-      
+
+      if (!allowSubAttributes && f.find('.') != std::string::npos) { 
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "cannot index a sub-attribute in this type of index");
+      }
+
       if (std::regex_match(f.toString(), idRegex)) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "_id attribute cannot be indexed");
@@ -386,10 +393,11 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition, size_t minF
 /// @brief process the fields list, deduplicate it, and add it to the json
 Result IndexFactory::processIndexFields(VPackSlice definition, VPackBuilder& builder,
                                         size_t minFields, size_t maxFields,
-                                        bool create, bool allowExpansion) {
+                                        bool create, bool allowExpansion,
+                                        bool allowSubAttributes) {
   TRI_ASSERT(builder.isOpenObject());
 
-  Result res = validateFieldsDefinition(definition, minFields, maxFields);
+  Result res = validateFieldsDefinition(definition, minFields, maxFields, allowSubAttributes);
   if (res.fail()) {
     return res;
   }
@@ -477,7 +485,7 @@ Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
 /// @brief enhances the json of a ttl index
 Result IndexFactory::enhanceJsonIndexTtl(VPackSlice definition,
                                          VPackBuilder& builder, bool create) {
-  Result res = processIndexFields(definition, builder, 1, 1, create, false);
+  Result res = processIndexFields(definition, builder, 1, 1, create, false, false);
   
   auto value = definition.get(arangodb::StaticStrings::IndexUnique);
   if (value.isBoolean() && value.getBoolean()) {

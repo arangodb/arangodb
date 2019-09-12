@@ -75,6 +75,125 @@ UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescriptio
   }
 }
 
+void sendLeaderChangeRequests(std::vector<ServerID> const& currentServers,
+                              std::shared_ptr<std::vector<ServerID>>& realInsyncFollowers,
+                              std::string const& databaseName, ShardID const& shardID,
+                              std::string const& oldLeader) {
+
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return;
+  }
+
+  std::string const& sid = ServerState::instance()->getId();
+
+
+  VPackBuilder bodyBuilder;
+  {
+    VPackObjectBuilder ob(&bodyBuilder);
+    bodyBuilder.add("leaderId", VPackValue(sid));
+    bodyBuilder.add("oldLeaderId", VPackValue(oldLeader));
+    bodyBuilder.add("shard", VPackValue(shardID));
+  }
+
+  std::string const url = "/_db/" + databaseName + "/_api/replication/set-the-leader";
+
+  std::vector<ClusterCommRequest> requests;
+  auto body = std::make_shared<std::string>(bodyBuilder.toJson());
+  for (auto const& srv : currentServers) {
+    if (srv == sid) {
+      continue; // ignore ourself
+    }
+    requests.emplace_back("server:" + srv, RequestType::PUT, url, body);
+  }
+
+  cc->performRequests(requests, 3.0, Logger::COMMUNICATION, false);
+
+  // This code intentionally ignores all errors
+  realInsyncFollowers = std::make_shared<std::vector<ServerID>>();
+  for (auto const& req : requests) {
+    ClusterCommResult const& result = req.result;
+    if (result.status == CL_COMM_RECEIVED && result.errorCode == TRI_ERROR_NO_ERROR) {
+      if (result.result && result.result->getHttpReturnCode() == 200) {
+        realInsyncFollowers->push_back(result.serverID);
+      }
+    }
+  }
+}
+
+void handleLeadership(LogicalCollection& collection, std::string const& localLeader,
+                      std::string const& plannedLeader,
+                      std::string const& followersToDrop, std::string const& databaseName,
+                      uint64_t oldCounter, MaintenanceFeature& feature) {
+  auto& followers = collection.followers();
+
+  if (plannedLeader.empty()) {   // Planned to lead
+    if (!localLeader.empty()) {  // We were not leader, assume leadership
+      // This will block the thread until we fetched a new current version
+      // in maintenance main thread.
+      feature.waitForLargerCurrentCounter(oldCounter);
+      auto currentInfo = ClusterInfo::instance()->getCollectionCurrent(
+          databaseName, std::to_string(collection.planId()));
+      if (currentInfo == nullptr) {
+        // Collection has been dropped we cannot continue here.
+        return;
+      }
+      TRI_ASSERT(currentInfo != nullptr);
+      std::vector<ServerID> currentServers = currentInfo->servers(collection.name());
+      std::shared_ptr<std::vector<ServerID>> realInsyncFollowers;
+
+      if (currentServers.size() > 0) {
+        std::string& oldLeader = currentServers.at(0);
+        // Check if the old leader has resigned and stopped all write
+        // (if so, we can assume that all servers are still in sync)
+        if (oldLeader.at(0) == '_') {
+          // remove the underscore from the list as it is useless anyway
+          oldLeader = oldLeader.substr(1);
+
+          // Update all follower and tell them that we are the leader now
+          sendLeaderChangeRequests(currentServers, realInsyncFollowers, databaseName, collection.name(), oldLeader);
+        }
+      }
+
+      std::vector<ServerID> failoverCandidates = currentInfo->failoverCandidates(collection.name());
+      followers->takeOverLeadership(failoverCandidates, realInsyncFollowers);
+      transaction::cluster::abortFollowerTransactionsOnShard(collection.id());
+    } else {
+      // If someone (the Supervision most likely) has thrown
+      // out a follower from the plan, then the leader
+      // will not notice until it fails to replicate an operation
+      // to the old follower. This here is to drop such a follower
+      // from the local list of followers. Will be reported
+      // to Current in due course.
+      if (!followersToDrop.empty()) {
+        std::vector<std::string> ftd =
+            arangodb::basics::StringUtils::split(followersToDrop, ',');
+        for (auto const& s : ftd) {
+          followers->remove(s);
+        }
+      }
+    }
+  } else {  // Planned to follow
+    if (localLeader.empty()) {
+      // Note that the following does not delete the follower list
+      // and that this is crucial, because in the planned leader
+      // resign case, updateCurrentForCollections will report the
+      // resignation together with the old in-sync list to the
+      // agency. If this list would be empty, then the supervision
+      // would be very angry with us!
+      followers->setTheLeader(plannedLeader);
+      transaction::cluster::abortLeaderTransactionsOnShard(collection.id());
+    }
+    // Note that if we have been a follower to some leader
+    // we do not immediately adjust the leader here, even if
+    // the planned leader differs from what we have set locally.
+    // The setting must only be adjusted once we have
+    // synchronized with the new leader and negotiated
+    // a leader/follower relationship!
+  }
+}
+
 UpdateCollection::~UpdateCollection() {}
 
 bool UpdateCollection::first() {

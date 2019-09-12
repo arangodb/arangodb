@@ -61,6 +61,64 @@ if (DARWIN)
 endif()
 
 ################################################################################
+## arangobackup
+################################################################################
+
+if (MSVC AND NOT(SKIP_PACKAGING))
+  generate_product_version(ProductVersionFiles_arangobackup
+    NAME arangobackup
+    FILE_DESCRIPTION ${ARANGO_BACKUP_FRIENDLY_STRING}
+    ICON ${ARANGO_ICON}
+    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
+    VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
+    VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
+    VERSION_REVISION ${BUILD_ID}
+  )
+endif ()
+
+add_executable(${BIN_ARANGOBACKUP}
+  ${ProductVersionFiles_arangobackup}
+  Backup/BackupFeature.cpp
+  Backup/arangobackup.cpp
+  Shell/ClientFeature.cpp
+  Shell/ConsoleFeature.cpp
+  Utils/ClientManager.cpp
+  ${ADDITIONAL_BIN_ARANGOBACKUP_SOURCES}
+)
+
+target_link_libraries(${BIN_ARANGOBACKUP}
+  ${LIB_ARANGO}
+  ${MSVC_LIBS}
+  ${SYSTEM_LIBRARIES}
+  boost_system
+  boost_boost
+)
+
+install(
+  TARGETS ${BIN_ARANGOBACKUP}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+install_config(arangobackup)
+
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangobackup zlibstatic v8_build) # v8_build includes ICU build
+else ()
+  add_dependencies(arangobackup zlibstatic)
+endif ()
+
+if (USE_JEMALLOC)
+  add_dependencies(arangobackup jemalloc)
+endif ()
+
+if(MSVC)
+  target_compile_options(arangobackup PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangobackup PRIVATE -Werror)
+endif()
+
+################################################################################
 ## arangodump
 ################################################################################
 
