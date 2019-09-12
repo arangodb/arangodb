@@ -590,7 +590,7 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
     } else {  // only support local collections / shards
       cid = ctx->resolver().getCollectionIdLocal(collectionName);
     }
-    if (!state->containsCollection(cid, type)) {
+    if (!AccessMode::isRead(type) && !state->containsCollection(cid, type)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, 
                                      std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + collectionName);
     }
