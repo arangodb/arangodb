@@ -1571,61 +1571,6 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
                            options, std::move(errorCounter));
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
-
-//  // Now listen to the results:
-//  if (!useMultiple) {
-//    // Only one can answer, we react a bit differently
-//    size_t count;
-//    int nrok = 0;
-//    for (count = requests.size(); count > 0; count--) {
-//      auto const& req = requests[count - 1];
-//      auto res = req.result;
-//      if (res.status == CL_COMM_RECEIVED) {
-//        if (res.answer_code != arangodb::rest::ResponseCode::NOT_FOUND ||
-//            (nrok == 0 && count == 1)) {
-//          nrok++;
-//
-//          responseCode = res.answer_code;
-//          TRI_ASSERT(res.answer != nullptr);
-//          auto parsedResult = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
-//          resultBody.swap(parsedResult);
-//        }
-//      }
-//    }
-//
-//    // Note that nrok is always at least 1!
-//    if (nrok > 1) {
-//      return TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS;
-//    }
-//    return TRI_ERROR_NO_ERROR;  // the cluster operation was OK, however,
-//                                // the DBserver could have reported an error.
-//  }
-//
-//  // We select all results from all shards an merge them back again.
-//  std::vector<VPackSlice> allResults;
-//  allResults.reserve(shardIds->size());
-//  // If no server responds we return 500
-//  responseCode = rest::ResponseCode::SERVER_ERROR;
-//  for (auto const& req : requests) {
-//    auto res = req.result;
-//    int error = handleGeneralCommErrors(&res);
-//    if (error != TRI_ERROR_NO_ERROR) {
-//      // Local data structures are automatically freed
-//      return error;
-//    }
-//    if (res.answer_code == rest::ResponseCode::OK ||
-//        res.answer_code == rest::ResponseCode::ACCEPTED) {
-//      responseCode = res.answer_code;
-//    }
-//    TRI_ASSERT(res.answer != nullptr);
-//    allResults.emplace_back(res.answer->payload());
-//    extractErrorCodes(res, errorCounter, false);
-//  }
-//  // If we get here we get exactly one result for every shard.
-//  TRI_ASSERT(allResults.size() == shardIds->size());
-//  mergeResultsAllShards(allResults, *resultBody, errorCounter,
-//                        static_cast<size_t>(slice.length()));
-//  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
