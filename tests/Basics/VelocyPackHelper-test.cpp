@@ -162,26 +162,3 @@ TEST(VPackHelperTest, tst_compare_values_unequal) {
   VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "1", "[true]");
   VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "1", "{}");
 }
-
-TEST(VPackHelperTest, testHashString) {
-  auto compare = [](std::string const& input, uint64_t seed = arangodb::velocypack::Slice::defaultSeed) {
-    VPackBuilder builder;
-    builder.add(VPackValue(input));
-
-    VPackSlice slice = builder.slice();
-    uint64_t expected = slice.hash(seed);
-
-    ASSERT_EQ(expected, arangodb::basics::VelocyPackHelper::hashString(input, seed));
-  };
-
-  compare("");
-  /*
-  compare(" ");
-  compare("1");
-  compare("FOO");
-  compare("fuppes12");
-  compare("der hund");
-  compare("this is a test string");
-  compare("this is a long string, and it must be longer than 126 bytes, so we really need to fill this string up with some random text");
-  */
-}
