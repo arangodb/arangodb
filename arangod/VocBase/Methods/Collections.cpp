@@ -159,7 +159,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
 
       if (coll) {
         // check authentication after ensuring the collection exists
-        if (!ExecContext::current().hasAccess(auth::CollectionResource{vocbase, coll->name()}, auth::Level::RO)) {
+        if (!ExecContext::currentHasAccess(auth::CollectionResource{vocbase, coll->name()}, auth::Level::RO)) {
           return Result(TRI_ERROR_FORBIDDEN,
                         "No access to collection '" + name + "'");
         }
@@ -185,7 +185,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
 
   if (coll != nullptr) {
     // check authentication after ensuring the collection exists
-    if (!ExecContext::current().hasAccess(auth::CollectionResource{vocbase, coll->name()}, auth::Level::RO)) {
+    if (!ExecContext::currentHasAccess(auth::CollectionResource{vocbase, coll->name()}, auth::Level::RO)) {
       return Result(TRI_ERROR_FORBIDDEN,
                     "No access to collection '" + name + "'");
     }

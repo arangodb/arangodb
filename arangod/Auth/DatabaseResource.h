@@ -32,13 +32,16 @@ class DatabaseResource : public Resource {
  public:
   DatabaseResource() : _database() {}
 
-  explicit DatabaseResource(std::string const& database) : _database(database) {}
+  explicit DatabaseResource(std::string const& database)
+      : _database(database) {}
+
+  explicit DatabaseResource(char const* database)
+      : _database(database) {}
 
   DatabaseResource(std::string&& database) : _database(std::move(database)) {}
 
-  template<typename D>
-  explicit DatabaseResource(D const& database)
-      : _database(database.name()) {}
+  template <typename D>
+  explicit DatabaseResource(D const& database) : _database(database.name()) {}
 
   bool equals(DatabaseResource const& other) const {
     return _database == other._database;

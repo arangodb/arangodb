@@ -229,13 +229,7 @@ TEST_F(V8ViewsTest, test_auth) {
 
     EXPECT_TRUE((vocbase.views().empty()));
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -356,13 +350,7 @@ TEST_F(V8ViewsTest, test_auth) {
         TRI_V8_ASCII_STRING(isolate.get(), "testView"),
     };
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -482,13 +470,7 @@ TEST_F(V8ViewsTest, test_auth) {
                                  v8::External::New(isolate.get(), logicalView.get()));
     std::vector<v8::Local<v8::Value>> args = {};
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -614,13 +596,7 @@ TEST_F(V8ViewsTest, test_auth) {
         TRI_V8_ASCII_STRING(isolate.get(), "testView1"),
     };
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -794,13 +770,7 @@ TEST_F(V8ViewsTest, test_auth) {
             arangodb::velocypack::Parser::fromJson("{ \"key\": \"value\" }")->slice()),
     };
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -973,13 +943,7 @@ TEST_F(V8ViewsTest, test_auth) {
         TRI_V8_ASCII_STRING(isolate.get(), "testView"),
     };
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -1121,13 +1085,7 @@ TEST_F(V8ViewsTest, test_auth) {
                                  v8::External::New(isolate.get(), logicalView.get()));
     std::vector<v8::Local<v8::Value>> args = {};
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -1263,13 +1221,7 @@ TEST_F(V8ViewsTest, test_auth) {
 
     std::vector<v8::Local<v8::Value>> args = {};
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()

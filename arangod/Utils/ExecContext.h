@@ -24,8 +24,8 @@
 #ifndef ARANGOD_UTILS_EXECCONTEXT_H
 #define ARANGOD_UTILS_EXECCONTEXT_H 1
 
-#include "Auth/Common.h"
 #include "Auth/AuthUser.h"
+#include "Auth/Common.h"
 #include "Auth/DatabaseResource.h"
 #include "Rest/RequestContext.h"
 
@@ -36,7 +36,7 @@ namespace arangodb {
 namespace auth {
 class AuthUser;
 class CollectionResource;
-}
+}  // namespace auth
 
 namespace transaction {
 class Methods;
@@ -48,55 +48,70 @@ class Methods;
 // convencience
 
 class ExecContext : public RequestContext {
-  friend struct Scope;
-  friend struct SuperuserScope;
-
- public:
-  // scope guard for the exec context
-  struct Scope {
-    explicit Scope(ExecContext const* exe)
-      : _old(ExecContext::CURRENT) {
+ private:
+  class ScopeBase {
+   public:
+    explicit ScopeBase(ExecContext const* exe) : _old(ExecContext::CURRENT) {
       ExecContext::CURRENT = exe;
     }
 
-    ~Scope() { ExecContext::CURRENT = _old; }
-
-    private:
-    ExecContext const* _old;
-  };
-
-  struct SuperuserScope {
-    explicit SuperuserScope() : _old(ExecContext::CURRENT) {
-      ExecContext::CURRENT = &ExecContext::Superuser;
-    }
-
-    explicit SuperuserScope(bool cond) : _old(ExecContext::CURRENT) {
+    ScopeBase(ExecContext const* exe, bool cond) : _old(ExecContext::CURRENT) {
       if (cond) {
-	ExecContext::CURRENT = &ExecContext::Superuser;
+        ExecContext::CURRENT = &ExecContext::Superuser;
       }
     }
 
-    ~SuperuserScope() { ExecContext::CURRENT = _old; }
+    ~ScopeBase() { ExecContext::CURRENT = _old; }
 
-    private:
+   private:
     ExecContext const* _old;
+  };
+
+ public:
+  class Scope : public ScopeBase {
+   public:
+    explicit Scope(ExecContext const* exe) : ScopeBase(exe) {}
+  };
+
+  // scope guard for the exec context
+  class NobodyScope : public ScopeBase {
+   public:
+    explicit NobodyScope(ExecContext const* exe) : ScopeBase(&ExecContext::Nobody) {}
+  };
+
+  class SuperuserScope : public ScopeBase {
+   public:
+    SuperuserScope() : ScopeBase(&ExecContext::Superuser) {}
+    explicit SuperuserScope(bool cond) : ScopeBase(&ExecContext::Superuser, cond) {}
+  };
+
+  class ReadOnlySuperuserScope : public ScopeBase {
+   public:
+    ReadOnlySuperuserScope() : ScopeBase(&ExecContext::ReadOnlySuperuser) {}
+    explicit ReadOnlySuperuserScope(bool cond) : ScopeBase(&ExecContext::ReadOnlySuperuser, cond) {}
   };
 
  public:
   static std::unique_ptr<ExecContext> create(auth::AuthUser const& user,
                                              auth::DatabaseResource&& database);
+  virtual ~ExecContext() {}
 
  protected:
   enum class Type { User, Internal };
 
   ExecContext(auth::AuthUser const& user, auth::DatabaseResource&& database,
               auth::Level systemLevel, auth::Level dbLevel);
-  ExecContext(auth::Level systemLevel, auth::Level dbLevel);
+  ExecContext(auth::Level dbLevel);
   ExecContext(ExecContext const&);
   ExecContext(ExecContext&&) = delete;
 
  public:
-  virtual ~ExecContext() {}
+  std::string const& user() const { return _user.internalUsername(); }
+  auth::DatabaseResource const& database() const { return _database; }
+
+  // should immediately cancel this operation
+  bool isCanceled() const { return _canceled; }
+  void cancel() { _canceled = true; }
 
   // shortcut helper to check the AuthenticationFeature
   static bool isAuthEnabled();
@@ -117,10 +132,6 @@ class ExecContext : public RequestContext {
     return requested <= authLevel(coll);
   }
 
-  // an internal superuser context; is a singleton instance; deleting is
-  // an error
-  static ExecContext const& superuser() { return ExecContext::Superuser; }
-
   // an internal user is none / ro / rw for all collections / dbs
   // mainly used to override further permission resolution
   inline bool isInternal() const { return _type == Type::Internal; }
@@ -139,30 +150,8 @@ class ExecContext : public RequestContext {
   // is allowed to manage users, create databases, ...
   bool isAdminUser() const { return _systemDbAuthLevel == auth::Level::RW; }
 
-  // should immediately cancel this operation
-  bool isCanceled() const { return _canceled; }
-
-  void cancel() { _canceled = true; }
-
-  // current user, may be empty for internal users
-  std::string const& user() const { return _user.internalUsername(); }
-
-  auth::DatabaseResource const& database() const { return _database; }
-
-  // authentication level on _system. Always RW for superuser
-  auth::Level systemAuthLevel() const { return _systemDbAuthLevel; };
-
-  // Authentication level on database selected in the current
-  // request scope. Should almost always contain something,
-  // if this thread originated in v8 or from HTTP / VST
  private:
-  auth::Level databaseAuthLevel() const { return _databaseAuthLevel; };
- public:
-
-  // returns true if auth level is above or equal `requested`
   auth::Level authLevel(auth::DatabaseResource const&) const;
-
-  // returns auth level for user
   auth::Level authLevel(auth::CollectionResource const&) const;
 
  protected:
@@ -184,8 +173,11 @@ class ExecContext : public RequestContext {
   auth::Level _databaseAuthLevel;
 
  private:
-  static ExecContext Superuser;
   static thread_local ExecContext const* CURRENT;
+
+  static ExecContext Nobody;
+  static ExecContext ReadOnlySuperuser;
+  static ExecContext Superuser;
 };
 }  // namespace arangodb
 

@@ -51,7 +51,7 @@ class VocbaseContext : public arangodb::ExecContext {
   TRI_vocbase_t& _vocbase;
 
   VocbaseContext(TRI_vocbase_t& vocbase,
-                 auth::Level systemLevel, auth::Level dbLevel);
+                 auth::Level dbLevel);
   VocbaseContext(GeneralRequest& req, TRI_vocbase_t& vocbase,
                  auth::Level systemLevel, auth::Level dbLevel);
   VocbaseContext(VocbaseContext const&) = delete;

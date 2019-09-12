@@ -305,12 +305,11 @@ Result TransactionState::checkCollectionPermission(std::string const& cname,
   Result res;
   // no need to check for superuser, cluster_sync tests break otherwise
   if (!exec.isSuperuser()) {
-    auto level = exec.authLevel(auth::CollectionResource{_vocbase, cname});
-    TRI_ASSERT(level != auth::Level::UNDEFINED);  // not allowed here
+    auth::CollectionResource cr{_vocbase, cname};
 
-    if (level == auth::Level::NONE) {
+    if (!exec.hasAccess(cr, auth::Level::RO)) {
       LOG_TOPIC("24971", TRACE, Logger::AUTHORIZATION)
-          << "User " << exec.user() << " has collection auth::Level::NONE";
+          << "User " << exec.user() << " has no read access to collection";
 
       res.reset(TRI_ERROR_FORBIDDEN,
                 std::string(TRI_errno_string(TRI_ERROR_FORBIDDEN)) + ": " + cname + 
@@ -318,9 +317,9 @@ Result TransactionState::checkCollectionPermission(std::string const& cname,
     } else {
       bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
 
-      if (level == auth::Level::RO && collectionWillWrite) {
+      if (!exec.hasAccess(cr, auth::Level::RW) && collectionWillWrite) {
         LOG_TOPIC("d3e61", TRACE, Logger::AUTHORIZATION)
-            << "User " << exec.user() << " has no write right for collection " << cname;
+            << "User " << exec.user() << " has no write access for collection " << cname;
 
         res.reset(TRI_ERROR_ARANGO_READ_ONLY,
                   std::string(TRI_errno_string(TRI_ERROR_ARANGO_READ_ONLY)) + ": " + cname +

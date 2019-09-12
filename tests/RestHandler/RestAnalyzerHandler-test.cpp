@@ -21,17 +21,16 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "../IResearch/common.h"
 #include "gtest/gtest.h"
-
+#include "../IResearch/common.h"
 #include "../IResearch/RestHandlerMock.h"
 #include "../Mocks/StorageEngineMock.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+
 #include "Aql/QueryRegistry.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
+#include "Auth/DatabaseResource.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -43,8 +42,10 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Collections.h"
-#include "velocypack/Iterator.h"
-#include "velocypack/Parser.h"
+
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
@@ -206,13 +207,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                            .ok());
   }
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
-  } execContext;
-  arangodb::ExecContextScope execContextScope(&execContext);
+  arangodb::ExecContext::NobodyScope execContextScope;
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -675,13 +670,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
                              VPackSlice::noneSlice())  // Empty VPack for nullptr
                    .ok()));
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
-  } execContext;
-  arangodb::ExecContextScope execContextScope(&execContext);
+  arangodb::ExecContext::NobodyScope execContextScope;
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -1123,13 +1112,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
                              VPackSlice::noneSlice())
                    .ok()));
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
-  } execContext;
-  arangodb::ExecContextScope execContextScope(&execContext);
+  arangodb::ExecContext::NobodyScope execContextScope;
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -1532,13 +1515,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
                    .ok()));
   result.first.reset(); // to release reference!
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
-  } execContext;
-  arangodb::ExecContextScope execContextScope(&execContext);
+  arangodb::ExecContext::NobodyScope execContextScope;
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()

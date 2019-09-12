@@ -22,15 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
-
 #include "../Mocks/StorageEngineMock.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryRegistry.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
+#include "Auth/DatabaseResource.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -39,6 +35,10 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
 #include "velocypack/Parser.h"
+
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 namespace {
 
@@ -183,13 +183,7 @@ TEST_F(LogicalViewTest, test_auth) {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                           "testVocbase");
     auto logicalView = vocbase.createView(viewJson->slice());
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
-                                  "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -202,13 +196,7 @@ TEST_F(LogicalViewTest, test_auth) {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                           "testVocbase");
     auto logicalView = vocbase.createView(viewJson->slice());
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
-                                  "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::RO) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::ReadOnlySuperuserScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -222,13 +210,7 @@ TEST_F(LogicalViewTest, test_auth) {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                           "testVocbase");
     auto logicalView = vocbase.createView(viewJson->slice());
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
-                                  "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::RW) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::SuperuserScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()

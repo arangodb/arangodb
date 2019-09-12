@@ -454,7 +454,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   // read lock
   // check if the collection is already loaded
   {
-    if (!ExecContext::current().hasAccess(auth::CollectionResource{_name, collection->name()}, auth::Level::RO)) {
+    if (!ExecContext::currentHasAccess(auth::CollectionResource{_name, collection->name()}, auth::Level::RO)) {
       return TRI_set_errno(TRI_ERROR_FORBIDDEN);
     }
 

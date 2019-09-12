@@ -22,17 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
+#include "common.h"
+#include "shared.hpp"
+
+#include <velocypack/Parser.h>
 
 #include "Aql/QueryRegistry.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterFeature.h"
-#include "common.h"
-#include "shared.hpp"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
@@ -53,7 +50,10 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "utils/misc.hpp"
-#include "velocypack/Parser.h"
+
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -482,13 +482,7 @@ TEST_F(IResearchLinkHelperTest, test_normalize) {
 
     // not authorised
     {
-      struct ExecContext : public arangodb::ExecContext {
-        ExecContext()
-            : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
-                                    "", arangodb::auth::Level::NONE,
-                                    arangodb::auth::Level::NONE) {}
-      } execContext;
-      arangodb::ExecContextScope execContextScope(&execContext);
+      arangodb::ExecContext::NobodyScope execContextScope();
       auto* authFeature = arangodb::AuthenticationFeature::instance();
       auto* userManager = authFeature->userManager();
       arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -562,13 +556,7 @@ TEST_F(IResearchLinkHelperTest, test_updateLinks) {
 
     // not authorized
     {
-      struct ExecContext : public arangodb::ExecContext {
-        ExecContext()
-            : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
-                                    "", arangodb::auth::Level::NONE,
-                                    arangodb::auth::Level::NONE) {}
-      } execContext;
-      arangodb::ExecContextScope execContextScope(&execContext);
+      arangodb::ExecContext::NobodyScope execContextScope();
       auto* authFeature = arangodb::AuthenticationFeature::instance();
       auto* userManager = authFeature->userManager();
       arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()

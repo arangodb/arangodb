@@ -310,13 +310,7 @@ TEST_F(RestTransactionHandlerTest, permission_denied_read_only) {
   }
   ASSERT_TRUE(coll != nullptr);
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy",
-                                "testVocbase", arangodb::auth::Level::RO,
-                                arangodb::auth::Level::RO) {}
-  } execContext;
-  arangodb::ExecContextScope execContextScope(&execContext);
+  arangodb::ExecContext::ReadOnlySuperuserScope execContextScope();
 
   request.setRequestType(arangodb::rest::RequestType::POST);
   request.addSuffix("begin");
@@ -349,13 +343,7 @@ TEST_F(RestTransactionHandlerTest, permission_denied_forbidden) {
   }
   ASSERT_TRUE(coll != nullptr);
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy",
-                                "testVocbase", arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
-  } execContext;
-  arangodb::ExecContextScope execContextScope(&execContext);
+  arangodb::ExecContext::NobodyScope execContextScope();
 
   request.setRequestType(arangodb::rest::RequestType::POST);
   request.addSuffix("begin");

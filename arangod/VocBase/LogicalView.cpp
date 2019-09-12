@@ -89,7 +89,7 @@ Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
 
 bool LogicalView::canUse(arangodb::auth::Level const& level) {
   // as per https://github.com/arangodb/backlog/issues/459
-  return ExecContext::current().hasAccess(auth::DatabaseResource{vocbase()}, level); // can use vocbase
+  return ExecContext::currentHasAccess(auth::DatabaseResource{vocbase()}, level); // can use vocbase
 
   /* FIXME TODO per-view authentication checks disabled as per https://github.com/arangodb/backlog/issues/459
   return !ctx // authentication not enabled

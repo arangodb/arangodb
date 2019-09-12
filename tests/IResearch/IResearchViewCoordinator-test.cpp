@@ -603,13 +603,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
           ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0);
         });
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope();
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -1021,13 +1015,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
   }
 
   {
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope();
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -2647,13 +2635,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE((true == logicalView->visitCollections(
                              [](TRI_voc_cid_t) -> bool { return false; })));
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope scope(&execContext);
+    arangodb::ExecContext::NobodyScope scope();
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::removeAllUsers()
@@ -4020,13 +4002,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     EXPECT_TRUE((true == logicalView->visitCollections(
                              [](TRI_voc_cid_t) -> bool { return false; })));
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope scope(&execContext);
+    arangodb::ExecContext::NobodyScope scope();
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::removeAllUsers()
@@ -4235,13 +4211,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
                                 [](TRI_voc_cid_t) -> bool { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope();
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -4349,13 +4319,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     EXPECT_TRUE((true == logicalView->visitCollections(
                              [](TRI_voc_cid_t) -> bool { return false; })));
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope scope(&execContext);
+    arangodb::ExecContext::NobodyScope scope();
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -4444,13 +4408,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       }
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope();
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -4585,13 +4543,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
                                 [](TRI_voc_cid_t) -> bool { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope();
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -4743,13 +4695,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       }
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope();
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -4998,13 +4944,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
                                 [](TRI_voc_cid_t) -> bool { return false; })));
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope();
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -5112,13 +5052,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     EXPECT_TRUE((true == logicalView->visitCollections(
                              [](TRI_voc_cid_t) -> bool { return false; })));
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope scope(&execContext);
+    arangodb::ExecContext::NobodyScope scope();
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -5205,13 +5139,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       }
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope();
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -5352,13 +5280,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       }
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope();
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -5510,13 +5432,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       }
     }
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    arangodb::ExecContext::NobodyScope execContextScope();
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()

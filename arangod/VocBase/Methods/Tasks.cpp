@@ -301,8 +301,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     bool queued = basics::function_utils::retryUntilTimeout(
         [this, self, execContext]() -> bool {
           return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self, this, execContext] {
-	    ExecContext::Scope scope(_user.empty() ? &ExecContext::superuser()
-						   : execContext.get());
+            ExecContext::SuperuserScope scope(_user.empty());
             work(execContext.get());
 
             if (_periodic.load() && !application_features::ApplicationServer::isStopping()) {
