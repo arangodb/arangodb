@@ -155,9 +155,6 @@ class TransactionState {
   /// @brief run a callback on all collections of the transaction
   void allCollections(std::function<bool(TransactionCollection&)> const& cb);
   
-  /// @brief whether or not the collection is used in the transaction
-  bool containsCollection(std::string const& collectionName, AccessMode::Type accessType);
-
   /// @brief return the number of collections in the transaction
   size_t numCollections() const { return _collections.size(); }
 

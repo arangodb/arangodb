@@ -221,26 +221,6 @@ void TransactionState::allCollections(                     // iterate
   }
 }
   
-/// @brief whether or not the collection is used in the transaction
-bool TransactionState::containsCollection(std::string const& collectionName, AccessMode::Type accessType) {
-  auto it = std::find_if(_collections.begin(), _collections.end(), [&collectionName](TransactionCollection const* trxColl) {
-    return trxColl->collectionName() == collectionName;
-  });
-
-  if (it == _collections.end()) {
-    return false;
-  }
-
-  AccessMode::Type type = (*it)->accessType();
-  if (AccessMode::isWriteOrExclusive(type)) {
-    // if the collection is registered in write or exclusive mode,
-    // this will cover all user requests
-    return true;
-  }
-  // collection is registered in read-only mode.
-  return AccessMode::isRead(accessType);
-}
-
 /// @brief use all participating collections of a transaction
 Result TransactionState::useCollections(int nestingLevel) {
   Result res;
