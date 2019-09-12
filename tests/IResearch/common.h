@@ -206,4 +206,25 @@ inline VPackBuilder dbArgsBuilder(std::string const& name = "_system") {
   return builder;
 };
 
+inline arangodb::CreateDatabaseInfo createInfo(std::string const& name, uint64_t id) {
+  arangodb::CreateDatabaseInfo info;
+  auto rv = info.load(name, id);
+  if(rv.fail()) {
+    throw std::runtime_error(rv.errorMessage());
+  }
+  return info;
+};
+
+inline arangodb::CreateDatabaseInfo systemDBInfo(std::string const& name = "_system", uint64_t id = 1) {
+  return createInfo(name, id);
+};
+
+inline arangodb::CreateDatabaseInfo testDBInfo(std::string const& name = "testVocbase", uint64_t id = 2) {
+  return createInfo(name, id);
+};
+
+inline arangodb::CreateDatabaseInfo unknownDBInfo(std::string const& name = "unknownVocbase", uint64_t id = 3) {
+  return createInfo(name, id);
+};
+
 #endif

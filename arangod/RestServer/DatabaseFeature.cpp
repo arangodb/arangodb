@@ -596,10 +596,15 @@ Result DatabaseFeature::registerPostRecoveryCallback(std::function<Result()>&& c
 }
 
 /// @brief create a new database
-int DatabaseFeature::createDatabase(CreateDatabaseInfo const& info, TRI_vocbase_t*& result){
+Result DatabaseFeature::createDatabase(CreateDatabaseInfo const& info, TRI_vocbase_t*& result){
 
   std::string name = info.getName();
   result = nullptr;
+
+  if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
+    events::CreateDatabase(name, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+    return {TRI_ERROR_ARANGO_DATABASE_NAME_INVALID};
+  }
 
   if (info.validId()) {
     TRI_ASSERT(false);
@@ -627,7 +632,7 @@ int DatabaseFeature::createDatabase(CreateDatabaseInfo const& info, TRI_vocbase_
       if (it != theLists->_databases.end()) {
         // name already in use
         events::CreateDatabase(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
-        return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+        return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("duplicate database name '") + name + "'");
       }
     }
 
@@ -657,17 +662,17 @@ int DatabaseFeature::createDatabase(CreateDatabaseInfo const& info, TRI_vocbase_
       try {
         vocbase->addReplicationApplier();
       } catch (basics::Exception const& ex) {
-        LOG_TOPIC("e7444", ERR, arangodb::Logger::FIXME)
-            << "initializing replication applier for database '"
-            << vocbase->name() << "' failed: " << ex.what();
+        std::string msg = "initializing replication applier for database '" +
+            vocbase->name() + "' failed: " + ex.what();
+        LOG_TOPIC("e7444", ERR, arangodb::Logger::FIXME) << msg;
         events::CreateDatabase(name, ex.code());
-        return ex.code();
+        return Result(ex.code(), std::move(msg));
       } catch (std::exception const& ex) {
-        LOG_TOPIC("56c41", ERR, arangodb::Logger::FIXME)
-            << "initializing replication applier for database '"
-            << vocbase->name() << "' failed: " << ex.what();
+        std::string msg = "initializing replication applier for database '" +
+            vocbase->name() + "' failed: " + ex.what();
+        LOG_TOPIC("56c41", ERR, arangodb::Logger::FIXME) << msg;
         events::CreateDatabase(name, TRI_ERROR_INTERNAL);
-        return TRI_ERROR_INTERNAL;
+        return Result(TRI_ERROR_INTERNAL, std::move(msg));
       }
 
       // enable deadlock detection

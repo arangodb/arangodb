@@ -397,18 +397,6 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
     return false;
   }
 
-  // if (have persisted id) {
-  //   use the persisted id
-  // } else {
-  //  if (myLocalId not empty) {
-  //    lookup in agency
-  //    if (found) {
-  //      persist id
-  //    }
-  //  }
-  //  if (id still not set) {
-  //    generate and persist new id
-  //  }
   std::string id;
   bool hadPersistedId = hasPersistedId();
   if (!hadPersistedId) {
@@ -466,8 +454,8 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
         auto it2 = endpoints.emplace(endpointSlice.copyString(), serverId);
         if (!it2.second && it2.first->first != serverId) {
           // duplicate entry!
-          LOG_TOPIC("9a134", WARN, Logger::CLUSTER) 
-            << "found duplicate server entry for endpoint '" 
+          LOG_TOPIC("9a134", WARN, Logger::CLUSTER)
+            << "found duplicate server entry for endpoint '"
             << endpointSlice.copyString() << "', already used by other server " << it2.first->second
             << ". it looks like this is a (mis)configuration issue";
           // anyway, continue with startup
@@ -478,7 +466,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
 
   return true;
 }
-        
+
 /// @brief whether or not "value" is a server UUID
 bool ServerState::isUuid(std::string const& value) const {
   // whenever the format of the generated UUIDs changes, please make sure to
@@ -490,7 +478,7 @@ bool ServerState::isUuid(std::string const& value) const {
 /// @brief get the key for a role in the agency
 //////////////////////////////////////////////////////////////////////////////
 std::string ServerState::roleToAgencyListKey(ServerState::RoleEnum role) {
-  return roleToAgencyKey(role) + "s";  // lol
+  return roleToAgencyKey(role) + "s";
 }
 
 std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
@@ -508,16 +496,6 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
     }
   }
   return "INVALID_CLUSTER_ROLE";
-}
-
-void mkdir(std::string const& path) {
-  if (!TRI_IsDirectory(path.c_str())) {
-    if (!arangodb::basics::FileUtils::createDirectory(path)) {
-      LOG_TOPIC("626e8", FATAL, arangodb::Logger::CLUSTER)
-          << "Couldn't create file directory " << path << " (UUID)";
-      FATAL_ERROR_EXIT();
-    }
-  }
 }
 
 std::string ServerState::getUuidFilename() const {
@@ -604,17 +582,9 @@ bool ServerState::checkEngineEquality(AgencyComm& comm) {
   return true;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief create an id for a specified role
-//////////////////////////////////////////////////////////////////////////////
-
-bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum const& role) {
+bool ServerState::checkIfAgencyInitialized(AgencyComm& comm,
+                                           ServerState::RoleEnum const& role) {
   std::string const agencyListKey = roleToAgencyListKey(role);
-  std::string const latestIdKey = "Latest" + roleToAgencyKey(role) + "Id";
-
-  VPackBuilder builder;
-  builder.add(VPackValue("none"));
-
   AgencyCommResult result = comm.getValues("Plan/" + agencyListKey);
   if (!result.successful()) {
     LOG_TOPIC("0f327", FATAL, Logger::STARTUP)
@@ -626,10 +596,30 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum
   VPackSlice servers = result.slice()[0].get(
       std::vector<std::string>({AgencyCommManager::path(), "Plan", agencyListKey}));
   if (!servers.isObject()) {
-    LOG_TOPIC("6507f", FATAL, Logger::STARTUP) << "Plan/" << agencyListKey << " in agency is no object. "
-                                      << "Agency not initialized?";
+    LOG_TOPIC("6507f", FATAL, Logger::STARTUP)
+        << "Plan/" << agencyListKey << " in agency is no object. "
+        << "Agency not initialized?";
     return false;
   }
+  return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief create an id for a specified role
+//////////////////////////////////////////////////////////////////////////////
+
+bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum const& role) {
+
+  // if the agency is not initialized, there is no point in continuing.
+  if(!checkIfAgencyInitialized(comm, role)) {
+    return false;
+  }
+
+  std::string const agencyListKey = roleToAgencyListKey(role);
+  std::string const latestIdKey = "Latest" + roleToAgencyKey(role) + "Id";
+
+  VPackBuilder builder;
+  builder.add(VPackValue("none"));
 
   std::string planUrl = "Plan/" + agencyListKey + "/" + _id;
   std::string currentUrl = "Current/" + agencyListKey + "/" + _id;
@@ -641,21 +631,21 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum
   // ok to fail..if it failed we are already registered
   AgencyCommResult pregResult = comm.sendTransactionWithFailover(preg, 0.0);
   if (!pregResult.successful()) {
-    LOG_TOPIC("cd1d0", TRACE, Logger::CLUSTER) 
-      << "unable to initially register in agency. " 
-      << pregResult.errorMessage(); 
+    LOG_TOPIC("cd1d0", TRACE, Logger::CLUSTER)
+      << "unable to initially register in agency. "
+      << pregResult.errorMessage();
   }
 
   AgencyWriteTransaction creg(
       {AgencyOperation(currentUrl, AgencyValueOperationType::SET, builder.slice()),
        AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP)},
-      AgencyPrecondition(currentUrl, AgencyPrecondition::Type::EMPTY, true));
+       AgencyPrecondition(currentUrl, AgencyPrecondition::Type::EMPTY, true));
   // ok to fail..if it failed we are already registered
   AgencyCommResult cregResult = comm.sendTransactionWithFailover(creg, 0.0);
   if (!cregResult.successful()) {
-    LOG_TOPIC("fe96a", TRACE, Logger::CLUSTER) 
-      << "unable to initially register in agency. " 
-      << cregResult.errorMessage(); 
+    LOG_TOPIC("fe96a", TRACE, Logger::CLUSTER)
+      << "unable to initially register in agency. "
+      << cregResult.errorMessage();
   }
 
   // coordinator is already/still registered from an previous unclean shutdown;
@@ -751,10 +741,10 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum
 
 bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersistedId) {
   TRI_ASSERT(!_id.empty() && !_myEndpoint.empty());
-    
+
   std::string const serverRegistrationPath = currentServersRegisteredPref + _id;
   std::string const rebootIdPath = "/Current/ServersKnown/" + _id + "/rebootId";
-  
+
   // If we generated a new UUID, this *must not* exist in the Agency, so we
   // should fail to register.
   std::vector<AgencyPrecondition> pre;
@@ -774,7 +764,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
       builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
       builder.add("timestamp", VPackValue(timepointToString(std::chrono::system_clock::now())));
     }
-    
+
     AgencyWriteTransaction trx(
         {AgencyOperation(serverRegistrationPath, AgencyValueOperationType::SET,
                          builder.slice()),

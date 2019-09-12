@@ -254,7 +254,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       }
 
       default:  // a "proper error" which has to be returned to the client
-        _response = std::move(res);
+        TRI_ASSERT(res == nullptr);
         callResponse(err, std::move(res));
         break;
     }

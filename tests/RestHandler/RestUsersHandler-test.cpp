@@ -50,8 +50,6 @@
 #include "velocypack/Parser.h"
 
 namespace {
-static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 struct TestView : public arangodb::LogicalView {
   arangodb::Result _appendVelocyPackResult;
@@ -127,7 +125,7 @@ class RestUsersHandlerTest : public ::testing::Test {
     arangodb::application_features::ApplicationServer::server->addFeature(
         features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
     system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                             0, systemDatabaseArgs);
+                                             systemDBInfo());
     features.emplace_back(new arangodb::ShardingFeature(server),
                           false);  // required for LogicalCollection::LogicalCollection(...)
     features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()),
@@ -199,8 +197,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
       arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabaseFeature>(
           "Database");
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-  ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-               databaseFeature->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
+  ASSERT_TRUE(databaseFeature->createDatabase(testDBInfo(), vocbase).ok());
   auto grantRequestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
   auto& grantRequest = *grantRequestPtr;
   auto grantResponcePtr = std::make_unique<GeneralResponseMock>();

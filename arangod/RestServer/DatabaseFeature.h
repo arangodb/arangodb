@@ -111,8 +111,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   std::vector<std::string> getDatabaseNames();
   std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
 
-  //options can contain id, replicationFactor, sharding (oneShardDB only)
-  int createDatabase(arangodb::CreateDatabaseInfo const& , TRI_vocbase_t*& result);
+  Result createDatabase(arangodb::CreateDatabaseInfo const& , TRI_vocbase_t*& result);
 
   int dropDatabase(std::string const& name, bool waitForDeletion, bool removeAppsDirectory);
   int dropDatabase(TRI_voc_tick_t id, bool waitForDeletion, bool removeAppsDirectory);

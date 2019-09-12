@@ -1224,17 +1224,17 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         vocbase = nullptr;
 
 				arangodb::CreateDatabaseInfo info;
-        auto rv = info.load(payloadSlice, VPackSlice::emptyArraySlice());
-        if (rv.fail()) {
-          THROW_ARANGO_EXCEPTION(rv);
+        auto res = info.load(payloadSlice, VPackSlice::emptyArraySlice());
+        if (res.fail()) {
+          THROW_ARANGO_EXCEPTION(res);
         }
 
-        int res = state->databaseFeature->createDatabase(info, vocbase);
+        res = state->databaseFeature->createDatabase(info, vocbase);
 
-        if (res != TRI_ERROR_NO_ERROR) {
+        if (res.fail()) {
           LOG_TOPIC("9c045", WARN, arangodb::Logger::ENGINES)
               << "cannot create database " << databaseId << ": "
-              << TRI_errno_string(res);
+              << res.errorMessage();
           ++state->errorCount;
           return state->canContinue();
         }

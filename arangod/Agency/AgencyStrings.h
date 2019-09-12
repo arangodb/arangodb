@@ -21,6 +21,9 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef ARANGOD_AGENCY_AGENCY_STRINGS_H
+#define ARANGOD_AGENCY_AGENCY_STRINGS_H
+
 #include <string>
 
 namespace arangodb {
@@ -45,3 +48,5 @@ constexpr char const* TARGET_HOTBACKUP = "Target/HotBackup";
 
 }  // namespace consensus
 }  // namespace arangodb
+
+#endif

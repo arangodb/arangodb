@@ -20,6 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "../IResearch/common.h"
 #include "../Mocks/StorageEngineMock.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/encoding.h"
@@ -145,7 +146,7 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
           "Database");
   ASSERT_TRUE((dbFeature));
   TRI_vocbase_t* vocbase;
-  ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "testDatabase", VPackSlice::emptyObjectSlice(), vocbase)));
+  ASSERT_TRUE(dbFeature->createDatabase(testDBInfo(), vocbase).ok());
   ASSERT_NE(nullptr, vocbase);
 
   arangodb::FlushFeature feature(server);
