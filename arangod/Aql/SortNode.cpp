@@ -317,7 +317,7 @@ inline ExecutionNode * arangodb::aql::SortNode::clone(ExecutionPlan * plan, bool
   }
   auto c = std::make_unique<SortNode>(plan, _id, _elements, _stable);
   if (outMaterializedDocument != nullptr) {
-    c->doMaterializationOf(inNonMaterializedColPtr, inNonMaterializedDocId,
+    c->setMaterialization(inNonMaterializedColPtr, inNonMaterializedDocId,
       outMaterializedDocument);
   }
   return cloneHelper(std::move(c),

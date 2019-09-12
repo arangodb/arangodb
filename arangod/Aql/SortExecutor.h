@@ -166,7 +166,7 @@ class SortExecutor  {
     static const bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = AllRowsFetcher;
-  using Infos = typename OutputRowImpl::Infos; // SortExecutorInfos;
+  using Infos = typename OutputRowImpl::Infos; 
   using Stats = NoStats;
 
   SortExecutor(Fetcher& fetcher, Infos& infos);

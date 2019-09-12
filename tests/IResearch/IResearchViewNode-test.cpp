@@ -237,7 +237,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
-    EXPECT_TRUE(1 == setHere.size());
+    ASSERT_EQ(1, setHere.size());
     EXPECT_TRUE(outVariable.id == setHere[0]->id);
     EXPECT_TRUE(outVariable.name == setHere[0]->name);
     EXPECT_TRUE(true == node.options().forceSync);
@@ -850,6 +850,43 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(0 == node.getCost().estimatedNrItems);  // no dependencies
   }
 
+  // with late materialization
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
+        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
+        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"name\":\"variable\", \"id\":0 }, \"outNmDocId\": { \"name\":\"variable100\", \"id\":100 },"
+        "\"outNmColPtr\": { \"name\":\"variable101\", \"id\":101 }, \"options\": { \"waitForSync\" : "
+        "true, \"collection\":null }, \"viewId\": \"" +
+        std::to_string(logicalView->id()) + "\" }");
+
+    arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
+                                                json->slice());
+
+    EXPECT_TRUE(node.empty());                // view has no links
+    EXPECT_TRUE(node.collections().empty());  // view has no links
+    EXPECT_TRUE(node.shards().empty());
+    EXPECT_TRUE(!node.sort().first);   // primary sort is not set by default
+    EXPECT_EQ(0, node.sort().second);  // primary sort is not set by default
+
+    EXPECT_TRUE(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node.getType());
+    EXPECT_TRUE(node.isLateMaterialized());
+    EXPECT_TRUE(outVariable.id == node.outVariable().id);
+    EXPECT_TRUE(outVariable.name == node.outVariable().name);
+    arangodb::HashSet<arangodb::aql::Variable const*> usedHere;
+    node.getVariablesUsedHere(usedHere);
+    EXPECT_TRUE(usedHere.empty());
+    auto const setHere = node.getVariablesSetHere();
+    ASSERT_EQ(2, setHere.size());
+    //EXPECT_EQ(outVariable.id, setHere[0]->id);
+    //EXPECT_EQ(outVariable.name, setHere[0]->name);
+    EXPECT_EQ(101, setHere[0]->id);
+    EXPECT_EQ("variable101", setHere[0]->name);
+    EXPECT_EQ(100, setHere[1]->id);
+    EXPECT_EQ("variable100", setHere[1]->name);
+  }
+
   // invalid option 'waitForSync'
   {
     auto json = arangodb::velocypack::Parser::fromJson(
@@ -935,6 +972,49 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
       EXPECT_TRUE(false);
     }
   }
+  // with invalid late materialization (no collection variable)
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
+        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
+        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"name\":\"variable\", \"id\":0 }, \"outNmDocId\": { \"name\":\"variable100\", \"id\":100 },"
+        "\"options\": { \"waitForSync\" : "
+        "true, \"collection\":null }, \"viewId\": \"" +
+        std::to_string(logicalView->id()) + "\" }");
+
+    try {
+      arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
+                                                  json->slice());
+      EXPECT_TRUE(false);
+    } catch (arangodb::basics::Exception const& e) {
+      EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, e.code());
+    } catch (...) {
+      EXPECT_TRUE(false);
+    }
+  }
+  // with invalid late materialization (no local document id variable)
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
+        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
+        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { \"name\":\"variable100\", \"id\":100 },"
+        "\"options\": { \"waitForSync\" : "
+        "true, \"collection\":null }, \"viewId\": \"" +
+        std::to_string(logicalView->id()) + "\" }");
+
+    try {
+      arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
+                                                  json->slice());
+      EXPECT_TRUE(false);
+    } catch (arangodb::basics::Exception const& e) {
+      EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, e.code());
+    } catch (...) {
+      EXPECT_TRUE(false);
+    }
+  }
+
 }
 
 // FIXME TODO
@@ -1350,6 +1430,116 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_TRUE(node.getCost() == cloned.getCost());
     }
   }
+
+  // with late materialization 
+  {
+    arangodb::iresearch::IResearchViewNode node(*query.plan(),
+                                                42,           // id
+                                                vocbase,      // database
+                                                logicalView,  // view
+                                                outVariable,
+                                                nullptr,  // no filter condition
+                                                nullptr,  // no options
+                                                {});        // no sort condition
+    arangodb::aql::Variable const outNmColPtr("variable100", 100);
+    arangodb::aql::Variable const outNmDocId("variable101", 101);
+    node.setLateMaterialized(&outNmColPtr, &outNmDocId);
+    ASSERT_TRUE(node.isLateMaterialized());
+    auto varsSetOriginal = node.getVariablesSetHere();
+    ASSERT_EQ(2, varsSetOriginal.size());
+    // clone without properties into the same plan
+    {
+      auto const nextId = node.plan()->nextId();
+      auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
+          *node.clone(query.plan(), true, false));
+      auto varsSetCloned = cloned.getVariablesSetHere();
+      EXPECT_TRUE(cloned.collections().empty());
+      EXPECT_EQ(node.empty(), cloned.empty());
+      EXPECT_EQ(node.shards(), cloned.shards());
+      EXPECT_EQ(node.getType(), cloned.getType());
+      EXPECT_EQ(&node.outVariable(), &cloned.outVariable());  // same objects
+      EXPECT_EQ(node.plan(), cloned.plan());
+      EXPECT_EQ(nextId + 1, cloned.id());
+      EXPECT_EQ(&node.vocbase(), &cloned.vocbase());
+      EXPECT_EQ(node.view(), cloned.view());
+      EXPECT_EQ(&node.filterCondition(), &cloned.filterCondition());
+      EXPECT_EQ(node.scorers(), cloned.scorers());
+      EXPECT_EQ(node.volatility(), cloned.volatility());
+      EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
+      EXPECT_EQ(node.sort(), cloned.sort());
+      EXPECT_EQ(node.getCost(), cloned.getCost());
+      EXPECT_EQ(node.isLateMaterialized(), cloned.isLateMaterialized());
+      ASSERT_EQ(varsSetOriginal.size(), varsSetCloned.size());
+      EXPECT_EQ(varsSetOriginal[0], varsSetCloned[0]);
+      EXPECT_EQ(varsSetOriginal[1], varsSetCloned[1]);
+    }
+
+    // clone with properties into another plan
+    {
+      // another dummy query
+      arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
+                                      nullptr, arangodb::velocypack::Parser::fromJson("{}"),
+                                      arangodb::aql::PART_MAIN);
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+
+      auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
+          *node.clone(otherQuery.plan(), true, true));
+      auto varsSetCloned = cloned.getVariablesSetHere();
+      EXPECT_TRUE(cloned.collections().empty());
+      EXPECT_EQ(node.empty(), cloned.empty());
+      EXPECT_EQ(node.shards(), cloned.shards());
+      EXPECT_EQ(node.getType(), cloned.getType());
+      EXPECT_NE(&node.outVariable(), &cloned.outVariable());  // different objects
+      EXPECT_EQ(node.outVariable().id, cloned.outVariable().id);
+      EXPECT_EQ(node.outVariable().name, cloned.outVariable().name);
+      EXPECT_EQ(otherQuery.plan(), cloned.plan());
+      EXPECT_EQ(node.id(), cloned.id());
+      EXPECT_EQ(&node.vocbase(), &cloned.vocbase());
+      EXPECT_EQ(node.view(), cloned.view());
+      EXPECT_EQ(&node.filterCondition(), &cloned.filterCondition());
+      EXPECT_EQ(node.scorers(), cloned.scorers());
+      EXPECT_EQ(node.volatility(), cloned.volatility());
+      EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
+      EXPECT_EQ(node.sort(), cloned.sort());
+      EXPECT_EQ(node.getCost(), cloned.getCost());
+      EXPECT_EQ(node.isLateMaterialized(), cloned.isLateMaterialized());
+      ASSERT_EQ(varsSetOriginal.size(), varsSetCloned.size());
+      EXPECT_NE(varsSetOriginal[0], varsSetCloned[0]);
+      EXPECT_NE(varsSetOriginal[1], varsSetCloned[1]);
+    }
+    // clone without properties into another plan
+    {
+      // another dummy query
+      arangodb::aql::Query otherQuery(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
+        nullptr, arangodb::velocypack::Parser::fromJson("{}"),
+        arangodb::aql::PART_MAIN);
+      otherQuery.prepare(arangodb::QueryRegistryFeature::registry());
+
+      node.plan()->nextId();
+      auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
+        *node.clone(otherQuery.plan(), true, false));
+      auto varsSetCloned = cloned.getVariablesSetHere();
+      EXPECT_TRUE(cloned.collections().empty());
+      EXPECT_EQ(node.empty(), cloned.empty());
+      EXPECT_EQ(node.shards(), cloned.shards());
+      EXPECT_EQ(node.getType(), cloned.getType());
+      EXPECT_EQ(&node.outVariable(), &cloned.outVariable());  // same objects
+      EXPECT_EQ(otherQuery.plan(), cloned.plan());
+      EXPECT_EQ(node.id(), cloned.id());
+      EXPECT_EQ(&node.vocbase(), &cloned.vocbase());
+      EXPECT_EQ(node.view(), cloned.view());
+      EXPECT_EQ(&node.filterCondition(), &cloned.filterCondition());
+      EXPECT_EQ(node.scorers(), cloned.scorers());
+      EXPECT_EQ(node.volatility(), cloned.volatility());
+      EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
+      EXPECT_EQ(node.sort(), cloned.sort());
+      EXPECT_TRUE(node.getCost() == cloned.getCost());
+      EXPECT_EQ(node.isLateMaterialized(), cloned.isLateMaterialized());
+      ASSERT_EQ(varsSetOriginal.size(), varsSetCloned.size());
+      EXPECT_EQ(varsSetOriginal[0], varsSetCloned[0]);
+      EXPECT_EQ(varsSetOriginal[1], varsSetCloned[1]);
+    }
+  }
 }
 
 TEST_F(IResearchViewNodeTest, serialize) {
@@ -1394,7 +1584,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
     auto const nodesSlice = slice.get("nodes");
     EXPECT_TRUE(nodesSlice.isArray());
     arangodb::velocypack::ArrayIterator it(nodesSlice);
-    EXPECT_TRUE(1 == it.size());
+    ASSERT_TRUE(1 == it.size());
     auto nodeSlice = it.value();
 
     // constructor
@@ -1415,7 +1605,6 @@ TEST_F(IResearchViewNodeTest, serialize) {
       EXPECT_TRUE(node.volatility() == deserialized.volatility());
       EXPECT_TRUE(node.options().forceSync == deserialized.options().forceSync);
       EXPECT_TRUE(node.sort() == deserialized.sort());
-
       EXPECT_TRUE(node.getCost() == deserialized.getCost());
     }
 
@@ -1440,7 +1629,6 @@ TEST_F(IResearchViewNodeTest, serialize) {
       EXPECT_TRUE(node.volatility() == deserialized.volatility());
       EXPECT_TRUE(node.options().forceSync == deserialized.options().forceSync);
       EXPECT_TRUE(node.sort() == deserialized.sort());
-
       EXPECT_TRUE(node.getCost() == deserialized.getCost());
     }
   }
@@ -1480,7 +1668,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
     auto const nodesSlice = slice.get("nodes");
     EXPECT_TRUE(nodesSlice.isArray());
     arangodb::velocypack::ArrayIterator it(nodesSlice);
-    EXPECT_TRUE(1 == it.size());
+    ASSERT_EQ(1, it.size());
     auto nodeSlice = it.value();
 
     // constructor
@@ -1501,7 +1689,6 @@ TEST_F(IResearchViewNodeTest, serialize) {
       EXPECT_TRUE(node.volatility() == deserialized.volatility());
       EXPECT_TRUE(node.options().forceSync == deserialized.options().forceSync);
       EXPECT_TRUE(node.sort() == deserialized.sort());
-
       EXPECT_TRUE(node.getCost() == deserialized.getCost());
     }
 
@@ -1526,8 +1713,92 @@ TEST_F(IResearchViewNodeTest, serialize) {
       EXPECT_TRUE(node.volatility() == deserialized.volatility());
       EXPECT_TRUE(node.options().forceSync == deserialized.options().forceSync);
       EXPECT_TRUE(node.sort() == deserialized.sort());
-
       EXPECT_TRUE(node.getCost() == deserialized.getCost());
+    }
+  }
+  // with late materialization
+  {
+    arangodb::iresearch::IResearchViewNode node(*query.plan(),
+                                                42,           // id
+                                                vocbase,      // database
+                                                logicalView,  // view
+                                                outVariable,
+                                                nullptr,  // no filter condition
+                                                nullptr,  // no options
+                                                {});        // no sort condition
+    arangodb::aql::Variable const outNmColPtr("variable100", 100);
+    arangodb::aql::Variable const outNmDocId("variable101", 101);
+    node.setLateMaterialized(&outNmColPtr, &outNmDocId);
+
+    arangodb::velocypack::Builder builder;
+    unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
+    node.toVelocyPack(builder, flags, false);  // object with array of objects
+
+    auto const slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    auto const nodesSlice = slice.get("nodes");
+    EXPECT_TRUE(nodesSlice.isArray());
+    arangodb::velocypack::ArrayIterator it(nodesSlice);
+    ASSERT_EQ(1, it.size());
+    auto nodeSlice = it.value();
+
+    // constructor
+    {
+      arangodb::iresearch::IResearchViewNode const deserialized(*query.plan(), nodeSlice);
+      EXPECT_EQ(node.empty(), deserialized.empty());
+      EXPECT_EQ(node.shards(), deserialized.shards());
+      EXPECT_TRUE(deserialized.collections().empty());
+      EXPECT_EQ(node.getType(), deserialized.getType());
+      EXPECT_EQ(node.outVariable().id, deserialized.outVariable().id);
+      EXPECT_EQ(node.outVariable().name, deserialized.outVariable().name);
+      EXPECT_EQ(node.plan(), deserialized.plan());
+      EXPECT_EQ(node.id(), deserialized.id());
+      EXPECT_EQ(&node.vocbase(), &deserialized.vocbase());
+      EXPECT_EQ(node.view(), deserialized.view());
+      EXPECT_EQ(&node.filterCondition(), &deserialized.filterCondition());
+      EXPECT_EQ(node.scorers(), deserialized.scorers());
+      EXPECT_EQ(node.volatility(), deserialized.volatility());
+      EXPECT_EQ(node.options().forceSync, deserialized.options().forceSync);
+      EXPECT_EQ(node.sort(), deserialized.sort());
+      EXPECT_EQ(node.getCost(), deserialized.getCost());
+      EXPECT_EQ(node.isLateMaterialized(), deserialized.isLateMaterialized());
+      auto varsSetHere = deserialized.getVariablesSetHere();
+      ASSERT_EQ(2, varsSetHere.size());
+      EXPECT_EQ(outNmColPtr.id, varsSetHere[0]->id);
+      EXPECT_EQ(outNmColPtr.name, varsSetHere[0]->name);
+      EXPECT_EQ(outNmDocId.id, varsSetHere[1]->id);
+      EXPECT_EQ(outNmDocId.name, varsSetHere[1]->name);
+    }
+
+    // factory method
+    {
+      std::unique_ptr<arangodb::aql::ExecutionNode> deserializedNode(
+          arangodb::aql::ExecutionNode::fromVPackFactory(query.plan(), nodeSlice));
+      auto& deserialized =
+          dynamic_cast<arangodb::iresearch::IResearchViewNode&>(*deserializedNode);
+      EXPECT_EQ(node.empty(), deserialized.empty());
+      EXPECT_EQ(node.shards(), deserialized.shards());
+      EXPECT_TRUE(deserialized.collections().empty());
+      EXPECT_EQ(node.getType(), deserialized.getType());
+      EXPECT_EQ(node.outVariable().id, deserialized.outVariable().id);
+      EXPECT_EQ(node.outVariable().name, deserialized.outVariable().name);
+      EXPECT_EQ(node.plan(), deserialized.plan());
+      EXPECT_EQ(node.id(), deserialized.id());
+      EXPECT_EQ(&node.vocbase(), &deserialized.vocbase());
+      EXPECT_EQ(node.view(), deserialized.view());
+      EXPECT_EQ(&node.filterCondition(), &deserialized.filterCondition());
+      EXPECT_EQ(node.scorers(), deserialized.scorers());
+      EXPECT_EQ(node.volatility(), deserialized.volatility());
+      EXPECT_EQ(node.options().forceSync, deserialized.options().forceSync);
+      EXPECT_EQ(node.sort(), deserialized.sort());
+      EXPECT_EQ(node.getCost(), deserialized.getCost());
+      EXPECT_EQ(node.isLateMaterialized(), deserialized.isLateMaterialized());
+      auto varsSetHere = deserialized.getVariablesSetHere();
+      ASSERT_EQ(2, varsSetHere.size());
+      EXPECT_EQ(outNmColPtr.id, varsSetHere[0]->id);
+      EXPECT_EQ(outNmColPtr.name, varsSetHere[0]->name);
+      EXPECT_EQ(outNmDocId.id, varsSetHere[1]->id);
+      EXPECT_EQ(outNmDocId.name, varsSetHere[1]->name);
     }
   }
 }
@@ -1579,7 +1850,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
     auto const nodesSlice = slice.get("nodes");
     EXPECT_TRUE(nodesSlice.isArray());
     arangodb::velocypack::ArrayIterator it(nodesSlice);
-    EXPECT_TRUE(1 == it.size());
+    ASSERT_EQ(1, it.size());
     auto nodeSlice = it.value();
 
     // constructor
@@ -1601,7 +1872,6 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
       EXPECT_TRUE(node.options().forceSync == deserialized.options().forceSync);
       EXPECT_TRUE(node.sort() == deserialized.sort());
       EXPECT_EQ(1, node.sort().second);
-
       EXPECT_TRUE(node.getCost() == deserialized.getCost());
     }
 
@@ -1627,7 +1897,6 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
       EXPECT_TRUE(node.options().forceSync == deserialized.options().forceSync);
       EXPECT_TRUE(node.sort() == deserialized.sort());
       EXPECT_EQ(1, node.sort().second);
-
       EXPECT_TRUE(node.getCost() == deserialized.getCost());
     }
   }
@@ -1667,7 +1936,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
     auto const nodesSlice = slice.get("nodes");
     EXPECT_TRUE(nodesSlice.isArray());
     arangodb::velocypack::ArrayIterator it(nodesSlice);
-    EXPECT_TRUE(1 == it.size());
+    ASSERT_EQ(1, it.size());
     auto nodeSlice = it.value();
 
     // constructor
@@ -1689,7 +1958,6 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
       EXPECT_TRUE(node.options().forceSync == deserialized.options().forceSync);
       EXPECT_TRUE(node.sort() == deserialized.sort());
       EXPECT_EQ(0, node.sort().second);
-
       EXPECT_TRUE(node.getCost() == deserialized.getCost());
     }
 
@@ -1715,8 +1983,95 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
       EXPECT_TRUE(node.options().forceSync == deserialized.options().forceSync);
       EXPECT_TRUE(node.sort() == deserialized.sort());
       EXPECT_EQ(0, node.sort().second);
-
       EXPECT_TRUE(node.getCost() == deserialized.getCost());
+    }
+  }
+    // with late materialization
+  {
+    arangodb::iresearch::IResearchViewNode node(*query.plan(),
+                                                42,           // id
+                                                vocbase,      // database
+                                                logicalView,  // view
+                                                outVariable,
+                                                nullptr,  // no filter condition
+                                                nullptr,  // no options
+                                                {});        // no sort condition
+    arangodb::aql::Variable const outNmColPtr("variable100", 100);
+    arangodb::aql::Variable const outNmDocId("variable101", 101);
+    node.sort(&viewImpl.primarySort(), 1);
+    node.setLateMaterialized(&outNmColPtr, &outNmDocId);
+    
+    arangodb::velocypack::Builder builder;
+    unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
+    node.toVelocyPack(builder, flags, false);  // object with array of objects
+
+    auto const slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    auto const nodesSlice = slice.get("nodes");
+    EXPECT_TRUE(nodesSlice.isArray());
+    arangodb::velocypack::ArrayIterator it(nodesSlice);
+    ASSERT_EQ(1, it.size());
+    auto nodeSlice = it.value();
+
+    // constructor
+    {
+      arangodb::iresearch::IResearchViewNode const deserialized(*query.plan(), nodeSlice);
+      EXPECT_EQ(node.empty(), deserialized.empty());
+      EXPECT_EQ(node.shards(), deserialized.shards());
+      EXPECT_TRUE(deserialized.collections().empty());
+      EXPECT_EQ(node.getType(), deserialized.getType());
+      EXPECT_EQ(node.outVariable().id, deserialized.outVariable().id);
+      EXPECT_EQ(node.outVariable().name, deserialized.outVariable().name);
+      EXPECT_EQ(node.plan(), deserialized.plan());
+      EXPECT_EQ(node.id(), deserialized.id());
+      EXPECT_EQ(&node.vocbase(), &deserialized.vocbase());
+      EXPECT_EQ(node.view(), deserialized.view());
+      EXPECT_EQ(&node.filterCondition(), &deserialized.filterCondition());
+      EXPECT_EQ(node.scorers(), deserialized.scorers());
+      EXPECT_EQ(node.volatility(), deserialized.volatility());
+      EXPECT_EQ(node.options().forceSync, deserialized.options().forceSync);
+      EXPECT_EQ(node.sort(), deserialized.sort());
+      EXPECT_EQ(1, node.sort().second);
+      EXPECT_EQ(node.getCost(), deserialized.getCost());
+      EXPECT_EQ(node.isLateMaterialized(), deserialized.isLateMaterialized());
+      auto varsSetHere = deserialized.getVariablesSetHere();
+      ASSERT_EQ(2, varsSetHere.size());
+      EXPECT_EQ(outNmColPtr.id, varsSetHere[0]->id);
+      EXPECT_EQ(outNmColPtr.name, varsSetHere[0]->name);
+      EXPECT_EQ(outNmDocId.id, varsSetHere[1]->id);
+      EXPECT_EQ(outNmDocId.name, varsSetHere[1]->name);
+    }
+
+    // factory method
+    {
+      std::unique_ptr<arangodb::aql::ExecutionNode> deserializedNode(
+          arangodb::aql::ExecutionNode::fromVPackFactory(query.plan(), nodeSlice));
+      auto& deserialized =
+          dynamic_cast<arangodb::iresearch::IResearchViewNode&>(*deserializedNode);
+      EXPECT_EQ(node.empty(), deserialized.empty());
+      EXPECT_EQ(node.shards(), deserialized.shards());
+      EXPECT_TRUE(deserialized.collections().empty());
+      EXPECT_EQ(node.getType(), deserialized.getType());
+      EXPECT_EQ(node.outVariable().id, deserialized.outVariable().id);
+      EXPECT_EQ(node.outVariable().name, deserialized.outVariable().name);
+      EXPECT_EQ(node.plan(), deserialized.plan());
+      EXPECT_EQ(node.id(), deserialized.id());
+      EXPECT_EQ(&node.vocbase(), &deserialized.vocbase());
+      EXPECT_EQ(node.view(), deserialized.view());
+      EXPECT_EQ(&node.filterCondition(), &deserialized.filterCondition());
+      EXPECT_EQ(node.scorers(), deserialized.scorers());
+      EXPECT_EQ(node.volatility(), deserialized.volatility());
+      EXPECT_EQ(node.options().forceSync, deserialized.options().forceSync);
+      EXPECT_EQ(node.sort(), deserialized.sort());
+      EXPECT_EQ(1, node.sort().second);
+      EXPECT_EQ(node.getCost(), deserialized.getCost());
+      EXPECT_EQ(node.isLateMaterialized(), deserialized.isLateMaterialized());
+      auto varsSetHere = deserialized.getVariablesSetHere();
+      ASSERT_EQ(2, varsSetHere.size());
+      EXPECT_EQ(outNmColPtr.id, varsSetHere[0]->id);
+      EXPECT_EQ(outNmColPtr.name, varsSetHere[0]->name);
+      EXPECT_EQ(outNmDocId.id, varsSetHere[1]->id);
+      EXPECT_EQ(outNmDocId.name, varsSetHere[1]->name);
     }
   }
 }
@@ -1795,8 +2150,7 @@ TEST_F(IResearchViewNodeTest, collections) {
   EXPECT_TRUE(node.shards().empty());
   EXPECT_TRUE(!node.empty());  // view has no links
   auto collections = node.collections();
-  EXPECT_TRUE(!collections.empty());  // view has no links
-  EXPECT_TRUE(2 == collections.size());
+  EXPECT_EQ(2, collections.size());
 
   // we expect only collections 'collection0', 'collection1' to be
   // present since 'collection2' is not registered with the query
@@ -1804,7 +2158,7 @@ TEST_F(IResearchViewNodeTest, collections) {
                                                       std::to_string(collection1->id())};
 
   for (arangodb::aql::Collection const& collection : collections) {
-    EXPECT_TRUE(1 == expectedCollections.erase(collection.name()));
+    EXPECT_EQ(1, expectedCollections.erase(collection.name()));
   }
   EXPECT_TRUE(expectedCollections.empty());
 }
@@ -1931,6 +2285,129 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
   }
 }
 
+TEST_F(IResearchViewNodeTest, createBlockSingleServerLateMaterialized) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                        "testVocbase");
+  auto createJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+  auto logicalView = vocbase.createView(createJson->slice());
+  ASSERT_TRUE((false == !logicalView));
+
+  // create collection0
+  std::shared_ptr<arangodb::LogicalCollection> collection0;
+  {
+    auto createJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
+    collection0 = vocbase.createCollection(createJson->slice());
+    ASSERT_TRUE((nullptr != collection0));
+  }
+
+  // link collections
+  auto updateJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"links\": {"
+      "\"testCollection0\": { \"includeAllFields\": true, "
+      "\"trackListPositions\": true }"
+      "}}");
+  EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
+
+  // insert into collection
+  {
+    std::vector<std::string> const EMPTY;
+
+    arangodb::OperationOptions opt;
+    arangodb::ManagedDocumentResult mmdoc;
+
+    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                       EMPTY, EMPTY, EMPTY,
+                                       arangodb::transaction::Options());
+    EXPECT_TRUE((trx.begin().ok()));
+
+    auto json = arangodb::velocypack::Parser::fromJson("{}");
+    auto const res = collection0->insert(&trx, json->slice(), mmdoc, opt, false);
+    EXPECT_TRUE(res.ok());
+
+    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(
+        (arangodb::tests::executeQuery(vocbase,
+                                       "FOR d IN testView SEARCH 1 ==1 OPTIONS "
+                                       "{ waitForSync: true } RETURN d")
+             .result.ok()));  // commit
+  }
+
+  // dummy query
+  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
+                             nullptr, arangodb::velocypack::Parser::fromJson("{}"),
+                             arangodb::aql::PART_MAIN);
+  query.prepare(arangodb::QueryRegistryFeature::registry());
+
+  // dummy engine
+  arangodb::aql::ExecutionEngine engine(&query);
+
+  arangodb::aql::Variable const outVariable("variable", 0);
+  arangodb::aql::Variable const outNmColPtr("variable100", 100);
+  arangodb::aql::Variable const outNmDocId("variable101", 101);
+  // no filter condition, no sort condition
+  {
+    arangodb::aql::SingletonNode singleton(query.plan(), 0);
+    arangodb::iresearch::IResearchViewNode node(*query.plan(),
+                                                42,           // id
+                                                vocbase,      // database
+                                                logicalView,  // view
+                                                outVariable,
+                                                nullptr,  // no filter condition
+                                                nullptr,  // no options
+                                                {}        // no sort condition
+    );
+    node.addDependency(&singleton);
+    node.setLateMaterialized(&outNmColPtr, &outNmDocId);
+    // "Trust me, I'm an IT professional"
+    singleton.setVarUsageValid();
+    node.setVarUsageValid();
+
+    node.planRegisters(nullptr);
+
+    std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> EMPTY;
+
+    // before transaction has started (no snapshot)
+    try {
+      auto block = node.createBlock(engine, EMPTY);
+      EXPECT_TRUE(false);
+    } catch (arangodb::basics::Exception const& e) {
+      EXPECT_TRUE(TRI_ERROR_INTERNAL == e.code());
+    }
+
+    // start transaction (put snapshot into)
+    ASSERT_TRUE(query.trx()->state());
+    EXPECT_TRUE(nullptr ==
+                arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView)
+                    .snapshot(*query.trx(),
+                              arangodb::iresearch::IResearchView::SnapshotMode::Find));
+    auto* snapshot =
+        arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView)
+            .snapshot(*query.trx(), arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    EXPECT_TRUE(snapshot ==
+                arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView)
+                    .snapshot(*query.trx(),
+                              arangodb::iresearch::IResearchView::SnapshotMode::Find));
+    EXPECT_TRUE(snapshot ==
+                arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView)
+                    .snapshot(*query.trx(),
+                              arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate));
+    EXPECT_TRUE(snapshot ==
+                arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView)
+                    .snapshot(*query.trx(),
+                              arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace));
+
+    // after transaction has started
+    {
+      auto block = node.createBlock(engine, EMPTY);
+      EXPECT_TRUE(nullptr != block);
+      EXPECT_NE(nullptr, 
+        (dynamic_cast<arangodb::aql::ExecutionBlockImpl<arangodb::aql::IResearchViewExecutor<false, false>>*>((block.get()))));
+    }
+  }
+}
+
 // FIXME TODO
 // TEST_F(IResearchViewNodeTest, createBlockDBServer) {
 //}
@@ -1966,6 +2443,53 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
   );
   node.addDependency(&singleton);
 
+  std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> EMPTY;
+  singleton.setVarUsageValid();
+  node.setVarUsageValid();
+  singleton.planRegisters(nullptr);
+  node.planRegisters(nullptr);
+  arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
+  auto emptyBlock = node.createBlock(engine, EMPTY);
+  arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_SINGLE);
+  EXPECT_TRUE(nullptr != emptyBlock);
+  EXPECT_TRUE(nullptr !=
+              dynamic_cast<arangodb::aql::ExecutionBlockImpl<arangodb::aql::NoResultsExecutor>*>(
+                  emptyBlock.get()));
+}
+
+TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                        "testVocbase");
+  auto createJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+  auto logicalView = vocbase.createView(createJson->slice());
+  ASSERT_TRUE((false == !logicalView));
+
+  // dummy query
+  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString("RETURN 1"),
+                             nullptr, arangodb::velocypack::Parser::fromJson("{}"),
+                             arangodb::aql::PART_MAIN);
+  query.prepare(arangodb::QueryRegistryFeature::registry());
+
+  // dummy engine
+  arangodb::aql::ExecutionEngine engine(&query);
+  arangodb::aql::SingletonNode singleton(query.plan(), 0);
+  arangodb::aql::Variable const outVariable("variable", 0);
+  arangodb::aql::Variable const outNmColPtr("variable100", 100);
+  arangodb::aql::Variable const outNmDocId("variable101", 101);
+
+  // no filter condition, no sort condition
+  arangodb::iresearch::IResearchViewNode node(*query.plan(),
+                                              42,           // id
+                                              vocbase,      // database
+                                              logicalView,  // view
+                                              outVariable,
+                                              nullptr,  // no filter condition
+                                              nullptr,  // no options
+                                              {}        // no sort condition
+  );
+  node.addDependency(&singleton);
+  node.setLateMaterialized(&outNmColPtr, &outNmDocId);
   std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> EMPTY;
   singleton.setVarUsageValid();
   node.setVarUsageValid();

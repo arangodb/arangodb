@@ -1028,7 +1028,7 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   node->_volatilityMask = _volatilityMask;
   node->_sort = _sort;
   if (outNonMaterializedColId != nullptr && outNonMaterializedDocId != nullptr) {
-    node->skipMaterializationTo(outNonMaterializedColId, outNonMaterializedDocId);
+    node->setLateMaterialized(outNonMaterializedColId, outNonMaterializedDocId);
   }
   return cloneHelper(std::move(node), withDependencies, withProperties);
 }
@@ -1058,6 +1058,22 @@ void IResearchViewNode::getVariablesUsedHere(arangodb::HashSet<aql::Variable con
     aql::Ast::getReferencedVariables(scorer.node, vars);
   }
 }
+
+std::vector<arangodb::aql::Variable const*> IResearchViewNode::getVariablesSetHere() const {
+    std::vector<arangodb::aql::Variable const*> vars(_scorers.size() + 
+    (_outNonMaterializedColPtr != nullptr ? 2 : 1) // document or  collection + docId for late materialization
+    );
+
+    std::transform(_scorers.begin(), _scorers.end(), vars.begin(),
+      [](auto const& scorer) { return scorer.var; }); 
+    if(_outNonMaterializedColPtr != nullptr) {
+      vars[vars.size() - 2] = _outNonMaterializedColPtr;
+      vars[vars.size() - 1] = _outNonMaterializedDocId;
+    } else {
+      vars[vars.size() - 1] = _outVariable;
+    }
+    return vars;
+  }
 
 std::shared_ptr<std::unordered_set<aql::RegisterId>> IResearchViewNode::calcInputRegs() const {
   std::shared_ptr<std::unordered_set<aql::RegisterId>> inputRegs =

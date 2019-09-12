@@ -290,13 +290,13 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, EN::LIMIT, false);
+  plan->findNodesOfType(nodes, EN::LIMIT, true);
   for (auto node : nodes) {
     auto loop = const_cast<ExecutionNode*>(node->getLoop());
     if (arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
       auto & viewNode = *EN::castTo<IResearchViewNode*>(loop);
       if(viewNode.isLateMaterialized()) {
-        continue; // aleady optimized
+        continue; //loop is aleady optimized
       }
       ExecutionNode* current = node->getFirstDependency();
       SortNode* sortNode = nullptr;
@@ -311,7 +311,9 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
           }
           break;
         case arangodb::aql::ExecutionNode::REMOTE:
-          sortNode = nullptr; // REMOTE node is a blocker  - we do not want to make materialization calls across cluster!
+          // REMOTE node is a blocker  - we do not want to make materialization calls across cluster!
+          // Moreover we pass raw collection pointer - this must not cross process border!
+          sortNode = nullptr; 
           break;
         }
         arangodb::HashSet<Variable const*> currentUsedVars;
@@ -329,8 +331,8 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
         Ast* ast = plan->getAst();
         auto* localDocIdTmp = ast->variables()->createTemporaryVariable();
         auto* localColPtrTmp = ast->variables()->createTemporaryVariable();
-        viewNode.skipMaterializationTo(localColPtrTmp, localDocIdTmp);
-        sortNode->doMaterializationOf(localColPtrTmp, localDocIdTmp, &viewNode.outVariable());
+        viewNode.setLateMaterialized(localColPtrTmp, localDocIdTmp);
+        sortNode->setMaterialization(localColPtrTmp, localDocIdTmp, &viewNode.outVariable());
         modified = true;
       }
     }

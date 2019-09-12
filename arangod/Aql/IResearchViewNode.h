@@ -79,7 +79,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @returns true if underlying view has no links
   bool empty() const noexcept;
 
-  void skipMaterializationTo(aql::Variable const* colPtrVariable,
+  void setLateMaterialized(aql::Variable const* colPtrVariable,
                              aql::Variable const* docIdVariable) noexcept {
     TRI_ASSERT((docIdVariable != nullptr) == (colPtrVariable != nullptr));
     _outNonMaterializedDocId = docIdVariable;
@@ -90,21 +90,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   aql::CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesSetHere
-  std::vector<arangodb::aql::Variable const*> getVariablesSetHere() const override final {
-    std::vector<arangodb::aql::Variable const*> vars(_scorers.size() + 
-    (_outNonMaterializedColPtr != nullptr ? 2 : 1) // document or  collection + docId for late materialization
-    );
-
-    std::transform(_scorers.begin(), _scorers.end(), vars.begin(),
-      [](auto const& scorer) { return scorer.var; }); 
-    if(_outNonMaterializedColPtr != nullptr) {
-      vars[vars.size() - 2] = _outNonMaterializedColPtr;
-      vars[vars.size() - 1] = _outNonMaterializedDocId;
-    } else {
-      vars[vars.size() - 1] = _outVariable;
-    }
-    return vars;
-  }
+  std::vector<arangodb::aql::Variable const*> getVariablesSetHere() const override final;
 
   /// @brief return out variable
   arangodb::aql::Variable const& outVariable() const noexcept {
