@@ -386,7 +386,7 @@ static int distributeBabyOnShards(std::unordered_map<ShardID, std::vector<VPackS
                                   LogicalCollection& collinfo,
                                   std::vector<std::pair<ShardID, VPackValueLength>>& reverseMapping,
                                   VPackSlice const value) {
-  TRI_ASSERT(!collinfo.isSmart());
+  TRI_ASSERT(!collinfo.isSmart() || collinfo.type() == TRI_COL_TYPE_DOCUMENT);
 
   ShardID shardID;
   if (!value.isString() && !value.isObject()) {
@@ -1357,10 +1357,10 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a document in a coordinator
+/// @brief remove a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Future<OperationResult> deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
+Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Methods& trx,
                                                     LogicalCollection& coll, VPackSlice const slice,
                                                     arangodb::OperationOptions const& options) {
   // Set a few variables needed for our work:
@@ -1424,23 +1424,11 @@ Future<OperationResult> deleteDocumentOnCoordinator(arangodb::transaction::Metho
     futures.reserve(shardMap.size());
     
     for (auto const& it : shardMap) {
-      std::string url;
       VPackBuffer<uint8_t> buffer;
-      
       if (!useMultiple) {
         TRI_ASSERT(it.second.size() == 1);
-
-        VPackSlice keySlice = slice;
-        if (slice.isObject()) {
-          keySlice = slice.get(StaticStrings::KeyString);
-        }
-        
-        VPackStringRef const ref(keySlice);
-        url = baseUrl + StringUtils::urlEncode(it.first) + "/" +
-              StringUtils::urlEncode(ref.data(), ref.length()) + optsUrlPart;
-        
+        buffer.append(slice.begin(), slice.byteSize());
       } else {
-        url = baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart;
         VPackBuilder reqBuilder(buffer);
         reqBuilder.openArray(/*unindexed*/true);
         for (VPackSlice const value : it.second) {
@@ -1452,9 +1440,9 @@ Future<OperationResult> deleteDocumentOnCoordinator(arangodb::transaction::Metho
       network::Headers headers;
       addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first, headers);
       futures.emplace_back(network::sendRequestRetry("shard:" + it.first, fuerte::RestVerb::Delete,
-                                                     std::move(url), std::move(buffer),
-                                                     network::Timeout(CL_DEFAULT_LONG_TIMEOUT),
-                                                     headers, /*retryNotFound*/ true));
+                                                     baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
+                                                     std::move(buffer), network::Timeout(CL_DEFAULT_LONG_TIMEOUT),
+                                                     std::move(headers), /*retryNotFound*/ true));
     }
 
     // Now listen to the results:
@@ -1520,17 +1508,8 @@ Future<OperationResult> deleteDocumentOnCoordinator(arangodb::transaction::Metho
     ShardID const& shard = shardServers.first;
     network::Headers headers;
     addTransactionHeaderForShard(trx, *shardIds, shard, headers);
-    
-    std::string url;
-    if (!useMultiple) { // send to single API
-      VPackStringRef const key(slice.get(StaticStrings::KeyString));
-      url = baseUrl + StringUtils::urlEncode(shard) + "/" +
-      StringUtils::urlEncode(key.data(), key.size()) + optsUrlPart;
-    } else {
-      url = baseUrl + StringUtils::urlEncode(shard) + optsUrlPart;
-    }
     futures.emplace_back(network::sendRequestRetry("shard:" + shard, fuerte::RestVerb::Delete,
-                                                   std::move(url), /*cannot move*/ buffer,
+                                                   baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, /*cannot move*/ buffer,
                                                    network::Timeout(CL_DEFAULT_LONG_TIMEOUT),
                                                    std::move(headers), /*retryNotFound*/ true));
   }

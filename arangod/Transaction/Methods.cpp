@@ -2103,10 +2103,7 @@ Future<OperationResult> transaction::Methods::removeAsync(std::string const& cna
 Future<OperationResult> transaction::Methods::removeCoordinator(std::string const& collectionName,
                                                                 VPackSlice const value,
                                                                 OperationOptions const& options) {
-  return arangodb::deleteDocumentOnCoordinator(*this, collectionName, value, options);
-//  if (res == TRI_ERROR_NO_ERROR) {
-//    return clusterResultRemove(responseCode, resultBody, errorCounter);
-//  }
+  return arangodb::removeDocumentOnCoordinator(*this, collectionName, value, options);
 }
 #endif
 

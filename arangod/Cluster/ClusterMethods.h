@@ -114,10 +114,10 @@ futures::Future<OperationResult> createDocumentOnCoordinator(transaction::Method
                                                              OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a document in a coordinator
+/// @brief remove a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> deleteDocumentOnCoordinator(transaction::Methods& trx,
+futures::Future<OperationResult> removeDocumentOnCoordinator(transaction::Methods& trx,
                                                              LogicalCollection&,
                                                              VPackSlice const slice,
                                                              OperationOptions const& options);
