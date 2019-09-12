@@ -1239,7 +1239,7 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
     buildFeatureEntry(tmpFeature = new arangodb::QueryRegistryFeature(server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(tmpFeature);  // need QueryRegistryFeature feature to be added now in order to create the system database
     _system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                                      systemDBInfo());
+                                                      systemDBInfo("system"));
     buildFeatureEntry(new arangodb::SystemDatabaseFeature(server, _system.get()),
                       false);  // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::RandomFeature(server), false);  // required by AuthenticationFeature
@@ -1604,7 +1604,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   auto builderActive = dbArgsBuilder("active");
   TRI_vocbase_t active(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo("active",2));
   auto builderSystem = dbArgsBuilder("system");
-  TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());
+  TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo("system"));
 
   // normalize 'identity' (with prefix)
   {
@@ -1630,7 +1630,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("active::") == normalized));
+    EXPECT_EQ(std::string("active::"), normalized);
   }
 
   // normalize NIL (without prefix)
@@ -1648,7 +1648,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("active::") == normalized));
+    EXPECT_EQ(std::string("active::"), normalized);
   }
 
   // normalize EMPTY (without prefix)
@@ -1666,7 +1666,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("system::") == normalized));
+    EXPECT_EQ(std::string("system::"), normalized);
   }
 
   // normalize delimiter (without prefix)
@@ -1675,7 +1675,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
-    EXPECT_TRUE((std::string("::") == normalized));
+    EXPECT_EQ(std::string("::"), normalized);
   }
 
   // normalize delimiter + name (with prefix)
@@ -1684,7 +1684,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("system::name") == normalized));
+    EXPECT_EQ(std::string("system::name"), normalized);
   }
 
   // normalize delimiter + name (without prefix)
@@ -1702,7 +1702,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("active::name") == normalized));
+    EXPECT_EQ(std::string("active::name"), normalized);
   }
 
   // normalize no-delimiter + name (without prefix)
@@ -1711,7 +1711,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
-    EXPECT_TRUE((std::string("name") == normalized));
+    EXPECT_EQ(std::string("name"), normalized);
   }
 
   // normalize system + delimiter (with prefix)
@@ -1720,7 +1720,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("system::") == normalized));
+    EXPECT_EQ(std::string("system::"), normalized);
   }
 
   // normalize system + delimiter (without prefix)
@@ -1729,7 +1729,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
-    EXPECT_TRUE((std::string("::") == normalized));
+    EXPECT_EQ(std::string("::"), normalized);
   }
 
   // normalize vocbase + delimiter (with prefix)
@@ -1738,7 +1738,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("active::") == normalized));
+    EXPECT_EQ(std::string("active::"), normalized);
   }
 
   // normalize vocbase + delimiter (without prefix)
@@ -1774,7 +1774,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, system,
                                                                  system, false);
-    EXPECT_TRUE((std::string("name") == normalized));
+    EXPECT_EQ(std::string("name"), normalized);
   }
 
   // normalize vocbase + delimiter + name (with prefix)
@@ -1783,7 +1783,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("active::name") == normalized));
+    EXPECT_EQ(std::string("active::name"), normalized);
   }
 
   // normalize vocbase + delimiter + name (without prefix)
@@ -1792,7 +1792,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
-    EXPECT_TRUE((std::string("name") == normalized));
+    EXPECT_EQ(std::string("name"), normalized);
   }
 }
 
@@ -3329,7 +3329,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test no system, no analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo("system"));  // create befor reseting srver
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3389,7 +3389,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test no system, with analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo("system"));  // create befor reseting srver
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3471,7 +3471,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test system, no legacy collection, no analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo("system"));  // create befor reseting srver
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3533,7 +3533,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test system, no legacy collection, with analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo("system"));  // create befor reseting srver
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3620,7 +3620,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test system, with legacy collection, no analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo("system"));  // create befor reseting srver
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3697,7 +3697,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test system, no legacy collection, with analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo("system"));  // create befor reseting srver
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
