@@ -334,7 +334,7 @@ class ExecutionNode {
   void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone, bool withProperties) const;
 
   /// @brief check equality of ExecutionNodes
-  virtual bool isEqualTo(ExecutionNode const& other);
+  virtual bool isEqualTo(ExecutionNode const& other) const;
 
   /// @brief invalidate the cost estimate for the node and its dependencies
   virtual void invalidateCost();

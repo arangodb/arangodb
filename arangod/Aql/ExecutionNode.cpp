@@ -551,7 +551,7 @@ void ExecutionNode::cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClo
   }
 }
 
-bool ExecutionNode::isEqualTo(ExecutionNode const& other) {
+bool ExecutionNode::isEqualTo(ExecutionNode const& other) const {
 
   meta::details::static_assert_size<ExecutionNode, 456>();
 

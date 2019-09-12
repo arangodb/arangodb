@@ -74,18 +74,18 @@ void SubqueryEndNode::replaceOutVariable(Variable const* var) {
 }
 
 CostEstimate SubqueryEndNode::estimateCost() const {
-  TRI_ASSERT(!_dependencies.size() == 1);
+  TRI_ASSERT(_dependencies.size() == 1);
 
   CostEstimate estimate = _dependencies.at(0)->getCost();
 
   return estimate;
 }
 
-bool SubqueryEndNode::isEqualTo(SubqueryEndNode const& other)
+bool SubqueryEndNode::isEqualTo(SubqueryEndNode const& other) const
 {
-  TRI_ASSERT(_outVariable); TRI_ASSERT(other->_outVariable);
+  TRI_ASSERT(_outVariable != nullptr); TRI_ASSERT(other._outVariable != nullptr);
   return ExecutionNode::isEqualTo(other) &&
-    _outVariable->isEqualTo(*other->_outVariable);
+    _outVariable->isEqualTo(*(other._outVariable));
 }
 
 } // namespace aql

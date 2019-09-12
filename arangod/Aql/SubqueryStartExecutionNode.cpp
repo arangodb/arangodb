@@ -69,10 +69,6 @@ bool SubqueryStartNode::isEqualTo(SubqueryStartNode const& other) {
   return ExecutionNode::isEqualTo(other);
 }
 
-bool SubqueryStartNode::isEqualTo(SubqueryStartNode const* other) {
-  return ExecutionNode::isEqualTo(other);
-}
-
 } // namespace aql
 } // namespace arangodb
 

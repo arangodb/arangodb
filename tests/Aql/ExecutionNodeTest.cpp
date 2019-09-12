@@ -60,55 +60,55 @@ public:
 TEST_F(ExecutionNodeTest, start_node_velocypack_roundtrip) {
   VPackBuilder builder;
 
-  SubqueryStartNode *node, *nodeFromVPack;
+  std::unique_ptr<SubqueryStartNode> node, nodeFromVPack;
 
-  node = new SubqueryStartNode(&plan, 0);
+  node = std::make_unique<SubqueryStartNode>(&plan, 0);
 
   builder.openArray();
   node->toVelocyPackHelper(builder, ExecutionNode::SERIALIZE_DETAILS);
   builder.close();
 
-  nodeFromVPack = new SubqueryStartNode(&plan, builder.slice()[0]);
+  nodeFromVPack = std::make_unique<SubqueryStartNode>(&plan, builder.slice()[0]);
 
-  ASSERT_TRUE(node->isEqualTo(nodeFromVPack));
+  ASSERT_TRUE(node->isEqualTo(*nodeFromVPack));
 }
 
 TEST_F(ExecutionNodeTest, start_node_not_equal_different_id) {
-  SubqueryStartNode *node1, *node2;
+  std::unique_ptr<SubqueryStartNode> node1, node2;
 
-  node1 = new SubqueryStartNode(&plan, 0);
-  node1 = new SubqueryStartNode(&plan, 1);
+  node1 = std::make_unique<SubqueryStartNode>(&plan, 0);
+  node2 = std::make_unique<SubqueryStartNode>(&plan, 1);
 
-  ASSERT_FALSE(node1->isEqualTo(node2));
+  ASSERT_FALSE(node1->isEqualTo(*node2));
 }
 
 TEST_F(ExecutionNodeTest, end_node_velocypack_roundtrip) {
   VPackBuilder builder;
 
-  Variable *outvar = new Variable("name", 1);
+  Variable outvar("name", 1);
 
-  SubqueryEndNode *node, *nodeFromVPack;
+  std::unique_ptr<SubqueryEndNode> node, nodeFromVPack;
 
-  node = new SubqueryEndNode(&plan, 0, outvar);
+  node = std::make_unique<SubqueryEndNode>(&plan, 0, &outvar);
 
   builder.openArray();
   node->toVelocyPackHelper(builder, ExecutionNode::SERIALIZE_DETAILS);
   builder.close();
 
-  nodeFromVPack = new SubqueryEndNode(&plan, builder.slice()[0]);
+  nodeFromVPack = std::make_unique<SubqueryEndNode>(&plan, builder.slice()[0]);
 
-  ASSERT_TRUE(node->isEqualTo(nodeFromVPack));
+  ASSERT_TRUE(node->isEqualTo(*nodeFromVPack));
 }
 
 TEST_F(ExecutionNodeTest, end_node_not_equal_different_id) {
-  SubqueryEndNode *node1, *node2;
+  std::unique_ptr<SubqueryEndNode> node1, node2;
 
-  Variable *outvar = new Variable("name", 1);
+  Variable outvar("name", 1);
 
-  node1 = new SubqueryEndNode(&plan, 0, outvar);
-  node1 = new SubqueryEndNode(&plan, 1, outvar);
+  node1 = std::make_unique<SubqueryEndNode>(&plan, 0, &outvar);
+  node2 = std::make_unique<SubqueryEndNode>(&plan, 1, &outvar);
 
-  ASSERT_FALSE(node1->isEqualTo(node2));
+  ASSERT_FALSE(node1->isEqualTo(*node2));
 }
 
 

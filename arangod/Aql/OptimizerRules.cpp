@@ -4556,6 +4556,8 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
           break;
         }
 
+        case EN::SUBQUERY_START:
+        case EN::SUBQUERY_END:
         case EN::MAX_NODE_TYPE_VALUE: {
           // should not reach this point
           TRI_ASSERT(false);
