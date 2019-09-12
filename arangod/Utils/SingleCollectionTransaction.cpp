@@ -29,6 +29,9 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalDataSource.h"
 
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
+
 namespace arangodb {
 
 /// @brief create the transaction, using a data-source
@@ -59,7 +62,7 @@ SingleCollectionTransaction::SingleCollectionTransaction(
       _accessType(accessType) {
   // add the (sole) collection
   _cid = resolver()->getCollectionId(name);
-  Result res = addCollection(_cid, name.c_str(), _accessType);
+  Result res = addCollection(_cid, name, _accessType);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -86,14 +89,20 @@ TransactionCollection* SingleCollectionTransaction::resolveTrxCollection() {
 /// note that we have two identical versions because this is called
 /// in two different situations
 LogicalCollection* SingleCollectionTransaction::documentCollection() {
-  if (_documentCollection != nullptr) {
-    return _documentCollection;
+  if (_documentCollection == nullptr) {
+    resolveTrxCollection();
   }
-
-  resolveTrxCollection();
   TRI_ASSERT(_documentCollection != nullptr);
   return _documentCollection;
 }
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+TRI_voc_cid_t SingleCollectionTransaction::addCollectionAtRuntime(std::string const& name) {
+  // sanity check
+  TRI_ASSERT((!name.empty() && name[0] >= '1' && name[0] <= '9') || name == resolveTrxCollection()->collectionName());
+  return _cid;
+}
+#endif
 
 /// @brief get the underlying collection's name
 std::string SingleCollectionTransaction::name() {

@@ -2658,3 +2658,21 @@ bool TRI_GETENV(char const* which, std::string& value) {
   return true;
 #endif
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief bug fix for some race on libmusl and static linking
+//////////////////////////////////////////////////////////////////////////////
+
+// The following function just throws an exception and catches it. This is
+// used on Linux for the case that we link statically and the underlying
+// C-library is libmusl. This configuration has a bug in libgcc which
+// triggers a shutdown busy loop (after main), provided the very first
+// exception being thrown in the life of the process happens in two threads
+// at the same time. By throwing right at the beginning of main() when the
+// process is still single-threaded, we circumvent this problem.
+#ifdef __linux__
+void ThrowSomeException() {
+  try { throw 42; } catch(int const&) {};
+}
+#endif
+
