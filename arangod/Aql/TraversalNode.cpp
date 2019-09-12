@@ -142,7 +142,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocb
     _pruneExpression->variables(_pruneVariables);
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   checkConditionsDefined();
 #endif
 }
@@ -257,7 +257,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
     }
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   checkConditionsDefined();
 #endif
 }
@@ -452,7 +452,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->_conditionVariables.emplace(it->clone());
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   checkConditionsDefined();
 #endif
 
@@ -482,7 +482,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->_vertexConditions.emplace(it.first, it.second->clone(_plan->getAst()));
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   c->checkConditionsDefined();
 #endif
 
@@ -648,7 +648,7 @@ void TraversalNode::getPruneVariables(std::vector<Variable const*>& res) const {
   }
 }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void TraversalNode::checkConditionsDefined() const {
   TRI_ASSERT(_tmpObjVariable != nullptr);
   TRI_ASSERT(_tmpObjVarNode != nullptr);
