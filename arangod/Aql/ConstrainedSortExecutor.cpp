@@ -208,16 +208,13 @@ std::pair<ExecutionState, NoStats> ConstrainedSortExecutor::produceRows(OutputAq
       // No we're really done
       return {ExecutionState::DONE, NoStats{}};
     }
-    // We should never get here, thus:
+    // We should never get here, as the following LIMIT block should never fetch
+    // more than our limit. He may only skip after that. Thus:
     TRI_ASSERT(false);
-    // The following LIMIT block should never fetch more than our limit.
-    // He may though, when fullCount is enabled, skip after that.
-    // This is here as a working fallback solution, it should never be executed.
-    output.setAllowSourceRowUninitialized();
-    InputAqlItemRow invalidInput(CreateInvalidInputRowHint{});
-    output.copyRow(invalidInput);
-    ++_skippedAfter;
-    return {ExecutionState::HASMORE, NoStats{}};
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL_AQL,
+        "Overfetch during constrained heap sort. Please report this error! Try "
+        "turning off the sort-limit optimizer rule to get your query working.");
   }
 
   if (_returnNext == 0) {
