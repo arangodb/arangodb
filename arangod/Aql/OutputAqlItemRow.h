@@ -27,6 +27,7 @@
 #define ARANGOD_AQL_OUTPUT_AQL_ITEM_ROW_H
 
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/ShadowAqlItemRow.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/system-compiler.h"
@@ -60,7 +61,8 @@ class OutputAqlItemRow {
   OutputAqlItemRow& operator=(OutputAqlItemRow&&) = delete;
 
   // Clones the given AqlValue
-  void cloneValueInto(RegisterId registerId, InputAqlItemRow const& sourceRow,
+  template <class ItemRowType>
+  void cloneValueInto(RegisterId registerId, ItemRowType const& sourceRow,
                       AqlValue const& value) {
     bool mustDestroy = true;
     AqlValue clonedValue = value.clone();
@@ -73,7 +75,8 @@ class OutputAqlItemRow {
   // Note that there is no real move happening here, just a trivial copy of
   // the passed AqlValue. However, that means the output block will take
   // responsibility of possibly referenced external memory.
-  void moveValueInto(RegisterId registerId, InputAqlItemRow const& sourceRow,
+  template <class ItemRowType>
+  void moveValueInto(RegisterId registerId, ItemRowType const& sourceRow,
                      AqlValueGuard& guard) {
     TRI_ASSERT(isOutputRegister(registerId));
     // This is already implicitly asserted by isOutputRegister:
@@ -108,7 +111,8 @@ class OutputAqlItemRow {
     return true;
   }
 
-  void copyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing = false) {
+  template <class ItemRowType>
+  void copyRow(ItemRowType const& sourceRow, bool ignoreMissing = false) {
     // While violating the following asserted states would do no harm, the
     // implementation as planned should only copy a row after all values have
     // been set, and copyRow should only be called once.
@@ -121,14 +125,13 @@ class OutputAqlItemRow {
 
     // This may only be set if the input block is the same as the output block,
     // because it is passed through.
-    if (_doNotCopyInputRow) {
+    if (_doNotCopyInputRow && std::is_same<ItemRowType, InputAqlItemRow>::value) {
       TRI_ASSERT(sourceRow.isInitialized());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(sourceRow.internalBlockIs(_block));
 #endif
       _inputRowCopied = true;
-      _lastSourceRow = sourceRow;
-      _lastBaseIndex = _baseIndex;
+      memorizeRow(sourceRow);
       return;
     }
 
@@ -328,16 +331,43 @@ class OutputAqlItemRow {
     TRI_ASSERT(_block != nullptr);
     return *_block;
   }
+  template <class ItemRowType>
+  inline void doCopyRow(ItemRowType const& sourceRow, bool ignoreMissing);
 
-  inline void doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing);
+  template <class ItemRowType>
+  inline void memorizeRow(ItemRowType const& sourceRow);
+
+  template <class ItemRowType>
+  inline bool testIfWeMostClone(ItemRowType const& sourceRow) const;
 };
 
-void OutputAqlItemRow::doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing) {
+template <>
+inline void OutputAqlItemRow::memorizeRow<InputAqlItemRow>(InputAqlItemRow const& sourceRow) {
+  _lastSourceRow = sourceRow;
+  _lastBaseIndex = _baseIndex;
+}
+
+template <>
+inline void OutputAqlItemRow::memorizeRow<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) {
+}
+
+template <>
+inline bool OutputAqlItemRow::testIfWeMostClone<InputAqlItemRow>(InputAqlItemRow const& sourceRow) const {
+  return _baseIndex == 0 || _lastSourceRow != sourceRow;
+}
+
+template <>
+inline bool OutputAqlItemRow::testIfWeMostClone<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) const {
+  return true;
+}
+
+template <class ItemRowType>
+inline void OutputAqlItemRow::doCopyRow(ItemRowType const& sourceRow, bool ignoreMissing) {
   // Note that _lastSourceRow is invalid right after construction. However, when
   // _baseIndex > 0, then we must have seen one row already.
   TRI_ASSERT(!_doNotCopyInputRow);
-  TRI_ASSERT(_baseIndex == 0 || _lastSourceRow.isInitialized());
-  bool mustClone = _baseIndex == 0 || _lastSourceRow != sourceRow;
+  bool mustClone = testIfWeMostClone(sourceRow);
+  // TRI_ASSERT(_baseIndex == 0 || _lastSourceRow.isInitialized());
 
   if (mustClone) {
     for (auto itemId : registersToKeep()) {
@@ -372,9 +402,8 @@ void OutputAqlItemRow::doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMi
     block().copyValuesFromRow(_baseIndex, registersToKeep(), _lastBaseIndex);
   }
 
-  _lastBaseIndex = _baseIndex;
   _inputRowCopied = true;
-  _lastSourceRow = sourceRow;
+  memorizeRow(sourceRow);
 }
 
 }  // namespace aql

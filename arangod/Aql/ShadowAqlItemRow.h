@@ -61,6 +61,37 @@ class ShadowAqlItemRow {
 
   bool isRelevant() const noexcept { return getDepth() == 0; }
 
+  inline bool isInitialized() const {
+    TRI_ASSERT(_block != nullptr);
+    // The value needs to always be a positive integer.
+    auto depthVal = block().getShadowRowDepth(_baseIndex);
+    TRI_ASSERT(depthVal.isNumber());
+    TRI_ASSERT(depthVal.toInt64() >= 0);
+    return true;
+  }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  /**
+   * @brief Compare the underlying block. Only for assertions.
+   */
+  bool internalBlockIs(SharedAqlItemBlockPtr const& other) const {
+    return _block == other;
+  }
+#endif
+
+  /**
+   * @brief Get a reference to the value of the given Variable Nr
+   *
+   * @param registerId The register ID of the variable to read.
+   *
+   * @return Reference to the AqlValue stored in that variable.
+   */
+  inline AqlValue const& getValue(RegisterId registerId) const {
+    TRI_ASSERT(isInitialized());
+    TRI_ASSERT(registerId < getNrRegisters());
+    return block().getValueReference(_baseIndex, registerId);
+  }
+
  private:
   inline int64_t getDepth() const {
     TRI_ASSERT(isInitialized());
@@ -76,16 +107,6 @@ class ShadowAqlItemRow {
   inline AqlItemBlock const& block() const noexcept {
     TRI_ASSERT(_block != nullptr);
     return *_block;
-  }
-
-  inline bool isInitialized() const {
-    TRI_ASSERT(_block != nullptr);
-    TRI_ASSERT(getNrRegisters() > 0);
-    // The value needs to always be a positive integer.
-    auto depthVal = block().getShadowRowDepth(_baseIndex);
-    TRI_ASSERT(depthVal.isNumber());
-    TRI_ASSERT(depthVal.toInt64() >= 0);
-    return true;
   }
 
  private:

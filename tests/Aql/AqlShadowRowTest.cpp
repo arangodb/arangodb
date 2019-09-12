@@ -97,10 +97,53 @@ class AqlShadowItemRowTest : public ::testing::Test {
     outputBlock = testee.stealBlock();
     ASSERT_EQ(outputBlock->size(), targetNumberOfRows);
   }
+
+  void ConsumeRelevantShadowRows(size_t targetNumberOfRows,
+                                 SharedAqlItemBlockPtr const& inputBlock,
+                                 SharedAqlItemBlockPtr& outputBlock) {
+    RegisterId numRegisters = inputBlock->getNrRegs();
+    outputBlock.reset(new AqlItemBlock(itemBlockManager, targetNumberOfRows,
+                                       numRegisters + 1));
+    // We do not add or remove anything, just move
+    auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{numRegisters});
+    auto registersToKeep = std::make_shared<std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{});
+    for (RegisterId r = 0; r < numRegisters; ++r) {
+      registersToKeep->emplace(r);
+    }
+    auto registersToClear = std::make_shared<const std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{});
+    OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
+                            registersToKeep, registersToClear);
+
+    AqlValue shadowRowData{VPackSlice::emptyArraySlice()};
+
+    // Let this go out of scope before assertions, to make sure no references are bound here.
+    for (size_t rowIdx = 0; rowIdx < inputBlock->size(); ++rowIdx) {
+      ASSERT_FALSE(testee.isFull());
+
+      // Transform relevant ShadowRows to new DataRows
+      // Copy over irrelevant shadowRows
+      if (inputBlock->isShadowRow(rowIdx)) {
+        ShadowAqlItemRow source{inputBlock, rowIdx};
+        if (source.isRelevant()) {
+          testee.cloneValueInto(numRegisters, source, shadowRowData);
+          ASSERT_TRUE(testee.produced());
+          testee.advanceRow();
+        } else {
+          ASSERT_FALSE(true) << "This is not yet implemented";
+        }
+      }
+    }
+    ASSERT_TRUE(testee.isFull());
+    ASSERT_EQ(testee.numRowsWritten(), targetNumberOfRows);
+    outputBlock = testee.stealBlock();
+    ASSERT_EQ(outputBlock->size(), targetNumberOfRows);
+  }
 };
 
 TEST_F(AqlShadowItemRowTest, inject_new_shadow_rows) {
-  // Make sure this data is cleared before the assertions
   auto inputBlock =
       buildBlock<3>(itemBlockManager, {{{{1}, {2}, {3}}},
                                        {{{4}, {5}, {6}}},
@@ -124,7 +167,29 @@ TEST_F(AqlShadowItemRowTest, inject_new_shadow_rows) {
   }
 }
 
-TEST_F(AqlShadowItemRowTest, consume_shadow_rows) {}
+TEST_F(AqlShadowItemRowTest, consume_shadow_rows) {
+  auto inputBlock =
+      buildBlock<3>(itemBlockManager, {{{{1}, {2}, {3}}},
+                                       {{{4}, {5}, {6}}},
+                                       {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
+  SharedAqlItemBlockPtr outputBlock;
+  InsertNewShadowRowAfterEachDataRow(6, inputBlock, outputBlock);
+  // We validated that outputBlock is correct in first test.
+
+  // Now consume the ShadowRows again
+  // In this test we simply dump datarows
+  // and create new datarows out of shadowRows, writing a new value to them
+  inputBlock.swap(outputBlock);
+  ConsumeRelevantShadowRows(3, inputBlock, outputBlock);
+
+  auto expected =
+      VPackParser::fromJson("[[1,2,3,[]],[4,5,6,[]],[\"a\",\"b\",\"c\",[]]]");
+  for (size_t rowIdx = 0; rowIdx < outputBlock->size(); ++rowIdx) {
+    ASSERT_FALSE(outputBlock->isShadowRow(rowIdx));
+    InputAqlItemRow testResult{outputBlock, rowIdx};
+    AssertResultRow(testResult, expected->slice().at(rowIdx));
+  }
+}
 
 }  // namespace aql
 }  // namespace tests
