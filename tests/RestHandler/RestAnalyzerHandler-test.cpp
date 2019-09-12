@@ -90,10 +90,6 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
 DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "rest-analyzer-empty");
 REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
 
-static const VPackBuilder unknownDatabaseBuilder =
-    dbArgsBuilder("unknownVocbase");
-static const VPackSlice unknownDatabaseArgs = unknownDatabaseBuilder.slice();
-
 }  // namespace
 
 // -----------------------------------------------------------------------------
@@ -261,8 +257,10 @@ TEST_F(RestAnalyzerHandlerTest, test_create_non_object_body) {
 
   auto requestPtr = std::make_unique<GeneralRequestMock>(_system_vocbase);
   auto& request = *requestPtr;
+
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
+
   arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
@@ -464,11 +462,11 @@ TEST_F(RestAnalyzerHandlerTest, test_create_duplicate_matching) {
   grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW);
 
   auto requestPtr = std::make_unique<GeneralRequestMock>(_system_vocbase);
+  auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
   arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
                                                    responcePtr.release());
-  auto& request = *requestPtr;
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openObject();
   request._payload.add("name", VPackValue("testAnalyzer1"));
