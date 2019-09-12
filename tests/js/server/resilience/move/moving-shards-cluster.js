@@ -48,7 +48,7 @@ function getDBServers() {
   return servers;
 }
 
-const servers = getDBServers();
+let servers = getDBServers();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -933,4 +933,3 @@ jsunity.run(function MovingShardsSuite_data() {
 });
 
 return jsunity.done();
-
