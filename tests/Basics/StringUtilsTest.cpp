@@ -130,7 +130,7 @@ TEST_F(StringUtilsTest, test_uint64) {
   EXPECT_TRUE(12ULL ==  StringUtils::uint64("00012"));
   EXPECT_TRUE(1234ULL ==  StringUtils::uint64("1234"));
   EXPECT_TRUE(1234ULL ==  StringUtils::uint64("1234a"));
-#ifdef TRI_STRING_UTILS_USE_FROM_CHARS
+#ifdef ARANGODB_STRING_UTILS_USE_FROM_CHARS
   EXPECT_TRUE(0ULL ==  StringUtils::uint64("-1"));
   EXPECT_TRUE(0ULL ==  StringUtils::uint64("-12345"));
 #else

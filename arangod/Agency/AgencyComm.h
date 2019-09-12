@@ -31,10 +31,6 @@
 #include <string>
 #include <unordered_map>
 
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
-
 #include <velocypack/Slice.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>

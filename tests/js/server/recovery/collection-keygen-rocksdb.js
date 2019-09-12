@@ -75,7 +75,7 @@ function runSetup () {
   }
   c.save({ value: 0 }, { waitForSync: true });
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

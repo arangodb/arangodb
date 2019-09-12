@@ -35,10 +35,10 @@
 #if __cpp_lib_to_chars >= 201611
 // use non-throwing, non-allocating std::from_chars etc. from standard library
 #include <charconv>
-#define TRI_STRING_UTILS_USE_FROM_CHARS 1
+#define ARANGODB_STRING_UTILS_USE_FROM_CHARS 1
 #else
 // use own functionality
-#undef TRI_STRING_UTILS_USE_FROM_CHARS
+#undef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 #endif
 
 /// @brief helper macro for calculating strlens for static strings at
@@ -255,7 +255,7 @@ inline int hex2int(char ch, int errorValue = 0) {
 bool boolean(std::string const& str);
 
 /// @brief parses an integer
-#ifdef TRI_STRING_UTILS_USE_FROM_CHARS
+#ifdef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 // use functionality provided by c++17
 inline int64_t int64(char const* value, size_t size) noexcept {
   int64_t result = 0;
@@ -273,7 +273,7 @@ inline int64_t int64(char const* value, size_t size) {
 #endif
 
 /// @brief parses an unsigned integer
-#ifdef TRI_STRING_UTILS_USE_FROM_CHARS
+#ifdef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 // use functionality provided by c++17
 inline uint64_t uint64(char const* value, size_t size) noexcept {
   uint64_t result = 0;
@@ -301,7 +301,7 @@ inline uint64_t uint64_trusted(std::string const& value) {
 }
 
 /// @brief parses an integer
-#ifdef TRI_STRING_UTILS_USE_FROM_CHARS
+#ifdef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 // use functionality provided by c++17
 inline int32_t int32(char const* value, size_t size) noexcept {
   int32_t result = 0;
@@ -317,7 +317,7 @@ int32_t int32(char const* value, size_t size);
 #endif
 
 /// @brief parses an unsigned integer
-#ifdef TRI_STRING_UTILS_USE_FROM_CHARS
+#ifdef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 // use functionality provided by c++17
 inline uint32_t uint32(char const* value, size_t size) noexcept {
   uint32_t result = 0;

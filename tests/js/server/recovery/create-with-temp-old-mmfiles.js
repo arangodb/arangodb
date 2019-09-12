@@ -43,7 +43,7 @@ function runSetup () {
   path = fs.join(db._path(), 'collection-999999999998.tmp');
   fs.makeDirectory(path);
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

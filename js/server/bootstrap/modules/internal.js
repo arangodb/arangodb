@@ -502,12 +502,12 @@
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief debugSegfault
+  // / @brief debugTerminate
   // //////////////////////////////////////////////////////////////////////////////
 
-  if (global.SYS_DEBUG_SEGFAULT) {
-    exports.debugSegfault = global.SYS_DEBUG_SEGFAULT;
-    delete global.SYS_DEBUG_SEGFAULT;
+  if (global.SYS_DEBUG_TERMINATE) {
+    exports.debugTerminate = global.SYS_DEBUG_TERMINATE;
+    delete global.SYS_DEBUG_TERMINATE;
   }
 
   // //////////////////////////////////////////////////////////////////////////////

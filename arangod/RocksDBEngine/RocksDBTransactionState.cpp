@@ -586,7 +586,7 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   TRI_IF_FAILURE("SegfaultBeforeIntermediateCommit") {
-    TRI_SegfaultDebugging("SegfaultBeforeIntermediateCommit");
+    TRI_TerminateDebugging("SegfaultBeforeIntermediateCommit");
   }
 
   TRI_ASSERT(!hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
@@ -607,7 +607,7 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   TRI_IF_FAILURE("SegfaultAfterIntermediateCommit") {
-    TRI_SegfaultDebugging("SegfaultAfterIntermediateCommit");
+    TRI_TerminateDebugging("SegfaultAfterIntermediateCommit");
   }
 
   _numInserts = 0;
