@@ -72,25 +72,31 @@ RestStatus RestDocumentHandler::execute() {
 }
 
 void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
-  try {
-    GeneralRequest const* request = _request.get();
-    auto const type = request->requestType();
-    int result = static_cast<int>(_response->responseCode());
+  if (isFinalized) {
+    // reset the transaction so it releases all locks as early as possible
+    _activeTrx.reset();
 
-    switch (type) {
-      case rest::RequestType::DELETE_REQ:
-      case rest::RequestType::GET:
-      case rest::RequestType::HEAD:
-      case rest::RequestType::POST:
-      case rest::RequestType::PUT:
-      case rest::RequestType::PATCH:
-        break;
-      default:
-        events::IllegalDocumentOperation(*request, result);
-        break;
+    try {
+      GeneralRequest const* request = _request.get();
+      auto const type = request->requestType();
+      int result = static_cast<int>(_response->responseCode());
+
+      switch (type) {
+        case rest::RequestType::DELETE_REQ:
+        case rest::RequestType::GET:
+        case rest::RequestType::HEAD:
+        case rest::RequestType::POST:
+        case rest::RequestType::PUT:
+        case rest::RequestType::PATCH:
+          break;
+        default:
+          events::IllegalDocumentOperation(*request, result);
+          break;
+      }
+    } catch (...) {
     }
-  } catch (...) {
   }
+
   RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
 
