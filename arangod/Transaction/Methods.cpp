@@ -2106,7 +2106,7 @@ Future<OperationResult> transaction::Methods::removeCoordinator(std::string cons
   ClusterInfo* ci = ClusterInfo::instance();
   auto colptr = ci->getCollectionNT(vocbase().name(), cname);
   if (colptr == nullptr) {
-    return makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
+    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
   return arangodb::removeDocumentOnCoordinator(*this, *colptr, value, options);
 }
