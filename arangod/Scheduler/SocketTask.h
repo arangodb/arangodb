@@ -138,7 +138,7 @@ class SocketTask : virtual public Task {
   // caller must run in _peer->strand()
   void closeStreamNoLock();
 
-  // starts the keep alive time
+  // starts the keep alive time, no need to run on strand
   void resetKeepAlive();
 
   // cancels the keep alive timer
