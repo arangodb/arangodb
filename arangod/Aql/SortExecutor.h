@@ -185,7 +185,7 @@ class SortExecutor  {
   std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkip);
 
  private:
-  std::pair<ExecutionState, NoStats> fetchAllRowsFromUpstream();
+  std::pair<ExecutionState, NoStats> consumeInput();
   void doSorting();
 
  private:

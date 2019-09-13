@@ -152,7 +152,7 @@ SortExecutor<OutputRowImpl>::~SortExecutor() = default;
 template<typename OutputRowImpl>
 std::pair<ExecutionState, NoStats> SortExecutor<OutputRowImpl>::produceRows(OutputAqlItemRow& output) {
   if (_input == nullptr) {
-    auto fetchRes = fetchAllRowsFromUpstream();
+    auto fetchRes = consumeInput();
     if (fetchRes.first == ExecutionState::WAITING) {
       return fetchRes;
     }
@@ -176,7 +176,7 @@ std::pair<ExecutionState, NoStats> SortExecutor<OutputRowImpl>::produceRows(Outp
 }
 
 template<typename OutputRowImpl>
-std::pair<ExecutionState, NoStats> arangodb::aql::SortExecutor<OutputRowImpl>::fetchAllRowsFromUpstream() {
+std::pair<ExecutionState, NoStats> arangodb::aql::SortExecutor<OutputRowImpl>::consumeInput() {
   ExecutionState state;
   // We need to get data
   std::tie(state, _input) = _fetcher.fetchAllRows();
@@ -232,7 +232,7 @@ std::pair<ExecutionState, size_t> SortExecutor<OutputRowImpl>::expectedNumberOfR
 template<typename OutputRowImpl>
 std::tuple<ExecutionState, NoStats, size_t> SortExecutor<OutputRowImpl>::skipRows(size_t toSkip) {
   if (_input == nullptr) {
-    auto fetchRes = fetchAllRowsFromUpstream();
+    auto fetchRes = consumeInput();
     if (fetchRes.first == ExecutionState::WAITING) {
       return std::make_tuple(fetchRes.first, fetchRes.second, 0);
     }
