@@ -1239,7 +1239,7 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
     buildFeatureEntry(tmpFeature = new arangodb::QueryRegistryFeature(server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(tmpFeature);  // need QueryRegistryFeature feature to be added now in order to create the system database
     _system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                                      systemDBInfo("system"));
+                                                      systemDBInfo());
     buildFeatureEntry(new arangodb::SystemDatabaseFeature(server, _system.get()),
                       false);  // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::RandomFeature(server), false);  // required by AuthenticationFeature
@@ -1601,10 +1601,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_identity_registered) {
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
-  auto builderActive = dbArgsBuilder("active");
   TRI_vocbase_t active(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo("active",2));
-  auto builderSystem = dbArgsBuilder("system");
-  TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo("system"));
+  TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());
 
   // normalize 'identity' (with prefix)
   {
@@ -1612,7 +1610,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("identity") == normalized));
+    EXPECT_EQ(std::string("identity"), normalized);
   }
 
   // normalize 'identity' (without prefix)
@@ -1621,7 +1619,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("identity") == normalized));
+    EXPECT_EQ(std::string("identity"), normalized);
   }
 
   // normalize NIL (with prefix)
@@ -1639,7 +1637,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
-    EXPECT_TRUE((std::string("") == normalized));
+    EXPECT_EQ(std::string(""), normalized);
   }
 
   // normalize EMPTY (with prefix)
@@ -1657,7 +1655,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
-    EXPECT_TRUE((std::string("") == normalized));
+    EXPECT_EQ(std::string(""), normalized);
   }
 
   // normalize delimiter (with prefix)
@@ -1666,7 +1664,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_EQ(std::string("system::"), normalized);
+    EXPECT_EQ(std::string("_system::"), normalized);
   }
 
   // normalize delimiter (without prefix)
@@ -1684,7 +1682,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_EQ(std::string("system::name"), normalized);
+    EXPECT_EQ(std::string("_system::name"), normalized);
   }
 
   // normalize delimiter + name (without prefix)
@@ -1693,7 +1691,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
-    EXPECT_TRUE((std::string("::name") == normalized));
+    EXPECT_EQ(std::string("::name"), normalized);
   }
 
   // normalize no-delimiter + name (with prefix)
@@ -1716,16 +1714,16 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize system + delimiter (with prefix)
   {
-    irs::string_ref analyzer = "system::";
+    irs::string_ref analyzer = "_system::";
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_EQ(std::string("system::"), normalized);
+    EXPECT_EQ(std::string("_system::"), normalized);
   }
 
   // normalize system + delimiter (without prefix)
   {
-    irs::string_ref analyzer = "system::";
+    irs::string_ref analyzer = "_system::";
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
@@ -1747,30 +1745,30 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
-    EXPECT_TRUE((std::string("") == normalized));
+    EXPECT_EQ(std::string(""), normalized);
   }
 
   // normalize system + delimiter + name (with prefix)
   {
-    irs::string_ref analyzer = "system::name";
+    irs::string_ref analyzer = "_system::name";
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, true);
-    EXPECT_TRUE((std::string("system::name") == normalized));
+    EXPECT_EQ(std::string("_system::name"), normalized);
   }
 
   // normalize system + delimiter + name (without prefix)
   {
-    irs::string_ref analyzer = "system::name";
+    irs::string_ref analyzer = "_system::name";
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
-    EXPECT_TRUE((std::string("::name") == normalized));
+    EXPECT_EQ(std::string("::name"), normalized);
   }
 
   // normalize system + delimiter + name (without prefix) in system
   {
-    irs::string_ref analyzer = "system::name";
+    irs::string_ref analyzer = "_system::name";
     auto normalized =
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, system,
                                                                  system, false);
