@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Bugfix: The AQL sort-limit optimization was applied in some cases it shouldn't, resulting in undefined behaviour.
+
 * Fixed AQL constrained-heap sort in conjunction with fullCount.
 
 * Added support for AQL expressions such as `a NOT LIKE b`, `a NOT =~ b` and
