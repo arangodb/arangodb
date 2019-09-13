@@ -250,14 +250,18 @@ function setupBinaries (builddir, buildType, configDir) {
   LOGS_DIR = fs.join(TOP_DIR, 'logs');
 
   let checkFiles = [
-    ARANGOBACKUP_BIN,
     ARANGOBENCH_BIN,
     ARANGODUMP_BIN,
     ARANGOD_BIN,
     ARANGOIMPORT_BIN,
     ARANGORESTORE_BIN,
     ARANGOEXPORT_BIN,
-    ARANGOSH_BIN];
+    ARANGOSH_BIN
+  ];
+
+  if (fs.isDirectory(JS_ENTERPRISE_DIR)) {
+    checkFiles.push(ARANGOBACKUP_BIN);
+  }
   for (let b = 0; b < checkFiles.length; ++b) {
     if (!fs.isFile(checkFiles[b])) {
       throw new Error('unable to locate ' + checkFiles[b]);
