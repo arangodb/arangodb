@@ -2335,41 +2335,6 @@ bool ExecutionPlan::isDeadSimple() const {
   return true;
 }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
-#include <iostream>
-
-/// @brief show an overview over the plan
-struct Shower final : public WalkerWorker<ExecutionNode> {
-  int indent;
-
-  Shower() : indent(0) {}
-
-  ~Shower() {}
-
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
-    indent++;
-    return true;
-  }
-
-  void leaveSubquery(ExecutionNode*, ExecutionNode*) override final {
-    indent--;
-  }
-
-  void after(ExecutionNode* en) override final {
-    for (int i = 0; i < indent; i++) {
-      std::cout << ' ';
-    }
-    std::cout << en->getTypeString() << std::endl;
-  }
-};
-
-/// @brief show an overview over the plan
-void ExecutionPlan::show() {
-  Shower shower;
-  _root->walk(shower);
-}
-
 bool ExecutionPlan::empty() const { return (_root == nullptr); }
 
 void ExecutionPlan::addAppliedRule(int level) {
@@ -2430,5 +2395,41 @@ void ExecutionPlan::clearVarUsageComputed() { _varUsageComputed = false; }
 void ExecutionPlan::planRegisters() { _root->planRegisters(); }
 
 Ast* ExecutionPlan::getAst() const { return _ast; }
+
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+
+#include <iostream>
+
+/// @brief show an overview over the plan
+struct Shower final : public WalkerWorker<ExecutionNode> {
+  int indent;
+
+  Shower() : indent(0) {}
+
+  ~Shower() {}
+
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
+    indent++;
+    return true;
+  }
+
+  void leaveSubquery(ExecutionNode*, ExecutionNode*) override final {
+    indent--;
+  }
+
+  void after(ExecutionNode* en) override final {
+    for (int i = 0; i < indent; i++) {
+      std::cout << ' ';
+    }
+    std::cout << en->getTypeString() << std::endl;
+  }
+};
+
+/// @brief show an overview over the plan
+void ExecutionPlan::show() {
+  Shower shower;
+  _root->walk(shower);
+}
 
 #endif
