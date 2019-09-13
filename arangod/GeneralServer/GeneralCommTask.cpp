@@ -38,7 +38,7 @@ template <SocketType T>
 GeneralCommTask<T>::GeneralCommTask(GeneralServer& server, char const* name,
                                     ConnectionInfo info,
                                     std::unique_ptr<AsioSocket<T>> socket)
-    : CommTask(server, name, info), _protocol(std::move(socket)) {}
+    : CommTask(server, name, std::move(info)), _protocol(std::move(socket)) {}
 
 template <SocketType T>
 GeneralCommTask<T>::~GeneralCommTask() {}
