@@ -308,8 +308,8 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 /// fullCount when 3.5 was released.
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLimitFullCollectionSortWithFullCount : function () {
-      const query = "FOR c IN " + cn + " SORT c.value LIMIT 20, 10 RETURN c";
+    testLimitFullCollectionSortWithFullCount: function () {
+      const query = `FOR c IN ${cn} SORT c.value LIMIT 20, 10 RETURN c`;
 
       const queryResult = AQL_EXECUTE(query, {}, {fullCount: true});
 
@@ -329,6 +329,57 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(sorts.length, 1);
       assertEqual(sorts[0].limit, 30);
       assertEqual(sorts[0].strategy, "constrained-heap");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check limit optimization with sort and fullCount
+/// Here, there are fewer rows to emit than the limit asks for.
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitFullCollectionSortWithFullCountAndFewRows: function () {
+      const query = `FOR c IN ${cn} FILTER c.value < 30 SORT c.value LIMIT 20, 700 RETURN c`;
+
+      const queryResult = AQL_EXECUTE(query, {}, {fullCount: true});
+
+      const values = queryResult.json;
+      const fullCount = queryResult.stats.fullCount;
+
+      assertEqual(10, values.length);
+
+      assertEqual(20, values[0].value);
+      assertEqual(21, values[1].value);
+      assertEqual(22, values[2].value);
+      assertEqual(29, values[9].value);
+
+      assertEqual(fullCount, 30);
+
+      const sorts = getSorts(query);
+      assertEqual(sorts.length, 1);
+      assertEqual(sorts[0].limit, 720);
+      assertEqual(sorts[0].strategy, 'constrained-heap');
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check limit optimization with sort and fullCount
+/// Here, all rows are skipped during the limit block's offset.
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitFullCollectionSortWithFullCountAndAllRowsSkipped: function () {
+      const query = `FOR c IN ${cn} FILTER c.value < 30 SORT c.value LIMIT 40, 700 RETURN c`;
+
+      const queryResult = AQL_EXECUTE(query, {}, {fullCount: true});
+
+      const values = queryResult.json;
+      const fullCount = queryResult.stats.fullCount;
+
+      assertEqual(0, values.length);
+
+      assertEqual(fullCount, 30);
+
+      const sorts = getSorts(query);
+      assertEqual(sorts.length, 1);
+      assertEqual(sorts[0].limit, 740);
+      assertEqual(sorts[0].strategy, 'constrained-heap');
     },
 
   };
