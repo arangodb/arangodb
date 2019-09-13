@@ -1237,8 +1237,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                                 filterCondition(),
                                                 volatility(),
                                                 getRegisterPlan()->varInfo,
-                                                getDepth(),
-                                                materialized};
+                                                getDepth()};
 
   if (_sort.first) {
     TRI_ASSERT(!_sort.first->empty()); // guaranteed by optimizer rule

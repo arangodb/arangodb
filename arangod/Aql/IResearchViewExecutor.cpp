@@ -111,8 +111,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     aql::AstNode const& filterCondition,
     std::pair<bool, bool> volatility,
     IResearchViewExecutorInfos::VarInfoMap const& varInfoMap,
-    int depth,
-    bool doMaterialization)
+    int depth)
   : ExecutorInfos(std::move(infos)),
     _outputRegister(firstOutputRegister),
     _numScoreRegisters(numScoreRegisters),
@@ -127,8 +126,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     // `_volatileSort` implies `_volatileFilter`
     _volatileFilter(_volatileSort || volatility.first),
     _varInfoMap(varInfoMap),
-    _depth(depth),
-    _doMaterialization(doMaterialization) {
+    _depth(depth) {
   TRI_ASSERT(_reader != nullptr);
   TRI_ASSERT(getOutputRegisters()->find(firstOutputRegister) !=
              getOutputRegisters()->end());

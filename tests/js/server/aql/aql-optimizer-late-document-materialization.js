@@ -47,10 +47,13 @@ function lateDocumentMaterializationRuleTestSuite () {
       
       let c = db._create(cn, { numberOfShards: 3 });
       let c2 = db._create(cn1, { numberOfShards: 3 });
+      
       db._createView(vn, "arangosearch", { 
         links: { 
-          [cn] : { includeAllFields: true }, 
-          [cn1] : { includeAllFields: true } 
+          [cn] : { includeAllFields: true, analyzers : [ "identity" ],
+                   fields : { str : { "analyzers" : [ "text_en" ] }}, }, 
+          [cn1] : { includeAllFields: true, analyzers : [ "identity" ],
+                    fields : { str : { "analyzers" : [ "text_en" ] }}} 
         }});
       db._createView(svn, "arangosearch", {
         consolidationIntervalMsec: 5000, 
@@ -60,10 +63,15 @@ function lateDocumentMaterializationRuleTestSuite () {
           [cn1] : { includeAllFields: true } 
         }});
 
-      for (var i = 0; i < 10; ++i) {
-        c.save({ _key: 'c' + i,  col: 'c',  str: 'str' + i , value: i });
-        c2.save({_key: 'c_' + i, col: 'c2',  str: 'ttr' + i , value: i + 10 });
-      }
+      c.save({ _key: 'c0',  str: 'cat snake carrot fork octagon season serpent butter dog tanker', value: 0 });
+      c2.save({_key: 'c_0', str: 'cat snake carrot fork octagon season serpent butter dog dog', value: 10 });
+      c.save({ _key: 'c1',  str: 'cat snake carrot fork octagon season serpent dog dog dog', value: 1 });
+      c2.save({_key: 'c_1', str: 'cat snake carrot fork octagon dog dog dog dog dog', value: 11 });
+      c.save({ _key: 'c2',  str: 'cat snake carrot fork dog dog dog dog dog dog', value: 2 });
+      c2.save({_key: 'c_2', str: 'cat snake carrot dog dog dog dog dog dog dog', value: 12 });
+      c.save({ _key: 'c3',  str: 'cat dog dog dog dog dog dog dog dog dog', value: 3 });
+      c2.save({_key: 'c_3', str: 'dog dog dog dog dog dog dog dog dog dog', value: 13 });
+      
       // trigger view sync
       db._query("FOR d IN " + vn + " OPTIONS { waitForSync: true } RETURN d");
       db._query("FOR d IN " + svn + " OPTIONS { waitForSync: true } RETURN d");
@@ -154,28 +162,35 @@ function lateDocumentMaterializationRuleTestSuite () {
       assertEqual(0, expectedKeys.size);
     },
     testQueryResultsWithMultipleCollectionsWithMultiSort() {
-      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11,12] SORT BM25(d) SORT TFIDF(d) LIMIT 10 RETURN d ";
+      let query = "FOR d IN " + vn  + " SEARCH PHRASE(d.str, 'dog', 'text_en') " +
+                  "SORT TFIDF(d) LIMIT 10 SORT BM25(d) LIMIT 4 RETURN d ";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let materializeNodeFound = false;
       // only one last sort node must be materializer
       plan.nodes.forEach(function(node) {
-        if( node.type === "SortNode" && node.hasOwnProperty('outDocument')) {
-          // there should be no materializer before
-          assertFalse(materializeNodeFound);
-          materializeNodeFound = true;
+        if (node.type === "SortNode") {
+          if (node.hasOwnProperty('outDocument')) {
+            // there should be no materializer before
+            assertFalse(materializeNodeFound);
+            materializeNodeFound = true;
+          } else {
+            // first sort node should be limited but not a materializer
+            assertEqual(10, node.limit);
+          }
         }
       });
       // materilizer should be there
       assertTrue(materializeNodeFound);
       let result = AQL_EXECUTE(query);
       assertEqual(4, result.json.length);
-      let expectedKeys = new Set(['c1', 'c2', 'c_1', 'c_2']);
+      // should be sorted by increasing dog frequency
+      let expectedKeys = ['c0', 'c_0', 'c1', 'c_1'];
       result.json.forEach(function(doc) {
-        assertTrue(expectedKeys.has(doc._key));
-        expectedKeys.delete(doc._key);
+        assertEqual(expectedKeys[0], doc._key);
+        expectedKeys.shift();
       });
-      assertEqual(0, expectedKeys.size);
+      assertEqual(0, expectedKeys.length);
     },
     testQueryResultsWithMultipleCollectionsAfterCalc() {
       let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LIMIT 10 LET c = CONCAT(NOOPT(d._key), '-C') RETURN c ";
@@ -285,7 +300,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       assertTrue(materializeNodeFound);
     },
     testQueryResultsMultipleLimits2() {
-      // almost the same but without last sort - this 
+      // almost the same as testQueryResultsMultipleLimits but without last sort - this 
       // will not create addition variable for sort 
       // value but it should not affect results especially on cluster!
       let query = " FOR d IN " + vn  + " SEARCH d.value > 5 SORT BM25(d) " +

@@ -33,10 +33,6 @@
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
 
-#include "VocBase/LogicalCollection.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
-
 #include <algorithm>
 
 using namespace arangodb;
@@ -119,36 +115,6 @@ arangodb::Result ConstrainedSortExecutor<OutputRowImpl>::pushRow(InputAqlItemRow
   std::push_heap(_rows.begin(), _rows.end(), *_cmpHeap.get());
 
   return TRI_ERROR_NO_ERROR;
-}
-
-template<typename OutputRowImpl>
-std::pair<ExecutionState, NoStats> ConstrainedSortExecutor<OutputRowImpl>::fetchAllRowsFromUpstream() {
-  while (_state != ExecutionState::DONE) {
-    TRI_IF_FAILURE("SortBlock::doSorting") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    // We need to pull rows from above, and insert them into the heap
-    InputAqlItemRow input(CreateInvalidInputRowHint{});
-
-    std::tie(_state, input) = _fetcher.fetchRow();
-    if (_state == ExecutionState::WAITING) {
-      return { _state, NoStats{} };
-    }
-    if (!input.isInitialized()) {
-      TRI_ASSERT(_state == ExecutionState::DONE);
-    } else {
-      if (_rowsPushed < _infos._limit || !compareInput(_rows.front(), input)) {
-        // Push this row into the heap
-        pushRow(input);
-      }
-    }
-  }
-  if(_returnNext == 0 && !_rows.empty()) {
-    // Only once sort the rows again, s.t. the
-    // contained list of elements is in the right ordering.
-    std::sort(_rows.begin(), _rows.end(), *_cmpHeap);
-  }
-  return { _state, NoStats{} };
 }
 
 template<typename OutputRowImpl>

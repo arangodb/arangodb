@@ -89,7 +89,6 @@ class ConstrainedSortExecutor {
  private:
   bool compareInput(size_t const& rosPos, InputAqlItemRow& row) const;
   arangodb::Result pushRow(InputAqlItemRow& row);
-  std::pair<ExecutionState, Stats> fetchAllRowsFromUpstream();
 
   // We're done producing when we've emitted all rows from our heap.
   bool doneProducing() const noexcept;

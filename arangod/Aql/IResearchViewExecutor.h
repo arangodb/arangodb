@@ -71,8 +71,7 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
       aql::AstNode const& filterCondition,
       std::pair<bool, bool> volatility,
       VarInfoMap const& varInfoMap,
-      int depth,
-      bool doMaterialization); //!!!! Remove do materialization??
+      int depth);
 
   RegisterId getOutputRegister() const noexcept { return _outputRegister; }
   RegisterId getNumScoreRegisters() const noexcept { return _numScoreRegisters; }
@@ -86,7 +85,6 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   int getDepth() const noexcept { return _depth; }
   bool volatileSort() const noexcept { return _volatileSort; }
   bool volatileFilter() const noexcept { return _volatileFilter; }
-  bool doMaterialization() const noexcept { return _doMaterialization; }
   // first - sort
   // second - number of sort conditions to take into account
   std::pair<iresearch::IResearchViewSort const*, size_t> const& sort() const noexcept { return _sort; }
@@ -109,7 +107,6 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   bool const _volatileFilter;
   VarInfoMap const& _varInfoMap;
   int const _depth;
-  bool const _doMaterialization;
 }; // IResearchViewExecutorInfos
 
 class IResearchViewStats {
