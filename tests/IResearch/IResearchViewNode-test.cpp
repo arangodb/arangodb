@@ -875,8 +875,6 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
     ASSERT_EQ(2, setHere.size());
-    //EXPECT_EQ(outVariable.id, setHere[0]->id);
-    //EXPECT_EQ(outVariable.name, setHere[0]->name);
     EXPECT_EQ(101, setHere[0]->id);
     EXPECT_EQ("variable101", setHere[0]->name);
     EXPECT_EQ(100, setHere[1]->id);
