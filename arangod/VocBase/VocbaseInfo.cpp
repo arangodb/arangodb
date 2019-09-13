@@ -135,8 +135,9 @@ void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) con
 }
 
 void CreateDatabaseInfo::UsersToVelocyPack(VPackBuilder& builder) const {
-  VPackArrayBuilder guard(&builder);
+  VPackArrayBuilder arrayGuard(&builder);
   for(auto const& user : _users) {
+    VPackObjectBuilder objectGuard(&builder);
     builder.add("username", VPackValue(user.name));
     builder.add("passwd", VPackValue(user.password));
     builder.add("active", VPackValue(user.active));
