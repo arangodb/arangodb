@@ -27,7 +27,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Auth/UseQueuesPrivilege.h"
+#include "Auth/QueuesPrivilege.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
@@ -342,7 +342,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   const std::string runAsUser = exec.user();
-  TRI_ASSERT(exec.hasPrivilege(UseQueuesPrivilege{runAsUser}));
+  TRI_ASSERT(exec.hasPrivilege(QueuesPrivilege{runAsUser}));
   
   std::string key = TRI_ObjectToString(isolate, args[0]);
   uint64_t maxWorkers =

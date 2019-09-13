@@ -26,9 +26,9 @@
 
 namespace arangodb {
 namespace auth {
-  class CreateUserPrivilege : public Privilege {
-   public:
-    explicit CreateUserPrivilege(std::string const& username) {}
-  };
+class CreateUserPrivilege : public Privilege {
+ public:
+  explicit CreateUserPrivilege(std::string const& username) {}
+};
 }  // namespace auth
 }  // namespace arangodb

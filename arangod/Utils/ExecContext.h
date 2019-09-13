@@ -34,8 +34,8 @@
 #include "Auth/HardenedApiPrivilege.h"
 #include "Auth/ListUsersPrivilege.h"
 #include "Auth/ReloadPrivilegesPrivilege.h"
-#include "Auth/UseQueuesPrivilege.h"
-#include "Auth/UseTasksPrivilege.h"
+#include "Auth/QueuesPrivilege.h"
+#include "Auth/TasksPrivilege.h"
 #include "Rest/RequestContext.h"
 
 #include <memory>
@@ -183,7 +183,7 @@ class ExecContext : public RequestContext {
     return !_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW;
   }
 
-  bool hasPrivilege(auth::UseQueuesPrivilege const& priv) const {
+  bool hasPrivilege(auth::QueuesPrivilege const& priv) const {
     if (!_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW) {
       return true;
     }
@@ -191,7 +191,7 @@ class ExecContext : public RequestContext {
     return !priv.username().empty();
   }
 
-  bool hasPrivilege(auth::UseTasksPrivilege const& priv) const {
+  bool hasPrivilege(auth::TasksPrivilege const& priv) const {
     if (!_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW) {
       return true;
     }
@@ -199,23 +199,11 @@ class ExecContext : public RequestContext {
     return !priv.runAs().empty() && priv.username() == priv.runAs();
   }
 
-  // an internal user is none / ro / rw for all collections / dbs
-  // mainly used to override further permission resolution
-  inline bool isInternal() const { return _type == Type::Internal; }
-
   //  any internal user is a superuser if he has rw access
   bool isSuperuser() const {
     return isInternal() && _systemDbAuthLevel == auth::Level::RW &&
            _databaseAuthLevel == auth::Level::RW;
   }
-
-  // is this an internal read-only user
-  bool isReadOnly() const {
-    return isInternal() && _systemDbAuthLevel == auth::Level::RO;
-  }
-
-  // is allowed to manage users, create databases, ...
-  bool isAdminUser() const { return _systemDbAuthLevel == auth::Level::RW; }
 
  private:
   auth::Level authLevel(auth::DatabaseResource const&) const;

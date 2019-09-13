@@ -26,17 +26,14 @@
 
 namespace arangodb {
 namespace auth {
-  class UseTasksPrivilege : public Privilege {
-   public:
-    explicit UseTasksPrivilege(std::string const& username, std::string const& runAs) 
-      : _username(username), _runAs(runAs) {}
+class QueuesPrivilege : public Privilege {
+ public:
+  explicit QueuesPrivilege(std::string const& username) : _username(username) {}
 
-    std::string const& username() const { return _username; }
-    std::string const& runAs() const { return _runAs; }
+  std::string const& username() const { return _username; }
 
-   private:
-    std::string const _username;
-    std::string const _runAs;
-  };
+ private:
+  std::string const _username;
+};
 }  // namespace auth
 }  // namespace arangodb

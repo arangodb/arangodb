@@ -35,8 +35,7 @@ class DatabaseResource : public Resource {
   explicit DatabaseResource(std::string const& database)
       : _database(database) {}
 
-  explicit DatabaseResource(char const* database)
-      : _database(database) {}
+  explicit DatabaseResource(char const* database) : _database(database) {}
 
   DatabaseResource(std::string&& database) : _database(std::move(database)) {}
 

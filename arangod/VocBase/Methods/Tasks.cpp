@@ -331,7 +331,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
 
 void Task::start() {
   ExecContext const& exec = ExecContext::current();
-  TRI_ASSERT(exec.hasPrivilege(auth::UseTasksPrivilege{exec.user(), _user}));
+  TRI_ASSERT(exec.hasPrivilege(auth::TasksPrivilege{exec.user(), _user}));
 
   {
     MUTEX_LOCKER(lock, _taskHandleMutex);

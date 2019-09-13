@@ -26,6 +26,6 @@
 
 namespace arangodb {
 namespace auth {
-  class ListUsersPrivilege : public Privilege {};
+class ListUsersPrivilege : public Privilege {};
 }  // namespace auth
 }  // namespace arangodb

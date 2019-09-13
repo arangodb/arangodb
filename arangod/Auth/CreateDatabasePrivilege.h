@@ -28,10 +28,10 @@
 
 namespace arangodb {
 namespace auth {
-  class CreateDatabasePrivilege : public Privilege {
-   public:
-    explicit CreateDatabasePrivilege(DatabaseResource const&) {}
-    explicit CreateDatabasePrivilege(DatabaseResource&&) {}
-  };
+class CreateDatabasePrivilege : public Privilege {
+ public:
+  explicit CreateDatabasePrivilege(DatabaseResource const&) {}
+  explicit CreateDatabasePrivilege(DatabaseResource&&) {}
+};
 }  // namespace auth
 }  // namespace arangodb

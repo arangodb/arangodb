@@ -111,7 +111,7 @@ std::unique_ptr<ExecContext> ExecContext::create(auth::AuthUser const& user,
 }
 
 auth::Level ExecContext::authLevel(auth::DatabaseResource const& database) const {
-  if (isInternal() || database.equals(_database)) {
+  if (_type == Type::Internal || database.equals(_database)) {
     // should be RW for superuser, RO for read-only
     return _databaseAuthLevel;
   }
@@ -131,7 +131,7 @@ auth::Level ExecContext::authLevel(auth::DatabaseResource const& database) const
 }
 
 auth::Level ExecContext::authLevel(auth::CollectionResource const& collection) const {
-  if (isInternal()) {
+  if (_type == Type::Internal) {
     // should be RW for superuser, RO for read-only
     return _databaseAuthLevel;
   }

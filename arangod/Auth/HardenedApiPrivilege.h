@@ -26,6 +26,6 @@
 
 namespace arangodb {
 namespace auth {
-  class HardenedApiPrivilege : public Privilege {};
+class HardenedApiPrivilege : public Privilege {};
 }  // namespace auth
 }  // namespace arangodb
