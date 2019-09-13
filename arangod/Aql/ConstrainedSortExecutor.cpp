@@ -209,7 +209,9 @@ std::pair<ExecutionState, NoStats> ConstrainedSortExecutor::produceRows(OutputAq
       return {ExecutionState::DONE, NoStats{}};
     }
     // We should never get here, as the following LIMIT block should never fetch
-    // more than our limit. He may only skip after that. Thus:
+    // more than our limit. It may only skip after that.
+    // But note that this means that this block breaks with usual AQL behaviour!
+    // From this point on (i.e. doneProducing()), this block may only skip, not produce.
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL_AQL,
