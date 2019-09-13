@@ -177,7 +177,7 @@ function lateDocumentMaterializationRuleTestSuite () {
             // the other sort node should be limited but not a materializer
             // TFIDF node on single and BM25 on cluster as for cluster
             // only first sort will be on DBServers
-            assertEqual(node.limit, isCluster ? 10 : 4);
+            assertEqual(node.limit, isCluster ? 4 : 10);
           }
         }
       });
