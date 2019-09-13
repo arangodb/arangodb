@@ -658,17 +658,17 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo());
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((false == !logicalCollection));
+    ASSERT_NE(logicalCollection, nullptr);
     auto logicalView = vocbase.createView(viewJson->slice());
-    ASSERT_TRUE((false == !logicalView));
+    ASSERT_NE(logicalView, nullptr);
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
-    ASSERT_TRUE((false == !view));
+    ASSERT_NE(view, nullptr);
     bool created;
     auto index = logicalCollection->createIndex(linkJson->slice(), created);
-    ASSERT_TRUE((created));
-    ASSERT_TRUE((false == !index));
+    ASSERT_TRUE(created);
+    ASSERT_NE(index, nullptr);
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_TRUE((false == !link));
+    ASSERT_NE(link, nullptr);
     ASSERT_TRUE((view->link(link->self()).ok())); // link will not notify view in 'vocbase', hence notify manually
 
     index->unload(); // release file handles
