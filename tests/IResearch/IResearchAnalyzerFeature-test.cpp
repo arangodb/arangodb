@@ -3329,7 +3329,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test no system, no analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo("system"));  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create before reseting server
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3389,7 +3389,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test no system, with analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo("system"));  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create before reseting server
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3471,7 +3471,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test system, no legacy collection, no analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo("system"));  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create before reseting server
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3533,7 +3533,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test system, no legacy collection, with analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo("system"));  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create before reseting server
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3620,7 +3620,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test system, with legacy collection, no analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo("system"));  // create befor reseting srver
+
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create before reseting server
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3697,7 +3698,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
   // test system, no legacy collection, with analyzer collection (single-server)
   {
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo("system"));  // create befor reseting srver
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo());  // create before reseting server
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state

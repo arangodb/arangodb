@@ -27,6 +27,7 @@
 #include "Aql/Query.h"
 #include "Aql/AstNode.h"
 #include "VocBase/vocbase.h"
+#include "Basics/StaticStrings.h"
 
 #include <string>
 #include <vector>
@@ -215,7 +216,7 @@ inline arangodb::CreateDatabaseInfo createInfo(std::string const& name, uint64_t
   return info;
 };
 
-inline arangodb::CreateDatabaseInfo systemDBInfo(std::string const& name = "_system", uint64_t id = 1) {
+inline arangodb::CreateDatabaseInfo systemDBInfo(std::string const& name = arangodb::StaticStrings::SystemDatabase, uint64_t id = 1) {
   return createInfo(name, id);
 };
 
