@@ -282,5 +282,29 @@ OperationResult clusterResultModify(arangodb::fuerte::StatusCode code,
     }
   }
 }
+  
+/// @brief Create Cluster Communication result for delete
+OperationResult clusterResultDelete(arangodb::fuerte::StatusCode code,
+                                    std::shared_ptr<VPackBuffer<uint8_t>> body,
+                                    OperationOptions const& options,
+                                    std::unordered_map<int, size_t> const& errorCounter) {
+  switch (code) {
+    case fuerte::StatusOK:
+    case fuerte::StatusAccepted:
+    case fuerte::StatusCreated: {
+      OperationOptions options;
+      options.waitForSync = (code != fuerte::StatusAccepted);
+      return OperationResult(Result(), std::move(body), options, errorCounter);
+    }
+    case fuerte::StatusPreconditionFailed:
+      return OperationResult(network::resultFromBody(body, TRI_ERROR_ARANGO_CONFLICT),
+                             body, options, errorCounter);
+    case fuerte::StatusNotFound:
+      return network::opResultFromBody(body, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    default: {
+      return network::opResultFromBody(body, TRI_ERROR_INTERNAL);
+    }
+  }
+}
 }  // namespace network
 }  // namespace arangodb
