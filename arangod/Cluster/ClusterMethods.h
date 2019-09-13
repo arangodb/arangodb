@@ -114,14 +114,13 @@ futures::Future<OperationResult> createDocumentOnCoordinator(transaction::Method
                                                              OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a document in a coordinator
+/// @brief remove a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int deleteDocumentOnCoordinator(transaction::Methods& trx, std::string const& collname,
-                                VPackSlice const slice, OperationOptions const& options,
-                                arangodb::rest::ResponseCode& responseCode,
-                                std::unordered_map<int, size_t>& errorCounters,
-                                std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
+futures::Future<OperationResult> removeDocumentOnCoordinator(transaction::Methods& trx,
+                                                             LogicalCollection&,
+                                                             VPackSlice const slice,
+                                                             OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a document in a coordinator

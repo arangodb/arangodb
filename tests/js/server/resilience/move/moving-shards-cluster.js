@@ -48,7 +48,7 @@ function getDBServers() {
   return servers;
 }
 
-let servers = getDBServers();
+var servers = getDBServers();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

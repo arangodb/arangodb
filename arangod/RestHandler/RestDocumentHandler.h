@@ -81,7 +81,7 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   RestStatus modifyDocument(bool);
 
   // removes a document
-  bool removeDocument();
+  RestStatus removeDocument();
   
 private:
   std::unique_ptr<SingleCollectionTransaction> _activeTrx;
