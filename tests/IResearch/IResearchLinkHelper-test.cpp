@@ -482,7 +482,7 @@ TEST_F(IResearchLinkHelperTest, test_normalize) {
 
     // not authorised
     {
-      arangodb::ExecContext::NobodyScope execContextScope();
+      arangodb::ExecContext::NobodyScope execContextScope;
       auto* authFeature = arangodb::AuthenticationFeature::instance();
       auto* userManager = authFeature->userManager();
       arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -556,7 +556,7 @@ TEST_F(IResearchLinkHelperTest, test_updateLinks) {
 
     // not authorized
     {
-      arangodb::ExecContext::NobodyScope execContextScope();
+      arangodb::ExecContext::NobodyScope execContextScope;
       auto* authFeature = arangodb::AuthenticationFeature::instance();
       auto* userManager = authFeature->userManager();
       arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()

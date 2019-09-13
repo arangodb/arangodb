@@ -603,7 +603,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
           ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0);
         });
 
-    arangodb::ExecContext::NobodyScope execContextScope();
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -1015,7 +1015,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
   }
 
   {
-    arangodb::ExecContext::NobodyScope execContextScope();
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -2635,7 +2635,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE((true == logicalView->visitCollections(
                              [](TRI_voc_cid_t) -> bool { return false; })));
 
-    arangodb::ExecContext::NobodyScope scope();
+    arangodb::ExecContext::NobodyScope scope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::removeAllUsers()
@@ -4002,7 +4002,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     EXPECT_TRUE((true == logicalView->visitCollections(
                              [](TRI_voc_cid_t) -> bool { return false; })));
 
-    arangodb::ExecContext::NobodyScope scope();
+    arangodb::ExecContext::NobodyScope scope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::removeAllUsers()
@@ -4211,7 +4211,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
                                 [](TRI_voc_cid_t) -> bool { return false; })));
     }
 
-    arangodb::ExecContext::NobodyScope execContextScope();
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -4319,7 +4319,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     EXPECT_TRUE((true == logicalView->visitCollections(
                              [](TRI_voc_cid_t) -> bool { return false; })));
 
-    arangodb::ExecContext::NobodyScope scope();
+    arangodb::ExecContext::NobodyScope scope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -4408,7 +4408,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       }
     }
 
-    arangodb::ExecContext::NobodyScope execContextScope();
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -4543,7 +4543,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
                                 [](TRI_voc_cid_t) -> bool { return false; })));
     }
 
-    arangodb::ExecContext::NobodyScope execContextScope();
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -4695,7 +4695,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       }
     }
 
-    arangodb::ExecContext::NobodyScope execContextScope();
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -4944,7 +4944,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
                                 [](TRI_voc_cid_t) -> bool { return false; })));
     }
 
-    arangodb::ExecContext::NobodyScope execContextScope();
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -5052,7 +5052,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     EXPECT_TRUE((true == logicalView->visitCollections(
                              [](TRI_voc_cid_t) -> bool { return false; })));
 
-    arangodb::ExecContext::NobodyScope scope();
+    arangodb::ExecContext::NobodyScope scope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -5139,7 +5139,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       }
     }
 
-    arangodb::ExecContext::NobodyScope execContextScope();
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -5280,7 +5280,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       }
     }
 
-    arangodb::ExecContext::NobodyScope execContextScope();
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -5432,7 +5432,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       }
     }
 
-    arangodb::ExecContext::NobodyScope execContextScope();
+    arangodb::ExecContext::NobodyScope execContextScope;
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
