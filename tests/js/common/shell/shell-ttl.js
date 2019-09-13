@@ -204,6 +204,16 @@ function TtlSuite () {
       // number of runs must not have changed
       assertEqual(stats.runs, oldRuns);
     },
+    
+    testCreateIndexSubAttribute : function () {
+      let c = db._create(cn, { numberOfShards: 2 });
+      try {
+        c.ensureIndex({ type: "ttl", fields: ["date.created"], expireAfter: 10, unique: true });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
 
     testCreateIndexUnique : function () {
       let c = db._create(cn, { numberOfShards: 2 });

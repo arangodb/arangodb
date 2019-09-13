@@ -102,7 +102,7 @@ void TRI_TerminateDebugging(char const* message) {
   TRI_FlushDebugging();
 
   // and now crash
-#ifdef WIN32
+#ifdef _WIN32
   auto hSelf = GetCurrentProcess();
   TerminateProcess(hSelf, -999);
   // TerminateProcess is async, alright wait here  for selfdestruct (we will never exit wait)
