@@ -44,6 +44,8 @@
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
+#include "Aql/SubqueryEndExecutionNode.h"
+#include "Aql/SubqueryStartExecutionNode.h"
 #include "Aql/TraversalConditionFinder.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/Variable.h"
@@ -7118,6 +7120,49 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
       plan->insertAfter(f, limitNode);
       modified = true;
     }
+  }
+
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
+// Splices in subqueries by replacing subquery nodes by
+// a SubqueryStartNode and a SubqueryEndNode with the subquery's nodes
+// in between.
+// TODO: check ownership of ExecutionNodes etc
+//
+void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                                         OptimizerRule const& rule) {
+  bool modified = false;
+
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, EN::SUBQUERY, true);
+
+  std::unordered_map<ExecutionNode*, std::tuple<int64_t, std::unordered_set<ExecutionNode const*>, bool>> subqueryAttributes;
+
+  for (auto const& n : nodes) {
+    auto sq = ExecutionNode::castTo<SubqueryNode*>(n);
+
+    // replace the singleton node of the subquery by a SubqueryStartNode
+    SubqueryStartNode* start = new SubqueryStartNode(plan.get(), plan->nextId());
+    plan->registerNode(start);
+    // TODO: this is naughty.
+    ExecutionNode *singleton = const_cast<ExecutionNode *>(sq->getSubquery()->getSingleton());
+    plan->insertAfter(sq, start);
+    plan->replaceNode(singleton, start);
+
+    // Replace the SubqueryNode with a SubqueryEndNode whose dependency is the
+    // root of the subquery
+    SubqueryEndNode* end =
+        new SubqueryEndNode(plan.get(), plan->nextId(), sq->outVariable());
+    plan->registerNode(end);
+    end->addDependency(sq->getSubquery());
+    plan->replaceNode(sq, end);
+
+    // this could be particularly bad
+    // with singleton supposedly "const"
+    delete singleton;
+    delete sq;
   }
 
   opt->addPlan(std::move(plan), rule, modified);

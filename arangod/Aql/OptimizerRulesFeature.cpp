@@ -338,6 +338,10 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::restrictToSingleShardRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled, OptimizerRule::Flags::ClusterOnly));
 
+  // Splice subqueries
+  registerRule("splice-subqueries", spliceSubqueriesRule, OptimizerRule::spliceSubqueriesRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
   // finally add the storage-engine specific rules
   addStorageEngineRules();
 }

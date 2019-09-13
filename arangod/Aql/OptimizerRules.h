@@ -259,6 +259,9 @@ void optimizeSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, Optimize
 void replaceNearWithinFulltext(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                OptimizerRule const&);
 
+//// @brief splice in subqueries
+void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+
 }  // namespace aql
 }  // namespace arangodb
 
