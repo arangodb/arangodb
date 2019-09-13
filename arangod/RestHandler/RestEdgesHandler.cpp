@@ -234,7 +234,7 @@ bool RestEdgesHandler::readEdges() {
   resultBuilder.add(VPackValue("edges"));  // only key
   resultBuilder.openArray();
 
-  TRI_voc_cid_t cid = trx->addCollectionAtRuntime(collectionName);
+  TRI_voc_cid_t cid = trx->addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   auto collection = trx->documentCollection(cid);
   std::unordered_set<LocalDocumentId> foundTokens;
   auto cb = [&](LocalDocumentId const& token) {
@@ -374,7 +374,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   resultBuilder.add(VPackValue("edges"));  // only key
   resultBuilder.openArray();
 
-  TRI_voc_cid_t cid = trx->addCollectionAtRuntime(collectionName);
+  TRI_voc_cid_t cid = trx->addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   auto collection = trx->documentCollection(cid);
   std::unordered_set<LocalDocumentId> foundTokens;
   auto cb = [&](LocalDocumentId const& token) {

@@ -97,7 +97,8 @@ LogicalCollection* SingleCollectionTransaction::documentCollection() {
   return _documentCollection;
 }
   
-TRI_voc_cid_t SingleCollectionTransaction::addCollectionAtRuntime(std::string const& name) {
+TRI_voc_cid_t SingleCollectionTransaction::addCollectionAtRuntime(std::string const& name,
+                                                                  AccessMode::Type type) {
   // sanity check
   TRI_ASSERT(!name.empty());
   if ((name[0] < '0' || name[0] > '9') && 

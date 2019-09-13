@@ -709,6 +709,8 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
                      "transaction was not running");
   }
 
+  bool const isCoordinator = state->isCoordinator();
+
   auto ctx = std::make_shared<ManagedContext>(tid, state.get(), AccessMode::Type::NONE);
   state.release();  // now owned by ctx
 
@@ -718,7 +720,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
   TRI_ASSERT(trx.state()->nestingLevel() == 1);
   trx.state()->decreaseNesting();
   TRI_ASSERT(trx.state()->isTopLevelTransaction());
-  if (clearServers) {
+  if (clearServers && !isCoordinator) {
     trx.state()->clearKnownServers();
   }
   if (status == transaction::Status::COMMITTED) {
