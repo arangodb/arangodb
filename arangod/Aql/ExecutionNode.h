@@ -811,7 +811,6 @@ class LimitNode : public ExecutionNode {
     return cloneHelper(std::move(c), withDependencies, withProperties);
   }
 
-
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 

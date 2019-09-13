@@ -167,16 +167,17 @@ function lateDocumentMaterializationRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let materializeNodeFound = false;
-      // only one last sort node must be materializer
       plan.nodes.forEach(function(node) {
         if (node.type === "SortNode") {
           if (node.hasOwnProperty('outDocument')) {
-            // there should be no materializer before
+            // there should be no materializer before (e.g. double materialization)
             assertFalse(materializeNodeFound);
             materializeNodeFound = true;
           } else {
-            // first sort node should be limited but not a materializer
-            assertEqual(10, node.limit);
+            // the other sort node should be limited but not a materializer
+            // TFIDF node on single and BM25 on cluster as for cluster
+            // only first sort will be on DBServers
+            assertEqual(node.limit, isCluster ? 10 : 4);
           }
         }
       });

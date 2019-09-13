@@ -228,7 +228,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     EXPECT_TRUE(outVariable.id == node.outVariable().id);
     EXPECT_TRUE(outVariable.name == node.outVariable().name);
     EXPECT_TRUE(query.plan() == node.plan());
-    EXPECT_TRUE(42 == node.id());
+    EXPECT_EQ(42, node.id());
     EXPECT_TRUE(logicalView == node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_TRUE(!node.volatility().first);   // filter volatility
@@ -242,11 +242,11 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     EXPECT_TRUE(outVariable.name == setHere[0]->name);
     EXPECT_TRUE(true == node.options().forceSync);
     EXPECT_TRUE(true == node.options().restrictSources);
-    EXPECT_TRUE(1 == node.options().sources.size());
-    EXPECT_TRUE(42 == *node.options().sources.begin());
+    EXPECT_EQ(1, node.options().sources.size());
+    EXPECT_EQ(42, *node.options().sources.begin());
 
-    EXPECT_TRUE(0. == node.getCost().estimatedCost);    // no dependencies
-    EXPECT_TRUE(0 == node.getCost().estimatedNrItems);  // no dependencies
+    EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   {
@@ -275,7 +275,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     EXPECT_TRUE(outVariable.id == node.outVariable().id);
     EXPECT_TRUE(outVariable.name == node.outVariable().name);
     EXPECT_TRUE(query.plan() == node.plan());
-    EXPECT_TRUE(42 == node.id());
+    EXPECT_EQ(42, node.id());
     EXPECT_TRUE(logicalView == node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_TRUE(!node.volatility().first);   // filter volatility
@@ -284,16 +284,16 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
-    EXPECT_TRUE(1 == setHere.size());
+    EXPECT_EQ(1, setHere.size());
     EXPECT_TRUE(outVariable.id == setHere[0]->id);
     EXPECT_TRUE(outVariable.name == setHere[0]->name);
     EXPECT_TRUE(true == node.options().forceSync);
     EXPECT_TRUE(true == node.options().restrictSources);
-    EXPECT_TRUE(1 == node.options().sources.size());
-    EXPECT_TRUE(42 == *node.options().sources.begin());
+    EXPECT_EQ(1, node.options().sources.size());
+    EXPECT_EQ(42, *node.options().sources.begin());
 
-    EXPECT_TRUE(0. == node.getCost().estimatedCost);    // no dependencies
-    EXPECT_TRUE(0 == node.getCost().estimatedNrItems);  // no dependencies
+    EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   // invalid 'primarySortBuckets' specified
@@ -367,8 +367,7 @@ TEST_F(IResearchViewNodeTest, construct) {
                                                 outVariable,    // out variable
                                                 nullptr,  // no filter condition
                                                 nullptr,  // no options
-                                                {}        // no sort condition
-    );
+                                                {});        // no sort condition
     node.addDependency(&singleton);
 
     EXPECT_TRUE(node.empty());                // view has no links
@@ -380,7 +379,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_TRUE(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node.getType());
     EXPECT_TRUE(&outVariable == &node.outVariable());
     EXPECT_TRUE(query.plan() == node.plan());
-    EXPECT_TRUE(42 == node.id());
+    EXPECT_EQ(42, node.id());
     EXPECT_TRUE(logicalView == node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_TRUE(!node.volatility().first);   // filter volatility
@@ -389,12 +388,12 @@ TEST_F(IResearchViewNodeTest, construct) {
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
-    EXPECT_TRUE(1 == setHere.size());
+    EXPECT_EQ(1, setHere.size());
     EXPECT_TRUE(&outVariable == setHere[0]);
     EXPECT_TRUE(false == node.options().forceSync);
 
-    EXPECT_TRUE(2. == node.getCost().estimatedCost);  // dependency is a singleton
-    EXPECT_TRUE(1 == node.getCost().estimatedNrItems);  // dependency is a singleton
+    EXPECT_EQ(2., node.getCost().estimatedCost);  // dependency is a singleton
+    EXPECT_EQ(1, node.getCost().estimatedNrItems);  // dependency is a singleton
   }
 
   // with options
@@ -415,8 +414,7 @@ TEST_F(IResearchViewNodeTest, construct) {
                                                 logicalView,    // view
                                                 outVariable,    // out variable
                                                 nullptr,  // no filter condition
-                                                &options, {}  // no sort condition
-    );
+                                                &options, {});  // no sort condition
 
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
@@ -425,7 +423,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_TRUE(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node.getType());
     EXPECT_TRUE(&outVariable == &node.outVariable());
     EXPECT_TRUE(query.plan() == node.plan());
-    EXPECT_TRUE(42 == node.id());
+    EXPECT_EQ(42, node.id());
     EXPECT_TRUE(logicalView == node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_TRUE(!node.volatility().first);   // filter volatility
@@ -434,12 +432,12 @@ TEST_F(IResearchViewNodeTest, construct) {
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
-    EXPECT_TRUE(1 == setHere.size());
+    EXPECT_EQ(1, setHere.size());
     EXPECT_TRUE(&outVariable == setHere[0]);
     EXPECT_TRUE(true == node.options().forceSync);
 
-    EXPECT_TRUE(0. == node.getCost().estimatedCost);    // no dependencies
-    EXPECT_TRUE(0 == node.getCost().estimatedNrItems);  // no dependencies
+    EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   // invalid options
@@ -462,8 +460,7 @@ TEST_F(IResearchViewNodeTest, construct) {
                                                logicalView,    // view
                                                outVariable,    // out variable
                                                nullptr,  // no filter condition
-                                               &options, {}  // no sort condition
-                                               ));
+                                               &options, {}));  // no sort condition
   }
 
   // invalid options
@@ -485,8 +482,7 @@ TEST_F(IResearchViewNodeTest, construct) {
                                                 logicalView,    // view
                                                 outVariable,    // out variable
                                                 nullptr,  // no filter condition
-                                                &options, {}  // no sort condition
-    );
+                                                &options, {});  // no sort condition
 
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
@@ -495,7 +491,7 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_TRUE(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node.getType());
     EXPECT_TRUE(&outVariable == &node.outVariable());
     EXPECT_TRUE(query.plan() == node.plan());
-    EXPECT_TRUE(42 == node.id());
+    EXPECT_EQ(42, node.id());
     EXPECT_TRUE(logicalView == node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_TRUE(!node.volatility().first);   // filter volatility
@@ -504,12 +500,12 @@ TEST_F(IResearchViewNodeTest, construct) {
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
-    EXPECT_TRUE(1 == setHere.size());
+    EXPECT_EQ(1, setHere.size());
     EXPECT_TRUE(&outVariable == setHere[0]);
     EXPECT_TRUE(false == node.options().forceSync);
 
-    EXPECT_TRUE(0. == node.getCost().estimatedCost);    // no dependencies
-    EXPECT_TRUE(0 == node.getCost().estimatedNrItems);  // no dependencies
+    EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 }
 
@@ -620,7 +616,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(outVariable.id == node.outVariable().id);
     EXPECT_TRUE(outVariable.name == node.outVariable().name);
     EXPECT_TRUE(query.plan() == node.plan());
-    EXPECT_TRUE(42 == node.id());
+    EXPECT_EQ(42, node.id());
     EXPECT_TRUE(logicalView == node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_TRUE(!node.volatility().first);   // filter volatility
@@ -629,13 +625,13 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
-    EXPECT_TRUE(1 == setHere.size());
+    EXPECT_EQ(1, setHere.size());
     EXPECT_TRUE(outVariable.id == setHere[0]->id);
     EXPECT_TRUE(outVariable.name == setHere[0]->name);
     EXPECT_TRUE(false == node.options().forceSync);
 
-    EXPECT_TRUE(0. == node.getCost().estimatedCost);    // no dependencies
-    EXPECT_TRUE(0 == node.getCost().estimatedNrItems);  // no dependencies
+    EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   // no options, ignore 'primarySortBuckets'
@@ -661,7 +657,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(outVariable.id == node.outVariable().id);
     EXPECT_TRUE(outVariable.name == node.outVariable().name);
     EXPECT_TRUE(query.plan() == node.plan());
-    EXPECT_TRUE(42 == node.id());
+    EXPECT_EQ(42, node.id());
     EXPECT_TRUE(logicalView == node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_TRUE(!node.volatility().first);   // filter volatility
@@ -670,13 +666,13 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
-    EXPECT_TRUE(1 == setHere.size());
+    EXPECT_EQ(1, setHere.size());
     EXPECT_TRUE(outVariable.id == setHere[0]->id);
     EXPECT_TRUE(outVariable.name == setHere[0]->name);
     EXPECT_TRUE(false == node.options().forceSync);
 
-    EXPECT_TRUE(0. == node.getCost().estimatedCost);    // no dependencies
-    EXPECT_TRUE(0 == node.getCost().estimatedNrItems);  // no dependencies
+    EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   // no options
@@ -702,7 +698,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(outVariable.id == node.outVariable().id);
     EXPECT_TRUE(outVariable.name == node.outVariable().name);
     EXPECT_TRUE(query.plan() == node.plan());
-    EXPECT_TRUE(42 == node.id());
+    EXPECT_EQ(42, node.id());
     EXPECT_TRUE(logicalView == node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_TRUE(!node.volatility().first);   // filter volatility
@@ -711,13 +707,13 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
-    EXPECT_TRUE(1 == setHere.size());
+    EXPECT_EQ(1, setHere.size());
     EXPECT_TRUE(outVariable.id == setHere[0]->id);
     EXPECT_TRUE(outVariable.name == setHere[0]->name);
     EXPECT_TRUE(false == node.options().forceSync);
 
-    EXPECT_TRUE(0. == node.getCost().estimatedCost);    // no dependencies
-    EXPECT_TRUE(0 == node.getCost().estimatedNrItems);  // no dependencies
+    EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   // with options
@@ -743,7 +739,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(outVariable.id == node.outVariable().id);
     EXPECT_TRUE(outVariable.name == node.outVariable().name);
     EXPECT_TRUE(query.plan() == node.plan());
-    EXPECT_TRUE(42 == node.id());
+    EXPECT_EQ(42, node.id());
     EXPECT_TRUE(logicalView == node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_TRUE(!node.volatility().first);   // filter volatility
@@ -752,16 +748,16 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
-    EXPECT_TRUE(1 == setHere.size());
+    EXPECT_EQ(1, setHere.size());
     EXPECT_TRUE(outVariable.id == setHere[0]->id);
     EXPECT_TRUE(outVariable.name == setHere[0]->name);
     EXPECT_TRUE(true == node.options().forceSync);
     EXPECT_TRUE(true == node.options().restrictSources);
-    EXPECT_TRUE(1 == node.options().sources.size());
-    EXPECT_TRUE(42 == *node.options().sources.begin());
+    EXPECT_EQ(1, node.options().sources.size());
+    EXPECT_EQ(42, *node.options().sources.begin());
 
-    EXPECT_TRUE(0. == node.getCost().estimatedCost);    // no dependencies
-    EXPECT_TRUE(0 == node.getCost().estimatedNrItems);  // no dependencies
+    EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   // with options
@@ -787,7 +783,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(outVariable.id == node.outVariable().id);
     EXPECT_TRUE(outVariable.name == node.outVariable().name);
     EXPECT_TRUE(query.plan() == node.plan());
-    EXPECT_TRUE(42 == node.id());
+    EXPECT_EQ(42, node.id());
     EXPECT_TRUE(logicalView == node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_TRUE(!node.volatility().first);   // filter volatility
@@ -796,15 +792,15 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
-    EXPECT_TRUE(1 == setHere.size());
+    EXPECT_EQ(1, setHere.size());
     EXPECT_TRUE(outVariable.id == setHere[0]->id);
     EXPECT_TRUE(outVariable.name == setHere[0]->name);
     EXPECT_TRUE(true == node.options().forceSync);
     EXPECT_TRUE(true == node.options().restrictSources);
-    EXPECT_TRUE(0 == node.options().sources.size());
+    EXPECT_EQ(0, node.options().sources.size());
 
-    EXPECT_TRUE(0. == node.getCost().estimatedCost);    // no dependencies
-    EXPECT_TRUE(0 == node.getCost().estimatedNrItems);  // no dependencies
+    EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   // with options
@@ -830,7 +826,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(outVariable.id == node.outVariable().id);
     EXPECT_TRUE(outVariable.name == node.outVariable().name);
     EXPECT_TRUE(query.plan() == node.plan());
-    EXPECT_TRUE(42 == node.id());
+    EXPECT_EQ(42, node.id());
     EXPECT_TRUE(logicalView == node.view());
     EXPECT_TRUE(node.scorers().empty());
     EXPECT_TRUE(!node.volatility().first);   // filter volatility
@@ -839,15 +835,15 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     node.getVariablesUsedHere(usedHere);
     EXPECT_TRUE(usedHere.empty());
     auto const setHere = node.getVariablesSetHere();
-    EXPECT_TRUE(1 == setHere.size());
+    EXPECT_EQ(1, setHere.size());
     EXPECT_TRUE(outVariable.id == setHere[0]->id);
     EXPECT_TRUE(outVariable.name == setHere[0]->name);
     EXPECT_TRUE(true == node.options().forceSync);
     EXPECT_TRUE(false == node.options().restrictSources);
-    EXPECT_TRUE(0 == node.options().sources.size());
+    EXPECT_EQ(0, node.options().sources.size());
 
-    EXPECT_TRUE(0. == node.getCost().estimatedCost);    // no dependencies
-    EXPECT_TRUE(0 == node.getCost().estimatedNrItems);  // no dependencies
+    EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
   // with late materialization
@@ -1014,7 +1010,6 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
       EXPECT_TRUE(false);
     }
   }
-
 }
 
 // FIXME TODO
@@ -1046,9 +1041,7 @@ TEST_F(IResearchViewNodeTest, clone) {
                                                 outVariable,
                                                 nullptr,  // no filter condition
                                                 nullptr,  // no options
-                                                {}        // no sort condition
-    );
-
+                                                {});        // no sort condition
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
@@ -1144,9 +1137,7 @@ TEST_F(IResearchViewNodeTest, clone) {
                                                 logicalView,  // view
                                                 outVariable,
                                                 nullptr,  // no filter condition
-                                                &options, {}  // no sort condition
-    );
-
+                                                &options, {});  // no sort condition
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
@@ -1234,8 +1225,7 @@ TEST_F(IResearchViewNodeTest, clone) {
                                                 outVariable,
                                                 nullptr,  // no filter condition
                                                 nullptr,  // no options
-                                                {}        // no sort condition
-    );
+                                                {});        // no sort condition
 
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
@@ -1337,8 +1327,7 @@ TEST_F(IResearchViewNodeTest, clone) {
                                                 outVariable,
                                                 nullptr,  // no filter condition
                                                 nullptr,  // no options
-                                                {}        // no scorers
-    );
+                                                {});        // no scorers
     node.sort(&sort, 0);
 
     EXPECT_TRUE(node.empty());                // view has no links
@@ -1431,7 +1420,7 @@ TEST_F(IResearchViewNodeTest, clone) {
     }
   }
 
-  // with late materialization 
+  // with late materialization
   {
     arangodb::iresearch::IResearchViewNode node(*query.plan(),
                                                 42,           // id
@@ -1568,9 +1557,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
                                                 outVariable,
                                                 nullptr,  // no filter condition
                                                 nullptr,  // no options
-                                                {}        // no sort condition
-    );
-
+                                                {});        // no sort condition
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
@@ -1584,7 +1571,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
     auto const nodesSlice = slice.get("nodes");
     EXPECT_TRUE(nodesSlice.isArray());
     arangodb::velocypack::ArrayIterator it(nodesSlice);
-    ASSERT_TRUE(1 == it.size());
+    ASSERT_EQ(1, it.size());
     auto nodeSlice = it.value();
 
     // constructor
@@ -1651,9 +1638,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
                                                 logicalView,  // view
                                                 outVariable,
                                                 nullptr,  // no filter condition
-                                                &options, {}  // no sort condition
-    );
-
+                                                &options, {});  // no sort condition
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
@@ -1833,8 +1818,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
                                                 outVariable,
                                                 nullptr,  // no filter condition
                                                 nullptr,  // no options
-                                                {}        // no sort condition
-    );
+                                                {});        // no sort condition
     node.sort(&viewImpl.primarySort(), 1);
 
     EXPECT_TRUE(node.empty());                // view has no links
@@ -1919,9 +1903,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
                                                 logicalView,  // view
                                                 outVariable,
                                                 nullptr,  // no filter condition
-                                                &options, {}  // no sort condition
-    );
-
+                                                &options, {});  // no sort condition
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
@@ -2000,7 +1982,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
     arangodb::aql::Variable const outNmDocId("variable101", 101);
     node.sort(&viewImpl.primarySort(), 1);
     node.setLateMaterialized(&outNmColPtr, &outNmDocId);
-    
+
     arangodb::velocypack::Builder builder;
     unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
     node.toVelocyPack(builder, flags, false);  // object with array of objects
@@ -2144,9 +2126,7 @@ TEST_F(IResearchViewNodeTest, collections) {
                                               outVariable,
                                               nullptr,  // no filter condition
                                               nullptr,  // no options
-                                              {}        // no sort condition
-  );
-
+                                              {});        // no sort condition
   EXPECT_TRUE(node.shards().empty());
   EXPECT_TRUE(!node.empty());  // view has no links
   auto collections = node.collections();
@@ -2233,8 +2213,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
                                                 outVariable,
                                                 nullptr,  // no filter condition
                                                 nullptr,  // no options
-                                                {}        // no sort condition
-    );
+                                                {});        // no sort condition
     node.addDependency(&singleton);
 
     // "Trust me, I'm an IT professional"
@@ -2279,7 +2258,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     {
       auto block = node.createBlock(engine, EMPTY);
       EXPECT_TRUE(nullptr != block);
-      EXPECT_NE(nullptr, 
+      EXPECT_NE(nullptr,
         (dynamic_cast<arangodb::aql::ExecutionBlockImpl<arangodb::aql::IResearchViewExecutor<false, true>>*>((block.get()))));
     }
   }
@@ -2356,8 +2335,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServerLateMaterialized) {
                                                 outVariable,
                                                 nullptr,  // no filter condition
                                                 nullptr,  // no options
-                                                {}        // no sort condition
-    );
+                                                {});        // no sort condition
     node.addDependency(&singleton);
     node.setLateMaterialized(&outNmColPtr, &outNmDocId);
     // "Trust me, I'm an IT professional"
@@ -2402,7 +2380,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServerLateMaterialized) {
     {
       auto block = node.createBlock(engine, EMPTY);
       EXPECT_TRUE(nullptr != block);
-      EXPECT_NE(nullptr, 
+      EXPECT_NE(nullptr,
         (dynamic_cast<arangodb::aql::ExecutionBlockImpl<arangodb::aql::IResearchViewExecutor<false, false>>*>((block.get()))));
     }
   }
@@ -2439,8 +2417,7 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
                                               outVariable,
                                               nullptr,  // no filter condition
                                               nullptr,  // no options
-                                              {}        // no sort condition
-  );
+                                              {});        // no sort condition
   node.addDependency(&singleton);
 
   std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> EMPTY;
@@ -2486,8 +2463,7 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
                                               outVariable,
                                               nullptr,  // no filter condition
                                               nullptr,  // no options
-                                              {}        // no sort condition
-  );
+                                              {});        // no sort condition
   node.addDependency(&singleton);
   node.setLateMaterialized(&outNmColPtr, &outNmDocId);
   std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> EMPTY;
@@ -2658,8 +2634,8 @@ TEST_F(IResearchViewBlockTest, retrieveWithMissingInCollectionUnordered) {
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
           "Database");
   auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
-  auto queryResult = 
-    arangodb::tests::executeQuery(*vocbase, 
+  auto queryResult =
+    arangodb::tests::executeQuery(*vocbase,
                                   "FOR d IN testView OPTIONS { waitForSync: true } RETURN d");
   ASSERT_TRUE(queryResult.result.ok());
   auto result = queryResult.data->slice();
@@ -2673,8 +2649,8 @@ TEST_F(IResearchViewBlockTest, retrieveWithMissingInCollection) {
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
           "Database");
   auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
-  auto queryResult = 
-    arangodb::tests::executeQuery(*vocbase, 
+  auto queryResult =
+    arangodb::tests::executeQuery(*vocbase,
                                   "FOR d IN testView  OPTIONS { waitForSync: true } SORT BM25(d) RETURN d");
   ASSERT_TRUE(queryResult.result.ok());
   auto result = queryResult.data->slice();

@@ -292,7 +292,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::next(ReadContext& ctx) {
     if (impl.writeRow(ctx, bufferEntry)) {
       break;
     } else {
-      // to get correct stats we should continue looking for 
+      // to get correct stats we should continue looking for
       // other documents inside this one call
       LOG_TOPIC("550cd", TRACE, arangodb::iresearch::TOPIC)
           << "failed to write row in node executor";
@@ -382,10 +382,10 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
 
 template<typename Impl, typename Traits>
 bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
-  ReadContext& ctx, 
-  LocalDocumentId const& documentId,
-  LogicalCollection const& collection) {
-   // we will need collection Id also as View could produce documents from multiple collections
+    ReadContext& ctx,
+    LocalDocumentId const& documentId,
+    LogicalCollection const& collection) {
+  // we will need collection Id also as View could produce documents from multiple collections
   if (ADB_LIKELY(documentId.isSet())) {
     { // need this to make row think it is fully written
       AqlValue a(VPackSlice::noneSlice());
@@ -423,14 +423,11 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
                                                        LocalDocumentId const& documentId,
                                                        LogicalCollection const& collection) {
   TRI_ASSERT(documentId.isSet());
-
   bool writeDocOk;
-  
   if (Traits::Materialized) {
     // read document from underlying storage engine, if we got an id
     writeDocOk = collection.readDocumentWithCallback(infos().getQuery().trx(), documentId, ctx.callback);
-  }
-  else {
+  } else {
     // no need to look into collection. Somebody down the stream will do materialization. Just emit LocalDocumentIds
     writeDocOk = writeLocalDocumentId(ctx, documentId, collection);
   }

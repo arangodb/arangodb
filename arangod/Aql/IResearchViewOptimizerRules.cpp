@@ -35,10 +35,6 @@
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 #include "Aql/WalkerWorker.h"
-#include "Aql/ExecutionBlock.h"
-#include "Aql/NoResultsExecutor.h"//!!!
-#include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutionEngine.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchView.h"
@@ -295,7 +291,7 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
     auto loop = const_cast<ExecutionNode*>(node->getLoop());
     if (arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
       auto & viewNode = *EN::castTo<IResearchViewNode*>(loop);
-      if(viewNode.isLateMaterialized()) {
+      if (viewNode.isLateMaterialized()) {
         continue; //loop is aleady optimized
       }
       ExecutionNode* current = node->getFirstDependency();
@@ -313,7 +309,7 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
         case arangodb::aql::ExecutionNode::REMOTE:
           // REMOTE node is a blocker  - we do not want to make materialization calls across cluster!
           // Moreover we pass raw collection pointer - this must not cross process border!
-          sortNode = nullptr; 
+          sortNode = nullptr;
           break;
         default: // make clang happy
           break;

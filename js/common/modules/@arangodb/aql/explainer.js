@@ -1123,7 +1123,7 @@ function processQuery(query, explain, planIndex) {
         }
 		    let materialization = '';
         let viewAnnotation = '/* view query';
-        if(node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
+        if (node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
           materialization += ', ' + variableName(node.outNmColPtr) + ', ' + 
                             variableName(node.outNmDocId);
           viewAnnotation += ' with late materialization';
@@ -1649,8 +1649,6 @@ function processQuery(query, explain, planIndex) {
           }
           return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
         }).join(', ') + (node.sortmode === 'unset' ? '' : '  ' + annotation('/* sort mode: ' + node.sortmode + ' */'));
-	  case 'Materialization':
-	    return keyword('MATERIALIZATION');
     }
 
     return 'unhandled node type (' + node.type + ')';

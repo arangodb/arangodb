@@ -166,7 +166,7 @@ class SortExecutor  {
     static const bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = AllRowsFetcher;
-  using Infos = typename OutputRowImpl::Infos; 
+  using Infos = typename OutputRowImpl::Infos;
   using Stats = NoStats;
 
   SortExecutor(Fetcher& fetcher, Infos& infos);
@@ -187,7 +187,7 @@ class SortExecutor  {
  private:
   std::pair<ExecutionState, NoStats> fetchAllRowsFromUpstream();
   void doSorting();
-  
+
  private:
   Infos& _infos;
 

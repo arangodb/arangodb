@@ -104,7 +104,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   std::shared_ptr<const arangodb::LogicalView> const& view() const noexcept {
     return _view;
   }
-  
+
   /// @brief return the filter condition to pass to the view
   arangodb::aql::AstNode const& filterCondition() const noexcept {
     TRI_ASSERT(_filterCondition);
@@ -172,6 +172,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     return _outNonMaterializedDocId != nullptr &&
            _outNonMaterializedColPtr != nullptr;
   }
+
  private:
   /// @brief the database
   TRI_vocbase_t& _vocbase;

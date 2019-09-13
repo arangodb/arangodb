@@ -380,7 +380,7 @@ bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
       // found nondeterministic setter
       return true;
     }
-    //!!!! check possible optimization usability
+
     switch (setter->getType()) {
       case aql::ExecutionNode::ENUMERATE_COLLECTION:
       case aql::ExecutionNode::ENUMERATE_LIST:
@@ -411,7 +411,7 @@ bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node) {
     if (!dep) {
       break;
     }
-    /// !!!! check optimization usability
+
     switch (dep->getType()) {
       case aql::ExecutionNode::ENUMERATE_COLLECTION:
       case aql::ExecutionNode::INDEX:
@@ -559,9 +559,9 @@ typedef std::shared_ptr<IResearchView::Snapshot const> SnapshotPtr;
 ///
 ///      Custom key is needed for the following query
 ///      (assume 'view' is lined with 'c1' and 'c2' in the example below):
-/// 		FOR d IN view OPTIONS { collections : [ 'c1' ] }
-/// 		FOR x IN view OPTIONS { collections : [ 'c2' ] }
-/// 		RETURN {d, x}
+///     FOR d IN view OPTIONS { collections : [ 'c1' ] }
+///     FOR x IN view OPTIONS { collections : [ 'c2' ] }
+///     RETURN {d, x}
 ///
 SnapshotPtr snapshotDBServer(IResearchViewNode const& node, transaction::Methods& trx) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
@@ -705,7 +705,6 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
       // set it to surrogate 'RETURN ALL' node
       _filterCondition(&ALL),
       _scorers(fromVelocyPack(plan, base.get(NODE_SCORERS_PARAM))) {
-
   if ((_outNonMaterializedColPtr != nullptr) != (_outNonMaterializedDocId != nullptr)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
       std::string("invalid node config, '").append(NODE_OUT_NM_DOC_PARAM)
@@ -874,7 +873,7 @@ void IResearchViewNode::planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHe
   }
 
   // Plan register for document-id only block
-  if(_outNonMaterializedDocId != nullptr) {
+  if (_outNonMaterializedDocId != nullptr) {
     // paired variable should be there as well
     TRI_ASSERT(_outNonMaterializedColPtr != nullptr);
     ++nrRegsHere[depth];
@@ -892,8 +891,7 @@ std::pair<bool, bool> IResearchViewNode::volatility(bool force /*=false*/) const
   }
 
   return std::make_pair(irs::check_bit<0>(_volatilityMask),  // filter
-                        irs::check_bit<1>(_volatilityMask)   // sort
-  );
+                        irs::check_bit<1>(_volatilityMask));  // sort
 }
 
 
@@ -916,12 +914,12 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) 
   if (_outNonMaterializedDocId != nullptr) {
     nodes.add(VPackValue(NODE_OUT_NM_DOC_PARAM));
     _outNonMaterializedDocId->toVelocyPack(nodes);
-  } 
+  }
 
   if (_outNonMaterializedColPtr != nullptr) {
     nodes.add(VPackValue(NODE_OUT_NM_COL_PARAM));
     _outNonMaterializedColPtr->toVelocyPack(nodes);
-  } 
+  }
 
   // filter condition
   nodes.add(VPackValue(NODE_CONDITION_PARAM));
@@ -1060,13 +1058,13 @@ void IResearchViewNode::getVariablesUsedHere(arangodb::HashSet<aql::Variable con
 }
 
 std::vector<arangodb::aql::Variable const*> IResearchViewNode::getVariablesSetHere() const {
-    std::vector<arangodb::aql::Variable const*> vars(_scorers.size() + 
-    (_outNonMaterializedColPtr != nullptr ? 2 : 1) // document or  collection + docId for late materialization
-    );
+    std::vector<arangodb::aql::Variable const*> vars(_scorers.size() +
+                                                     // document or  collection + docId for late materialization
+                                                    (_outNonMaterializedColPtr != nullptr ? 2 : 1));
 
     std::transform(_scorers.begin(), _scorers.end(), vars.begin(),
-      [](auto const& scorer) { return scorer.var; }); 
-    if(_outNonMaterializedColPtr != nullptr) {
+      [](auto const& scorer) { return scorer.var; });
+    if (_outNonMaterializedColPtr != nullptr) {
       vars[vars.size() - 2] = _outNonMaterializedColPtr;
       vars[vars.size() - 1] = _outNonMaterializedDocId;
     } else {
@@ -1152,7 +1150,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                    "cannot use waitForSync with "
                                    "views and transactions");
   }
-  
+
   // we manage snapshot differently in single-server/db server,
   // see description of functions below to learn how
   if (ServerState::instance()->isDBServer()) {
@@ -1201,7 +1199,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   aql::RegisterId numDocumentRegs = 1;
   // Also we could be asked to produce only document/collection ids for later materialization
-  if(!materialized) {
+  if (!materialized) {
     numDocumentRegs += 2;
   }
 
@@ -1218,7 +1216,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
        reg < firstOutputRegister + numScoreRegisters + numDocumentRegs; reg++) {
     writableOutputRegisters->emplace(reg);
   }
-  
+
   TRI_ASSERT(writableOutputRegisters->size() == numDocumentRegs + numScoreRegisters);
   TRI_ASSERT(writableOutputRegisters->begin() != writableOutputRegisters->end());
   TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->begin(),
@@ -1273,7 +1271,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true, false>>>(
       &engine, this, std::move(executorInfos));
   }
-
 }
 
 }  // namespace iresearch
