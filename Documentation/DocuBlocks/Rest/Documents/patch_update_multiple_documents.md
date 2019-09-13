@@ -107,12 +107,10 @@ cases the error 1200 "revision conflict" and in 10 cases the error
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}
-is returned if the documents were updated successfully and
-*waitForSync* was *true*.
+is returned if *waitForSync* was *true* and operations were processed.
 
 @RESTRETURNCODE{202}
-is returned if the documents were updated successfully and
-*waitForSync* was *false*.
+is returned if *waitForSync* was *false* and operations were processed.
 
 @RESTRETURNCODE{400}
 is returned if the body does not contain a valid JSON representation

@@ -43,9 +43,6 @@ document in the body and its value does not match the revision of
 the corresponding document in the database, the precondition is
 violated.
 
-If the document exists and can be updated, then an *HTTP 201* or
-an *HTTP 202* is returned (depending on *waitForSync*, see below).
-
 Optionally, the query parameter *waitForSync* can be used to force
 synchronization of the document replacement operation to disk even in case
 that the *waitForSync* flag had been disabled for the entire collection.
@@ -86,12 +83,10 @@ cases the error 1200 "revision conflict" and in 10 cases the error
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}
-is returned if the documents were replaced successfully and
-*waitForSync* was *true*.
+is returned if *waitForSync* was *true* and operations were processed.
 
 @RESTRETURNCODE{202}
-is returned if the documents were replaced successfully and
-*waitForSync* was *false*.
+is returned if *waitForSync* was *false* and operations were processed.
 
 @RESTRETURNCODE{400}
 is returned if the body does not contain a valid JSON representation

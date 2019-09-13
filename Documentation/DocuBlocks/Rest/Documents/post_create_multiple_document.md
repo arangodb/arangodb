@@ -1,15 +1,15 @@
-@startDocuBlock post_create_document
-@brief creates documents
+@startDocuBlock post_create_document_MULTI
+@brief creates multiple documents
 
 @RESTHEADER{POST /_api/document/{collection}, Create document, insertDocument}
 
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{collection,string,required}
-The *collection* in which the collection is to be created.
+The *collection* in which the documents are to be created.
 
 @RESTALLBODYPARAM{data,json,required}
-A JSON representation of a single document.
+An array of documents to create.
 
 @RESTQUERYPARAMETERS
 
@@ -41,20 +41,21 @@ same *_key* already exists the new document is not rejected with unique
 constraint violated but will replace the old document.
 
 @RESTDESCRIPTION
-Creates a new document from the document given in the body, unless there
+Creates new documents from the documents given in the body, unless there
 is already a document with the *_key* given. If no *_key* is given, a new
 unique *_key* is generated automatically.
+
+The result body will contain a JSON array of the
+same length as the input array, and each entry contains the result
+of the operation for the corresponding input. In case of an error
+the entry is a document with attributes *error* set to *true* and
+errorCode set to the error code that has happened.
 
 Possibly given *_id* and *_rev* attributes in the body are always ignored,
 the URL part or the query parameter collection respectively counts.
 
-If the document was created successfully, then the *Location* header
-contains the path to the newly created document. The *Etag* header field
-contains the revision of the document. Both are only set in the single
-document case.
-
 If *silent* is not set to *true*, the body of the response contains a 
-JSON object with the following attributes:
+JSON objects with the following attributes:
 
   - *_id* contains the document handle of the newly created document
   - *_key* contains the document key
@@ -79,119 +80,45 @@ If the query parameter *returnNew* is *true*, then, for each
 generated document, the complete new document is returned under
 the *new* attribute in the result.
 
+Should an error have occurred with some of the documents
+the additional HTTP header *X-Arango-Error-Codes* is set, which
+contains a map of the error codes that occurred together with their
+multiplicities, as in: *1205:10,1210:17* which means that in 10
+cases the error 1205 "illegal document handle" and in 17 cases the
+error 1210 "unique constraint violated" has happened.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}
-is returned if the documents were created successfully and
-*waitForSync* was *true*.
+is returned if *waitForSync* was *true* and operations were processed.
 
 @RESTRETURNCODE{202}
-is returned if the documents were created successfully and
-*waitForSync* was *false*.
+is returned if *waitForSync* was *false* and operations were processed.
 
 @RESTRETURNCODE{400}
 is returned if the body does not contain a valid JSON representation
-of one document. The response body contains
+of an array of documents. The response body contains
 an error document in this case.
 
 @RESTRETURNCODE{404}
 is returned if the collection specified by *collection* is unknown.
 The response body contains an error document in this case.
 
-@RESTRETURNCODE{409}
-is returned in the single document case if a document with the
-same qualifiers in an indexed attribute conflicts with an already
-existing document and thus violates that unique constraint. The
-response body contains an error document in this case.
-
 @EXAMPLES
 
-Create a document in a collection named *products*. Note that the
-revision identifier might or might not by equal to the auto-generated
-key.
+Insert multiple documents:
 
-@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostCreate1}
-    var cn = "products";
-    db._drop(cn);
-    db._create(cn, { waitForSync: true });
-
-    var url = "/_api/document/" + cn;
-    var body = '{ "Hello": "World" }';
-
-    var response = logCurlRequest('POST', url, body);
-
-    assert(response.code === 201);
-
-    logJsonResponse(response);
-    db._drop(cn);
-@END_EXAMPLE_ARANGOSH_RUN
-
-Create a document in a collection named *products* with a collection-level
-*waitForSync* value of *false*.
-
-@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostAccept1}
-    var cn = "products";
-    db._drop(cn);
-    db._create(cn, { waitForSync: false });
-
-    var url = "/_api/document/" + cn;
-    var body = '{ "Hello": "World" }';
-
-    var response = logCurlRequest('POST', url, body);
-
-    assert(response.code === 202);
-
-    logJsonResponse(response);
-    db._drop(cn);
-@END_EXAMPLE_ARANGOSH_RUN
-
-Create a document in a collection with a collection-level *waitForSync*
-value of *false*, but using the *waitForSync* query parameter.
-
-@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostWait1}
-    var cn = "products";
-    db._drop(cn);
-    db._create(cn, { waitForSync: false });
-
-    var url = "/_api/document/" + cn + "?waitForSync=true";
-    var body = '{ "Hello": "World" }';
-
-    var response = logCurlRequest('POST', url, body);
-
-    assert(response.code === 201);
-
-    logJsonResponse(response);
-    db._drop(cn);
-@END_EXAMPLE_ARANGOSH_RUN
-
-Unknown collection name
-
-@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostUnknownCollection1}
-    var cn = "products";
-
-    var url = "/_api/document/" + cn;
-    var body = '{ "Hello": "World" }';
-
-    var response = logCurlRequest('POST', url, body);
-
-    assert(response.code === 404);
-
-    logJsonResponse(response);
-@END_EXAMPLE_ARANGOSH_RUN
-
-Illegal document
-
-@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostBadJson1}
+@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostMulti1}
     var cn = "products";
     db._drop(cn);
     db._create(cn);
 
     var url = "/_api/document/" + cn;
-    var body = '{ 1: "World" }';
+    var body = '[{"Hello":"Earth"}, {"Hello":"Venus"}, {"Hello":"Mars"}]';
 
     var response = logCurlRequest('POST', url, body);
 
-    assert(response.code === 400);
+    assert(response.code === 202);
 
     logJsonResponse(response);
     db._drop(cn);
@@ -199,13 +126,13 @@ Illegal document
 
 Use of returnNew:
 
-@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostReturnNew}
+@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostMulti2}
     var cn = "products";
     db._drop(cn);
     db._create(cn);
 
     var url = "/_api/document/" + cn + "?returnNew=true";
-    var body = '{"Hello":"World"}';
+    var body = '[{"Hello":"Earth"}, {"Hello":"Venus"}, {"Hello":"Mars"}]';
 
     var response = logCurlRequest('POST', url, body);
 
@@ -215,25 +142,22 @@ Use of returnNew:
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostOverwrite}
+
+Partially illegal documents:
+
+@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostBadJsonMulti}
     var cn = "products";
     db._drop(cn);
-    db._create(cn, { waitForSync: true });
+    db._create(cn);
 
     var url = "/_api/document/" + cn;
-    var body = '{ "Hello": "World", "_key" : "lock" }';
+    var body = '[{ "_key": 111 }, {"_key":"abc"}]';
+
     var response = logCurlRequest('POST', url, body);
-    // insert
-    assert(response.code === 201);
-    logJsonResponse(response);
 
-    body = '{ "Hello": "Universe", "_key" : "lock" }';
-    url = "/_api/document/" + cn + "?overwrite=true";
-    response = logCurlRequest('POST', url, body);
-    // insert same key
-    assert(response.code === 201);
-    logJsonResponse(response);
+    assert(response.code === 202);
 
+    logJsonResponse(response);
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
