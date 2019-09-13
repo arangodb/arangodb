@@ -60,19 +60,13 @@ std::string RestAuthHandler::generateJwt(std::string const& username,
 
 RestStatus RestAuthHandler::execute() {
   auto const type = _request->requestType();
-
-  if (_request->authenticated()) {
-    AuthenticationFeature* af = AuthenticationFeature::instance();
-    TRI_ASSERT(af != nullptr);
-
-    
+  auto jwt = _request->getJWT();
+  if (!jwt.empty()) {
     VPackBuilder resultBuilder;
     {
       VPackObjectBuilder b(&resultBuilder);
-      auto jwt = _request->getJWT();
       resultBuilder.add("jwt", VPackValue(jwt));
     }
-
     _isValid = true;
     generateDocument(resultBuilder.slice(), true, &VPackOptions::Defaults);
     return RestStatus::DONE;

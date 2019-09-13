@@ -116,6 +116,7 @@ class VstCommTask final : public GeneralCommTask<T> {
   /// Is the current user authorized
   bool _authorized;
   rest::AuthenticationMethod _authMethod;
+  std::string _jwt;
   fuerte::vst::VSTVersion _vstVersion;
 };
 }  // namespace rest

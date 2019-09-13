@@ -233,6 +233,7 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
                                             /*payloadOffset*/headerLength,
                                             messageId);
     req->setAuthenticated(_authorized);
+    req->setJWT(_jwt);
     req->setUser(this->_authToken._username);
     req->setAuthenticationMethod(_authMethod);
     if (_authorized && this->_auth->userManager() != nullptr) {
@@ -396,10 +397,14 @@ void VstCommTask<T>::handleAuthHeader(VPackSlice header, uint64_t mId) {
     // simon: drivers expect a response for their auth request
     this->addErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, mId,
                            TRI_ERROR_NO_ERROR, "auth successful");
+    if (_authMethod == AuthenticationMethod::NEGOTIATE) {
+        _jwt = this->_authToken.generateJWT(this->_auth->tokenCache());
+    }
   } else {
     this->_authToken = auth::TokenCache::Entry::Unauthenticated();
     this->addErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK,
                            mId, TRI_ERROR_HTTP_UNAUTHORIZED);
+
   }
 }
 
