@@ -52,6 +52,10 @@ v3.5.1 (XXXX-XX-XX)
   This change also makes arangorestore restore the `_system` database last if it
   is started with the `--all-databases` option.
 
+* Fixed the removal (including a collection drop) of an orphanCollection from a
+  graph definition when using the arango shell. The boolean flag whether to drop
+  the collection or not was not transferred properly.
+
 * Check for duplicate server endpoints registered in the agency in sub-keys of
   `/Current/ServersRegistered`.
 
