@@ -107,7 +107,7 @@ class IResearchLinkCoordinatorTest : public ::testing::Test {
 
 TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
   arangodb::ServerState::instance()->setRebootId(1); // Hack.
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 

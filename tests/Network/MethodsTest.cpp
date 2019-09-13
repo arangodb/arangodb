@@ -89,7 +89,7 @@ struct NetworkMethodsTest : public ::testing::Test {
 protected:
   
   void SetUp() override {
-    auto& feature = server.server().getFeature<arangodb::NetworkFeature>();
+    auto& feature = server.getFeature<arangodb::NetworkFeature>();
     feature.setPoolTesting(&this->pool);
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
@@ -121,7 +121,7 @@ TEST_F(NetworkMethodsTest, simple_request) {
   pool._conn->_response->setPayload(*(std::move(resBuffer).get()), 0);
   
   VPackBuffer<uint8_t> buffer;
-  auto& feature = server.server().getFeature<arangodb::NetworkFeature>();
+  auto& feature = server.getFeature<arangodb::NetworkFeature>();
   auto f = network::sendRequest(feature, "tcp://example.org:80", fuerte::RestVerb::Get,
                                 "/", buffer, network::Timeout(60.0));
 
@@ -136,7 +136,7 @@ TEST_F(NetworkMethodsTest, request_failure) {
   pool._conn->_err = fuerte::Error::ConnectionClosed;
   
   VPackBuffer<uint8_t> buffer;
-  auto& feature = server.server().getFeature<NetworkFeature>();
+  auto& feature = server.getFeature<NetworkFeature>();
   auto f = network::sendRequest(feature, "tcp://example.org:80", fuerte::RestVerb::Get,
                                 "/", buffer, network::Timeout(60.0));
 
@@ -151,7 +151,7 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_error) {
   pool._conn->_err = fuerte::Error::CouldNotConnect;
   
   VPackBuffer<uint8_t> buffer;
-  auto& feature = server.server().getFeature<NetworkFeature>();
+  auto& feature = server.getFeature<NetworkFeature>();
   auto f = network::sendRequestRetry(feature, "tcp://example.org:80", fuerte::RestVerb::Get,
                                      "/", buffer, network::Timeout(5.0));
 
@@ -193,7 +193,7 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_not_found_error) {
     pool._conn->_response->setPayload(*(std::move(resBuffer).get()), 0);
     
     VPackBuffer<uint8_t> buffer;
-    auto& feature = server.server().getFeature<NetworkFeature>();
+    auto& feature = server.getFeature<NetworkFeature>();
     auto f = network::sendRequestRetry(feature, "tcp://example.org:80",
                                        fuerte::RestVerb::Get, "/", buffer,
                                        network::Timeout(5.0), {}, true);

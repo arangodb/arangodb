@@ -393,7 +393,7 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
 
     server.startFeatures();
 
-    auto& dbFeature = server.server().getFeature<arangodb::DatabaseFeature>();
+    auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
 
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     auto res = arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName, false);
@@ -401,7 +401,7 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
 
   ~IResearchAnalyzerFeatureTest() {
     // Clear the authentication user:
-    auto& authFeature = server.server().getFeature<arangodb::AuthenticationFeature>();
+    auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
     auto* userManager = authFeature.userManager();
     if (userManager != nullptr) {
       userManager->removeAllUsers();
@@ -475,7 +475,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_none_collection_read_no_u
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_none) {
   TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         1, "testVocbase");
-  // arangodb::iresearch::IResearchAnalyzerFeature& feature(server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>());
+  // arangodb::iresearch::IResearchAnalyzerFeature& feature(server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>());
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::NONE);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -875,12 +875,11 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
   // Need Setup inorder to alow ASSERTs
   void SetUp() override {
     // Prepare a database
-    _sysVocbase = server.server().getFeature<arangodb::SystemDatabaseFeature>().use();
+    _sysVocbase = server.getFeature<arangodb::SystemDatabaseFeature>().use();
     ASSERT_NE(_sysVocbase, nullptr);
 
     _vocbase = nullptr;
-    auto res =
-        server.server().getFeature<arangodb::DatabaseFeature>().createDatabase(1, dbName, _vocbase);
+    auto res = server.getFeature<arangodb::DatabaseFeature>().createDatabase(1, dbName, _vocbase);
     ASSERT_EQ(res, TRI_ERROR_NO_ERROR);
     ASSERT_NE(_vocbase, nullptr);
     arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
@@ -905,7 +904,7 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
   void TearDown() override {
     // Not allowed to assert here
     if (server.server().hasFeature<arangodb::DatabaseFeature>()) {
-      server.server().getFeature<arangodb::DatabaseFeature>().dropDatabase(dbName, true, true);
+      server.getFeature<arangodb::DatabaseFeature>().dropDatabase(dbName, true, true);
       _vocbase = nullptr;
     }
     aqlFeature.stop();
@@ -1076,8 +1075,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_db_server) {
   });
 
   server.addFeatureUntracked<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto& feature =
-      server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto& feature = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   EXPECT_TRUE(
       (false == !feature.get("testVocbase::test_analyzer", "TestAnalyzer",
                              VPackParser::fromJson("\"abc\"")->slice(),
@@ -1104,8 +1102,8 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
   IResearchAnalyzerFeatureCoordinatorTest()
       : server(),
         _dbName("TestVocbase"),
-        _system(server.server().getFeature<arangodb::SystemDatabaseFeature>().use()),
-        _feature(server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
+        _system(server.getFeature<arangodb::SystemDatabaseFeature>().use()),
+        _feature(server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
     arangodb::tests::init();
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
@@ -1145,7 +1143,7 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
   }
 
   void SetUp() override {
-    auto& dbFeature = server.server().getFeature<arangodb::DatabaseFeature>();
+    auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
 
     _vocbase = nullptr;
     auto res = dbFeature.createDatabase(1, _dbName, _vocbase);
@@ -1156,7 +1154,7 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
   void TearDown() override {
     // Not allowed to assert here
     if (server.server().hasFeature<arangodb::DatabaseFeature>()) {
-      server.server().getFeature<arangodb::DatabaseFeature>().dropDatabase(_dbName, true, true);
+      server.getFeature<arangodb::DatabaseFeature>().dropDatabase(_dbName, true, true);
       _vocbase = nullptr;
     }
   }
@@ -1212,7 +1210,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
     };
     static const IndexTypeFactory indexTypeFactory;
     auto& indexFactory = const_cast<arangodb::IndexFactory&>(
-        server.server().getFeature<arangodb::EngineSelectorFeature>().engine().indexFactory());
+        server.getFeature<arangodb::EngineSelectorFeature>().engine().indexFactory());
     indexFactory.emplace("testType", indexTypeFactory);
   }
 
@@ -1225,7 +1223,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
 
     ClusterCommMock clusterComm(server.server());
     auto scopedClusterComm = ClusterCommMock::setInstance(clusterComm);
-    auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+    auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
     std::shared_ptr<arangodb::LogicalCollection> logicalCollection;
     auto res = arangodb::methods::Collections::lookup(
@@ -1580,7 +1578,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_static_analyzer_features) {
 
 TEST_F(IResearchAnalyzerFeatureTest, test_persistence_invalid_missing_attributes) {
   static std::vector<std::string> const EMPTY;
-  auto& database = server.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& database = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto vocbase = database.use();
 
   // read invalid configuration (missing attributes)
@@ -1645,7 +1643,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_invalid_missing_attributes
 
 TEST_F(IResearchAnalyzerFeatureTest, test_persistence_invalid_duplicate_records) {
   static std::vector<std::string> const EMPTY;
-  auto& database = server.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& database = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto vocbase = database.use();
 
   // read invalid configuration (duplicate non-identical records)
@@ -1680,7 +1678,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_invalid_duplicate_records)
 
 TEST_F(IResearchAnalyzerFeatureTest, test_persistence_valid_different_parameters) {
   static std::vector<std::string> const EMPTY;
-  auto& database = server.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& database = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto vocbase = database.use();
 
   // read valid configuration (different parameter options)
@@ -1768,7 +1766,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_valid_different_parameters
 
 TEST_F(IResearchAnalyzerFeatureTest, test_persistence_add_new_records) {
   static std::vector<std::string> const EMPTY;
-  auto& database = server.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& database = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto vocbase = database.use();
 
   // add new records
@@ -1827,7 +1825,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_add_new_records) {
 
 TEST_F(IResearchAnalyzerFeatureTest, test_persistence_remove_existing_records) {
   static std::vector<std::string> const EMPTY;
-  auto& database = server.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& database = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto vocbase = database.use();
 
   // remove existing records
@@ -1970,7 +1968,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_remove_existing_records) {
 
 TEST_F(IResearchAnalyzerFeatureTest, test_persistence_emplace_on_single_server) {
   static std::vector<std::string> const EMPTY;
-  auto& database = server.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& database = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto vocbase = database.use();
 
   // emplace on single-server (should persist)
@@ -2015,7 +2013,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_emplace_on_single_server) 
 
 TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
   ASSERT_TRUE(server.server().hasFeature<arangodb::DatabaseFeature>());
-  auto& dbFeature = server.server().getFeature<arangodb::DatabaseFeature>();
+  auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
   arangodb::AqlFeature aqlFeature(server.server());
   aqlFeature.start();  // required for Query::Query(...), must not call ~AqlFeature() for the duration of the test
 
@@ -2336,7 +2334,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_start) {
-  auto& database = server.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& database = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto vocbase = database.use();
 
   // test feature start load configuration (inRecovery, no configuration collection)
@@ -3145,11 +3143,11 @@ class IResearchAnalyzerFeatureUpgradeStaticLegacyTest : public IResearchAnalyzer
  protected:
   IResearchAnalyzerFeatureUpgradeStaticLegacyTest()
       : IResearchAnalyzerFeatureTest(),
-        dbFeature(server.server().getFeature<arangodb::DatabaseFeature>()),
-        sysDatabase(server.server().getFeature<arangodb::SystemDatabaseFeature>()),
+        dbFeature(server.getFeature<arangodb::DatabaseFeature>()),
+        sysDatabase(server.getFeature<arangodb::SystemDatabaseFeature>()),
         aqlFeature(server.addFeatureUntracked<arangodb::AqlFeature>()),
         rulesFeature(server.addFeatureUntracked<arangodb::aql::OptimizerRulesFeature>()),
-        dbPathFeature(server.server().getFeature<arangodb::DatabasePathFeature>()) {
+        dbPathFeature(server.getFeature<arangodb::DatabasePathFeature>()) {
     aqlFeature.start();
     rulesFeature.prepare();
   }

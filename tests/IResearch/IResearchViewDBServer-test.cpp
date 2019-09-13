@@ -86,7 +86,7 @@ class IResearchViewDBServerTest : public ::testing::Test {
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchViewDBServerTest, test_drop) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
   createTestDatabase(vocbase);
 
@@ -226,7 +226,7 @@ TEST_F(IResearchViewDBServerTest, test_drop_cid) {
 }
 
 TEST_F(IResearchViewDBServerTest, test_drop_database) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testCollection\" }");
@@ -294,7 +294,7 @@ TEST_F(IResearchViewDBServerTest, test_ensure) {
 }
 
 TEST_F(IResearchViewDBServerTest, test_make) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   // make DBServer view
   {
@@ -322,7 +322,7 @@ TEST_F(IResearchViewDBServerTest, test_make) {
 }
 
 TEST_F(IResearchViewDBServerTest, test_open) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   // open empty
   {
@@ -383,7 +383,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
 }
 
 TEST_F(IResearchViewDBServerTest, test_query) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \
@@ -653,7 +653,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
 }
 
 TEST_F(IResearchViewDBServerTest, test_rename) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   // rename empty
   {
@@ -995,7 +995,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
 }
 
 TEST_F(IResearchViewDBServerTest, test_updateProperties) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   // update empty (partial)
   {
@@ -1498,7 +1498,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 }
 
 TEST_F(IResearchViewDBServerTest, test_visitCollections) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   // visit empty
   {

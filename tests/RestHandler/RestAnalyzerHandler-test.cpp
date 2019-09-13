@@ -118,9 +118,9 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
   RestAnalyzerHandlerTest()
       : server(),
         _system_vocbase(server.getSystemDatabase()),
-        analyzers(server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()),
-        dbFeature(server.server().getFeature<arangodb::DatabaseFeature>()),
-        authFeature(server.server().getFeature<arangodb::AuthenticationFeature>()),
+        analyzers(server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()),
+        dbFeature(server.getFeature<arangodb::DatabaseFeature>()),
+        authFeature(server.getFeature<arangodb::AuthenticationFeature>()),
         userManager(authFeature.userManager()),
         execContext(),
         execContextScope(&execContext),

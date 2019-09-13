@@ -161,7 +161,7 @@ TEST_F(IResearchViewCoordinatorTest, test_rename) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, visit_collections) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
   createTestDatabase(vocbase);
@@ -227,7 +227,7 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_defaults) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
   createTestDatabase(vocbase);
@@ -506,7 +506,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
   auto* database = arangodb::DatabaseFeature::DATABASE;
   ASSERT_TRUE(nullptr != database);
 
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
@@ -640,7 +640,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
   createTestDatabase(vocbase);
@@ -741,7 +741,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
   createTestDatabase(vocbase);
@@ -853,7 +853,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
@@ -1008,7 +1008,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
@@ -1191,7 +1191,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
@@ -1767,7 +1767,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
@@ -2391,7 +2391,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
@@ -2976,7 +2976,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
@@ -3425,7 +3425,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
@@ -3716,7 +3716,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
   createTestDatabase(vocbase);
@@ -4462,7 +4462,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
   createTestDatabase(vocbase);
@@ -5213,7 +5213,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
-  auto& ci = server.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 

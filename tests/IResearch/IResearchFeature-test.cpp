@@ -23,7 +23,9 @@
 
 #include "gtest/gtest.h"
 
-#include "../Mocks/StorageEngineMock.h"
+#include "Mocks/Servers.h"
+#include "Mocks/StorageEngineMock.h"
+
 #include "AgencyMock.h"
 #include "common.h"
 
@@ -39,12 +41,8 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 #include "GeneralServer/AuthenticationFeature.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/Containers.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -68,11 +66,15 @@
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/Methods/Upgrade.h"
 
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class IResearchFeatureTest : public ::testing::Test {
+class IResearchFeatureTestOld : public ::testing::Test {
  protected:
   struct ClusterCommControl : arangodb::ClusterComm {
     static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
@@ -83,7 +85,7 @@ class IResearchFeatureTest : public ::testing::Test {
   GeneralClientConnectionAgencyMock* agency;
   StorageEngineMock engine;
 
-  IResearchFeatureTest()
+  IResearchFeatureTestOld()
       : server(nullptr, nullptr), _agencyStore{server, nullptr, "arango"}, engine(server) {
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
@@ -109,7 +111,7 @@ class IResearchFeatureTest : public ::testing::Test {
                                     arangodb::LogLevel::FATAL);
   }
 
-  ~IResearchFeatureTest() {
+  ~IResearchFeatureTestOld() {
     ClusterCommControl::reset();
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT);
@@ -120,18 +122,59 @@ class IResearchFeatureTest : public ::testing::Test {
   }
 };
 
+class IResearchFeatureTest : public ::testing::Test {
+ protected:
+  struct ClusterCommControl : arangodb::ClusterComm {
+    static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
+  };
+
+  arangodb::tests::mocks::MockV8Server server;
+
+  IResearchFeatureTest() : server(false) {
+    arangodb::tests::init();
+
+    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+                                    arangodb::LogLevel::ERR);
+
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
+                                    arangodb::LogLevel::FATAL);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
+                                    arangodb::LogLevel::FATAL);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+                                    arangodb::LogLevel::FATAL);
+
+    server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(false);
+    server.addFeature<arangodb::FlushFeature>(false);
+    server.addFeature<arangodb::QueryRegistryFeature>(false);
+    server.addFeature<arangodb::ServerSecurityFeature>(false);
+    server.addFeature<arangodb::UpgradeFeature>(false, nullptr,
+                                                std::vector<std::type_index>{});
+    server.startFeatures();
+  }
+
+  ~IResearchFeatureTest() {
+    ClusterCommControl::reset();
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+                                    arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
+                                    arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+                                    arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
+                                    arangodb::LogLevel::DEFAULT);
+  }
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchFeatureTest, test_start) {
-  // create a new instance of an ApplicationServer and fill it with the required features
-  // cannot use the existing server since its features already have some state
-  arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-  server.addFeature<arangodb::aql::AqlFunctionFeature>(
-      std::make_unique<arangodb::aql::AqlFunctionFeature>(newServer));
-  auto& functions = newServer.getFeature<arangodb::aql::AqlFunctionFeature>();
-  arangodb::iresearch::IResearchFeature iresearch(newServer);
+  auto& functions = server.addFeatureUntracked<arangodb::aql::AqlFunctionFeature>();
+  auto& iresearch = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
   auto cleanup =
       irs::make_finally([&functions]() -> void { functions.unprepare(); });
 
@@ -171,9 +214,12 @@ TEST_F(IResearchFeatureTest, test_start) {
                  (entry.second.second == FunctionType::SCORER &&
                   arangodb::iresearch::isScorer(*function))));
   };
+
+  iresearch.stop();
+  functions.unprepare();
 }
 
-TEST_F(IResearchFeatureTest, test_upgrade0_1) {
+TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   // version 0 data-source path
   auto getPersistedPath0 = [this](arangodb::LogicalView const& view) -> irs::utf8_path {
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
@@ -215,38 +261,13 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     auto versionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"version\": 0, \"tasks\": {} }");
 
-    // create a new instance of an ApplicationServer and fill it with the required features
-    // cannot use the existing server since its features already have some state
-    arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(newServer);
-    server.addFeature<arangodb::FlushFeature>(std::make_unique<arangodb::FlushFeature>(
-        newServer));  // required to skip IResearchView validation
-    server.addFeature<arangodb::DatabaseFeature>(std::make_unique<arangodb::DatabaseFeature>(
-        newServer));  // required to skip IResearchView validation
-    server.addFeature<arangodb::DatabasePathFeature>(
-        std::make_unique<arangodb::DatabasePathFeature>(newServer));  // required for IResearchLink::initDataStore()
-    server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
-        std::make_unique<arangodb::iresearch::IResearchAnalyzerFeature>(newServer));  // required for restoring link analyzers
-    server.addFeature<arangodb::QueryRegistryFeature>(
-        std::make_unique<arangodb::QueryRegistryFeature>(newServer));  // required for constructing TRI_vocbase_t
-    TRI_vocbase_t system(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         TRI_VOC_SYSTEM_DATABASE);
-    server.addFeature<arangodb::SystemDatabaseFeature>(
-        std::make_unique<arangodb::SystemDatabaseFeature>(newServer, &system));  // required for IResearchAnalyzerFeature::start()
-    server.addFeature<arangodb::UpgradeFeature>(
-        std::make_unique<arangodb::UpgradeFeature>(newServer, nullptr,
-                                                   std::vector<std::type_index>{}));  // required for upgrade tasks
-    server.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(newServer));  // required for IResearchFeature::prepare()
-    arangodb::iresearch::IResearchAnalyzerFeature& analyzerFeature =
-        newServer.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    arangodb::DatabasePathFeature& dbPathFeature =
-        newServer.getFeature<arangodb::DatabasePathFeature>();
-    analyzerFeature.prepare();  // add static analyzers
+    auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
     feature.prepare(); // register iresearch view type
     feature.start(); // register upgrade tasks
+
     server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
 
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
     arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
     auto versionFilename = StorageEngineMock::versionFilenameResult;
     auto versionFilenameRestore = irs::make_finally([&versionFilename]()->void { StorageEngineMock::versionFilenameResult = versionFilename; });
@@ -255,18 +276,18 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     ASSERT_TRUE((irs::utf8_path(dbPathFeature.directory()).mkdir()));
     ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+    TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                           1, "testVocbase");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((false == !logicalCollection));
+    ASSERT_NE(logicalCollection, nullptr);
     auto logicalView0 = vocbase.createView(viewJson->slice());
-    ASSERT_TRUE((false == !logicalView0));
-    bool created;
+    ASSERT_NE(logicalView0, nullptr);
+    bool created = false;
     auto index = logicalCollection->createIndex(linkJson->slice(), created);
-    ASSERT_TRUE((created));
-    ASSERT_TRUE((false == !index));
+    ASSERT_TRUE(created);
+    ASSERT_NE(index, nullptr);
     auto link0 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_TRUE((false == !link0));
+    ASSERT_NE(link0, nullptr);
 
     index->unload();  // release file handles
     bool result;
@@ -307,6 +328,36 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     builder.close();
     EXPECT_TRUE((1 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 1 after upgrade
   }
+}
+
+TEST_F(IResearchFeatureTestOld, test_upgrade0_1_with_directory) {
+  // version 0 data-source path
+  auto getPersistedPath0 = [this](arangodb::LogicalView const& view) -> irs::utf8_path {
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    irs::utf8_path dataPath(dbPathFeature.directory());
+    dataPath /= "databases";
+    dataPath /= "database-";
+    dataPath += std::to_string(view.vocbase().id());
+    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+    dataPath += "-";
+    dataPath += std::to_string(view.id());
+    return dataPath;
+  };
+
+  // version 1 data-source path
+  auto getPersistedPath1 = [this](arangodb::iresearch::IResearchLink const& link) -> irs::utf8_path {
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    irs::utf8_path dataPath(dbPathFeature.directory());
+    dataPath /= "databases";
+    dataPath /= "database-";
+    dataPath += std::to_string(link.collection().vocbase().id());
+    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+    dataPath += "-";
+    dataPath += std::to_string(link.collection().id());
+    dataPath += "_";
+    dataPath += std::to_string(link.id());
+    return dataPath;
+  };
 
   // test single-server (with directory)
   {
@@ -417,7 +468,9 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
 
     server.getFeature<arangodb::DatabaseFeature>().unprepare();
   }
+}
 
+TEST_F(IResearchFeatureTestOld, test_upgrade0_1_coordinator) {
   // test coordinator
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -591,6 +644,36 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
 
     server.getFeature<arangodb::DatabaseFeature>().unprepare();
   }
+}
+
+TEST_F(IResearchFeatureTestOld, test_upgrade0_1_dbserver_no_directory) {
+  // version 0 data-source path
+  auto getPersistedPath0 = [this](arangodb::LogicalView const& view) -> irs::utf8_path {
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    irs::utf8_path dataPath(dbPathFeature.directory());
+    dataPath /= "databases";
+    dataPath /= "database-";
+    dataPath += std::to_string(view.vocbase().id());
+    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+    dataPath += "-";
+    dataPath += std::to_string(view.id());
+    return dataPath;
+  };
+
+  // version 1 data-source path
+  auto getPersistedPath1 = [this](arangodb::iresearch::IResearchLink const& link) -> irs::utf8_path {
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    irs::utf8_path dataPath(dbPathFeature.directory());
+    dataPath /= "databases";
+    dataPath /= "database-";
+    dataPath += std::to_string(link.collection().vocbase().id());
+    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+    dataPath += "-";
+    dataPath += std::to_string(link.collection().id());
+    dataPath += "_";
+    dataPath += std::to_string(link.id());
+    return dataPath;
+  };
 
   // test db-server (no directory)
   {
@@ -698,6 +781,36 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
 
     server.getFeature<arangodb::DatabaseFeature>().unprepare();
   }
+}
+
+TEST_F(IResearchFeatureTestOld, test_upgrade0_1_dbserver_with_directory) {
+  // version 0 data-source path
+  auto getPersistedPath0 = [this](arangodb::LogicalView const& view) -> irs::utf8_path {
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    irs::utf8_path dataPath(dbPathFeature.directory());
+    dataPath /= "databases";
+    dataPath /= "database-";
+    dataPath += std::to_string(view.vocbase().id());
+    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+    dataPath += "-";
+    dataPath += std::to_string(view.id());
+    return dataPath;
+  };
+
+  // version 1 data-source path
+  auto getPersistedPath1 = [this](arangodb::iresearch::IResearchLink const& link) -> irs::utf8_path {
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    irs::utf8_path dataPath(dbPathFeature.directory());
+    dataPath /= "databases";
+    dataPath /= "database-";
+    dataPath += std::to_string(link.collection().vocbase().id());
+    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+    dataPath += "-";
+    dataPath += std::to_string(link.collection().id());
+    dataPath += "_";
+    dataPath += std::to_string(link.id());
+    return dataPath;
+  };
 
   // test db-server (with directory)
   {
@@ -811,7 +924,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
   }
 }
 
-TEST_F(IResearchFeatureTest, IResearch_version_test) {
+TEST_F(IResearchFeatureTestOld, IResearch_version_test) {
   EXPECT_TRUE(IResearch_version == arangodb::rest::Version::getIResearchVersion());
   EXPECT_TRUE(IResearch_version ==
               arangodb::rest::Version::Values["iresearch-version"]);
@@ -819,7 +932,7 @@ TEST_F(IResearchFeatureTest, IResearch_version_test) {
 
 // Temporarily surpress for MSVC
 #ifndef _MSC_VER
-TEST_F(IResearchFeatureTest, test_async) {
+TEST_F(IResearchFeatureTestOld, test_async) {
   // schedule task (null resource mutex)
   {
     // create a new instance of an ApplicationServer and fill it with the required features

@@ -85,7 +85,7 @@ protected:
 
   RocksDBHotBackupPathTests()
       : server(),
-        feature(server.server().getFeature<HotBackupFeature>()),
+        feature(server.getFeature<HotBackupFeature>()),
         testee(feature, config, report) {}
 };
 
@@ -149,7 +149,7 @@ TEST(RocksDBHotBackupOperationParameters, test_defaults) {
   const VPackSlice slice;
   VPackBuilder report;
   tests::mocks::MockAqlServer server;
-  HotBackupFeature& feature = server.server().getFeature<HotBackupFeature>();
+  HotBackupFeature& feature = server.getFeature<HotBackupFeature>();
   RocksDBHotBackupCreate testee(feature, slice, report, true);
 
   EXPECT_TRUE(testee.isCreate());
@@ -168,7 +168,7 @@ TEST(RocksDBHotBackupOperationParameters, test_simple) {
 
   VPackBuilder report;
   tests::mocks::MockAqlServer server;
-  HotBackupFeature& feature = server.server().getFeature<HotBackupFeature>();
+  HotBackupFeature& feature = server.getFeature<HotBackupFeature>();
   RocksDBHotBackupCreate testee(feature, opBuilder.slice(), report, false);
   testee.parseParameters();
 
@@ -189,7 +189,7 @@ TEST(RocksDBHotBackupOperationParameters, test_timestamp_exception) {
 
   VPackBuilder report;
   tests::mocks::MockAqlServer server;
-  HotBackupFeature& feature = server.server().getFeature<HotBackupFeature>();
+  HotBackupFeature& feature = server.getFeature<HotBackupFeature>();
   RocksDBHotBackupCreate testee(feature, opBuilder.slice(), report, false);
   testee.parseParameters();
 
@@ -367,7 +367,7 @@ TEST(RocksDBHotBackupRestoreDirectories, test_createRestoringDirectory) {
 
   VPackBuilder report;
   tests::mocks::MockAqlServer server;
-  HotBackupFeature& feature = server.server().getFeature<HotBackupFeature>();
+  HotBackupFeature& feature = server.getFeature<HotBackupFeature>();
   RocksDBHotBackupRestoreTest testee(feature, VPackSlice(), report);
   testee.createHotDirectory();
 
@@ -412,7 +412,7 @@ TEST(RocksDBHotBackupRestoreDirectories, test_createRestoringDirectory) {
 TEST(RocksDBHotBackupRestoreTest, test_execute_normal_directory_path) {
   VPackBuilder report;
   tests::mocks::MockAqlServer server;
-  HotBackupFeature& feature = server.server().getFeature<HotBackupFeature>();
+  HotBackupFeature& feature = server.getFeature<HotBackupFeature>();
   RocksDBHotBackupRestoreTest testee(feature, VPackSlice(), report);
 
   testee.createDBDirectory();

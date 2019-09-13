@@ -56,7 +56,7 @@ class IResearchLinkHelperTestSingle : public ::testing::Test {
   arangodb::tests::mocks::MockAqlServer server;
 
   IResearchLinkHelperTestSingle() {
-    auto& dbFeature = server.server().getFeature<arangodb::DatabaseFeature>();
+    auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     {
       TRI_vocbase_t* vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
       arangodb::methods::Collections::createSystem(
@@ -198,8 +198,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
 }
 
 TEST_F(IResearchLinkHelperTestSingle, test_validate_cross_db_analyzer) {
-  auto& analyzers = server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto& dbFeature = server.server().getFeature<arangodb::DatabaseFeature>();
+  auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
     ASSERT_TRUE(analyzers
@@ -228,7 +228,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_validate_cross_db_analyzer) {
 }
 
 TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
-  auto& analyzers = server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   TRI_vocbase_t& sysVocbase = server.getSystemDatabase();
 

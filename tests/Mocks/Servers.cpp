@@ -234,6 +234,7 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   server.addFeature<arangodb::AuthenticationFeature>(true);
   server.addFeature<arangodb::DatabaseFeature>(false);
   server.addFeature<arangodb::EngineSelectorFeature>(false);
+  server.addFeature<arangodb::StorageEngineFeature>(false);
   server.addFeature<arangodb::SystemDatabaseFeature>(true);
   server.addFeature<arangodb::InitDatabaseFeature>(true, std::vector<std::type_index>{});
   server.addFeature<arangodb::ViewTypesFeature>(false);  // true ??
@@ -243,7 +244,7 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   server.addFeature<arangodb::LdapFeature>(false);
 #endif
 
-  arangodb::DatabaseFeature::DATABASE = &server.server().getFeature<arangodb::DatabaseFeature>();
+  arangodb::DatabaseFeature::DATABASE = &server.getFeature<arangodb::DatabaseFeature>();
 }
 
 static void SetupClusterFeaturePhase(MockServer& server) {
@@ -613,7 +614,7 @@ void MockClusterServer::agencyDropDatabase(std::string const& name) {
 
 MockDBServer::MockDBServer(bool start) : MockClusterServer() {
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
-  addFeature<arangodb::FlushFeature>(false);  // do not start the thread
+  addFeature<arangodb::FlushFeature>(false);       // do not start the thread
   addFeature<arangodb::MaintenanceFeature>(false); // do not start the thread
   if (start) {
     startFeatures();

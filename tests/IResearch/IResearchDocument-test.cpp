@@ -160,28 +160,36 @@ class IResearchDocumentTest : public ::testing::Test {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                     arangodb::LogLevel::ERR);
 
-    auto& analyzers =
-        server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    {
+      auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
+      auto vocbase = sysDatabase.use();
+      arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
+                                                   false);
+    }
+
+    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
     // ensure that there will be no exception on 'emplace'
     InvalidAnalyzer::returnNullFromMake = false;
     InvalidAnalyzer::returnFalseFromToString = false;
 
-    analyzers.emplace(
+    auto res = analyzers.emplace(
         result,
         arangodb::StaticStrings::SystemDatabase + "::iresearch-document-empty",
         "iresearch-document-empty",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
         irs::flags{irs::frequency::type()});  // cache analyzer
+    EXPECT_TRUE(res.ok());
 
-    analyzers.emplace(
+    res = analyzers.emplace(
         result,
         arangodb::StaticStrings::SystemDatabase +
             "::iresearch-document-invalid",
         "iresearch-document-invalid",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
         irs::flags{irs::frequency::type()});  // cache analyzer
+    EXPECT_TRUE(res.ok());
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
@@ -220,7 +228,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_static_checks) {
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_construct) {
-  auto& sysDatabase = server.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
   std::vector<std::string> EMPTY;
@@ -234,7 +242,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_construct) {
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_custom_nested_delimiter) {
-  auto& sysDatabase = server.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
   auto json = arangodb::velocypack::Parser::fromJson(
@@ -287,8 +295,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_custom_neste
   auto const expected_analyzer =
       irs::analysis::analyzers::get("identity", irs::text_format::vpack,
                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-  auto& analyzers =
-      server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto const expected_features = analyzers.get("identity")->features();
 
   while (it.valid()) {
@@ -314,7 +321,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_custom_neste
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_all_fields) {
-  auto& sysDatabase = server.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
   auto json = arangodb::velocypack::Parser::fromJson(
@@ -367,8 +374,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_all_fields) 
   auto const expected_analyzer =
       irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                     arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-  auto& analyzers =
-      server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto const expected_features = analyzers.get("identity")->features();
 
   while (it.valid()) {
@@ -394,7 +400,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_all_fields) 
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_all_fields) {
-  auto& sysDatabase = server.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
   auto json = arangodb::velocypack::Parser::fromJson(
@@ -455,8 +461,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_all_
   auto const expected_analyzer =
       irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-  auto& analyzers =
-      server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto const expected_features = analyzers.get("identity")->features();
 
   std::vector<std::string> EMPTY;
@@ -480,7 +485,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_all_
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filtered) {
-  auto& sysDatabase = server.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
   auto json = arangodb::velocypack::Parser::fromJson(
@@ -530,8 +535,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filt
   const auto expected_analyzer =
       irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                     arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-  auto& analyzers =
-      server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto const expected_features = analyzers.get("identity")->features();
   auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
   EXPECT_TRUE(expected_features == value.features());
@@ -543,7 +547,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filt
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filtered_2) {
-  auto& sysDatabase = server.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
   auto json = arangodb::velocypack::Parser::fromJson(
@@ -581,7 +585,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filt
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_empty_analyzers) {
-  auto& sysDatabase = server.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
   auto json = arangodb::velocypack::Parser::fromJson(
@@ -619,9 +623,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_empt
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_check_value_types) {
-  auto& analyzers =
-      server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto& sysDatabase = server.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
   auto json = arangodb::velocypack::Parser::fromJson(
@@ -665,8 +668,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto const expected_analyzer =
         irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers =
-        server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
     EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
@@ -815,7 +817,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_reset) {
-  auto& sysDatabase = server.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
   auto json0 = arangodb::velocypack::Parser::fromJson(
@@ -847,8 +849,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
     const auto expected_analyzer =
         irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers =
-        server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     EXPECT_TRUE(expected_features == value.features());
@@ -865,8 +866,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
     const auto expected_analyzer =
         irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers =
-        server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     EXPECT_TRUE(expected_features == value.features());
@@ -885,8 +885,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
     const auto expected_analyzer =
         irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers =
-        server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     EXPECT_TRUE(expected_features == value.features());
@@ -899,7 +898,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
 
 TEST_F(IResearchDocumentTest,
      FieldIterator_traverse_complex_object_ordered_all_fields_custom_list_offset_prefix_suffix) {
-  auto& sysDatabase = server.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
   auto json = arangodb::velocypack::Parser::fromJson(
@@ -969,8 +968,7 @@ TEST_F(IResearchDocumentTest,
   auto const expected_analyzer =
       irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                     arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-  auto& analyzers =
-      server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto const expected_features = analyzers.get("identity")->features();
 
   for (; it != arangodb::iresearch::FieldIterator(trx); ++it) {
@@ -988,7 +986,7 @@ TEST_F(IResearchDocumentTest,
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_inheritance) {
-  auto& sysDatabase = server.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
   auto json = arangodb::velocypack::Parser::fromJson(
@@ -1051,8 +1049,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
                                       arangodb::iresearch::ref<char>(
                                           VPackSlice::emptyObjectSlice()));
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    auto& analyzers =
-        server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
     EXPECT_TRUE(expected_features == value.features());
     EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());
@@ -1081,8 +1078,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     const auto expected_analyzer =
         irs::analysis::analyzers::get("identity", irs::text_format::vpack,
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers =
-        server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     EXPECT_TRUE(expected_features == value.features());
@@ -1100,8 +1096,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     const auto expected_analyzer =
         irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers =
-        server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     EXPECT_TRUE(expected_features == value.features());
@@ -1131,8 +1126,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     const auto expected_analyzer =
         irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers =
-        server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     EXPECT_TRUE(expected_features == value.features());
@@ -1163,8 +1157,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     const auto expected_analyzer =
         irs::analysis::analyzers::get("identity", irs::text_format::vpack,
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers =
-        server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     EXPECT_TRUE(expected_features == value.features());
@@ -1222,7 +1215,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
           irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                         arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto& analyzers =
-          server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+          server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       auto const expected_features = analyzers.get("identity")->features();
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
       EXPECT_TRUE(expected_features == value.features());
@@ -1257,7 +1250,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
           irs::analysis::analyzers::get("identity", irs::text_format::vpack,
                                         arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto& analyzers =
-          server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+          server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       auto const expected_features = analyzers.get("identity")->features();
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
       EXPECT_TRUE(expected_features == value.features());
@@ -1289,8 +1282,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     const auto expected_analyzer =
         irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers =
-        server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     EXPECT_TRUE(expected_features == value.features());
@@ -1335,7 +1327,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
           irs::analysis::analyzers::get("identity", irs::text_format::vpack,
                                         arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto& analyzers =
-          server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+          server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       auto const expected_features = analyzers.get("identity")->features();
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
       EXPECT_TRUE(expected_features == value.features());
@@ -1362,7 +1354,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
 }
 
 TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
-  auto& sysDatabase = server.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
   arangodb::iresearch::IResearchAnalyzerFeature analyzers(server.server());
@@ -1472,7 +1464,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
           irs::analysis::analyzers::get("identity", irs::text_format::vpack, 
                                         arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto& analyzers =
-          server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+          server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       auto const expected_features = analyzers.get("identity")->features();
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
       EXPECT_TRUE(&expected_analyzer->type() == &analyzer.type());

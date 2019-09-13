@@ -79,10 +79,18 @@ class MockServer {
     return feature;
   }
 
+  // add a feature to the underlying server, but do not track it;
+  // it will not be prepared, started, etc.
   template <typename Type, typename As = Type, typename... Args>
   As& addFeatureUntracked(Args&&... args) {
     _server.addFeature<As>(std::make_unique<Type>(_server, std::forward<Args>(args)...));
     return _server.getFeature<As>();
+  }
+
+  // convenience method to fetch feature, equivalent to server().getFeature....
+  template <typename T>
+  T& getFeature() {
+    return _server.getFeature<T>();
   }
 
   // Implementation knows the place when all features are included

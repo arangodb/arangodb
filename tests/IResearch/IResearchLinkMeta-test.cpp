@@ -131,7 +131,7 @@ class IResearchLinkMetaTest : public ::testing::Test {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                     arangodb::LogLevel::ERR);
 
-    auto& dbFeature = server.server().getFeature<arangodb::DatabaseFeature>();
+    auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     auto sysvocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     arangodb::methods::Collections::createSystem(
         *sysvocbase,
@@ -143,8 +143,7 @@ class IResearchLinkMetaTest : public ::testing::Test {
       *vocbase,
       arangodb::tests::AnalyzerCollectionName, false);
 
-    auto& analyzers =
-        server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
     analyzers.emplace(result, "testVocbase::empty", "empty",
@@ -1570,8 +1569,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
   TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         1, "testVocbase");
-  auto& analyzers =
-      server.server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
   const std::string analyzerCustomName = "test_addNonUniqueAnalyzersMyIdentity";
   const std::string analyzerCustomInSystem =
