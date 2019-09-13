@@ -195,7 +195,8 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
   // block. However, it won't report DONE after, because a LIMIT block with
   // fullCount must continue to count after the sorted output.
   if /* constexpr */ (!Executor::Properties::allowsBlockPassthrough &&
-                      !std::is_same<Executor, ConstrainedSortExecutor>::value) {
+                      !std::is_same<Executor, ConstrainedSortExecutor<CopyRowProducer>>::value &&
+                      !std::is_same<Executor, ConstrainedSortExecutor<MaterializerProducer>>::value) {
     TRI_ASSERT(_outputItemRow->numRowsWritten() == atMost);
   }
 

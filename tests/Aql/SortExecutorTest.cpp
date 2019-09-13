@@ -400,37 +400,40 @@ TEST_F(SortExecutorTest, constrained_rows_upstream_we_are_waiting_for_list_of_nu
   // Wait, 5, Wait, 3, Wait, 1, Wait, 2, Wait, 4, HASMORE
   for (size_t i = 0; i < 5; ++i) {
     std::tie(state, stats) = testee.produceRows(result);
-    ASSERT_TRUE(state == ExecutionState::WAITING);
+    ASSERT_EQ(ExecutionState::WAITING, state);
     ASSERT_TRUE(!result.produced());
   }
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(ExecutionState::HASMORE, state);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(ExecutionState::HASMORE, state);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(ExecutionState::HASMORE, state);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(ExecutionState::HASMORE, state);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(ExecutionState::HASMORE, state);
   ASSERT_TRUE(result.produced());
+
+  std::tie(state, stats, std::ignore) = testee.skipRows(1);
+  ASSERT_EQ(ExecutionState::DONE, state);
 
   block = result.stealBlock();
   AqlValue v = block->getValue(0, 0);

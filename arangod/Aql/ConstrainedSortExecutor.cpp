@@ -193,21 +193,21 @@ template<typename OutputRowImpl>
 ConstrainedSortExecutor<OutputRowImpl>::~ConstrainedSortExecutor() = default;
 
 template<typename OutputRowImpl>
-bool ConstrainedSortExecutor<OutputRowImp>::doneProducing() const noexcept {
+bool ConstrainedSortExecutor<OutputRowImpl>::doneProducing() const noexcept {
   // must not get strictly larger
   TRI_ASSERT(_returnNext <= _rows.size());
   return _state == ExecutionState::DONE && _returnNext >= _rows.size();
 }
 
 template<typename OutputRowImpl>
-bool ConstrainedSortExecutor<OutputRowImp>::doneSkipping() const noexcept {
+bool ConstrainedSortExecutor<OutputRowImpl>::doneSkipping() const noexcept {
   // must not get strictly larger
   TRI_ASSERT(_returnNext + _skippedAfter <= _rowsRead);
   return _state == ExecutionState::DONE && _returnNext + _skippedAfter >= _rowsRead;
 }
 
 template<typename OutputRowImpl>
-ExecutionState ConstrainedSortExecutor<OutputRowImp>::consumeInput() {
+ExecutionState ConstrainedSortExecutor<OutputRowImpl>::consumeInput() {
   while (_state != ExecutionState::DONE) {
     TRI_IF_FAILURE("SortBlock::doSorting") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -235,7 +235,8 @@ ExecutionState ConstrainedSortExecutor<OutputRowImp>::consumeInput() {
   return _state;
 }
 
-std::pair<ExecutionState, NoStats> ConstrainedSortExecutor::produceRows(OutputAqlItemRow& output) {
+template<typename OutputRowImpl>
+std::pair<ExecutionState, NoStats> ConstrainedSortExecutor<OutputRowImpl>::produceRows(OutputAqlItemRow& output) {
   {
     ExecutionState state = consumeInput();
     TRI_ASSERT(state == _state);
