@@ -64,7 +64,7 @@ class SingleCollectionTransaction final : public transaction::Methods {
 #endif
   /// @brief add a collection to the transaction for read, at runtime
   /// note that this can only be ourselves
-  TRI_voc_cid_t addCollectionAtRuntime(std::string const& name) override final;
+  TRI_voc_cid_t addCollectionAtRuntime(std::string const& name, AccessMode::Type type) override final;
 
   /// @brief get the underlying collection's name
   std::string name();

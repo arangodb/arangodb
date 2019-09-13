@@ -1113,15 +1113,23 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(TRI_voc_cid_t cid,
 
     res = applyDataSourceRegistrationCallbacks(*dataSource, *this);
 
+    if (res.ok()) {
+      res = _state->ensureCollections(_state->nestingLevel());
+    }
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
-
-    _state->ensureCollections(_state->nestingLevel());
     collection = trxCollection(cid);
 
     if (collection == nullptr) {
       throwCollectionNotFound(cname.c_str());
+    }
+  } else {
+    AccessMode::Type collectionAccessType = collection->accessType();
+    if (AccessMode::isRead(collectionAccessType) && !AccessMode::isRead(type)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, 
+                                     std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + cname + 
+                                     " [" + AccessMode::typeString(type) + "]");
     }
   }
 
@@ -1130,7 +1138,8 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(TRI_voc_cid_t cid,
 }
 
 /// @brief add a collection to the transaction for read, at runtime
-TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(std::string const& collectionName) {
+TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(std::string const& collectionName,
+                                                           AccessMode::Type type) {
   if (collectionName == _collectionCache.name && !collectionName.empty()) {
     return _collectionCache.cid;
   }
@@ -1140,7 +1149,7 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(std::string const& co
   if (cid == 0) {
     throwCollectionNotFound(collectionName.c_str());
   }
-  addCollectionAtRuntime(cid, collectionName);
+  addCollectionAtRuntime(cid, collectionName, type);
   _collectionCache.cid = cid;
   _collectionCache.name = collectionName;
   return cid;
@@ -1173,7 +1182,7 @@ void transaction::Methods::invokeOnAllElements(std::string const& collectionName
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxCol = trxCollection(cid, AccessMode::Type::READ);
   TRI_ASSERT(trxCol != nullptr);
   LogicalCollection* collection = documentCollection(trxCol);
@@ -1228,7 +1237,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
     return Result();
   }
 
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
   pinData(cid);  // will throw when it fails
@@ -1274,7 +1283,7 @@ Result transaction::Methods::documentFastPathLocal(std::string const& collection
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
   TRI_ASSERT(trxColl != nullptr);
   LogicalCollection* collection = documentCollection(trxColl);
@@ -1502,7 +1511,7 @@ OperationResult transaction::Methods::documentCoordinator(std::string const& col
 OperationResult transaction::Methods::documentLocal(std::string const& collectionName,
                                                     VPackSlice const value,
                                                     OperationOptions& options) {
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
   if (!options.silent) {
@@ -1658,7 +1667,7 @@ static double chooseTimeout(size_t count, size_t totalBytes) {
 OperationResult transaction::Methods::insertLocal(std::string const& collectionName,
                                                   VPackSlice const value,
                                                   OperationOptions& options) {
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
   bool const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
@@ -2006,7 +2015,7 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
                                                   VPackSlice const newValue,
                                                   OperationOptions& options,
                                                   TRI_voc_document_operation_e operation) {
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
   bool const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
@@ -2274,7 +2283,7 @@ OperationResult transaction::Methods::removeCoordinator(std::string const& colle
 OperationResult transaction::Methods::removeLocal(std::string const& collectionName,
                                                   VPackSlice const value,
                                                   OperationOptions& options) {
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
   bool const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
@@ -2498,7 +2507,7 @@ OperationResult transaction::Methods::allCoordinator(std::string const& collecti
 OperationResult transaction::Methods::allLocal(std::string const& collectionName,
                                                uint64_t skip, uint64_t limit,
                                                OperationOptions& options) {
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
 
   pinData(cid);  // will throw when it fails
 
@@ -2561,7 +2570,7 @@ OperationResult transaction::Methods::truncateCoordinator(std::string const& col
 /// @brief remove all documents in a collection, local
 OperationResult transaction::Methods::truncateLocal(std::string const& collectionName,
                                                     OperationOptions& options) {
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
 
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
@@ -2775,7 +2784,7 @@ OperationResult transaction::Methods::countCoordinatorHelper(
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countLocal(std::string const& collectionName,
                                                  transaction::CountType type) {
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
   Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
@@ -3016,7 +3025,7 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
   }
 
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
   if (trxColl == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -3209,7 +3218,7 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollection(
   }
   // For a DBserver we use the local case.
 
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   LogicalCollection* document = documentCollection(trxCollection(cid));
   std::vector<std::shared_ptr<Index>> indexes = document->getIndexes();
   if (!withHidden) {
@@ -3279,7 +3288,7 @@ transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
     return IndexHandle(idx);
   }
 
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   LogicalCollection* document = documentCollection(trxCollection(cid));
 
   if (indexHandle.empty()) {
