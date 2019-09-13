@@ -230,8 +230,8 @@ class OutputAqlItemRow {
 #endif
     _baseIndex = index;
   }
-  // Use this function with caution! We need it for the SortedCollectExecutor
-  // and CountCollectExecutor.
+  // Use this function with caution! We need it for the SortedCollectExecutor,
+  // CountCollectExecutor, and the ConstrainedSortExecutor.
   void setAllowSourceRowUninitialized() {
     _allowSourceRowUninitialized = true;
   }
@@ -308,7 +308,7 @@ class OutputAqlItemRow {
   bool _setBaseIndexNotUsed;
 #endif
   // Need this special bool for allowing an empty AqlValue inside the
-  // SortedCollectExecutor and CountCollectExecutor.
+  // SortedCollectExecutor, CountCollectExecutor and ConstrainedSortExecutor.
   bool _allowSourceRowUninitialized;
 
  private:

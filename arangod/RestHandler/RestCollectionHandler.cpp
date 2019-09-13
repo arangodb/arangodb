@@ -338,6 +338,7 @@ void RestCollectionHandler::handleCommandPost() {
       parameters,                // collection properties
       waitForSyncReplication,    // replication wait flag
       enforceReplicationFactor,  // replication factor flag
+      false,       // new Database?, here always false
       [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
         TRI_ASSERT(coll);
         collectionRepresentation(builder, coll->name(),
@@ -368,12 +369,16 @@ void RestCollectionHandler::handleCommandPut() {
     return;
   }
 
-  if (!body.isObject()) {
+  std::string const& name = suffixes[0];
+  std::string const& sub = suffixes[1];
+
+  if (sub != "responsibleShard" && !body.isObject()) {
+    // if the caller has sent an empty body. for convenience, let's turn this into an object
+    // however, for the "responsibleShard" case we want to distinguish between string values,
+    // object values etc. - so we don't do the conversion here
     body = VPackSlice::emptyObjectSlice();
   }
 
-  std::string const& name = suffixes[0];
-  std::string const& sub = suffixes[1];
   Result res;
   VPackBuilder builder;
   auto found = methods::Collections::lookup(  // find collection
@@ -418,6 +423,22 @@ void RestCollectionHandler::handleCommandPut() {
           if (!ServerState::instance()->isCoordinator()) {
             res.reset(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
           } else {
+            VPackBuilder temp;
+            if (body.isString()) {
+              temp.openObject();
+              temp.add(StaticStrings::KeyString, body);
+              temp.close();
+              body = temp.slice();
+            } else if (body.isNumber()) {
+              temp.openObject();
+              temp.add(StaticStrings::KeyString, VPackValue(std::to_string(body.getNumber<int64_t>())));
+              temp.close();
+              body = temp.slice();
+            }
+            if (!body.isObject()) {
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "expecting object for responsibleShard");
+            }
+
             std::string shardId;
             res = coll->getResponsibleShard(body, false, shardId);
 
@@ -615,7 +636,22 @@ void RestCollectionHandler::collectionRepresentation(
     bool showProperties, bool showFigures, bool showCount, bool detailedCount) {
   if (showProperties || showCount) {
     // Here we need a transaction
-    auto trx = createTransaction(coll.name(), AccessMode::Type::READ);
+    std::unique_ptr<SingleCollectionTransaction> trx;
+    try {
+      trx = createTransaction(coll.name(), AccessMode::Type::READ);
+    } catch (basics::Exception const& ex) {
+      if (ex.code() == TRI_ERROR_TRANSACTION_NOT_FOUND) {
+      // this will happen if the tid of a managed transaction is passed in,
+      // but the transaction hasn't yet started on the DB server. in
+      // this case, we create an ad-hoc transaction on the underlying
+      // collection
+        trx = std::make_unique<SingleCollectionTransaction>(transaction::StandaloneContext::Create(_vocbase), coll.name(), AccessMode::Type::READ);
+      } else {
+        throw;
+      }
+    }
+
+    TRI_ASSERT(trx != nullptr);
     Result res = trx->begin();
 
     if (res.fail()) {

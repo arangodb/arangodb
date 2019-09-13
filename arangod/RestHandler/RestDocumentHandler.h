@@ -59,28 +59,28 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   RestStatus insertDocument();
 
   // reads a single or all documents
-  bool readDocument();
+  RestStatus readDocument();
 
   // reads a single document
-  bool readSingleDocument(bool generateBody);
+  RestStatus readSingleDocument(bool generateBody);
 
   // reads multiple documents
-  bool readManyDocuments();
+  RestStatus readManyDocuments();
 
   // reads a single document head
-  bool checkDocument();
+  RestStatus checkDocument();
 
   // replaces a document
-  bool replaceDocument();
+  RestStatus replaceDocument();
 
   // updates a document
-  bool updateDocument();
+  RestStatus updateDocument();
 
   // helper function for replace and update
-  bool modifyDocument(bool);
+  RestStatus modifyDocument(bool);
 
   // removes a document
-  bool removeDocument();
+  RestStatus removeDocument();
   
 private:
   std::unique_ptr<SingleCollectionTransaction> _activeTrx;

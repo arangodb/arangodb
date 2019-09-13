@@ -61,27 +61,24 @@ struct OperationResult {
     if (this != &other) {
       result = std::move(other.result);
       buffer = std::move(other.buffer);
-      customTypeHandler = std::move(other.customTypeHandler);
       _options = other._options;
       countErrorCodes = std::move(other.countErrorCodes);
     }
     return *this;
   }
-
+  
   // create result with details
-  OperationResult(Result&& result, std::shared_ptr<VPackBuffer<uint8_t>> const& buffer,
-                  std::shared_ptr<VPackCustomTypeHandler> const& handler,
-                  OperationOptions const& options = {},
-                  std::unordered_map<int, size_t> const& countErrorCodes =
+  OperationResult(Result result, std::shared_ptr<VPackBuffer<uint8_t>> buffer,
+                  OperationOptions options = {},
+                  std::unordered_map<int, size_t> countErrorCodes =
                       std::unordered_map<int, size_t>())
       : result(std::move(result)),
-        buffer(buffer),
-        customTypeHandler(handler),
-        _options(options),
-        countErrorCodes(countErrorCodes) {
+        buffer(std::move(buffer)),
+        _options(std::move(options)),
+        countErrorCodes(std::move(countErrorCodes)) {
     if (result.ok()) {
-      TRI_ASSERT(buffer != nullptr);
-      TRI_ASSERT(buffer->data() != nullptr);
+      TRI_ASSERT(this->buffer != nullptr);
+      TRI_ASSERT(this->buffer->data() != nullptr);
     }
   }
 
@@ -103,7 +100,6 @@ struct OperationResult {
   Result result;
   // TODO: add a slice that points to either buffer or raw data
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
-  std::shared_ptr<VPackCustomTypeHandler> customTypeHandler;
   OperationOptions _options;
 
   // Executive summary for baby operations: reports all errors that did occur

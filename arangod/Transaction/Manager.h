@@ -191,7 +191,10 @@ class Manager final {
   }
 
  private:
-  // hashes the transaction id into a bucket
+  /// @brief performs a status change on a transaction using a timeout
+  Result statusChangeWithTimeout(TRI_voc_tid_t tid, transaction::Status status);
+  
+  /// @brief hashes the transaction id into a bucket
   inline size_t getBucket(TRI_voc_tid_t tid) const {
     return std::hash<TRI_voc_cid_t>()(tid) % numBuckets;
   }

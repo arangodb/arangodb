@@ -264,6 +264,7 @@ class Response final : public Message {
   asio_ns::const_buffer payload() const override;
   std::size_t payloadSize() const override;
   std::shared_ptr<velocypack::Buffer<uint8_t>> copyPayload() const;
+  std::shared_ptr<velocypack::Buffer<uint8_t>> stealPayload();
 
   /// @brief move in the payload
   void setPayload(velocypack::Buffer<uint8_t> buffer,

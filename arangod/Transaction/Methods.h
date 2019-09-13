@@ -289,10 +289,17 @@ class Methods {
                                                bool shouldLock);
 
   /// @brief return one or multiple documents from a collection
+  /// @deprecated use async variant
   ENTERPRISE_VIRT OperationResult document(std::string const& collectionName,
                                            VPackSlice const value,
-                                           OperationOptions& options);
-  
+                                           OperationOptions& options) {
+    return documentAsync(collectionName, value, options).get();
+  }
+
+  /// @brief return one or multiple documents from a collection
+  Future<OperationResult> documentAsync(std::string const& collectionName,
+                                        VPackSlice const value, OperationOptions& options);
+
   /// @deprecated use async variant
   OperationResult insert(std::string const& cname,
                          VPackSlice const value,
@@ -301,29 +308,47 @@ class Methods {
   }
 
   /// @brief create one or multiple documents in a collection
-  /// the single-document variant of this operation will either succeed or,
+  /// The single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
   Future<OperationResult> insertAsync(std::string const& collectionName,
                                       VPackSlice const value,
                                       OperationOptions const& options);
+  
+  /// @deprecated use async variant
+  OperationResult update(std::string const& cname, VPackSlice const updateValue,
+                         OperationOptions const& options) {
+    return this->updateAsync(cname, updateValue, options).get();
+  }
 
-  /// @brief update/patch one or multiple documents in a collecti  Result
-  /// the single-document variant of this operation will either succeed or,
+  /// @brief update/patch one or multiple documents in a collection.
+  /// The single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
-  OperationResult update(std::string const& collectionName, VPackSlice const updateValue,
-                         OperationOptions const& options);
+  Future<OperationResult> updateAsync(std::string const& collectionName, VPackSlice const updateValue,
+                                      OperationOptions const& options);
+  
+  /// @deprecated use async variant
+  OperationResult replace(std::string const& cname, VPackSlice const replaceValue,
+                         OperationOptions const& options) {
+    return this->replaceAsync(cname, replaceValue, options).get();
+  }
 
-  /// @brief replace one or multiple documents in a collection
-  /// the single-document variant of this operation will either succeed or,
+  /// @brief replace one or multiple documents in a collection.
+  /// The single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
-  OperationResult replace(std::string const& collectionName, VPackSlice const updateValue,
-                          OperationOptions const& options);
+  Future<OperationResult> replaceAsync(std::string const& collectionName, VPackSlice const replaceValue,
+                                       OperationOptions const& options);
+
+  /// @deprecated use async variant
+  OperationResult remove(std::string const& collectionName,
+                         VPackSlice const value, OperationOptions const& options) {
+    return removeAsync(collectionName, value, options).get();
+  }
 
   /// @brief remove one or multiple documents in a collection
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
-  OperationResult remove(std::string const& collectionName,
-                         VPackSlice const value, OperationOptions const& options);
+  Future<OperationResult> removeAsync(std::string const& collectionName,
+                                      VPackSlice const value, OperationOptions const& options);
 
   /// @brief fetches all documents in a collection
   ENTERPRISE_VIRT OperationResult all(std::string const& collectionName, uint64_t skip,
@@ -405,22 +430,13 @@ class Methods {
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
 
-#ifdef USE_ENTERPRISE
-  virtual bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) {
+  ENTERPRISE_VIRT bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) {
     return false;
   }
-  virtual bool isInaccessibleCollection(std::string const& /*cid*/) {
+  ENTERPRISE_VIRT bool isInaccessibleCollection(std::string const& /*cid*/) {
     return false;
   }
-#else
-  bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) {
-    return false;
-  }
-  bool isInaccessibleCollection(std::string const& /*cid*/) {
-    return false;
-  }
-#endif
-
+  
   static int validateSmartJoinAttribute(LogicalCollection const& collinfo,
                                         arangodb::velocypack::Slice value);
 
@@ -436,11 +452,12 @@ class Methods {
                              TRI_voc_rid_t oldRid, ManagedDocumentResult const* oldDoc,
                              ManagedDocumentResult const* newDoc);
 
-  OperationResult documentCoordinator(std::string const& collectionName,
-                                      VPackSlice const value, OperationOptions& options);
+  Future<OperationResult> documentCoordinator(std::string const& collectionName,
+                                              VPackSlice const value,
+                                              OperationOptions& options);
 
-  OperationResult documentLocal(std::string const& collectionName,
-                                VPackSlice const value, OperationOptions& options);
+  Future<OperationResult> documentLocal(std::string const& collectionName,
+                                        VPackSlice const value, OperationOptions& options);
 
   Future<OperationResult> insertCoordinator(std::string const& collectionName,
                                             VPackSlice const value,
@@ -449,22 +466,23 @@ class Methods {
   Future<OperationResult> insertLocal(std::string const& collectionName,
                                       VPackSlice const value, OperationOptions& options);
 
-  OperationResult updateCoordinator(std::string const& collectionName,
-                                    VPackSlice const newValue, OperationOptions& options);
+  Future<OperationResult> modifyCoordinator(std::string const& collectionName,
+                                            VPackSlice const newValue,
+                                            OperationOptions const& options,
+                                            TRI_voc_document_operation_e operation);
 
-  OperationResult replaceCoordinator(std::string const& collectionName,
-                                     VPackSlice const newValue, OperationOptions& options);
+  Future<OperationResult> modifyLocal(std::string const& collectionName,
+                                      VPackSlice const newValue,
+                                      OperationOptions& options,
+                                      TRI_voc_document_operation_e operation);
 
-  OperationResult modifyLocal(std::string const& collectionName,
-                              VPackSlice const newValue, OperationOptions& options,
-                              TRI_voc_document_operation_e operation);
+  Future<OperationResult> removeCoordinator(std::string const& collectionName,
+                                            VPackSlice const value,
+                                            OperationOptions const& options);
 
-  OperationResult removeCoordinator(std::string const& collectionName,
-                                    VPackSlice const value,
-                                    OperationOptions const& options);
-
-  OperationResult removeLocal(std::string const& collectionName,
-                              VPackSlice const value, OperationOptions& options);
+  Future<OperationResult> removeLocal(std::string const& collectionName,
+                                      VPackSlice const value,
+                                      OperationOptions& options);
 
   OperationResult allCoordinator(std::string const& collectionName, uint64_t skip,
                                  uint64_t limit, OperationOptions& options);
@@ -509,22 +527,7 @@ class Methods {
   ENTERPRISE_VIRT Result unlockRecursive(TRI_voc_cid_t, AccessMode::Type);
 
  private:
-
-  /// @brief Helper create a Cluster Communication document
-  OperationResult clusterResultDocument(rest::ResponseCode const& responseCode,
-                                        std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
-                                        std::unordered_map<int, size_t> const& errorCounter) const;
-
-  /// @brief Helper create a Cluster Communication modify result
-  OperationResult clusterResultModify(rest::ResponseCode const& responseCode,
-                                      std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
-                                      std::unordered_map<int, size_t> const& errorCounter) const;
-
-  /// @brief Helper create a Cluster Communication remove result
-  OperationResult clusterResultRemove(rest::ResponseCode const& responseCode,
-                                      std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
-                                      std::unordered_map<int, size_t> const& errorCounter) const;
-
+  
   /// @brief sort ORs for the same attribute so they are in ascending value
   /// order. this will only work if the condition is for a single attribute
   /// the usedIndexes vector may also be re-sorted
@@ -568,7 +571,7 @@ class Methods {
   } _collectionCache;
 
   Future<Result> replicateOperations(
-      std::shared_ptr<LogicalCollection> const& collection,
+      LogicalCollection* collection,
       std::shared_ptr<const std::vector<std::string>> const& followers,
       OperationOptions const& options, VPackSlice value, TRI_voc_document_operation_e operation,
       std::shared_ptr<velocypack::Buffer<uint8_t>> const& ops);

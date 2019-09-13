@@ -101,7 +101,7 @@ OperationResult GraphManager::createCollection(std::string const& name, TRI_col_
       name,                                           // collection name
       colType,                                        // collection type
       options,                                        // collection properties
-      waitForSync, true, [](std::shared_ptr<LogicalCollection> const&) -> void {});
+      waitForSync, true, false, [](std::shared_ptr<LogicalCollection> const&) -> void {});
 
   return OperationResult(res);
 }
@@ -567,8 +567,9 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
     // NOTE: Empty graph is allowed.
     return TRI_ERROR_NO_ERROR;
   }
+
   return methods::Collections::create(
-      vocbase, collectionsToCreate, waitForSync, true,
+      vocbase, collectionsToCreate, waitForSync, true, false, nullptr,
       [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
 };
 

@@ -213,11 +213,7 @@ class ConnectionCount {
 namespace arangodb {
 namespace communicator {
 
-#ifdef MAINTAINER_MODE
-const static double CALLBACK_WARN_TIME = 0.01;
-#else
 const static double CALLBACK_WARN_TIME = 0.1;
-#endif
 
 class Communicator {
  public:

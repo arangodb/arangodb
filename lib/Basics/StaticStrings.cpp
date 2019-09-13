@@ -78,8 +78,33 @@ std::string const StaticStrings::ReplicationHeaderFromPresent(
 std::string const StaticStrings::ReplicationHeaderActive(
     "x-arango-replication-active");
 
-// database and collection names
+// database names
 std::string const StaticStrings::SystemDatabase("_system");
+
+// collection names
+std::string const StaticStrings::AnalyzersCollection("_analyzers");
+std::string const StaticStrings::LegacyAnalyzersCollection("_iresearch_analyzers");
+std::string const StaticStrings::UsersCollection("_users");
+std::string const StaticStrings::GraphsCollection("_graphs");
+std::string const StaticStrings::AqlFunctionsCollection("_aqlfunctions");
+std::string const StaticStrings::QueuesCollection("_queues");
+std::string const StaticStrings::JobsCollection("_jobs");
+std::string const StaticStrings::AppsCollection("_apps");
+std::string const StaticStrings::AppBundlesCollection("_appbundles");
+std::string const StaticStrings::ModulesCollection("_modules");
+std::string const StaticStrings::FishbowlCollection("_fishbowl");
+std::string const StaticStrings::FrontendCollection("_frontend");
+std::string const StaticStrings::StatisticsCollection("_statistics");
+std::string const StaticStrings::Statistics15Collection("_statistics15");
+std::string const StaticStrings::StatisticsRawCollection("_statisticsRaw");
+
+// Database definition fields
+std::string const StaticStrings::DatabaseId("id");
+std::string const StaticStrings::DatabaseName("name");
+std::string const StaticStrings::DatabaseOptions("options");
+std::string const StaticStrings::DatabaseCoordinator("coordinator");
+std::string const StaticStrings::DatabaseCoordinatorRebootId("coordinatorRebootId");
+std::string const StaticStrings::DatabaseIsBuilding("isBuilding");
 
 // LogicalDataSource definition fields
 std::string const StaticStrings::DataSourceDeleted("deleted");
@@ -237,3 +262,4 @@ std::string const StaticStrings::LastValue("lastValue");
 std::string const StaticStrings::checksumFileJs("JS_SHA1SUM.txt");
 
 std::string const StaticStrings::IsBuilding("isBuilding");
+std::string const StaticStrings::RebootId("rebootId");

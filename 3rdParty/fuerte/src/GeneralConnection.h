@@ -53,7 +53,7 @@ class GeneralConnection : public fuerte::Connection {
 
  protected:
   // shutdown connection, cancel async operations
-  void shutdownConnection(const fuerte::Error);
+  void shutdownConnection(const fuerte::Error, std::string const& msg = "");
 
   // Connect with a given number of retries
   void tryConnect(unsigned retries);

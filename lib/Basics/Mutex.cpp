@@ -43,7 +43,7 @@ using namespace arangodb;
 
 #if defined(TRI_HAVE_POSIX_THREADS)
 
-#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
+#ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
 // initialize _holder to "maximum" thread id. this will work if the type of
 // _holder is numeric, but will not work if its type is more complex.
 Mutex::Mutex()
@@ -62,7 +62,7 @@ Mutex::~Mutex() {
 }
 
 void Mutex::lock() {
-#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
+#ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
   // we must not hold the lock ourselves here
   TRI_ASSERT(_holder != Thread::currentThreadId());
 #endif
@@ -79,13 +79,13 @@ void Mutex::lock() {
     FATAL_ERROR_ABORT();
   }
 
-#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
+#ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
   _holder = Thread::currentThreadId();
 #endif
 }
 
 bool Mutex::tryLock() {
-#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
+#ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
   // we must not hold the lock ourselves here
   TRI_ASSERT(_holder != Thread::currentThreadId());
 #endif
@@ -104,7 +104,7 @@ bool Mutex::tryLock() {
     FATAL_ERROR_ABORT();
   }
 
-#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
+#ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
   _holder = Thread::currentThreadId();
 #endif
 
@@ -112,7 +112,7 @@ bool Mutex::tryLock() {
 }
 
 void Mutex::unlock() {
-#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
+#ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
   TRI_ASSERT(_holder == Thread::currentThreadId());
   _holder = 0;
 #endif
@@ -125,7 +125,7 @@ void Mutex::unlock() {
   }
 }
 
-#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
+#ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
 void Mutex::assertLockedByCurrentThread() {
   TRI_ASSERT(_holder == Thread::currentThreadId());
 }
@@ -150,7 +150,7 @@ bool Mutex::tryLock() { return TryAcquireSRWLockExclusive(&_mutex) != 0; }
 
 void Mutex::unlock() { ReleaseSRWLockExclusive(&_mutex); }
 
-#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
+#ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
 void Mutex::assertLockedByCurrentThread() {}
 void Mutex::assertNotLockedByCurrentThread() {}
 #endif

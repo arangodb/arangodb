@@ -56,6 +56,8 @@
 #include "V8Server/v8-collection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -329,14 +331,11 @@ Result Indexes::ensureIndexCoordinator(arangodb::LogicalCollection const* collec
                                        VPackSlice const& indexDef, bool create,
                                        VPackBuilder& resultBuilder) {
   TRI_ASSERT(collection != nullptr);
-  auto& dbName = collection->vocbase().name();
-  auto cid = std::to_string(collection->id());
   auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>(
       "Cluster");
 
   return ClusterInfo::instance()->ensureIndexCoordinator(  // create index
-      dbName, cid, indexDef, create, resultBuilder, cluster->indexCreationTimeout()  // args
-  );
+    *collection, indexDef, create, resultBuilder, cluster->indexCreationTimeout());
 }
 
 Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& input,
@@ -366,8 +365,6 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
     return res;
   }
 
-  auto const& dbname = collection->vocbase().name();
-  std::string const collname(collection->name());
   VPackSlice indexDef = normalized.slice();
 
   if (ServerState::instance()->isCoordinator()) {
@@ -395,11 +392,10 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
 
       if (v.isBoolean() && v.getBoolean()) {
         // unique index, now check if fields and shard keys match
-        auto c = ClusterInfo::instance()->getCollection(dbname, collname);
         auto flds = indexDef.get(arangodb::StaticStrings::IndexFields);
 
-        if (flds.isArray() && c->numberOfShards() > 1) {
-          std::vector<std::string> const& shardKeys = c->shardKeys();
+        if (flds.isArray() && collection->numberOfShards() > 1) {
+          std::vector<std::string> const& shardKeys = collection->shardKeys();
           std::unordered_set<std::string> indexKeys;
           size_t n = static_cast<size_t>(flds.length());
 
