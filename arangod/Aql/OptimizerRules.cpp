@@ -7141,26 +7141,33 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
   std::unordered_map<ExecutionNode*, std::tuple<int64_t, std::unordered_set<ExecutionNode const*>, bool>> subqueryAttributes;
 
   for (auto const& n : nodes) {
+    modified = true;
     auto sq = ExecutionNode::castTo<SubqueryNode*>(n);
 
-    // replace the singleton node of the subquery by a SubqueryStartNode
+    // insert a SubqueryStartNode before the SubqueryNode
     SubqueryStartNode* start = new SubqueryStartNode(plan.get(), plan->nextId());
     plan->registerNode(start);
-    // TODO: this is naughty.
-    ExecutionNode *singleton = const_cast<ExecutionNode *>(sq->getSubquery()->getSingleton());
-    plan->insertAfter(sq, start);
-    plan->replaceNode(singleton, start);
+    plan->insertBefore(sq, start);
 
-    // Replace the SubqueryNode with a SubqueryEndNode whose dependency is the
-    // root of the subquery
+    // All parents of the Singleton of the subquery become parents of the SubqueryStartNode
+    // The singleton will be deleted after.
+    // TODO: Meh const_cast
+    ExecutionNode *singleton = const_cast<ExecutionNode*>(sq->getSubquery()->getSingleton());
+    std::vector<ExecutionNode*> deps = singleton->getParents();
+    for (auto* x : deps) {
+      TRI_ASSERT(x != nullptr);
+      x->replaceDependency(singleton, start);
+    }
+
+    // insert a SubqueryEndNode after the SubqueryNode sq
     SubqueryEndNode* end =
         new SubqueryEndNode(plan.get(), plan->nextId(), sq->outVariable());
     plan->registerNode(end);
-    end->addDependency(sq->getSubquery());
-    plan->replaceNode(sq, end);
+    plan->insertAfter(sq, end);
 
-    // this could be particularly bad
-    // with singleton supposedly "const"
+    end->replaceDependency(sq, sq->getSubquery());
+
+    // TODO: correct?
     delete singleton;
     delete sq;
   }

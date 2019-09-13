@@ -288,6 +288,7 @@ struct OptimizerRule {
 
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode
+    // Must run last.
     spliceSubqueriesRule
   };
 
