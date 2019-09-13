@@ -60,6 +60,8 @@ class GraphNode : public ExecutionNode {
             std::vector<TRI_edge_direction_e> const& directions,
             std::unique_ptr<graph::BaseOptions> options);
 
+  std::string const& collectionToShardName(std::string const& collName) const;
+
  public:
   virtual ~GraphNode();
 
@@ -190,7 +192,7 @@ class GraphNode : public ExecutionNode {
   /// @brief flag, if graph is smart (enterprise edition only!)
   bool _isSmart;
 
-  /// @brief list of shards involved, need this for the cluster
+  /// @brief list of shards involved, requried for one-shard-databases
   std::map<std::string, std::string> _collectionToShard;
 };
 

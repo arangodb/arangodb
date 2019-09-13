@@ -187,14 +187,46 @@ EngineInfoContainerDBServerServerBased::EngineInfoContainerDBServerServerBased(Q
   // NOTE: We need to start with _lastSnippetID > 0. 0 is reserved for GraphNodes
 }
 
+void EngineInfoContainerDBServerServerBased::injectVertexColletions(GraphNode* graphNode){
+    auto const& vCols = graphNode->vertexColls();
+    if (vCols.empty()) {
+      std::map<std::string, Collection*> const* allCollections =
+          _query->collections()->collections();
+      TRI_ASSERT(_query);
+      auto& resolver = _query->resolver();
+      for (auto const& it : *allCollections) {
+        // If resolver cannot resolve this collection
+        // it has to be a view.
+        if (!resolver.getCollection(it.first)) {
+          continue;
+        }
+        // All known edge collections will be ignored by this call!
+        graphNode->injectVertexCollection(it.second);
+      }
+    }
+}
+
 // Insert a new node into the last engine on the stack
 // If this Node contains Collections, they will be added into the map
 // for ShardLocking
 void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node) {
   TRI_ASSERT(node);
   TRI_ASSERT(!_snippetStack.empty());
+
   // Add the node to the open Snippet
   _snippetStack.top()->addNode(node);
+
+  switch (node->getType()) {
+    case ExecutionNode::TRAVERSAL:
+    case ExecutionNode::SHORTEST_PATH:
+    case ExecutionNode::K_SHORTEST_PATHS: {
+      injectVertexColletions(static_cast<GraphNode*>(node));
+      break;
+    }
+    default:
+      break;
+  }
+
   // Upgrade CollectionLocks if necessary
   _shardLocking.addNode(node, _snippetStack.top()->id());
 }
@@ -463,23 +495,7 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
 // the DBServers. The GraphNode itself will retain on the coordinator.
 void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node) {
   node->prepareOptions();
-
-  auto const& vCols = node->vertexColls();
-  if (vCols.empty()) {
-    std::map<std::string, Collection*> const* allCollections =
-        _query->collections()->collections();
-    TRI_ASSERT(_query);
-    auto& resolver = _query->resolver();
-    for (auto const& it : *allCollections) {
-      // If resolver cannot resolve this collection
-      // it has to be a view.
-      if (!resolver.getCollection(it.first)) {
-        continue;
-      }
-      // All known edge collections will be ignored by this call!
-      node->injectVertexCollection(it.second);
-    }
-  }
+  injectVertexColletions(node);
   // SnippetID does not matter on GraphNodes
   _shardLocking.addNode(node, 0);
   _graphNodes.emplace_back(node);

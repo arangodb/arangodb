@@ -320,6 +320,10 @@ void BaseOptions::serializeVariables(VPackBuilder& builder) const {
   _ctx->serializeAllVariables(_trx, builder);
 }
 
+void BaseOptions::setCollectionToShard(std::map<std::string, std::string>const& in){
+  _collectionToShard = std::move(in);
+}
+
 arangodb::transaction::Methods* BaseOptions::trx() const { return _trx; }
 
 arangodb::aql::Query* BaseOptions::query() const { return _query; }
@@ -448,7 +452,7 @@ void BaseOptions::activateCache(bool enableDocumentCache,
                                 std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines) {
   // Do not call this twice.
   TRI_ASSERT(_cache == nullptr);
-  _cache.reset(cacheFactory::CreateCache(_query, enableDocumentCache, engines));
+  _cache.reset(cacheFactory::CreateCache(_query, enableDocumentCache, engines, this));
 }
 
 void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {

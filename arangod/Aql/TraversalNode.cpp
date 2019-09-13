@@ -396,9 +396,6 @@ void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     nodes.close();
   }
 
-  nodes.add(VPackValue("indexes"));
-  _options->toVelocyPackIndexes(nodes);
-
   if (_pruneExpression != nullptr) {
     // The Expression constructor expects only this name
     nodes.add(VPackValue("expression"));

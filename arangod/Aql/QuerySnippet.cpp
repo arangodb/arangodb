@@ -333,9 +333,19 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
 
       GraphNode* graphNode = ExecutionNode::castTo<GraphNode*>(exp.node);
       graphNode->setCollectionToShard({}); //clear previous information
-      for(auto* aqlcollection : graphNode->collections()) {
-        std::string shardName("shard of power");
-        graphNode->addCollectionToShard(aqlcollection->name(), shardName);
+
+      for(auto* aqlCollection : graphNode->collections()) {
+        auto const& shards = aqlCollection->shardIds();
+        TRI_ASSERT(!shards->empty());
+        for (std::string const& shard : *shards) {
+          auto found = shardMapping.find(shard);
+          if (found != shardMapping.end() && found->second == server) {
+            // provide a correct translation from collection to shard
+            // to be used in toVelocyPack methods of classes derived
+            // from GraphNode
+            graphNode->addCollectionToShard(aqlCollection->name(), shard);
+          }
+        }
       }
 
       continue; // skip rest - there are no local expansions
