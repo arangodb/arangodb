@@ -35,8 +35,10 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
 
-class SingleCollectionTransaction;
 class VocbaseContext;
 
 /// @brief abstract base request handler
@@ -228,8 +230,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
    * @return A freshly created transaction for the given collection with proper
    * locking or a leased transaction.
    */
-  std::unique_ptr<SingleCollectionTransaction> createTransaction(std::string const& cname,
-                                                                 AccessMode::Type mode) const;
+  std::unique_ptr<transaction::Methods> createTransaction(std::string const& cname,
+                                                          AccessMode::Type mode) const;
   
   /// @brief create proper transaction context, including the proper IDs
   std::shared_ptr<transaction::Context> createTransactionContext() const;
