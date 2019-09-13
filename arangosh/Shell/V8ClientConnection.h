@@ -117,6 +117,7 @@ class V8ClientConnection {
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context, ClientFeature*);
 
  private:
+  void setHostName(std::string hostname);
   std::shared_ptr<fuerte::Connection> spnego();
   std::shared_ptr<fuerte::Connection> createConnection();
   std::shared_ptr<fuerte::Connection> acquireConnection();
@@ -154,6 +155,7 @@ class V8ClientConnection {
   fuerte::EventLoopService _loop;
   fuerte::ConnectionBuilder _builder;
   std::shared_ptr<fuerte::Connection> _connection;
+  std::string _hostname;
   velocypack::Options _vpackOptions;
 };
 }  // namespace arangodb
