@@ -315,6 +315,8 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
           // Moreover we pass raw collection pointer - this must not cross process border!
           sortNode = nullptr; 
           break;
+        default: // make clang happy
+          break;
         }
         arangodb::HashSet<Variable const*> currentUsedVars;
         current->getVariablesUsedHere(currentUsedVars);

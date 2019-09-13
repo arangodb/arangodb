@@ -99,7 +99,6 @@ class SortNode : public ExecutionNode {
     aql::Variable const* colPtrVariable,
     aql::Variable const* docIdVariable,
     aql::Variable const* outDocument) noexcept {
-    TRI_ASSERT(_limit != 0); // No reason to late materialize on non limited node 
     TRI_ASSERT((docIdVariable != nullptr) == (colPtrVariable != nullptr));
     TRI_ASSERT((docIdVariable != nullptr) == (outDocument != nullptr));
     _inNonMaterializedDocId = docIdVariable;
