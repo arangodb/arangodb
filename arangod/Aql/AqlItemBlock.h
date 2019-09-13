@@ -29,6 +29,7 @@
 #include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/HashMap.h"
 
 #include <utility>
 
@@ -369,7 +370,7 @@ class AqlItemBlock {
   /// setValue above puts values in the map and increases the count if they
   /// are already there, eraseValue decreases the count. One can ask the
   /// count with valueCount.
-  std::unordered_map<AqlValue, uint32_t> _valueCount;
+  arangodb::HashMap<AqlValue, uint32_t, std::hash<AqlValue>, std::equal_to<AqlValue>> _valueCount;
 
   /// @brief _nrItems, number of rows
   size_t _nrItems = 0;

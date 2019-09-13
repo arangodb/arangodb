@@ -28,11 +28,11 @@
 #include <memory>
 #include <string>
 #include <type_traits>
-#include <unordered_map>
 #include <vector>
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
+#include "Basics/HashMap.h"
 
 #include <velocypack/Builder.h>
 
@@ -325,7 +325,7 @@ class ApplicationServer {
   std::shared_ptr<options::ProgramOptions> _options;
 
   // map of feature names to features
-  std::unordered_map<std::string, ApplicationFeature*> _features;
+  arangodb::HashMap<std::string, ApplicationFeature*> _features;
 
   // features order for prepare/start
   std::vector<ApplicationFeature*> _orderedFeatures;

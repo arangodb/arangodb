@@ -68,9 +68,10 @@ static void failCallback(std::string const& message) {
 ApplicationServer* ApplicationServer::server = nullptr;
 
 ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
-                                     const char* binaryPath)
+                                     char const* binaryPath)
     : _state(State::UNINITIALIZED),
       _options(options),
+      _features(8, std::string()),
       _binaryPath(binaryPath) {
   // register callback function for failures
   fail = failCallback;
@@ -174,8 +175,12 @@ void ApplicationServer::disableFeatures(std::vector<std::string> const& names, b
 // will take ownership of the feature object and destroy it in its
 // destructor
 void ApplicationServer::addFeature(ApplicationFeature* feature) {
+  TRI_ASSERT(feature != nullptr);
+  TRI_ASSERT(!feature->name().empty());
   TRI_ASSERT(feature->state() == ApplicationFeature::State::UNINITIALIZED);
-  _features.emplace(feature->name(), feature);
+  auto it = _features.emplace(feature->name(), feature);
+  // we assume no duplicates
+  TRI_ASSERT(it.second);
 }
 
 // checks for the existence of a named feature. will not throw when used for
