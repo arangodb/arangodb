@@ -601,6 +601,45 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
 
+  // constexpr ANALYZER function (true)
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[7].slice(),  insertedDocs[8].slice(),
+        insertedDocs[13].slice(), insertedDocs[19].slice(),
+        insertedDocs[22].slice(), insertedDocs[24].slice(),
+        insertedDocs[29].slice(),
+    };
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        "FOR d IN testView SEARCH ANALYZER(1==1, 'test_analyzer') && ANALYZER(PHRASE(d.duplicated, 'z'), "
+        "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    REQUIRE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      CHECK((i < expected.size()));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+                                                                    resolved, true)));
+    }
+    CHECK((i == expected.size()));
+  }
+
+  // constexpr ANALYZER function (false)
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        "FOR d IN testView SEARCH ANALYZER(1==2, 'test_analyzer') && ANALYZER(PHRASE(d.duplicated, 'z'), "
+        "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    REQUIRE(slice.isArray());
+    CHECK(0 == slice.length());
+  }
+
+
   // test custom analyzer
   {
     std::vector<arangodb::velocypack::Slice> expected = {
