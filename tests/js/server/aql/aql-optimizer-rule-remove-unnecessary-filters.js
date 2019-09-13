@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertTrue, assertFalse, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -101,21 +101,30 @@ function optimizerRuleTestSuite () {
 
     testRuleHasEffect : function () {
       var queries = [ 
-        "FOR i IN 1..10 FILTER true RETURN i",
-        "FOR i IN 1..10 FILTER 1 < 9 RETURN i",
-        "FOR i IN 1..10 LET a = 1 FILTER a == 1 RETURN i",
-        "FOR i IN 1..10 LET a = 1 LET b = 1 FILTER a == b RETURN i",
-        "FOR i IN 1..10 LET a = 1 LET b = 2 FILTER a != b RETURN i",
-        "FOR i IN 1..10 FILTER false RETURN i",
-        "FOR i IN 1..10 LET a = 1 FILTER a == 9 RETURN i",
-        "FOR i IN 1..10 LET a = 1 FILTER a != 1 RETURN i",
-        "FOR i IN 1..10 FILTER 1 == 1 && 2 == 2 RETURN 1",
-        "FOR i IN 1..10 FILTER 1 != 1 && 2 != 2 RETURN 1"
+        [ "FOR i IN 1..2 FILTER true RETURN i", true ],
+        [ "FOR i IN 1..2 FILTER 1 > 9 RETURN i", false ],
+        [ "FOR i IN 1..2 FILTER 1 < 9 RETURN i", true ],
+        [ "FOR i IN 1..2 LET a = 1 FILTER a == 1 RETURN i", true ],
+        [ "FOR i IN 1..2 LET a = 1 LET b = 1 FILTER a == b RETURN i", true ],
+        [ "FOR i IN 1..2 LET a = 1 LET b = 1 FILTER a != b RETURN i", false ],
+        [ "FOR i IN 1..2 LET a = 1 LET b = 2 FILTER a != b RETURN i", true ],
+        [ "FOR i IN 1..2 LET a = 1 LET b = 2 FILTER a == b RETURN i", false ],
+        [ "FOR i IN 1..2 FILTER false RETURN i", false ],
+        [ "FOR i IN 1..2 LET a = 1 FILTER a == 9 RETURN i", false ],
+        [ "FOR i IN 1..2 LET a = 1 FILTER a != 1 RETURN i", false ],
+        [ "FOR i IN 1..2 FILTER 1 == 1 && 2 == 2 RETURN i", true ],
+        [ "FOR i IN 1..2 FILTER 1 != 1 && 2 != 2 RETURN i", false ],
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, paramEnabled);
-        assertEqual([ ruleName ], result.plan.rules);
+        var result = AQL_EXPLAIN(query[0], { }, paramEnabled);
+        assertEqual([ ], result.plan.rules, query);
+        result = AQL_EXECUTE(query[0], { }, paramEnabled).json;
+        if (query[1]) {
+          assertEqual([ 1, 2 ], result, query);
+        } else {
+          assertEqual([ ], result, query);
+        }
       });
     },
 
@@ -138,7 +147,8 @@ function optimizerRuleTestSuite () {
 
       plans.forEach(function(plan) {
         var result = AQL_EXPLAIN(plan[0], { }, paramMore);
-        assertTrue(result.plan.rules.indexOf(ruleName) !== -1, plan[0]);
+        // rule will not fire anymore for constant filters
+        assertFalse(result.plan.rules.indexOf(ruleName) !== -1, plan[0]);
         assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
       });
     },
@@ -169,7 +179,8 @@ function optimizerRuleTestSuite () {
         assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
 
         assertTrue(planDisabled.plan.rules.indexOf(ruleName) === -1, query[0]);
-        assertTrue(planEnabled.plan.rules.indexOf(ruleName) !== -1, query[0]);
+        // rule will not fire anymore for constant filters
+        assertTrue(planEnabled.plan.rules.indexOf(ruleName) === -1, query[0]);
 
         assertEqual(resultDisabled, query[1]);
         assertEqual(resultEnabled, query[1]);

@@ -6,7 +6,7 @@
 (function () {
   'use strict';
   window.DocumentsView = window.PaginationView.extend({
-    filters: { '0': true },
+    filters: {'0': true},
     filterId: 0,
     paginationDiv: '#documentsToolbarF',
     idPrefix: 'documents',
@@ -532,21 +532,104 @@
       for (i = 1; i <= childrenLength; i++) {
         $('#removeFilter' + i).parent().remove();
       }
-      this.filters = { '0': true };
+      this.filters = {'0': true};
       this.filterId = 0;
     },
 
     addDocumentModal: function (e) {
       if (!$(e.currentTarget).hasClass('disabled')) {
         var collid = window.location.hash.split('/')[1];
-        var buttons = []; var tableContent = [];
+        var buttons = [];
+        var tableContent = [];
         // second parameter is "true" to disable caching of collection type
 
         var callback = function (error, type) {
           if (error) {
             arangoHelper.arangoError('Error', 'Could not fetch collection type');
           } else {
-            if (type === 'edge') {
+            if (this.collection.getSmartJoinAttribute()) {
+              tableContent.push(this.createDocumentKeyInput(true));
+
+              tableContent.push(
+                window.modalView.createTextEntry(
+                  'new-smart-val-attr',
+                  'Smart Value (' + this.collection.getSmartJoinAttribute() + ')',
+                  undefined,
+                  'This smartJoinAttribute must be populated for all documents in the collection, and must always contain a string value.',
+                  '',
+                  true,
+                  [
+                    {
+                      rule: Joi.string(),
+                      msg: ''
+                    }
+                  ]
+                )
+              );
+
+              buttons.push(
+                window.modalView.createSuccessButton('Create', this.addSmartAttributeDocument.bind(this))
+              );
+
+              window.modalView.show(
+                'modalTable.ejs',
+                'Create document',
+                buttons,
+                tableContent
+              );
+
+              // custom event handler, updating key label
+              $('#new-document-key-attr').css('width', '50%').css('float', 'right');
+              $('#new-document-key-attr').before(
+                '<input type="text" id="new-document-key-prefix-attr" value="" placeholder="<smart-prefix>" disabled style="width: 40%; float: left;">' +
+                '<div style="width: 2px; float: left; margin-top: 15px; margin-left: 5px; font-weight: 800;">:</div>'
+              );
+              $('new-smart-val-attr').unbind('keyup');
+              $('#new-smart-val-attr').on('keyup', function (element) {
+                $('#new-document-key-prefix-attr').val($(element.currentTarget).val());
+              });
+            } else if (this.collection.getSmartGraphAttribute()) {
+              tableContent.push(this.createDocumentKeyInput(false));
+
+              tableContent.push(
+                window.modalView.createTextEntry(
+                  'new-smartGraph-val-attr',
+                  'SmartGraph Value (' + this.collection.getSmartGraphAttribute() + ')',
+                  undefined,
+                  'This smartGraphAttribute can be populated for all documents in the collection and then contain a string value. Otherwise it will be null.',
+                  '',
+                  false,
+                  [
+                    {
+                      rule: Joi.string().allow('').optional(),
+                      msg: ''
+                    }
+                  ]
+                )
+              );
+
+              buttons.push(
+                window.modalView.createSuccessButton('Create', this.addSmartGraphDocument.bind(this))
+              );
+
+              window.modalView.show(
+                'modalTable.ejs',
+                'Create document',
+                buttons,
+                tableContent
+              );
+
+              // custom event handler, updating key label
+              $('#new-document-key-attr').css('width', '50%').css('float', 'right');
+              $('#new-document-key-attr').before(
+                '<input type="text" id="new-document-key-prefix-attr" value="" placeholder="<smart-prefix>" disabled style="width: 40%; float: left;">' +
+                '<div style="width: 2px; float: left; margin-top: 15px; margin-left: 5px; font-weight: 800;">:</div>'
+              );
+              $('#new-smartGraph-val-attr').unbind('keyup');
+              $('#new-smartGraph-val-attr').on('keyup', function (element) {
+                $('#new-document-key-prefix-attr').val($(element.currentTarget).val());
+              });
+            } else if (type === 'edge') {
               tableContent.push(
                 window.modalView.createTextEntry(
                   'new-edge-from-attr',
@@ -608,23 +691,7 @@
                 tableContent
               );
             } else {
-              tableContent.push(
-                window.modalView.createTextEntry(
-                  'new-document-key-attr',
-                  '_key',
-                  undefined,
-                  'the documents unique key(optional attribute, leave empty for autogenerated key',
-                  'is optional: leave empty for autogenerated key',
-                  false,
-                  [
-                    {
-                      rule: Joi.string().allow('').optional(),
-                      msg: ''
-                    }
-                  ]
-                )
-              );
-
+              tableContent.push(this.createDocumentKeyInput(false));
               buttons.push(
                 window.modalView.createSuccessButton('Create', this.addDocument.bind(this))
               );
@@ -642,69 +709,114 @@
       }
     },
 
+    createDocumentKeyInput: function (isMandatory) {
+      var placeholder = 'leave empty for autogenerated key';
+      var tooltip = 'the documents unique key';
+      if (isMandatory) {
+        placeholder = '';
+      } else {
+        tooltip += ' (optional attribute, leave empty for autogenerated key';
+      }
+
+      return window.modalView.createTextEntry(
+        'new-document-key-attr',
+        '_key',
+        undefined,
+        tooltip,
+        placeholder,
+        isMandatory || false,
+        [
+          {
+            rule: Joi.string().allow('').optional(),
+            msg: ''
+          }
+        ]
+      );
+    },
+
     addEdge: function () {
       var collid = window.location.hash.split('/')[1];
       var from = $('.modal-body #new-edge-from-attr').last().val();
       var to = $('.modal-body #new-edge-to').last().val();
       var key = $('.modal-body #new-edge-key-attr').last().val();
-      var url;
-
-      var callback = function (error, data, msg) {
-        if (error) {
-          arangoHelper.arangoError('Error', msg.errorMessage);
-        } else {
-          window.modalView.hide();
-          data = data._id.split('/');
-
-          try {
-            url = 'collection/' + data[0] + '/' + data[1];
-            decodeURI(url);
-          } catch (ex) {
-            url = 'collection/' + data[0] + '/' + encodeURIComponent(data[1]);
-          }
-          window.location.hash = url;
-        }
-      };
 
       if (key !== '' || key !== undefined) {
-        this.documentStore.createTypeEdge(collid, from, to, key, callback);
+        this.documentStore.createTypeEdge(collid, from, to, key, this.goToDocument);
       } else {
-        this.documentStore.createTypeEdge(collid, from, to, null, callback);
+        this.documentStore.createTypeEdge(collid, from, to, null, this.goToDocument);
       }
     },
 
     addDocument: function () {
       var collid = window.location.hash.split('/')[1];
       var key = $('.modal-body #new-document-key-attr').last().val();
-      var url;
-
-      var callback = function (error, data, msg) {
-        if (error) {
-          arangoHelper.arangoError('Error', msg.errorMessage);
-        } else {
-          window.modalView.hide();
-          data = data.split('/');
-
-          try {
-            url = 'collection/' + data[0] + '/' + data[1];
-            decodeURI(url);
-          } catch (ex) {
-            url = 'collection/' + data[0] + '/' + encodeURIComponent(data[1]);
-          }
-
-          window.location.hash = url;
-        }
-      };
 
       if (key !== '' || key !== undefined) {
-        this.documentStore.createTypeDocument(collid, key, callback);
+        this.documentStore.createTypeDocument(collid, key, this.goToDocument);
       } else {
-        this.documentStore.createTypeDocument(collid, null, callback);
+        this.documentStore.createTypeDocument(collid, null, this.goToDocument);
       }
     },
 
+    addSmartAttributeDocument: function () {
+      var collid = window.location.hash.split('/')[1];
+      var key = $('.modal-body #new-document-key-attr').last().val();
+      var smartJoinAttributeValue = $('.modal-body #new-smart-val-attr').last().val();
+
+      if (key !== '' || key !== undefined) {
+        this.documentStore.createTypeDocument(collid, key, this.goToDocument, false,
+          this.collection.getSmartJoinAttribute(), smartJoinAttributeValue, null, null);
+      } else {
+        this.documentStore.createTypeDocument(collid, null, this.goToDocument, false,
+          this.collection.getSmartJoinAttribute(), smartJoinAttributeValue, null, null);
+      }
+    },
+
+    addSmartGraphDocument: function () {
+      var collid = window.location.hash.split('/')[1];
+      var key = $('.modal-body #new-document-key-attr').last().val();
+      var smartGraphAttributeValue = $('.modal-body #new-smartGraph-val-attr').last().val();
+
+      if (smartGraphAttributeValue === '') {
+        smartGraphAttributeValue = null;
+      }
+
+      var smartGraphAttribute = null;
+      if (this.collection.getSmartGraphAttribute()) {
+        smartGraphAttribute = this.collection.getSmartGraphAttribute();
+      }
+
+      if (key === '') {
+        key = null;
+      }
+
+      this.documentStore.createTypeDocument(collid, key, this.goToDocument, false, null, null,
+        smartGraphAttribute, smartGraphAttributeValue);
+    },
+
+    goToDocument: function (error, data, msg) {
+      if (error) {
+        arangoHelper.arangoError('Error', msg.errorMessage);
+      } else {
+        window.modalView.hide();
+        data = data.split('/');
+
+        var url;
+        try {
+          url = 'collection/' + data[0] + '/' + data[1];
+          decodeURI(url);
+        } catch (ex) {
+          url = 'collection/' + data[0] + '/' + encodeURIComponent(data[1]);
+        }
+
+        window.location.hash = url;
+      }
+    },
+
+
     moveSelectedDocs: function () {
-      var buttons = []; var tableContent = [];
+      var buttons = [];
+      var tableContent = [];
       var toDelete = this.getSelectedDocs();
 
       if (toDelete.length === 0) {
@@ -771,7 +883,8 @@
     },
 
     deleteSelectedDocs: function () {
-      var buttons = []; var tableContent = [];
+      var buttons = [];
+      var tableContent = [];
       var toDelete = this.getSelectedDocs();
 
       if (toDelete.length === 0) {
@@ -805,7 +918,8 @@
 
     confirmDeleteSelectedDocs: function () {
       var toDelete = this.getSelectedDocs();
-      var deleted = []; var self = this;
+      var deleted = [];
+      var self = this;
 
       _.each(toDelete, function (key) {
         if (self.type === 'document') {
@@ -936,7 +1050,8 @@
     clicked: function (event) {
       var self = event.currentTarget;
 
-      var url; var doc = $(self).attr('id').substr(4);
+      var url;
+      var doc = $(self).attr('id').substr(4);
 
       try {
         url = 'collection/' + this.collection.collectionID + '/' + doc;

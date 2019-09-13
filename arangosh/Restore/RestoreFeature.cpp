@@ -177,7 +177,7 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
 }
 
 /// @brief Sort collections for proper recreation order
-bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
+bool sortCollectionsForCreation(VPackBuilder const& l, VPackBuilder const& r) {
   VPackSlice const left = l.slice().get("parameters");
   VPackSlice const right = r.slice().get("parameters");
   
@@ -898,24 +898,28 @@ arangodb::Result processInputDirectory(
         }
       }
     }
-    std::sort(collections.begin(), collections.end(), ::sortCollections);
 
-    std::vector<std::unique_ptr<arangodb::RestoreFeature::JobData>> jobs(
-        collections.size());
+    // order collections so that prototypes for distributeShardsLike come first
+    std::sort(collections.begin(), collections.end(), ::sortCollectionsForCreation);
+
+    std::unique_ptr<arangodb::RestoreFeature::JobData> usersData;
+    std::vector<std::unique_ptr<arangodb::RestoreFeature::JobData>> jobs;
+    jobs.reserve(collections.size());
 
     bool didModifyFoxxCollection = false;
     // Step 2: create collections
     for (VPackBuilder const& b : collections) {
       VPackSlice const collection = b.slice();
       VPackSlice params = collection.get("parameters");
+      VPackSlice name = VPackSlice::emptyStringSlice();
       if (params.isObject()) {
-        params = params.get("name");
+        name = params.get("name");
         // Only these two are relevant for FOXX.
-        if (params.isString() && (params.isEqualString("_apps") ||
-                                  params.isEqualString("_appbundles"))) {
+        if (name.isString() && (name.isEqualString("_apps") ||
+                                name.isEqualString("_appbundles"))) {
           didModifyFoxxCollection = true;
         }
-      };
+      }
 
       auto jobData =
           std::make_unique<arangodb::RestoreFeature::JobData>(directory, feature, options,
@@ -928,11 +932,19 @@ arangodb::Result processInputDirectory(
           return result;
         }
       }
-      stats.totalCollections++;
-
-      jobs.push_back(std::move(jobData));
+      
+      if (name.isString() && name.stringRef() == "_users") {
+        // special treatment for _users collection - this must be the very last, 
+        // and run isolated from all previous data loading operations - the
+        // reason is that loading into the users collection may change the
+        // credentials for the current arangorestore connection!
+        usersData = std::move(jobData);
+      } else {
+        stats.totalCollections++;
+        jobs.push_back(std::move(jobData));
+      }
     }
-
+    
     // Step 4: fire up data transfer
     for (auto& job : jobs) {
       if (!jobQueue.queueJob(std::move(job))) {
@@ -976,8 +988,8 @@ arangodb::Result processInputDirectory(
       }
     }
 
-    // should instantly return
     jobQueue.waitForIdle();
+    jobs.clear();
 
     Result firstError = feature.getFirstError();
     if (firstError.fail()) {
@@ -989,10 +1001,10 @@ arangodb::Result processInputDirectory(
       Result res = ::triggerFoxxHeal(httpClient);
       if (res.fail()) {
         LOG_TOPIC("47cd7", WARN, Logger::RESTORE)
-            << "Reloading of Foxx services failed. In the cluster Foxx "
-               "services will be available eventually, On single servers send "
-               "a POST to '/_api/foxx/_local/heal' on the current database, "
-               "with an empty body.";
+            << "Reloading of Foxx services failed: " << res.errorMessage()
+            << "- in the cluster Foxx services will be available eventually, On single servers send "
+            << "a POST to '/_api/foxx/_local/heal' on the current database, "
+            << "with an empty body.";
       }
     }
 
@@ -1011,6 +1023,22 @@ arangodb::Result processInputDirectory(
         if (!res.ok()) {
           return res;
         }
+      }
+    }
+
+    // Last step: reload data into _users. Note: this can change the credentials
+    // of the arangorestore user itself
+    if (usersData) {
+      TRI_ASSERT(jobs.empty());
+      if (!jobQueue.queueJob(std::move(usersData))) {
+        return Result(TRI_ERROR_OUT_OF_MEMORY, "unable to queue restore job");
+      }
+      jobQueue.waitForIdle();
+      jobs.clear();
+
+      Result firstError = feature.getFirstError();
+      if (firstError.fail()) {
+        return firstError;
       }
     }
   } catch (std::exception const& ex) {
@@ -1357,12 +1385,16 @@ void RestoreFeature::start() {
       }
     }
 
-    // sort by name, with _system first
+    // sort by name, with _system last
+    // this is necessary because in the system database there is the _users collection,
+    // and we have to process users last of all. otherwise we risk updating the
+    // credentials for the user which users the current arangorestore connection, and
+    // this will make subsequent arangorestore calls to the server fail with "unauthorized"
     std::sort(databases.begin(), databases.end(), [](std::string const& lhs, std::string const& rhs) {
       if (lhs == "_system" && rhs != "_system") {
-        return true;
-      } else if (rhs == "_system" && lhs != "_system") {
         return false;
+      } else if (rhs == "_system" && lhs != "_system") {
+        return true;
       }
       return lhs < rhs;
     });
@@ -1380,7 +1412,7 @@ void RestoreFeature::start() {
   Result result;
 
   result = _clientManager.getConnectedClient(httpClient, _options.force,
-                                             true, !_options.createDatabase);
+                                             true, !_options.createDatabase, false);
   if (result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
     LOG_TOPIC("c23bf", FATAL, Logger::RESTORE)
         << "cannot create server connection, giving up!";
@@ -1404,7 +1436,7 @@ void RestoreFeature::start() {
       client->setDatabaseName(dbName);
 
       // re-check connection and version
-      result = _clientManager.getConnectedClient(httpClient, _options.force, true, true);
+      result = _clientManager.getConnectedClient(httpClient, _options.force, true, true, false);
     } else {
       LOG_TOPIC("ad95b", WARN, Logger::RESTORE) << "Database '" << dbName << "' does not exist on target endpoint. In order to create this database along with the restore, please use the --create-database option";
     }
@@ -1465,7 +1497,7 @@ void RestoreFeature::start() {
       _directory = std::make_unique<ManagedDirectory>(basics::FileUtils::buildFilename(_options.inputPath, db), false, false);
 
       result = _clientManager.getConnectedClient(httpClient, _options.force,
-                                                 false, !_options.createDatabase);
+                                                 false, !_options.createDatabase, false);
       if (result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
         LOG_TOPIC("3e715", FATAL, Logger::RESTORE)
             << "cannot create server connection, giving up!";
@@ -1489,7 +1521,7 @@ void RestoreFeature::start() {
           client->setDatabaseName(db);
 
           // re-check connection and version
-          result = _clientManager.getConnectedClient(httpClient, _options.force, false, true);
+          result = _clientManager.getConnectedClient(httpClient, _options.force, false, true, false);
         } else {
           LOG_TOPIC("be594", WARN, Logger::RESTORE) << "Database '" << db << "' does not exist on target endpoint. In order to create this database along with the restore, please use the --create-database option";
         }

@@ -25,12 +25,15 @@
 
 #include <algorithm>
 #include <iomanip>
+#include <regex>
+#include <unordered_map>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
 #include "Agency/AgencyComm.h"
+#include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
@@ -45,8 +48,20 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/ticks.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
+
+namespace {
+// whenever the format of the generated UUIDs changes, please make sure to
+// adjust this regex too!
+std::regex const uuidRegex("^(SNGL|CRDN|PRMR|AGNT)-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$");
+}
+
+static constexpr char const* currentServersRegisteredPref =
+    "/Current/ServersRegistered/";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief single instance of ServerState - will live as long as the server is
@@ -67,7 +82,6 @@ ServerState::ServerState()
       _host(),
       _state(STATE_UNDEFINED),
       _initialized(false),
-      _foxxmaster(),
       _foxxmasterQueueupdate(false) {
   setRole(ROLE_UNDEFINED);
 }
@@ -158,6 +172,8 @@ std::string ServerState::roleToString(ServerState::RoleEnum role) {
 }
 
 std::string ServerState::roleToShortString(ServerState::RoleEnum role) {
+  // whenever anything here changes, please make sure to
+  // adjust ::uuidRegex too!
   switch (role) {
     case ROLE_UNDEFINED:
       return "NONE";
@@ -414,7 +430,55 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
                                     << roleToString(role) << " and our id is " << id;
 
   // now overwrite the entry in /Current/ServersRegistered/<myId>
-  return registerAtAgencyPhase2(comm, hadPersistedId);
+  bool registered = registerAtAgencyPhase2(comm, hadPersistedId);
+  if (!registered) {
+    return false;
+  }
+
+  // now check the configuration of the different servers for duplicate endpoints
+  AgencyCommResult result = comm.getValues(currentServersRegisteredPref);
+
+  if (result.successful()) {
+    auto slicePath = AgencyCommManager::slicePath(currentServersRegisteredPref);
+    auto valueSlice = result.slice()[0].get(slicePath);
+
+    if (valueSlice.isObject()) {
+      // map from server UUID to endpoint
+      std::unordered_map<std::string, std::string> endpoints;
+      for (auto const& it : VPackObjectIterator(valueSlice)) {
+        std::string const serverId = it.key.copyString();
+
+        if (!isUuid(serverId)) {
+          continue;
+        }
+        if (!it.value.isObject()) {
+          continue;
+        }
+        VPackSlice endpointSlice = it.value.get("endpoint");
+        if (!endpointSlice.isString()) {
+          continue;
+        }
+        auto it2 = endpoints.emplace(endpointSlice.copyString(), serverId);
+        if (!it2.second && it2.first->first != serverId) {
+          // duplicate entry!
+          LOG_TOPIC("9a134", WARN, Logger::CLUSTER) 
+            << "found duplicate server entry for endpoint '" 
+            << endpointSlice.copyString() << "', already used by other server " << it2.first->second
+            << ". it looks like this is a (mis)configuration issue";
+          // anyway, continue with startup
+        }
+      }
+    }
+  }
+
+  return true;
+}
+        
+/// @brief whether or not "value" is a server UUID
+bool ServerState::isUuid(std::string const& value) const {
+  // whenever the format of the generated UUIDs changes, please make sure to
+  // adjust ::uuidRegex too!
+  return std::regex_match(value, ::uuidRegex);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -451,7 +515,7 @@ void mkdir(std::string const& path) {
   }
 }
 
-std::string ServerState::getUuidFilename() {
+std::string ServerState::getUuidFilename() const {
   auto dbpath = application_features::ApplicationServer::getFeature<DatabasePathFeature>(
       "DatabasePath");
   TRI_ASSERT(dbpath != nullptr);
@@ -481,6 +545,8 @@ bool ServerState::writePersistedId(std::string const& id) {
 }
 
 std::string ServerState::generatePersistedId(RoleEnum const& role) {
+  // whenever the format of the generated UUID changes, please make sure to
+  // adjust ::uuidRegex too!
   std::string id =
       roleToShortString(role) + "-" + to_string(boost::uuids::random_generator()());
   writePersistedId(id);
@@ -506,9 +572,6 @@ std::string ServerState::getPersistedId() {
   LOG_TOPIC("b3923", FATAL, Logger::STARTUP) << "Couldn't open UUID file '" << uuidFilename << "'";
   FATAL_ERROR_EXIT();
 }
-
-static constexpr char const* currentServersRegisteredPref =
-    "/Current/ServersRegistered/";
 
 /// @brief check equality of engines with other registered servers
 bool ServerState::checkEngineEquality(AgencyComm& comm) {
@@ -540,7 +603,7 @@ bool ServerState::checkEngineEquality(AgencyComm& comm) {
 /// @brief create an id for a specified role
 //////////////////////////////////////////////////////////////////////////////
 
-bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::RoleEnum& role) {
+bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum const& role) {
   std::string const agencyListKey = roleToAgencyListKey(role);
   std::string const latestIdKey = "Latest" + roleToAgencyKey(role) + "Id";
 
@@ -674,11 +737,11 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
 
 bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersistedId) {
   TRI_ASSERT(!_id.empty() && !_myEndpoint.empty());
-
+    
   while (!application_features::ApplicationServer::isStopping()) {
-    std::string serverRegistrationPath = currentServersRegisteredPref + _id;
-    std::string rebootIdPath = "/Current/ServersKnown/" + _id + "/rebootId";
-
+    std::string const serverRegistrationPath = currentServersRegisteredPref + _id;
+    std::string const rebootIdPath = "/Current/ServersKnown/" + _id + "/rebootId";
+  
     VPackBuilder builder;
     try {
       VPackObjectBuilder b(&builder);
@@ -688,6 +751,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
       builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
       builder.add("versionString", VPackValue(rest::Version::getServerVersion()));
       builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
+      builder.add("timestamp", VPackValue(timepointToString(std::chrono::system_clock::now())));
     } catch (...) {
       LOG_TOPIC("de625", FATAL, arangodb::Logger::CLUSTER) << "out of memory";
       FATAL_ERROR_EXIT();
@@ -770,7 +834,7 @@ void ServerState::setId(std::string const& id) {
 /// @brief get the short server id
 ////////////////////////////////////////////////////////////////////////////////
 
-uint32_t ServerState::getShortId() {
+uint32_t ServerState::getShortId() const {
   return _shortId.load(std::memory_order_relaxed);
 }
 
@@ -791,7 +855,7 @@ uint64_t ServerState::getRebootId() const {
   return _rebootId;
 }
 
-void ServerState::setRebootId(uint64_t const rebootId) {
+void ServerState::setRebootId(uint64_t rebootId) {
   TRI_ASSERT(rebootId > 0);
   _rebootId = rebootId;
 }
