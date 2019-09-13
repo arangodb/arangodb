@@ -40,7 +40,6 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   RestStatus execute() override;
 
  private:
-  bool isAdminUser() const;
   bool canAccessUser(std::string const& user) const;
 
   /// helper to generate a compliant response for individual user requests

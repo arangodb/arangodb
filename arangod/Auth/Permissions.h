@@ -10,7 +10,4 @@ class Permissions {
   Level authLevel(std::string const& username, DatabaseResource const&, bool configured);
 
   Level authLevel(std::string const& username, CollectionResource const&, bool configured);
-
- private:
-  std::
 };

@@ -27,7 +27,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Auth/DatabaseResource.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -215,7 +214,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
         "_create(<name>, <properties>, <type>, <options>)");
   }
 
-  if (!ExecContext::currentHasAccess(auth::DatabaseResource{vocbase}, auth::Level::RW)) {
+  if (!ExecContext::currentHasAccess(vocbase.resource(), auth::Level::RW)) {
     events::CreateCollection(vocbase.name(), "", TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }

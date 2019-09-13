@@ -398,7 +398,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
 
   // Only admin users are permitted to create databases
   ExecContext const& exec = ExecContext::current();
-  if (!exec.isAdminUser()) {
+  if (!exec.hasPrivilege(auth::CreateDatabasePrivilege{auth::DatabaseResource{dbName}})) {
     events::CreateDatabase(dbName, TRI_ERROR_FORBIDDEN);
     return Result(TRI_ERROR_FORBIDDEN);
   }
@@ -492,7 +492,7 @@ const std::string dropError = "Error when dropping Datbase";
 arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
   ExecContext const& exec = ExecContext::current();
-  if (!exec.isAdminUser()) {
+  if (!exec.hasPrivilege(auth::DropDatabasePrivilege{auth::DatabaseResource{dbName}})) {
     events::DropDatabase(dbName, TRI_ERROR_FORBIDDEN);
     return TRI_ERROR_FORBIDDEN;
   }

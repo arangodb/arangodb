@@ -20,7 +20,9 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GeneralServer/ServerSecurityFeature.h"
+#include "ServerSecurityFeature.h"
+
+#include "Auth/HardenedApiPrivilege.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -73,8 +75,7 @@ bool ServerSecurityFeature::canAccessHardenedApi() const {
   bool allowAccess = !isRestApiHardened();
 
   if (!allowAccess) {
-    ExecContext const& exec = ExecContext::current();
-    if (exec.isAdminUser()) {
+    if (ExecContext::currentHasPrivilege(auth::HardenedApiPrivilege{})) {
       // also allow access if there is not authentication
       // enabled or when the user is an administrator
       allowAccess = true;

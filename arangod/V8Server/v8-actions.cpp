@@ -359,7 +359,8 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
 
   TRI_GET_GLOBAL_STRING(IsAdminUser);
   if (request->authenticated()) {
-    if (user.empty() || ExecContext::current().isAdminUser()) {
+    // TODO this is wrong asa we support privieleges; needs to be converted into privileges
+    if (user.empty() || ExecContext::currentHasAccess(auth::DatabaseResource{"_system"}, auth::Level::RW)) {
       req->Set(IsAdminUser, v8::True(isolate));
     } else {
       req->Set(IsAdminUser, v8::False(isolate));

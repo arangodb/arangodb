@@ -238,7 +238,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
                            std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
                            MultiFuncCallback const& func) {
   ExecContext const& exec = ExecContext::current();
-  if (!exec.hasAccess(auth::DatabaseResource{vocbase}, auth::Level::RW)) {
+  if (!exec.hasAccess(vocbase.resource(), auth::Level::RW)) {
     for (auto const& info : infos) {
       events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_FORBIDDEN);
     }
@@ -706,7 +706,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 ) {
   
   ExecContext const& exec = ExecContext::current();
-  if (!exec.hasAccess(auth::DatabaseResource{coll.vocbase()}, auth::Level::RW) || // vocbase modifiable
+  if (!exec.hasAccess(coll.vocbase().resource(), auth::Level::RW) || // vocbase modifiable
       !exec.hasAccess(auth::CollectionResource{exec.database(), coll.name()}, auth::Level::RW)) { // collection modifiable
     events::DropCollection(coll.vocbase().name(), coll.name(), TRI_ERROR_FORBIDDEN);
     return arangodb::Result(                                     // result

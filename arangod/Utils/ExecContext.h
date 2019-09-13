@@ -26,7 +26,16 @@
 
 #include "Auth/AuthUser.h"
 #include "Auth/Common.h"
+#include "Auth/CreateDatabasePrivilege.h"
+#include "Auth/CreateUserPrivilege.h"
 #include "Auth/DatabaseResource.h"
+#include "Auth/DropDatabasePrivilege.h"
+#include "Auth/GrantPrivilegesPrivilege.h"
+#include "Auth/HardenedApiPrivilege.h"
+#include "Auth/ListUsersPrivilege.h"
+#include "Auth/ReloadPrivilegesPrivilege.h"
+#include "Auth/UseQueuesPrivilege.h"
+#include "Auth/UseTasksPrivilege.h"
 #include "Rest/RequestContext.h"
 
 #include <memory>
@@ -107,10 +116,12 @@ class ExecContext : public RequestContext {
   ExecContext(auth::AuthUser const& user, auth::DatabaseResource&& database,
               auth::Level systemLevel, auth::Level dbLevel);
   ExecContext(auth::Level dbLevel);
-  ExecContext(ExecContext const&);
+  ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
 
  public:
+  static ExecContext const& nobody() { return Nobody; }
+
   std::string const& user() const { return _user.internalUsername(); }
   auth::DatabaseResource const& database() const { return _database; }
 
@@ -118,15 +129,16 @@ class ExecContext : public RequestContext {
   bool isCanceled() const { return _canceled; }
   void cancel() { _canceled = true; }
 
-  // shortcut helper to check the AuthenticationFeature
+  // short-cut helper to check the AuthenticationFeature
   static bool isAuthEnabled();
 
   // Should always contain a reference to current user context
   static ExecContext const& current();
 
   // returns true if auth level is above or equal `requested`
-  static bool currentHasAccess(auth::DatabaseResource const& database, auth::Level requested) {
-    return current().hasAccess(database, requested);
+  template<typename T>
+  static bool currentHasAccess(T resource, auth::Level requested) {
+    return current().hasAccess(resource, requested);
   }
 
   bool hasAccess(auth::DatabaseResource const& database, auth::Level requested) const {
@@ -135,6 +147,56 @@ class ExecContext : public RequestContext {
 
   bool hasAccess(auth::CollectionResource const& coll, auth::Level requested) const {
     return requested <= authLevel(coll);
+  }
+
+  // returns true if the user has the privilege
+  template<typename T>
+  static bool currentHasPrivilege(T resource) {
+    return current().hasPrivilege(resource);
+  }
+
+  bool hasPrivilege(auth::CreateDatabasePrivilege const&) const {
+    return !_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW;
+  }
+
+  bool hasPrivilege(auth::CreateUserPrivilege const&) const {
+    return !_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW;
+  }
+
+  bool hasPrivilege(auth::DropDatabasePrivilege const&) const {
+    return !_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW;
+  }
+
+  bool hasPrivilege(auth::GrantPrivilegesPrivilege const&) const {
+    return !_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW;
+  }
+
+  bool hasPrivilege(auth::HardenedApiPrivilege const&) const {
+    return !_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW;
+  }
+
+  bool hasPrivilege(auth::ListUsersPrivilege const&) const {
+    return !_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW;
+  }
+
+  bool hasPrivilege(auth::ReloadPrivilegesPrivilege const&) const {
+    return !_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW;
+  }
+
+  bool hasPrivilege(auth::UseQueuesPrivilege const& priv) const {
+    if (!_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW) {
+      return true;
+    }
+
+    return !priv.username().empty();
+  }
+
+  bool hasPrivilege(auth::UseTasksPrivilege const& priv) const {
+    if (!_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW) {
+      return true;
+    }
+
+    return !priv.runAs().empty() && priv.username() == priv.runAs();
   }
 
   // an internal user is none / ro / rw for all collections / dbs
@@ -161,6 +223,7 @@ class ExecContext : public RequestContext {
 
  protected:
   Type _type;
+  bool _isAuthEnabled;
 
   // current user, may be empty for internal users
   auth::AuthUser const _user;

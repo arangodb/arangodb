@@ -604,7 +604,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
   TRI_ASSERT(collection);
   ExecContext const& exec = ExecContext::current();
   if (!exec.isSuperuser()) {
-    if (!exec.hasAccess(exec.database(), auth::Level::RW))
+    if (!exec.hasAccess(exec.database(), auth::Level::RW)
      || !exec.hasAccess(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RW)) {
       events::DropIndex(collection->vocbase().name(), collection->name(), "", TRI_ERROR_FORBIDDEN);
       return TRI_ERROR_FORBIDDEN;

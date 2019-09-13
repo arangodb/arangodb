@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2017-2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,14 @@
 
 #include "v8-users.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/HexDump.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/DatabaseResource.h"
+#include "Auth/ReloadPrivilegesPrivilege.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -37,11 +44,6 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/HexDump.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 
@@ -85,14 +87,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-static bool IsAdminUser() {
-  return ExecContext::current().isAdminUser();
-}
-
-/// check ExecContext if system use
+// check ExecContext if system use
 static bool CanAccessUser(std::string const& user) {
   auto const& exec = ExecContext::current();
-  return exec.isAdminUser() || exec.user() == user;
+  return exec.user() == user || exec.hasPrivilege(auth::CreateUserPrivilege{user});
 }
 
 void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
@@ -201,7 +199,10 @@ static void JS_RemoveUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 1 || !args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("remove(username)");
   }
-  if (!IsAdminUser()) {
+
+  std::string username = TRI_ObjectToString(isolate, args[0]);
+
+  if (!ExecContext::currentHasPrivilege(auth::CreateUserPrivilege{username})) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -211,7 +212,7 @@ static void JS_RemoveUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "users are not supported on this server");
   }
 
-  Result r = um->removeUser(TRI_ObjectToString(isolate, args[0]));
+  Result r = um->removeUser(username);
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
@@ -254,7 +255,8 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() > 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("reload()");
   }
-  if (!IsAdminUser()) {
+
+  if (!ExecContext::currentHasPrivilege(auth::ReloadPrivilegesPrivilege{})) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -274,12 +276,14 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("grantDatabase(username, database, type)");
   }
-  if (!IsAdminUser()) {
+
+  std::string db = TRI_ObjectToString(isolate, args[1]);
+
+  if (!ExecContext::currentHasPrivilege(auth::GrantPrivilegesPrivilege{auth::DatabaseResource{db}})) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
   std::string username = TRI_ObjectToString(isolate, args[0]);
-  std::string db = TRI_ObjectToString(isolate, args[1]);
   auth::Level lvl = auth::Level::RW;
   if (args.Length() >= 3) {
     std::string type = TRI_ObjectToString(isolate, args[2]);
@@ -309,7 +313,10 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("revokeDatabase(username,  database)");
   }
-  if (!IsAdminUser()) {
+
+  std::string db = TRI_ObjectToString(isolate, args[1]);
+
+  if (!ExecContext::currentHasPrivilege(auth::GrantPrivilegesPrivilege{auth::DatabaseResource{db}})) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -320,7 +327,6 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string username = TRI_ObjectToString(isolate, args[0]);
-  std::string db = TRI_ObjectToString(isolate, args[1]);
   Result r = um->updateUser(username, [&](auth::User& entry) {
     entry.removeDatabase(db);
     return TRI_ERROR_NO_ERROR;
@@ -342,7 +348,9 @@ static void JS_GrantCollection(v8::FunctionCallbackInfo<v8::Value> const& args) 
     TRI_V8_THROW_EXCEPTION_USAGE("grantCollection(username, db, coll[, type])");
   }
 
-  if (!IsAdminUser()) {
+  std::string db = TRI_ObjectToString(isolate, args[1]);
+
+  if (!ExecContext::currentHasPrivilege(auth::GrantPrivilegesPrivilege{auth::DatabaseResource{db}})) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -353,7 +361,6 @@ static void JS_GrantCollection(v8::FunctionCallbackInfo<v8::Value> const& args) 
   }
 
   std::string username = TRI_ObjectToString(isolate, args[0]);
-  std::string db = TRI_ObjectToString(isolate, args[1]);
   std::string coll = TRI_ObjectToString(isolate, args[2]);
 
   // validate that the collection is present
@@ -394,7 +401,9 @@ static void JS_RevokeCollection(v8::FunctionCallbackInfo<v8::Value> const& args)
     TRI_V8_THROW_EXCEPTION_USAGE("revokeCollection(username, db, coll)");
   }
 
-  if (!IsAdminUser()) {
+  std::string db = TRI_ObjectToString(isolate, args[1]);
+
+  if (!ExecContext::currentHasPrivilege(auth::GrantPrivilegesPrivilege{auth::DatabaseResource{db}})) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -405,7 +414,6 @@ static void JS_RevokeCollection(v8::FunctionCallbackInfo<v8::Value> const& args)
   }
 
   std::string username = TRI_ObjectToString(isolate, args[0]);
-  std::string db = TRI_ObjectToString(isolate, args[1]);
   std::string coll = TRI_ObjectToString(isolate, args[2]);
 
   // validate that the collection is present

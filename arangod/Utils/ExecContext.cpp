@@ -62,6 +62,7 @@ ExecContext::ExecContext(auth::Level dbLevel)
 ExecContext::ExecContext(auth::AuthUser const& user, auth::DatabaseResource&& database,
                          auth::Level systemLevel, auth::Level dbLevel)
     : _type(ExecContext::Type::User),
+      _isAuthEnabled(true),
       _user(user),
       _database(database),
       _canceled(false),
@@ -69,11 +70,13 @@ ExecContext::ExecContext(auth::AuthUser const& user, auth::DatabaseResource&& da
       _databaseAuthLevel(dbLevel) {
   TRI_ASSERT(_systemDbAuthLevel != auth::Level::UNDEFINED);
   TRI_ASSERT(_databaseAuthLevel != auth::Level::UNDEFINED);
+
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  _isAuthEnabled = (af != nullptr && af->isActive());
 }
 
 bool ExecContext::isAuthEnabled() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
-  TRI_ASSERT(af != nullptr);
   return af != nullptr && af->isActive();
 }
 
@@ -84,7 +87,7 @@ std::unique_ptr<ExecContext> ExecContext::create(auth::AuthUser const& user,
 
   if (af == nullptr && !af->isActive()) {
     // you cannot use make_unique here because the constructor is protected
-    return std::unique_ptr<ExecContext>(new ExecContext(Superuser));
+    return std::unique_ptr<ExecContext>(new ExecContext(auth::Level::RW));
   }
 
   auth::UserManager* um = af->userManager();

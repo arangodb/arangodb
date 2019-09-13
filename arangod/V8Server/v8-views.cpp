@@ -23,7 +23,6 @@
 
 #include "v8-views.h"
 
-#include "Auth/DatabaseResource.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -48,8 +47,9 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 /// @return the specified vocbase is granted 'level' access
 ////////////////////////////////////////////////////////////////////////////////
+
 bool canUse(arangodb::auth::Level level, TRI_vocbase_t const& vocbase) {
-  return arangodb::ExecContext::currentHasAccess(arangodb::auth::DatabaseResource{vocbase}, level);
+  return arangodb::ExecContext::currentHasAccess(vocbase.resource(), level);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

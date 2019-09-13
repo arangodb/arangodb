@@ -21,6 +21,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestUsersHandler.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Auth/CreateUserPrivilege.h"
+#include "Auth/ListUsersPrivilege.h"
+#include "Auth/GrantPrivilegesPrivilege.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/Version.h"
@@ -30,10 +38,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 
@@ -107,18 +111,12 @@ RestStatus RestUsersHandler::execute() {
   }
 }
 
-bool RestUsersHandler::isAdminUser() const {
-  if (!ExecContext::isAuthEnabled()) {
-    return true;
-  }
-  return ExecContext::current().isAdminUser();
-}
-
 bool RestUsersHandler::canAccessUser(std::string const& user) const {
   if (_request->authenticated() && user == _request->user()) {
     return true;
   }
-  return isAdminUser();
+
+  return ExecContext::currentHasPrivilege(auth::CreateUserPrivilege{user});
 }
 
 /// helper to generate a compliant response for individual user requests
@@ -134,7 +132,7 @@ void RestUsersHandler::generateUserResult(rest::ResponseCode code, VPackBuilder 
 RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
-    if (isAdminUser()) {
+    if (ExecContext::currentHasPrivilege(auth::ListUsersPrivilege{})) {
       VPackBuilder users = um->allUsers();
       generateOk(ResponseCode::OK, users.slice());
     } else {
@@ -303,10 +301,11 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
   }
 
   if (suffixes.empty()) {
+    VPackSlice s = body.get("user");
+    std::string user = s.isString() ? s.copyString() : "";
+
     // create a new user
-    if (isAdminUser()) {
-      VPackSlice s = body.get("user");
-      std::string user = s.isString() ? s.copyString() : "";
+    if (ExecContext::currentHasPrivilege(auth::CreateUserPrivilege{user})) {
       // create user
       Result r = StoreUser(um, 0, user, body);
       if (r.ok()) {
@@ -371,9 +370,8 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
 
-      if (!isAdminUser()) {
+      if (!ExecContext::currentHasPrivilege(auth::GrantPrivilegesPrivilege{ExecContext::current().database()})) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
-
         return RestStatus::DONE;
       }
 
@@ -499,12 +497,13 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() == 1) {
-    if (!isAdminUser()) {
+    std::string const& user = suffixes[0];
+
+    if (!ExecContext::currentHasPrivilege(auth::CreateUserPrivilege{user})) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
       return RestStatus::DONE;
     }
 
-    std::string const& user = suffixes[0];
     Result r = um->removeUser(user);
     if (r.ok()) {
       VPackBuilder b;
@@ -538,9 +537,8 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
 
-      if (!isAdminUser()) {
+      if (!ExecContext::currentHasPrivilege(auth::GrantPrivilegesPrivilege{ExecContext::current().database()})) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
-
         return RestStatus::DONE;
       }
 

@@ -1075,7 +1075,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_feature
     arangodb::auth::Level const& level // access level
 ) {
   auto& ctx = arangodb::ExecContext::current();
-  return ctx.hasAccess(auth::DatabaseResource{vocbase}, level) && // can use database
+  return ctx.hasAccess(vocbase.resource(), level) && // can use database
     ctx.hasAccess(auth::CollectionResource{vocbase, ANALYZER_COLLECTION_NAME}, level); // can use analyzers
 }
 
@@ -1102,8 +1102,8 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_feature
 
   std::string database = split.first;
 
-  return ctx.hasAccess(auth::DatabaseResource{database}, level) // can use vocbase
-    && ctx.hasAccess(auth::CollectionResource{database, ANALYZER_COLLECTION_NAME}, level); // can use analyzers
+  return ctx.hasAccess(auth::DatabaseResource{database}, level) // can use database
+    && ctx.hasAccess(auth::CollectionResource{database, ANALYZER_COLLECTION_NAME}, level); // can use analyzers collection
 }
 
 ////////////////////////////////////////////////////////////////////////////////

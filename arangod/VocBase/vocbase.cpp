@@ -454,7 +454,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   // read lock
   // check if the collection is already loaded
   {
-    if (!ExecContext::currentHasAccess(auth::CollectionResource{_name, collection->name()}, auth::Level::RO)) {
+    if (!ExecContext::currentHasAccess(auth::CollectionResource{_resource, collection->name()}, auth::Level::RO)) {
       return TRI_set_errno(TRI_ERROR_FORBIDDEN);
     }
 
@@ -918,7 +918,7 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
       continue;
     }
 
-    if (!exec.hasAccess(auth::CollectionResource{_name, collection->name()}, auth::Level::RO)) {
+    if (!exec.hasAccess(auth::CollectionResource{_resource._database, collection->name()}, auth::Level::RO)) {
       continue;
     }
 
@@ -1690,7 +1690,7 @@ arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem
 TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
                              std::string const& name)
     : _id(id),
-      _name(name),
+      _resource(auth::DatabaseResource{name}),
       _type(type),
       _refCount(0),
       _state(TRI_vocbase_t::State::NORMAL),

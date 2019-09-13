@@ -26,7 +26,6 @@
 
 #include <velocypack/velocypack-aliases.h>
 
-#include "Auth/DatabaseResource.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
@@ -41,7 +40,7 @@ namespace {
 
 // the specified vocbase is granted 'level' access
 bool canUse(arangodb::auth::Level level, TRI_vocbase_t const& vocbase) {
-  return arangodb::ExecContext::currentHasAccess(arangodb::auth::DatabaseResource{vocbase}, level);
+  return arangodb::ExecContext::currentHasAccess(vocbase.resource(), level);
 }
 
 }  // namespace

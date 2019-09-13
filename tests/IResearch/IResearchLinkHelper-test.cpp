@@ -22,21 +22,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
-
-#include "Aql/QueryRegistry.h"
-#include "Basics/files.h"
 #include "common.h"
 #include "shared.hpp"
 
+#include <velocypack/Parser.h>
+
+#include "Aql/QueryRegistry.h"
 #include "Auth/UserManager.h"
+#include "Basics/files.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
-#include "Mocks/StorageEngineMock.h"
 #include "Mocks/Servers.h"
+#include "Mocks/StorageEngineMock.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -45,10 +46,6 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
 #include "utils/misc.hpp"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down

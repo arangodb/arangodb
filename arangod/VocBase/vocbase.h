@@ -21,8 +21,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_VOCBASE_H
-#define ARANGOD_VOC_BASE_VOCBASE_H 1
+#pragma once
+
+#include "Basics/Common.h"
 
 #include <stddef.h>
 #include <atomic>
@@ -34,14 +35,14 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Basics/Common.h"
+#include <velocypack/Slice.h>
+
+#include "Auth/DatabaseResource.h"
 #include "Basics/DeadlockDetector.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
 #include "VocBase/voc-types.h"
-
-#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace aql {
@@ -153,9 +154,9 @@ struct TRI_vocbase_t {
     DROP_PERFORM  // drop done, must perform actual cleanup routine
   };
 
-  TRI_voc_tick_t const _id;  // internal database id
-  std::string _name;         // database name
-  TRI_vocbase_type_e _type;  // type (normal or coordinator)
+  TRI_voc_tick_t const _id; // internal database id
+  arangodb::auth::DatabaseResource _resource; // database name
+  TRI_vocbase_type_e _type; // type (normal or coordinator)
   std::atomic<uint64_t> _refCount;
   State _state;
   bool _isOwnAppsDirectory;
@@ -200,7 +201,8 @@ struct TRI_vocbase_t {
   static bool IsSystemName(std::string const& name) noexcept;
 
   TRI_voc_tick_t id() const { return _id; }
-  std::string const& name() const { return _name; }
+  std::string const& name() const { return _resource._database; }
+  arangodb::auth::DatabaseResource const& resource() const { return _resource; }
   std::string path() const;
   TRI_vocbase_type_e type() const { return _type; }
   State state() const { return _state; }
@@ -406,5 +408,3 @@ void TRI_SanitizeObject(arangodb::velocypack::Slice const slice,
                         arangodb::velocypack::Builder& builder);
 void TRI_SanitizeObjectWithEdges(arangodb::velocypack::Slice const slice,
                                  arangodb::velocypack::Builder& builder);
-
-#endif

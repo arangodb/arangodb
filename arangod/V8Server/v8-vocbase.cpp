@@ -1620,12 +1620,13 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
-  if (!ExecContext::current().isAdminUser()) {
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
+
+  if (!ExecContext::currentHasPrivilege(auth::DropDatabasePrivilege{auth::DatabaseResource{name}})) {
     events::DropDatabase("", TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  std::string const name = TRI_ObjectToString(isolate, args[0]);
   auto res = methods::Databases::drop(&vocbase, name);
 
   if (res.fail()) {

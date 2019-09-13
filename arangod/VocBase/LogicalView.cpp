@@ -25,7 +25,6 @@
 
 #include <velocypack/Iterator.h>
 
-#include "Auth/DatabaseResource.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
@@ -89,7 +88,7 @@ Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
 
 bool LogicalView::canUse(arangodb::auth::Level const& level) {
   // as per https://github.com/arangodb/backlog/issues/459
-  return ExecContext::currentHasAccess(auth::DatabaseResource{vocbase()}, level); // can use vocbase
+  return ExecContext::currentHasAccess(vocbase().resource(), level); // can use vocbase
 
   /* FIXME TODO per-view authentication checks disabled as per https://github.com/arangodb/backlog/issues/459
   return !ctx // authentication not enabled

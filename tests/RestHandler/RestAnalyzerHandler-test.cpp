@@ -102,21 +102,18 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
   arangodb::DatabaseFeature* dbFeature;
   arangodb::AuthenticationFeature* authFeature;
   arangodb::auth::UserManager* userManager;
-
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
-                                arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
-  } execContext;
-  arangodb::ExecContextScope execContextScope;  // (&execContext);
+  arangodb::ExecContext execContext;
+  arangodb::ExecContext::Scope execContextScope;
   arangodb::aql::QueryRegistry queryRegistry;  // required for UserManager::loadFromDB()
 
   RestAnalyzerHandlerTest()
       : server(),
         _system_vocbase(server.getSystemDatabase()),
-        execContext(),
-        execContextScope(&execContext),
+        execContext(auth::AuthUser{"nobody"},
+                    auth::DatabaseResource{""},
+                    auth::Level::NONE,
+                    auth::Level::NONE),
+	execContextScope(&execContext),
         queryRegistry(0) {
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
