@@ -63,14 +63,14 @@ function lateDocumentMaterializationRuleTestSuite () {
           [cn1] : { includeAllFields: true } 
         }});
 
-      c.save({ _key: 'c0',  str: 'cat snake carrot fork octagon season serpent butter dog tanker', value: 0 });
-      c2.save({_key: 'c_0', str: 'cat snake carrot fork octagon season serpent butter dog dog', value: 10 });
-      c.save({ _key: 'c1',  str: 'cat snake carrot fork octagon season serpent dog dog dog', value: 1 });
-      c2.save({_key: 'c_1', str: 'cat snake carrot fork octagon dog dog dog dog dog', value: 11 });
-      c.save({ _key: 'c2',  str: 'cat snake carrot fork dog dog dog dog dog dog', value: 2 });
-      c2.save({_key: 'c_2', str: 'cat snake carrot dog dog dog dog dog dog dog', value: 12 });
-      c.save({ _key: 'c3',  str: 'cat dog dog dog dog dog dog dog dog dog', value: 3 });
-      c2.save({_key: 'c_3', str: 'dog dog dog dog dog dog dog dog dog dog', value: 13 });
+      c.save({ _key: 'c0',  str: 'cat cat cat cat cat cat cat cat dog', value: 0 });
+      c2.save({_key: 'c_0', str: 'cat cat cat cat cat cat cat rat dog', value: 10 });
+      c.save({ _key: 'c1',  str: 'cat cat cat cat cat cat pig rat dog', value: 1 });
+      c2.save({_key: 'c_1', str: 'cat cat cat cat cat pot pig rat dog', value: 11 });
+      c.save({ _key: 'c2',  str: 'cat cat cat cat dot pot pig rat dog', value: 2 });
+      c2.save({_key: 'c_2', str: 'cat cat cat fat dot pot pig rat dog', value: 12 });
+      c.save({ _key: 'c3',  str: 'cat cat map fat dot pot pig rat dog', value: 3 });
+      c2.save({_key: 'c_3', str: 'cat ant map fat dot pot pig rat dog', value: 13 });
       
       // trigger view sync
       db._query("FOR d IN " + vn + " OPTIONS { waitForSync: true } RETURN d");
@@ -162,8 +162,8 @@ function lateDocumentMaterializationRuleTestSuite () {
       assertEqual(0, expectedKeys.size);
     },
     testQueryResultsWithMultipleCollectionsWithMultiSort() {
-      let query = "FOR d IN " + vn  + " SEARCH PHRASE(d.str, 'dog', 'text_en') " +
-                  "SORT TFIDF(d) LIMIT 10 SORT BM25(d) LIMIT 4 RETURN d ";
+      let query = "FOR d IN " + vn  + " SEARCH PHRASE(d.str, 'cat', 'text_en') " +
+                  "SORT BM25(d) LIMIT 10 SORT TFIDF(d) DESC LIMIT 4 RETURN d ";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let materializeNodeFound = false;
@@ -175,7 +175,7 @@ function lateDocumentMaterializationRuleTestSuite () {
             materializeNodeFound = true;
           } else {
             // the other sort node should be limited but not a materializer
-            // TFIDF node on single and BM25 on cluster as for cluster
+            // BM25 node on single and TFIDF on cluster as for cluster
             // only first sort will be on DBServers
             assertEqual(node.limit, isCluster ? 4 : 10);
           }
@@ -221,7 +221,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       assertEqual(0, expectedKeys.size);
     },
     testQueryResultsSkipSome() {
-      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2] SORT BM25(d) LIMIT 1,10 RETURN d ";
+      let query = "FOR d IN " + vn  + " SEARCH PHRASE(d.str, 'cat', 'text_en')  SORT TFIDF(d) DESC LIMIT 4, 1 RETURN d ";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let result = AQL_EXECUTE(query);
@@ -229,7 +229,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       assertEqual(result.json[0]._key, 'c2');
     },
     testQueryResultsSkipSomeNoSortLimit() {
-      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2] SORT BM25(d) LIMIT 1,10 SORT NOOPT(d.value) RETURN d ";
+      let query = "FOR d IN " + vn  + " SEARCH PHRASE(d.str, 'cat', 'text_en')  SORT TFIDF(d) DESC LIMIT 4, 1 RETURN d ";
       // run query without sort-limit optimization in order to test non constrained sort implementation
       let plan = AQL_EXPLAIN(query, {}, {optimizer:{rules:["-sort-limit"]}}).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
