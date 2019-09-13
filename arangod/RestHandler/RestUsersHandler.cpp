@@ -116,7 +116,7 @@ bool RestUsersHandler::canAccessUser(std::string const& user) const {
     return true;
   }
 
-  return ExecContext::currentHasPrivilege(auth::CreateUserPrivilege{user});
+  return ExecContext::currentHasAccess(auth::CreateUserPrivilege{user});
 }
 
 /// helper to generate a compliant response for individual user requests
@@ -132,7 +132,7 @@ void RestUsersHandler::generateUserResult(rest::ResponseCode code, VPackBuilder 
 RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
-    if (ExecContext::currentHasPrivilege(auth::ListUsersPrivilege{})) {
+    if (ExecContext::currentHasAccess(auth::ListUsersPrivilege{})) {
       VPackBuilder users = um->allUsers();
       generateOk(ResponseCode::OK, users.slice());
     } else {
@@ -305,7 +305,7 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
     std::string user = s.isString() ? s.copyString() : "";
 
     // create a new user
-    if (ExecContext::currentHasPrivilege(auth::CreateUserPrivilege{user})) {
+    if (ExecContext::currentHasAccess(auth::CreateUserPrivilege{user})) {
       // create user
       Result r = StoreUser(um, 0, user, body);
       if (r.ok()) {
@@ -370,7 +370,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
 
-      if (!ExecContext::currentHasPrivilege(auth::GrantPrivilegesPrivilege{ExecContext::current().database()})) {
+      if (!ExecContext::currentHasAccess(auth::GrantPrivilegesPrivilege{ExecContext::current().database()})) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
         return RestStatus::DONE;
       }
@@ -499,7 +499,7 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
   if (suffixes.size() == 1) {
     std::string const& user = suffixes[0];
 
-    if (!ExecContext::currentHasPrivilege(auth::CreateUserPrivilege{user})) {
+    if (!ExecContext::currentHasAccess(auth::CreateUserPrivilege{user})) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
       return RestStatus::DONE;
     }
@@ -537,7 +537,7 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
 
-      if (!ExecContext::currentHasPrivilege(auth::GrantPrivilegesPrivilege{ExecContext::current().database()})) {
+      if (!ExecContext::currentHasAccess(auth::GrantPrivilegesPrivilege{ExecContext::current().database()})) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
         return RestStatus::DONE;
       }

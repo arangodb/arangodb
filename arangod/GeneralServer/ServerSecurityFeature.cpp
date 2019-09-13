@@ -75,7 +75,7 @@ bool ServerSecurityFeature::canAccessHardenedApi() const {
   bool allowAccess = !isRestApiHardened();
 
   if (!allowAccess) {
-    if (ExecContext::currentHasPrivilege(auth::HardenedApiPrivilege{})) {
+    if (ExecContext::currentHasAccess(auth::HardenedApiPrivilege{})) {
       // also allow access if there is not authentication
       // enabled or when the user is an administrator
       allowAccess = true;

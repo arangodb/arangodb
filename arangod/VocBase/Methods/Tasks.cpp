@@ -65,12 +65,7 @@ using namespace arangodb::basics;
 
 namespace {
 bool authorized(std::pair<std::string, std::shared_ptr<arangodb::Task>> const& task) {
-  arangodb::ExecContext const& exec = arangodb::ExecContext::current();
-  if (exec.isSuperuser()) {
-    return true;
-  }
-
-  return (task.first == exec.user());
+  return ExecContext::currentHasAccess(auth::TasksPrivilege{exec.user(), task.first}));
 }
 }  // namespace
 
@@ -331,7 +326,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
 
 void Task::start() {
   ExecContext const& exec = ExecContext::current();
-  TRI_ASSERT(exec.hasPrivilege(auth::TasksPrivilege{exec.user(), _user}));
+  TRI_ASSERT(exec.hasAccess(auth::TasksPrivilege{exec.user(), _user}));
 
   {
     MUTEX_LOCKER(lock, _taskHandleMutex);

@@ -1622,7 +1622,7 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const name = TRI_ObjectToString(isolate, args[0]);
 
-  if (!ExecContext::currentHasPrivilege(auth::DropDatabasePrivilege{auth::DatabaseResource{name}})) {
+  if (!ExecContext::currentHasAccess(auth::DropDatabasePrivilege{auth::DatabaseResource{name}})) {
     events::DropDatabase("", TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }

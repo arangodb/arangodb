@@ -90,7 +90,7 @@ using namespace arangodb::rest;
 // check ExecContext if system use
 static bool CanAccessUser(std::string const& user) {
   auto const& exec = ExecContext::current();
-  return exec.user() == user || exec.hasPrivilege(auth::CreateUserPrivilege{user});
+  return exec.user() == user || exec.hasAccess(auth::CreateUserPrivilege{user});
 }
 
 void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
@@ -202,7 +202,7 @@ static void JS_RemoveUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string username = TRI_ObjectToString(isolate, args[0]);
 
-  if (!ExecContext::currentHasPrivilege(auth::CreateUserPrivilege{username})) {
+  if (!ExecContext::currentHasAccess(auth::CreateUserPrivilege{username})) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -256,7 +256,7 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("reload()");
   }
 
-  if (!ExecContext::currentHasPrivilege(auth::ReloadPrivilegesPrivilege{})) {
+  if (!ExecContext::currentHasAccess(auth::ReloadPrivilegesPrivilege{})) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -279,7 +279,7 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string db = TRI_ObjectToString(isolate, args[1]);
 
-  if (!ExecContext::currentHasPrivilege(auth::GrantPrivilegesPrivilege{auth::DatabaseResource{db}})) {
+  if (!ExecContext::currentHasAccess(auth::GrantPrivilegesPrivilege{auth::DatabaseResource{db}})) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -316,7 +316,7 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string db = TRI_ObjectToString(isolate, args[1]);
 
-  if (!ExecContext::currentHasPrivilege(auth::GrantPrivilegesPrivilege{auth::DatabaseResource{db}})) {
+  if (!ExecContext::currentHasAccess(auth::GrantPrivilegesPrivilege{auth::DatabaseResource{db}})) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -350,7 +350,7 @@ static void JS_GrantCollection(v8::FunctionCallbackInfo<v8::Value> const& args) 
 
   std::string db = TRI_ObjectToString(isolate, args[1]);
 
-  if (!ExecContext::currentHasPrivilege(auth::GrantPrivilegesPrivilege{auth::DatabaseResource{db}})) {
+  if (!ExecContext::currentHasAccess(auth::GrantPrivilegesPrivilege{auth::DatabaseResource{db}})) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -403,7 +403,7 @@ static void JS_RevokeCollection(v8::FunctionCallbackInfo<v8::Value> const& args)
 
   std::string db = TRI_ObjectToString(isolate, args[1]);
 
-  if (!ExecContext::currentHasPrivilege(auth::GrantPrivilegesPrivilege{auth::DatabaseResource{db}})) {
+  if (!ExecContext::currentHasAccess(auth::GrantPrivilegesPrivilege{auth::DatabaseResource{db}})) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 

@@ -303,28 +303,26 @@ Result TransactionState::checkCollectionPermission(std::string const& cname,
   ExecContext const& exec = ExecContext::current();
 
   Result res;
-  // no need to check for superuser, cluster_sync tests break otherwise
-  if (!exec.isSuperuser()) {
-    auth::CollectionResource cr{_vocbase, cname};
 
-    if (!exec.hasAccess(cr, auth::Level::RO)) {
-      LOG_TOPIC("24971", TRACE, Logger::AUTHORIZATION)
-          << "User " << exec.user() << " has no read access to collection";
+  auth::CollectionResource cr{_vocbase, cname};
 
-      res.reset(TRI_ERROR_FORBIDDEN,
-                std::string(TRI_errno_string(TRI_ERROR_FORBIDDEN)) + ": " + cname + 
-                " [" + AccessMode::typeString(accessType) + "]");
-    } else {
-      bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
+  if (!exec.hasAccess(cr, auth::Level::RO)) {
+    LOG_TOPIC("24971", TRACE, Logger::AUTHORIZATION)
+	<< "User " << exec.user() << " has no read access to collection";
 
-      if (!exec.hasAccess(cr, auth::Level::RW) && collectionWillWrite) {
-        LOG_TOPIC("d3e61", TRACE, Logger::AUTHORIZATION)
-            << "User " << exec.user() << " has no write access for collection " << cname;
+    res.reset(TRI_ERROR_FORBIDDEN,
+	      std::string(TRI_errno_string(TRI_ERROR_FORBIDDEN)) + ": " + cname + 
+	      " [" + AccessMode::typeString(accessType) + "]");
+  } else {
+    bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
 
-        res.reset(TRI_ERROR_ARANGO_READ_ONLY,
-                  std::string(TRI_errno_string(TRI_ERROR_ARANGO_READ_ONLY)) + ": " + cname +
-                  " [" + AccessMode::typeString(accessType) + "]");
-      }
+    if (!exec.hasAccess(cr, auth::Level::RW) && collectionWillWrite) {
+      LOG_TOPIC("d3e61", TRACE, Logger::AUTHORIZATION)
+	  << "User " << exec.user() << " has no write access for collection " << cname;
+
+      res.reset(TRI_ERROR_ARANGO_READ_ONLY,
+		std::string(TRI_errno_string(TRI_ERROR_ARANGO_READ_ONLY)) + ": " + cname +
+		" [" + AccessMode::typeString(accessType) + "]");
     }
   }
 

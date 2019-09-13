@@ -568,15 +568,13 @@ arangodb::Result IResearchView::dropImpl() {
 
   if (!stale.empty()) {
     // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (!arangodb::ExecContext::current().isSuperuser()) {
-      for (auto& entry : stale) {
-        auto collection = vocbase().lookupCollection(entry);
+    for (auto& entry : stale) {
+      auto collection = vocbase().lookupCollection(entry);
 
-        if (collection &&
-            !arangodb::ExecContext::currentHasAccess(
-              auth::CollectionResource{vocbase(), collection.get()}, arangodb::auth::Level::RO)) {
-          return arangodb::Result(TRI_ERROR_FORBIDDEN);
-        }
+      if (collection &&
+          !arangodb::ExecContext::currentHasAccess(
+            auth::CollectionResource{vocbase(), collection.get()}, arangodb::auth::Level::RO)) {
+        return arangodb::Result(TRI_ERROR_FORBIDDEN);
       }
     }
 
@@ -1021,20 +1019,17 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
     SCOPED_LOCK_NAMED(mutex, mtx);
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (!arangodb::ExecContext::current().isSuperuser()) {
-      // check existing links
-      for (auto& entry : _links) {
-        auto collection = vocbase().lookupCollection(entry.first);
+    for (auto& entry : _links) {
+      auto collection = vocbase().lookupCollection(entry.first);
 
-        if (collection &&
-            !arangodb::ExecContext::currentHasAccess(
-              auth::CollectionResource{vocbase(), collection.get()}, arangodb::auth::Level::RO)) {
-          return arangodb::Result(
-              TRI_ERROR_FORBIDDEN,
-              std::string("while updating arangosearch definition, error: "
-                          "collection '") +
-                  collection->name() + "' not authorised for read access");
-        }
+      if (collection &&
+          !arangodb::ExecContext::currentHasAccess(
+            auth::CollectionResource{vocbase(), collection.get()}, arangodb::auth::Level::RO)) {
+        return arangodb::Result(
+            TRI_ERROR_FORBIDDEN,
+            std::string("while updating arangosearch definition, error: "
+                        "collection '") +
+                collection->name() + "' not authorised for read access");
       }
     }
 

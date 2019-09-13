@@ -587,15 +587,13 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
             ExecContext const& exec = ExecContext::current();
 
             // got a result from the query cache
-            if (!exec.isSuperuser()) {
-              for (auto& dataSource : cacheEntry->_dataSources) {
-                auto const& dataSourceName = dataSource.second;
+            for (auto& dataSource : cacheEntry->_dataSources) {
+              auto const& dataSourceName = dataSource.second;
 
-                if (!exec.hasAccess(auth::CollectionResource{exec.database(), dataSourceName}, auth::Level::RO)) {
-                  // cannot use query cache result because of permissions
-                  hasPermissions = false;
-                  break;
-                }
+              if (!exec.hasAccess(auth::CollectionResource{exec.database(), dataSourceName}, auth::Level::RO)) {
+                // cannot use query cache result because of permissions
+                hasPermissions = false;
+                break;
               }
             }
 
@@ -794,15 +792,13 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
         ExecContext const& exec = ExecContext::current();
 
         // got a result from the query cache
-        if (!exec.isSuperuser()) {
-          for (auto const& dataSource : cacheEntry->_dataSources) {
-            auto const& dataSourceName = dataSource.second;
+        for (auto const& dataSource : cacheEntry->_dataSources) {
+          auto const& dataSourceName = dataSource.second;
 
-            if (!exec.hasAccess(auth::CollectionResource{exec.database(), dataSourceName}, auth::Level::RO)) {
-              // cannot use query cache result because of permissions
-              hasPermissions = false;
-              break;
-            }
+          if (!exec.hasAccess(auth::CollectionResource{exec.database(), dataSourceName}, auth::Level::RO)) {
+            // cannot use query cache result because of permissions
+            hasPermissions = false;
+            break;
           }
         }
 

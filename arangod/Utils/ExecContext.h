@@ -149,41 +149,35 @@ class ExecContext : public RequestContext {
     return requested <= authLevel(coll);
   }
 
-  // returns true if the user has the privilege
-  template<typename T>
-  static bool currentHasPrivilege(T resource) {
-    return current().hasPrivilege(resource);
-  }
-
-  bool hasPrivilege(auth::CreateDatabasePrivilege const&) const {
+  bool hasAccess(auth::CreateDatabasePrivilege const&) const {
     return !_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW;
   }
 
-  bool hasPrivilege(auth::CreateUserPrivilege const&) const {
+  bool hasAccess(auth::CreateUserPrivilege const&) const {
     return !_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW;
   }
 
-  bool hasPrivilege(auth::DropDatabasePrivilege const&) const {
+  bool hasAccess(auth::DropDatabasePrivilege const&) const {
     return !_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW;
   }
 
-  bool hasPrivilege(auth::GrantPrivilegesPrivilege const&) const {
+  bool hasAccess(auth::GrantPrivilegesPrivilege const&) const {
     return !_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW;
   }
 
-  bool hasPrivilege(auth::HardenedApiPrivilege const&) const {
+  bool hasAccess(auth::HardenedApiPrivilege const&) const {
     return !_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW;
   }
 
-  bool hasPrivilege(auth::ListUsersPrivilege const&) const {
+  bool hasAccess(auth::ListUsersPrivilege const&) const {
     return !_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW;
   }
 
-  bool hasPrivilege(auth::ReloadPrivilegesPrivilege const&) const {
+  bool hasAccess(auth::ReloadPrivilegesPrivilege const&) const {
     return !_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW;
   }
 
-  bool hasPrivilege(auth::QueuesPrivilege const& priv) const {
+  bool hasAccess(auth::QueuesPrivilege const& priv) const {
     if (!_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW) {
       return true;
     }
@@ -191,7 +185,7 @@ class ExecContext : public RequestContext {
     return !priv.username().empty();
   }
 
-  bool hasPrivilege(auth::TasksPrivilege const& priv) const {
+  bool hasAccess(auth::TasksPrivilege const& priv) const {
     if (!_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW) {
       return true;
     }

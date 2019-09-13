@@ -342,16 +342,14 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
                             bool create, VPackBuilder& output) {
   // can read indexes with RO on db and collection. Modifications require RW/RW
   ExecContext const& exec = ExecContext::current();
-  if (!exec.isSuperuser()) {
-    bool canModify = exec.hasAccess(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RW);
-    bool canRead = exec.hasAccess(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RO);
-    if ((create && !canModify) || !canRead) {
-      events::CreateIndex(collection->vocbase().name(), collection->name(),
-                          input, TRI_ERROR_FORBIDDEN);
-      return Result(TRI_ERROR_FORBIDDEN);
-    }
+  bool canModify = exec.hasAccess(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RW);
+  bool canRead = exec.hasAccess(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RO);
+  if ((create && !canModify) || !canRead) {
+    events::CreateIndex(collection->vocbase().name(), collection->name(),
+			input, TRI_ERROR_FORBIDDEN);
+    return Result(TRI_ERROR_FORBIDDEN);
   }
-
+  
   TRI_ASSERT(collection);
   VPackBuilder normalized;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -603,12 +601,10 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
 arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& indexArg) {
   TRI_ASSERT(collection);
   ExecContext const& exec = ExecContext::current();
-  if (!exec.isSuperuser()) {
-    if (!exec.hasAccess(exec.database(), auth::Level::RW)
-     || !exec.hasAccess(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RW)) {
-      events::DropIndex(collection->vocbase().name(), collection->name(), "", TRI_ERROR_FORBIDDEN);
-      return TRI_ERROR_FORBIDDEN;
-    }
+  if (!exec.hasAccess(exec.database(), auth::Level::RW)
+      || !exec.hasAccess(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RW)) {
+    events::DropIndex(collection->vocbase().name(), collection->name(), "", TRI_ERROR_FORBIDDEN);
+    return TRI_ERROR_FORBIDDEN;
   }
 
   TRI_idx_iid_t iid = 0;

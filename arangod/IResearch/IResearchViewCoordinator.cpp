@@ -223,11 +223,10 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
   if (!hasFlag(flags, Serialize::ForPersistence)) {
     // verify that the current user has access on all linked collections
     ExecContext const& exec = ExecContext::current();
-    if (!exec.isSuperuser()) {
-      for (auto& entry : _collections) {
-        if (!exec.hasAccess(auth::CollectionResource{vocbase(), entry.second.first}, auth::Level::RO)) {
-          return Result(TRI_ERROR_FORBIDDEN);
-        }
+
+    for (auto& entry : _collections) {
+      if (!exec.hasAccess(auth::CollectionResource{vocbase(), entry.second.first}, auth::Level::RO)) {
+	return Result(TRI_ERROR_FORBIDDEN);
       }
     }
 
@@ -358,20 +357,19 @@ arangodb::Result IResearchViewCoordinator::properties(velocypack::Slice const& s
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
     ExecContext const& exe = ExecContext::current();
-    if (!exe.isSuperuser()) {
-      // check existing links
-      for (auto& entry : _collections) {
-        auto collection =
-            engine->getCollection(vocbase().name(), std::to_string(entry.first));
 
-        if (collection &&
-            !exe.hasAccess(auth::CollectionResource{vocbase(), collection.get()}, arangodb::auth::Level::RO)) {
-          return arangodb::Result(
-              TRI_ERROR_FORBIDDEN,
-              std::string("while updating arangosearch definition, error: "
-                          "collection '") +
-                  collection->name() + "' not authorized for read access");
-        }
+    // check existing links
+    for (auto& entry : _collections) {
+      auto collection =
+	engine->getCollection(vocbase().name(), std::to_string(entry.first));
+
+      if (collection &&
+	  !exe.hasAccess(auth::CollectionResource{vocbase(), collection.get()}, arangodb::auth::Level::RO)) {
+	return arangodb::Result(
+          TRI_ERROR_FORBIDDEN,
+            std::string("while updating arangosearch definition, error: "
+                        "collection '") +
+                collection->name() + "' not authorized for read access");
       }
     }
 
@@ -500,14 +498,13 @@ Result IResearchViewCoordinator::dropImpl() {
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
     ExecContext const& exe = ExecContext::current();
-    if (!exe.isSuperuser()) {
-      for (auto& entry : currentCids) {
-        auto collection = engine->getCollection(vocbase().name(), std::to_string(entry));
 
-        if (collection &&
-            !exe.hasAccess(auth::CollectionResource{vocbase(), collection.get()}, arangodb::auth::Level::RO)) {
-          return arangodb::Result(TRI_ERROR_FORBIDDEN);
-        }
+    for (auto& entry : currentCids) {
+      auto collection = engine->getCollection(vocbase().name(), std::to_string(entry));
+
+      if (collection &&
+	  !exe.hasAccess(auth::CollectionResource{vocbase(), collection.get()}, arangodb::auth::Level::RO)) {
+	return arangodb::Result(TRI_ERROR_FORBIDDEN);
       }
     }
 
