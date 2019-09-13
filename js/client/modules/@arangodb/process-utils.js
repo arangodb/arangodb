@@ -275,10 +275,14 @@ function setupBinaries (builddir, buildType, configDir) {
     ARANGOEXPORT_BIN,
     ARANGOSH_BIN
   ];
-
-  if (fs.isDirectory(JS_ENTERPRISE_DIR)) {
-    checkFiles.push(ARANGOBACKUP_BIN);
+  
+  if (global.ARANGODB_CLIENT_VERSION) {
+    let version = global.ARANGODB_CLIENT_VERSION(true);
+    if (version.hasOwnProperty('enterprise-version')) {
+      checkFiles.push(ARANGOBACKUP_BIN);
+    }
   }
+
   for (let b = 0; b < checkFiles.length; ++b) {
     if (!fs.isFile(checkFiles[b])) {
       throw new Error('unable to locate ' + checkFiles[b]);
