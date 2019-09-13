@@ -1,7 +1,7 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
-* Fixed AQL constrained-heap sort in conjunction with fullCount
+* Fixed AQL constrained-heap sort in conjunction with fullCount.
 
 * Added support for AQL expressions such as `a NOT LIKE b`, `a NOT =~ b` and
   `a NOT !~ b`. Previous versions of ArangoDB did not support these expressions,
