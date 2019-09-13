@@ -7,7 +7,7 @@ class Credential {
                                                       std::string const& credential);
 
  private:
-  static std::hash_map<std::string, Authenticator*> _authenticators;
+  static std::unordered_map<std::string, Authenticator*> _authenticators;
 
  public:
   Credential(std::string const& type, std::string const& internalUsername,
