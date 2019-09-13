@@ -58,8 +58,6 @@ class MaterializerProducer;
 template<typename OutputRowImpl>
 class ConstrainedSortExecutor {
  public:
-  friend class Sorter;
-
   struct Properties {
     static const bool preservesOrder = false;
     static const bool allowsBlockPassthrough = false;
@@ -80,26 +78,38 @@ class ConstrainedSortExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
+  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkipRequested);
+
   /**
    * @brief This Executor knows how many rows it will produce and most by itself
    *        It also knows that it could produce less if the upstream only has fewer rows.
    */
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
-  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkip);
-
  private:
   bool compareInput(size_t const& rosPos, InputAqlItemRow& row) const;
   arangodb::Result pushRow(InputAqlItemRow& row);
   std::pair<ExecutionState, Stats> fetchAllRowsFromUpstream();
 
-private:
+  // We're done producing when we've emitted all rows from our heap.
+  bool doneProducing() const noexcept;
+
+  // We're done skipping when we've emitted all rows from our heap,
+  // AND emitted (in this case, skipped) all rows that were dropped during the
+  // sort as well. This is for fullCount queries only.
+  bool doneSkipping() const noexcept;
+
+  ExecutionState consumeInput();
+
+ private:
   Infos& _infos;
   Fetcher& _fetcher;
   ExecutionState _state;
   size_t _returnNext;
   std::vector<size_t> _rows;
   size_t _rowsPushed;
+  size_t _rowsRead;
+  size_t _skippedAfter;
   SharedAqlItemBlockPtr _heapBuffer;
   std::unique_ptr<ConstrainedLessThan> _cmpHeap;  // in pointer to avoid
   OutputAqlItemRow _heapOutputRow;

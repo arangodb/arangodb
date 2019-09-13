@@ -521,13 +521,20 @@ void ClusterFeature::unprepare() {
     if (res.successful()) {
       break;
     }
+
+    if (res.httpCode() == TRI_ERROR_HTTP_SERVICE_UNAVAILABLE ||
+        !res.connected()) {
+      LOG_TOPIC("1776b", INFO, Logger::CLUSTER) << 
+        "unable to unregister server from agency, because agency is in shutdown";
+      break;
+    }
     
     if (++tries < maxTries) {
       // try again
       LOG_TOPIC("c7af5", ERR, Logger::CLUSTER) 
         << "unable to unregister server from agency " 
-        << " (attempt " << tries << " of " << maxTries << "): "
-        << res.errorMessage(); 
+        << "(attempt " << tries << " of " << maxTries << "): "
+        << res.errorMessage();
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     } else {
       // give up
