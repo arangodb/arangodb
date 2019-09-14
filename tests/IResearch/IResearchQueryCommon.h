@@ -36,6 +36,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "VocBase/Methods/Collections.h"
 
 #include "3rdParty/iresearch/tests/tests_config.hpp"
@@ -82,28 +83,40 @@ class IResearchQueryTest : public ::testing::Test {
     arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
                                                  false);
 
-    analyzers.emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
-                      VPackParser::fromJson("\"abc\"")->slice(),
-                      irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
+    auto res =
+        analyzers.emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
+                          VPackParser::fromJson("\"abc\"")->slice(),
+                          irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
+        );  // cache analyzer
+    EXPECT_TRUE(res.ok());
+
+    res = analyzers.emplace(result, "testVocbase::test_csv_analyzer",
+                            "TestDelimAnalyzer",
+                            VPackParser::fromJson("\",\"")->slice());  // cache analyzer
+    EXPECT_TRUE(res.ok());
+
+    res = analyzers.emplace(
+        result, "testVocbase::text_en", "text",
+        VPackParser::fromJson(
+            "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }")
+            ->slice(),
+        {irs::frequency::type(), irs::norm::type(), irs::position::type()});  // cache analyzer
+    EXPECT_TRUE(res.ok());
+
+    auto sysVocbase = server.getFeature<arangodb::SystemDatabaseFeature>().use();
+    arangodb::methods::Collections::createSystem(*sysVocbase, arangodb::tests::AnalyzerCollectionName,
+                                                 false);
+
+    res = analyzers.emplace(result, "_system::test_analyzer", "TestAnalyzer",
+                            VPackParser::fromJson("\"abc\"")->slice(),
+                            irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
     );  // cache analyzer
+    EXPECT_TRUE(res.ok());
 
-    analyzers.emplace(result, "testVocbase::test_csv_analyzer",
-                      "TestDelimAnalyzer",
-                      VPackParser::fromJson("\",\"")->slice());  // cache analyzer
-
-    analyzers.emplace(result, "testVocbase::text_en", "text",
-                      VPackParser::fromJson(
-                          "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }")
-                          ->slice(),
-                      {irs::frequency::type(), irs::norm::type(), irs::position::type()});  // cache analyzer
-
-    analyzers.emplace(result, "_system::test_analyzer", "TestAnalyzer",
-                      VPackParser::fromJson("\"abc\"")->slice(),
-                      irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
-    );  // cache analyzer
-
-    analyzers.emplace(result, "_system::test_csv_analyzer", "TestDelimAnalyzer",
-                      VPackParser::fromJson("\",\"")->slice());  // cache analyzer
+    res = analyzers.emplace(result, "_system::test_csv_analyzer",
+                            "TestDelimAnalyzer",
+                            VPackParser::fromJson("\",\"")->slice());  // cache analyzer
+    EXPECT_TRUE(res.ok());
 
     auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
     // register fake non-deterministic function in order to suppress optimizations
