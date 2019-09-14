@@ -263,7 +263,6 @@ Result CreateDatabaseInfo::checkOptions() {
 }
 
 VocbaseOptions getVocbaseOptions(VPackSlice const& options) {
-  LOG_DEVEL << "getVocbaseOptions - options" << options.toJson();
   TRI_ASSERT(options.isObject());
   // Invalid options will be silently ignored. Default values will be used
   // instead.
@@ -283,12 +282,8 @@ VocbaseOptions getVocbaseOptions(VPackSlice const& options) {
 
   {
     auto shardingSlice = options.get(StaticStrings::Sharding);
-    if(! (shardingSlice.isString()  &&
-          (shardingSlice.compareString("") == 0 || shardingSlice.compareString("flexible") == 0 || shardingSlice.compareString("single") == 0)
-         )) {
-      shardingSlice = VPackSlice::noneSlice();
-    } else {
-      vocbaseOptions.sharding = shardingSlice.copyString();
+    if(shardingSlice.isString()  && shardingSlice.compareString("single") == 0) {
+        vocbaseOptions.sharding = shardingSlice.copyString();
     }
   }
 
