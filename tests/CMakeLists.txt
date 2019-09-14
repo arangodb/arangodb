@@ -138,8 +138,8 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchLinkHelper-test.cpp
   IResearch/IResearchLinkMeta-test.cpp
   IResearch/IResearchOrder-test.cpp
-  IResearch/IResearchQueryAnd-test.cpp
   IResearch/IResearchQueryAggregate-test.cpp
+  IResearch/IResearchQueryAnd-test.cpp
   IResearch/IResearchQueryBooleanTerm-test.cpp
   IResearch/IResearchQueryComplexBoolean-test.cpp
   IResearch/IResearchQueryExists-test.cpp

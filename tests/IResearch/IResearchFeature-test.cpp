@@ -74,54 +74,6 @@
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class IResearchFeatureTestOld : public ::testing::Test {
- protected:
-  struct ClusterCommControl : arangodb::ClusterComm {
-    static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
-  };
-
-  arangodb::application_features::ApplicationServer server;
-  arangodb::consensus::Store _agencyStore;
-  GeneralClientConnectionAgencyMock* agency;
-  StorageEngineMock engine;
-
-  IResearchFeatureTestOld()
-      : server(nullptr, nullptr), _agencyStore{server, nullptr, "arango"}, engine(server) {
-    auto* agencyCommManager = new AgencyCommManagerMock("arango");
-    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
-    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
-        _agencyStore);  // need 2 connections or Agency callbacks will fail
-    arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);  // required for Coordinator tests
-
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-
-    arangodb::tests::init();
-
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
-                                    arangodb::LogLevel::FATAL);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::FATAL);
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-  }
-
-  ~IResearchFeatureTestOld() {
-    ClusterCommControl::reset();
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(), arangodb::LogLevel::DEFAULT);
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
-    arangodb::AgencyCommManager::MANAGER.reset();
-  }
-};
-
 class IResearchFeatureTest : public ::testing::Test {
  protected:
   struct ClusterCommControl : arangodb::ClusterComm {
@@ -150,8 +102,6 @@ class IResearchFeatureTest : public ::testing::Test {
     server.addFeature<arangodb::FlushFeature>(false);
     server.addFeature<arangodb::QueryRegistryFeature>(false);
     server.addFeature<arangodb::ServerSecurityFeature>(false);
-    server.addFeature<arangodb::UpgradeFeature>(false, nullptr,
-                                                std::vector<std::type_index>{});
     server.startFeatures();
   }
 
@@ -165,6 +115,34 @@ class IResearchFeatureTest : public ::testing::Test {
                                     arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
                                     arangodb::LogLevel::DEFAULT);
+  }
+
+  // version 0 data-source path
+  irs::utf8_path getPersistedPath0(arangodb::LogicalView const& view) {
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    irs::utf8_path dataPath(dbPathFeature.directory());
+    dataPath /= "databases";
+    dataPath /= "database-";
+    dataPath += std::to_string(view.vocbase().id());
+    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+    dataPath += "-";
+    dataPath += std::to_string(view.id());
+    return dataPath;
+  };
+
+  // version 1 data-source path
+  irs::utf8_path getPersistedPath1(arangodb::iresearch::IResearchLink const& link) {
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    irs::utf8_path dataPath(dbPathFeature.directory());
+    dataPath /= "databases";
+    dataPath /= "database-";
+    dataPath += std::to_string(link.collection().vocbase().id());
+    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+    dataPath += "-";
+    dataPath += std::to_string(link.collection().id());
+    dataPath += "_";
+    dataPath += std::to_string(link.id());
+    return dataPath;
   }
 };
 
@@ -220,711 +198,180 @@ TEST_F(IResearchFeatureTest, test_start) {
 }
 
 TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
-  // version 0 data-source path
-  auto getPersistedPath0 = [this](arangodb::LogicalView const& view) -> irs::utf8_path {
-    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    irs::utf8_path dataPath(dbPathFeature.directory());
-    dataPath /= "databases";
-    dataPath /= "database-";
-    dataPath += std::to_string(view.vocbase().id());
-    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
-    dataPath += "-";
-    dataPath += std::to_string(view.id());
-    return dataPath;
-  };
-
-  // version 1 data-source path
-  auto getPersistedPath1 = [this](arangodb::iresearch::IResearchLink const& link) -> irs::utf8_path {
-    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    irs::utf8_path dataPath(dbPathFeature.directory());
-    dataPath /= "databases";
-    dataPath /= "database-";
-    dataPath += std::to_string(link.collection().vocbase().id());
-    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
-    dataPath += "-";
-    dataPath += std::to_string(link.collection().id());
-    dataPath += "_";
-    dataPath += std::to_string(link.id());
-    return dataPath;
-  };
-
   // test single-server (no directory)
-  {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection\" }");
-    auto linkJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
-        "\"includeAllFields\": true }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 0 "
-        "}");
-    auto versionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"version\": 0, \"tasks\": {} }");
+  auto collectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testCollection\" }");
+  auto linkJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
+      "\"includeAllFields\": true }");
+  auto viewJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 0 "
+      "}");
+  auto versionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"version\": 0, \"tasks\": {} }");
 
-    auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
-    feature.prepare(); // register iresearch view type
-    feature.start(); // register upgrade tasks
+  // add the UpgradeFeature, but make sure it is not prepared
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
 
-    server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
+  auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
+  feature.prepare();  // register iresearch view type
+  feature.start();    // register upgrade tasks
 
-    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
-    auto versionFilename = StorageEngineMock::versionFilenameResult;
-    auto versionFilenameRestore = irs::make_finally([&versionFilename]()->void { StorageEngineMock::versionFilenameResult = versionFilename; });
-    StorageEngineMock::versionFilenameResult =
-        (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
-    ASSERT_TRUE((irs::utf8_path(dbPathFeature.directory()).mkdir()));
-    ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
+  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
 
-    TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          1, "testVocbase");
-    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_NE(logicalCollection, nullptr);
-    auto logicalView0 = vocbase.createView(viewJson->slice());
-    ASSERT_NE(logicalView0, nullptr);
-    bool created = false;
-    auto index = logicalCollection->createIndex(linkJson->slice(), created);
-    ASSERT_TRUE(created);
-    ASSERT_NE(index, nullptr);
-    auto link0 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_NE(link0, nullptr);
+  auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+  arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+  auto versionFilename = StorageEngineMock::versionFilenameResult;
+  auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
+    StorageEngineMock::versionFilenameResult = versionFilename;
+  });
+  StorageEngineMock::versionFilenameResult =
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
+  ASSERT_TRUE((irs::utf8_path(dbPathFeature.directory()).mkdir()));
+  ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
+      StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-    index->unload();  // release file handles
-    bool result;
-    auto linkDataPath = getPersistedPath1(*link0);
-    EXPECT_TRUE((linkDataPath.remove()));  // remove link directory
-    auto viewDataPath = getPersistedPath0(*logicalView0);
-    EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure no view directory
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    EXPECT_TRUE((logicalView0
-                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                               arangodb::LogicalDataSource::Serialize::Detailed,
-                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
-                     .ok()));
-    builder.close();
-    EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
+  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        1, "testVocbase");
+  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  ASSERT_NE(logicalCollection, nullptr);
+  auto logicalView0 = vocbase.createView(viewJson->slice());
+  ASSERT_NE(logicalView0, nullptr);
+  bool created = false;
+  auto index = logicalCollection->createIndex(linkJson->slice(), created);
+  ASSERT_TRUE(created);
+  ASSERT_NE(index, nullptr);
+  auto link0 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+  ASSERT_NE(link0, nullptr);
 
-    EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok()));  // run upgrade
-    auto logicalView1 = vocbase.lookupView(logicalView0->name());
-    EXPECT_TRUE((false == !logicalView1));  // ensure view present after upgrade
-    EXPECT_TRUE((logicalView0->id() == logicalView1->id()));  // ensure same id for view
-    auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection,
-                                                                *logicalView1);
-    EXPECT_TRUE((false == !link1));  // ensure link present after upgrade
-    EXPECT_TRUE((link0->id() != link1->id()));  // ensure new link
-    linkDataPath = getPersistedPath1(*link1);
-    EXPECT_TRUE((linkDataPath.exists(result) && result));  // ensure link directory created after upgrade
-    EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory not present
-    viewDataPath = getPersistedPath0(*logicalView1);
-    EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory not created
-    builder.clear();
-    builder.openObject();
-    EXPECT_TRUE((logicalView1
-                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                               arangodb::LogicalDataSource::Serialize::Detailed,
-                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
-                     .ok()));
-    builder.close();
-    EXPECT_TRUE((1 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 1 after upgrade
-  }
+  index->unload();  // release file handles
+  bool result;
+  auto linkDataPath = getPersistedPath1(*link0);
+  EXPECT_TRUE((linkDataPath.remove()));  // remove link directory
+  auto viewDataPath = getPersistedPath0(*logicalView0);
+  EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure no view directory
+  arangodb::velocypack::Builder builder;
+  builder.openObject();
+  EXPECT_TRUE((logicalView0
+                   ->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                             arangodb::LogicalDataSource::Serialize::Detailed,
+                                             arangodb::LogicalDataSource::Serialize::ForPersistence))
+                   .ok()));
+  builder.close();
+  EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
+
+  EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok()));  // run upgrade
+  auto logicalView1 = vocbase.lookupView(logicalView0->name());
+  EXPECT_TRUE((false == !logicalView1));  // ensure view present after upgrade
+  EXPECT_TRUE((logicalView0->id() == logicalView1->id()));  // ensure same id for view
+  auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *logicalView1);
+  EXPECT_TRUE((false == !link1));  // ensure link present after upgrade
+  EXPECT_TRUE((link0->id() != link1->id()));  // ensure new link
+  linkDataPath = getPersistedPath1(*link1);
+  EXPECT_TRUE((linkDataPath.exists(result) && result));  // ensure link directory created after upgrade
+  EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory not present
+  viewDataPath = getPersistedPath0(*logicalView1);
+  EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory not created
+  builder.clear();
+  builder.openObject();
+  EXPECT_TRUE((logicalView1
+                   ->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                             arangodb::LogicalDataSource::Serialize::Detailed,
+                                             arangodb::LogicalDataSource::Serialize::ForPersistence))
+                   .ok()));
+  builder.close();
+  EXPECT_TRUE((1 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 1 after upgrade
 }
 
-TEST_F(IResearchFeatureTestOld, test_upgrade0_1_with_directory) {
-  // version 0 data-source path
-  auto getPersistedPath0 = [this](arangodb::LogicalView const& view) -> irs::utf8_path {
-    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    irs::utf8_path dataPath(dbPathFeature.directory());
-    dataPath /= "databases";
-    dataPath /= "database-";
-    dataPath += std::to_string(view.vocbase().id());
-    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
-    dataPath += "-";
-    dataPath += std::to_string(view.id());
-    return dataPath;
-  };
-
-  // version 1 data-source path
-  auto getPersistedPath1 = [this](arangodb::iresearch::IResearchLink const& link) -> irs::utf8_path {
-    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    irs::utf8_path dataPath(dbPathFeature.directory());
-    dataPath /= "databases";
-    dataPath /= "database-";
-    dataPath += std::to_string(link.collection().vocbase().id());
-    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
-    dataPath += "-";
-    dataPath += std::to_string(link.collection().id());
-    dataPath += "_";
-    dataPath += std::to_string(link.id());
-    return dataPath;
-  };
-
+TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   // test single-server (with directory)
-  {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection\" }");
-    auto linkJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
-        "\"includeAllFields\": true }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 0 "
-        "}");
-    auto versionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"version\": 0, \"tasks\": {} }");
+  auto collectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testCollection\" }");
+  auto linkJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
+      "\"includeAllFields\": true }");
+  auto viewJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 0 "
+      "}");
+  auto versionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"version\": 0, \"tasks\": {} }");
 
-    // create a new instance of an ApplicationServer and fill it with the required features
-    // cannot use the existing server since its features already have some state
-    arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(newServer);
-    server.addFeature<arangodb::FlushFeature>(std::make_unique<arangodb::FlushFeature>(
-        newServer));  // required to skip IResearchView validation
-    server.addFeature<arangodb::DatabaseFeature>(std::make_unique<arangodb::DatabaseFeature>(
-        newServer));  // required to skip IResearchView validation
-    server.addFeature<arangodb::DatabasePathFeature>(
-        std::make_unique<arangodb::DatabasePathFeature>(newServer));  // required for IResearchLink::initDataStore()
-    server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
-        std::make_unique<arangodb::iresearch::IResearchAnalyzerFeature>(newServer));  // required for restoring link analyzers
-    server.addFeature<arangodb::QueryRegistryFeature>(
-        std::make_unique<arangodb::QueryRegistryFeature>(newServer));  // required for constructing TRI_vocbase_t
-    TRI_vocbase_t system(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         TRI_VOC_SYSTEM_DATABASE);
-    server.addFeature<arangodb::SystemDatabaseFeature>(
-        std::make_unique<arangodb::SystemDatabaseFeature>(newServer, &system));  // required for IResearchAnalyzerFeature::start()
-    server.addFeature<arangodb::UpgradeFeature>(
-        std::make_unique<arangodb::UpgradeFeature>(newServer, nullptr,
-                                                   std::vector<std::type_index>{}));  // required for upgrade tasks
-    server.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(newServer));  // required for IResearchFeature::prepare()
-    arangodb::iresearch::IResearchAnalyzerFeature& analyzerFeature =
-        newServer.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    arangodb::DatabasePathFeature& dbPathFeature =
-        newServer.getFeature<arangodb::DatabasePathFeature>();
-    analyzerFeature.prepare();  // add static analyzers
-    feature.prepare(); // register iresearch view type
-    feature.start(); // register upgrade tasks
-    server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
+  // add the UpgradeFeature, but make sure it is not prepared
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
 
-    arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
-    auto versionFilename = StorageEngineMock::versionFilenameResult;
-    auto versionFilenameRestore = irs::make_finally([&versionFilename]()->void { StorageEngineMock::versionFilenameResult = versionFilename; });
-    StorageEngineMock::versionFilenameResult =
-        (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
-    ASSERT_TRUE((irs::utf8_path(dbPathFeature.directory()).mkdir()));
-    ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
+  auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
+  feature.prepare();  // register iresearch view type
+  feature.start();    // register upgrade tasks
 
-    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          1, "testVocbase");
-    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((false == !logicalCollection));
-    auto logicalView0 = vocbase.createView(viewJson->slice());
-    ASSERT_TRUE((false == !logicalView0));
-    bool created;
-    auto index = logicalCollection->createIndex(linkJson->slice(), created);
-    ASSERT_TRUE((created));
-    ASSERT_TRUE((false == !index));
-    auto link0 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_TRUE((false == !link0));
+  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
 
-    index->unload();  // release file handles
-    bool result;
-    auto linkDataPath = getPersistedPath1(*link0);
-    EXPECT_TRUE((linkDataPath.remove()));  // remove link directory
-    auto viewDataPath = getPersistedPath0(*logicalView0);
-    EXPECT_TRUE((viewDataPath.exists(result) && !result));
-    EXPECT_TRUE((viewDataPath.mkdir()));  // create view directory
-    EXPECT_TRUE((viewDataPath.exists(result) && result));
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    EXPECT_TRUE((logicalView0
-                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                               arangodb::LogicalDataSource::Serialize::Detailed,
-                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
-                     .ok()));
-    builder.close();
-    EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
+  auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+  arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+  auto versionFilename = StorageEngineMock::versionFilenameResult;
+  auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
+    StorageEngineMock::versionFilenameResult = versionFilename;
+  });
+  StorageEngineMock::versionFilenameResult =
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
+  ASSERT_TRUE((irs::utf8_path(dbPathFeature.directory()).mkdir()));
+  ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
+      StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-    EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok()));  // run upgrade
-    auto logicalView1 = vocbase.lookupView(logicalView0->name());
-    EXPECT_TRUE((false == !logicalView1));  // ensure view present after upgrade
-    EXPECT_TRUE((logicalView0->id() == logicalView1->id()));  // ensure same id for view
-    auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection,
-                                                                *logicalView1);
-    EXPECT_TRUE((false == !link1));  // ensure link present after upgrade
-    EXPECT_TRUE((link0->id() != link1->id()));  // ensure new link
-    linkDataPath = getPersistedPath1(*link1);
-    EXPECT_TRUE((linkDataPath.exists(result) && result));  // ensure link directory created after upgrade
-    EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory removed after upgrade
-    viewDataPath = getPersistedPath0(*logicalView1);
-    EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory not created
-    builder.clear();
-    builder.openObject();
-    EXPECT_TRUE((logicalView1
-                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                               arangodb::LogicalDataSource::Serialize::Detailed,
-                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
-                     .ok()));
-    builder.close();
-    EXPECT_TRUE((1 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 1 after upgrade
+  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        1, "testVocbase");
+  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  ASSERT_TRUE((false == !logicalCollection));
+  auto logicalView0 = vocbase.createView(viewJson->slice());
+  ASSERT_TRUE((false == !logicalView0));
+  bool created;
+  auto index = logicalCollection->createIndex(linkJson->slice(), created);
+  ASSERT_TRUE((created));
+  ASSERT_TRUE((false == !index));
+  auto link0 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+  ASSERT_TRUE((false == !link0));
 
-    server.getFeature<arangodb::DatabaseFeature>().unprepare();
-  }
+  index->unload();  // release file handles
+  bool result;
+  auto linkDataPath = getPersistedPath1(*link0);
+  EXPECT_TRUE((linkDataPath.remove()));  // remove link directory
+  auto viewDataPath = getPersistedPath0(*logicalView0);
+  EXPECT_TRUE((viewDataPath.exists(result) && !result));
+  EXPECT_TRUE((viewDataPath.mkdir()));  // create view directory
+  EXPECT_TRUE((viewDataPath.exists(result) && result));
+  arangodb::velocypack::Builder builder;
+  builder.openObject();
+  EXPECT_TRUE((logicalView0
+                   ->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                             arangodb::LogicalDataSource::Serialize::Detailed,
+                                             arangodb::LogicalDataSource::Serialize::ForPersistence))
+                   .ok()));
+  builder.close();
+  EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
+
+  EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok()));  // run upgrade
+  auto logicalView1 = vocbase.lookupView(logicalView0->name());
+  EXPECT_TRUE((false == !logicalView1));  // ensure view present after upgrade
+  EXPECT_TRUE((logicalView0->id() == logicalView1->id()));  // ensure same id for view
+  auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *logicalView1);
+  EXPECT_TRUE((false == !link1));  // ensure link present after upgrade
+  EXPECT_TRUE((link0->id() != link1->id()));  // ensure new link
+  linkDataPath = getPersistedPath1(*link1);
+  EXPECT_TRUE((linkDataPath.exists(result) && result));  // ensure link directory created after upgrade
+  EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory removed after upgrade
+  viewDataPath = getPersistedPath0(*logicalView1);
+  EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory not created
+  builder.clear();
+  builder.openObject();
+  EXPECT_TRUE((logicalView1
+                   ->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                             arangodb::LogicalDataSource::Serialize::Detailed,
+                                             arangodb::LogicalDataSource::Serialize::ForPersistence))
+                   .ok()));
+  builder.close();
+  EXPECT_TRUE((1 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 1 after upgrade
 }
 
-TEST_F(IResearchFeatureTestOld, test_upgrade0_1_coordinator) {
-  // test coordinator
-  {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"id\": \"1\", \"name\": \"testCollection\", \"shards\":{} }");
-    auto linkJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
-        "\"includeAllFields\": true }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"id\": 42, \"name\": \"testView\", \"type\": \"arangosearch\", "
-        "\"version\": 0 }");
-    auto versionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"version\": 0, \"tasks\": {} }");
-    auto collectionId = std::to_string(1);
-    auto viewId = std::to_string(42);
-
-    auto serverRoleBefore = arangodb::ServerState::instance()->getRole();
-    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
-    auto serverRoleRestore = irs::make_finally([&serverRoleBefore]() -> void {
-      arangodb::ServerState::instance()->setRole(serverRoleBefore);
-    });
-    arangodb::ServerState::instance()->setRebootId(1); // Hack.
-
-    // create a new instance of an ApplicationServer and fill it with the required features
-    // cannot use the existing server since its features already have some state
-    arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(newServer);
-    newServer.addFeature<arangodb::AuthenticationFeature>(
-        std::make_unique<arangodb::AuthenticationFeature>(newServer));  // required for ClusterComm::instance()
-    newServer.addFeature<arangodb::ClusterFeature>(
-        std::make_unique<arangodb::ClusterFeature>(newServer));  // required to create ClusterInfo instance
-    newServer.addFeature<arangodb::application_features::CommunicationFeaturePhase>(
-        std::make_unique<arangodb::application_features::CommunicationFeaturePhase>(
-            newServer));  // required for SimpleHttpClient::doRequest()
-    newServer.addFeature<arangodb::DatabaseFeature>(
-        std::make_unique<arangodb::DatabaseFeature>(newServer));  // required to skip IResearchView validation
-    newServer.addFeature<arangodb::DatabasePathFeature>(
-        std::make_unique<arangodb::DatabasePathFeature>(newServer));  // required for IResearchLink::initDataStore()
-    newServer.addFeature<arangodb::FlushFeature>(std::make_unique<arangodb::FlushFeature>(
-        newServer));  // required to skip IResearchView validation
-    newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
-        std::make_unique<arangodb::iresearch::IResearchAnalyzerFeature>(newServer));  // required for restoring link analyzers
-    newServer.addFeature<arangodb::QueryRegistryFeature>(
-        std::make_unique<arangodb::QueryRegistryFeature>(newServer));  // required for constructing TRI_vocbase_t
-    TRI_vocbase_t system(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         TRI_VOC_SYSTEM_DATABASE);
-    newServer.addFeature<arangodb::ShardingFeature>(std::make_unique<arangodb::ShardingFeature>(
-        newServer));  // required for LogicalCollection::LogicalCollection(...)
-    newServer.addFeature<arangodb::SystemDatabaseFeature>(
-        std::make_unique<arangodb::SystemDatabaseFeature>(newServer, &system));  // required for IResearchAnalyzerFeature::start()
-    newServer.addFeature<arangodb::UpgradeFeature>(
-        std::make_unique<arangodb::UpgradeFeature>(newServer, nullptr,
-                                                   std::vector<std::type_index>{}));  // required for upgrade tasks
-    newServer.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(newServer));  // required for IResearchFeature::prepare()
-#if USE_ENTERPRISE
-    newServer.addFeature<arangodb::LdapFeature>(std::make_unique<arangodb::LdapFeature>(
-        newServer));  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
-    arangodb::iresearch::IResearchAnalyzerFeature& analyzerFeature =
-        newServer.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    arangodb::DatabaseFeature& database =
-        newServer.getFeature<arangodb::DatabaseFeature>();
-    server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
-
-    analyzerFeature.prepare();  // add static analyzers
-    feature.prepare(); // register iresearch view type
-    feature.start(); // register upgrade tasks
-    server.getFeature<arangodb::AuthenticationFeature>().prepare();  // create AuthenticationFeature::INSTANCE
-    server.getFeature<arangodb::ClusterFeature>().prepare();  // create ClusterInfo instance
-    server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
-    server.getFeature<arangodb::ShardingFeature>().prepare();  // register sharding types
-    arangodb::AgencyCommManager::MANAGER->start(); // initialize agency
-    arangodb::DatabaseFeature::DATABASE =
-        &database;  // required for ClusterInfo::createCollectionCoordinator(...)
-    const_cast<arangodb::IndexFactory&>(engine.indexFactory()).emplace( // required for Indexes::ensureIndex(...)
-      arangodb::iresearch::DATA_SOURCE_TYPE.name(),
-      arangodb::iresearch::IResearchLinkCoordinator::factory()
-    );
-    auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-    TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database.createDatabase(1, "testDatabase", vocbase)));
-
-    // simulate heartbeat thread (create database in current)
-    // this is stupid.
-    {
-      auto const path = "/Current/Databases/" + vocbase->name();
-      auto const value = arangodb::velocypack::Parser::fromJson(
-//    TODO: This one asserts with "not an object". No idea why.
-//        "{ \"id\": \"1\" }" );
-      "{ \"id\": { \"id\": \"1\" } }" );
-      EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
-    }
-
-    ASSERT_TRUE((arangodb::methods::Databases::create(
-                     server, vocbase->name(), arangodb::velocypack::Slice::emptyArraySlice(),
-                     arangodb::velocypack::Slice::emptyObjectSlice())
-                     .ok()));
-
-    ASSERT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
-                                                collectionJson->slice(), 0.0, false, nullptr)
-                     .ok()));
-
-    auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
-    ASSERT_TRUE((false == !logicalCollection));
-    EXPECT_TRUE(
-        (ci.createViewCoordinator(vocbase->name(), viewId, viewJson->slice()).ok()));
-    auto logicalView0 = ci.getView(vocbase->name(), viewId);
-    ASSERT_TRUE((false == !logicalView0));
-
-    // simulate heartbeat thread (create index in current)
-    {
-      auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-        std::to_string(logicalCollection->id());
-      auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } "
-        "] } }");
-      EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
-    }
-
-    arangodb::velocypack::Builder tmp;
-    ASSERT_TRUE((arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
-                                                         linkJson->slice(), true, tmp)
-                     .ok()));
-    logicalCollection = ci.getCollection(vocbase->name(), collectionId);
-    ASSERT_TRUE((false == !logicalCollection));
-    auto link0 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection,
-                                                                *logicalView0);
-    ASSERT_TRUE((false == !link0));
-
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    EXPECT_TRUE((logicalView0
-                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                               arangodb::LogicalDataSource::Serialize::Detailed,
-                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
-                     .ok()));
-    builder.close();
-    EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
-
-    // ensure no upgrade on coordinator
-    // simulate heartbeat thread (create index in current)
-    {
-      auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                        std::to_string(logicalCollection->id());
-      auto const value = arangodb::velocypack::Parser::fromJson(
-          "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } "
-          "] } }");
-      EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
-    }
-    EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok()));  // run upgrade
-    auto logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);
-    ASSERT_TRUE((false == !logicalCollection2));
-    auto logicalView1 = ci.getView(vocbase->name(), viewId);
-    EXPECT_TRUE((false == !logicalView1));  // ensure view present after upgrade
-    EXPECT_TRUE((logicalView0->id() == logicalView1->id()));  // ensure same id for view
-    auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2,
-                                                                *logicalView1);
-    EXPECT_TRUE((false == !link1));  // ensure link present after upgrade
-    EXPECT_TRUE((link0->id() == link1->id()));  // ensure new link
-    builder.clear();
-    builder.openObject();
-    EXPECT_TRUE((logicalView1
-                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                               arangodb::LogicalDataSource::Serialize::Detailed,
-                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
-                     .ok()));
-    builder.close();
-    EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 after upgrade
-
-    server.getFeature<arangodb::DatabaseFeature>().unprepare();
-  }
-}
-
-TEST_F(IResearchFeatureTestOld, test_upgrade0_1_dbserver_no_directory) {
-  // version 0 data-source path
-  auto getPersistedPath0 = [this](arangodb::LogicalView const& view) -> irs::utf8_path {
-    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    irs::utf8_path dataPath(dbPathFeature.directory());
-    dataPath /= "databases";
-    dataPath /= "database-";
-    dataPath += std::to_string(view.vocbase().id());
-    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
-    dataPath += "-";
-    dataPath += std::to_string(view.id());
-    return dataPath;
-  };
-
-  // version 1 data-source path
-  auto getPersistedPath1 = [this](arangodb::iresearch::IResearchLink const& link) -> irs::utf8_path {
-    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    irs::utf8_path dataPath(dbPathFeature.directory());
-    dataPath /= "databases";
-    dataPath /= "database-";
-    dataPath += std::to_string(link.collection().vocbase().id());
-    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
-    dataPath += "-";
-    dataPath += std::to_string(link.collection().id());
-    dataPath += "_";
-    dataPath += std::to_string(link.id());
-    return dataPath;
-  };
-
-  // test db-server (no directory)
-  {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection\" }");
-    auto linkJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
-        "\"includeAllFields\": true }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 0 "
-        "}");
-    auto versionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"version\": 0, \"tasks\": {} }");
-
-    auto serverRoleBefore = arangodb::ServerState::instance()->getRole();
-    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
-    auto serverRoleRestore = irs::make_finally([&serverRoleBefore]() -> void {
-      arangodb::ServerState::instance()->setRole(serverRoleBefore);
-    });
-
-    arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(newServer);
-    newServer.addFeature<arangodb::AuthenticationFeature>(
-        std::make_unique<arangodb::AuthenticationFeature>(newServer));  // required for ClusterComm::instance()
-    newServer.addFeature<arangodb::application_features::CommunicationFeaturePhase>(
-        std::make_unique<arangodb::application_features::CommunicationFeaturePhase>(
-            newServer));  // required for SimpleHttpClient::doRequest()
-    newServer.addFeature<arangodb::DatabaseFeature>(
-        std::make_unique<arangodb::DatabaseFeature>(newServer));  // required to skip IResearchView validation
-    newServer.addFeature<arangodb::DatabasePathFeature>(
-        std::make_unique<arangodb::DatabasePathFeature>(newServer));  // required for IResearchLink::initDataStore()
-    newServer.addFeature<arangodb::FlushFeature>(std::make_unique<arangodb::FlushFeature>(
-        newServer));  // required to skip IResearchView validation
-    newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
-        std::make_unique<arangodb::iresearch::IResearchAnalyzerFeature>(newServer));  // required for restoring link analyzers
-    newServer.addFeature<arangodb::QueryRegistryFeature>(
-        std::make_unique<arangodb::QueryRegistryFeature>(newServer));  // required for constructing TRI_vocbase_t
-    TRI_vocbase_t system(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         TRI_VOC_SYSTEM_DATABASE);
-    newServer.addFeature<arangodb::ShardingFeature>(std::make_unique<arangodb::ShardingFeature>(
-        newServer));  // required for LogicalCollection::LogicalCollection(...)
-    newServer.addFeature<arangodb::SystemDatabaseFeature>(
-        std::make_unique<arangodb::SystemDatabaseFeature>(newServer, &system));  // required for IResearchAnalyzerFeature::start()
-    newServer.addFeature<arangodb::UpgradeFeature>(
-        std::make_unique<arangodb::UpgradeFeature>(newServer, nullptr,
-                                                   std::vector<std::type_index>{}));  // required for upgrade tasks
-    newServer.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(newServer));  // required for IResearchFeature::prepare()
-    arangodb::iresearch::IResearchAnalyzerFeature& analyzerFeature =
-        newServer.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    arangodb::DatabasePathFeature& dbPathFeature =
-        newServer.getFeature<arangodb::DatabasePathFeature>();
-
-    analyzerFeature.prepare();  // add static analyzers
-    feature.prepare(); // register iresearch view type
-    feature.start(); // register upgrade tasks
-    server.getFeature<arangodb::AuthenticationFeature>().prepare();  // create AuthenticationFeature::INSTANCE
-    server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
-    server.getFeature<arangodb::ShardingFeature>().prepare();  // register sharding types
-
-    arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
-    auto versionFilename = StorageEngineMock::versionFilenameResult;
-    auto versionFilenameRestore = irs::make_finally([&versionFilename]()->void { StorageEngineMock::versionFilenameResult = versionFilename; });
-    StorageEngineMock::versionFilenameResult =
-        (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
-    ASSERT_TRUE((irs::utf8_path(dbPathFeature.directory()).mkdir()));
-    ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
-
-    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          1, "testVocbase");
-    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((false == !logicalCollection));
-    auto logicalView = vocbase.createView(viewJson->slice());
-    ASSERT_TRUE((false == !logicalView));
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
-    ASSERT_TRUE((false == !view));
-    bool created;
-    auto index = logicalCollection->createIndex(linkJson->slice(), created);
-    ASSERT_TRUE((created));
-    ASSERT_TRUE((false == !index));
-    auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_TRUE((false == !link));
-    ASSERT_TRUE((view->link(link->self()).ok()));  // link will not notify view in 'vocbase', hence notify manually
-
-    index->unload();  // release file handles
-    bool result;
-    auto linkDataPath = getPersistedPath1(*link);
-    EXPECT_TRUE((linkDataPath.remove()));  // remove link directory
-    auto viewDataPath = getPersistedPath0(*logicalView);
-    EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure no view directory
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    EXPECT_TRUE((logicalView
-                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                               arangodb::LogicalDataSource::Serialize::Detailed,
-                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
-                     .ok()));
-    builder.close();
-    EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
-
-    EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok()));  // run upgrade
-    logicalView = vocbase.lookupView(logicalView->name());
-    EXPECT_TRUE((true == !logicalView));  // ensure view removed after upgrade
-    EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory not present
-
-    server.getFeature<arangodb::DatabaseFeature>().unprepare();
-  }
-}
-
-TEST_F(IResearchFeatureTestOld, test_upgrade0_1_dbserver_with_directory) {
-  // version 0 data-source path
-  auto getPersistedPath0 = [this](arangodb::LogicalView const& view) -> irs::utf8_path {
-    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    irs::utf8_path dataPath(dbPathFeature.directory());
-    dataPath /= "databases";
-    dataPath /= "database-";
-    dataPath += std::to_string(view.vocbase().id());
-    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
-    dataPath += "-";
-    dataPath += std::to_string(view.id());
-    return dataPath;
-  };
-
-  // version 1 data-source path
-  auto getPersistedPath1 = [this](arangodb::iresearch::IResearchLink const& link) -> irs::utf8_path {
-    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    irs::utf8_path dataPath(dbPathFeature.directory());
-    dataPath /= "databases";
-    dataPath /= "database-";
-    dataPath += std::to_string(link.collection().vocbase().id());
-    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
-    dataPath += "-";
-    dataPath += std::to_string(link.collection().id());
-    dataPath += "_";
-    dataPath += std::to_string(link.id());
-    return dataPath;
-  };
-
-  // test db-server (with directory)
-  {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testCollection\" }");
-    auto linkJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
-        "\"includeAllFields\": true }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 0 "
-        "}");
-    auto versionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"version\": 0, \"tasks\": {} }");
-
-    auto serverRoleBefore = arangodb::ServerState::instance()->getRole();
-    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
-    auto serverRoleRestore = irs::make_finally([&serverRoleBefore]() -> void {
-      arangodb::ServerState::instance()->setRole(serverRoleBefore);
-    });
-
-    // create a new instance of an ApplicationServer and fill it with the required features
-    // cannot use the existing server since its features already have some state
-    arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(newServer);
-    newServer.addFeature<arangodb::AuthenticationFeature>(
-        std::make_unique<arangodb::AuthenticationFeature>(newServer));  // required for ClusterComm::instance()
-    newServer.addFeature<arangodb::application_features::CommunicationFeaturePhase>(
-        std::make_unique<arangodb::application_features::CommunicationFeaturePhase>(
-            newServer));  // required for SimpleHttpClient::doRequest()
-    newServer.addFeature<arangodb::DatabaseFeature>(
-        std::make_unique<arangodb::DatabaseFeature>(newServer));  // required to skip IResearchView validation
-    newServer.addFeature<arangodb::DatabasePathFeature>(
-        std::make_unique<arangodb::DatabasePathFeature>(newServer));  // required for IResearchLink::initDataStore()
-    newServer.addFeature<arangodb::FlushFeature>(std::make_unique<arangodb::FlushFeature>(
-        newServer));  // required to skip IResearchView validation
-    newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
-        std::make_unique<arangodb::iresearch::IResearchAnalyzerFeature>(newServer));  // required for restoring link analyzers
-    newServer.addFeature<arangodb::QueryRegistryFeature>(
-        std::make_unique<arangodb::QueryRegistryFeature>(newServer));  // required for constructing TRI_vocbase_t
-    TRI_vocbase_t system(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         TRI_VOC_SYSTEM_DATABASE);
-    newServer.addFeature<arangodb::ShardingFeature>(std::make_unique<arangodb::ShardingFeature>(
-        newServer));  // required for LogicalCollection::LogicalCollection(...)
-    newServer.addFeature<arangodb::SystemDatabaseFeature>(
-        std::make_unique<arangodb::SystemDatabaseFeature>(newServer, &system));  // required for IResearchAnalyzerFeature::start()
-    newServer.addFeature<arangodb::UpgradeFeature>(
-        std::make_unique<arangodb::UpgradeFeature>(newServer, nullptr,
-                                                   std::vector<std::type_index>{}));  // required for upgrade tasks
-    newServer.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(newServer));  // required for IResearchFeature::prepare()
-    arangodb::iresearch::IResearchAnalyzerFeature& analyzerFeature =
-        newServer.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    arangodb::DatabasePathFeature& dbPathFeature =
-        newServer.getFeature<arangodb::DatabasePathFeature>();
-
-    analyzerFeature.prepare();  // add static analyzers
-    feature.prepare(); // register iresearch view type
-    feature.start(); // register upgrade tasks
-    server.getFeature<arangodb::AuthenticationFeature>().prepare();  // create AuthenticationFeature::INSTANCE
-    server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
-    server.getFeature<arangodb::ShardingFeature>().prepare();  // register sharding types
-
-    arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
-    auto versionFilename = StorageEngineMock::versionFilenameResult;
-    auto versionFilenameRestore = irs::make_finally([&versionFilename]()->void { StorageEngineMock::versionFilenameResult = versionFilename; });
-    StorageEngineMock::versionFilenameResult =
-        (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
-    ASSERT_TRUE((irs::utf8_path(dbPathFeature.directory()).mkdir()));
-    ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
-
-    engine.views.clear();
-    TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          1, "testVocbase");
-    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((false == !logicalCollection));
-    auto logicalView = vocbase.createView(viewJson->slice());
-    ASSERT_TRUE((false == !logicalView));
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
-    ASSERT_TRUE((false == !view));
-    bool created;
-    auto index = logicalCollection->createIndex(linkJson->slice(), created);
-    ASSERT_TRUE((created));
-    ASSERT_TRUE((false == !index));
-    auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_TRUE((false == !link));
-    ASSERT_TRUE((view->link(link->self()).ok()));  // link will not notify view in 'vocbase', hence notify manually
-
-    index->unload();  // release file handles
-    bool result;
-    auto linkDataPath = getPersistedPath1(*link);
-    EXPECT_TRUE((linkDataPath.remove()));  // remove link directory
-    auto viewDataPath = getPersistedPath0(*logicalView);
-    EXPECT_TRUE((viewDataPath.exists(result) && !result));
-    EXPECT_TRUE((viewDataPath.mkdir()));  // create view directory
-    EXPECT_TRUE((viewDataPath.exists(result) && result));
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    EXPECT_TRUE((logicalView
-                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                               arangodb::LogicalDataSource::Serialize::Detailed,
-                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
-                     .ok()));
-    builder.close();
-    EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
-
-    EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok()));  // run upgrade
-    //    EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(vocbase).ok()); // run upgrade
-    logicalView = vocbase.lookupView(logicalView->name());
-    EXPECT_TRUE((true == !logicalView));  // ensure view removed after upgrade
-    EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory removed after upgrade
-  }
-}
-
-TEST_F(IResearchFeatureTestOld, IResearch_version_test) {
+TEST_F(IResearchFeatureTest, IResearch_version_test) {
   EXPECT_TRUE(IResearch_version == arangodb::rest::Version::getIResearchVersion());
   EXPECT_TRUE(IResearch_version ==
               arangodb::rest::Version::Values["iresearch-version"]);
@@ -932,427 +379,784 @@ TEST_F(IResearchFeatureTestOld, IResearch_version_test) {
 
 // Temporarily surpress for MSVC
 #ifndef _MSC_VER
-TEST_F(IResearchFeatureTestOld, test_async) {
-  // schedule task (null resource mutex)
+TEST_F(IResearchFeatureTest, test_async_schedule_test_null_resource_mutex) {
+  bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+  arangodb::iresearch::IResearchFeature feature(server.server());
+  feature.prepare();  // start thread pool
+  std::condition_variable cond;
+  std::mutex mutex;
+  SCOPED_LOCK_NAMED(mutex, lock);
+
   {
-    // create a new instance of an ApplicationServer and fill it with the required features
-    // cannot use the existing server since its features already have some state
+    std::shared_ptr<bool> flag(&deallocated,
+                               [](bool* ptr) -> void { *ptr = true; });
+    feature.async(nullptr, [&cond, &mutex, flag](size_t&, bool) -> bool {
+      SCOPED_LOCK(mutex);
+      cond.notify_all();
+      return false;
+    });
+  }
+  EXPECT_TRUE((std::cv_status::timeout !=
+               cond.wait_for(lock, std::chrono::milliseconds(100))));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  EXPECT_TRUE((true == deallocated));
+}
 
-    arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
-    arangodb::iresearch::IResearchFeature feature(newServer);
-    newServer.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(newServer));  // required for IResearchFeature::prepare()
+TEST_F(IResearchFeatureTest, test_async_schedule_task_null_resource_mutex_value) {
+  bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+  arangodb::iresearch::IResearchFeature feature(server.server());
+  feature.prepare();  // start thread pool
+  auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(nullptr);
+  std::condition_variable cond;
+  std::mutex mutex;
+  SCOPED_LOCK_NAMED(mutex, lock);
+
+  {
+    std::shared_ptr<bool> flag(&deallocated,
+                               [](bool* ptr) -> void { *ptr = true; });
+    feature.async(resourceMutex, [&cond, &mutex, flag](size_t&, bool) -> bool {
+      SCOPED_LOCK(mutex);
+      cond.notify_all();
+      return false;
+    });
+  }
+  EXPECT_TRUE((std::cv_status::timeout ==
+               cond.wait_for(lock, std::chrono::milliseconds(100))));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  EXPECT_TRUE((true == deallocated));
+}
+
+TEST_F(IResearchFeatureTest, test_async_schedule_task_null_functr) {
+  auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
+  feature.prepare();  // start thread pool
+  auto resourceMutex =
+      std::make_shared<arangodb::iresearch::ResourceMutex>(&server.server());
+  std::condition_variable cond;
+  std::mutex mutex;
+  SCOPED_LOCK_NAMED(mutex, lock);
+
+  feature.async(resourceMutex, {});
+  EXPECT_TRUE((std::cv_status::timeout ==
+               cond.wait_for(lock, std::chrono::milliseconds(100))));
+  resourceMutex->reset();  // should not deadlock if task released
+}
+
+TEST_F(IResearchFeatureTest, test_async_schedule_task_wait_indefinite) {
+  bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+  arangodb::iresearch::IResearchFeature feature(server.server());
+  feature.prepare();  // start thread pool
+  std::condition_variable cond;
+  std::mutex mutex;
+  size_t count = 0;
+  SCOPED_LOCK_NAMED(mutex, lock);
+
+  {
+    std::shared_ptr<bool> flag(&deallocated,
+                               [](bool* ptr) -> void { *ptr = true; });
+    feature.async(nullptr, [&cond, &mutex, flag, &count](size_t&, bool) -> bool {
+      ++count;
+      SCOPED_LOCK(mutex);
+      cond.notify_all();
+      return true;
+    });
+  }
+  EXPECT_TRUE((std::cv_status::timeout !=
+               cond.wait_for(lock, std::chrono::milliseconds(100))));  // first run invoked immediately
+  EXPECT_TRUE((false == deallocated));
+  EXPECT_TRUE((std::cv_status::timeout ==
+               cond.wait_for(lock, std::chrono::milliseconds(100))));
+  EXPECT_TRUE((false == deallocated));  // still scheduled
+  EXPECT_TRUE((1 == count));
+}
+
+TEST_F(IResearchFeatureTest, test_async_single_run_task) {
+  bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+  arangodb::iresearch::IResearchFeature feature(server.server());
+  feature.prepare();  // start thread pool
+  auto resourceMutex =
+      std::make_shared<arangodb::iresearch::ResourceMutex>(&server.server());
+  std::condition_variable cond;
+  std::mutex mutex;
+  SCOPED_LOCK_NAMED(mutex, lock);
+
+  {
+    std::shared_ptr<bool> flag(&deallocated,
+                               [](bool* ptr) -> void { *ptr = true; });
+    feature.async(resourceMutex, [&cond, &mutex, flag](size_t&, bool) -> bool {
+      SCOPED_LOCK(mutex);
+      cond.notify_all();
+      return false;
+    });
+  }
+  EXPECT_TRUE((std::cv_status::timeout !=
+               cond.wait_for(lock, std::chrono::milliseconds(100))));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  EXPECT_TRUE((true == deallocated));
+}
+
+TEST_F(IResearchFeatureTest, test_async_multi_run_task) {
+  bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+  arangodb::iresearch::IResearchFeature feature(server.server());
+  feature.prepare();  // start thread pool
+  auto resourceMutex =
+      std::make_shared<arangodb::iresearch::ResourceMutex>(&server.server());
+  std::condition_variable cond;
+  std::mutex mutex;
+  size_t count = 0;
+  auto last = std::chrono::system_clock::now();
+  std::chrono::system_clock::duration diff;
+  SCOPED_LOCK_NAMED(mutex, lock);
+
+  {
+    std::shared_ptr<bool> flag(&deallocated,
+                               [](bool* ptr) -> void { *ptr = true; });
+    feature.async(resourceMutex,
+                  [&cond, &mutex, flag, &count, &last, &diff](size_t& timeoutMsec, bool) -> bool {
+                    diff = std::chrono::system_clock::now() - last;
+                    last = std::chrono::system_clock::now();
+                    timeoutMsec = 100;
+                    if (++count <= 1) return true;
+                    SCOPED_LOCK(mutex);
+                    cond.notify_all();
+                    return false;
+                  });
+  }
+  EXPECT_TRUE((std::cv_status::timeout !=
+               cond.wait_for(lock, std::chrono::milliseconds(1000))));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  EXPECT_TRUE((true == deallocated));
+  EXPECT_TRUE((2 == count));
+  EXPECT_TRUE((std::chrono::milliseconds(100) < diff));
+}
+
+TEST_F(IResearchFeatureTest, test_async_trigger_task_by_notify) {
+  bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+  arangodb::iresearch::IResearchFeature feature(server.server());
+  feature.prepare();  // start thread pool
+  auto resourceMutex =
+      std::make_shared<arangodb::iresearch::ResourceMutex>(&server.server());
+  bool execVal = true;
+  std::condition_variable cond;
+  std::mutex mutex;
+  size_t count = 0;
+  auto last = std::chrono::system_clock::now();
+  SCOPED_LOCK_NAMED(mutex, lock);
+
+  {
+    std::shared_ptr<bool> flag(&deallocated,
+                               [](bool* ptr) -> void { *ptr = true; });
+    feature.async(resourceMutex,
+                  [&cond, &mutex, flag, &execVal, &count](size_t&, bool exec) -> bool {
+                    execVal = exec;
+                    SCOPED_LOCK(mutex);
+                    cond.notify_all();
+                    return ++count < 2;
+                  });
+  }
+  EXPECT_TRUE((std::cv_status::timeout !=
+               cond.wait_for(lock, std::chrono::milliseconds(100))));  // first run invoked immediately
+  EXPECT_TRUE((false == deallocated));
+  EXPECT_TRUE((std::cv_status::timeout ==
+               cond.wait_for(lock, std::chrono::milliseconds(100))));
+  EXPECT_TRUE((false == deallocated));
+  feature.asyncNotify();
+  EXPECT_TRUE((std::cv_status::timeout !=
+               cond.wait_for(lock, std::chrono::milliseconds(100))));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  EXPECT_TRUE((true == deallocated));
+  EXPECT_TRUE((false == execVal));
+  auto diff = std::chrono::system_clock::now() - last;
+  EXPECT_TRUE((std::chrono::milliseconds(1000) > diff));
+}
+
+TEST_F(IResearchFeatureTest, test_async_trigger_by_timeout) {
+  bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+  arangodb::iresearch::IResearchFeature feature(server.server());
+  feature.prepare();  // start thread pool
+  auto resourceMutex =
+      std::make_shared<arangodb::iresearch::ResourceMutex>(&server.server());
+  bool execVal = false;
+  std::condition_variable cond;
+  std::mutex mutex;
+  size_t count = 0;
+  auto last = std::chrono::system_clock::now();
+  SCOPED_LOCK_NAMED(mutex, lock);
+
+  {
+    std::shared_ptr<bool> flag(&deallocated,
+                               [](bool* ptr) -> void { *ptr = true; });
+    feature.async(resourceMutex,
+                  [&cond, &mutex, flag, &execVal, &count](size_t& timeoutMsec, bool exec) -> bool {
+                    execVal = exec;
+                    SCOPED_LOCK(mutex);
+                    cond.notify_all();
+                    timeoutMsec = 100;
+                    return ++count < 2;
+                  });
+  }
+  EXPECT_TRUE((std::cv_status::timeout !=
+               cond.wait_for(lock, std::chrono::milliseconds(100))));  // first run invoked immediately
+  EXPECT_TRUE((false == deallocated));
+  EXPECT_TRUE((std::cv_status::timeout !=
+               cond.wait_for(lock, std::chrono::milliseconds(1000))));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  EXPECT_TRUE((true == deallocated));
+  EXPECT_TRUE((true == execVal));
+  auto diff = std::chrono::system_clock::now() - last;
+  EXPECT_TRUE((std::chrono::milliseconds(300) >= diff));  // could be a little more then 100ms+100ms
+}
+
+TEST_F(IResearchFeatureTest, test_async_deallocate_empty) {
+  auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
+  feature.prepare();  // start thread pool
+}
+
+TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
+  auto resourceMutex =
+      std::make_shared<arangodb::iresearch::ResourceMutex>(&server.server());
+  bool deallocated = false;
+  std::condition_variable cond;
+  std::mutex mutex;
+  SCOPED_LOCK_NAMED(mutex, lock);
+
+  {
+    arangodb::iresearch::IResearchFeature feature(server.server());
     feature.prepare(); // start thread pool
-    std::condition_variable cond;
-    std::mutex mutex;
-    SCOPED_LOCK_NAMED(mutex, lock);
+    std::shared_ptr<bool> flag(&deallocated,
+                               [](bool* ptr) -> void { *ptr = true; });
 
-    {
-      std::shared_ptr<bool> flag(&deallocated,
-                                 [](bool* ptr) -> void { *ptr = true; });
-      feature.async(nullptr, [&cond, &mutex, flag](size_t&, bool) -> bool {
-        SCOPED_LOCK(mutex);
-        cond.notify_all();
-        return false;
-      });
-    }
+    feature.async(resourceMutex, [&cond, &mutex, flag](size_t& timeoutMsec, bool) -> bool {
+      SCOPED_LOCK(mutex);
+      cond.notify_all();
+      timeoutMsec = 100;
+      return true;
+    });
     EXPECT_TRUE((std::cv_status::timeout !=
                  cond.wait_for(lock, std::chrono::milliseconds(100))));
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    EXPECT_TRUE((true == deallocated));
   }
 
-  // schedule task (null resource mutex value)
+  EXPECT_TRUE((true == deallocated));
+}
+
+TEST_F(IResearchFeatureTest, test_async_multiple_tasks_with_same_resource_mutex) {
+  bool deallocated0 = false;  // declare above 'feature' to ensure proper destruction order
+  bool deallocated1 = false;  // declare above 'feature' to ensure proper destruction order
+  arangodb::iresearch::IResearchFeature feature(server.server());
+  feature.prepare();  // start thread pool
+  auto resourceMutex =
+      std::make_shared<arangodb::iresearch::ResourceMutex>(&server.server());
+  std::condition_variable cond;
+  std::mutex mutex;
+  size_t count = 0;
+  SCOPED_LOCK_NAMED(mutex, lock);
+
   {
-    // create a new instance of an ApplicationServer and fill it with the required features
-    // cannot use the existing server since its features already have some state
-
-    arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
-    arangodb::iresearch::IResearchFeature feature(newServer);
-    newServer.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(newServer));  // required for IResearchFeature::prepare()
-    feature.prepare(); // start thread pool
-    auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(nullptr);
-    std::condition_variable cond;
-    std::mutex mutex;
-    SCOPED_LOCK_NAMED(mutex, lock);
-
-    {
-      std::shared_ptr<bool> flag(&deallocated,
-                                 [](bool* ptr) -> void { *ptr = true; });
-      feature.async(resourceMutex, [&cond, &mutex, flag](size_t&, bool) -> bool {
-        SCOPED_LOCK(mutex);
-        cond.notify_all();
-        return false;
-      });
-    }
-    EXPECT_TRUE((std::cv_status::timeout ==
-                 cond.wait_for(lock, std::chrono::milliseconds(100))));
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    EXPECT_TRUE((true == deallocated));
+    std::shared_ptr<bool> flag(&deallocated0,
+                               [](bool* ptr) -> void { *ptr = true; });
+    feature.async(resourceMutex,
+                  [&cond, &mutex, flag, &count](size_t& timeoutMsec, bool) -> bool {
+                    if (++count > 1) return false;
+                    timeoutMsec = 100;
+                    SCOPED_LOCK_NAMED(mutex, lock);
+                    cond.notify_all();
+                    cond.wait(lock);
+                    return true;
+                  });
   }
+  EXPECT_TRUE((std::cv_status::timeout !=
+               cond.wait_for(lock, std::chrono::milliseconds(1000))));  // wait for the first task to start
 
-  // schedule task (null functr)
+  std::thread thread([resourceMutex]() -> void { resourceMutex->reset(); });  // try to aquire a write lock
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));  // hopefully a write-lock aquisition attempt is in progress
+
   {
-    // create a new instance of an ApplicationServer and fill it with the required features
-    // cannot use the existing server since its features already have some state
-
-    arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(newServer);
-    newServer.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(newServer));  // required for IResearchFeature::prepare()
-    feature.prepare(); // start thread pool
-    auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&newServer);
-    std::condition_variable cond;
-    std::mutex mutex;
-    SCOPED_LOCK_NAMED(mutex, lock);
-
-    feature.async(resourceMutex, {});
-    EXPECT_TRUE((std::cv_status::timeout ==
-                 cond.wait_for(lock, std::chrono::milliseconds(100))));
-    resourceMutex->reset();  // should not deadlock if task released
+    TRY_SCOPED_LOCK_NAMED(resourceMutex->mutex(), resourceLock);
+    EXPECT_TRUE((false == resourceLock.owns_lock()));  // write-lock aquired successfully (read-locks blocked)
   }
 
-  // schedule task (wait indefinite)
   {
-    // create a new instance of an ApplicationServer and fill it with the required features
-    // cannot use the existing server since its features already have some state
-    arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
-    arangodb::iresearch::IResearchFeature feature(newServer);
-    newServer.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(newServer));  // required for IResearchFeature::prepare()
-    feature.prepare(); // start thread pool
-    std::condition_variable cond;
-    std::mutex mutex;
-    size_t count = 0;
-    SCOPED_LOCK_NAMED(mutex, lock);
-
-    {
-      std::shared_ptr<bool> flag(&deallocated,
-                                 [](bool* ptr) -> void { *ptr = true; });
-      feature.async(nullptr, [&cond, &mutex, flag, &count](size_t&, bool) -> bool {
-        ++count;
-        SCOPED_LOCK(mutex);
-        cond.notify_all();
-        return true;
-      });
-    }
-    EXPECT_TRUE((std::cv_status::timeout !=
-                 cond.wait_for(lock, std::chrono::milliseconds(100))));  // first run invoked immediately
-    EXPECT_TRUE((false == deallocated));
-    EXPECT_TRUE((std::cv_status::timeout ==
-                 cond.wait_for(lock, std::chrono::milliseconds(100))));
-    EXPECT_TRUE((false == deallocated));  // still scheduled
-    EXPECT_TRUE((1 == count));
+    std::shared_ptr<bool> flag(&deallocated1,
+                               [](bool* ptr) -> void { *ptr = true; });
+    feature.async(resourceMutex, [flag](size_t&, bool) -> bool { return false; });  // will never get invoked because resourceMutex is reset
   }
+  cond.notify_all();  // wake up first task after resourceMutex write-lock aquired (will process pending tasks)
+  lock.unlock();      // allow first task to run
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  EXPECT_TRUE((true == deallocated0));
+  EXPECT_TRUE((true == deallocated1));
+  thread.join();
+}
 
-  // single-run task
+TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
+  bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+  arangodb::iresearch::IResearchFeature feature(server.server());
+  arangodb::options::ProgramOptions options("", "", "", nullptr);
+  auto optionsPtr = std::shared_ptr<arangodb::options::ProgramOptions>(
+      &options, [](arangodb::options::ProgramOptions*) -> void {});
+  feature.collectOptions(optionsPtr);
+  options.get<arangodb::options::UInt64Parameter>("arangosearch.threads")
+      ->set("8");
+  auto resourceMutex =
+      std::make_shared<arangodb::iresearch::ResourceMutex>(&server.server());
+  std::condition_variable cond;
+  std::mutex mutex;
+  size_t count = 0;
+  auto last = std::chrono::system_clock::now();
+  std::chrono::system_clock::duration diff;
+  SCOPED_LOCK_NAMED(mutex, lock);
+
   {
-    // create a new instance of an ApplicationServer and fill it with the required features
-    // cannot use the existing server since its features already have some state
-    arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
-    arangodb::iresearch::IResearchFeature feature(newServer);
-    newServer.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(newServer));  // required for IResearchFeature::prepare()
-    feature.prepare(); // start thread pool
-    auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&newServer);
-    std::condition_variable cond;
-    std::mutex mutex;
-    SCOPED_LOCK_NAMED(mutex, lock);
-
-    {
-      std::shared_ptr<bool> flag(&deallocated,
-                                 [](bool* ptr) -> void { *ptr = true; });
-      feature.async(resourceMutex, [&cond, &mutex, flag](size_t&, bool) -> bool {
-        SCOPED_LOCK(mutex);
-        cond.notify_all();
-        return false;
-      });
-    }
-    EXPECT_TRUE((std::cv_status::timeout !=
-                 cond.wait_for(lock, std::chrono::milliseconds(100))));
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    EXPECT_TRUE((true == deallocated));
+    std::shared_ptr<bool> flag(&deallocated,
+                               [](bool* ptr) -> void { *ptr = true; });
+    feature.async(resourceMutex,
+                  [&cond, &mutex, flag, &count, &last, &diff](size_t& timeoutMsec, bool) -> bool {
+                    diff = std::chrono::system_clock::now() - last;
+                    last = std::chrono::system_clock::now();
+                    timeoutMsec = 100;
+                    if (++count <= 1) return true;
+                    SCOPED_LOCK(mutex);
+                    cond.notify_all();
+                    return false;
+                  });
   }
-
-  // multi-run task
-  {
-    // create a new instance of an ApplicationServer and fill it with the required features
-    // cannot use the existing server since its features already have some state
-    arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
-    arangodb::iresearch::IResearchFeature feature(newServer);
-    newServer.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(newServer));  // required for IResearchFeature::prepare()
-    feature.prepare(); // start thread pool
-    auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&newServer);
-    std::condition_variable cond;
-    std::mutex mutex;
-    size_t count = 0;
-    auto last = std::chrono::system_clock::now();
-    std::chrono::system_clock::duration diff;
-    SCOPED_LOCK_NAMED(mutex, lock);
-
-    {
-      std::shared_ptr<bool> flag(&deallocated,
-                                 [](bool* ptr) -> void { *ptr = true; });
-      feature.async(resourceMutex,
-                    [&cond, &mutex, flag, &count, &last,
-                     &diff](size_t& timeoutMsec, bool) -> bool {
-                      diff = std::chrono::system_clock::now() - last;
-                      last = std::chrono::system_clock::now();
-                      timeoutMsec = 100;
-                      if (++count <= 1) return true;
-                      SCOPED_LOCK(mutex);
-                      cond.notify_all();
-                      return false;
-                    });
-    }
-    EXPECT_TRUE((std::cv_status::timeout !=
-                 cond.wait_for(lock, std::chrono::milliseconds(1000))));
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    EXPECT_TRUE((true == deallocated));
-    EXPECT_TRUE((2 == count));
-    EXPECT_TRUE((std::chrono::milliseconds(100) < diff));
-  }
-
-  // trigger task by notify
-  {
-    // create a new instance of an ApplicationServer and fill it with the required features
-    // cannot use the existing server since its features already have some state
-    arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
-    arangodb::iresearch::IResearchFeature feature(newServer);
-    newServer.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(newServer));  // required for IResearchFeature::prepare()
-    feature.prepare(); // start thread pool
-    auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&newServer);
-    bool execVal = true;
-    std::condition_variable cond;
-    std::mutex mutex;
-    size_t count = 0;
-    auto last = std::chrono::system_clock::now();
-    SCOPED_LOCK_NAMED(mutex, lock);
-
-    {
-      std::shared_ptr<bool> flag(&deallocated,
-                                 [](bool* ptr) -> void { *ptr = true; });
-      feature.async(resourceMutex,
-                    [&cond, &mutex, flag, &execVal, &count](size_t&, bool exec) -> bool {
-                      execVal = exec;
-                      SCOPED_LOCK(mutex);
-                      cond.notify_all();
-                      return ++count < 2;
-                    });
-    }
-    EXPECT_TRUE((std::cv_status::timeout !=
-                 cond.wait_for(lock, std::chrono::milliseconds(100))));  // first run invoked immediately
-    EXPECT_TRUE((false == deallocated));
-    EXPECT_TRUE((std::cv_status::timeout ==
-                 cond.wait_for(lock, std::chrono::milliseconds(100))));
-    EXPECT_TRUE((false == deallocated));
-    feature.asyncNotify();
-    EXPECT_TRUE((std::cv_status::timeout !=
-                 cond.wait_for(lock, std::chrono::milliseconds(100))));
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    EXPECT_TRUE((true == deallocated));
-    EXPECT_TRUE((false == execVal));
-    auto diff = std::chrono::system_clock::now() - last;
-    EXPECT_TRUE((std::chrono::milliseconds(1000) > diff));
-  }
-
-  // trigger by timeout
-  {
-    // create a new instance of an ApplicationServer and fill it with the required features
-    // cannot use the existing server since its features already have some state
-    arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
-    arangodb::iresearch::IResearchFeature feature(newServer);
-    newServer.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(newServer));  // required for IResearchFeature::prepare()
-    feature.prepare(); // start thread pool
-    auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&newServer);
-    bool execVal = false;
-    std::condition_variable cond;
-    std::mutex mutex;
-    size_t count = 0;
-    auto last = std::chrono::system_clock::now();
-    SCOPED_LOCK_NAMED(mutex, lock);
-
-    {
-      std::shared_ptr<bool> flag(&deallocated,
-                                 [](bool* ptr) -> void { *ptr = true; });
-      feature.async(resourceMutex,
-                    [&cond, &mutex, flag, &execVal, &count](size_t& timeoutMsec,
-                                                            bool exec) -> bool {
-                      execVal = exec;
-                      SCOPED_LOCK(mutex);
-                      cond.notify_all();
-                      timeoutMsec = 100;
-                      return ++count < 2;
-                    });
-    }
-    EXPECT_TRUE((std::cv_status::timeout !=
-                 cond.wait_for(lock, std::chrono::milliseconds(100))));  // first run invoked immediately
-    EXPECT_TRUE((false == deallocated));
-    EXPECT_TRUE((std::cv_status::timeout !=
-                 cond.wait_for(lock, std::chrono::milliseconds(1000))));
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    EXPECT_TRUE((true == deallocated));
-    EXPECT_TRUE((true == execVal));
-    auto diff = std::chrono::system_clock::now() - last;
-    EXPECT_TRUE((std::chrono::milliseconds(300) >= diff));  // could be a little more then 100ms+100ms
-  }
-
-  // deallocate empty
-  {
-    // create a new instance of an ApplicationServer and fill it with the required features
-    // cannot use the existing server since its features already have some state
-    arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-
-    {
-      arangodb::iresearch::IResearchFeature feature(newServer);
-      newServer.addFeature<arangodb::ViewTypesFeature>(
-          std::make_unique<arangodb::ViewTypesFeature>(newServer));  // required for IResearchFeature::prepare()
-      feature.prepare(); // start thread pool
-    }
-  }
-
-  // deallocate with running tasks
-  {
-    // create a new instance of an ApplicationServer and fill it with the required features
-    // cannot use the existing server since its features already have some state
-    arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&newServer);
-    bool deallocated = false;
-    std::condition_variable cond;
-    std::mutex mutex;
-    SCOPED_LOCK_NAMED(mutex, lock);
-
-    {
-      arangodb::iresearch::IResearchFeature feature(newServer);
-      newServer.addFeature<arangodb::ViewTypesFeature>(
-          std::make_unique<arangodb::ViewTypesFeature>(newServer));  // required for IResearchFeature::prepare()
-      feature.prepare(); // start thread pool
-      std::shared_ptr<bool> flag(&deallocated, [](bool* ptr)->void { *ptr = true; });
-
-      feature.async(resourceMutex, [&cond, &mutex, flag](size_t& timeoutMsec, bool) -> bool {
-        SCOPED_LOCK(mutex);
-        cond.notify_all();
-        timeoutMsec = 100;
-        return true;
-      });
-      EXPECT_TRUE((std::cv_status::timeout !=
-                   cond.wait_for(lock, std::chrono::milliseconds(100))));
-    }
-
-    EXPECT_TRUE((true == deallocated));
-  }
-
-  // multiple tasks with same resourceMutex + resourceMutex reset (sequential creation)
-  {
-    // create a new instance of an ApplicationServer and fill it with the required features
-    // cannot use the existing server since its features already have some state
-    arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    bool deallocated0 = false; // declare above 'feature' to ensure proper destruction order
-    bool deallocated1 = false; // declare above 'feature' to ensure proper destruction order
-    arangodb::iresearch::IResearchFeature feature(newServer);
-    newServer.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(newServer));  // required for IResearchFeature::prepare()
-    feature.prepare(); // start thread pool
-    auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&newServer);
-    std::condition_variable cond;
-    std::mutex mutex;
-    size_t count = 0;
-    SCOPED_LOCK_NAMED(mutex, lock);
-
-    {
-      std::shared_ptr<bool> flag(&deallocated0,
-                                 [](bool* ptr) -> void { *ptr = true; });
-      feature.async(resourceMutex,
-                    [&cond, &mutex, flag, &count](size_t& timeoutMsec, bool) -> bool {
-                      if (++count > 1) return false;
-                      timeoutMsec = 100;
-                      SCOPED_LOCK_NAMED(mutex, lock);
-                      cond.notify_all();
-                      cond.wait(lock);
-                      return true;
-                    });
-    }
-    EXPECT_TRUE((std::cv_status::timeout !=
-                 cond.wait_for(lock, std::chrono::milliseconds(1000))));  // wait for the first task to start
-
-    std::thread thread([resourceMutex]() -> void { resourceMutex->reset(); });  // try to aquire a write lock
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));  // hopefully a write-lock aquisition attempt is in progress
-
-    {
-      TRY_SCOPED_LOCK_NAMED(resourceMutex->mutex(), resourceLock);
-      EXPECT_TRUE((false == resourceLock.owns_lock()));  // write-lock aquired successfully (read-locks blocked)
-    }
-
-    {
-      std::shared_ptr<bool> flag(&deallocated1,
-                                 [](bool* ptr) -> void { *ptr = true; });
-      feature.async(resourceMutex, [flag](size_t&, bool) -> bool {
-        return false;
-      });  // will never get invoked because resourceMutex is reset
-    }
-    cond.notify_all();  // wake up first task after resourceMutex write-lock aquired (will process pending tasks)
-    lock.unlock();      // allow first task to run
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    EXPECT_TRUE((true == deallocated0));
-    EXPECT_TRUE((true == deallocated1));
-    thread.join();
-  }
-
-  // schedule task (resize pool)
-  {
-    // create a new instance of an ApplicationServer and fill it with the required features
-    // cannot use the existing server since its features already have some state
-    arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    bool deallocated = false; // declare above 'feature' to ensure proper destruction order
-    arangodb::iresearch::IResearchFeature feature(newServer);
-    newServer.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(newServer));  // required for IResearchFeature::prepare()
-    arangodb::options::ProgramOptions options("", "", "", nullptr);
-    auto optionsPtr = std::shared_ptr<arangodb::options::ProgramOptions>(
-        &options, [](arangodb::options::ProgramOptions*) -> void {});
-    feature.collectOptions(optionsPtr);
-    options.get<arangodb::options::UInt64Parameter>("arangosearch.threads")->set("8");
-    auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&newServer);
-    std::condition_variable cond;
-    std::mutex mutex;
-    size_t count = 0;
-    auto last = std::chrono::system_clock::now();
-    std::chrono::system_clock::duration diff;
-    SCOPED_LOCK_NAMED(mutex, lock);
-
-    {
-      std::shared_ptr<bool> flag(&deallocated,
-                                 [](bool* ptr) -> void { *ptr = true; });
-      feature.async(resourceMutex,
-                    [&cond, &mutex, flag, &count, &last,
-                     &diff](size_t& timeoutMsec, bool) -> bool {
-                      diff = std::chrono::system_clock::now() - last;
-                      last = std::chrono::system_clock::now();
-                      timeoutMsec = 100;
-                      if (++count <= 1) return true;
-                      SCOPED_LOCK(mutex);
-                      cond.notify_all();
-                      return false;
-                    });
-    }
-    feature.prepare();  // start thread pool after a task has been scheduled, to trigger resize with a task
-    EXPECT_TRUE((std::cv_status::timeout !=
-                 cond.wait_for(lock, std::chrono::milliseconds(1000))));
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    EXPECT_TRUE((true == deallocated));
-    EXPECT_TRUE((2 == count));
-    EXPECT_TRUE((std::chrono::milliseconds(100) < diff));
-  }
+  feature.prepare();  // start thread pool after a task has been scheduled, to trigger resize with a task
+  EXPECT_TRUE((std::cv_status::timeout !=
+               cond.wait_for(lock, std::chrono::milliseconds(1000))));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  EXPECT_TRUE((true == deallocated));
+  EXPECT_TRUE((2 == count));
+  EXPECT_TRUE((std::chrono::milliseconds(100) < diff));
 }
 #endif
+
+class IResearchFeatureTestCoordinator : public ::testing::Test {
+ protected:
+  struct ClusterCommControl : arangodb::ClusterComm {
+    static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
+  };
+
+  arangodb::tests::mocks::MockV8Server server;
+
+ private:
+  arangodb::consensus::Store _agencyStore;
+  arangodb::ServerState::RoleEnum _serverRoleBefore;
+
+ protected:
+  IResearchFeatureTestCoordinator()
+      : server(false),
+        _agencyStore(server.server(), nullptr, "arango"),
+        _serverRoleBefore(arangodb::ServerState::instance()->getRole()) {
+    auto* agencyCommManager = new AgencyCommManagerMock("arango");
+    std::ignore =
+        agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
+    std::ignore = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
+        _agencyStore);  // need 2 connections or Agency callbacks will fail
+    arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
+
+    arangodb::tests::init();
+
+    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+                                    arangodb::LogLevel::ERR);
+
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
+                                    arangodb::LogLevel::FATAL);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
+                                    arangodb::LogLevel::FATAL);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+                                    arangodb::LogLevel::FATAL);
+
+    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
+    arangodb::ServerState::instance()->setRebootId(1);  // Hack.
+
+    server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(false);
+    server.addFeature<arangodb::FlushFeature>(false);
+    server.addFeature<arangodb::QueryRegistryFeature>(false);
+    server.addFeature<arangodb::ServerSecurityFeature>(false);
+    server.startFeatures();
+
+    arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
+  }
+
+  ~IResearchFeatureTestCoordinator() {
+    arangodb::ServerState::instance()->setRole(_serverRoleBefore);
+
+    ClusterCommControl::reset();
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+                                    arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
+                                    arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+                                    arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
+                                    arangodb::LogLevel::DEFAULT);
+  }
+};
+
+TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
+  // test coordinator
+  auto collectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\": \"1\", \"name\": \"testCollection\", \"shards\":{} }");
+  auto linkJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
+      "\"includeAllFields\": true }");
+  auto viewJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\": 42, \"name\": \"testView\", \"type\": \"arangosearch\", "
+      "\"version\": 0 }");
+  auto versionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"version\": 0, \"tasks\": {} }");
+  auto collectionId = std::to_string(1);
+  auto viewId = std::to_string(42);
+
+  // add the UpgradeFeature, but make sure it is not prepared
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
+
+  auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
+  feature.prepare();  // register iresearch view type
+  feature.start();    // register upgrade tasks
+
+  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
+
+  auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
+  const_cast<arangodb::IndexFactory&>(engine.indexFactory())
+      .emplace(  // required for Indexes::ensureIndex(...)
+          arangodb::iresearch::DATA_SOURCE_TYPE.name(),
+          arangodb::iresearch::IResearchLinkCoordinator::factory());
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+  TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
+
+  auto& database = server.getFeature<arangodb::DatabaseFeature>();
+  ASSERT_TRUE((TRI_ERROR_NO_ERROR == database.createDatabase(1, "testDatabase", vocbase)));
+
+  // simulate heartbeat thread (create database in current)
+  // this is stupid.
+  {
+    auto const path = "/Current/Databases/" + vocbase->name();
+    auto const value = arangodb::velocypack::Parser::fromJson(
+        // TODO: This one asserts with "not an object". No idea why.
+        // "{ \"id\": \"1\" }" );
+        "{ \"id\": { \"id\": \"1\" } }");
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+  }
+
+  ASSERT_TRUE(
+      (arangodb::methods::Databases::create(server.server(), vocbase->name(),
+                                            arangodb::velocypack::Slice::emptyArraySlice(),
+                                            arangodb::velocypack::Slice::emptyObjectSlice())
+           .ok()));
+
+  ASSERT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                              collectionJson->slice(), 0.0, false, nullptr)
+                   .ok()));
+
+  auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
+  ASSERT_TRUE((false == !logicalCollection));
+  EXPECT_TRUE(
+      (ci.createViewCoordinator(vocbase->name(), viewId, viewJson->slice()).ok()));
+  auto logicalView0 = ci.getView(vocbase->name(), viewId);
+  ASSERT_TRUE((false == !logicalView0));
+
+  // simulate heartbeat thread (create index in current)
+  {
+    auto const path = "/Current/Collections/" + vocbase->name() + "/" +
+                      std::to_string(logicalCollection->id());
+    auto const value = arangodb::velocypack::Parser::fromJson(
+        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } "
+        "] } }");
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+  }
+
+  arangodb::velocypack::Builder tmp;
+  ASSERT_TRUE((arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
+                                                       linkJson->slice(), true, tmp)
+                   .ok()));
+  logicalCollection = ci.getCollection(vocbase->name(), collectionId);
+  ASSERT_TRUE((false == !logicalCollection));
+  auto link0 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *logicalView0);
+  ASSERT_TRUE((false == !link0));
+
+  arangodb::velocypack::Builder builder;
+  builder.openObject();
+  EXPECT_TRUE((logicalView0
+                   ->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                             arangodb::LogicalDataSource::Serialize::Detailed,
+                                             arangodb::LogicalDataSource::Serialize::ForPersistence))
+                   .ok()));
+  builder.close();
+  EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
+
+  // ensure no upgrade on coordinator
+  // simulate heartbeat thread (create index in current)
+  {
+    auto const path = "/Current/Collections/" + vocbase->name() + "/" +
+                      std::to_string(logicalCollection->id());
+    auto const value = arangodb::velocypack::Parser::fromJson(
+        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } "
+        "] } }");
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+  }
+  EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok()));  // run upgrade
+  auto logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);
+  ASSERT_TRUE((false == !logicalCollection2));
+  auto logicalView1 = ci.getView(vocbase->name(), viewId);
+  EXPECT_TRUE((false == !logicalView1));  // ensure view present after upgrade
+  EXPECT_TRUE((logicalView0->id() == logicalView1->id()));  // ensure same id for view
+  auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *logicalView1);
+  EXPECT_TRUE((false == !link1));  // ensure link present after upgrade
+  EXPECT_TRUE((link0->id() == link1->id()));  // ensure new link
+  builder.clear();
+  builder.openObject();
+  EXPECT_TRUE((logicalView1
+                   ->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                             arangodb::LogicalDataSource::Serialize::Detailed,
+                                             arangodb::LogicalDataSource::Serialize::ForPersistence))
+                   .ok()));
+  builder.close();
+  EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 after upgrade
+}
+
+class IResearchFeatureTestDBServer : public ::testing::Test {
+ protected:
+  struct ClusterCommControl : arangodb::ClusterComm {
+    static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
+  };
+
+  arangodb::tests::mocks::MockV8Server server;
+
+ private:
+  arangodb::consensus::Store _agencyStore;
+  arangodb::ServerState::RoleEnum _serverRoleBefore;
+
+ protected:
+  IResearchFeatureTestDBServer()
+      : server(false),
+        _agencyStore(server.server(), nullptr, "arango"),
+        _serverRoleBefore(arangodb::ServerState::instance()->getRole()) {
+    auto* agencyCommManager = new AgencyCommManagerMock("arango");
+    std::ignore =
+        agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
+    std::ignore = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
+        _agencyStore);  // need 2 connections or Agency callbacks will fail
+    arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
+
+    arangodb::tests::init();
+
+    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+                                    arangodb::LogLevel::ERR);
+
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
+                                    arangodb::LogLevel::FATAL);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
+                                    arangodb::LogLevel::FATAL);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+                                    arangodb::LogLevel::FATAL);
+
+    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
+    arangodb::ServerState::instance()->setRebootId(1);  // Hack.
+
+    server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(false);
+    server.addFeature<arangodb::FlushFeature>(false);
+    server.addFeature<arangodb::QueryRegistryFeature>(false);
+    server.addFeature<arangodb::ServerSecurityFeature>(false);
+    server.startFeatures();
+
+    arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
+  }
+
+  ~IResearchFeatureTestDBServer() {
+    arangodb::ServerState::instance()->setRole(_serverRoleBefore);
+
+    ClusterCommControl::reset();
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+                                    arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
+                                    arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+                                    arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
+                                    arangodb::LogLevel::DEFAULT);
+  }
+
+  // version 0 data-source path
+  irs::utf8_path getPersistedPath0(arangodb::LogicalView const& view) {
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    irs::utf8_path dataPath(dbPathFeature.directory());
+    dataPath /= "databases";
+    dataPath /= "database-";
+    dataPath += std::to_string(view.vocbase().id());
+    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+    dataPath += "-";
+    dataPath += std::to_string(view.id());
+    return dataPath;
+  };
+
+  // version 1 data-source path
+  irs::utf8_path getPersistedPath1(arangodb::iresearch::IResearchLink const& link) {
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    irs::utf8_path dataPath(dbPathFeature.directory());
+    dataPath /= "databases";
+    dataPath /= "database-";
+    dataPath += std::to_string(link.collection().vocbase().id());
+    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+    dataPath += "-";
+    dataPath += std::to_string(link.collection().id());
+    dataPath += "_";
+    dataPath += std::to_string(link.id());
+    return dataPath;
+  }
+};
+
+TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
+  // test db-server (no directory)
+  auto collectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testCollection\" }");
+  auto linkJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
+      "\"includeAllFields\": true }");
+  auto viewJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 0 "
+      "}");
+  auto versionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"version\": 0, \"tasks\": {} }");
+
+  // add the UpgradeFeature, but make sure it is not prepared
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
+
+  auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
+  feature.prepare();  // register iresearch view type
+  feature.start();    // register upgrade tasks
+
+  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
+
+  auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+  arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+  auto versionFilename = StorageEngineMock::versionFilenameResult;
+  auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
+    StorageEngineMock::versionFilenameResult = versionFilename;
+  });
+  StorageEngineMock::versionFilenameResult =
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
+  ASSERT_TRUE((irs::utf8_path(dbPathFeature.directory()).mkdir()));
+  ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
+      StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
+
+  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        1, "testVocbase");
+  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  ASSERT_TRUE((false == !logicalCollection));
+  auto logicalView = vocbase.createView(viewJson->slice());
+  ASSERT_TRUE((false == !logicalView));
+  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+  ASSERT_TRUE((false == !view));
+  bool created = false;
+  auto index = logicalCollection->createIndex(linkJson->slice(), created);
+  ASSERT_TRUE((created));
+  ASSERT_TRUE((false == !index));
+  auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+  ASSERT_TRUE((false == !link));
+  ASSERT_TRUE((view->link(link->self()).ok()));  // link will not notify view in 'vocbase', hence notify manually
+
+  index->unload();  // release file handles
+  bool result;
+  auto linkDataPath = getPersistedPath1(*link);
+  EXPECT_TRUE((linkDataPath.remove()));  // remove link directory
+  auto viewDataPath = getPersistedPath0(*logicalView);
+  EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure no view directory
+  arangodb::velocypack::Builder builder;
+  builder.openObject();
+  EXPECT_TRUE((logicalView
+                   ->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                             arangodb::LogicalDataSource::Serialize::Detailed,
+                                             arangodb::LogicalDataSource::Serialize::ForPersistence))
+                   .ok()));
+  builder.close();
+  EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
+
+  EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok()));  // run upgrade
+  logicalView = vocbase.lookupView(logicalView->name());
+  EXPECT_TRUE((true == !logicalView));  // ensure view removed after upgrade
+  EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory not present
+}
+
+TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
+  // test db-server (with directory)
+  auto collectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testCollection\" }");
+  auto linkJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
+      "\"includeAllFields\": true }");
+  auto viewJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 0 "
+      "}");
+  auto versionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"version\": 0, \"tasks\": {} }");
+
+  // add the UpgradeFeature, but make sure it is not prepared
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
+
+  auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
+  feature.prepare();  // register iresearch view type
+  feature.start();    // register upgrade tasks
+
+  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
+
+  auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+  arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+  auto versionFilename = StorageEngineMock::versionFilenameResult;
+  auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
+    StorageEngineMock::versionFilenameResult = versionFilename;
+  });
+  StorageEngineMock::versionFilenameResult =
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
+  ASSERT_TRUE((irs::utf8_path(dbPathFeature.directory()).mkdir()));
+  ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
+      StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
+
+  auto& engine = *static_cast<StorageEngineMock*>(
+      &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+  engine.views.clear();
+  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        1, "testVocbase");
+  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  ASSERT_TRUE((false == !logicalCollection));
+  auto logicalView = vocbase.createView(viewJson->slice());
+  ASSERT_TRUE((false == !logicalView));
+  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+  ASSERT_TRUE((false == !view));
+  bool created;
+  auto index = logicalCollection->createIndex(linkJson->slice(), created);
+  ASSERT_TRUE((created));
+  ASSERT_TRUE((false == !index));
+  auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+  ASSERT_TRUE((false == !link));
+  ASSERT_TRUE((view->link(link->self()).ok()));  // link will not notify view in 'vocbase', hence notify manually
+
+  index->unload();  // release file handles
+  bool result;
+  auto linkDataPath = getPersistedPath1(*link);
+  EXPECT_TRUE((linkDataPath.remove()));  // remove link directory
+  auto viewDataPath = getPersistedPath0(*logicalView);
+  EXPECT_TRUE((viewDataPath.exists(result) && !result));
+  EXPECT_TRUE((viewDataPath.mkdir()));  // create view directory
+  EXPECT_TRUE((viewDataPath.exists(result) && result));
+  arangodb::velocypack::Builder builder;
+  builder.openObject();
+  EXPECT_TRUE((logicalView
+                   ->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                             arangodb::LogicalDataSource::Serialize::Detailed,
+                                             arangodb::LogicalDataSource::Serialize::ForPersistence))
+                   .ok()));
+  builder.close();
+  EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
+
+  EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok()));  // run upgrade
+  //    EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(vocbase).ok()); // run upgrade
+  logicalView = vocbase.lookupView(logicalView->name());
+  EXPECT_TRUE((true == !logicalView));  // ensure view removed after upgrade
+  EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory removed after upgrade
+}

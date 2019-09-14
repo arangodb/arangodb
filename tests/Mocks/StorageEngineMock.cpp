@@ -492,8 +492,9 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
         index = arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(
             _logicalCollection, info, id, false);
       }
-    } catch (std::exception const&) {
+    } catch (std::exception const& ex) {
       // ignore the details of all errors here
+      LOG_DEVEL << "caught: " << ex.what();
     }
   }
 

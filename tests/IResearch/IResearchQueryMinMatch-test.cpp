@@ -21,7 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "common.h"
+/*#include "common.h"
 #include "gtest/gtest.h"
 
 #include "../Mocks/StorageEngineMock.h"
@@ -69,6 +69,16 @@
 #include "analysis/token_attributes.hpp"
 #include "utils/utf8_path.hpp"
 
+#include <velocypack/Iterator.h>*/
+
+#include "IResearchQueryCommon.h"
+
+#include "IResearch/IResearchView.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/OperationOptions.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LogicalCollection.h"
+
 #include <velocypack/Iterator.h>
 
 extern const char* ARGV0;  // defined in main.cpp
@@ -79,179 +89,7 @@ namespace {
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class IResearchQueryMinMatchTest : public ::testing::Test {
- protected:
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
-  TRI_vocbase_t* sysVocBase{};
-
-  IResearchQueryMinMatchTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-
-    arangodb::tests::init(true);
-
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::ERR);  // suppress WARNING {aql} Suboptimal AqlItemMatrix index lookup:
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
-
-    // setup required application features
-    server.addFeature<arangodb::FlushFeature>(
-        std::make_unique<arangodb::FlushFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::FlushFeature>(), false);
-
-    server.addFeature<arangodb::V8DealerFeature>(
-        std::make_unique<arangodb::V8DealerFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
-
-    server.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::ViewTypesFeature>(), true);
-
-    server.addFeature<arangodb::AuthenticationFeature>(
-        std::make_unique<arangodb::AuthenticationFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::AuthenticationFeature>(), true);
-
-    server.addFeature<arangodb::DatabasePathFeature>(
-        std::make_unique<arangodb::DatabasePathFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::DatabasePathFeature>(), false);
-
-    server.addFeature<arangodb::DatabaseFeature>(
-        std::make_unique<arangodb::DatabaseFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::DatabaseFeature>(), false);
-
-    server.addFeature<arangodb::ShardingFeature>(
-        std::make_unique<arangodb::ShardingFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::ShardingFeature>(), false);
-
-    server.addFeature<arangodb::QueryRegistryFeature>(
-        std::make_unique<arangodb::QueryRegistryFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::QueryRegistryFeature>(), false);  // must be first
-
-    server.addFeature<arangodb::SystemDatabaseFeature>(
-        std::make_unique<arangodb::SystemDatabaseFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::SystemDatabaseFeature>(),
-                          true);  // required for IResearchAnalyzerFeature
-
-    server.addFeature<arangodb::TraverserEngineRegistryFeature>(
-        std::make_unique<arangodb::TraverserEngineRegistryFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::TraverserEngineRegistryFeature>(),
-                          false);  // must be before AqlFeature
-
-    server.addFeature<arangodb::AqlFeature>(std::make_unique<arangodb::AqlFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::AqlFeature>(), true);
-
-    server.addFeature<arangodb::aql::OptimizerRulesFeature>(
-        std::make_unique<arangodb::aql::OptimizerRulesFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::aql::OptimizerRulesFeature>(), true);
-
-    server.addFeature<arangodb::aql::AqlFunctionFeature>(
-        std::make_unique<arangodb::aql::AqlFunctionFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::aql::AqlFunctionFeature>(),
-                          true);  // required for IResearchAnalyzerFeature
-
-    server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
-        std::make_unique<arangodb::iresearch::IResearchAnalyzerFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>(),
-                          true);
-
-    server.addFeature<arangodb::iresearch::IResearchFeature>(
-        std::make_unique<arangodb::iresearch::IResearchFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::iresearch::IResearchFeature>(), true);
-
-#if USE_ENTERPRISE
-    server.addFeature<arangodb::LdapFeature>(std::make_unique<arangodb::LdapFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
-
-    // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
-    server.addFeature<arangodb::ClusterFeature>(
-        std::make_unique<arangodb::ClusterFeature>(server));
-
-    for (auto& f : features) {
-      f.first.prepare();
-    }
-
-    auto const databases = arangodb::velocypack::Parser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
-    dbFeature.loadDatabases(databases->slice());
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first.start();
-      }
-    }
-
-    auto& sysVocBaseFeature = server.getFeature<arangodb::SystemDatabaseFeature>();
-
-    auto sysVocBasePtr = sysVocBaseFeature.use();
-    arangodb::methods::Collections::createSystem(
-        *sysVocBasePtr, 
-        arangodb::tests::AnalyzerCollectionName, false);
-
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    TRI_vocbase_t* vocbase;
-
-    dbFeature.createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-    arangodb::methods::Collections::createSystem(
-        *vocbase, 
-        arangodb::tests::AnalyzerCollectionName, false);
-    analyzers.emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
-                      VPackParser::fromJson("\"abc\"")->slice(),
-                      irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
-    );  // cache analyzer
-
-    analyzers.emplace(result, "testVocbase::test_csv_analyzer",
-                      "TestDelimAnalyzer",
-                      VPackParser::fromJson("\",\"")->slice());  // cache analyzer
-
-    analyzers.emplace(result, "_system::test_analyzer", "TestAnalyzer",
-                      VPackParser::fromJson("\"abc\"")->slice(),
-                      irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
-    );  // cache analyzer
-
-    analyzers.emplace(result, "_system::test_csv_analyzer", "TestDelimAnalyzer",
-                      VPackParser::fromJson("\",\"")->slice());  // cache analyzer
-
-    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
-  }
-
-  ~IResearchQueryMinMatchTest() {
-    arangodb::AqlFeature(server).stop();  // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::DEFAULT);
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first.stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first.unprepare();
-    }
-
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
-  }
-}; // IResearchQueryMinMatchTest
+class IResearchQueryMinMatchTest : public IResearchQueryTest {};
 
 }  // namespace
 
@@ -260,8 +98,8 @@ class IResearchQueryMinMatchTest : public ::testing::Test {
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchQueryMinMatchTest, test) {
-  TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        1, "testVocbase");
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 

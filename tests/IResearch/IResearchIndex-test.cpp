@@ -24,7 +24,8 @@
 #include "common.h"
 #include "gtest/gtest.h"
 
-#include "../Mocks/StorageEngineMock.h"
+#include "Mocks/Servers.h"
+#include "Mocks/StorageEngineMock.h"
 
 #include "3rdParty/iresearch/tests/tests_config.hpp"
 #include "Aql/AqlFunctionFeature.h"
@@ -168,13 +169,13 @@ REGISTER_ANALYZER_VPACK(TestAnalyzer, TestAnalyzer::make, TestAnalyzer::normaliz
 
 class IResearchIndexTest : public ::testing::Test {
  protected:
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
+  arangodb::tests::mocks::MockAqlServer server;
 
-  IResearchIndexTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
+ private:
+  TRI_vocbase_t* _vocbase;
 
+ protected:
+  IResearchIndexTest() : server(false) {
     arangodb::tests::init(true);
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
@@ -188,106 +189,16 @@ class IResearchIndexTest : public ::testing::Test {
                                     arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
-    // setup required application features
-    server.addFeature<arangodb::FlushFeature>(
-        std::make_unique<arangodb::FlushFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::FlushFeature>(), false);
-
-    server.addFeature<arangodb::AqlFeature>(std::make_unique<arangodb::AqlFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::AqlFeature>(), true);  // required for arangodb::aql::Query(...)
-
-    server.addFeature<arangodb::AuthenticationFeature>(
-        std::make_unique<arangodb::AuthenticationFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::AuthenticationFeature>(),
-                          false);  // required for ExecContext in Collections::create(...)
-
-    server.addFeature<arangodb::DatabaseFeature>(
-        std::make_unique<arangodb::DatabaseFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::DatabaseFeature>(), false);  // required for LogicalViewStorageEngine::modify(...)
-
-    server.addFeature<arangodb::DatabasePathFeature>(
-        std::make_unique<arangodb::DatabasePathFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::DatabasePathFeature>(), false);  // requires for IResearchView::open()
-
-    server.addFeature<arangodb::ShardingFeature>(
-        std::make_unique<arangodb::ShardingFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::ShardingFeature>(), false);
-
-    server.addFeature<arangodb::V8DealerFeature>(
-        std::make_unique<arangodb::V8DealerFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
-
-    server.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::ViewTypesFeature>(), true);  // required by TRI_vocbase_t::createView(...)
-
-    server.addFeature<arangodb::QueryRegistryFeature>(
-        std::make_unique<arangodb::QueryRegistryFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::QueryRegistryFeature>(), false);  // required by TRI_vocbase_t(...)
-
-    server.addFeature<arangodb::SystemDatabaseFeature>(
-        std::make_unique<arangodb::SystemDatabaseFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::SystemDatabaseFeature>(),
-                          true);  // required for IResearchAnalyzerFeature
-
-    server.addFeature<arangodb::TraverserEngineRegistryFeature>(
-        std::make_unique<arangodb::TraverserEngineRegistryFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::TraverserEngineRegistryFeature>(),
-                          false);  // required for AQLFeature
-
-    server.addFeature<arangodb::aql::AqlFunctionFeature>(
-        std::make_unique<arangodb::aql::AqlFunctionFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::aql::AqlFunctionFeature>(),
-                          true);  // required for IResearchAnalyzerFeature
-
-    server.addFeature<arangodb::aql::OptimizerRulesFeature>(
-        std::make_unique<arangodb::aql::OptimizerRulesFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::aql::OptimizerRulesFeature>(),
-                          true);  // required for arangodb::aql::Query::execute(...)
-
-    server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
-        std::make_unique<arangodb::iresearch::IResearchAnalyzerFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>(),
-                          true);  // required for use of iresearch analyzers
-
-    server.addFeature<arangodb::iresearch::IResearchFeature>(
-        std::make_unique<arangodb::iresearch::IResearchFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::iresearch::IResearchFeature>(),
-                          true);  // required for creating views of type 'iresearch'
-
-#if USE_ENTERPRISE
-    server.addFeature<arangodb::LdapFeature>(std::make_unique<arangodb::LdapFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
-
-    // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
-    server.addFeature<arangodb::ClusterFeature>(
-        std::make_unique<arangodb::ClusterFeature>(server));
-
-    for (auto& f : features) {
-      f.first.prepare();
-    }
-
-    auto const databases = arangodb::velocypack::Parser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
-    dbFeature.loadDatabases(databases->slice());
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first.start();
-      }
-    }
+    server.addFeature<arangodb::FlushFeature>(false);
+    server.startFeatures();
 
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    TRI_vocbase_t* vocbase;
 
-    dbFeature.createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-    arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+    auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
+    dbFeature.createDatabase(1, "testVocbase", _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
+                                                 false);
     analyzers.emplace(
         result, "testVocbase::test_A", "TestInsertAnalyzer",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"X\" }")->slice());
@@ -303,22 +214,11 @@ class IResearchIndexTest : public ::testing::Test {
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
                                     arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::DEFAULT);
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first.stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first.unprepare();
-    }
-
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                     arangodb::LogLevel::DEFAULT);
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
+
+  TRI_vocbase_t& vocbase() { return *_vocbase; }
 };
 
 }  // namespace
@@ -335,13 +235,11 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       "{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase().createCollection(createCollection0->slice());
   ASSERT_TRUE((nullptr != collection0));
-  auto collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 = vocbase().createCollection(createCollection1->slice());
   ASSERT_TRUE((nullptr != collection1));
-  auto viewImpl = vocbase.createView(createView->slice());
+  auto viewImpl = vocbase().createView(createView->slice());
   ASSERT_TRUE((nullptr != viewImpl));
 
   // populate collections
@@ -352,7 +250,7 @@ TEST_F(IResearchIndexTest, test_analyzer) {
         "{ \"seq\": 1, \"X\": \"abc\", \"Y\": \"def\" }");
     static std::vector<std::string> const EMPTY;
     std::vector<std::string> collections{collection0->name(), collection1->name()};
-    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase()),
                                        EMPTY, collections, EMPTY,
                                        arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
@@ -383,7 +281,7 @@ TEST_F(IResearchIndexTest, test_analyzer) {
   // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
   {
     auto result = arangodb::tests::executeQuery(
-        vocbase,
+        vocbase(),
         "FOR d IN testView SEARCH ANALYZER(PHRASE(d.X, 'abc', 'test_A'), "
         "'test_B') OPTIONS { waitForSync: true } SORT d.seq RETURN d",
         nullptr);
@@ -406,7 +304,7 @@ TEST_F(IResearchIndexTest, test_analyzer) {
   // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
   {
     auto result = arangodb::tests::executeQuery(
-        vocbase,
+        vocbase(),
         "FOR d IN testView SEARCH PHRASE(d.X, 'abc', 'test_A') OPTIONS { "
         "waitForSync: true } SORT d.seq RETURN d",
         nullptr);
@@ -429,7 +327,7 @@ TEST_F(IResearchIndexTest, test_analyzer) {
   // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
   {
     auto result = arangodb::tests::executeQuery(
-        vocbase,
+        vocbase(),
         "FOR d IN testView SEARCH ANALYZER(PHRASE(d.X, 'abc'), 'test_A') "
         "OPTIONS { waitForSync: true } SORT d.seq RETURN d",
         nullptr);
@@ -452,7 +350,7 @@ TEST_F(IResearchIndexTest, test_analyzer) {
   // docs match from collection0 (2 analyzers used)
   {
     auto result =
-        arangodb::tests::executeQuery(vocbase,
+        arangodb::tests::executeQuery(vocbase(),
                                       "FOR d IN testView SEARCH PHRASE(d.X, "
                                       "'abc', 'test_B') SORT d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
@@ -474,7 +372,7 @@ TEST_F(IResearchIndexTest, test_analyzer) {
   // docs match from collection0 (2 analyzers used)
   {
     auto result = arangodb::tests::executeQuery(
-        vocbase,
+        vocbase(),
         "FOR d IN testView SEARCH analyzer(PHRASE(d.X, 'abc'), 'test_B') SORT "
         "d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
@@ -496,7 +394,7 @@ TEST_F(IResearchIndexTest, test_analyzer) {
   // docs match from collection1 (1 analyzer used)
   {
     auto result =
-        arangodb::tests::executeQuery(vocbase,
+        arangodb::tests::executeQuery(vocbase(),
                                       "FOR d IN testView SEARCH PHRASE(d.Y, "
                                       "'def', 'test_A') SORT d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
@@ -518,7 +416,7 @@ TEST_F(IResearchIndexTest, test_analyzer) {
   // docs match from collection1 (1 analyzer used)
   {
     auto result = arangodb::tests::executeQuery(
-        vocbase,
+        vocbase(),
         "FOR d IN testView SEARCH ANALYZER(PHRASE(d.Y, 'def', 'test_A'), "
         "'test_B') SORT d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
@@ -540,7 +438,7 @@ TEST_F(IResearchIndexTest, test_analyzer) {
   // docs match from collection1 (1 analyzer used)
   {
     auto result =
-        arangodb::tests::executeQuery(vocbase,
+        arangodb::tests::executeQuery(vocbase(),
                                       "FOR d IN testView SEARCH PHRASE(d.Y, "
                                       "'def', 'test_A') SORT d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
@@ -562,7 +460,7 @@ TEST_F(IResearchIndexTest, test_analyzer) {
   // docs match from collection1 (1 analyzer used)
   {
     auto result = arangodb::tests::executeQuery(
-        vocbase,
+        vocbase(),
         "FOR d IN testView SEARCH ANALYZER(PHRASE(d.Y, 'def'), 'test_A') SORT "
         "d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
@@ -590,8 +488,8 @@ TEST_F(IResearchIndexTest, test_async_index) {
       "{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        1, "testVocbase");
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_TRUE((nullptr != collection0));
   auto collection1 = vocbase.createCollection(createCollection1->slice());
@@ -940,8 +838,8 @@ TEST_F(IResearchIndexTest, test_fields) {
       "{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  TRI_vocbase_t vocbase(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(server.server(), TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        1, "testVocbase");
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_TRUE((nullptr != collection0));
   auto collection1 = vocbase.createCollection(createCollection1->slice());

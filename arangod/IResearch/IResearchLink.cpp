@@ -838,7 +838,7 @@ Result IResearchLink::init(
       }
     }
   } else if (ServerState::instance()->isDBServer()) { // db-server link
-    if (!!vocbase.server().hasFeature<arangodb::ClusterFeature>()) {
+    if (!vocbase.server().hasFeature<arangodb::ClusterFeature>()) {
       return {
         TRI_ERROR_INTERNAL,
         "failure to get cluster info while initializing arangosearch link '" + std::to_string(_id) + "'"
