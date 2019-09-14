@@ -2,11 +2,11 @@
 @startDocuBlock get_read_document_MULTI
 @brief reads a single document
 
-@RESTHEADER{PUT /_api/document/{collection},Read multiple documents, readDocument}
+@RESTHEADER{PUT /_api/document/{collection-name},Read multiple documents, readDocument}
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{collection,string,required}
+@RESTURLPARAM{collection-name,string,required}
 The *collection* from which the documents are to be read.
 
 @RESTQUERYPARAMETERS
