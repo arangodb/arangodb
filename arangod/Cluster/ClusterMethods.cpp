@@ -1743,7 +1743,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
         }
         VPackStringRef ref = keySlice.stringRef();
         // We send to single endpoint
-        std::string url = baseUrl + StringUtils::urlEncode(it.first) + "/";
+        url = baseUrl + StringUtils::urlEncode(it.first) + "/";
         url.append(StringUtils::urlEncode(ref.data(), ref.length())).append(optsUrlPart);
       } else {
         // We send to Babies endpoint
