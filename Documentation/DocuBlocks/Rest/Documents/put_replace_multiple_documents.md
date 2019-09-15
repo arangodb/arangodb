@@ -38,10 +38,18 @@ Replaces multiple documents in the specified collection with the
 ones in the body, the replaced documents are specified by the *_key*
 attributes in the body documents.
 
+The value of the `_key` attribute as well as attributes
+used as sharding keys may not be changed.
+
 If *ignoreRevs* is *false* and there is a *_rev* attribute in a
 document in the body and its value does not match the revision of
 the corresponding document in the database, the precondition is
 violated.
+
+Cluster only: The replace documents _may_ contain  
+values for the collections pre-defined shard keys. Values for the shard keys 
+are treated as hints to improve performance. Should the shard keys
+values be incorrect ArangoDB may answer with a *not found* error.
 
 Optionally, the query parameter *waitForSync* can be used to force
 synchronization of the document replacement operation to disk even in case

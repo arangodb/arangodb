@@ -56,6 +56,9 @@ patch documents will be added to the existing documents if they do
 not yet exist, and overwritten in the existing documents if they do
 exist there.
 
+The value of the `_key` attribute as well as attributes
+used as sharding keys may not be changed.
+
 Setting an attribute value to *null* in the patch documents will cause a
 value of *null* to be saved for the attribute by default.
 
@@ -66,6 +69,11 @@ violated.
 
 If the document exists and can be updated, then an *HTTP 201* or
 an *HTTP 202* is returned (depending on *waitForSync*, see below).
+
+Cluster only: The patch document _may_ contain  
+values for the collections pre-defined shard keys. Values for the shard keys 
+are treated as hints to improve performance. Should the shard keys
+values be incorrect ArangoDB may answer with a *not found* error
 
 Optionally, the query parameter *waitForSync* can be used to force
 synchronization of the document replacement operation to disk even in case
