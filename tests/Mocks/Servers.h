@@ -139,6 +139,7 @@ class MockClusterServer : public MockServer {
   virtual TRI_vocbase_t* createDatabase(std::string const& name) = 0;
   virtual void dropDatabase(std::string const& name) = 0;
   arangodb::consensus::Store& getAgencyStore() { return _agencyStore; };
+  void startFeatures() override;
 
   // You can only create specialized types
  protected:
@@ -147,7 +148,6 @@ class MockClusterServer : public MockServer {
 
  protected:
   // Implementation knows the place when all features are included
-  void startFeatures() override;
   void agencyTrx(std::string const& key, std::string const& value);
   void agencyCreateDatabase(std::string const& name);
   void agencyDropDatabase(std::string const& name);

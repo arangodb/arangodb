@@ -191,7 +191,16 @@ class ShortestPathExecutorTest : public ::testing::Test {
         regSource(sourceIn),
         regTarget(targetIn),
         brokenSource{"IwillBreakYourSearch"},
-        brokenTarget{"I will also break your search"} {}
+        brokenTarget{"I will also break your search"} {
+    // suppress INFO {cluster} Starting up with role SINGLE
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
+                                    arangodb::LogLevel::ERR);
+  }
+
+  ~ShortestPathExecutorTest() {
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
+                                    arangodb::LogLevel::DEFAULT);
+  }
 
   void ValidateResult(ShortestPathExecutorInfos& infos, OutputAqlItemRow& result,
                       std::vector<std::pair<std::string, std::string>> const& resultPaths) {

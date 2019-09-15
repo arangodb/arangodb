@@ -40,7 +40,6 @@
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -75,7 +74,7 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
   // is determined by `ClusterFeature::validateOptions`, hence the following
   // line of code is not required. For philosophical reasons we added it to the
   // ClusterPhase and let it start after `Cluster`.
-  startsAfter<ClusterFeaturePhase>();
+  startsAfter<ClusterFeature>();
 
   init();
 }  // MaintenanceFeature::MaintenanceFeature

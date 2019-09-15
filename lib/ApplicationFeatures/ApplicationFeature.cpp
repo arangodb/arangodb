@@ -140,11 +140,12 @@ void ApplicationFeature::determineAncestors() {
         if (ancestorType == rootType) {
           // dependencies are cyclic
           path.emplace_back(ancestorType);  // make sure we show the duplicate
-          std::function<std::string(std::type_index)> cb =
-              [](std::type_index t) -> std::string { return t.name(); };
+          std::function<std::string(std::type_index)> cb = [](std::type_index t) -> std::string {
+            return boost::core::demangle(t.name());
+          };
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_INTERNAL,
-              "dependencies for feature '" + _name +
+              "dependencies for feature '" + boost::core::demangle(typeid(*this).name()) +
                   "' are cyclic: " + basics::StringUtils::join(path, " <= ", cb));
         }
         // LOG_DEVEL << "   - found that " << boost::core::demangle(type.name()) << " starts after " << boost::core::demangle(ancestorType.name());

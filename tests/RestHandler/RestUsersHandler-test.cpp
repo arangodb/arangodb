@@ -24,6 +24,7 @@
 #include "gtest/gtest.h"
 
 #include "../IResearch/RestHandlerMock.h"
+#include "../Mocks/Servers.h"
 #include "../Mocks/StorageEngineMock.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
@@ -103,65 +104,16 @@ struct ViewFactory : public arangodb::ViewFactory {
 
 class RestUsersHandlerTest : public ::testing::Test {
  protected:
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
+  arangodb::tests::mocks::MockAqlServer server;
+  arangodb::SystemDatabaseFeature::ptr system;
   ViewFactory viewFactory;
 
-  RestUsersHandlerTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-
+  RestUsersHandlerTest()
+      : server(), system(server.getFeature<arangodb::SystemDatabaseFeature>().use()) {
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                     arangodb::LogLevel::ERR);
-
-    server.addFeature<arangodb::AuthenticationFeature>(
-        std::make_unique<arangodb::AuthenticationFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::AuthenticationFeature>(),
-                          false);  // required for VocbaseContext
-
-    server.addFeature<arangodb::DatabaseFeature>(
-        std::make_unique<arangodb::DatabaseFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::DatabaseFeature>(), false);  // required for UserManager::updateUser(...)
-
-    server.addFeature<arangodb::QueryRegistryFeature>(
-        std::make_unique<arangodb::QueryRegistryFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
-
-    server.addFeature<arangodb::ShardingFeature>(
-        std::make_unique<arangodb::ShardingFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::ShardingFeature>(), false);  // required for LogicalCollection::LogicalCollection(...)
-
-    system = std::make_unique<TRI_vocbase_t>(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                             0, TRI_VOC_SYSTEM_DATABASE);
-    server.addFeature<arangodb::SystemDatabaseFeature>(
-        std::make_unique<arangodb::SystemDatabaseFeature>(server, system.get()));
-    features.emplace_back(server.getFeature<arangodb::SystemDatabaseFeature>(),
-                          false);  // required for IResearchAnalyzerFeature
-
-    server.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::ViewTypesFeature>(), false);  // required for LogicalView::create(...)
-
-#if USE_ENTERPRISE
-    server.addFeature<arangodb::LdapFeature>(std::make_unique<arangodb::LdapFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
-
-    server.addFeature<arangodb::V8DealerFeature>(std::make_unique<arangodb::V8DealerFeature>(
-        server));  // add without calling prepare(), required for DatabaseFeature::createDatabase(...)
-
-    for (auto& f : features) {
-      f.first.prepare();
-    }
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first.start();
-      }
-    }
 
     auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
     viewTypesFeature.emplace(arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(
@@ -170,21 +122,6 @@ class RestUsersHandlerTest : public ::testing::Test {
   }
 
   ~RestUsersHandlerTest() {
-    system.reset();  // destroy before reseting the 'ENGINE'
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first.stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first.unprepare();
-    }
-
-    arangodb::EngineSelectorFeature::ENGINE =
-        nullptr;  // nullify only after DatabaseFeature::unprepare()
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                     arangodb::LogLevel::DEFAULT);
   }

@@ -83,10 +83,21 @@ struct DummyPool : public network::ConnectionPool {
 };
 
 struct NetworkMethodsTest : public ::testing::Test {
-  
-  NetworkMethodsTest() : pool(config()) {}
-  
-protected:
+  NetworkMethodsTest() : server(false), pool(config()) {
+    // suppress {threads} scheduler loop caught exception: bad_function_call
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::THREADS.name(),
+                                    arangodb::LogLevel::FATAL);
+
+    server.addFeature<SchedulerFeature>(true);
+    server.startFeatures();
+  }
+
+  ~NetworkMethodsTest() {
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::THREADS.name(),
+                                    arangodb::LogLevel::DEFAULT);
+  }
+
+ protected:
   
   void SetUp() override {
     auto& feature = server.getFeature<arangodb::NetworkFeature>();
