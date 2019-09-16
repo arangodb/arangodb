@@ -107,7 +107,7 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 namespace arangodb {
-  
+
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
@@ -309,7 +309,7 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "true to enable rocksdb debug logging",
                      new BooleanParameter(&_debugLogging),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
-  
+
   options->addOption("--rocksdb.wal-archive-size-limit",
                      "maximum total size (in bytes) of archived WAL files (0 = unlimited)",
                      new UInt64Parameter(&_maxWalArchiveSizeLimit),
@@ -371,12 +371,12 @@ void RocksDBEngine::prepare() {
 void RocksDBEngine::start() {
   // it is already decided that rocksdb is used
   TRI_ASSERT(isEnabled());
-  
+
   if (ServerState::instance()->isAgent() &&
       !application_features::ApplicationServer::server->options()->processingResult().touched("rocksdb.wal-file-timeout-initial")) {
     // reduce --rocksb.wal-file-timeout-initial to 15 seconds for agency nodes
     // as we probably won't need the WAL for WAL tailing and replication here
-    _pruneWaitTimeInitial = 15; 
+    _pruneWaitTimeInitial = 15;
   }
 
   LOG_TOPIC("107fd", TRACE, arangodb::Logger::ENGINES)
@@ -625,7 +625,7 @@ void RocksDBEngine::start() {
   cfFamilies.emplace_back("VPackIndex", vpackFixedPrefCF);  // 4
   cfFamilies.emplace_back("GeoIndex", fixedPrefCF);         // 5
   cfFamilies.emplace_back("FulltextIndex", fixedPrefCF);    // 6
-    
+
   TRI_ASSERT(static_cast<int>(_options.max_write_buffer_number) >= static_cast<int>(cfFamilies.size()));
   // Update max_write_buffer_number above if you change number of families used
 
@@ -750,7 +750,7 @@ void RocksDBEngine::start() {
   if (opts->_limitOpenFilesAtStartup) {
     _db->SetDBOptions({{"max_open_files", "-1"}});
   }
-    
+
   {
     auto feature = application_features::ApplicationServer::getFeature<FlushFeature>("Flush");
     TRI_ASSERT(feature);
@@ -804,7 +804,7 @@ void RocksDBEngine::beginShutdown() {
 
 void RocksDBEngine::stop() {
   TRI_ASSERT(isEnabled());
-  
+
   // in case we missed the beginShutdown somehow, call it again
   replicationManager()->beginShutdown();
   replicationManager()->dropAll();
@@ -1751,7 +1751,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     // we need to take its start tick into account as well, because the following
     // file's start tick can be assumed to be the end tick of the current file!
     if (f->StartSequence() < minTickToKeep &&
-        current < files.size() - 1) {      
+        current < files.size() - 1) {
       auto const& n = files[current + 1].get();
       if (n->StartSequence() < minTickToKeep) {
         // this file will be removed because it does not contain any data we
@@ -1765,7 +1765,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       }
     }
   }
-  
+
   if (_maxWalArchiveSizeLimit == 0) {
     // size of the archive is not restricted. done!
     return;
@@ -1773,7 +1773,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
 
   // print current archive size
   LOG_TOPIC("8d71b", TRACE, Logger::ENGINES) << "total size of the RocksDB WAL file archive: " << totalArchiveSize;
-    
+
   if (totalArchiveSize <= _maxWalArchiveSizeLimit) {
     // archive is smaller than allowed. all good
     return;
@@ -2042,7 +2042,7 @@ void RocksDBEngine::addSystemDatabase() {
 std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     TRI_voc_tick_t id, std::string const& name, bool wasCleanShutdown, bool isUpgrade, bool isVersionCheck) {
   auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
-  
+
   // scan the database path for views
   if (!isVersionCheck) {
     try {
@@ -2235,6 +2235,14 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     for (auto const& stat : rocksdb::TickersNameMap) {
       builder.add(stat.second, VPackValue(_options.statistics->getTickerCount(stat.first)));
     }
+
+    uint64_t walWrite, flushWrite, compactionWrite, userWrite;
+    walWrite = _options.statistics->getTickerCount(rocksdb::WAL_FILE_BYTES);
+    flushWrite = _options.statistics->getTickerCount(rocksdb::FLUSH_WRITE_BYTES);
+    compactionWrite = _options.statistics->getTickerCount(rocksdb::COMPACT_WRITE_BYTES);
+    userWrite = _options.statistics->getTickerCount(rocksdb::BYTES_WRITTEN);
+    builder.add("rocksdbengine.write.amplification.x100",
+                VPackValue( (0 != userWrite) ? ((walWrite+flushWrite+compactionWrite)*100)/userWrite : 100));
   }
 
   cache::Manager* manager = CacheManagerFeature::MANAGER;
@@ -2304,7 +2312,7 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& bu
 
   // "clients" part
   builder.add("clients", VPackValue(VPackValueType::Array));  // open
-  if (vocbase != nullptr) {    
+  if (vocbase != nullptr) {
     vocbase->replicationClients().toVelocyPack(builder);
   }
   builder.close();  // clients
