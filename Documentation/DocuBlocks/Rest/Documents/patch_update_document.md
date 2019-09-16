@@ -89,7 +89,7 @@ the *Etag* header field contains the new revision of the document
 under which the document can be queried.
 
 Cluster only: The patch document _may_ contain  
-values for the collections pre-defined shard keys. Values for the shard keys 
+values for the collection's pre-defined shard keys. Values for the shard keys 
 are treated as hints to improve performance. Should the shard keys
 values be incorrect ArangoDB may answer with a *not found* error
 

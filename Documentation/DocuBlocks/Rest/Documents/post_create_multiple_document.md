@@ -54,15 +54,15 @@ errorCode set to the error code that has happened.
 Possibly given *_id* and *_rev* attributes in the body are always ignored,
 the URL part or the query parameter collection respectively counts.
 
-If *silent* is not set to *true*, the body of the response contains a 
-JSON objects with the following attributes:
+If *silent* is not set to *true*, the body of the response contains an 
+array of JSON objects with the following attributes:
 
   - *_id* contains the document handle of the newly created document
   - *_key* contains the document key
   - *_rev* contains the document revision
 
 If the collection parameter *waitForSync* is *false*, then the call
-returns as soon as the document has been accepted. It will not wait
+returns as soon as the documents have been accepted. It will not wait
 until the documents have been synced to disk.
 
 Optionally, the query parameter *waitForSync* can be used to force

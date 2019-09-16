@@ -2,7 +2,7 @@
 @startDocuBlock put_read_all_documents
 @brief reads all document keys from collection
 
-@RESTHEADER{PUT /_api/simple/all-keys, Read all documents, allDocumentKeys}
+@RESTHEADER{PUT /_api/simple/all-keys, Read all document keys, allDocumentKeys}
 
 @HINTS
 {% hint 'warning' %}

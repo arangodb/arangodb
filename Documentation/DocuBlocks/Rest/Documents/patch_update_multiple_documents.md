@@ -67,11 +67,8 @@ document in the body and its value does not match the revision of
 the corresponding document in the database, the precondition is
 violated.
 
-If the document exists and can be updated, then an *HTTP 201* or
-an *HTTP 202* is returned (depending on *waitForSync*, see below).
-
 Cluster only: The patch document _may_ contain  
-values for the collections pre-defined shard keys. Values for the shard keys 
+values for the collection's pre-defined shard keys. Values for the shard keys 
 are treated as hints to improve performance. Should the shard keys
 values be incorrect ArangoDB may answer with a *not found* error
 

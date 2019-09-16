@@ -17,7 +17,7 @@ operation is executed
 
 @RESTQUERYPARAM{ignoreRevs,string,optional}
 Should the value be *true* (the default):
-If a search document contains a value for the *_rev* field, and the value
+If a search document contains a value for the *_rev* field,
 then the document is only returned if it has the same revision value. 
 Otherwise a precondition failed error is returned.
 
@@ -31,7 +31,7 @@ A value for `_rev` _may_ be specified to verify whether the document
 has the same revision value, unless _ignoreRevs_ is set to false. 
 
 Cluster only: The search document _may_ contain  
-values for the collections pre-defined shard keys. Values for the shard keys 
+values for the collection's pre-defined shard keys. Values for the shard keys 
 are treated as hints to improve performance. Should the shard keys
 values be incorrect ArangoDB may answer with a *not found* error.
 
