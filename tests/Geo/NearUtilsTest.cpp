@@ -38,7 +38,7 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
-#ifdef WIN32
+#ifdef _WIN32
 #undef near
 #endif
 

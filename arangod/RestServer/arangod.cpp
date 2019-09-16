@@ -300,6 +300,11 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
 
 int main(int argc, char* argv[]) {
 #ifdef __linux__
+  // Do not delete this! See lib/Basics/operating-system.h for details.
+  ThrowSomeException();
+#endif
+
+#ifdef __linux__
 #if USE_ENTERPRISE
   arangodb::checkLicenseKey();
 #endif

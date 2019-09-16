@@ -5,7 +5,60 @@ v3.4.9 (XXX-XX-XX)
 
 
 v3.4.8 (2019-08-29)
+=======
+
+* Harden database creation against spurious "duplicate name" errors that
+  were caused by other parallel operations lazily creating required
+  system collections in the same database.
+
+* Fixed the removal (including a collection drop) of an orphanCollection from a
+  graph definition when using the arango shell. The boolean flag whether to drop
+  the collection or not was not transferred properly.
+
+* Fixed internal issue #633: made ArangoSearch functions BOOST, ANALYZER, MIN_MATCH
+  callable with constant arguments. This will allow running queries where all arguments
+  for these functions are deterministic and do not depend on loop variables.
+
+* Added UI support to create documents in a collection using smartGraphAttribute
+  and/or smartJoinAttribute.
+
+* Add --server.statistics-history flag to allow disabling of only the historical
+  statistics. Also added rocksdbengine.write.amplification.x100 statistics
+  for measurement of compaction option impact. Enabled non-historical
+  statistics for agents.
+
+* Fixed output of `_listObjects()` function of "general-graph" and "smart-graph" 
+  modules, which did not print the `_id` values of the return graphs correctly.
+
+* Fixed undefined behavior in single server mode when trying to create a smart 
+  graph.
+
+* Add count of objects to latency reporting in arangoimport.
+
+* Fixed adding an orphan collections as the first collection in a SmartGraph.
+
+* The graph viewer of the web interface now tries to find a vertex document of
+  all available vertex collections before it aborts.
+  
+* Bugfix: Save distinct WAL ticks for multiple replication clients from the same
+  server. Also, when a follower is added for synchronous replication, the WAL
+  tick held by the client is freed immediately, rather than waiting for a
+  timeout.
+
+  The corresponding APIs get a new parameter `syncerId`, which, if given,
+  supersedes `serverId`. This affects the routes /_api/wal/tail,
+  /_api/replication/batch, /_api/replication/logger-follow and the internal
+  route /_api/replication/addFollower. The new field `syncerId` is also added to
+  the response of /_api/replication/logger-state.
+
+
+v3.4.8 (2019-09-09)
 -------------------
+
+* Drop collection action to timeout more quickly to stay on fast lane.
+
+* Fixed non-deterministic occurrences of "document not found" errors in sharded
+  collections with custom shard keys (i.e. non-`_key`) and multi-document lookups.
 
 * Fixed issue #9798: limit with offset results in an infinite query that can't be
   cancelled.
@@ -14,7 +67,8 @@ v3.4.8 (2019-08-29)
 
 * Make minimum timeout for synchronous replication configurable via parameter
   (--cluster.synchronous-replication-timeout-minimum) and increase default value
-  to prevent dropping followers unnecessarily.
+  to 30.0 seconds to prevent dropping followers unnecessarily. Should be changed
+  only with intent and great care.
 
 * Fixed issue #9795: fix AQL `NOT IN` clause in SEARCH operations for ArangoSearch
   views.
@@ -32,7 +86,7 @@ v3.4.8 (2019-08-29)
   is set to at least 9 (which is the recommended value). Ignore it if it is
   set to a lower value than 9, and warn the end user about it.
 
-  Previous versions of ArangoDB always silently ignored the value of this setting 
+  Previous versions of ArangoDB always silently ignored the value of this setting
   and effectively hard-coded the value to 9.
 
 * Fixed cut'n'pasting code from the documentation into arangosh.
@@ -111,6 +165,7 @@ v3.4.8 (2019-08-29)
 
 * Fixed an agency bug found in Windows tests.
 
+
 v3.4.7 (2019-07-02)
 -------------------
 
@@ -136,9 +191,9 @@ v3.4.7 (2019-07-02)
 * fixed internal issue #4172: on agent servers the RocksDB WAL files in the archive directory
   were retained due to an error. Now they are removed, eventually
 
-* fix error reporting in arangorestore. previously, when the server returned an HTTP 404 error,
-  arangorestore unconditionally translated this into a "collection not found" error, which may
-  have masked an actually different server-side error. Instead, make arangorestore return the
+* fix error reporting in arangoexport. previously, when the server returned an HTTP 404 error,
+  arangoexport unconditionally translated this into a "collection not found" error, which may
+  have masked an actually different server-side error. Instead, make arangoexport return the
   server's actual error message as is.
 
 * allow pregel to select the shard key via `shardKeyAttribute` in pregel start parameters
