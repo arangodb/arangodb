@@ -1,6 +1,8 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Made the mechanism in the Web UI of replacing and upgrading a foxx app more clear.
+
 * Fixed the AQL sort-limit optimization which was applied in some cases it should
   not, resulting in undefined behaviour.
 
