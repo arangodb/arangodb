@@ -4432,7 +4432,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
       !rv->slice().get("results").isArray() || rv->slice().get("results").length() != 2) {
     return arangodb::Result(
       TRI_ERROR_HOT_BACKUP_INTERNAL,
-      "invalid agency result while acuiring backup lock");
+      "invalid agency result while acquiring backup lock");
   }
   auto ar = rv->slice().get("results");
 
