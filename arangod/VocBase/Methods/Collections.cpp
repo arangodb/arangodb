@@ -337,7 +337,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   try {
     // in case of success we grant the creating user RW access
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-    if (um != nullptr && !exec.isSuperuser()) {
+    if (um != nullptr && !exec.hasAccess(auth::GrantPrivilegesPrivilege{auth::DatabaseResource{vocbase}})) {
       // this should not fail, we can not get here without database RW access
       // however, there may be races for updating the users account, so we try
       // a few times in case of a conflict

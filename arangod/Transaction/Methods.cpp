@@ -960,7 +960,7 @@ Result transaction::Methods::commit() {
 
   auto const& exec = ExecContext::current();
   if (!_state->isReadOnlyTransaction()) {
-    bool cancelRW = ServerState::readOnly() && !exec.isSuperuser();
+    bool cancelRW = ServerState::readOnly() && !exec.hasAccess(auth::InternalWritesPrivilege{});
     if (exec.isCanceled() || cancelRW) {
       return res.reset(TRI_ERROR_ARANGO_READ_ONLY,
                        "server is in read-only mode");

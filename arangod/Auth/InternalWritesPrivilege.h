@@ -22,21 +22,15 @@
 
 #pragma once
 
-#include "Auth/Privilege.h"
+#include "Auth/Resource.h"
+
+#include <string>
 
 namespace arangodb {
 namespace auth {
-class TasksPrivilege : public Privilege {
+class InternalWritesPrivilege : public Resource {
  public:
-  TasksPrivilege(std::string const& username, std::string const& runAs)
-      : _username(username), _runAs(runAs) {}
-
-  std::string const& username() const { return _username; }
-  std::string const& runAs() const { return _runAs; }
-
- private:
-  std::string const _username;
-  std::string const _runAs;
+  InternalWritesPrivilege() {}
 };
 }  // namespace auth
 }  // namespace arangodb

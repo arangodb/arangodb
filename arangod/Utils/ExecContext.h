@@ -32,10 +32,13 @@
 #include "Auth/DropDatabasePrivilege.h"
 #include "Auth/GrantPrivilegesPrivilege.h"
 #include "Auth/HardenedApiPrivilege.h"
+#include "Auth/InternalWritesPrivilege.h"
+#include "Auth/HotBackupPrivilege.h"
 #include "Auth/ListUsersPrivilege.h"
-#include "Auth/ReloadPrivilegesPrivilege.h"
 #include "Auth/QueuesPrivilege.h"
+#include "Auth/ReloadPrivilegesPrivilege.h"
 #include "Auth/TasksPrivilege.h"
+#include "Auth/UserObjectsPrivilege.h"
 #include "Auth/WalResource.h"
 #include "Rest/RequestContext.h"
 
@@ -126,6 +129,8 @@ class ExecContext : public RequestContext {
   std::string const& user() const { return _user.internalUsername(); }
   auth::DatabaseResource const& database() const { return _database; }
 
+  bool isStandardUser() const { return _type == Type::User; }
+
   // should immediately cancel this operation
   bool isCanceled() const { return _canceled; }
   void cancel() { _canceled = true; }
@@ -175,6 +180,10 @@ class ExecContext : public RequestContext {
     return !_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW;
   }
 
+  bool hasAccess(auth::HotBackupPrivilege const&) const {
+    return !_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW;
+  }
+
   bool hasAccess(auth::ListUsersPrivilege const&) const {
     return !_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW;
   }
@@ -199,13 +208,20 @@ class ExecContext : public RequestContext {
     return !priv.runAs().empty() && priv.username() == priv.runAs();
   }
 
-  bool hasAccess(auth::WalResource const&) const {
-    return !_isAuthEnabled || (_type == Type::Internal && _systemDbAuthLevel == auth::Level::RW &&
-			       _databaseAuthLevel == auth::Level::RW);
+  bool hasAccess(auth::UserObjectsPrivilege const& priv) const {
+    if (!_isAuthEnabled || (_type == Type::Internal && _systemDbAuthLevel == auth::Level::RW &&
+			    _databaseAuthLevel == auth::Level::RW)) {
+      return true;
+    }
+
+    return priv.username() == priv.owner();
   }
 
-  //  any internal user is a superuser if he has rw access
-  bool isSuperuser() const {
+  bool hasAccess(auth::WalResource const&) const {
+    return !_isAuthEnabled || _systemDbAuthLevel == auth::Level::RW;
+  }
+
+  bool hasAccess(auth::InternalWritesPrivilege const&) const {
     return _type == Type::Internal && _systemDbAuthLevel == auth::Level::RW &&
            _databaseAuthLevel == auth::Level::RW;
   }

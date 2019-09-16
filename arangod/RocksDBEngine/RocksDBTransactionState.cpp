@@ -262,7 +262,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
   // we may need to block intermediate commits
   ExecContext const& exec = ExecContext::current();
   if (!isReadOnlyTransaction()) {
-    bool cancelRW = ServerState::readOnly() && !exec.isSuperuser();
+    bool cancelRW = ServerState::readOnly() && !exec.hasAccess(auth::InternalWritesPrivilege{});
     if (exec.isCanceled() || cancelRW) {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }

@@ -31,6 +31,7 @@
 #include <velocypack/Parser.h>
 
 #include "Aql/QueryRegistry.h"
+#include "Auth/AuthUser.h"
 #include "Auth/DatabaseResource.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -97,22 +98,30 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
   arangodb::tests::mocks::MockAqlServer server;
   TRI_vocbase_t& _system_vocbase;
 
+  struct ExecContextProxy : public arangodb::ExecContext {
+    ExecContextProxy(arangodb::auth::AuthUser const& user,
+		     arangodb::auth::DatabaseResource&& database,
+		     arangodb::auth::Level systemLevel,
+		     arangodb::auth::Level dbLevel)
+      : ExecContext(user, std::move(database), systemLevel, dbLevel) {}
+  };
+
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
   arangodb::iresearch::IResearchAnalyzerFeature* analyzers;
   arangodb::DatabaseFeature* dbFeature;
   arangodb::AuthenticationFeature* authFeature;
   arangodb::auth::UserManager* userManager;
-  arangodb::ExecContext execContext;
+  ExecContextProxy execContext;
   arangodb::ExecContext::Scope execContextScope;
   arangodb::aql::QueryRegistry queryRegistry;  // required for UserManager::loadFromDB()
 
   RestAnalyzerHandlerTest()
       : server(),
         _system_vocbase(server.getSystemDatabase()),
-        execContext(auth::AuthUser{"nobody"},
-                    auth::DatabaseResource{""},
-                    auth::Level::NONE,
-                    auth::Level::NONE),
+        execContext(arangodb::auth::AuthUser{"nobody"},
+                    arangodb::auth::DatabaseResource{""},
+                    arangodb::auth::Level::NONE,
+                    arangodb::auth::Level::NONE),
 	execContextScope(&execContext),
         queryRegistry(0) {
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on

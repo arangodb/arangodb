@@ -35,11 +35,7 @@
 namespace {
 bool authorized(std::pair<std::string, arangodb::rest::AsyncJobResult> const& job) {
   arangodb::ExecContext const& exec = arangodb::ExecContext::current();
-  if (exec.isSuperuser()) {
-    return true;
-  }
-
-  return (job.first == exec.user());
+  return exec.hasAccess(arangodb::auth::UserObjectsPrivilege{exec.user(), job.first});
 }
 }  // namespace
 

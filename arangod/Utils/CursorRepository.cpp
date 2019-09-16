@@ -38,10 +38,7 @@
 namespace {
 bool authorized(std::pair<arangodb::Cursor*, std::string> const& cursor) {
   auto const& exec = arangodb::ExecContext::current();
-  if (exec.isSuperuser()) {
-    return true;
-  }
-  return (cursor.second == exec.user());
+  return exec.hasAccess(arangodb::auth::UserObjectsPrivilege{exec.user(), cursor.second});
 }
 }  // namespace
 

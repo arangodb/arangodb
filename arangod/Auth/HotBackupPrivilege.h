@@ -26,17 +26,6 @@
 
 namespace arangodb {
 namespace auth {
-class TasksPrivilege : public Privilege {
- public:
-  TasksPrivilege(std::string const& username, std::string const& runAs)
-      : _username(username), _runAs(runAs) {}
-
-  std::string const& username() const { return _username; }
-  std::string const& runAs() const { return _runAs; }
-
- private:
-  std::string const _username;
-  std::string const _runAs;
-};
+class HotBackupPrivilege : public Privilege {};
 }  // namespace auth
 }  // namespace arangodb

@@ -55,10 +55,7 @@
 namespace {
 bool authorized(std::string const& user) {
   auto const& exec = arangodb::ExecContext::current();
-  if (exec.isSuperuser()) {
-    return true;
-  }
-  return (user == exec.user());
+  return exec.hasAccess(arangodb::auth::UserObjectsPrivilege{exec.user(), user});
 }
 
 std::string currentUser() {

@@ -26,17 +26,17 @@
 
 namespace arangodb {
 namespace auth {
-class TasksPrivilege : public Privilege {
+class UserObjectsPrivilege : public Privilege {
  public:
-  TasksPrivilege(std::string const& username, std::string const& runAs)
-      : _username(username), _runAs(runAs) {}
+  UserObjectsPrivilege(std::string const& username, std::string const& owner)
+      : _username(username), _owner(owner) {}
 
   std::string const& username() const { return _username; }
-  std::string const& runAs() const { return _runAs; }
+  std::string const& owner() const { return _owner; }
 
  private:
   std::string const _username;
-  std::string const _runAs;
+  std::string const _owner;
 };
 }  // namespace auth
 }  // namespace arangodb

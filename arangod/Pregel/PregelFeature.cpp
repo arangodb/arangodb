@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/CollectionResource.h"
+#include "Auth/UserObjectsPrivilege.h"
 #include "Basics/MutexLocker.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -44,10 +45,7 @@
 namespace {
 bool authorized(std::string const& user) {
   auto const& exec = arangodb::ExecContext::current();
-  if (exec.isSuperuser()) {
-    return true;
-  }
-  return (user == exec.user());
+  return exec.hasAccess(arangodb::auth::UserObjectsPrivilege{exec.user(), user});
 }
 
 bool authorized(std::pair<std::string, std::shared_ptr<arangodb::pregel::Conductor>> const& conductor) {
