@@ -146,10 +146,7 @@ class CreateDatabaseInfo {
   std::string _sharding = "flexible";
 
   bool _vaildId = false;
-
-#ifdef  ARANGODB_ENABLE_MAINTAINER_MODE
-  bool _vaild = false;
-#endif
+  bool _vaild = false; // required because TRI_ASSERT needs variable in Release mode.
   // bool _isSystemDB;
 };
 
