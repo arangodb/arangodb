@@ -28,6 +28,7 @@
 #include "Agency/AgencyFeature.h"
 #include "Agency/RestAgencyHandler.h"
 #include "Agency/RestAgencyPrivHandler.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/RestAqlHandler.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
@@ -126,7 +127,7 @@ GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServ
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 
-  startsAfter<EndpointFeature>();
+  startsAfter<HttpEndpointProvider>();
   startsAfter<SslServerFeature>();
   startsAfter<UpgradeFeature>();
 
@@ -270,7 +271,8 @@ void GeneralServerFeature::unprepare() {
 void GeneralServerFeature::buildServers() {
   TRI_ASSERT(_jobManager != nullptr);
 
-  EndpointFeature& endpoint = server().getFeature<EndpointFeature>();
+  EndpointFeature& endpoint =
+      server().getFeature<HttpEndpointProvider, EndpointFeature>();
   auto const& endpointList = endpoint.endpointList();
 
   // check if endpointList contains ssl featured server

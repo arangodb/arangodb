@@ -220,10 +220,9 @@ class ApplicationServer {
    // adds a feature to the application server. the application server
    // will take ownership of the feature object and destroy it in its
    // destructor
-   template <typename T, typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, int>::type = 0>
-   void addFeature(std::unique_ptr<T>&& feature) {
-     // TODO TRI_ASSERT(feature->state() == ApplicationFeature::State::UNINITIALIZED);
-     _features.emplace(std::type_index(typeid(T)), std::move(feature));
+   template <typename Type, typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0>
+   void addFeature(std::unique_ptr<Type>&& feature) {
+     _features.emplace(std::type_index(typeid(Type)), std::move(feature));
    }
 
    // checks for the existence of a feature by type. will not throw when used
@@ -234,40 +233,44 @@ class ApplicationServer {
 
    // checks for the existence of a feature. will not throw when used for
    // a non-existing feature
-   template <typename T, typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, int>::type = 0>
+   template <typename Type, typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0>
    bool hasFeature() const {
-     return hasFeature(std::type_index(typeid(T)));
+     return hasFeature(std::type_index(typeid(Type)));
    }
 
    // returns a reference to a feature given the type. will throw when used for
    // a non-existing feature
-   template <typename T, typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, int>::type = 0>
-   T& getFeature(std::type_index type) const {
+   template <typename AsType, typename std::enable_if<std::is_base_of<ApplicationFeature, AsType>::value, int>::type = 0>
+   AsType& getFeature(std::type_index type) const {
      auto it = _features.find(type);
      if (it == _features.end()) {
        throwFeatureNotFoundException(type.name());
      }
-     return *dynamic_cast<T*>(it->second.get());
+     return *dynamic_cast<AsType*>(it->second.get());
    }
 
    // returns a const reference to a feature. will throw when used for
    // a non-existing feature
-   template <typename T, typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, int>::type = 0>
-   T& getFeature() const {
-     auto it = _features.find(std::type_index(typeid(T)));
+   template <typename Type, typename AsType = Type,
+             typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0,
+             typename std::enable_if<std::is_base_of<Type, AsType>::value || std::is_base_of<AsType, Type>::value, int>::type = 0>
+   AsType& getFeature() const {
+     auto it = _features.find(std::type_index(typeid(Type)));
      if (it == _features.end()) {
-       throwFeatureNotFoundException(typeid(T).name());
+       throwFeatureNotFoundException(typeid(Type).name());
      }
-     return *dynamic_cast<T*>(it->second.get());
+     return *dynamic_cast<AsType*>(it->second.get());
    }
 
    // returns the feature with the given name if known and enabled
    // throws otherwise
-   template <typename T, typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, int>::type = 0>
-   T& getEnabledFeature() const {
-     T& feature = getFeature<T>();
+   template <typename Type, typename AsType = Type,
+             typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0,
+             typename std::enable_if<std::is_base_of<Type, AsType>::value || std::is_base_of<AsType, Type>::value, int>::type = 0>
+   AsType& getEnabledFeature() const {
+     AsType& feature = getFeature<Type, AsType>();
      if (!feature.isEnabled()) {
-       throwFeatureNotEnabledException(typeid(T).name());
+       throwFeatureNotEnabledException(typeid(Type).name());
      }
      return feature;
    }

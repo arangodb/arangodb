@@ -204,12 +204,16 @@ class ApplicationFeature {
   // whether the feature starts before another
   bool doesStartBefore(std::type_index type) const;
 
+  void addAncestorToAllInPath(
+      std::vector<std::pair<size_t, std::reference_wrapper<ApplicationFeature>>>& path,
+      std::type_index ancestorType);
+
   // set a feature's state. this method should be called by the
   // application server only
   void state(State state) { _state = state; }
 
   // determine all direct and indirect ancestors of a feature
-  void determineAncestors();
+  void determineAncestors(std::type_index as);
 
   // pointer to application server
   ApplicationServer& _server;

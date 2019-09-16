@@ -427,14 +427,10 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
     }
   }
 
-  // auto start = std::chrono::high_resolution_clock::now();
   // calculate ancestors for all features
   for (auto& it : _features) {
-    it.second->determineAncestors();
+    it.second->determineAncestors(it.first);
   }
-  // auto end = std::chrono::high_resolution_clock::now();
-  // auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end -
-  // start); LOG_DEVEL << "DETERMINATION TOOK " << ms.count() << "ms";
 
   // first check if a feature references an unknown other feature
   if (failOnMissing) {

@@ -103,15 +103,18 @@ void ApplicationFeature::startsBefore(std::type_index type) {
 }
 
 bool ApplicationFeature::doesStartBefore(std::type_index type) const {
-  auto otherAncestors = _server.getFeature<ApplicationFeature>(type).ancestors();
+  if (!_server.hasFeature(type)) {
+    // no relationship if the feature doesn't exist
+    return false;
+  }
 
+  auto otherAncestors = _server.getFeature<ApplicationFeature>(type).ancestors();
   if (otherAncestors.find(std::type_index(typeid(*this))) != otherAncestors.end()) {
     // we are an ancestor of the other feature
     return true;
   }
 
   auto ourAncestors = ancestors();
-
   if (ourAncestors.find(type) != ourAncestors.end()) {
     // the other feature is an ancestor of us
     return false;
@@ -121,73 +124,83 @@ bool ApplicationFeature::doesStartBefore(std::type_index type) const {
   return false;
 }
 
+void ApplicationFeature::addAncestorToAllInPath(
+    std::vector<std::pair<size_t, std::reference_wrapper<ApplicationFeature>>>& path,
+    std::type_index ancestorType) {
+  std::function<bool(std::pair<size_t, std::reference_wrapper<ApplicationFeature>>&)> typeMatch =
+      [ancestorType](std::pair<size_t, std::reference_wrapper<ApplicationFeature>>& pair) -> bool {
+    return std::type_index(typeid(pair.second.get())) == ancestorType;
+  };
+
+  if (std::find_if(path.begin(), path.end(), typeMatch) != path.end()) {
+    // dependencies are cyclic
+
+    // build type list to print out error
+    std::vector<std::type_index> pathTypes;
+    for (std::pair<size_t, std::reference_wrapper<ApplicationFeature>>& pair : path) {
+      pathTypes.emplace_back(std::type_index(typeid(pair.second.get())));
+    }
+    pathTypes.emplace_back(ancestorType);  // make sure we show the duplicate
+
+    // helper for string join
+    std::function<std::string(std::type_index)> cb = [](std::type_index type) -> std::string {
+      return boost::core::demangle(type.name());
+    };
+
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "dependencies for feature '" + boost::core::demangle(pathTypes.begin()->name()) +
+            "' are cyclic: " + basics::StringUtils::join(pathTypes, " <= ", cb));
+  }
+
+  // not cyclic, go ahead and add
+  for (std::pair<size_t, std::reference_wrapper<ApplicationFeature>>& pair : path) {
+    ApplicationFeature& descendant = pair.second;
+    descendant._ancestors.emplace(ancestorType);
+  }
+}
+
 // determine all direct and indirect ancestors of a feature
-void ApplicationFeature::determineAncestors() {
+void ApplicationFeature::determineAncestors(std::type_index rootAsType) {
   if (_ancestorsDetermined) {
     return;
   }
 
-  std::type_index rootType = std::type_index(typeid(*this));
-  LOG_DEVEL << "DETERMINING ANCESTORS OF " << boost::core::demangle(rootType.name());
-  std::vector<std::reference_wrapper<ApplicationFeature>> path;
-  std::vector<std::type_index> pathTypes;
-  std::vector<std::type_index> toProcess{rootType};
+  std::vector<std::pair<size_t, std::reference_wrapper<ApplicationFeature>>> path;
+  std::vector<std::pair<size_t, std::type_index>> toProcess{{0, rootAsType}};
   while (!toProcess.empty()) {
-    std::type_index type = toProcess.back();
+    size_t depth = toProcess.back().first;
+    std::type_index type = toProcess.back().second;
     toProcess.pop_back();
-    pathTypes.emplace_back(type);
-    LOG_DEVEL << " - processing " << boost::core::demangle(type.name());
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     if (server().hasFeature(type)) {
       ApplicationFeature& feature = server().getFeature<ApplicationFeature>(type);
-      path.emplace_back(feature);
+      path.emplace_back(depth, feature);
       if (feature._ancestorsDetermined) {
         // short cut, just get the ancestors list and append add it everything
         // on the path
-        std::vector<std::type_index> ancestors = feature._ancestors;
-        for (ApplicationFeature& f : path) {
-          for (std::type_index a : ancestors) {
-            // TODO cycle testing?
-            f._ancestors.emplace(a);
-          }
+        std::unordered_set<std::type_index> ancestors = feature._ancestors;
+        for (std::type_index ancestorType : ancestors) {
+          addAncestorToAllInPath(path, ancestorType);
         }
       } else {
         for (std::type_index ancestorType : feature.startsAfter()) {
-          if (std::find(path.begin(), path.end(), ancestorType) != path.end()) {
-            // dependencies are cyclic
-            pathTypes.emplace_back(ancestorType);  // make sure we show the duplicate
-            std::function<std::string(std::type_index)> cb = [](std::type_index t) -> std::string {
-              return boost::core::demangle(t.name());
-            };
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_INTERNAL,
-                "dependencies for feature '" +
-                    boost::core::demangle(typeid(*this).name()) +
-                    "' are cyclic: " +
-                    basics::StringUtils::join(pathTypes, " <= ", cb));
-          }
-          // LOG_DEVEL << "   - found that " << boost::core::demangle(type.name()) << " starts after " << boost::core::demangle(ancestorType.name());
-          for (ApplicationFeature& f : path) {
-            f._ancestors.emplace(ancestorType);
-          }
-          toProcess.emplace_back(ancestorType);
+          addAncestorToAllInPath(path, ancestorType);
+          toProcess.emplace_back(depth + 1, ancestorType);
         }
       }
-
-      feature._ancestorsDetermined = true;
-      path.pop_back();
     }
 
-    pathTypes.pop_back();
+    // pop any elements off path that have had all their ancestors processed
+    while (!path.empty() &&
+           (toProcess.empty() || toProcess.back().first <= path.back().first)) {
+      ApplicationFeature& finished = path.back().second;
+      finished._ancestorsDetermined = true;
+      path.pop_back();
+    }
   }
 
-  _ancestorsDetermined = true;
-
-  LOG_DEVEL << " - DETERMINED TO BE:";
-  for (auto ancestorType : _ancestors) {
-    LOG_DEVEL << "   - " << boost::core::demangle(ancestorType.name());
-  }
+  TRI_ASSERT(_ancestorsDetermined);
 }
 
 }  // namespace application_features

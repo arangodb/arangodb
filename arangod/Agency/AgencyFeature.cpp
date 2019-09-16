@@ -27,6 +27,7 @@
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
 #include "Agency/Supervision.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
@@ -37,7 +38,6 @@
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/EndpointFeature.h"
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/ScriptFeature.h"
 #include "Statistics/StatisticsFeature.h"
@@ -287,7 +287,7 @@ void AgencyFeature::prepare() {
     std::string port = "8529";
 
     // Available after prepare of EndpointFeature
-    EndpointFeature& endpointFeature = server().getFeature<EndpointFeature>();
+    HttpEndpointProvider& endpointFeature = server().getFeature<HttpEndpointProvider>();
     auto endpoints = endpointFeature.httpEndpoints();
 
     if (!endpoints.empty()) {

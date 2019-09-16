@@ -42,9 +42,14 @@
 using namespace arangodb::options;
 
 namespace {
-std::unordered_map<std::string, std::type_index> EngineMap{
-    {arangodb::MMFilesEngine::EngineName, std::type_index(typeid(arangodb::MMFilesEngine))},
-    {arangodb::RocksDBEngine::EngineName, std::type_index(typeid(arangodb::RocksDBEngine))}};
+std::unordered_map<std::string, std::type_index> createEngineMap() {
+  std::unordered_map<std::string, std::type_index> map;
+  map.emplace(arangodb::MMFilesEngine::EngineName,
+              std::type_index(typeid(arangodb::MMFilesEngine)));
+  map.emplace(arangodb::RocksDBEngine::EngineName,
+              std::type_index(typeid(arangodb::RocksDBEngine)));
+  return map;
+}
 }
 
 namespace arangodb {
@@ -55,6 +60,8 @@ EngineSelectorFeature::EngineSelectorFeature(application_features::ApplicationSe
     : ApplicationFeature(server, "EngineSelector"), _engine("auto"), _selected(false) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
+
+  auto map = ::createEngineMap();
 }
 
 void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -127,12 +134,13 @@ void EngineSelectorFeature::prepare() {
 
   } else {
     // deactivate all engines but the selected one
-    for (auto const& engine : availableEngines()) {
+    for (auto engine : availableEngines()) {
       auto& e = server().getFeature<StorageEngine>(engine.second);
 
       if (engine.first == _engine) {
         // this is the selected engine
-        LOG_TOPIC("144fe", INFO, Logger::FIXME) << "using storage engine " << engine.first;
+        LOG_TOPIC("144fe", INFO, Logger::FIXME)
+            << "using storage engine '" << engine.first << "'";
         e.enable();
 
         // register storage engine
@@ -141,7 +149,7 @@ void EngineSelectorFeature::prepare() {
       } else {
         // turn off all other storage engines
         LOG_TOPIC("14a9e", TRACE, Logger::STARTUP)
-            << "disabling storage engine " << engine.first;
+            << "disabling storage engine '" << engine.first << "'";
         e.disable();
       }
     }
@@ -198,7 +206,7 @@ std::unordered_set<std::string> EngineSelectorFeature::availableEngineNames() {
 
 // return all available storage engines
 std::unordered_map<std::string, std::type_index> EngineSelectorFeature::availableEngines() {
-  return ::EngineMap;
+  return ::createEngineMap();
 }
 
 StorageEngine& EngineSelectorFeature::engine() {
