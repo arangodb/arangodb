@@ -58,7 +58,7 @@ struct EdgeDocumentToken;
 /// with an implementation which caches entire documents,
 /// the single server / db server can just work with raw
 /// document tokens and retrieve documents as needed
-class BaseOptions;
+struct BaseOptions;
 
 
 class TraverserCache {
