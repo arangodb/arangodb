@@ -33,7 +33,7 @@ class Query;
 }
 namespace graph {
 class TraverserCache;
-class BaseOptions;
+struct BaseOptions;
 
 namespace cacheFactory {
 TraverserCache* CreateCache(arangodb::aql::Query* query, bool activateDocumentCache,

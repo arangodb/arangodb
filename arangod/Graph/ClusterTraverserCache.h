@@ -44,7 +44,7 @@ class Slice;
 }  // namespace velocypack
 
 namespace graph {
-class BaseOptions;
+struct BaseOptions;
 
 class ClusterTraverserCache : public TraverserCache {
  public:
