@@ -4047,6 +4047,13 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     double timeout = (payload.isObject() && payload.hasKey("timeout"))
                          ? payload.get("timeout").getNumber<double>()
                          : 120.;
+    // unreasonably short even under allowInconsistent
+    if (timeout < 2.5) {
+      auto const tmp = timeout;
+      timeout = 2.5;
+      LOG_TOPIC("67ae2", WARN, Logger::BACKUP)
+        << "Backup timeout " << tmp << " is too short - raising to " << timeout;
+    }
 
     using namespace std::chrono;
     auto end = steady_clock::now() + milliseconds(static_cast<uint64_t>(1000 * timeout));
@@ -4057,6 +4064,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     // We specifically want to make sure that no other backup is going on.
     bool supervisionOff = false;
     auto result = ci->agencyHotBackupLock(backupId, timeout, supervisionOff);
+
     if (!result.ok()) {
       // Failed to go to backup mode
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
@@ -4069,6 +4077,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       LOG_TOPIC("352d6", INFO, Logger::BACKUP)
           << "hot backup didn't get to locking phase within " << timeout << "s.";
       auto hlRes = ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+
       return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT,
                               "hot backup timeout before locking phase");
     }
