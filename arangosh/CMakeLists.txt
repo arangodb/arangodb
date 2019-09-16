@@ -77,6 +77,8 @@ endif()
 ## arangobackup
 ################################################################################
 
+if (USE_ENTERPRISE)
+
 if (MSVC AND NOT(SKIP_PACKAGING))
   generate_product_version(ProductVersionFiles_arangobackup
     NAME arangobackup
@@ -137,6 +139,8 @@ endif()
 if (DARWIN)
   target_compile_options(arangobackup PRIVATE -Werror)
 endif()
+
+endif () # USE_ENTERPRISE
 
 ################################################################################
 ## arangodump
