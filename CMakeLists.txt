@@ -1002,7 +1002,6 @@ endif ()
 if (USE_OPENSSL_NO_SSL2)
   add_definitions(-DOPENSSL_NO_SSL2)
 endif ()
-
 ################################################################################
 ## 3RD PARTY
 ################################################################################
@@ -1118,6 +1117,67 @@ include(frontend/aardvark)
 if (NOT(SKIP_PACKAGING))
   include(packages/packages)
 endif()
+
+
+################################################################################
+## GSSAPI-Detection
+################################################################################
+# we utilize GSS-API configuration in FindGSS.cmake from curl:
+set(CMAKE_USE_GSSAPI ON cached)
+if(CMAKE_USE_GSSAPI)
+  find_package(GSS)
+
+  set(HAVE_GSSAPI ${GSS_FOUND})
+  if(GSS_FOUND)
+    message(STATUS "Found ${GSS_FLAVOUR} GSSAPI version: \"${GSS_VERSION}\"")
+    list(APPEND CMAKE_REQUIRED_INCLUDES ${GSS_INCLUDE_DIR})
+    
+    check_include_file_concat("gssapi/gssapi.h"  HAVE_GSSAPI_GSSAPI_H)
+    check_include_file_concat("gssapi/gssapi_generic.h" HAVE_GSSAPI_GSSAPI_GENERIC_H)
+    check_include_file_concat("gssapi/gssapi_krb5.h" HAVE_GSSAPI_GSSAPI_KRB5_H)
+
+    if(GSS_FLAVOUR STREQUAL "Heimdal")
+      set(HAVE_GSSHEIMDAL ON)
+      
+    else() # MIT
+      set(HAVE_GSSMIT ON)
+      set(_INCLUDE_LIST "")
+      if(HAVE_GSSAPI_GSSAPI_H)
+        list(APPEND _INCLUDE_LIST "gssapi/gssapi.h")
+      endif()
+      if(HAVE_GSSAPI_GSSAPI_GENERIC_H)
+        list(APPEND _INCLUDE_LIST "gssapi/gssapi_generic.h")
+      endif()
+      if(HAVE_GSSAPI_GSSAPI_KRB5_H)
+        list(APPEND _INCLUDE_LIST "gssapi/gssapi_krb5.h")
+      endif()
+
+      # string(REPLACE ";" " " _COMPILER_FLAGS_STR "${GSS_COMPILER_FLAGS}")
+      # string(REPLACE ";" " " _LINKER_FLAGS_STR "${GSS_LINKER_FLAGS}")
+
+      foreach(_dir ${GSS_LINK_DIRECTORIES})
+        set(_LINKER_FLAGS_STR "${_LINKER_FLAGS_STR} -L\"${_dir}\"")
+      endforeach()
+
+      set(CMAKE_REQUIRED_FLAGS "${_COMPILER_FLAGS_STR} ${_LINKER_FLAGS_STR}")
+      set(CMAKE_REQUIRED_LIBRARIES ${GSS_LIBRARIES})
+      check_symbol_exists("GSS_C_NT_HOSTBASED_SERVICE" ${_INCLUDE_LIST} HAVE_GSS_C_NT_HOSTBASED_SERVICE)
+      if(NOT HAVE_GSS_C_NT_HOSTBASED_SERVICE)
+        set(HAVE_OLD_GSSMIT ON)
+      endif()
+
+    endif()
+
+    link_directories(${GSS_LINK_DIRECTORIES})
+    include_directories(${GSS_INCLUDE_DIR})
+    #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${GSS_COMPILER_FLAGS}")
+    #set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${GSS_LINKER_FLAGS}")
+    #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${GSS_LINKER_FLAGS}")
+  else()
+    message(WARNING "GSSAPI support has been requested but no supporting libraries found. Skipping.")
+  endif()
+endif()
+
 
 ################################################################################
 ## ERRORS FILE

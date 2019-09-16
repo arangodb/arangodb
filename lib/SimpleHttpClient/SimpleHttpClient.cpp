@@ -55,7 +55,7 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
 #include <iostream> // todo wech.
-#include "Enterprise/Kerberos/KerberosAuthenticationHandler.h"
+#include "Utilities/GssApiClient.h"
 
 #include <netinet/in.h>
 #include <boost/asio.hpp>

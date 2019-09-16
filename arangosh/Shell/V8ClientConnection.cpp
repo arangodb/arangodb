@@ -33,6 +33,8 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Utilities/GssApiClient.h"
+
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Import/ImportHelper.h"
 #include "Rest/GeneralResponse.h"
