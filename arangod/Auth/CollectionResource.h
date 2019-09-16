@@ -68,9 +68,7 @@ class CollectionResource : public DatabaseResource {
   CollectionResource(D const& database, std::string&& collection)
       : DatabaseResource(database.name()), _collection(std::move(collection)) {}
 
-  std::string const& collection() const {
-    return _collection;
-  }
+  std::string const& collection() const { return _collection; }
 
  private:
   std::string const _collection;
