@@ -150,6 +150,8 @@ VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>* AsyncSCC::createCo
   return new ASCCComputation();
 }
 
+namespace {
+
 struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
   const std::string _resultField;
   uint64_t vertexIdRange = 0;
@@ -187,6 +189,8 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
     return false;
   }
 };
+
+}  // namespace
 
 GraphFormat<SCCValue, int8_t>* AsyncSCC::inputFormat() const {
   return new SCCGraphFormat(_resultField);
