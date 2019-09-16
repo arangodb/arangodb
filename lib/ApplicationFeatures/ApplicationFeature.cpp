@@ -22,6 +22,10 @@
 
 #include <boost/core/demangle.hpp>
 
+#include <algorithm>
+#include <chrono>
+#include <thread>
+
 #include "ApplicationFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -123,46 +127,67 @@ void ApplicationFeature::determineAncestors() {
     return;
   }
 
-  // TODO memoize for performance
   std::type_index rootType = std::type_index(typeid(*this));
-  // LOG_DEVEL << "DETERMINING ANCESTORS OF " << boost::core::demangle(rootType.name());
-  std::vector<std::type_index> path;
+  LOG_DEVEL << "DETERMINING ANCESTORS OF " << boost::core::demangle(rootType.name());
+  std::vector<std::reference_wrapper<ApplicationFeature>> path;
+  std::vector<std::type_index> pathTypes;
   std::vector<std::type_index> toProcess{rootType};
   while (!toProcess.empty()) {
     std::type_index type = toProcess.back();
     toProcess.pop_back();
-    path.emplace_back(type);
-    // LOG_DEVEL << " - processing " << boost::core::demangle(type.name());
+    pathTypes.emplace_back(type);
+    LOG_DEVEL << " - processing " << boost::core::demangle(type.name());
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     if (server().hasFeature(type)) {
       ApplicationFeature& feature = server().getFeature<ApplicationFeature>(type);
-      for (auto ancestorType : feature.startsAfter()) {
-        if (ancestorType == rootType) {
-          // dependencies are cyclic
-          path.emplace_back(ancestorType);  // make sure we show the duplicate
-          std::function<std::string(std::type_index)> cb = [](std::type_index t) -> std::string {
-            return boost::core::demangle(t.name());
-          };
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL,
-              "dependencies for feature '" + boost::core::demangle(typeid(*this).name()) +
-                  "' are cyclic: " + basics::StringUtils::join(path, " <= ", cb));
+      path.emplace_back(feature);
+      if (feature._ancestorsDetermined) {
+        // short cut, just get the ancestors list and append add it everything
+        // on the path
+        std::vector<std::type_index> ancestors = feature._ancestors;
+        for (ApplicationFeature& f : path) {
+          for (std::type_index a : ancestors) {
+            // TODO cycle testing?
+            f._ancestors.emplace(a);
+          }
         }
-        // LOG_DEVEL << "   - found that " << boost::core::demangle(type.name()) << " starts after " << boost::core::demangle(ancestorType.name());
-        _ancestors.emplace(ancestorType);
-        toProcess.emplace_back(ancestorType);
+      } else {
+        for (std::type_index ancestorType : feature.startsAfter()) {
+          if (std::find(path.begin(), path.end(), ancestorType) != path.end()) {
+            // dependencies are cyclic
+            pathTypes.emplace_back(ancestorType);  // make sure we show the duplicate
+            std::function<std::string(std::type_index)> cb = [](std::type_index t) -> std::string {
+              return boost::core::demangle(t.name());
+            };
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                TRI_ERROR_INTERNAL,
+                "dependencies for feature '" +
+                    boost::core::demangle(typeid(*this).name()) +
+                    "' are cyclic: " +
+                    basics::StringUtils::join(pathTypes, " <= ", cb));
+          }
+          // LOG_DEVEL << "   - found that " << boost::core::demangle(type.name()) << " starts after " << boost::core::demangle(ancestorType.name());
+          for (ApplicationFeature& f : path) {
+            f._ancestors.emplace(ancestorType);
+          }
+          toProcess.emplace_back(ancestorType);
+        }
       }
+
+      feature._ancestorsDetermined = true;
+      path.pop_back();
     }
 
-    path.pop_back();
+    pathTypes.pop_back();
   }
 
   _ancestorsDetermined = true;
 
-  /*LOG_DEVEL << " - DETERMINED TO BE:";
+  LOG_DEVEL << " - DETERMINED TO BE:";
   for (auto ancestorType : _ancestors) {
     LOG_DEVEL << "   - " << boost::core::demangle(ancestorType.name());
-  }*/
+  }
 }
 
 }  // namespace application_features
