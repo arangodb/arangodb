@@ -3,6 +3,11 @@ v3.5.1 (XXXX-XX-XX)
 
 * Made the mechanism in the Web UI of replacing and upgrading a foxx app more clear.
 
+* Add --server.statistics-history flag to allow disabling of only the historical
+  statistics.  Also added rocksdbengine.write.amplification.x100 statistics
+  for measurement of compaction option impact.  Enabled non-historical
+  statistics for agents.
+
 * Fixed AQL constrained-heap sort in conjunction with fullCount.
 
 * Added support for AQL expressions such as `a NOT LIKE b`, `a NOT =~ b` and
