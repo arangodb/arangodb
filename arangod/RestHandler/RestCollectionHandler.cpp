@@ -572,11 +572,23 @@ RestStatus RestCollectionHandler::handleCommandPut() {
                                      /*detailedCount*/ true);
           }
         } else if (sub == "loadIndexesIntoMemory") {
-          res = methods::Collections::warmup(_vocbase, *coll);
+          generateResponse = false;
+          status = waitForFuture(
+              methods::Collections::warmup(_vocbase, *coll).thenValue([this](OperationResult&& opres) {
+                if (opres.fail()) {
+                  generateTransactionError(opres);
+                  return;
+                }
 
-          VPackObjectBuilder obj(&builder, true);
+                VPackBuilder builder;
+                {
+                  VPackObjectBuilder obj(&builder, true);
+                  obj->add("result", VPackValue(opres.ok()));
+                }
 
-          obj->add("result", VPackValue(res.ok()));
+                generateOk(rest::ResponseCode::OK, builder);
+                _response->setHeaderNC(StaticStrings::Location, _request->requestPath());
+              }));
         } else {
           res = handleExtraCommandPut(*coll, sub, builder);
           if (res.is(TRI_ERROR_NOT_IMPLEMENTED)) {

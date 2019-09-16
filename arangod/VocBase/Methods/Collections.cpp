@@ -34,6 +34,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -744,10 +745,11 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   return res;
 }
 
-Result Collections::warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll) {
+futures::Future<OperationResult> Collections::warmup(TRI_vocbase_t& vocbase,
+                                                     LogicalCollection const& coll) {
   ExecContext const& exec = ExecContext::current();  // disallow expensive ops
   if (!exec.canUseCollection(coll.name(), auth::Level::RO)) {
-    return Result(TRI_ERROR_FORBIDDEN);
+    return futures::makeFuture(OperationResult(TRI_ERROR_FORBIDDEN));
   }
 
   if (ServerState::instance()->isCoordinator()) {
@@ -760,7 +762,7 @@ Result Collections::warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll
   Result res = trx.begin();
 
   if (res.fail()) {
-    return res;
+    return futures::makeFuture(OperationResult(res));
   }
 
   auto poster = [](std::function<void()> fn) -> bool {
@@ -779,10 +781,10 @@ Result Collections::warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll
   if (queue->status() == TRI_ERROR_NO_ERROR) {
     res = trx.commit();
   } else {
-    return queue->status();
+    return futures::makeFuture(OperationResult(queue->status()));
   }
 
-  return res;
+  return futures::makeFuture(OperationResult(res));
 }
 
 Result Collections::revisionId(Context& ctxt, TRI_voc_rid_t& rid) {
