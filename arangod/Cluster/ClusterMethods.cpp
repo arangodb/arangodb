@@ -310,6 +310,33 @@ OperationResult checkResponsesFromAllShards(
   }
   return OperationResult(result);
 }
+
+template <typename T>
+std::pair<OperationResult, T> handleResponsesFromAllShards(
+    std::vector<futures::Try<arangodb::network::Response>>& responses,
+    T initial, std::function<void(Result&, T&, VPackSlice)> handler) {
+  // If none of the shards responds we return a SERVER_ERROR;
+  Result result;
+  T data = initial;
+  for (Try<arangodb::network::Response> const& tryRes : responses) {
+    network::Response const& res = tryRes.get();  // throws exceptions upwards
+    int commError = network::fuerteToArangoErrorCode(res);
+    if (commError != TRI_ERROR_NO_ERROR) {
+      result.reset(commError);
+      break;
+    } else {
+      std::vector<VPackSlice> const& slices = res.response->slices();
+      if (!slices.empty()) {
+        VPackSlice answer = slices[0];
+        handler(result, data, answer);
+        if (result.fail()) {
+          break;
+        }
+      }
+    }
+  }
+  return std::make_pair(OperationResult(result), data);
+}
 }  // namespace
 
 namespace arangodb {
@@ -821,74 +848,66 @@ bool smartJoinAttributeChanged(LogicalCollection const& collection, VPackSlice c
 /// @brief returns revision for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int revisionOnCoordinator(std::string const& dbname,
-                          std::string const& collname, TRI_voc_rid_t& rid) {
+futures::Future<std::pair<OperationResult, TRI_voc_rid_t>> revisionOnCoordinator(
+    std::string const& dbname, std::string const& collname) {
+  TRI_voc_rid_t rid = 0;
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
-    return TRI_ERROR_SHUTTING_DOWN;
+    return futures::makeFuture(std::make_pair(OperationResult(TRI_ERROR_SHUTTING_DOWN), rid));
   }
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+    return futures::makeFuture(
+        std::make_pair(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND), rid));
   }
 
-  rid = 0;
 
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
   std::shared_ptr<ShardMap> shards = collinfo->shardIds();
-  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  std::vector<Future<network::Response>> futures;
+  futures.reserve(shards->size());
 
-  std::unordered_map<std::string, std::string> headers;
   for (auto const& p : *shards) {
-    cc->asyncRequest(coordTransactionID, "shard:" + p.first,
-                     arangodb::rest::RequestType::GET,
-                     "/_db/" + StringUtils::urlEncode(dbname) +
-                         "/_api/collection/" + StringUtils::urlEncode(p.first) +
-                         "/revision",
-                     std::shared_ptr<std::string const>(), headers, nullptr, 300.0);
+    // handler expects valid velocypack body (empty object minimum)
+    network::Headers headers;
+    auto future =
+        network::sendRequest("shard:" + p.first, fuerte::RestVerb::Get,
+                             "/_db/" + StringUtils::urlEncode(dbname) +
+                                 "/_api/collection/" +
+                                 StringUtils::urlEncode(p.first) + "/revision",
+                             VPackBuffer<uint8_t>(), network::Timeout(300.0), headers);
+    futures.emplace_back(std::move(future));
   }
 
-  // Now listen to the results:
-  int count;
-  int nrok = 0;
-  for (count = (int)shards->size(); count > 0; count--) {
-    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
-    if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        VPackSlice answer = res.answer->payload();
+  auto cb = [rid](std::vector<Try<network::Response>>&& results) -> std::pair<OperationResult, TRI_voc_rid_t> {
+    return handleResponsesFromAllShards<TRI_voc_rid_t>(
+        results, rid, [](Result& result, TRI_voc_rid_t& rid, VPackSlice answer) -> void {
+          if (answer.isObject()) {
+            VPackSlice r = answer.get("revision");
+            if (r.isString()) {
+              VPackValueLength len;
+              char const* p = r.getString(len);
+              TRI_voc_rid_t cmp = TRI_StringToRid(p, len, false);
 
-        if (answer.isObject()) {
-          VPackSlice r = answer.get("revision");
-
-          if (r.isString()) {
-            VPackValueLength len;
-            char const* p = r.getString(len);
-            TRI_voc_rid_t cmp = TRI_StringToRid(p, len, false);
-
-            if (cmp != UINT64_MAX && cmp > rid) {
-              // get the maximum value
-              rid = cmp;
+              if (cmp != UINT64_MAX && cmp > rid) {
+                // get the maximum value
+                rid = cmp;
+              }
             }
+          } else {
+            // didn't get the expected response
+            result.reset(TRI_ERROR_INTERNAL);
           }
-          nrok++;
-        }
-      }
-    }
-  }
-
-  if (nrok != (int)shards->size()) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  return TRI_ERROR_NO_ERROR;  // the cluster operation was OK, however,
-                              // the DBserver could have reported an error.
+        });
+  };
+  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
 
 futures::Future<OperationResult> warmupOnCoordinator(std::string const& dbname,

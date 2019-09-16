@@ -53,8 +53,7 @@ RestCollectionHandler::RestCollectionHandler(GeneralRequest* request, GeneralRes
 RestStatus RestCollectionHandler::execute() {
   switch (_request->requestType()) {
     case rest::RequestType::GET:
-      handleCommandGet();
-      break;
+      return handleCommandGet();
     case rest::RequestType::POST:
       handleCommandPost();
       break;
@@ -77,7 +76,8 @@ void RestCollectionHandler::shutdownExecute(bool isFinalized) noexcept {
   }
 }
 
-void RestCollectionHandler::handleCommandGet() {
+RestStatus RestCollectionHandler::handleCommandGet() {
+  RestStatus status = RestStatus::DONE;
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   VPackBuilder builder;
 
@@ -104,7 +104,7 @@ void RestCollectionHandler::handleCommandGet() {
     builder.close();
     generateOk(rest::ResponseCode::OK, builder.slice());
 
-    return;
+    return status;
   }
 
   std::string const& name = suffixes[0];
@@ -118,13 +118,13 @@ void RestCollectionHandler::handleCommandGet() {
     } catch (basics::Exception const& ex) {  // do not log not found exceptions
       generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
     }
-    return;
+    return status;
   }
 
   if (suffixes.size() > 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expect GET /_api/collection/<collection-name>/<method>");
-    return;
+    return status;
   }
 
   std::string const& sub = suffixes[1];
@@ -186,22 +186,30 @@ void RestCollectionHandler::handleCommandGet() {
                                    /*showCount*/ false,
                                    /*detailedCount*/ true);
         } else if (sub == "revision") {
-          methods::Collections::Context ctxt(_vocbase, *coll);
           // /_api/collection/<identifier>/revision
-          TRI_voc_rid_t revisionId;
-          auto res = methods::Collections::revisionId(ctxt, revisionId);
+          skipGenerate = true;
+          methods::Collections::Context ctxt(_vocbase, *coll);
+          status = waitForFuture(methods::Collections::revisionId(ctxt).thenValue(
+              [this, coll](std::pair<OperationResult, TRI_voc_rid_t>&& res) {
+                if (res.first.fail()) {
+                  generateTransactionError(res.first);
+                  return;
+                }
 
-          if (res.fail()) {
-            THROW_ARANGO_EXCEPTION(res);
-          }
+                VPackBuilder builder;
+                {
+                  VPackObjectBuilder obj(&builder, true);
+                  obj->add("revision", VPackValue(StringUtils::itoa(res.second)));
 
-          VPackObjectBuilder obj(&builder, true);
+                  methods::Collections::Context ctxt(_vocbase, *coll);
+                  collectionRepresentation(builder, ctxt, /*showProperties*/ true,
+                                           /*showFigures*/ false, /*showCount*/ false,
+                                           /*detailedCount*/ true);
+                }
 
-          obj->add("revision", VPackValue(StringUtils::itoa(revisionId)));
-          collectionRepresentation(builder, ctxt, /*showProperties*/ true,
-                                   /*showFigures*/ false, /*showCount*/ false,
-                                   /*detailedCount*/ true);
-
+                generateOk(rest::ResponseCode::OK, builder);
+                _response->setHeaderNC(StaticStrings::Location, _request->requestPath());
+              }));
         } else if (sub == "shards") {
           // /_api/collection/<identifier>/shards
           if (!ServerState::instance()->isRunningInCluster()) {
@@ -258,7 +266,7 @@ void RestCollectionHandler::handleCommandGet() {
       });
 
   if (skipGenerate) {
-    return;
+    return status;
   }
   if (found.ok()) {
     generateOk(rest::ResponseCode::OK, builder);
@@ -266,6 +274,8 @@ void RestCollectionHandler::handleCommandGet() {
   } else {
     generateError(found);
   }
+
+  return status;
 }
 
 // create a collection

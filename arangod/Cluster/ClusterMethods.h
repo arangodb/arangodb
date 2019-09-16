@@ -73,8 +73,8 @@ bool smartJoinAttributeChanged(LogicalCollection const& collection, VPackSlice c
 /// @brief returns revision for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int revisionOnCoordinator(std::string const& dbname,
-                          std::string const& collname, TRI_voc_rid_t&);
+futures::Future<std::pair<OperationResult, TRI_voc_rid_t>> revisionOnCoordinator(
+    std::string const& dbname, std::string const& collname);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Warmup index caches on Shards

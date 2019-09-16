@@ -60,7 +60,7 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
                                        velocypack::Builder& builder) = 0;
 
  private:
-  void handleCommandGet();
+  RestStatus handleCommandGet();
   void handleCommandPost();
   RestStatus handleCommandPut();
   void handleCommandDelete();

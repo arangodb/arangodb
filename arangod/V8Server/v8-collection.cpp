@@ -1832,16 +1832,14 @@ static void JS_RevisionVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& arg
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_voc_rid_t revisionId;
-
   methods::Collections::Context ctxt(collection->vocbase(), *collection);
-  auto res = methods::Collections::revisionId(ctxt, revisionId);
+  auto res = methods::Collections::revisionId(ctxt).get();
 
-  if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res);
+  if (res.first.fail()) {
+    TRI_V8_THROW_EXCEPTION(res.first.result);
   }
 
-  std::string ridString = TRI_RidToString(revisionId);
+  std::string ridString = TRI_RidToString(res.second);
   TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, ridString));
   TRI_V8_TRY_CATCH_END
 }
