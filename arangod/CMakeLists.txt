@@ -83,6 +83,8 @@ target_compile_definitions(arango_iresearch
   PUBLIC "$<$<CONFIG:Debug>:IRESEARCH_DEBUG=1>"
 )
 
+set_property(TARGET arango_iresearch PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
+
 target_include_directories(arango_iresearch
   PUBLIC ${IRESEARCH_INCLUDE}
 )
@@ -760,6 +762,8 @@ add_library(llhttp STATIC
   ${LLHTTP_SOURCES}
 )
 
+set_property(TARGET llhttp PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
+
 target_include_directories(llhttp PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/include")
 
 # Note that arango_geo publicly exports the /J compile option for MSVC, because
@@ -875,6 +879,8 @@ if (USE_ENTERPRISE)
   target_link_libraries(arango_rclone arango)
 
   target_link_libraries(arango_rocksdb arango_rclone)
+
+  set_property(TARGET arango_rclone PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
 endif()
 
 if (USE_ENTERPRISE)
@@ -903,9 +909,6 @@ target_link_libraries(${BIN_ARANGOD}
 
 target_compile_features(${BIN_ARANGOD} PRIVATE cxx_constexpr)
 
-set_property(TARGET arangoserver PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
-set_property(TARGET ${BIN_ARANGOD} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
-
 install(
   TARGETS ${BIN_ARANGOD}
   RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR}
@@ -924,9 +927,12 @@ if (USE_JEMALLOC)
 endif ()
 
 foreach(TARGET
+  arango_agency
   arango_aql
   arango_cache
   arango_cluster_engine
+  arango_cluster_methods
+  arango_common_rest_handler
   arango_graph
   arango_indexes
   arango_mmfiles
@@ -934,6 +940,7 @@ foreach(TARGET
   arango_replication
   arango_rocksdb
   arango_storage_engine
+  arango_storage_engine_common
   arango_utils
   arango_v8server
   arango_vocbase
@@ -941,6 +948,8 @@ foreach(TARGET
   arangoserver
 )
   target_include_directories(${TARGET} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+
+  set_property(TARGET ${TARGET} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
 
   if(MSVC)
     target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
