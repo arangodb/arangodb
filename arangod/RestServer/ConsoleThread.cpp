@@ -204,7 +204,6 @@ start_color_print('arangodb', true);
 
       {
         v8::TryCatch tryCatch(isolate);
-        ;
         v8::HandleScope scope(isolate);
 
         console.setExecutingCommand(true);

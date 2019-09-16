@@ -839,7 +839,6 @@ AqlValue Expression::invokeV8Function(ExpressionContext* expressionContext,
 
   // actually call the V8 function
   v8::TryCatch tryCatch(isolate);
-  ;
   v8::Handle<v8::Value> result =
       v8::Handle<v8::Function>::Cast(function)->Call(current, static_cast<int>(callArgs), args);
 

@@ -211,8 +211,8 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
     arangodb::velocypack::Slice const& properties,  // collection properties
     bool createWaitsForSyncReplication,             // replication wait flag
     bool enforceReplicationFactor,                  // replication factor flag
-    FuncCallback func  // invoke on collection creation
-) {
+    bool isNewDatabase,
+    FuncCallback func) {  // invoke on collection creation
   if (name.empty()) {
     events::CreateCollection(vocbase.name(), name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return TRI_ERROR_ARANGO_ILLEGAL_NAME;
@@ -222,7 +222,8 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
     return TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
   }
   std::vector<CollectionCreationInfo> infos{{name, collectionType, properties}};
-  return create(vocbase, infos, createWaitsForSyncReplication, enforceReplicationFactor,
+  return create(vocbase, infos, createWaitsForSyncReplication,
+                enforceReplicationFactor, isNewDatabase, nullptr,
                 [&func](std::vector<std::shared_ptr<LogicalCollection>> const& cols) {
                   TRI_ASSERT(cols.size() == 1);
                   func(cols[0]);
@@ -231,7 +232,9 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
 
 Result Collections::create(TRI_vocbase_t& vocbase,
                            std::vector<CollectionCreationInfo> const& infos,
-                           bool createWaitsForSyncReplication, bool enforceReplicationFactor,
+                           bool createWaitsForSyncReplication,
+                           bool enforceReplicationFactor, bool isNewDatabase,
+                           std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
                            MultiFuncCallback const& func) {
   ExecContext const& exec = ExecContext::current();
   if (!exec.canUseDatabase(vocbase.name(), auth::Level::RW)) {
@@ -303,7 +306,8 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       collections =
           ClusterMethods::createCollectionOnCoordinator(vocbase, infoSlice, false,
                                                         createWaitsForSyncReplication,
-                                                        enforceReplicationFactor);
+                                                        enforceReplicationFactor,
+                                                        isNewDatabase, colToDistributeShardsLike);
 
       if (collections.empty()) {
         for (auto const& info : infos) {
@@ -389,36 +393,58 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-/*static*/ Result Collections::createSystem(TRI_vocbase_t& vocbase, std::string const& name) {
-  FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
+void Collections::createSystemCollectionProperties(std::string collectionName,
+                                                   VPackBuilder& bb, bool isSystem) {
+  uint32_t defaultReplFactor = 1;
+  uint32_t defaultMinReplFactor = 1;
 
-  auto res = methods::Collections::lookup(vocbase, name, noop);
+  auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>(
+      "Cluster");
 
-  if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-    uint32_t defaultReplFactor = 1;
-    uint32_t defaultMinReplFactor = 1;
+  if (cl != nullptr) {
+    defaultReplFactor = cl->systemReplicationFactor();
+  }
 
-    auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>(
-        "Cluster");
-
-    if (cl != nullptr) {
-      defaultReplFactor = cl->systemReplicationFactor();
-    }
-
-    VPackBuilder bb;
-
-    {
-      VPackObjectBuilder scope(&bb);
-      bb.add("isSystem", VPackSlice::trueSlice());
-      bb.add("waitForSync", VPackSlice::falseSlice());
-      bb.add("journalSize", VPackValue(1024 * 1024));
-      bb.add("replicationFactor", VPackValue(defaultReplFactor));
-      bb.add("minReplicationFactor", VPackValue(defaultMinReplFactor));
-      if (name != "_graphs") {
-        // that forces all collections to be on the same physical DBserver
-        bb.add("distributeShardsLike", VPackValue("_graphs"));
+  {
+    VPackObjectBuilder scope(&bb);
+    bb.add("isSystem", VPackSlice::trueSlice());
+    bb.add("waitForSync", VPackSlice::falseSlice());
+    bb.add("journalSize", VPackValue(1024 * 1024));
+    bb.add("replicationFactor", VPackValue(defaultReplFactor));
+    bb.add("minReplicationFactor", VPackValue(defaultMinReplFactor));
+    // that forces all collections to be on the same physical DBserver
+    if (isSystem) {
+      if (collectionName != StaticStrings::UsersCollection) {
+        bb.add("distributeShardsLike", VPackValue(StaticStrings::UsersCollection));
+      }
+    } else {
+      if (collectionName != StaticStrings::GraphsCollection) {
+        bb.add("distributeShardsLike", VPackValue(StaticStrings::GraphsCollection));
       }
     }
+  }
+}
+
+/*static*/ std::pair<Result, std::shared_ptr<LogicalCollection>> Collections::createSystem(
+    TRI_vocbase_t& vocbase, std::string const& name, bool isNewDatabase) {
+
+  std::shared_ptr<LogicalCollection> createdCollection;
+
+  FuncCallback const returnColPtr =
+      [&createdCollection](std::shared_ptr<LogicalCollection> const& col) -> void {
+    TRI_ASSERT(col!=nullptr);
+    createdCollection = col;
+  };
+
+  Result res = methods::Collections::lookup(vocbase, name, returnColPtr);
+
+  if (res.ok()) {
+    // Collection lookup worked and we have a pointer to the collection
+    TRI_ASSERT(createdCollection!=nullptr);
+    return {res, createdCollection};
+  } else if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    VPackBuilder bb;
+    createSystemCollectionProperties(name, bb, vocbase.isSystem());
 
     res = Collections::create(vocbase,  // vocbase to create in
                               name,     // collection name top create
@@ -426,10 +452,18 @@ Result Collections::create(TRI_vocbase_t& vocbase,
                               bb.slice(),  // collection definition to create
                               true,        // waitsForSyncReplication
                               true,        // enforceReplicationFactor
-                              noop);       // callback
+                              isNewDatabase,
+                              returnColPtr);  // callback
+
+    if (res.ok()) {
+      TRI_ASSERT(createdCollection!=nullptr);
+      return {res, createdCollection};
+    }
   }
 
-  return res;
+  // Something went wrong, we return res and nullptr
+  TRI_ASSERT(!res.ok());
+  return {res, nullptr};
 }
 
 Result Collections::load(TRI_vocbase_t& vocbase, LogicalCollection* coll) {
