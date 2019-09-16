@@ -26,6 +26,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "Basics/Common.h"
+#include "Basics/FileUtils.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Rest/HttpResponse.h"
 #include "VocBase/LogicalCollection.h"
@@ -34,6 +35,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include <map>
 
 namespace arangodb {
 namespace velocypack {
@@ -252,6 +255,79 @@ Result getTtlPropertiesFromAllDBServers(arangodb::velocypack::Builder& out);
 Result setTtlPropertiesOnAllDBServers(arangodb::velocypack::Slice const& properties,
                                       arangodb::velocypack::Builder& out);
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief create hotbackup on a coordinator
+//////////////////////////////////////////////////////////////////////////////
+
+enum HotBackupMode { CONSISTENT, DIRTY };
+
+/**
+ * @brief Create hot backup on coordinators
+ * @param mode    Backup mode: consistent, dirty
+ * @param timeout Wait for this attempt and bail out if not met
+ */
+arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& report);
+
+/**
+ * @brief Restore specific hot backup on coordinators
+ * @param mode    Backup mode: consistent, dirty
+ * @param timeout Wait for this attempt and bail out if not met
+ */
+arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& report);
+
+/**
+ * @brief List all
+ * @param mode    Backup mode: consistent, dirty
+ * @param timeout Wait for this attempt and bail out if not met
+ */
+arangodb::Result listHotBackupsOnCoordinator(VPackSlice const payload, VPackBuilder& report);
+
+/**
+ * @brief Delete specific hot backup
+ * @param backupId  BackupId to delete
+ */
+arangodb::Result deleteHotBackupsOnCoordinator(VPackSlice const payload, VPackBuilder& report);
+
+#ifdef USE_ENTERPRISE
+/**
+ * @brief Trigger upload of specific hot backup
+ * @param backupId  BackupId to delete
+ */
+arangodb::Result uploadBackupsOnCoordinator(VPackSlice const payload, VPackBuilder& report);
+
+/**
+ * @brief Trigger download of specific hot backup
+ * @param backupId  BackupId to delete
+ */
+arangodb::Result downloadBackupsOnCoordinator(VPackSlice const payload, VPackBuilder& report);
+#endif
+
+/**
+ * @brief match backup servers
+ * @param  planDump   Dump of plan from backup
+ * @param  dbServers  This cluster's db servers
+ * @param  match      Matched db servers
+ * @return            Operation's success
+ */
+arangodb::Result matchBackupServers(VPackSlice const planDump,
+                                    std::vector<ServerID> const& dbServers,
+                                    std::map<std::string, std::string>& match);
+
+arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
+                                         std::vector<ServerID> const& dbServers,
+                                         std::map<ServerID, ServerID>& match);
+
+/**
+ * @brief apply database server matches to plan
+ * @param  plan     Plan from hot backup
+ * @param  matches  Match backup's server ids to new server ids
+ * @param  newPlan  Resulting new plan
+ * @return          Operation's result
+ */
+arangodb::Result applyDBServerMatchesToPlan(VPackSlice const plan,
+                                            std::map<ServerID, ServerID> const& matches,
+                                            VPackBuilder& newPlan);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the active journals for the collection on all DBservers
 ////////////////////////////////////////////////////////////////////////////////
@@ -270,7 +346,8 @@ class ClusterMethods {
   static std::vector<std::shared_ptr<LogicalCollection>> createCollectionOnCoordinator(
       TRI_vocbase_t& vocbase, arangodb::velocypack::Slice parameters,
       bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-      bool enforceReplicationFactor);
+      bool enforceReplicationFactor, bool isNewDatabase,
+      std::shared_ptr<LogicalCollection> const& colPtr);
 
  private:
   ////////////////////////////////////////////////////////////////////////////////
@@ -279,7 +356,8 @@ class ClusterMethods {
 
   static std::vector<std::shared_ptr<LogicalCollection>> persistCollectionsInAgency(
       std::vector<std::shared_ptr<LogicalCollection>>& col, bool ignoreDistributeShardsLikeErrors,
-      bool waitForSyncReplication, bool enforceReplicationFactor);
+      bool waitForSyncReplication, bool enforceReplicationFactor,
+      bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colPtr);
 };
 
 }  // namespace arangodb

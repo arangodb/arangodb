@@ -23,6 +23,7 @@
 #ifndef ARANGOD_CONSENSUS_TIMESTRING_H
 #define ARANGOD_CONSENSUS_TIMESTRING_H 1
 
+#include "Basics/Common.h"
 #include <chrono>
 
 inline std::string timepointToString(std::chrono::system_clock::time_point const& t) {

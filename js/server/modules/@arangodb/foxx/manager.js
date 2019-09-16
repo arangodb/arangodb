@@ -167,7 +167,7 @@ function selfHeal () {
   const serviceCollection = utils.getStorage();
   const bundleCollection = utils.getBundleStorage();
   const serviceDefinitions = db._query(aql`
-    FOR doc IN ${serviceCollection}
+    WITH ${bundleCollection} FOR doc IN ${serviceCollection}
     FILTER LEFT(doc.mount, 2) != "/_"
     LET bundleExists = DOCUMENT(${bundleCollection}, doc.checksum) != null
     RETURN [doc.mount, doc.checksum, doc._rev, bundleExists]

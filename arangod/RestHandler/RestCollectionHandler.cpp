@@ -333,6 +333,7 @@ void RestCollectionHandler::handleCommandPost() {
       parameters,                // collection properties
       waitForSyncReplication,    // replication wait flag
       enforceReplicationFactor,  // replication factor flag
+      false,       // new Database?, here always false
       [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
         TRI_ASSERT(coll);
         collectionRepresentation(builder, coll->name(),
@@ -610,7 +611,22 @@ void RestCollectionHandler::collectionRepresentation(
     bool showProperties, bool showFigures, bool showCount, bool detailedCount) {
   if (showProperties || showCount) {
     // Here we need a transaction
-    auto trx = createTransaction(coll.name(), AccessMode::Type::READ);
+    std::unique_ptr<transaction::Methods> trx;
+    try {
+      trx = createTransaction(coll.name(), AccessMode::Type::READ);
+    } catch (basics::Exception const& ex) {
+      if (ex.code() == TRI_ERROR_TRANSACTION_NOT_FOUND) {
+      // this will happen if the tid of a managed transaction is passed in,
+      // but the transaction hasn't yet started on the DB server. in
+      // this case, we create an ad-hoc transaction on the underlying
+      // collection
+        trx = std::make_unique<SingleCollectionTransaction>(transaction::StandaloneContext::Create(_vocbase), coll.name(), AccessMode::Type::READ);
+      } else {
+        throw;
+      }
+    }
+
+    TRI_ASSERT(trx != nullptr);
     Result res = trx->begin();
 
     if (res.fail()) {

@@ -1336,8 +1336,6 @@ function transactionCollectionsSuite () {
         }
 
         assertEqual(10, tc1.count());
-        assertEqual(10, tc2.count());
-
       } catch(err) {
         fail();
       } finally {

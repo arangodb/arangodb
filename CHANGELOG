@@ -1,9 +1,45 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
-* add --server.statistics-history flag to allow disabling of only the historical
+
+* Add --server.statistics-history flag to allow disabling of only the historical
   statistics.  Also added rocksdbengine.write.amplification.x100 statistics
   for measurement of compaction option impact.  Enabled non-historical
   statistics for agents.
+
+* Fixed AQL constrained-heap sort in conjunction with fullCount.
+
+* Added support for AQL expressions such as `a NOT LIKE b`, `a NOT =~ b` and
+  `a NOT !~ b`. Previous versions of ArangoDB did not support these expressions,
+  and using them in an AQL query resulted in a parse error.
+
+* Disallow creation of TTL indexes on sub-attributes.
+
+  Creation of such indexes was not caught before, but the resulting 
+  indexes were defunct. From now on the creation of TTL indexes on sub-
+  attributes is disallowed.
+
+* Added HotBackup feature.
+
+* Improved database creation within the cluster. In the case of
+  coordinator outages during the creation of the database there was a
+  chance that not all relevant system collections had been created.
+  Although this database was accessible now some features did not work
+  as expected (e.g. creation of graphs). We modified creation of a new
+  database as an all or nothing operation and only allow access to the
+  database after all system collections are properly perpared to avoid
+  the above inconsistencies. Also creation of databases are now secured
+  against coordinator outages, they will either be fully created or not
+  visible and eventually dropped. This does not require any change on the
+  client code.
+
+* Added UI support to create documents in a collection using smartGraphAttribute
+  and/or smartJoinAttribute.
+  
+* Add count of objects to latency reporting in arangoimport.
+
+* Harden database creation against spurious "duplicate name" errors that
+  were caused by other parallel operations lazily creating required
+  system collections in the same database.
 
 * Fixed internal issue #633: made ArangoSearch functions BOOST, ANALYZER, MIN_MATCH
   callable with constant arguments. This will allow running queries where all arguments
@@ -20,6 +56,10 @@ v3.5.1 (XXXX-XX-XX)
   the restore is running, but only at the very end of the process.
   This change also makes arangorestore restore the `_system` database last if it
   is started with the `--all-databases` option.
+
+* Fixed the removal (including a collection drop) of an orphanCollection from a
+  graph definition when using the arango shell. The boolean flag whether to drop
+  the collection or not was not transferred properly.
 
 * Check for duplicate server endpoints registered in the agency in sub-keys of
   `/Current/ServersRegistered`.

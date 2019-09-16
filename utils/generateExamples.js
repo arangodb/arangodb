@@ -173,7 +173,7 @@ function main(argv) {
     }
     startServer = false;
     serverEndpoint = options['server.endpoint'];
-    
+
   }
   _.defaults(options, optionsDefaults);
 
@@ -218,7 +218,7 @@ function main(argv) {
       instanceInfo = pu.startInstance(options.protocol, options, {}, testname);
       print(instanceInfo)
     }
-    
+
     let arangoshArgs = {
       'configuration': fs.join(fs.makeAbsolute(''), 'etc', 'relative', 'arangosh.conf'),
       'server.password': "",
