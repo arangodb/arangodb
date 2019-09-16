@@ -1,3 +1,5 @@
+#ifdef DO_NOT_USE_FOR_NOW
+
 class Permissions {
  public:
   static Permissions* find(std::set<Role> const& roles);
@@ -11,3 +13,5 @@ class Permissions {
 
   Level authLevel(std::string const& username, CollectionResource const&, bool configured);
 };
+
+#endif

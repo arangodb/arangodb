@@ -38,7 +38,10 @@ class AuthUser {
 }  // namespace auth
 }  // namespace arangodb
 
+#ifdef DO_NOT_USE_FOR_NOW
+
 /*
+
 class LoginMethod {
  private:
   Authenticator _authenticator;
@@ -68,3 +71,5 @@ class LoginManager {
   std::vector<LoginMethod> _methods;
 };
 */
+
+#endif

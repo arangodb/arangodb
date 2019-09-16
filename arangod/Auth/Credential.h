@@ -1,3 +1,5 @@
+#ifdef DO_NOT_USE_FOR_NOW
+
 class Credential {
  public:
   static void registerAuthenticator(std::string const&, Authenticator*);
@@ -18,3 +20,5 @@ class Credential {
   std::string const _externalUsername;
   std::string const _credential;
 };
+
+#endif

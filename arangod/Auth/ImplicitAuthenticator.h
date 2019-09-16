@@ -1,3 +1,5 @@
+#ifdef DO_NOT_USE_FOR_NOW
+
 class ImplicitAuthenticator : public Authorizator {
  public:
   AuthorizationResult authorize(LoginUser&) override;
@@ -11,3 +13,5 @@ AuthorizationResult ImplicitAuthenticator::authorize(LoginUser& user) {
   user.addRole(user.internalName());
   return AuthorizationResult{AUTHORIZED_COMPLETED};
 }
+
+#endif

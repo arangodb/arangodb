@@ -1,3 +1,5 @@
+#ifdef DO_NOT_USE_FOR_NOW
+
 class AuthenticationResult {
  public:
   enum class Type {
@@ -8,3 +10,5 @@ class AuthenticationResult {
     RESOURCE_TEMPORARLY_UNAVAILABLE
   };
 };
+
+#endif
