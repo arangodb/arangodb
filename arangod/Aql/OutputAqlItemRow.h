@@ -240,9 +240,17 @@ class OutputAqlItemRow {
 #endif
     _baseIndex = index;
   }
+<<<<<<< HEAD
   // Use this function with caution! We need it for the SortedCollectExecutor
   // and CountCollectExecutor.
   void setAllowSourceRowUninitialized() { _allowSourceRowUninitialized = true; }
+=======
+  // Use this function with caution! We need it for the SortedCollectExecutor,
+  // CountCollectExecutor, and the ConstrainedSortExecutor.
+  void setAllowSourceRowUninitialized() {
+    _allowSourceRowUninitialized = true;
+  }
+>>>>>>> 7ce085cefe9579b20727be3c860045315b36e817
 
   // This function can be used to restore the row's invariant.
   // After setting this value numRowsWritten() rather returns
@@ -338,7 +346,7 @@ class OutputAqlItemRow {
   bool _setBaseIndexNotUsed;
 #endif
   // Need this special bool for allowing an empty AqlValue inside the
-  // SortedCollectExecutor and CountCollectExecutor.
+  // SortedCollectExecutor, CountCollectExecutor and ConstrainedSortExecutor.
   bool _allowSourceRowUninitialized;
 
  private:

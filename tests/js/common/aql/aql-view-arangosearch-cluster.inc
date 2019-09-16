@@ -46,7 +46,7 @@
     console.info("Test suite arguments: " + JSON.stringify(args));
 
     return {
-      setUp : function () {
+      setUpAll : function () {
         analyzers.save("text_en", "text", "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }", [ "frequency", "norm", "position" ]);
         db._drop("UnitTestsCollection");
         c = db._create("UnitTestsCollection", args);
@@ -132,7 +132,7 @@
         g.save({ _from: "UnitTestsGraphCollection/intermediate", _to: "UnitTestsGraphCollection/end" });
       },
 
-      tearDown : function () {
+      tearDownAll : function () {
         meta = { links : { "UnitTestsCollection": null } };
         v.properties(meta);
         v.drop();
