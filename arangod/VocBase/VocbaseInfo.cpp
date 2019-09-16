@@ -50,7 +50,7 @@ Result CreateDatabaseInfo::load(VPackSlice const& options,
   _vaild = true;
 #endif
 
-  return res;
+  return checkOptions();
 };
 
 Result CreateDatabaseInfo::load(uint64_t id, VPackSlice const& options, VPackSlice const& users) {
@@ -70,7 +70,7 @@ Result CreateDatabaseInfo::load(uint64_t id, VPackSlice const& options, VPackSli
   _vaild = true;
 #endif
 
-  return res;
+  return checkOptions();
 }
 
 Result CreateDatabaseInfo::load(std::string const& name,
@@ -92,7 +92,7 @@ Result CreateDatabaseInfo::load(std::string const& name,
   _vaild = true;
 #endif
 
-  return res;
+  return checkOptions();
 }
 
 Result CreateDatabaseInfo::load(std::string const& name, uint64_t id, VPackSlice const& options,
@@ -114,7 +114,7 @@ Result CreateDatabaseInfo::load(std::string const& name, uint64_t id, VPackSlice
   _vaild = true;
 #endif
 
-  return res;
+  return checkOptions();
 };
 
 
@@ -255,7 +255,7 @@ Result CreateDatabaseInfo::checkOptions() {
     _vaildId = false;
   }
 
-  if (!TRI_vocbase_t::IsAllowedName(true /*TODO _isSystemDB*/, arangodb::velocypack::StringRef(_name))) {
+  if (_name.empty() || !TRI_vocbase_t::IsAllowedName(true /*TODO _isSystemDB*/, arangodb::velocypack::StringRef(_name))) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
