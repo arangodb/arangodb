@@ -57,7 +57,7 @@ void OptimizerRulesFeature::unprepare() {
   _ruleLookup.clear();
   _rules.clear();
 }
-  
+
 OptimizerRule const& OptimizerRulesFeature::ruleByLevel(int level) {
   // do a binary search in the sorted rules database
   auto it = std::lower_bound(_rules.begin(), _rules.end(), level);
@@ -67,11 +67,11 @@ OptimizerRule const& OptimizerRulesFeature::ruleByLevel(int level) {
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find required OptimizerRule");
 }
-  
+
 int OptimizerRulesFeature::ruleIndex(int level) {
   auto it = std::lower_bound(_rules.begin(), _rules.end(), level);
   if (it != _rules.end() && (*it).level == level) {
-    return std::distance(_rules.begin(), it);
+    return static_cast<int>(std::distance(_rules.begin(), it));
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find required OptimizerRule");
@@ -119,40 +119,40 @@ void OptimizerRulesFeature::addRules() {
   // lower level values mean earlier rule execution
 
   // note that levels must be unique
-  
+
   registerRule("replace-function-with-index", replaceNearWithinFulltext,
                OptimizerRule::replaceNearWithinFulltext, OptimizerRule::makeFlags());
 
   // inline subqueries one level higher
   registerRule("inline-subqueries", inlineSubqueriesRule, OptimizerRule::inlineSubqueriesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
+
   // simplify conditions
   registerRule("simplify-conditions", simplifyConditionsRule, OptimizerRule::simplifyConditionsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
+
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)
   registerRule("move-calculations-up", moveCalculationsUpRule, OptimizerRule::moveCalculationsUpRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
+
   // move filters up the dependency chain (to make result sets as small
   // as possible as early as possible)
   registerRule("move-filters-up", moveFiltersUpRule, OptimizerRule::moveFiltersUpRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
+
   // remove redundant calculations
   registerRule("remove-redundant-calculations", removeRedundantCalculationsRule,
                OptimizerRule::removeRedundantCalculationsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
+
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
   registerRule("remove-unnecessary-filters", removeUnnecessaryFiltersRule,
                OptimizerRule::removeUnnecessaryFiltersRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
+
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations", removeUnnecessaryCalculationsRule,
                OptimizerRule::removeUnnecessaryCalculationsRule,
@@ -194,18 +194,18 @@ void OptimizerRulesFeature::addRules() {
   // as possible as early as possible)
   registerRule("move-filters-up-2", moveFiltersUpRule, OptimizerRule::moveFiltersUpRule2,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
+
   // remove redundant sort node
   registerRule("remove-redundant-sorts-2", removeRedundantSortsRule,
                OptimizerRule::removeRedundantSortsRule2,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
-  
+
+
   // remove unused INTO variable from COLLECT, or unused aggregates
   registerRule("remove-collect-variables", removeCollectVariablesRule,
                OptimizerRule::removeCollectVariablesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
+
   // propagate constant attributes in FILTERs
   registerRule("propagate-constant-attributes", propagateConstantAttributesRule,
                OptimizerRule::propagateConstantAttributesRule,
@@ -263,7 +263,7 @@ void OptimizerRulesFeature::addRules() {
   registerRule("remove-filter-covered-by-traversal", removeFiltersCoveredByTraversal,
                OptimizerRule::removeFiltersCoveredByTraversal,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
+
   // move filters and sort conditions into views
   registerRule("handle-arangosearch-views", arangodb::iresearch::handleViewsRule,
                OptimizerRule::handleArangoSearchViewsRule, OptimizerRule::makeFlags());
@@ -288,7 +288,7 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::substituteSingleDocumentOperations,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
-  
+
   // make sort node aware of subsequent limit statements for internal optimizations
   registerRule("sort-limit", sortLimitRule, OptimizerRule::applySortLimitRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
@@ -297,7 +297,7 @@ void OptimizerRulesFeature::addRules() {
   registerRule("move-calculations-down", moveCalculationsDownRule,
                OptimizerRule::moveCalculationsDownRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
+
   // fuse multiple adjacent filters into one
   registerRule("fuse-filters", fuseFiltersRule, OptimizerRule::fuseFiltersRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
@@ -313,7 +313,7 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::clusterOneShardRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled, OptimizerRule::Flags::DisabledByDefault, OptimizerRule::Flags::ClusterOnly));
 #endif
-  
+
   registerRule("distribute-in-cluster", distributeInClusterRule,
                OptimizerRule::distributeInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
@@ -355,7 +355,7 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 #endif
-  
+
   registerRule("undistribute-remove-after-enum-coll", undistributeRemoveAfterEnumCollRule,
                OptimizerRule::undistributeRemoveAfterEnumCollRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
@@ -378,7 +378,7 @@ void OptimizerRulesFeature::addRules() {
   std::sort(_rules.begin(), _rules.end(), [](OptimizerRule const& lhs, OptimizerRule const& rhs) {
     return (lhs.level < rhs.level);
   });
-  
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // make the rules database read-only from now on
   _fixed = true;
