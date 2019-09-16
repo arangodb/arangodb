@@ -7166,10 +7166,6 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
     plan->insertAfter(sq, end);
 
     end->replaceDependency(sq, sq->getSubquery());
-
-    // TODO: correct?
-    delete singleton;
-    delete sq;
   }
 
   opt->addPlan(std::move(plan), rule, modified);

@@ -1090,6 +1090,14 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       break;
     }
 
+    case ExecutionNode::SUBQUERY_START: {
+      break;
+    }
+
+    case ExecutionNode::SUBQUERY_END: {
+      break;
+    }
+
     default: {
       // should not reach this point
       TRI_ASSERT(false);
