@@ -77,6 +77,7 @@ const nodeTypesList = [
 ];
 
 const CalculationBlock = 'CalculationNode';
+const ConstrainedSortBlock = 'SortLimitNode';
 const CountCollectBlock = 'CountCollectNode';
 const DistinctCollectBlock = 'DistinctCollectNode';
 const EnumerateCollectionBlock = 'EnumerateCollectionNode';
@@ -108,7 +109,7 @@ const IResearchViewBlock = 'IResearchViewNode';
 const IResearchViewOrderedBlock = 'IResearchOrderedViewNode';
 
 const blockTypesList = [
-  CalculationBlock, CountCollectBlock, DistinctCollectBlock,
+  CalculationBlock, ConstrainedSortBlock, CountCollectBlock, DistinctCollectBlock,
   EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
   HashedCollectBlock, IndexBlock, LimitBlock, NoResultsBlock, RemoteBlock,
   ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
@@ -137,6 +138,14 @@ let translateType = function(nodes, node) {
         type = 'SortingGatherNode';
       } else {
         type = 'UnsortingGatherNode';
+      }
+    } else if (node.type === 'SortNode') {
+      if (node.strategy === 'standard') {
+        type = 'SortNode';
+      } else if (node.strategy === 'constrained-heap') {
+        type = 'SortLimitNode';
+      } else {
+        throw new Error('Unhandled sort strategy');
       }
     }
     types[node.id] = type;
@@ -233,7 +242,7 @@ function getStatsNodesWithId (profile) {
 /// @brief assert structure of profile.stats
 ////////////////////////////////////////////////////////////////////////////////
 
-function assertIsProfileStatsObject (stats, {level}) {
+function assertIsProfileStatsObject (stats, {level, fullCount}) {
   // internal argument check
   expect(level)
     .to.be.a('number')
@@ -256,6 +265,10 @@ function assertIsProfileStatsObject (stats, {level}) {
     statsKeys.push('nodes');
   }
 
+  if (fullCount) {
+    statsKeys.push('fullCount');
+  }
+
   expect(stats).to.have.all.keys(statsKeys);
 
   // check types
@@ -267,6 +280,9 @@ function assertIsProfileStatsObject (stats, {level}) {
   expect(stats.httpRequests).to.be.a('number');
   expect(stats.peakMemoryUsage).to.be.a('number');
   expect(stats.executionTime).to.be.a('number');
+  if (fullCount) {
+    expect(stats.fullCount).to.be.a('number');
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -372,7 +388,7 @@ function assertIsProfilePlanObject (plan) {
 /// @brief assert that the passed variable looks like a level 0 profile
 ////////////////////////////////////////////////////////////////////////////////
 
-function assertIsLevel0Profile (profile) {
+function assertIsLevel0Profile (profile, {fullCount} = {}) {
   expect(profile)
     .to.be.an('object')
     .that.has.all.keys([
@@ -380,7 +396,7 @@ function assertIsLevel0Profile (profile) {
     'warnings',
   ]);
 
-  assertIsProfileStatsObject(profile.stats, {level: 0});
+  assertIsProfileStatsObject(profile.stats, {level: 0, fullCount});
   assertIsProfileWarningsArray(profile.warnings);
 }
 
@@ -388,7 +404,7 @@ function assertIsLevel0Profile (profile) {
 /// @brief assert that the passed variable looks like a level 1 profile
 ////////////////////////////////////////////////////////////////////////////////
 
-function assertIsLevel1Profile (profile) {
+function assertIsLevel1Profile (profile, {fullCount} = {}) {
   expect(profile)
     .to.be.an('object')
     .that.has.all.keys([
@@ -397,7 +413,7 @@ function assertIsLevel1Profile (profile) {
     'profile',
   ]);
 
-  assertIsProfileStatsObject(profile.stats, {level: 1});
+  assertIsProfileStatsObject(profile.stats, {level: 1, fullCount});
   assertIsProfileWarningsArray(profile.warnings);
   assertIsProfileProfileObject(profile.profile);
 }
@@ -406,7 +422,7 @@ function assertIsLevel1Profile (profile) {
 /// @brief assert that the passed variable looks like a level 2 profile
 ////////////////////////////////////////////////////////////////////////////////
 
-function assertIsLevel2Profile (profile) {
+function assertIsLevel2Profile (profile, {fullCount} = {}) {
   expect(profile)
     .to.be.an('object')
     .that.has.all.keys([
@@ -416,7 +432,7 @@ function assertIsLevel2Profile (profile) {
     'plan',
   ]);
 
-  assertIsProfileStatsObject(profile.stats, {level: 2});
+  assertIsProfileStatsObject(profile.stats, {level: 2, fullCount});
   assertIsProfileWarningsArray(profile.warnings);
   assertIsProfileProfileObject(profile.profile);
   assertIsProfilePlanObject(profile.plan);
@@ -500,17 +516,19 @@ function runDefaultChecks (
     prepare = () => {},
     bind = rows => ({rows}),
     options = {},
+    testRowCounts = defaultTestRowCounts,
     additionalTestRowCounts = [],
   }
 ) {
-  const testRowCounts = _.uniq(defaultTestRowCounts.concat(additionalTestRowCounts).sort());
+  const {fullCount} = options;
+  testRowCounts = _.uniq(testRowCounts.concat(additionalTestRowCounts).sort());
   for (const rows of testRowCounts) {
     prepare(rows);
     const profile = db._query(query, bind(rows),
       _.merge(options, {profile: 2, defaultBatchSize})
     ).getExtra();
 
-    assertIsLevel2Profile(profile);
+    assertIsLevel2Profile(profile, {fullCount});
     assertStatsNodesMatchPlanNodes(profile);
 
     const batches = Math.ceil(rows / defaultBatchSize);
@@ -716,6 +734,7 @@ exports.UpdateNode = UpdateNode;
 exports.UpsertNode = UpsertNode;
 exports.nodeTypesList = nodeTypesList;
 exports.CalculationBlock = CalculationBlock;
+exports.ConstrainedSortBlock = ConstrainedSortBlock;
 exports.CountCollectBlock = CountCollectBlock;
 exports.DistinctCollectBlock = DistinctCollectBlock;
 exports.EnumerateCollectionBlock = EnumerateCollectionBlock;

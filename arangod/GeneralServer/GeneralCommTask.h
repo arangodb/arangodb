@@ -24,38 +24,35 @@
 #ifndef ARANGOD_GENERAL_SERVER_GENERAL_COMM_TASK_H
 #define ARANGOD_GENERAL_SERVER_GENERAL_COMM_TASK_H 1
 
-#include "GeneralServer/CommTask.h"
 #include "GeneralServer/AsioSocket.h"
+#include "GeneralServer/CommTask.h"
 
 namespace arangodb {
 namespace rest {
 
-template<SocketType T>
+template <SocketType T>
 class GeneralCommTask : public CommTask {
   GeneralCommTask(GeneralCommTask const&) = delete;
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
 
  public:
-  GeneralCommTask(GeneralServer& server,
-                  char const* name,
-                  ConnectionInfo,
+  GeneralCommTask(GeneralServer& server, char const* name, ConnectionInfo,
                   std::unique_ptr<AsioSocket<T>>);
 
   virtual ~GeneralCommTask();
 
   void start() override;
   void close() override final;
-  
+
  protected:
-  
   /// read from socket
   void asyncReadSome();
   /// called to process data in _readBuffer, return false to stop
   virtual bool readCallback(asio_ns::error_code ec) = 0;
-  
+
   /// default max chunksize is 30kb in arangodb (each read fits)
   static constexpr size_t ReadBlockSize = 1024 * 32;
-    
+
  protected:
   std::unique_ptr<AsioSocket<T>> _protocol;
 };
