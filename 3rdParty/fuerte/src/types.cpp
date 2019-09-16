@@ -55,7 +55,27 @@ std::string to_string(RestVerb type) {
 
   return "undefined";
 }
-  
+
+RestVerb from_string(std::string const& type) {
+  if (type == "DELETE") {
+    return RestVerb::Delete;
+  } else if (type == "GET") {
+    return RestVerb::Get;
+  } else if (type == "POST") {
+    return RestVerb::Post;
+  } else if (type == "PUT") {
+    return RestVerb::Put;
+  } else if (type == "HEAD") {
+    return RestVerb::Head;
+  } else if (type == "PATCH") {
+    return RestVerb::Patch;
+  } else if (type == "OPTIONS") {
+    return RestVerb::Options;
+  }
+
+  return RestVerb::Illegal;
+}
+
 MessageType intToMessageType(int integral) {
   switch (integral) {
     case 1:
@@ -214,6 +234,9 @@ std::string to_string(Error error) {
       return "Error while writing ";
     case Error::Canceled:
       return "Connection was locally canceled";
+      
+    case Error::VstUnauthorized:
+      return "Cannot authorize on VST connection";
 
     case Error::ProtocolError:
       return "Error: invalid server response";

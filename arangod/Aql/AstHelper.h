@@ -27,12 +27,11 @@
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
 #include "Basics/SmallVector.h"
-#include "Logger/Logger.h"
 
 #include <unordered_set>
 
 namespace {
-   auto doNothingVisitor = [](arangodb::aql::AstNode const*) {};
+auto doNothingVisitor = [](arangodb::aql::AstNode const*) {};
 }
 
 namespace arangodb {
@@ -40,15 +39,6 @@ namespace aql {
 namespace ast {
 
 namespace {
-
-template < typename T>
-T& operator<<(T& os, SmallVector<Variable const*> const& vec) {
-  os << "[ ";
-  for(auto const& var: vec) {
-    os << var->name << " ";
-  }
-  return os << "]";
-}
 
 bool accessesSearchVariableViaReference(AstNode const* current, Variable const* searchVariable) {
   if (current->type == NODE_TYPE_INDEXED_ACCESS) {
@@ -84,7 +74,6 @@ bool accessesSearchVariableViaReference(AstNode const* current, Variable const* 
 
 bool isTargetVariable(AstNode const* node, SmallVector<Variable const*>& searchVariables, bool& isSafeForOptimization) {
 	TRI_ASSERT(!searchVariables.empty());
-	TRI_ASSERT(node->type == NODE_TYPE_INDEXED_ACCESS || node->type == NODE_TYPE_EXPANSION);
 
   // given and expression like g3[0].`g2`[0].`g1`[0].`item1`.`_id`
   // this loop resolves subtrees of the form: .`g2`[0].`g1`[0]
@@ -93,7 +82,7 @@ bool isTargetVariable(AstNode const* node, SmallVector<Variable const*>& searchV
   // forward in the vector the we go backward in the expression
 
 	auto current = node;
-	for(auto varIt = searchVariables.begin(); varIt != std::prev(searchVariables.end()); ++varIt) {
+	for (auto varIt = searchVariables.begin(); varIt != std::prev(searchVariables.end()); ++varIt) {
 		AstNode* next = nullptr;
 		if (current->type == NODE_TYPE_INDEXED_ACCESS) {
       next = current->getMemberUnchecked(0);
@@ -134,7 +123,7 @@ bool isTargetVariable(AstNode const* node, SmallVector<Variable const*>& searchV
 			return false;
 		}
 
-    if(varIt == searchVariables.end()) {
+    if (varIt == searchVariables.end()) {
       return false;
     }
 
@@ -149,17 +138,18 @@ bool isTargetVariable(AstNode const* node, SmallVector<Variable const*>& searchV
     }
 	} // for nodes but last
 
-  if(!current) {
+  if (!current) {
     return false;
   }
 
   return accessesSearchVariableViaReference(current, searchVariables.back());
 }
+
 } // end - namespace unnamed
 
 /// @brief determines the to-be-kept attribute of an INTO expression
 inline std::unordered_set<std::string> getReferencedAttributesForKeep(
-      AstNode const* node, SmallVector<Variable const*> searchVariables, bool& isSafeForOptimization){
+      AstNode const* node, SmallVector<Variable const*> searchVariables, bool& isSafeForOptimization) {
 
   std::unordered_set<std::string> result;
   isSafeForOptimization = true;
@@ -201,8 +191,7 @@ inline std::unordered_set<std::string> getReferencedAttributesForKeep(
           return false;
         }
       }
-    }
-    else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
+    } else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
       auto sub = node->getMemberUnchecked(0);
       if (sub->type == NODE_TYPE_REFERENCE) {
         Variable const* v = static_cast<Variable const*>(sub->getData());

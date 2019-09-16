@@ -226,6 +226,7 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
     this->startConnection();
   } else if (state == Connection::State::Failed) {
     FUERTE_LOG_ERROR << "queued request on failed connection\n";
+    drainQueue(fuerte::Error::ConnectionClosed);
   }
   return mid;
 }
@@ -307,9 +308,14 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
   } else {
     header.append("Connection: Close\r\n");
   }
+  bool haveAuth = false;
   for (auto const& pair : req.header.meta) {
     if (boost::iequals(fu_content_length_key, pair.first)) {
       continue;  // skip content-length header
+    }
+
+    if (boost::iequals("authorization", pair.first)) {
+      haveAuth = true;
     }
 
     header.append(pair.first);
@@ -318,7 +324,7 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
     header.append("\r\n");
   }
 
-  if (!_authHeader.empty()) {
+  if (!haveAuth && !_authHeader.empty()) {
     header.append(_authHeader);
   }
 

@@ -28,7 +28,7 @@
 
 #include "Basics/Common.h"
 
-#ifdef TRI_MISSING_MEMRCHR
+#ifdef ARANGODB_MISSING_MEMRCHR
 void* memrchr(void const* block, int c, size_t size);
 #endif
 

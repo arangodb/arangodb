@@ -821,7 +821,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
       thisPtr->asyncReadSome();
     }
   };
-  asio_ns::async_write(this->_protocol->socket, std::move(buffers), std::move(cb));
+  asio_ns::async_write(this->_protocol->socket, buffers, std::move(cb));
 }
 
 template <SocketType T>

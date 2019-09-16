@@ -73,7 +73,9 @@ struct Databases {
   static arangodb::Result drop(TRI_vocbase_t* systemVocbase, std::string const& dbName);
 
  private:
-  static arangodb::Result grantCurrentUser(CreateDatabaseInfo const& info);
+  /// @brief will retry for at most <timeout> seconds
+  static arangodb::Result grantCurrentUser(CreateDatabaseInfo const& info, int64_t timeout);
+
   static arangodb::Result createCoordinator(CreateDatabaseInfo const& info);
   static arangodb::Result createOther(CreateDatabaseInfo const& info);
 };

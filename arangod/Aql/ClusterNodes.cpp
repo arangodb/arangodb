@@ -364,6 +364,7 @@ CostEstimate DistributeNode::estimateCost() const {
         return castTo<IndexNode const*>(node)->collection();
       case TRAVERSAL:
       case SHORTEST_PATH:
+      case K_SHORTEST_PATHS:
         return castTo<GraphNode const*>(node)->collection();
       case SCATTER:
         return nullptr;  // diamond boundary

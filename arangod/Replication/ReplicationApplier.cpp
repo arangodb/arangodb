@@ -737,7 +737,6 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
             << "replication applier is not stopping";
         TRI_ASSERT(false);
         start = std::chrono::steady_clock::now();
-        ;
       }
       writeLocker.lock();
     }

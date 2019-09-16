@@ -111,13 +111,14 @@ class IndexFactory {
                               std::vector<std::shared_ptr<arangodb::Index>>& indexes) const = 0;
 
   static Result validateFieldsDefinition(arangodb::velocypack::Slice definition, 
-                                         size_t minFields, size_t maxFields);
+                                         size_t minFields, size_t maxFields,
+                                         bool allowSubAttributes = true);
 
   /// @brief process the fields list, deduplicate it, and add it to the json
   static Result processIndexFields(arangodb::velocypack::Slice definition, 
                                    arangodb::velocypack::Builder& builder,
                                    size_t minFields, size_t maxFields, bool create,
-                                   bool allowExpansion);
+                                   bool allowExpansion, bool allowSubAttributes = true);
 
   /// @brief process the unique flag and add it to the json
   static void processIndexUniqueFlag(arangodb::velocypack::Slice definition,

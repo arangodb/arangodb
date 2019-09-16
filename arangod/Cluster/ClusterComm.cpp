@@ -44,18 +44,17 @@
 using namespace arangodb;
 using namespace arangodb::communicator;
 
-
 namespace {
 std::stringstream createRequestInfo(NewRequest const& request) {
-  bool trace = Logger::CLUSTERCOMM.level() == LogLevel::TRACE;
   std::stringstream ss;
   ss << "id: " << std::setw(8) << std::setiosflags(std::ios::left)
                << request._ticketId << std::resetiosflags(std::ios::adjustfield)
      << " --> " << request._destination
      << " -- " << arangodb::GeneralRequest::translateMethod(request._request->requestType())
-     << ": " << ( request._request->fullUrl().empty() ? "url unknown" : request._request->fullUrl())
-     ;
-  if(trace){
+     << ": " << ( request._request->fullUrl().empty() ? "url unknown" : request._request->fullUrl());
+  
+  bool trace = Logger::CLUSTERCOMM.level() == LogLevel::TRACE;
+  if (trace) {
     try {
       ss << " -- payload: '" << request._request->payload().toJson() << "'";
     } catch (...) {
@@ -66,16 +65,16 @@ std::stringstream createRequestInfo(NewRequest const& request) {
 }
 
 std::stringstream createResponseInfo(ClusterCommResult const* result) {
-  bool trace = Logger::CLUSTERCOMM.level() == LogLevel::TRACE;
   std::stringstream ss;
   ss << "id: " << std::setw(8) << std::setiosflags(std::ios::left)
                << result->operationID << std::resetiosflags(std::ios::adjustfield)
      << " <-- " << result->endpoint
-     << " -- " << result->serverID << ":" << (result->shardID.empty() ? "unknown ShardID" : result->shardID)
-     ;
-  if(trace){
+     << " -- " << result->serverID << ":" << (result->shardID.empty() ? "unknown ShardID" : result->shardID);
+
+  bool trace = Logger::CLUSTERCOMM.level() == LogLevel::TRACE;
+  if (trace) {
     try {
-      if(result->result){
+      if (result->result) {
         ss << " -- payload: '" << result->result->getBody() << "'";
       } else {
         ss << " -- payload: no result";
@@ -1098,17 +1097,6 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(
       headersCopy[StaticStrings::ClusterCommSource] = "AGENT-" + agent->id();
     }
   }
-
-#ifdef DEBUG_CLUSTER_COMM
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#if ARANGODB_ENABLE_BACKTRACE
-  std::string bt;
-  TRI_GetBacktrace(bt);
-  std::replace(bt.begin(), bt.end(), '\n', ';');  // replace all '\n' to ';'
-  headersCopy["X-Arango-BT-SYNC"] = bt;
-#endif
-#endif
-#endif
 
   if (body == nullptr) {
     request = HttpRequest::createHttpRequest(ContentType::JSON, "", 0, headersCopy);

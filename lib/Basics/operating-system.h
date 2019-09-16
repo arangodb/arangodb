@@ -147,7 +147,7 @@
 
 #define TRI_HAVE_ANONYMOUS_MMAP 1
 
-#define TRI_MISSING_MEMRCHR 1
+#define ARANGODB_MISSING_MEMRCHR 1
 
 // files
 
@@ -283,7 +283,7 @@
 
 #define TRI_OVERLOAD_FUNCS_SIZE_T 1
 
-#define TRI_MISSING_MEMRCHR 1
+#define ARANGODB_MISSING_MEMRCHR 1
 
 #define TRI_SC_NPROCESSORS_ONLN 1
 
@@ -668,6 +668,15 @@
 #define TRI_uid_t uid_t
 #define TRI_gid_t gid_t
 
+// The following function just throws an exception and catches it. This is
+// used on Linux for the case that we link statically and the underlying
+// C-library is libmusl. This configuration has a bug in libgcc which
+// triggers a shutdown busy loop (after main), provided the very first
+// exception being thrown in the life of the process happens in two threads
+// at the same time. By throwing right at the beginning of main() when the
+// process is still single-threaded, we circumvent this problem.
+void ThrowSomeException();
+
 #endif
 
 // -----------------------------------------------------------------------------
@@ -763,7 +772,7 @@
 #define TRI_HAVE_WIN32_THREADS 1
 
 #define TRI_HAVE_ANONYMOUS_MMAP 1
-#define TRI_MISSING_MEMRCHR 1
+#define ARANGODB_MISSING_MEMRCHR 1
 
 typedef int ssize_t;
 
