@@ -136,7 +136,7 @@ function JSTransactionGraphSuite () {
       db[vertex].insert({ _key: "test", value: "test" });
       
       db._executeTransaction({
-        collections: { write: vertex },
+        collections: { write: [vertex, edge] },
         action: function(params) {
           let graph = require("@arangodb/general-graph")._graph(params.graph); 
           let ERRORS = require("@arangodb").errors;
