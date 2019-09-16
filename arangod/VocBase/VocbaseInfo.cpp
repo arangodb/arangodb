@@ -232,8 +232,7 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options, bool extrac
         // improve once it works
         // look for some nice internal helper this has proably been done before
         auto idStr = idSlice.copyString();
-        static_assert(std::is_same<std::uint64_t,decltype(std::stoul(std::declval<std::string>()))>::value, "bad type" );
-        _id = std::stoul(idStr);
+        _id = basics::StringUtils::uint64(idSlice.stringRef().data(), idSlice.stringRef().size());
 
       } else if ( idSlice.isUInt()) {
         _id = idSlice.getUInt();
