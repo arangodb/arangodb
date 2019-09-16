@@ -35,15 +35,13 @@ using namespace arangodb::rest;
 // -----------------------------------------------------------------------------
 
 template <SocketType T>
-GeneralCommTask<T>::GeneralCommTask(GeneralServer& server,
-                                 char const* name,
-                                 ConnectionInfo info,
-                                 std::unique_ptr<AsioSocket<T>> socket)
-  : CommTask(server, name, info), _protocol(std::move(socket)) {}
+GeneralCommTask<T>::GeneralCommTask(GeneralServer& server, char const* name,
+                                    ConnectionInfo info,
+                                    std::unique_ptr<AsioSocket<T>> socket)
+    : CommTask(server, name, std::move(info)), _protocol(std::move(socket)) {}
 
 template <SocketType T>
-GeneralCommTask<T>::~GeneralCommTask() {
-}
+GeneralCommTask<T>::~GeneralCommTask() {}
 
 template <SocketType T>
 void GeneralCommTask<T>::start() {
@@ -62,19 +60,19 @@ void GeneralCommTask<T>::close() {
     _protocol->shutdown(ec);
     if (ec) {
       LOG_TOPIC("2c6b4", DEBUG, arangodb::Logger::REQUESTS)
-      << "error shutting down asio socket: '" << ec.message() << "'";
+          << "error shutting down asio socket: '" << ec.message() << "'";
     }
   }
   _server.unregisterTask(this);  // will delete us
 }
 
 template <SocketType T>
-void GeneralCommTask<T>::asyncReadSome() {
-
+void GeneralCommTask<T>::asyncReadSome() try {
   asio_ns::error_code ec;
   // first try a sync read for performance
   if (_protocol->supportsMixedIO()) {
     std::size_t available = _protocol->available(ec);
+
     while (!ec && available > 8) {
       auto mutableBuff = _protocol->buffer.prepare(available);
       size_t nread = _protocol->socket.read_some(mutableBuff, ec);
@@ -82,6 +80,7 @@ void GeneralCommTask<T>::asyncReadSome() {
       if (ec) {
         break;
       }
+
       if (!readCallback(ec)) {
         return;
       }
@@ -91,23 +90,32 @@ void GeneralCommTask<T>::asyncReadSome() {
       ec.clear();
     }
   }
-  
+
   // read pipelined requests / remaining data
   if (_protocol->buffer.size() > 0 && !readCallback(ec)) {
     return;
   }
-  
-  auto cb = [self = shared_from_this()](asio_ns::error_code const& ec,
-                                        size_t transferred) {
 
-    auto* thisPtr = static_cast<GeneralCommTask<T>*>(self.get());
-    thisPtr->_protocol->buffer.commit(transferred);
-    if (thisPtr->readCallback(ec)) {
-      thisPtr->asyncReadSome();
-    }
-  };
   auto mutableBuff = _protocol->buffer.prepare(ReadBlockSize);
-  _protocol->socket.async_read_some(mutableBuff, std::move(cb));
+  _protocol->socket.async_read_some(
+      mutableBuff, [self = shared_from_this()](asio_ns::error_code const& ec, size_t transferred) {
+        auto* thisPtr = static_cast<GeneralCommTask<T>*>(self.get());
+        thisPtr->_protocol->buffer.commit(transferred);
+
+        try {
+          if (thisPtr->readCallback(ec)) {
+            thisPtr->asyncReadSome();
+          }
+        } catch (...) {
+          LOG_TOPIC("2c6b6", ERR, arangodb::Logger::REQUESTS)
+              << "unhandled protocol exception, closing connection";
+          thisPtr->close();
+        }
+      });
+} catch (...) {
+  LOG_TOPIC("2c6b5", ERR, arangodb::Logger::REQUESTS)
+      << "unhandled protocol exception, closing connection";
+  close();
 }
 
 template class arangodb::rest::GeneralCommTask<SocketType::Tcp>;
@@ -115,4 +123,3 @@ template class arangodb::rest::GeneralCommTask<SocketType::Ssl>;
 #ifndef _WIN32
 template class arangodb::rest::GeneralCommTask<SocketType::Unix>;
 #endif
-

@@ -28,7 +28,9 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
+namespace transaction {
 class Methods;
+}
   
 class RestDocumentHandler : public RestVocbaseBaseHandler {
  public:
@@ -83,7 +85,7 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   RestStatus removeDocument();
   
 private:
-  std::unique_ptr<SingleCollectionTransaction> _activeTrx;
+  std::unique_ptr<transaction::Methods> _activeTrx;
   std::string _cname;
 };
 }  // namespace arangodb
