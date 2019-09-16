@@ -113,6 +113,12 @@ function lateDocumentMaterializationRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },
+    testNotAppliedDueToLimitOnWrongNode() {
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1, 2, 11, 12] " + 
+                  " SORT BM25(d) LET c = BM25(d) * 2 SORT d.str + c LIMIT 10 RETURN { doc: d, sc: c} ";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertEqual(-1, plan.rules.indexOf(ruleName));
+    },
     testNotAppliedInSortedView() {
       let query = "FOR d IN " + svn  + " SORT d.str ASC LIMIT 1,10  RETURN d ";
       let plan = AQL_EXPLAIN(query).plan;
@@ -185,7 +191,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       assertTrue(materializeNodeFound);
       let result = AQL_EXECUTE(query);
       assertEqual(4, result.json.length);
-      // should be sorted by increasing dog frequency
+      // should be sorted by increasing cat frequency
       let expectedKeys = ['c0', 'c_0', 'c1', 'c_1'];
       result.json.forEach(function(doc) {
         assertEqual(expectedKeys[0], doc._key);

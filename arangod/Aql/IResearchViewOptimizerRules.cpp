@@ -299,6 +299,7 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
       // examinig plan. We are looking for SortNode closest to lowerest LimitNode
       // without document body usage before that node.
       // this node could be used as materializer
+      bool stopSearch = false;
       while (current != loop) {
         switch (current->getType()) {
         case arangodb::aql::ExecutionNode::SORT:
@@ -309,16 +310,29 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
         case arangodb::aql::ExecutionNode::REMOTE:
           // REMOTE node is a blocker  - we do not want to make materialization calls across cluster!
           // Moreover we pass raw collection pointer - this must not cross process border!
-          sortNode = nullptr;
+          if (sortNode != nullptr) {
+            // this limit node affects only closest sort, if this sort is invalid
+            // we need to check other limit node
+            stopSearch = true;
+            sortNode = nullptr;
+          }
           break;
         default: // make clang happy
           break;
         }
-        arangodb::HashSet<Variable const*> currentUsedVars;
-        current->getVariablesUsedHere(currentUsedVars);
-        if (currentUsedVars.find(&viewNode.outVariable()) != currentUsedVars.end()) {
-          // we have a doc body used before selected SortNode. Forget it, let`s look for better sort to use
-          sortNode = nullptr;
+        if (sortNode != nullptr) {
+          arangodb::HashSet<Variable const*> currentUsedVars;
+          current->getVariablesUsedHere(currentUsedVars);
+          if (currentUsedVars.find(&viewNode.outVariable()) != currentUsedVars.end()) {
+            // we have a doc body used before selected SortNode. Forget it, let`s look for better sort to use
+            sortNode = nullptr;
+            // this limit node affects only closest sort, if this sort is invalid
+            // we need to check other limit node
+            stopSearch = true;
+          }
+        }
+        if (stopSearch) {
+          break;
         }
         current = current->getFirstDependency();  // inspect next node
       }
