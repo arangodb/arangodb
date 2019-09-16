@@ -231,7 +231,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-  ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{});
+  ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{}));
 
   // extract collection
   TRI_voc_cid_t cid = 0;
@@ -391,7 +391,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
     // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
     // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
     // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-    ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{});
+    ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{}));
     res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, false, builder);
     TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
   }
@@ -699,7 +699,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-  ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{});
+  ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{}));
 
   if (!ExecContext::currentHasAccess(auth::CollectionResource{ExecContext::current().database(), cname}, auth::Level::RO)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);

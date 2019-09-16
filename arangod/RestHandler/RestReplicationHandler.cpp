@@ -620,7 +620,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-  ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{});
+  ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{}));
 
   // forget about any existing replication applier configuration
   applier->forget();
@@ -996,7 +996,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-  ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{});
+  ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{}));
 
   auto* col = _vocbase.lookupCollection(name).get();
 
@@ -1352,7 +1352,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-  ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{});
+  ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{}));
 
   if (colName == TRI_COL_NAME_USERS) {
     // We need to handle the _users in a special way
@@ -1811,7 +1811,7 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-  ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{});
+  ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{}));
   READ_LOCKER(readLocker, _vocbase._inventoryLock);
 
   // look up the collection

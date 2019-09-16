@@ -46,6 +46,11 @@ class DatabaseResource : public Resource {
     return _database == other._database;
   }
 
+  std::string const& database() const {
+    return _database;
+  }
+
+ private:
   std::string const _database;
 };
 }  // namespace auth

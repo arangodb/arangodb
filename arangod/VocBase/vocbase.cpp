@@ -918,7 +918,7 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
       continue;
     }
 
-    if (!exec.hasAccess(auth::CollectionResource{_resource._database, collection->name()}, auth::Level::RO)) {
+    if (!exec.hasAccess(auth::CollectionResource{_resource.database(), collection->name()}, auth::Level::RO)) {
       continue;
     }
 

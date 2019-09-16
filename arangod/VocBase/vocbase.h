@@ -201,7 +201,7 @@ struct TRI_vocbase_t {
   static bool IsSystemName(std::string const& name) noexcept;
 
   TRI_voc_tick_t id() const { return _id; }
-  std::string const& name() const { return _resource._database; }
+  std::string const& name() const { return _resource.database(); }
   arangodb::auth::DatabaseResource const& resource() const { return _resource; }
   std::string path() const;
   TRI_vocbase_type_e type() const { return _type; }

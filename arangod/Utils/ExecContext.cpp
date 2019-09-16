@@ -98,10 +98,10 @@ std::unique_ptr<ExecContext> ExecContext::create(auth::AuthUser const& user,
                                    "unable to find userManager instance");
   }
 
-  auth::Level dbLvl = um->databaseAuthLevel(user.internalUsername(), database._database);
+  auth::Level dbLvl = um->databaseAuthLevel(user.internalUsername(), database.database());
   auth::Level sysLvl = dbLvl;
 
-  if (database._database != TRI_VOC_SYSTEM_DATABASE) {
+  if (database.database() != TRI_VOC_SYSTEM_DATABASE) {
     sysLvl = um->databaseAuthLevel(user.internalUsername(), TRI_VOC_SYSTEM_DATABASE);
   }
 
@@ -127,7 +127,7 @@ auth::Level ExecContext::authLevel(auth::DatabaseResource const& database) const
                                    "unable to find userManager instance");
   }
 
-  return um->databaseAuthLevel(_user.internalUsername(), database._database);
+  return um->databaseAuthLevel(_user.internalUsername(), database.database());
 }
 
 auth::Level ExecContext::authLevel(auth::CollectionResource const& collection) const {
@@ -146,12 +146,12 @@ auth::Level ExecContext::authLevel(auth::CollectionResource const& collection) c
   // handle fixed permissions here outside auth module.
   // TODO: move this block above, such that it takes effect
   //       when authentication is disabled
-  if (collection._database == TRI_VOC_SYSTEM_DATABASE &&
-      collection._collection == TRI_COL_NAME_USERS) {
+  if (collection.database() == TRI_VOC_SYSTEM_DATABASE &&
+      collection.collection() == TRI_COL_NAME_USERS) {
     return auth::Level::NONE;
-  } else if (collection._collection == "_queues") {
+  } else if (collection.collection() == "_queues") {
     return auth::Level::RO;
-  } else if (collection._collection == "_frontend") {
+  } else if (collection.collection() == "_frontend") {
     return auth::Level::RW;
   }  // intentional fall through
 
@@ -163,7 +163,7 @@ auth::Level ExecContext::authLevel(auth::CollectionResource const& collection) c
                                    "unable to find userManager instance");
   }
 
-  return um->collectionAuthLevel(_user.internalUsername(), collection._database,
-                                 collection._collection);
+  return um->collectionAuthLevel(_user.internalUsername(), collection.database(),
+                                 collection.collection());
 }
 }  // namespace arangodb

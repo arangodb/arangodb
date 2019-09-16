@@ -269,7 +269,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-  ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{});
+  ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{}));
 
   bool found = false;
   size_t chunkSize = 1024 * 1024;

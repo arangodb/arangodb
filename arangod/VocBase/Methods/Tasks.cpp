@@ -65,7 +65,8 @@ using namespace arangodb::basics;
 
 namespace {
 bool authorized(std::pair<std::string, std::shared_ptr<arangodb::Task>> const& task) {
-  return ExecContext::currentHasAccess(auth::TasksPrivilege{exec.user(), task.first}));
+  arangodb::ExecContext const& exec = arangodb::ExecContext::current();
+  return arangodb::ExecContext::currentHasAccess(arangodb::auth::TasksPrivilege{exec.user(), task.first});
 }
 }  // namespace
 

@@ -342,7 +342,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   const std::string runAsUser = exec.user();
-  TRI_ASSERT(exec.hasAccess(QueuesPrivilege{runAsUser}));
+  TRI_ASSERT(exec.hasAccess(auth::QueuesPrivilege{runAsUser}));
   
   std::string key = TRI_ObjectToString(isolate, args[0]);
   uint64_t maxWorkers =

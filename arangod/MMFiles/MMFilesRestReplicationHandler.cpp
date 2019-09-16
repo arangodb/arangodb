@@ -368,7 +368,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-  ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{});
+  ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{}));
 
   // extract collection
   TRI_voc_cid_t cid = 0;
@@ -603,7 +603,7 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
     // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
     // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
     // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-    ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{});
+    ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{}));
     _vocbase.inventory(builder, tick, nameFilter);
     TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
   }
@@ -935,7 +935,7 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-  ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{});
+  ExecContext::SuperuserScope escope(ExecContext::currentHasAccess(auth::WalResource{}));
 
   auto c = _vocbase.lookupCollection(collection);
 

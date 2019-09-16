@@ -36,6 +36,7 @@
 #include "Auth/ReloadPrivilegesPrivilege.h"
 #include "Auth/QueuesPrivilege.h"
 #include "Auth/TasksPrivilege.h"
+#include "Auth/WalResource.h"
 #include "Rest/RequestContext.h"
 
 #include <memory>
@@ -141,6 +142,11 @@ class ExecContext : public RequestContext {
     return current().hasAccess(resource, requested);
   }
 
+  template<typename T>
+  static bool currentHasAccess(T resource) {
+    return current().hasAccess(resource);
+  }
+
   bool hasAccess(auth::DatabaseResource const& database, auth::Level requested) const {
     return requested <= authLevel(database);
   }
@@ -193,9 +199,14 @@ class ExecContext : public RequestContext {
     return !priv.runAs().empty() && priv.username() == priv.runAs();
   }
 
+  bool hasAccess(auth::WalResource const&) const {
+    return !_isAuthEnabled || (_type == Type::Internal && _systemDbAuthLevel == auth::Level::RW &&
+			       _databaseAuthLevel == auth::Level::RW);
+  }
+
   //  any internal user is a superuser if he has rw access
   bool isSuperuser() const {
-    return isInternal() && _systemDbAuthLevel == auth::Level::RW &&
+    return _type == Type::Internal && _systemDbAuthLevel == auth::Level::RW &&
            _databaseAuthLevel == auth::Level::RW;
   }
 
