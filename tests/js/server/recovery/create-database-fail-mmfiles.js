@@ -61,7 +61,7 @@ function runSetup () {
   db._createDatabase('UnitTestsRecovery3'); // must work now
   db._createDatabase('UnitTestsRecovery4');
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

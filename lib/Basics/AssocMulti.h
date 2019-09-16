@@ -30,7 +30,7 @@
 #include <cstdint>
 
 // Activate for additional debugging:
-// #define TRI_CHECK_MULTI_POINTER_HASH 1
+// #define ARANGODB_CHECK_MULTI_POINTER_HASH 1
 
 #include "Basics/AssocHelpers.h"
 #include "Basics/AssocMultiHelpers.h"
@@ -48,7 +48,7 @@
 #include <velocypack/velocypack-aliases.h>
 #include <thread>
 
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
+#ifdef ARANGODB_CHECK_MULTI_POINTER_HASH
 #include <iostream>
 #endif
 
@@ -116,7 +116,7 @@ class AssocMulti {
   std::vector<Bucket> _buckets;
   size_t _bucketsMask;
 
-#ifdef TRI_INTERNAL_STATS
+#ifdef ARANGODB_ASSOCMULTI_INTERNAL_STATS
   uint64_t _nrFinds;    // statistics: number of lookup calls
   uint64_t _nrAdds;     // statistics: number of insert calls
   uint64_t _nrRems;     // statistics: number of remove calls
@@ -138,7 +138,7 @@ class AssocMulti {
                return "";
              })
       : _helper(std::move(helper)),
-#ifdef TRI_INTERNAL_STATS
+#ifdef ARANGODB_ASSOCMULTI_INTERNAL_STATS
         _nrFinds(0),
         _nrAdds(0),
         _nrRems(0),
@@ -248,7 +248,7 @@ class AssocMulti {
     // index, i.e. when the index is built for a collection and we know
     // for sure no duplicate elements will be inserted
 
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
+#ifdef ARANGODB_CHECK_MULTI_POINTER_HASH
     check(userData, true, true);
 #endif
 
@@ -258,7 +258,7 @@ class AssocMulti {
 
     auto result = doInsert(userData, element, hashByKey, b, overwrite, checkEquality);
 
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
+#ifdef ARANGODB_CHECK_MULTI_POINTER_HASH
     check(userData, true, true);
 #endif
 
@@ -346,7 +346,7 @@ class AssocMulti {
       queue->setStatus(TRI_ERROR_INTERNAL);
     }
 
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
+#ifdef ARANGODB_CHECK_MULTI_POINTER_HASH
     {
       auto& checkFn = check;
       auto callback = [&contextCreator, &contextDestroyer, &checkFn]() -> void {
@@ -414,7 +414,7 @@ class AssocMulti {
       resizeInternal(userData, b, 2 * b._nrAlloc + 1);
     }
 
-#ifdef TRI_INTERNAL_STATS
+#ifdef ARANGODB_ASSOCMULTI_INTERNAL_STATS
     // update statistics
     _nrAdds++;
 #endif
@@ -442,7 +442,7 @@ class AssocMulti {
             (useHashCache && b._table[i].readHashCache() != hashByKey) ||
             !_helper.IsEqualElementElementByKey(userData, element, b._table[i].value))) {
       i = incr(b, i);
-#ifdef TRI_INTERNAL_STATS
+#ifdef ARANGODB_ASSOCMULTI_INTERNAL_STATS
       // update statistics
       _ProbesA++;
 #endif
@@ -517,11 +517,11 @@ class AssocMulti {
 
   IndexType insertFirst(UserData* userData, Bucket& b, Element const& element,
                         uint64_t hashByKey) {
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
+#ifdef ARANGODB_CHECK_MULTI_POINTER_HASH
     check(userData, true, true);
 #endif
 
-#ifdef TRI_INTERNAL_STATS
+#ifdef ARANGODB_ASSOCMULTI_INTERNAL_STATS
     // update statistics
     _nrAdds++;
 #endif
@@ -539,7 +539,7 @@ class AssocMulti {
       }
       b._nrUsed++;
 // no collision generated here!
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
+#ifdef ARANGODB_CHECK_MULTI_POINTER_HASH
       check(userData, true, true);
 #endif
       return i;
@@ -549,7 +549,7 @@ class AssocMulti {
     // that is the start of a linked list, or a free slot:
     while (b._table[i].value) {
       i = incr(b, i);
-#ifdef TRI_INTERNAL_STATS
+#ifdef ARANGODB_ASSOCMULTI_INTERNAL_STATS
       // update statistics
       _ProbesA++;
 #endif
@@ -564,7 +564,7 @@ class AssocMulti {
     }
     b._nrUsed++;
 // no collision generated here either!
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
+#ifdef ARANGODB_CHECK_MULTI_POINTER_HASH
     check(userData, true, true);
 #endif
     return i;
@@ -579,11 +579,11 @@ class AssocMulti {
 
   void insertFurther(UserData* userData, Bucket& b, Element const& element,
                      uint64_t hashByKey, uint64_t hashByElm, IndexType firstPosition) {
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
+#ifdef ARANGODB_CHECK_MULTI_POINTER_HASH
     check(userData, true, true);
 #endif
 
-#ifdef TRI_INTERNAL_STATS
+#ifdef ARANGODB_ASSOCMULTI_INTERNAL_STATS
     // update statistics
     _nrAdds++;
 #endif
@@ -596,7 +596,7 @@ class AssocMulti {
 
     while (b._table[j].value) {
       j = incr(b, j);
-#ifdef TRI_INTERNAL_STATS
+#ifdef ARANGODB_ASSOCMULTI_INTERNAL_STATS
       _nrProbes++;
 #endif
     }
@@ -616,7 +616,7 @@ class AssocMulti {
     b._nrUsed++;
     b._nrCollisions++;
 
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
+#ifdef ARANGODB_CHECK_MULTI_POINTER_HASH
     check(userData, true, true);
 #endif
   }
@@ -629,7 +629,7 @@ class AssocMulti {
   Element lookup(UserData* userData, Element const& element) const {
     IndexType i;
 
-#ifdef TRI_INTERNAL_STATS
+#ifdef ARANGODB_ASSOCMULTI_INTERNAL_STATS
     // update statistics
     _nrFinds++;
 #endif
@@ -671,7 +671,7 @@ class AssocMulti {
     IndexType hashIndex = hashToIndex(hashByKey);
     IndexType i = hashIndex % b._nrAlloc;
 
-#ifdef TRI_INTERNAL_STATS
+#ifdef ARANGODB_ASSOCMULTI_INTERNAL_STATS
     // update statistics
     _nrFinds++;
 #endif
@@ -682,7 +682,7 @@ class AssocMulti {
             (useHashCache && b._table[i].readHashCache() != hashByKey) ||
             !_helper.IsEqualKeyElement(userData, key, b._table[i].value))) {
       i = incr(b, i);
-#ifdef TRI_INTERNAL_STATS
+#ifdef ARANGODB_ASSOCMULTI_INTERNAL_STATS
       _nrProbesF++;
 #endif
     }
@@ -732,7 +732,7 @@ class AssocMulti {
     IndexType hashIndex = hashToIndex(hashByKey);
     IndexType i = hashIndex % b._nrAlloc;
 
-#ifdef TRI_INTERNAL_STATS
+#ifdef ARANGODB_ASSOCMULTI_INTERNAL_STATS
     // update statistics
     _nrFinds++;
 #endif
@@ -743,7 +743,7 @@ class AssocMulti {
             (useHashCache && b._table[i].readHashCache() != hashByKey) ||
             !_helper.IsEqualElementElementByKey(userData, element, b._table[i].value))) {
       i = incr(b, i);
-#ifdef TRI_INTERNAL_STATS
+#ifdef ARANGODB_ASSOCMULTI_INTERNAL_STATS
       _nrProbesF++;
 #endif
     }
@@ -807,7 +807,7 @@ class AssocMulti {
               (useHashCache && b._table[i].readHashCache() != hashByKey) ||
               !_helper.IsEqualElementElementByKey(userData, element, b._table[i].value))) {
         i = incr(b, i);
-#ifdef TRI_INTERNAL_STATS
+#ifdef ARANGODB_ASSOCMULTI_INTERNAL_STATS
         _nrProbes++;
 #endif
       }
@@ -864,12 +864,12 @@ class AssocMulti {
   Element remove(UserData* userData, Element const& element) {
     IndexType j = 0;
 
-#ifdef TRI_INTERNAL_STATS
+#ifdef ARANGODB_ASSOCMULTI_INTERNAL_STATS
     // update statistics
     _nrRems++;
 #endif
 
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
+#ifdef ARANGODB_CHECK_MULTI_POINTER_HASH
     check(userData, true, true);
 #endif
     Bucket* b;
@@ -887,7 +887,7 @@ class AssocMulti {
         // The only one in its linked list, simply remove it and heal
         // the hole:
         invalidateEntry(*b, i);
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
+#ifdef ARANGODB_CHECK_MULTI_POINTER_HASH
         check(userData, false, false);
 #endif
         healHole(userData, *b, i);
@@ -900,7 +900,7 @@ class AssocMulti {
           // We need to exchange the hashCache value by that of the key:
           b->_table[i].writeHashCache(_helper.HashElement(b->_table[i].value, true));
         }
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
+#ifdef ARANGODB_CHECK_MULTI_POINTER_HASH
         check(userData, false, false);
 #endif
         healHole(userData, *b, j);
@@ -916,14 +916,14 @@ class AssocMulti {
         b->_table[j].prev = b->_table[i].prev;
       }
       invalidateEntry(*b, i);
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
+#ifdef ARANGODB_CHECK_MULTI_POINTER_HASH
       check(userData, false, false);
 #endif
       healHole(userData, *b, i);
       b->_nrCollisions--;
     }
     b->_nrUsed--;
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
+#ifdef ARANGODB_CHECK_MULTI_POINTER_HASH
     check(userData, true, true);
 #endif
     // return success
@@ -1009,7 +1009,7 @@ class AssocMulti {
     Bucket copy;
     copy.allocate(targetSize);
 
-#ifdef TRI_INTERNAL_STATS
+#ifdef ARANGODB_ASSOCMULTI_INTERNAL_STATS
     _nrResizes++;
 #endif
 
@@ -1054,7 +1054,7 @@ class AssocMulti {
     b = std::move(copy);
   }
 
-#ifdef TRI_CHECK_MULTI_POINTER_HASH
+#ifdef ARANGODB_CHECK_MULTI_POINTER_HASH
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal debugging check function
@@ -1178,7 +1178,7 @@ class AssocMulti {
            (!checkEquality || (useHashCache && b._table[i].readHashCache() != hashByElm) ||
             !_helper.IsEqualElementElement(userData, element, b._table[i].value))) {
       i = incr(b, i);
-#ifdef TRI_INTERNAL_STATS
+#ifdef ARANGODB_ASSOCMULTI_INTERNAL_STATS
       _nrProbes++;
 #endif
     }
@@ -1206,7 +1206,7 @@ class AssocMulti {
             (useHashCache && b._table[i].readHashCache() != hashByKey) ||
             !_helper.IsEqualElementElementByKey(userData, element, b._table[i].value))) {
       i = incr(b, i);
-#ifdef TRI_INTERNAL_STATS
+#ifdef ARANGODB_ASSOCMULTI_INTERNAL_STATS
       _nrProbes++;
 #endif
     }
@@ -1294,7 +1294,7 @@ class AssocMulti {
                 // j will be incremented right away
       }
       j = incr(b, j);
-#ifdef TRI_INTERNAL_STATS
+#ifdef ARANGODB_ASSOCMULTI_INTERNAL_STATS
       _nrProbesD++;
 #endif
     }

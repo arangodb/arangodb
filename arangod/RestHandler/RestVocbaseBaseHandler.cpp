@@ -39,6 +39,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
+#include "Transaction/Methods.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -53,6 +54,15 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+
+namespace {
+class SimpleTransaction : public transaction::Methods {
+ public:
+  SimpleTransaction(std::shared_ptr<transaction::Context>&& transactionContext,
+                    transaction::Options&& options = transaction::Options())
+    : Methods(std::move(transactionContext), std::move(options)) {}
+};
+} // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief agency public path
@@ -546,10 +556,10 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
   }
 }
 
-std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTransaction(
+std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     std::string const& collectionName, AccessMode::Type type) const {
   bool found = false;
-  std::string value = _request->header(StaticStrings::TransactionId, found);
+  std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (found) {
     TRI_voc_tid_t tid = 0;
     std::size_t pos = 0;
@@ -569,9 +579,9 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
       if (!ServerState::instance()->isDBServer()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
       }
-      value = _request->header(StaticStrings::TransactionBody, found);
+      std::string const& trxDef = _request->header(StaticStrings::TransactionBody, found);
       if (found) {
-        auto trxOpts = VPackParser::fromJson(value);
+        auto trxOpts = VPackParser::fromJson(trxDef);
         Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);
@@ -582,9 +592,9 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
     auto ctx = mgr->leaseManagedTrx(tid, type);
     if (!ctx) {
       LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NOT_FOUND);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid) + "' not found");
     }
-    return std::make_unique<SingleCollectionTransaction>(ctx, collectionName, type);
+    return std::make_unique<SimpleTransaction>(std::move(ctx));
   } else {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     return std::make_unique<SingleCollectionTransaction>(ctx, collectionName, type);
@@ -594,7 +604,7 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
 /// @brief create proper transaction context, inclusing the proper IDs
 std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionContext() const {
   bool found = false;
-  std::string value = _request->header(StaticStrings::TransactionId, found);
+  std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (!found) {
     return std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
   }
@@ -621,9 +631,9 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
       return std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
     } else if (value.compare(pos, std::string::npos, " begin") == 0) {
       // this means we lazily start a transaction
-      value = _request->header(StaticStrings::TransactionBody, found);
+      std::string const& trxDef = _request->header(StaticStrings::TransactionBody, found);
       if (found) {
-        auto trxOpts = VPackParser::fromJson(value);
+        auto trxOpts = VPackParser::fromJson(trxDef);
         Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);
@@ -635,7 +645,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
   auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
   if (!ctx) {
     LOG_TOPIC("2cfed", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid) + "' not found");
   }
   return ctx;
 }

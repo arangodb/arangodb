@@ -55,12 +55,10 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 namespace transaction {
-class Context;
 class Methods;
 struct Options;
 }  // namespace transaction
 
-class ExecContext;
 class TransactionCollection;
 
 /// @brief transaction type
@@ -139,6 +137,10 @@ class TransactionState {
   /// @brief return the collection from a transaction
   TransactionCollection* collection(TRI_voc_cid_t cid,
                                     AccessMode::Type accessType) const;
+  
+  /// @brief return the collection from a transaction
+  TransactionCollection* collection(std::string const& name,
+                                    AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
   Result addCollection(TRI_voc_cid_t cid, std::string const& cname,
@@ -152,7 +154,7 @@ class TransactionState {
 
   /// @brief run a callback on all collections of the transaction
   void allCollections(std::function<bool(TransactionCollection&)> const& cb);
-
+  
   /// @brief return the number of collections in the transaction
   size_t numCollections() const { return _collections.size(); }
 

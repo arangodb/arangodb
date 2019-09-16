@@ -67,6 +67,8 @@ set_property(TARGET ${BIN_ARANGOBENCH} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${I
 ## arangobackup
 ################################################################################
 
+if (USE_ENTERPRISE)
+
 if (MSVC AND NOT(SKIP_PACKAGING))
   generate_product_version(ProductVersionFiles_arangobackup
     NAME arangobackup
@@ -123,6 +125,8 @@ if (DARWIN)
 endif()
 
 set_property(TARGET ${BIN_ARANGOBACKUP} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
+
+endif () # USE_ENTERPRISE
 
 ################################################################################
 ## arangodump

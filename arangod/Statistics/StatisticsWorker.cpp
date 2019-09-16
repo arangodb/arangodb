@@ -1032,81 +1032,6 @@ void StatisticsWorker::saveSlice(VPackSlice const& slice, std::string const& col
   }
 }
 
-void StatisticsWorker::createCollections() const {
-  createCollection(statisticsRawCollection);
-  createCollection(statisticsCollection);
-  createCollection(statistics15Collection);
-}
-
-void StatisticsWorker::createCollection(std::string const& collection) const {
-  VPackBuilder s;
-
-  s.openObject();
-  s.add("isSystem", VPackValue(true));
-  s.add("journalSize", VPackValue(8 * 1024 * 1024));
-
-  if (ServerState::instance()->isRunningInCluster() &&
-      ServerState::instance()->isCoordinator()) {
-    auto clusterFeature =
-        application_features::ApplicationServer::getFeature<ClusterFeature>(
-            "Cluster");
-    s.add("replicationFactor", VPackValue(clusterFeature->systemReplicationFactor()));
-    s.add("distributeShardsLike", VPackValue("_graphs"));
-  }
-
-  s.close();
-
-  auto r = methods::Collections::create(
-    _vocbase, // collection vocbase
-    collection, // collection name
-    TRI_COL_TYPE_DOCUMENT, // collection type
-                                   s.slice(), false, true,
-                                   [](std::shared_ptr<LogicalCollection> const&) -> void {});
-
-  if (r.is(TRI_ERROR_SHUTTING_DOWN)) {
-    // this is somewhat an expected error
-    return;
-  }
-
-  // check if the collection already existed. this is acceptable too
-  if (r.fail() && !r.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
-    LOG_TOPIC("e32fd", WARN, Logger::STATISTICS)
-        << "could not create statistics collection '" << collection
-        << "': error: " << r.errorMessage();
-  }
-
-  // check if the index on the collection must be created
-  r = methods::Collections::lookup(
-    _vocbase, // vocbase to search
-    collection, // collection to find
-    [&](std::shared_ptr<LogicalCollection> const& coll)->void { // callback if found
-        TRI_ASSERT(coll);
-
-        VPackBuilder t;
-
-        t.openObject();
-        t.add("collection", VPackValue(collection));
-        t.add("type", VPackValue("skiplist"));
-        t.add("unique", VPackValue(false));
-        t.add("sparse", VPackValue(false));
-
-        t.add("fields", VPackValue(VPackValueType::Array));
-        t.add(VPackValue("time"));
-        t.close();
-        t.close();
-
-        VPackBuilder output;
-        Result idxRes = methods::Indexes::ensureIndex(coll.get(), t.slice(), true, output);
-
-        if (!idxRes.ok()) {
-          LOG_TOPIC("7356a", WARN, Logger::STATISTICS)
-              << "could not create the skiplist index for statistics "
-                 "collection '"
-              << collection << "': error: " << idxRes.errorMessage();
-        }
-      });
-}
-
 void StatisticsWorker::beginShutdown() {
   Thread::beginShutdown();
 
@@ -1129,8 +1054,6 @@ void StatisticsWorker::run() {
       // compute cluster id just once
       _clusterId = ServerState::instance()->getId();
     }
-
-    createCollections();
   } catch (...) {
     // do not fail hard here, as we are inside a thread!
   }

@@ -353,7 +353,8 @@
     "ERROR_REMOTE_REPOSITORY_CONFIG_BAD" : { "code" :  7008, "message" : " \"remote hotback repository configuration error\"" },
     "ERROR_LOCAL_LOCK_FAILED"      : { "code" :  7009, "message" : " \"some db servers cannot be reached for transaction locks\"" },
     "ERROR_LOCAL_LOCK_RETRY"       : { "code" :  7010, "message" : " \"some db servers cannot be reached for transaction locks\"" },
-    "ERROR_HOT_BACKUP_CONFLICT"    : { "code" :  7011, "message" : " \"hot backup conflict\"" }
+    "ERROR_HOT_BACKUP_CONFLICT"    : { "code" :  7011, "message" : " \"hot backup conflict\"" },
+    "ERROR_HOT_BACKUP_DBSERVERS_AWOL" : { "code" :  7012, "message" : " \"hot backup not all db servers reachable\"" }
   };
 
   // For compatibility with <= 3.3

@@ -27,8 +27,6 @@
 #include "Basics/StringBuffer.h"
 #include "Rest/GeneralResponse.h"
 
-#include <boost/asio/buffer.hpp>
-
 namespace arangodb {
 
 class VstResponse : public GeneralResponse {

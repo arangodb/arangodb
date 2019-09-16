@@ -184,6 +184,13 @@ void Version::initialize() {
 #endif
 #endif
 #endif
+  
+#if defined(__SANITIZE_THREAD__) || \
+(defined(__has_feature) && __has_feature(thread_sanitizer))
+  Values["tsan"] = "true";
+#else
+  Values["tsan"] = "false";
+#endif
 
 #if defined(__SSE4_2__) && !defined(NO_SSE42)
   Values["sse42"] = "true";

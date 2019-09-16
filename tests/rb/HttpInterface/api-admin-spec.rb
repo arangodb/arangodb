@@ -21,7 +21,7 @@ describe ArangoDB do
       before do
         @id = nil
         # make sure system collection exists
-        ArangoDB.post("/_admin/execute", :body => "var db = require('internal').db; try { db._create('_routing', { isSystem: true, distributeShardsLike: '_graphs' }); } catch (err) {}")   
+        ArangoDB.post("/_admin/execute", :body => "var db = require('internal').db; try { db._create('_routing', { isSystem: true, distributeShardsLike: '_users' }); } catch (err) {}")   
       end
 
       after do
