@@ -50,12 +50,10 @@ namespace tests {
 namespace mocks {
 
 class MockServer {
- protected:
-  // You can only create specialized types
+ public:
   MockServer();
   virtual ~MockServer();
 
- public:
   application_features::ApplicationServer& server();
   void init();
 

@@ -41,7 +41,7 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "../Mocks/StorageEngineMock.h"
+#include "Mocks/Servers.h"
 
 namespace arangodb {
 namespace tests {
@@ -52,80 +52,14 @@ namespace mocks {
   // -----------------------------------------------------------------------------
   
   struct TransactionManagerSetup {
-    StorageEngineMock engine;
-    arangodb::application_features::ApplicationServer server;
-    std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
+    arangodb::tests::mocks::MockAqlServer server;
 
-    TransactionManagerSetup(): engine(server), server(nullptr, nullptr) {
-      arangodb::EngineSelectorFeature::ENGINE = &engine;
-      
-      // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-      arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
-      
-      // setup required application features
-      server.addFeature<arangodb::DatabaseFeature>(
-          std::make_unique<arangodb::DatabaseFeature>(server));
-      features.emplace_back(server.getFeature<arangodb::DatabaseFeature>(), false);  // required for TRI_vocbase_t::dropCollection(...)
-
-      server.addFeature<arangodb::ShardingFeature>(
-          std::make_unique<arangodb::ShardingFeature>(server));
-      features.emplace_back(server.getFeature<arangodb::ShardingFeature>(), false);
-
-      server.addFeature<transaction::ManagerFeature>(
-          std::make_unique<transaction::ManagerFeature>(server));
-      features.emplace_back(server.getFeature<transaction::ManagerFeature>(), true);
-
-      server.addFeature<arangodb::QueryRegistryFeature>(
-          std::make_unique<arangodb::QueryRegistryFeature>(server));
-      features.emplace_back(server.getFeature<arangodb::QueryRegistryFeature>(), false);  // must be first
-
-      server.addFeature<arangodb::TraverserEngineRegistryFeature>(
-          std::make_unique<arangodb::TraverserEngineRegistryFeature>(server));
-      features.emplace_back(server.getFeature<arangodb::TraverserEngineRegistryFeature>(),
-                            false);  // must be before AqlFeature
-
-      server.addFeature<arangodb::AqlFeature>(std::make_unique<arangodb::AqlFeature>(server));
-      features.emplace_back(server.getFeature<arangodb::AqlFeature>(), true);
-
-      server.addFeature<arangodb::aql::OptimizerRulesFeature>(
-          std::make_unique<arangodb::aql::OptimizerRulesFeature>(server));
-      features.emplace_back(server.getFeature<arangodb::aql::OptimizerRulesFeature>(), true);
-
-      server.addFeature<arangodb::AuthenticationFeature>(
-          std::make_unique<arangodb::AuthenticationFeature>(server));
-      features.emplace_back(server.getFeature<arangodb::AuthenticationFeature>(), true);
-
-#if USE_ENTERPRISE
-      server.addFeature<arangodb::LdapFeature>(
-          std::make_unique<arangodb::LdapFeature>(server));
-      features.emplace_back(server.getFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
-
-      for (auto& f: features) {
-        f.first.prepare();
-      }
-      
-      for (auto& f: features) {
-        if (f.second) {
-          f.first.start();
-        }
-      }
+    TransactionManagerSetup() : server(false) {
+      server.addFeature<transaction::ManagerFeature>(true);
+      server.startFeatures();
     }
-    
-    ~TransactionManagerSetup() {
-      arangodb::EngineSelectorFeature::ENGINE = nullptr;
-      
-      // destroy application features
-      for (auto& f: features) {
-        if (f.second) {
-          f.first.stop();
-        }
-      }
-      
-      for (auto& f: features) {
-        f.first.unprepare();
-      }
-    }
+
+    ~TransactionManagerSetup() {}
   };
 
 } // namespace tests

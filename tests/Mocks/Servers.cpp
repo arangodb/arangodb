@@ -446,6 +446,8 @@ MockAqlServer::MockAqlServer(bool start) : MockServer() {
   // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
   arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                   arangodb::LogLevel::WARN);
+  // suppress INFO {cluster} Starting up with role SINGLE
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::ERR);
   // suppress log messages since tests check error conditions
   arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
   arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
@@ -465,6 +467,8 @@ MockAqlServer::~MockAqlServer() {
   arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
                                   arangodb::LogLevel::DEFAULT);
   arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
+  arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
+                                  arangodb::LogLevel::DEFAULT);
   arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                   arangodb::LogLevel::DEFAULT);
 }
