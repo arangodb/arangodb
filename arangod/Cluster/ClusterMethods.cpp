@@ -352,30 +352,6 @@ static void mergeResultsAllShards(std::vector<VPackSlice> const& results,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Extract all error baby-style error codes and store them in a map
-////////////////////////////////////////////////////////////////////////////////
-
-static void extractErrorCodes(ClusterCommResult const& res,
-                              std::unordered_map<int, size_t>& errorCounter,
-                              bool includeNotFound) {
-  auto const& resultHeaders = res.answer->headers();
-  auto codes = resultHeaders.find(StaticStrings::ErrorCodes);
-  if (codes != resultHeaders.end()) {
-    auto parsedCodes = VPackParser::fromJson(codes->second);
-    VPackSlice codesSlice = parsedCodes->slice();
-    TRI_ASSERT(codesSlice.isObject());
-    for (auto const& code : VPackObjectIterator(codesSlice)) {
-      VPackValueLength codeLength;
-      char const* codeString = code.key.getString(codeLength);
-      int codeNr = NumberUtils::atoi_zero<int>(codeString, codeString + codeLength);
-      if (includeNotFound || codeNr != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-        errorCounter[codeNr] += code.value.getNumericValue<size_t>();
-      }
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Distribute one document onto a shard map. If this returns
 ///        TRI_ERROR_NO_ERROR the correct shard could be determined, if
 ///        it returns sth. else this document is NOT contained in the shardMap
@@ -508,47 +484,6 @@ static int distributeBabyOnShards(
     reverseMapping.emplace_back(shardID, it->second.size() - 1);
   }
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Collect the results from all shards (fastpath variant)
-///        All result bodies are stored in resultMap
-////////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-static void collectResultsFromAllShards(
-    std::unordered_map<ShardID, std::vector<T>> const& shardMap,
-    std::vector<ClusterCommRequest>& requests, std::unordered_map<int, size_t>& errorCounter,
-    std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>>& resultMap,
-    rest::ResponseCode& responseCode) {
-  // If none of the shards responds we return a SERVER_ERROR;
-  responseCode = rest::ResponseCode::SERVER_ERROR;
-  for (auto const& req : requests) {
-    auto res = req.result;
-
-    int commError = handleGeneralCommErrors(&res);
-    if (commError != TRI_ERROR_NO_ERROR) {
-      auto tmpBuilder = std::make_shared<VPackBuilder>();
-      // If there was no answer whatsoever, we cannot rely on the shardId
-      // being present in the result struct:
-      ShardID sId = req.destination.substr(6);
-      auto weSend = shardMap.find(sId);
-      TRI_ASSERT(weSend != shardMap.end());  // We send sth there earlier.
-      size_t count = weSend->second.size();
-      for (size_t i = 0; i < count; ++i) {
-        tmpBuilder->openObject();
-        tmpBuilder->add(StaticStrings::Error, VPackValue(true));
-        tmpBuilder->add(StaticStrings::ErrorNum, VPackValue(commError));
-        tmpBuilder->close();
-      }
-      resultMap.emplace(sId, tmpBuilder);
-    } else {
-      TRI_ASSERT(res.answer != nullptr);
-      resultMap.emplace(res.shardID, res.answer->toVelocyPackBuilderPtrNoUniquenessChecks());
-      extractErrorCodes(res, errorCounter, true);
-      responseCode = res.answer_code;
-    }
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1213,6 +1148,29 @@ static void collectResponsesFromAllShards(
   }
 }
 
+static OperationResult checkResponsesFromAllShards(
+    std::vector<futures::Try<arangodb::network::Response>>& responses) {
+  // If none of the shards responds we return a SERVER_ERROR;
+  Result result;
+  for (Try<arangodb::network::Response> const& tryRes : responses) {
+    network::Response const& res = tryRes.get();  // throws exceptions upwards
+    int commError = network::fuerteToArangoErrorCode(res);
+    if (commError != TRI_ERROR_NO_ERROR) {
+      result.reset(commError);
+      break;
+    } else {
+      std::vector<VPackSlice> const& slices = res.response->slices();
+      if (!slices.empty()) {
+        VPackSlice answer = slices[0];
+        if (VelocyPackHelper::readBooleanValue(answer, StaticStrings::Error, false)) {
+          result = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
+        }
+      }
+    }
+  }
+  return OperationResult(result);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates one or many documents in a coordinator
 ///
@@ -1577,14 +1535,15 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string const& collname) {
+futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Methods& trx,
+                                                                 std::string const& collname) {
   Result res;
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
-    return res.reset(TRI_ERROR_SHUTTING_DOWN);
+    return futures::makeFuture(OperationResult(res.reset(TRI_ERROR_SHUTTING_DOWN)));
   }
 
   std::string const& dbname = trx.vocbase().name();
@@ -1592,7 +1551,8 @@ Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string co
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
-    return res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    return futures::makeFuture(
+        OperationResult(res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)));
   }
 
   // Some stuff to prepare cluster-intern requests:
@@ -1603,44 +1563,36 @@ Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string co
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     res = ::beginTransactionOnAllLeaders(trx, *shardIds);
     if (res.fail()) {
-      return res;
+      return futures::makeFuture(OperationResult(res));
     }
   }
 
-  CoordTransactionID coordTransactionID = TRI_NewTickServer();
-  std::unordered_map<std::string, std::string> headers;
+  std::vector<Future<network::Response>> futures;
+  futures.reserve(shardIds->size());
+
   for (auto const& p : *shardIds) {
-    std::unordered_map<std::string, std::string> headers;
+    // handler expects valid velocypack body (empty object minimum)
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
+    builder.openObject();
+    builder.close();
+
+    network::Headers headers;
     addTransactionHeaderForShard(trx, *shardIds, /*shard*/ p.first, headers);
-    cc->asyncRequest(coordTransactionID, "shard:" + p.first,
-                     arangodb::rest::RequestType::PUT,
-                     "/_db/" + StringUtils::urlEncode(dbname) +
-                         "/_api/collection/" + p.first + "/truncate",
-                     std::shared_ptr<std::string>(), headers, nullptr, 600.0);
-  }
-  // Now listen to the results:
-  unsigned int count;
-  unsigned int nrok = 0;
-  for (count = (unsigned int)shardIds->size(); count > 0; count--) {
-    auto ccRes = cc->wait(coordTransactionID, 0, "", 0.0);
-    if (ccRes.status == CL_COMM_RECEIVED) {
-      if (ccRes.answer_code == arangodb::rest::ResponseCode::OK) {
-        nrok++;
-      } else if (ccRes.answer->payload().isObject()) {
-        VPackSlice answer = ccRes.answer->payload();
-        return res.reset(VelocyPackHelper::readNumericValue(answer, StaticStrings::ErrorNum,
-                                                            TRI_ERROR_TRANSACTION_INTERNAL),
-                         VelocyPackHelper::getStringValue(answer, StaticStrings::ErrorMessage,
-                                                          ""));
-      }
-    }
+    auto future =
+        network::sendRequestRetry("shard:" + p.first, fuerte::RestVerb::Put,
+                                  "/_db/" + StringUtils::urlEncode(dbname) +
+                                      "/_api/collection/" + p.first +
+                                      "/truncate",
+                                  std::move(buffer), network::Timeout(600.0),
+                                  headers, /*retryNotFound*/ true);
+    futures.emplace_back(std::move(future));
   }
 
-  // Note that nrok is always at least 1!
-  if (nrok < shardIds->size()) {
-    return res.reset(TRI_ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION);
-  }
-  return res;
+  auto cb = [](std::vector<Try<network::Response>>&& results) -> OperationResult {
+    return checkResponsesFromAllShards(results);
+  };
+  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
