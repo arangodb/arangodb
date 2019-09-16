@@ -288,8 +288,9 @@ static void collectResponsesFromAllShards(
   }
 }
 
-OperationResult checkResponsesFromAllShards(
-    std::vector<futures::Try<arangodb::network::Response>>& responses) {
+OperationResult handleResponsesFromAllShards(
+    std::vector<futures::Try<arangodb::network::Response>>& responses,
+    std::function<void(Result&, VPackSlice)> handler) {
   // If none of the shards responds we return a SERVER_ERROR;
   Result result;
   for (Try<arangodb::network::Response> const& tryRes : responses) {
@@ -302,8 +303,9 @@ OperationResult checkResponsesFromAllShards(
       std::vector<VPackSlice> const& slices = res.response->slices();
       if (!slices.empty()) {
         VPackSlice answer = slices[0];
-        if (VelocyPackHelper::readBooleanValue(answer, StaticStrings::Error, false)) {
-          result = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
+        handler(result, answer);
+        if (result.fail()) {
+          break;
         }
       }
     }
@@ -952,7 +954,9 @@ futures::Future<OperationResult> warmupOnCoordinator(std::string const& dbname,
   }
 
   auto cb = [](std::vector<Try<network::Response>>&& results) -> OperationResult {
-    return checkResponsesFromAllShards(results);
+    return handleResponsesFromAllShards(results, [](Result&, VPackSlice) -> void {
+      // we don't care about response bodies, just that the requests succeeded
+    });
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
@@ -1613,7 +1617,11 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
   }
 
   auto cb = [](std::vector<Try<network::Response>>&& results) -> OperationResult {
-    return checkResponsesFromAllShards(results);
+    return handleResponsesFromAllShards(results, [](Result& result, VPackSlice answer) -> void {
+      if (VelocyPackHelper::readBooleanValue(answer, StaticStrings::Error, false)) {
+        result = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
+      }
+    });
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
