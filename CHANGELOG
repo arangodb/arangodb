@@ -1,8 +1,6 @@
 devel
 -----
 
-* Hot bckup agency lock could be left behind when short timeout was hit
-
 * Remove operations documents in the cluster will now use an optimization, if all sharding keys
   were specified. Should the sharding keys not match the values in the actual document
   a not found error will be returned.
