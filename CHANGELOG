@@ -1,6 +1,9 @@
 v3.5.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed the AQL sort-limit optimization which was applied in some cases it should
+  not, resulting in undefined behaviour.
+
 * Add --server.statistics-history flag to allow disabling of only the historical
   statistics.  Also added rocksdbengine.write.amplification.x100 statistics
   for measurement of compaction option impact.  Enabled non-historical
