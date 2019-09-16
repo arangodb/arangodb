@@ -4560,7 +4560,7 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
           !result.slice()[0].hasKey(modepv) || !result.slice()[0].get(modepv).isString()) {
         return arangodb::Result(
           TRI_ERROR_HOT_BACKUP_INTERNAL,
-          std::string("invalid JSON from agency, when desctivating supervision mode:") +
+          std::string("invalid JSON from agency, when deactivating supervision mode:") +
           result.slice().toJson());
       }
 
