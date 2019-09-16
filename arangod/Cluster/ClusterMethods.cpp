@@ -4030,7 +4030,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     if (timeout < 2.5) {
       auto const tmp = timeout;
       timeout = 2.5;
-      LOG_TOPIC("67ae2", DEBUG, Logger::BACKUP)
+      LOG_TOPIC("67ae2", WARN, Logger::BACKUP)
         << "Backup timeout " << tmp << " is too short - raising to " << timeout;
     }
 
