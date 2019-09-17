@@ -975,6 +975,7 @@ std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult const* result
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch the version from the server
 ////////////////////////////////////////////////////////////////////////////////
+#ifndef _WIN32
 static std::string getBareHostName(std::string hostname) {
   std::string hostNamePart = hostname;
   size_t hostStart = hostname.find("://");
@@ -1005,6 +1006,7 @@ static std::string getBareHostName(std::string hostname) {
     return hostNamePart;
   }
 }
+#endif
 
 std::string SimpleHttpClient::getServerVersion(int* errorCode) {
   while (true) {
