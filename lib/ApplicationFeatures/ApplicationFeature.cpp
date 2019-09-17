@@ -129,7 +129,8 @@ void ApplicationFeature::addAncestorToAllInPath(
     std::type_index ancestorType) {
   std::function<bool(std::pair<size_t, std::reference_wrapper<ApplicationFeature>>&)> typeMatch =
       [ancestorType](std::pair<size_t, std::reference_wrapper<ApplicationFeature>>& pair) -> bool {
-    return std::type_index(typeid(pair.second.get())) == ancestorType;
+    auto& feature = pair.second.get();
+    return std::type_index(typeid(feature)) == ancestorType;
   };
 
   if (std::find_if(path.begin(), path.end(), typeMatch) != path.end()) {
@@ -138,7 +139,8 @@ void ApplicationFeature::addAncestorToAllInPath(
     // build type list to print out error
     std::vector<std::type_index> pathTypes;
     for (std::pair<size_t, std::reference_wrapper<ApplicationFeature>>& pair : path) {
-      pathTypes.emplace_back(std::type_index(typeid(pair.second.get())));
+      auto& feature = pair.second.get();
+      pathTypes.emplace_back(std::type_index(typeid(feature)));
     }
     pathTypes.emplace_back(ancestorType);  // make sure we show the duplicate
 

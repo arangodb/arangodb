@@ -415,15 +415,16 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
 
   // apply all "startsBefore" values
   for (auto& it : _features) {
-    for (auto const& other : it.second->startsBefore()) {
+    auto& feature = *it.second;
+    for (auto const& other : feature.startsBefore()) {
       if (!hasFeature(other)) {
         if (failOnMissing) {
-          fail("feature '" + it.second->name() +
-               "' depends on unknown feature '" + other.name() + "'");
+          fail("feature '" + feature.name() + "' depends on unknown feature '" +
+               other.name() + "'");
         }
         continue;
       }
-      getFeature<ApplicationFeature>(other).startsAfter(std::type_index(typeid(*it.second)));
+      getFeature<ApplicationFeature>(other).startsAfter(std::type_index(typeid(feature)));
     }
   }
 
