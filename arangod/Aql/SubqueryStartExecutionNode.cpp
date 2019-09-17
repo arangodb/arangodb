@@ -68,11 +68,15 @@ ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan, bool withDependenci
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-bool SubqueryStartNode::isEqualTo(SubqueryStartNode const& other) {
+bool SubqueryStartNode::isEqualTo(ExecutionNode const& other) const {
   // If this assertion fails, someone changed the size of SubqueryStartNode,
   // likely by adding or removing members, requiring this method to be updated.
   meta::details::static_assert_size<SubqueryStartNode, 456>();
-  return ExecutionNode::isEqualTo(other);
+  if (SubqueryStartNode const& p = dynamic_cast<SubqueryStartNode const*>(other)) {
+    return ExecutionNode::isEqualTo(other);
+  } else {
+    return false;
+  }
 }
 
 } // namespace aql
