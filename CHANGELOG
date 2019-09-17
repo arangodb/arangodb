@@ -1,3 +1,15 @@
+v3.5.2 (XXXX-XX-XX)
+-------------------
+
+* Prevent spurious log message "Scheduler queue is filled more than 50% in last x s"
+  from occurring when this is not the case. Due to a data race, the message could 
+  previously also occur if the queue was empty.
+
+* Make the scheduler enforce the configured queue lengths. The values of the options
+  `--server.scheduler-queue-size`, `--server.prio1-size` and `--server.maximal-queue-size`
+  will not be honored and not exceeded.
+
+
 v3.5.1 (2019-09-24)
 -------------------
 

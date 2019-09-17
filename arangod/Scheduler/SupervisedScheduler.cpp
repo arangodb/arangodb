@@ -37,6 +37,8 @@
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
 
+#include <limits>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -63,7 +65,7 @@ bool isDirectDeadlockLane(RequestLane lane) {
 namespace {
 typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
 
-// value initialise these arrays, otherwise mac will crash
+// value-initialize these arrays, otherwise mac will crash
 thread_local time_point conditionQueueFullSince{};
 thread_local uint_fast32_t queueWarningTick{};
 
@@ -75,7 +77,7 @@ time_point lastQueueFullWarning[3];
 int64_t fullQueueEvents[3] = {0, 0, 0};
 std::mutex fullQueueWarningMutex[3];
 
-void logQueueWarningEveryNowAndThen(int64_t events) {
+void logQueueWarningEveryNowAndThen(int64_t events, uint64_t maxQueueSize) {
   auto const now = std::chrono::steady_clock::now();
   uint64_t totalEvents;
   bool printLog = false;
@@ -94,13 +96,13 @@ void logQueueWarningEveryNowAndThen(int64_t events) {
 
   if (printLog) {
     LOG_TOPIC("dead2", WARN, Logger::THREADS)
-        << "Scheduler queue"
+        << "Scheduler queue with max capacity " << maxQueueSize
         << " is filled more than 50% in last " << sinceLast.count()
-        << "s. (happened " << totalEvents << " times since last message)";
+        << "s (happened " << totalEvents << " times since last message)";
   }
 }
 
-void logQueueFullEveryNowAndThen(int64_t fifo) {
+void logQueueFullEveryNowAndThen(int64_t fifo, uint64_t maxQueueSize) {
   auto const& now = std::chrono::steady_clock::now();
   uint64_t events;
   bool printLog = false;
@@ -117,7 +119,8 @@ void logQueueFullEveryNowAndThen(int64_t fifo) {
 
   if (printLog) {
     LOG_TOPIC("dead1", WARN, Logger::THREADS)
-        << "Scheduler queue " << fifo << " is full. (happened " << events
+        << "Scheduler queue " << fifo << " with max capacity " << maxQueueSize
+        << " is full (happened " << events
         << " times since last message)";
   }
 }
@@ -148,7 +151,7 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
   explicit SupervisedSchedulerWorkerThread(SupervisedScheduler& scheduler)
       : Thread("SchedWorker"), SupervisedSchedulerThread(scheduler) {}
   ~SupervisedSchedulerWorkerThread() { shutdown(); }
-  void run() override { _scheduler.runWorker(); };
+  void run() override { _scheduler.runWorker(); }
 };
 
 }  // namespace arangodb
@@ -167,10 +170,12 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads, uint64_t maxThread
       _definitiveWakeupTime_ns(100000),
       _maxNumWorker(maxThreads),
       _numIdleWorker(minThreads),
-      _maxFifoSize(maxQueueSize) {
-  _queue[0].reserve(maxQueueSize);
-  _queue[1].reserve(fifo1Size);
-  _queue[2].reserve(fifo2Size);
+      _maxFifoSize(maxQueueSize),
+      _fifo1Size(fifo1Size),
+      _fifo2Size(fifo2Size) {
+  _queues[0].reserve(maxQueueSize);
+  _queues[1].reserve(fifo1Size);
+  _queues[2].reserve(fifo2Size);
 }
 
 SupervisedScheduler::~SupervisedScheduler() {}
@@ -199,8 +204,15 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
 
   auto work = std::make_unique<WorkItem>(std::move(handler));
 
-  if (!_queue[queueNo].push(work.get())) {
-    logQueueFullEveryNowAndThen(queueNo);
+  if (!_queues[queueNo].bounded_push(work.get())) {
+    uint64_t maxSize = _maxFifoSize;
+    if (queueNo == 1) {
+      maxSize = _fifo1Size;
+    } else if (queueNo == 2) {
+      maxSize = _fifo2Size;
+    }
+    LOG_TOPIC("98d94", DEBUG, Logger::THREADS) << "unable to push job to scheduler queue: queue is full";
+    logQueueFullEveryNowAndThen(queueNo, maxSize);
     return false;
   }
   // queue now has ownership for the WorkItem
@@ -211,25 +223,35 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
   // use memory order release to make sure, pushed item is visible
   uint64_t jobsSubmitted = _jobsSubmitted.fetch_add(1, std::memory_order_release);
   uint64_t approxQueueLength = jobsSubmitted - _jobsDone;
+  // fetching _jobsDone after _jobsSubmitted means there can be data races. 
+  // if the current thread doesn't get interrupted, the condition 
+  //   _jobsSubmitted > _jobsDone   will always hold true
+  // however, if the current thread gets interrupted and other threads finish their 
+  // jobs first, then the reverse may also be true:   jobsSubmitted < _jobsDone
+  // we guard against this by checking approxQueueLength for an underlow
+  if (ADB_UNLIKELY(approxQueueLength > std::numeric_limits<uint64_t>::max() - _maxFifoSize)) {
+    approxQueueLength = 0;
+  }
+
   uint64_t now_ns = getTickCount_ns();
   uint64_t sleepyTime_ns = now_ns - lastSubmitTime_ns;
   lastSubmitTime_ns = now_ns;
 
   if (approxQueueLength > _maxFifoSize / 2) {
-    if ((queueWarningTick++ & 0xFF) == 0) {
+    if ((::queueWarningTick++ & 0xFF) == 0) {
       auto const& now = std::chrono::steady_clock::now();
-      if (conditionQueueFullSince == time_point{}) {
-        logQueueWarningEveryNowAndThen(queueWarningTick);
-        conditionQueueFullSince = now;
-      } else if (now - conditionQueueFullSince > std::chrono::seconds(5)) {
-        logQueueWarningEveryNowAndThen(queueWarningTick);
-        queueWarningTick = 0;
-        conditionQueueFullSince = now;
+      if (::conditionQueueFullSince == time_point{}) {
+        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSize);
+        ::conditionQueueFullSince = now;
+      } else if (now - ::conditionQueueFullSince > std::chrono::seconds(5)) {
+        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSize);
+        ::queueWarningTick = 0;
+        ::conditionQueueFullSince = now;
       }
     }
   } else {
-    queueWarningTick = 0;
-    conditionQueueFullSince = time_point{};
+    ::queueWarningTick = 0;
+    ::conditionQueueFullSince = time_point{};
   }
 
   bool doNotify = false;
@@ -506,7 +528,7 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
       auto queueIdx = triesCount % 3;
       // Order of this if is important! First check if we are allowed to pull,
       // then really pull from queue
-      if (canPullFromQueue(queueIdx) && _queue[queueIdx].pop(work)) {
+      if (canPullFromQueue(queueIdx) && _queues[queueIdx].pop(work)) {
         return std::unique_ptr<WorkItem>(work);
       }
 
@@ -532,7 +554,7 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
 void SupervisedScheduler::startOneThread() {
   // TRI_ASSERT(_numWorkers < _maxNumWorker);
   if (_numWorkers + _abandonedWorkerStates.size() >= _maxNumWorker) {
-    return;  // do not add more threads, than maximum allows
+    return;  // do not add more threads than maximum allows
   }
 
   std::unique_lock<std::mutex> guard(_mutexSupervisor);
