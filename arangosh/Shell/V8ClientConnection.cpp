@@ -49,7 +49,9 @@
 #include "V8/v8-json.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
+#ifndef _WIN32
 #include <netinet/in.h>
+#endif
 #include <boost/asio.hpp>
 
 using namespace arangodb;
