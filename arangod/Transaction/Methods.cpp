@@ -1411,10 +1411,8 @@ OperationResult transaction::Methods::documentCoordinator(std::string const& col
     }
   }
 
-  auto& feature = vocbase().server().getFeature<ClusterFeature>();
-  int res = arangodb::getDocumentOnCoordinator(feature, *this, collectionName,
-                                               value, options, responseCode,
-                                               errorCounter, resultBody);
+  int res = arangodb::getDocumentOnCoordinator(*this, collectionName, value, options,
+                                               responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultDocument(responseCode, resultBody, errorCounter);
@@ -1540,13 +1538,13 @@ Future<OperationResult> transaction::Methods::insertAsync(std::string const& cna
 Future<OperationResult> transaction::Methods::insertCoordinator(std::string const& collectionName,
                                                                 VPackSlice const value,
                                                                 OperationOptions const& options) {
-  auto& feature = vocbase().server().getFeature<ClusterFeature>();
-  auto colptr = feature.clusterInfo().getCollectionNT(vocbase().name(), collectionName);
+  auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto colptr = ci.getCollectionNT(vocbase().name(), collectionName);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
 
-  return arangodb::createDocumentOnCoordinator(feature, *this, *colptr, options, value);
+  return arangodb::createDocumentOnCoordinator(*this, *colptr, options, value);
 }
 #endif
 
@@ -1859,11 +1857,9 @@ OperationResult transaction::Methods::updateCoordinator(std::string const& colle
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  auto& feature = vocbase().server().getFeature<ClusterFeature>();
-  int res =
-      arangodb::modifyDocumentOnCoordinator(feature, *this, collectionName, newValue,
-                                            options, true /* isPatch */, headers,
-                                            responseCode, errorCounter, resultBody);
+  int res = arangodb::modifyDocumentOnCoordinator(*this, collectionName, newValue,
+                                                  options, true /* isPatch */, headers,
+                                                  responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultModify(responseCode, resultBody, errorCounter);
@@ -1919,11 +1915,10 @@ OperationResult transaction::Methods::replaceCoordinator(std::string const& coll
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  auto& feature = vocbase().server().getFeature<ClusterFeature>();
-  int res =
-      arangodb::modifyDocumentOnCoordinator(feature, *this, collectionName, newValue,
-                                            options, false /* isPatch */, headers,
-                                            responseCode, errorCounter, resultBody);
+  int res = arangodb::modifyDocumentOnCoordinator(*this, collectionName, newValue,
+                                                  options, false /* isPatch */,
+                                                  headers, responseCode,
+                                                  errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultModify(responseCode, resultBody, errorCounter);
@@ -2193,9 +2188,8 @@ OperationResult transaction::Methods::removeCoordinator(std::string const& colle
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  auto& feature = vocbase().server().getFeature<ClusterFeature>();
-  int res = arangodb::deleteDocumentOnCoordinator(feature, *this, collectionName,
-                                                  value, options, responseCode,
+  int res = arangodb::deleteDocumentOnCoordinator(*this, collectionName, value,
+                                                  options, responseCode,
                                                   errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -2496,9 +2490,7 @@ OperationResult transaction::Methods::truncate(std::string const& collectionName
 #ifndef USE_ENTERPRISE
 OperationResult transaction::Methods::truncateCoordinator(std::string const& collectionName,
                                                           OperationOptions& options) {
-  auto& feature = vocbase().server().getFeature<ClusterFeature>();
-  return OperationResult(
-      arangodb::truncateCollectionOnCoordinator(feature, *this, collectionName));
+  return OperationResult(arangodb::truncateCollectionOnCoordinator(*this, collectionName));
 }
 #endif
 
@@ -2696,8 +2688,7 @@ OperationResult transaction::Methods::countCoordinatorHelper(
   if (documents == CountCache::NotPopulated) {
     // no cache hit, or detailed results requested
     std::vector<std::pair<std::string, uint64_t>> count;
-    auto& feature = vocbase().server().getFeature<ClusterFeature>();
-    auto res = arangodb::countOnCoordinator(feature, *this, collectionName, count);
+    auto res = arangodb::countOnCoordinator(*this, collectionName, count);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return OperationResult(res);

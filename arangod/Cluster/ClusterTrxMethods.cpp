@@ -79,7 +79,7 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
       if (col.collection()->isSmart() && col.collection()->type() == TRI_COL_TYPE_EDGE) {
         auto names = col.collection()->realNames();
         auto& ci =
-            col.collection().vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+            col.collection()->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
         for (std::string const& name : names) {
           auto cc = ci.getCollectionNT(state.vocbase().name(), name);
           if (!cc) {

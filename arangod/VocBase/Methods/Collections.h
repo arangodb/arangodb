@@ -34,6 +34,7 @@
 #include <functional>
 
 namespace arangodb {
+class ClusterFeature;
 class LogicalCollection;
 struct CollectionCreationInfo;
 
@@ -130,7 +131,7 @@ struct Collections {
                               DocCallback const& cb);
 };
 #ifdef USE_ENTERPRISE
-Result ULColCoordinatorEnterprise(std::string const& databaseName,
+Result ULColCoordinatorEnterprise(ClusterFeature& feature, std::string const& databaseName,
                                   std::string const& collectionCID,
                                   TRI_vocbase_col_status_e status);
 

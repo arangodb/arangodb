@@ -467,7 +467,8 @@ Result Collections::load(TRI_vocbase_t& vocbase, LogicalCollection* coll) {
 
   if (ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
-    return ULColCoordinatorEnterprise(coll->vocbase().name(),
+    auto& feature = vocbase.server().getFeature<ClusterFeature>();
+    return ULColCoordinatorEnterprise(feature, coll->vocbase().name(),
                                       std::to_string(coll->id()), TRI_VOC_COL_STATUS_LOADED);
 #else
     auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
@@ -491,7 +492,9 @@ Result Collections::load(TRI_vocbase_t& vocbase, LogicalCollection* coll) {
 Result Collections::unload(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
   if (ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
-    return ULColCoordinatorEnterprise(vocbase->name(), std::to_string(coll->id()),
+    auto& feature = vocbase->server().getFeature<ClusterFeature>();
+    return ULColCoordinatorEnterprise(feature, vocbase->name(),
+                                      std::to_string(coll->id()),
                                       TRI_VOC_COL_STATUS_UNLOADED);
 #else
     auto& ci = vocbase->server().getFeature<ClusterFeature>().clusterInfo();

@@ -34,6 +34,7 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
+class ClusterFeature;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief HotBackup engine selector operations

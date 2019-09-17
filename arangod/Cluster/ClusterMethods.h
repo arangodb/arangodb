@@ -27,11 +27,12 @@
 #include "Agency/AgencyComm.h"
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Futures/Future.h"
 #include "Rest/CommonDefines.h"
-#include "Utils/OperationResult.h"
 #include "Rest/GeneralResponse.h"
+#include "Utils/OperationResult.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
@@ -95,7 +96,7 @@ int figuresOnCoordinator(ClusterFeature&, std::string const& dbname,
 /// @brief counts number of documents in a coordinator, by shard
 ////////////////////////////////////////////////////////////////////////////////
 
-int countOnCoordinator(ClusterFeature&, transaction::Methods& trx, std::string const& collname,
+int countOnCoordinator(transaction::Methods& trx, std::string const& collname,
                        std::vector<std::pair<std::string, uint64_t>>& result);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,17 +112,17 @@ int selectivityEstimatesOnCoordinator(ClusterFeature&, std::string const& dbname
 /// @brief creates a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> createDocumentOnCoordinator(
-    ClusterFeature&, transaction::Methods const& trx, LogicalCollection&,
-    OperationOptions const& options, VPackSlice slice);
+futures::Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& trx,
+                                                             LogicalCollection&,
+                                                             OperationOptions const& options,
+                                                             VPackSlice slice);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int deleteDocumentOnCoordinator(ClusterFeature&, transaction::Methods& trx,
-                                std::string const& collname, VPackSlice const slice,
-                                OperationOptions const& options,
+int deleteDocumentOnCoordinator(transaction::Methods& trx, std::string const& collname,
+                                VPackSlice const slice, OperationOptions const& options,
                                 arangodb::rest::ResponseCode& responseCode,
                                 std::unordered_map<int, size_t>& errorCounters,
                                 std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
@@ -130,9 +131,8 @@ int deleteDocumentOnCoordinator(ClusterFeature&, transaction::Methods& trx,
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int getDocumentOnCoordinator(ClusterFeature&, transaction::Methods& trx,
-                             std::string const& collname, VPackSlice slice,
-                             OperationOptions const& options,
+int getDocumentOnCoordinator(transaction::Methods& trx, std::string const& collname,
+                             VPackSlice slice, OperationOptions const& options,
                              arangodb::rest::ResponseCode& responseCode,
                              std::unordered_map<int, size_t>& errorCounter,
                              std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
@@ -215,7 +215,7 @@ void fetchVerticesFromEngines(
 ///        Also returns the result in VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-int getFilteredEdgesOnCoordinator(ClusterFeature&, transaction::Methods const& trx,
+int getFilteredEdgesOnCoordinator(transaction::Methods const& trx,
                                   std::string const& collname, std::string const& vertex,
                                   TRI_edge_direction_e const& direction,
                                   arangodb::rest::ResponseCode& responseCode,
@@ -226,7 +226,7 @@ int getFilteredEdgesOnCoordinator(ClusterFeature&, transaction::Methods const& t
 ////////////////////////////////////////////////////////////////////////////////
 
 int modifyDocumentOnCoordinator(
-    ClusterFeature&, transaction::Methods& trx, std::string const& collname,
+    transaction::Methods& trx, std::string const& collname,
     arangodb::velocypack::Slice const& slice, OperationOptions const& options,
     bool isPatch, std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::rest::ResponseCode& responseCode, std::unordered_map<int, size_t>& errorCounter,
@@ -236,8 +236,7 @@ int modifyDocumentOnCoordinator(
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Result truncateCollectionOnCoordinator(ClusterFeature&, transaction::Methods& trx,
-                                       std::string const& collname);
+Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string const& collname);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush Wal on all DBservers
@@ -299,13 +298,15 @@ arangodb::Result deleteHotBackupsOnCoordinator(ClusterFeature&, VPackSlice const
  * @brief Trigger upload of specific hot backup
  * @param backupId  BackupId to delete
  */
-arangodb::Result uploadBackupsOnCoordinator(VPackSlice const payload, VPackBuilder& report);
+arangodb::Result uploadBackupsOnCoordinator(ClusterFeature&, VPackSlice const payload,
+                                            VPackBuilder& report);
 
 /**
  * @brief Trigger download of specific hot backup
  * @param backupId  BackupId to delete
  */
-arangodb::Result downloadBackupsOnCoordinator(VPackSlice const payload, VPackBuilder& report);
+arangodb::Result downloadBackupsOnCoordinator(ClusterFeature&, VPackSlice const payload,
+                                              VPackBuilder& report);
 #endif
 
 /**

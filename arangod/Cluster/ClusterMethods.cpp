@@ -996,10 +996,10 @@ int figuresOnCoordinator(ClusterFeature& feature, std::string const& dbname,
 /// @brief counts number of documents in a coordinator, by shard
 ////////////////////////////////////////////////////////////////////////////////
 
-int countOnCoordinator(ClusterFeature& feature, transaction::Methods& trx,
-                       std::string const& cname,
+int countOnCoordinator(transaction::Methods& trx, std::string const& cname,
                        std::vector<std::pair<std::string, uint64_t>>& result) {
   // Set a few variables needed for our work:
+  ClusterFeature& feature = trx.vocbase().server().getFeature<ClusterFeature>();
   ClusterInfo& ci = feature.clusterInfo();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
@@ -1225,11 +1225,11 @@ static void collectResponsesFromAllShards(
 /// for their documents.
 ////////////////////////////////////////////////////////////////////////////////
 
-Future<OperationResult> createDocumentOnCoordinator(ClusterFeature& feature,
-                                                    transaction::Methods const& trx,
+Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& trx,
                                                     LogicalCollection& coll,
                                                     arangodb::OperationOptions const& options,
                                                     VPackSlice slice) {
+  ClusterFeature& feature = trx.vocbase().server().getFeature<ClusterFeature>();
   ClusterInfo& ci = feature.clusterInfo();
 
   std::string const& dbname = trx.vocbase().name();
@@ -1366,14 +1366,14 @@ Future<OperationResult> createDocumentOnCoordinator(ClusterFeature& feature,
 /// @brief deletes a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int deleteDocumentOnCoordinator(ClusterFeature& feature, arangodb::transaction::Methods& trx,
+int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
                                 std::string const& collname, VPackSlice const slice,
                                 arangodb::OperationOptions const& options,
                                 arangodb::rest::ResponseCode& responseCode,
                                 std::unordered_map<int, size_t>& errorCounter,
                                 std::shared_ptr<arangodb::velocypack::Builder>& resultBody) {
   // Set a few variables needed for our work:
-  ClusterInfo& ci = feature.clusterInfo();
+  ClusterInfo& ci = trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
@@ -1622,11 +1622,10 @@ int deleteDocumentOnCoordinator(ClusterFeature& feature, arangodb::transaction::
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Result truncateCollectionOnCoordinator(ClusterFeature& feature, transaction::Methods& trx,
-                                       std::string const& collname) {
+Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string const& collname) {
   Result res;
   // Set a few variables needed for our work:
-  ClusterInfo& ci = feature.clusterInfo();
+  ClusterInfo& ci = trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
@@ -1693,14 +1692,13 @@ Result truncateCollectionOnCoordinator(ClusterFeature& feature, transaction::Met
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int getDocumentOnCoordinator(ClusterFeature& feature, arangodb::transaction::Methods& trx,
-                             std::string const& collname, VPackSlice slice,
-                             OperationOptions const& options,
+int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string const& collname,
+                             VPackSlice slice, OperationOptions const& options,
                              arangodb::rest::ResponseCode& responseCode,
                              std::unordered_map<int, size_t>& errorCounter,
                              std::shared_ptr<VPackBuilder>& resultBody) {
   // Set a few variables needed for our work:
-  ClusterInfo& ci = feature.clusterInfo();
+  ClusterInfo& ci = trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
@@ -2266,8 +2264,7 @@ void fetchVerticesFromEngines(
 /// @brief get all edges on coordinator using a Traverser Filter
 ////////////////////////////////////////////////////////////////////////////////
 
-int getFilteredEdgesOnCoordinator(ClusterFeature& feature,
-                                  arangodb::transaction::Methods const& trx,
+int getFilteredEdgesOnCoordinator(arangodb::transaction::Methods const& trx,
                                   std::string const& collname, std::string const& vertex,
                                   TRI_edge_direction_e const& direction,
                                   arangodb::rest::ResponseCode& responseCode,
@@ -2275,7 +2272,7 @@ int getFilteredEdgesOnCoordinator(ClusterFeature& feature,
   TRI_ASSERT(result.isOpenObject());
 
   // Set a few variables needed for our work:
-  ClusterInfo& ci = feature.clusterInfo();
+  ClusterInfo& ci = trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
@@ -2396,13 +2393,13 @@ int getFilteredEdgesOnCoordinator(ClusterFeature& feature,
 ////////////////////////////////////////////////////////////////////////////////
 
 int modifyDocumentOnCoordinator(
-    ClusterFeature& feature, transaction::Methods& trx, std::string const& collname,
-    VPackSlice const& slice, arangodb::OperationOptions const& options, bool isPatch,
+    transaction::Methods& trx, std::string const& collname, VPackSlice const& slice,
+    arangodb::OperationOptions const& options, bool isPatch,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::rest::ResponseCode& responseCode, std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<VPackBuilder>& resultBody) {
   // Set a few variables needed for our work:
-  ClusterInfo& ci = feature.clusterInfo();
+  ClusterInfo& ci = trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown

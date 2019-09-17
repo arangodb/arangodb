@@ -22,6 +22,7 @@
 
 #include "HotBackup.h"
 
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -88,23 +89,24 @@ arangodb::Result HotBackup::executeRocksDB(
 
 arangodb::Result HotBackup::executeCoordinator(
   std::string const& command, VPackSlice const payload, VPackBuilder& report) {
+  auto& feature = _server.getFeature<ClusterFeature>();
 
 #ifdef USE_ENTERPRISE
   if (command == "create") {
-    return hotBackupCoordinator(payload, report);
+    return hotBackupCoordinator(feature, payload, report);
   } else if (command == "lock") {
     return arangodb::Result(
       TRI_ERROR_NOT_IMPLEMENTED, "backup locks not implemented on coordinators");
   } else if (command == "restore") {
-    return hotRestoreCoordinator(payload, report);
+    return hotRestoreCoordinator(feature, payload, report);
   } else if (command == "delete") {
-    return deleteHotBackupsOnCoordinator(payload, report);
+    return deleteHotBackupsOnCoordinator(feature, payload, report);
   } else if (command == "list") {
-    return listHotBackupsOnCoordinator(payload, report);
+    return listHotBackupsOnCoordinator(feature, payload, report);
   } else if (command == "upload") {
-    return uploadBackupsOnCoordinator(payload, report);
+    return uploadBackupsOnCoordinator(feature, payload, report);
   } else if (command == "download") {
-    return downloadBackupsOnCoordinator(payload, report);
+    return downloadBackupsOnCoordinator(feature, payload, report);
   } else {
     return arangodb::Result(
       TRI_ERROR_NOT_IMPLEMENTED, command + " is not implemented on coordinators");

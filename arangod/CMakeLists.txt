@@ -846,6 +846,7 @@ target_link_libraries(arango_v8server arango_replication)
 target_link_libraries(arango_v8server arango_v8 ${V8_LIBS})
 
 target_link_libraries(arango_vocbase arango_agency)
+target_link_libraries(arango_vocbase arango_cluster_methods)
 target_link_libraries(arango_vocbase arango_indexes)
 target_link_libraries(arango_vocbase arango_replication)
 target_link_libraries(arango_vocbase boost_system)

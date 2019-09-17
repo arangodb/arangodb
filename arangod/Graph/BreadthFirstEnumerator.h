@@ -56,7 +56,6 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
     ~PathStep();
 
     PathStep(PathStep const& other) = default;
-    PathStep& operator=(PathStep const& other) = default;
   };
 
   //////////////////////////////////////////////////////////////////////////////
