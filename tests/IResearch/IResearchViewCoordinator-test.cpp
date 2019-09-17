@@ -792,9 +792,10 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
     // not authorised (NONE collection) as per https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
+      auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
               .first->second;
       user.grantCollection(vocbase->name(), "testCollection", arangodb::auth::Level::NONE);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -809,9 +810,10 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
     // authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
+      auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
               .first->second;
       user.grantCollection(vocbase->name(), "testCollection", arangodb::auth::Level::RO);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -3867,9 +3869,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
+      auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
               .first->second;
       user.grantCollection(vocbase->name(), "testCollection", arangodb::auth::Level::NONE);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -3898,9 +3901,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
+      auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
               .first->second;
       user.grantCollection(vocbase->name(), "testCollection", arangodb::auth::Level::RO);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -4064,9 +4068,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
+      auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+	.emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
               .first->second;
       user.grantCollection(vocbase->name(), "testCollection", arangodb::auth::Level::NONE);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -4085,9 +4090,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
+      auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
               .first->second;
       user.grantCollection(vocbase->name(), "testCollection", arangodb::auth::Level::RO);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -4201,9 +4207,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
+      auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
               .first->second;
       user.grantCollection(vocbase->name(),
                            "testCollection0", arangodb::auth::Level::NONE);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
@@ -4227,9 +4234,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
+      auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
               .first->second;
       user.grantCollection(vocbase->name(), "testCollection0", arangodb::auth::Level::RO);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       user.grantCollection(vocbase->name(), "testCollection1", arangodb::auth::Level::RO);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
@@ -4355,9 +4363,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
+      auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
               .first->second;
       user.grantCollection(vocbase->name(),
                            "testCollection0", arangodb::auth::Level::NONE);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
@@ -4381,9 +4390,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
+      auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
               .first->second;
       user.grantCollection(vocbase->name(), "testCollection0", arangodb::auth::Level::RO);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       user.grantCollection(vocbase->name(), "testCollection1", arangodb::auth::Level::RO);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
@@ -4589,9 +4599,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
+      auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
               .first->second;
       user.grantCollection(vocbase->name(), "testCollection", arangodb::auth::Level::NONE);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -4620,9 +4631,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
+      auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
               .first->second;
       user.grantCollection(vocbase->name(), "testCollection", arangodb::auth::Level::RO);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -4784,9 +4796,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
+      auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
               .first->second;
       user.grantCollection(vocbase->name(), "testCollection", arangodb::auth::Level::NONE);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -4805,9 +4818,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
+      auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
               .first->second;
       user.grantCollection(vocbase->name(), "testCollection", arangodb::auth::Level::RO);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
@@ -4927,9 +4941,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
+      auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
               .first->second;
       user.grantCollection(vocbase->name(),
                            "testCollection0", arangodb::auth::Level::NONE);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
@@ -4953,9 +4968,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
+      auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
               .first->second;
       user.grantCollection(vocbase->name(), "testCollection0", arangodb::auth::Level::RO);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       user.grantCollection(vocbase->name(), "testCollection1", arangodb::auth::Level::RO);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
@@ -5081,9 +5097,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
+      auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
               .first->second;
       user.grantCollection(vocbase->name(),
                            "testCollection0", arangodb::auth::Level::NONE);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
@@ -5107,9 +5124,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
+      auto username = arangodb::ExecContext::current().user();
       auto& user =
           userMap
-              .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+              .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
               .first->second;
       user.grantCollection(vocbase->name(), "testCollection0", arangodb::auth::Level::RO);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       user.grantCollection(vocbase->name(), "testCollection1", arangodb::auth::Level::RO);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level

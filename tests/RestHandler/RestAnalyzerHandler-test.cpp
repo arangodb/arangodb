@@ -223,9 +223,10 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
   // NOTE that permissions are always overwritten.
   void grantOnDb(std::string const& dbName, arangodb::auth::Level const& level) {
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
 
     // for system collections User::collectionAuthLevel(...) returns database auth::Level
@@ -238,9 +239,10 @@ class RestAnalyzerHandlerTest : public ::testing::Test {
   // NOTE that permissions are always overwritten.
   void grantOnDb(std::vector<std::pair<std::string const&, arangodb::auth::Level const&>> grants) {
     arangodb::auth::UserMap userMap;
+    auto username = arangodb::ExecContext::current().user();
     auto& user =
         userMap
-            .emplace("", arangodb::auth::User::newUser(""s, ""s, arangodb::auth::Source::LDAP))
+            .emplace(username, arangodb::auth::User::newUser(username, "", arangodb::auth::Source::LDAP))
             .first->second;
 
     for (auto& g : grants) {
