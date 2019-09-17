@@ -143,6 +143,8 @@ VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>* SCC::createComputa
   return new SCCComputation();
 }
 
+namespace {
+
 struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
   const std::string _resultField;
   std::atomic<uint64_t> vertexIdRange;
@@ -185,6 +187,8 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
     return false;
   }
 };
+
+}  // namespace
 
 GraphFormat<SCCValue, int8_t>* SCC::inputFormat() const {
   return new SCCGraphFormat(_resultField);
