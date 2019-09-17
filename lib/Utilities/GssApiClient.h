@@ -23,6 +23,7 @@
 #ifndef ARANGOD_KERBEROS_CLIENT_H
 #define ARANGOD_KERBEROS_CLIENT_H 1
 
+#ifndef _WIN32
 #include <netinet/in.h>
 
 #define TO_GSS_BUFFER(stdstring) {                                      \
@@ -35,4 +36,5 @@ namespace arangodb {
 std::string gssApiError(uint32_t maj, uint32_t min);
 std::string getKerberosBase64Token(std::string const& service, std::string& error, sockaddr_in* source, sockaddr_in* dest);
 }
+#endif
 #endif
