@@ -43,19 +43,19 @@ namespace network {
 /// @brief resolve 'shard:' or 'server:' url to actual endpoint
 int resolveDestination(DestinationId const& dest, std::string&);
 
-/// @brief extract the error from a cluster response
-OperationResult opResultFromBody(arangodb::velocypack::Buffer<uint8_t> const& body,
-                                 int defaultErrorCode);
-/// @brief extract the error from a cluster response
-OperationResult opResultFromBody(std::shared_ptr<arangodb::velocypack::Builder> const&,
-                                 int defaultErrorCode);
-/// @brief extract the error from a cluster response
-OperationResult opResultFromBody(arangodb::velocypack::Slice body, int defaultErrorCode);
+Result resultFromBody(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& b,
+                      int defaultError);
+Result resultFromBody(std::shared_ptr<arangodb::velocypack::Builder> const& b,
+                      int defaultError);
+Result resultFromBody(arangodb::velocypack::Slice b,
+                      int defaultError);
   
-Result resultFromBody(std::shared_ptr<arangodb::velocypack::Builder> const& body,
-                      int defaultError);
-Result resultFromBody(arangodb::velocypack::Slice body,
-                      int defaultError);
+/// @brief extract the error from a cluster response
+template<typename T>
+OperationResult opResultFromBody(T const& body,
+                                 int defaultErrorCode) {
+  return OperationResult(arangodb::network::resultFromBody(body, defaultErrorCode));
+}
 
 /// @brief extract the error code form the body
 int errorCodeFromBody(arangodb::velocypack::Slice body);
@@ -67,6 +67,7 @@ void errorCodesFromHeaders(network::Headers headers,
 
 /// @brief transform response into arango error code
 int fuerteToArangoErrorCode(network::Response const& res);
+int fuerteToArangoErrorCode(fuerte::Error err);
 
 /// @brief Create Cluster Communication result for insert
 OperationResult clusterResultInsert(fuerte::StatusCode responsecode,
@@ -77,6 +78,14 @@ OperationResult clusterResultDocument(arangodb::fuerte::StatusCode code,
                                       std::shared_ptr<VPackBuffer<uint8_t>> body,
                                       OperationOptions const& options,
                                       std::unordered_map<int, size_t> const& errorCounter);
+OperationResult clusterResultModify(arangodb::fuerte::StatusCode code,
+                                    std::shared_ptr<VPackBuffer<uint8_t>> body,
+                                    OperationOptions const& options,
+                                    std::unordered_map<int, size_t> const& errorCounter);
+OperationResult clusterResultDelete(arangodb::fuerte::StatusCode code,
+                                    std::shared_ptr<VPackBuffer<uint8_t>> body,
+                                    OperationOptions const& options,
+                                    std::unordered_map<int, size_t> const& errorCounter);
 
 }  // namespace network
 }  // namespace arangodb

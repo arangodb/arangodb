@@ -234,6 +234,9 @@ std::string to_string(Error error) {
       return "Error while writing ";
     case Error::Canceled:
       return "Connection was locally canceled";
+      
+    case Error::VstUnauthorized:
+      return "Cannot authorize on VST connection";
 
     case Error::ProtocolError:
       return "Error: invalid server response";

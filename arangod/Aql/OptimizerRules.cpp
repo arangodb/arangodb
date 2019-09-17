@@ -824,7 +824,7 @@ Collection* addCollectionToQuery(Query* query, std::string const& cname, bool as
       auto cptr = query->trx()->vocbase().lookupCollection(cname);
 
       coll->setCollection(cptr);
-      query->trx()->addCollectionAtRuntime(cname);
+      query->trx()->addCollectionAtRuntime(cname, AccessMode::Type::READ);
     }
   }
 

@@ -1276,7 +1276,7 @@ bool AgencyComm::ensureStructureInitialized() {
       break;
     }
 
-    LOG_TOPIC("63f7b", WARN, Logger::AGENCYCOMM)
+    LOG_TOPIC("63f7b", INFO, Logger::AGENCYCOMM)
       << "Initializing agency failed. We'll try again soon";
     // We should really have exclusive access, here, this is strange!
     std::this_thread::sleep_for(std::chrono::seconds(1));

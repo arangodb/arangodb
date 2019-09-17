@@ -110,18 +110,17 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
 
 futures::Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& trx,
                                                              LogicalCollection&,
-                                                             OperationOptions const& options,
-                                                             VPackSlice slice);
+                                                             VPackSlice const slice,
+                                                             OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a document in a coordinator
+/// @brief remove a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int deleteDocumentOnCoordinator(transaction::Methods& trx, std::string const& collname,
-                                VPackSlice const slice, OperationOptions const& options,
-                                arangodb::rest::ResponseCode& responseCode,
-                                std::unordered_map<int, size_t>& errorCounters,
-                                std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
+futures::Future<OperationResult> removeDocumentOnCoordinator(transaction::Methods& trx,
+                                                             LogicalCollection&,
+                                                             VPackSlice const slice,
+                                                             OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a document in a coordinator
@@ -219,18 +218,17 @@ int getFilteredEdgesOnCoordinator(transaction::Methods const& trx,
 /// @brief modify a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int modifyDocumentOnCoordinator(
-    transaction::Methods& trx, std::string const& collname,
+futures::Future<OperationResult> modifyDocumentOnCoordinator(
+    transaction::Methods& trx, LogicalCollection& coll,
     arangodb::velocypack::Slice const& slice, OperationOptions const& options,
-    bool isPatch, std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
-    arangodb::rest::ResponseCode& responseCode, std::unordered_map<int, size_t>& errorCounter,
-    std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
+                                                             bool isPatch);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string const& collname);
+futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Methods& trx,
+                                                                 std::string const& collname);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush Wal on all DBservers

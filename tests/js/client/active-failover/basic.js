@@ -135,6 +135,9 @@ function getApplierState(endpoint) {
 // check the servers are in sync with the leader
 function checkInSync(leader, servers, ignore) {
   print("Checking in-sync state with lead: ", leader);
+
+  const leaderTick = getLoggerState(leader).state.lastLogTick;
+
   let check = (endpoint) => {
     if (endpoint === leader || endpoint === ignore) {
       return true;
@@ -145,8 +148,6 @@ function checkInSync(leader, servers, ignore) {
       (compareTicks(applier.state.lastAppliedContinuousTick, leaderTick) >= 0 ||
         compareTicks(applier.state.lastProcessedContinuousTick, leaderTick) >= 0);
   };
-
-  const leaderTick = getLoggerState(leader).state.lastLogTick;
 
   let loop = 100;
   while (loop-- > 0) {
@@ -160,12 +161,15 @@ function checkInSync(leader, servers, ignore) {
   return false;
 }
 
-function checkData(server) {
+function checkData(server, allowDirty = false) {
   print("Checking data of ", server);
   let res = request.get({
     url: getUrl(server) + "/_api/collection/" + cname + "/count",
     auth: {
       bearer: jwtRoot,
+    },
+    headers: {
+      "X-Arango-Allow-Dirty-Read": allowDirty
     },
     timeout: 300 
   });
@@ -245,6 +249,40 @@ function checkForFailover(leader) {
   } while (i-- > 0);
   print("Timing out, current leader value: ", nextLeaderUUID);
   throw "No failover occured";
+}
+
+function waitUntilHealthStatusIs(isHealthy, isFailed) {
+  print("Waiting for health status to be healthy: ", JSON.stringify(isHealthy), " failed: ", JSON.stringify(isFailed));
+  // Wait 25 seconds, sleep 5 each run
+  for (const start = Date.now(); (Date.now() - start) / 1000 < 25; internal.wait(5.0)) {
+    let needToWait = false;
+    let res = readAgencyValue("/arango/Supervision/Health");
+    let srvHealth = res[0].arango.Supervision.Health;
+    let foundFailed = 0;
+    let foundHealthy = 0;
+    for (const [_, srv] of Object.entries(srvHealth)) {
+      if (srv.Status === 'FAILED') {
+        // We have a FAILED server, that we do not expect
+        if (!isFailed.indexOf(srv.Endpoint) === -1) {
+          needToWait = true;
+          break;
+        }
+        foundFailed++;
+      } else {
+        if (!isHealthy.indexOf(srv.Endpoint) === -1) {
+          needToWait = true;
+          break;
+        }
+        foundHealthy++;
+      }
+    }
+    if (!needToWait && foundHealthy === isHealthy.length && foundFailed === isFailed.length) {
+      return true;
+    }
+  }
+  print("Timing out, could not reach desired state: ", JSON.stringify(isHealthy), " failed: ", JSON.stringify(isFailed));
+  print("We only got: ", JSON.stringify(readAgencyValue("/arango/Supervision/Health")[0].arango.Supervision.Health));
+  return false;
 }
 
 // Testsuite that quickly checks some of the basic premises of
@@ -401,6 +439,15 @@ function ActiveFailoverSuite() {
       assertEqual(endpoints.length, 2);
       assertEqual(endpoints[1], nextLead); // this server must become new leader
 
+      let upper = checkData(currentLead);
+      let atLeast = 0;
+      while (atLeast < upper) {
+        internal.wait(1.0);
+        //update atLeast
+        atLeast = checkData(nextLead, true);
+      }
+
+      let healthyList = [currentLead, nextLead].concat(suspended.map(s => s.endpoint));
       // resume followers
       print("Resuming followers");
       suspended.forEach(arangod => {
@@ -409,8 +456,10 @@ function ActiveFailoverSuite() {
       });
       suspended = [];
 
-      let upper = checkData(currentLead);
-      print("Leader inserted ", upper, " documents so far");
+      // Wait until all servers report healthy again
+      assertTrue(waitUntilHealthStatusIs(healthyList, []));
+
+      print("Leader inserted ", upper, " documents so far desired follower has " , atLeast);
       print("Suspending leader ", currentLead);
       instanceinfo.arangods.forEach(arangod => {
         if (arangod.endpoint === currentLead) {
@@ -423,12 +472,9 @@ function ActiveFailoverSuite() {
       // await failover and check that follower get in sync
       let oldLead = currentLead;
       currentLead = checkForFailover(currentLead);
-      assertEqual(currentLead, nextLead, "Did not fail to best in-sync follower");
 
-      internal.wait(5); // settle down, heartbeat interval is 1s
       let cc = checkData(currentLead);
-      // we expect to find documents within an acceptable range
-      assertTrue(10000 <= cc && cc <= upper + 500, "Leader has too little or too many documents");
+      assertTrue(cc >= atLeast, "The new Leader has too few documents");
       print("Number of documents is in acceptable range");
 
       assertTrue(checkInSync(currentLead, servers, oldLead));

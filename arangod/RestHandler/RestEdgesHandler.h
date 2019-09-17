@@ -31,7 +31,9 @@
 
 namespace arangodb {
 class LocalDocumentId;
-class SingleCollectionTransaction;
+namespace transaction {
+class Methods;
+}
 
 namespace aql {
 struct AstNode;
@@ -65,15 +67,16 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void readCursor(aql::AstNode* condition, aql::Variable const* var,
-                  std::string const& collectionName, SingleCollectionTransaction& trx,
+                  std::string const& collectionName, transaction::Methods& trx,
                   std::function<void(LocalDocumentId const&)> const& cb);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get all edges for a given vertex. Independent from the request
   //////////////////////////////////////////////////////////////////////////////
 
-  bool getEdgesForVertex(std::string const& id, std::string const& collectionName,
-                         TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
+  bool getEdgesForVertex(std::string const& id, TRI_voc_cid_t cid,
+                         std::string const& collectionName,
+                         TRI_edge_direction_e direction, transaction::Methods& trx,
                          std::function<void(LocalDocumentId const&)> const& cb);
 
   //////////////////////////////////////////////////////////////////////////////
