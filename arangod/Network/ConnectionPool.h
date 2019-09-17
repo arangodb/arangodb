@@ -64,7 +64,7 @@ class ConnectionPool final {
 
   /// @brief simple connection reference counter
   struct Ref {
-    Ref(ConnectionPool::Connection* c);
+    explicit Ref(ConnectionPool::Connection* c);
     Ref(Ref&& r);
     Ref& operator=(Ref&&);
     Ref(Ref const& other);
@@ -78,7 +78,7 @@ class ConnectionPool final {
   };
 
  public:
-  ConnectionPool(ConnectionPool::Config const& config);
+  explicit ConnectionPool(ConnectionPool::Config const& config);
   virtual ~ConnectionPool();
 
   /// @brief request a connection for a specific endpoint
@@ -105,7 +105,7 @@ class ConnectionPool final {
  protected:
   /// @brief connection container
   struct Connection {
-    Connection(std::shared_ptr<fuerte::Connection> f)
+    explicit Connection(std::shared_ptr<fuerte::Connection> f)
         : fuerte(std::move(f)),
           numLeased(0),
           lastUsed(std::chrono::steady_clock::now()) {}
