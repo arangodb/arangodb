@@ -887,9 +887,13 @@ if (USE_ENTERPRISE)
       ${LDAP_LIB}
       ${LBER_LIB}
       ${OPENSSL_LIBRARIES}
-      ${GSS_LIBRARIES}
     )
   endif()
+endif()
+
+
+if (NOT MSVC)
+  target_link_libraries(arangoserver ${GSS_LIBRARIES})
 endif()
 
 add_executable(${BIN_ARANGOD}

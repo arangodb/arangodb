@@ -236,8 +236,6 @@ void V8ClientConnection::setHostName(std::string hostname) {
   }
 }
 
-#include "Enterprise/Kerberos/KerberosAuthenticationHandler.h"
-
 std::shared_ptr<fuerte::Connection> V8ClientConnection::spnego() {
 
   std::string fqdn(_hostname);
