@@ -26,6 +26,8 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -174,14 +176,30 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
   // .............................................................................
   
   bool found = false;
-  std::string cName = _request->value("collection", found);
+  std::string const& cName = _request->value("collection", found);
   if (cName.empty()) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 
-  // transaction protects acces onto selectivity estimates
-  auto trx = createTransaction(cName, AccessMode::Type::READ);
+  // transaction protects access onto selectivity estimates
+  std::unique_ptr<transaction::Methods> trx;
+
+  try {
+    trx = createTransaction(cName, AccessMode::Type::READ);
+  } catch (basics::Exception const& ex) {
+    if (ex.code() == TRI_ERROR_TRANSACTION_NOT_FOUND) {
+      // this will happen if the tid of a managed transaction is passed in,
+      // but the transaction hasn't yet started on the DB server. in
+      // this case, we create an ad-hoc transaction on the underlying
+      // collection
+      trx = std::make_unique<SingleCollectionTransaction>(transaction::StandaloneContext::Create(_vocbase), cName, AccessMode::Type::READ);
+    } else {
+      throw;
+    }
+  }
+
+  TRI_ASSERT(trx != nullptr);
 
   Result res = trx->begin();
   if (res.fail()) {
@@ -189,7 +207,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
     return RestStatus::DONE;
   }
   
-  LogicalCollection* coll = trx->documentCollection();
+  LogicalCollection* coll = trx->documentCollection(cName);
   auto idxs = coll->getIndexes();
   
   VPackBuffer<uint8_t> buffer;

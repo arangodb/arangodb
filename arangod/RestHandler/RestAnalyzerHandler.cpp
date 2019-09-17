@@ -160,7 +160,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
           return;
         }
 
-        auto* feature = irs::attribute::type_id::get(getStringRef(value));
+        auto* feature = irs::attribute::type_id::get(getStringRef(value), false);
 
         if (!feature) {
           generateError(arangodb::Result(

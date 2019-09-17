@@ -179,16 +179,20 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
       count += 1;
 
       let collectionsBefore = [];
+      let viewsBefore = [];
       if (!serverDead) {
         try {
           db._collections().forEach(collection => {
             collectionsBefore.push(collection._name);
           });
+          db._views().forEach(view => {
+            viewsBefore.push(view._name);
+          });
         }
         catch (x) {
           results[te] = {
             status: false,
-            message: 'failed to fetch the previously available collections: ' + x.message
+            message: 'failed to fetch the previously available collections & views: ' + x.message
           };
           continueTesting = false;
           serverDead = true;
@@ -248,22 +252,25 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             break;
           }
         }
-
         if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
             healthCheck(options, serverOptions, instanceInfo, customInstanceInfos, startStopHandlers)) {
           continueTesting = true; 
 
-          // Check whether some collections were left behind, and if mark test as failed.
+          // Check whether some collections & views were left behind, and if mark test as failed.
           let collectionsAfter = [];
+          let viewsAfter = [];
           try {
             db._collections().forEach(collection => {
               collectionsAfter.push(collection._name);
+            });
+            db._views().forEach(view => {
+              viewsAfter.push(view._name);
             });
           }
           catch (x) {
             results[te] = {
               status: false,
-              message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
+              message: 'failed to fetch the currently available collections & views: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
             };
             continueTesting = false;
             continue;
@@ -274,21 +281,29 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             return (name[0] !== '_'); // exclude system collections from the comparison
           });
 
-          if (delta.length !== 0) {
+          let deltaViews = diffArray(viewsBefore, viewsAfter).filter(function(name) {
+            return ! ((name[0] === '_') || (name === "compact") || (name === "election")
+                     || (name === "log")); 
+          });
+          if ((delta.length !== 0) || (deltaViews.length !== 0)){
             results[te] = {
               status: false,
-              message: 'Cleanup missing - test left over collections: ' + delta + '. Original test status: ' + JSON.stringify(results[te])
+              message: 'Cleanup missing - test left over collections / views : ' + delta + ' / ' + deltaViews + '. Original test status: ' + JSON.stringify(results[te])
             };
             collectionsBefore = [];
+            viewsBefore = [];
             try {
               db._collections().forEach(collection => {
                 collectionsBefore.push(collection._name);
+              });
+              db._views().forEach(view => {
+                viewsBefore.push(view._name);
               });
             }
             catch (x) {
               results[te] = {
                 status: false,
-                message: 'failed to fetch the currently available delta collections: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
+                message: 'failed to fetch the currently available delta collections / views: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
               };
               continueTesting = false;
               continue;
@@ -337,15 +352,19 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             results.setup.message = 'custom alive check failed!';
           }
           collectionsBefore = [];
+          viewsBefore = [];
           try {
             db._collections().forEach(collection => {
               collectionsBefore.push(collection._name);
+            });
+            db._views().forEach(view => {
+              viewsBefore.push(view._name);
             });
           }
           catch (x) {
             results[te] = {
               status: false,
-              message: 'failed to fetch the currently available shutdown collections: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
+              message: 'failed to fetch the currently available shutdown collections / views: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
             };
             continueTesting = false;
             continue;
@@ -769,7 +788,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
     args = Object.assign(args, addArgs);
   }
   require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
-  let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir, false, options.coreCheck);
+  let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir, options.coreCheck);
   return readTestResult(instanceInfo.rootDir, rc, args['javascript.unit-tests']);
 }
 runInArangosh.info = 'arangosh';
@@ -913,7 +932,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     args = [rspec].concat(args);
   }
 
-  const res = pu.executeAndWait(command, args, options, 'rspec', instanceInfo.rootDir, false, false, options.oneTestTimeout);
+  const res = pu.executeAndWait(command, args, options, 'rspec', instanceInfo.rootDir, false, options.oneTestTimeout);
 
   if (!res.status && res.timeout) {
     return {

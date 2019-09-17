@@ -28,12 +28,14 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Replication/ReplicationFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
@@ -55,11 +57,23 @@ using namespace arangodb::basics;
   CreateAgencyException(args, data); \
   return;
 
-#define ONLY_IN_CLUSTER                                 \
-  if (!ServerState::instance()->isRunningInCluster()) { \
-    TRI_V8_THROW_EXCEPTION_INTERNAL(                    \
-        "ArangoDB is not running in cluster mode");     \
+static void onlyInCluster() {
+  if (ServerState::instance()->isRunningInCluster()) { 
+    return;
   }
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "ArangoDB is not running in cluster mode");     
+}
+
+static void onlyInClusterOrActiveFailover() {
+  auto replicationFeature = ReplicationFeature::INSTANCE;
+  if (replicationFeature != nullptr && replicationFeature->isActiveFailoverEnabled()) {
+    // active failover enabled
+    return;
+  }
+
+  return onlyInCluster();
+}
 
 static void CreateAgencyException(v8::FunctionCallbackInfo<v8::Value> const& args,
                                   AgencyCommResult const& result) {
@@ -103,7 +117,7 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER;
+  onlyInClusterOrActiveFailover();
 
   if (args.Length() < 3) {
     TRI_V8_THROW_EXCEPTION_USAGE(
@@ -165,7 +179,7 @@ static void JS_CreateDirectoryAgency(v8::FunctionCallbackInfo<v8::Value> const& 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER;
+  onlyInClusterOrActiveFailover();
 
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("createDirectory(<key>)");
@@ -212,7 +226,7 @@ static void JS_IncreaseVersionAgency(v8::FunctionCallbackInfo<v8::Value> const& 
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER;
+  onlyInClusterOrActiveFailover();
 
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("increaseVersion(<key>)");
@@ -238,7 +252,7 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER;
+  onlyInClusterOrActiveFailover();
 
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("get(<key>)");
@@ -280,7 +294,7 @@ static void JS_APIAgency(std::string const& envelope,
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER;
+  onlyInClusterOrActiveFailover();
 
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(std::string(envelope) + "([[...]])");
@@ -345,7 +359,7 @@ static void JS_RemoveAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER;
+  onlyInClusterOrActiveFailover();
 
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("remove(<key>, <recursive>)");
@@ -377,7 +391,7 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER;
+  onlyInClusterOrActiveFailover();
 
   if (args.Length() < 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("set(<key>, <value>, <ttl>)");
@@ -416,7 +430,7 @@ static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER;
+  onlyInClusterOrActiveFailover();
 
   if (args.Length() > 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("agency()");
@@ -459,7 +473,7 @@ static void JS_EndpointsAgency(v8::FunctionCallbackInfo<v8::Value> const& args) 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER;
+  onlyInClusterOrActiveFailover();
 
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("endpoints()");
@@ -504,7 +518,7 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER;
+  onlyInClusterOrActiveFailover();
 
   if (args.Length() > 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("uniqid(<count>, <timeout>)");
@@ -541,7 +555,7 @@ static void JS_VersionAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER;
+  onlyInClusterOrActiveFailover();
 
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("version()");
@@ -562,7 +576,8 @@ static void JS_DoesDatabaseExistClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER
+  onlyInCluster();
+
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("doesDatabaseExist(<database-id>)");
   }
@@ -585,12 +600,13 @@ static void JS_DoesDatabaseExistClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
 static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  onlyInCluster();
 
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("databases()");
   }
 
-  ONLY_IN_CLUSTER
   auto& server = application_features::ApplicationServer::server();
   auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
   std::vector<DatabaseID> res = ci.databases(true);
@@ -612,7 +628,8 @@ static void JS_FlushClusterInfo(v8::FunctionCallbackInfo<v8::Value> const& args)
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER
+  onlyInCluster();
+  
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("flush()");
   }
@@ -633,7 +650,8 @@ static void JS_GetCollectionInfoClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER
+  onlyInCluster();
+  
   if (args.Length() != 2) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "getCollectionInfo(<database-id>, <collection-id>)");
@@ -705,7 +723,8 @@ static void JS_GetCollectionInfoCurrentClusterInfo(v8::FunctionCallbackInfo<v8::
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER
+  onlyInCluster();
+  
   if (args.Length() != 3) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "getCollectionInfoCurrent(<database-id>, <collection-id>, <shardID>)");
@@ -782,7 +801,8 @@ static void JS_GetResponsibleServerClusterInfo(v8::FunctionCallbackInfo<v8::Valu
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER
+  onlyInCluster();
+  
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServer(<shard-id>)");
   }
@@ -808,7 +828,8 @@ static void JS_GetResponsibleServersClusterInfo(v8::FunctionCallbackInfo<v8::Val
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER
+  onlyInCluster();
+  
   if (args.Length() != 1 || !args[0]->IsArray()) {
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServers(<shard-ids>)");
   }
@@ -846,7 +867,8 @@ static void JS_GetResponsibleShardClusterInfo(v8::FunctionCallbackInfo<v8::Value
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER
+  onlyInCluster();
+  
   if (args.Length() < 2 || args.Length() > 3) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "getResponsibleShard(<collection-id>, <document>, "
@@ -910,7 +932,8 @@ static void JS_GetServerEndpointClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER
+  onlyInCluster();
+  
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("getServerEndpoint(<server-id>)");
   }
@@ -931,7 +954,8 @@ static void JS_GetServerNameClusterInfo(v8::FunctionCallbackInfo<v8::Value> cons
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER
+  onlyInCluster();
+  
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("getServerName(<endpoint>)");
   }
@@ -952,7 +976,8 @@ static void JS_GetDBServers(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER
+  onlyInCluster();
+  
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("getDBServers()");
   }
@@ -995,7 +1020,7 @@ static void JS_GetCoordinators(v8::FunctionCallbackInfo<v8::Value> const& args) 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER
+  onlyInCluster();
 
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("getCoordinators()");
@@ -1078,7 +1103,8 @@ static void JS_IdServerState(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  ONLY_IN_CLUSTER
+  onlyInClusterOrActiveFailover();
+  
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("id()");
   }
@@ -1168,40 +1194,6 @@ static void JS_GetFoxxmasterSince(v8::FunctionCallbackInfo<v8::Value> const& arg
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the primary servers id (only for secondaries)
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_IdOfPrimaryServerState(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  ONLY_IN_CLUSTER
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("idOfPrimary()");
-  }
-
-  TRI_V8_RETURN_STRING("");  // no more secondaries
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the javascript startup path
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_JavaScriptPathServerState(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("javaScriptPath()");
-  }
-
-  std::string const path = ServerState::instance()->getJavaScriptPath();
-  TRI_V8_RETURN_STD_STRING(path);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the cluster is initialized
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1283,29 +1275,6 @@ static void JS_SetRoleServerState(v8::FunctionCallbackInfo<v8::Value> const& arg
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief redetermines the role from the agency
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_RedetermineRoleServerState(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  ONLY_IN_CLUSTER
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("redetermineRole()");
-  }
-
-  /*bool changed = ServerState::instance()->redetermineRole();
-  if (changed) {
-    TRI_V8_RETURN_TRUE();
-  } else {
-
-  }*/
-  TRI_V8_RETURN_FALSE();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the server state
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1341,7 +1310,8 @@ static void PrepareClusterCommRequest(v8::FunctionCallbackInfo<v8::Value> const&
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
-  ONLY_IN_CLUSTER
+  onlyInClusterOrActiveFailover();
+
   TRI_ASSERT(args.Length() >= 4);
 
   reqType = arangodb::rest::RequestType::GET;
@@ -1572,7 +1542,8 @@ static void Return_PrepareClusterCommResultForJS(v8::FunctionCallbackInfo<v8::Va
 static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  ONLY_IN_CLUSTER
+  
+  onlyInClusterOrActiveFailover();
 
   if (args.Length() < 4 || args.Length() > 7) {
     TRI_V8_THROW_EXCEPTION_USAGE(
@@ -1629,7 +1600,8 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  ONLY_IN_CLUSTER
+  
+  onlyInCluster();
 
   if (args.Length() < 4 || args.Length() > 7) {
     TRI_V8_THROW_EXCEPTION_USAGE(
@@ -1690,7 +1662,8 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_Enquire(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  ONLY_IN_CLUSTER
+  
+  onlyInCluster();
 
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("enquire(operationID)");
@@ -1722,7 +1695,8 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-  ONLY_IN_CLUSTER
+  
+  onlyInClusterOrActiveFailover();
 
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("wait(obj)");
@@ -1787,7 +1761,8 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-  ONLY_IN_CLUSTER
+  
+  onlyInCluster();
 
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("drop(obj)");
@@ -1888,7 +1863,8 @@ static void JS_ClusterDownload(v8::FunctionCallbackInfo<v8::Value> const& args) 
 
 static void JS_GetShardDistribution(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  ONLY_IN_CLUSTER
+  
+  onlyInCluster();
 
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
@@ -1907,7 +1883,8 @@ static void JS_GetShardDistribution(v8::FunctionCallbackInfo<v8::Value> const& a
 
 static void JS_GetCollectionShardDistribution(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  ONLY_IN_CLUSTER
+  
+  onlyInCluster();
 
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
@@ -2063,11 +2040,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "getFoxxmasterSince"),
                        JS_GetFoxxmasterSince);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "idOfPrimary"),
-                       JS_IdOfPrimaryServerState);
-  TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING(isolate, "javaScriptPath"),
-                       JS_JavaScriptPathServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "initialized"),
                        JS_InitializedServerState);
   TRI_AddMethodVocbase(isolate, rt,
@@ -2076,9 +2048,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "role"), JS_RoleServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "setRole"),
                        JS_SetRoleServerState, true);
-  TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING(isolate, "redetermineRole"),
-                       JS_RedetermineRoleServerState, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "status"), JS_StatusServerState);
 
   v8g->ServerStateTempl.Reset(isolate, rt);

@@ -879,8 +879,7 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
     ASSERT_NE(_sysVocbase, nullptr);
 
     _vocbase = nullptr;
-    auto res = server.getFeature<arangodb::DatabaseFeature>().createDatabase(1, dbName, _vocbase);
-    ASSERT_EQ(res, TRI_ERROR_NO_ERROR);
+    ASSERT_TRUE(server.getFeature<arangodb::DatabaseFeature>().createDatabase(1, dbName, _vocbase).ok());
     ASSERT_NE(_vocbase, nullptr);
     arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
                                                  false);
@@ -1146,8 +1145,7 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
 
     _vocbase = nullptr;
-    auto res = dbFeature.createDatabase(1, _dbName, _vocbase);
-    ASSERT_EQ(res, TRI_ERROR_NO_ERROR);
+    ASSERT_TRUE(dbFeature.createDatabase(1, _dbName, _vocbase).ok());
     ASSERT_NE(_vocbase, nullptr);
   }
 
@@ -2283,7 +2281,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
     TRI_vocbase_t* vocbase;
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.createDatabase(1, "testVocbase", vocbase)));
+    ASSERT_TRUE(dbFeature.createDatabase(1, "testVocbase", vocbase).ok());
     ASSERT_TRUE((nullptr != dbFeature.lookupDatabase("testVocbase")));
 
     EXPECT_TRUE((true == !feature.get("testVocbase::test_analyzer")));
@@ -3173,7 +3171,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest, no_system_no_analyzer) {
   feature.start();  // register upgrade tasks
 
   TRI_vocbase_t* vocbase;
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.createDatabase(1, "testVocbase", vocbase)));
+  EXPECT_TRUE(dbFeature.createDatabase(1, "testVocbase", vocbase).ok());
   sysDatabase.unprepare();  // unset system vocbase
   // EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
   // collections are not created in upgrade tasks within iresearch anymore. For that reason, we have
@@ -3197,7 +3195,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest, no_system_with_analyzer)
 
   std::unordered_set<std::string> expected{"abc"};
   TRI_vocbase_t* vocbase;
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.createDatabase(1, "testVocbase", vocbase)));
+  EXPECT_TRUE(dbFeature.createDatabase(1, "testVocbase", vocbase).ok());
   EXPECT_TRUE((false == !vocbase->createCollection(createCollectionJson->slice())));
 
   // add document to collection
@@ -3247,7 +3245,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest, system_no_legacy_no_anal
   }
 
   TRI_vocbase_t* vocbase;
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.createDatabase(1, "testVocbase", vocbase)));
+  EXPECT_TRUE(dbFeature.createDatabase(1, "testVocbase", vocbase).ok());
   // EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
   // TODO: We should use global system creation here instead of all the exissting manual stuff ...
   arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
@@ -3274,7 +3272,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest, system_no_legacy_with_an
 
   std::unordered_set<std::string> expected{"abc"};
   TRI_vocbase_t* vocbase;
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.createDatabase(1, "testVocbase", vocbase)));
+  EXPECT_TRUE(dbFeature.createDatabase(1, "testVocbase", vocbase).ok());
   EXPECT_TRUE((false == !vocbase->createCollection(createCollectionJson->slice())));
 
   // add document to collection
@@ -3326,19 +3324,20 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest, system_with_legacy_no_an
   // add document to legacy collection after feature start
   {
     arangodb::OperationOptions options;
+    auto& system = *sysDatabase.use();
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(*sysDatabase.use()),
+        arangodb::transaction::StandaloneContext::Create(system),
         LEGACY_ANALYZER_COLLECTION_NAME, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE((true == trx.begin().ok()));
     EXPECT_TRUE(
-        (true == trx.insert(arangodb::tests::AnalyzerCollectionName,
+        (true == trx.insert(LEGACY_ANALYZER_COLLECTION_NAME,
                             VPackParser::fromJson("{\"name\": \"legacy\"}")->slice(), options)
                      .ok()));
     EXPECT_TRUE((trx.commit().ok()));
   }
 
   TRI_vocbase_t* vocbase;
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.createDatabase(1, "testVocbase", vocbase)));
+  EXPECT_TRUE(dbFeature.createDatabase(1, "testVocbase", vocbase).ok());
   // EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok())); // run upgrade
   // TODO: We should use global system creation here instead of all the exissting manual stuff ...
   arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
@@ -3365,7 +3364,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest, system_no_legacy_with_an
 
   std::set<std::string> expected{"abc"};
   TRI_vocbase_t* vocbase;
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.createDatabase(1, "testVocbase", vocbase)));
+  EXPECT_TRUE(dbFeature.createDatabase(1, "testVocbase", vocbase).ok());
   EXPECT_TRUE((false == !vocbase->createCollection(createCollectionJson->slice())));
 
   // add document to collection
@@ -3583,9 +3582,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   TRI_vocbase_t* vocbase0;
   TRI_vocbase_t* vocbase1;
   TRI_vocbase_t* vocbase2;
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.createDatabase(1, "vocbase0", vocbase0)));
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.createDatabase(1, "vocbase1", vocbase1)));
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature.createDatabase(1, "vocbase2", vocbase2)));
+  EXPECT_TRUE(dbFeature.createDatabase(1, "vocbase0", vocbase0).ok());
+  EXPECT_TRUE(dbFeature.createDatabase(1, "vocbase1", vocbase1).ok());
+  EXPECT_TRUE(dbFeature.createDatabase(1, "vocbase2", vocbase2).ok());
   arangodb::methods::Collections::createSystem(*vocbase0, arangodb::tests::AnalyzerCollectionName, false);
   arangodb::methods::Collections::createSystem(*vocbase1, arangodb::tests::AnalyzerCollectionName, false);
   arangodb::methods::Collections::createSystem(*vocbase2, arangodb::tests::AnalyzerCollectionName, false);

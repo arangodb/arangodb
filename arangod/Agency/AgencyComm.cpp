@@ -1275,7 +1275,7 @@ bool AgencyComm::ensureStructureInitialized() {
       break;
     }
 
-    LOG_TOPIC("63f7b", WARN, Logger::AGENCYCOMM)
+    LOG_TOPIC("63f7b", INFO, Logger::AGENCYCOMM)
       << "Initializing agency failed. We'll try again soon";
     // We should really have exclusive access, here, this is strange!
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -1383,8 +1383,8 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
   AgencyCommResult result;
   if (!AgencyCommManager::isEnabled()) {
     LOG_TOPIC("42fae", ERR, Logger::AGENCYCOMM)
-      << "No AgencyCommManager.  Inappropriate agent usage?";
-    result.set(503, "No AgencyCommManager. Inappropriate agent usage?");
+      << "No AgencyCommManager. Inappropriate agent usage?";
+    result.set(static_cast<int>(rest::ResponseCode::SERVICE_UNAVAILABLE), "No AgencyCommManager. Inappropriate agent usage?");
     return result;
   } // if
 
@@ -1512,7 +1512,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
           if (clientIds[0] == "INTEGRATION_TEST_INQUIRY_ERROR_0") {
             result._statusCode = 0;
           } else if (clientIds[0] == "INTEGRATION_TEST_INQUIRY_ERROR_503") {
-            result._statusCode = 503;
+            result._statusCode = static_cast<int>(rest::ResponseCode::SERVICE_UNAVAILABLE);
           }
         }
 #endif
@@ -1544,7 +1544,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
       // timeout is reached.
       // Also note that we only inquire about WriteTransactions.
       if (isWriteTrans && !clientIds.empty() && result._sent &&
-          (result._statusCode == 0 || result._statusCode == 503)) {
+          (result._statusCode == 0 || result._statusCode == static_cast<int>(rest::ResponseCode::SERVICE_UNAVAILABLE))) {
         isInquiry = true;
         conTimeout = 16.0;
       }
@@ -1626,7 +1626,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
       }
     }
 
-    if (result._statusCode == 0 || result._statusCode == 503) {
+    if (result._statusCode == 0 || result._statusCode == static_cast<int>(rest::ResponseCode::SERVICE_UNAVAILABLE)) {
       // Rotate to new agent endpoint:
       AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
       endpoint.clear();
@@ -1635,13 +1635,13 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
   }
 
   // Log error
-  if (!result.successful() && result.httpCode() != 412) {
+  if (!result.successful() && result.httpCode() != static_cast<int>(rest::ResponseCode::PRECONDITION_FAILED)) {
     LOG_TOPIC("78466", DEBUG, Logger::AGENCYCOMM)
-        << "Unsuccessful AgencyComm: "
-        << "errorCode: " << result.errorCode()
+        << "Unsuccessful AgencyComm:"
+        << " errorCode: " << result.errorCode()
         << " errorMessage: " << result.errorMessage()
         << " errorDetails: " << result.errorDetails();
-  }
+  } 
 
   return result;
 }

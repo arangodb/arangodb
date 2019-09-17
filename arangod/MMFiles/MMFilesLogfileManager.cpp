@@ -575,7 +575,7 @@ void MMFilesLogfileManager::unprepare() {
 
   TRI_IF_FAILURE("LogfileManagerStop") {
     // intentionally kill the server
-    TRI_SegfaultDebugging("MMFilesLogfileManagerStop");
+    TRI_TerminateDebugging("MMFilesLogfileManagerStop");
   }
 
   int res = writeShutdownInfo(true);

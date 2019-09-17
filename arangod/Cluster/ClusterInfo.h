@@ -107,7 +107,7 @@ class PlanCollectionReader {
  public:
   PlanCollectionReader(PlanCollectionReader const&&) = delete;
   PlanCollectionReader(PlanCollectionReader const&) = delete;
-  PlanCollectionReader(LogicalCollection const& collection) {
+  explicit PlanCollectionReader(LogicalCollection const& collection) {
     std::string databaseName = collection.vocbase().name();
     std::string collectionID = std::to_string(collection.id());
 

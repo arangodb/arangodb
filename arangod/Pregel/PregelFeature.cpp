@@ -47,9 +47,6 @@ bool authorized(std::string const& user) {
   if (exec.isSuperuser()) {
     return true;
   }
-  if (!(user == exec.user())) {
-    std::this_thread::sleep_for(std::chrono::seconds(20));
-  }
   return (user == exec.user());
 }
 

@@ -137,8 +137,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
   static const std::string userName("testUser");
   auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-  ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-               databaseFeature.createDatabase(1, "testDatabase", vocbase)));
+  ASSERT_TRUE(databaseFeature.createDatabase(1, "testDatabase", vocbase).ok());
   auto grantRequestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
   auto& grantRequest = *grantRequestPtr;
   auto grantResponcePtr = std::make_unique<GeneralResponseMock>();

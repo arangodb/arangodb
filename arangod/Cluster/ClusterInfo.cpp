@@ -621,12 +621,12 @@ void ClusterInfo::loadPlan() {
               arangodb::basics::VelocyPackHelper::stringUInt64(database.value,
                                                                StaticStrings::DatabaseId);
           // create a local database object...
-          int res = databaseFeature.createDatabase(id, name, vocbase);
+          Result res = databaseFeature.createDatabase(id, name, vocbase);
 
-          if (res != TRI_ERROR_NO_ERROR) {
+          if (res.fail()) {
             LOG_TOPIC("91870", ERR, arangodb::Logger::AGENCY)
                 << "creating local database '" << name
-                << "' failed: " << TRI_errno_string(res);
+                << "' failed: " << res.errorMessage();
           }
         }
       }
@@ -869,7 +869,7 @@ void ClusterInfo::loadPlan() {
         try {
           std::shared_ptr<LogicalCollection> newCollection;
 
-#if defined(USE_ENTERPRISE)
+#ifdef USE_ENTERPRISE
           auto isSmart = collectionSlice.get(StaticStrings::IsSmart);
 
           if (isSmart.isTrue()) {
@@ -1570,7 +1570,7 @@ Result ClusterInfo::waitForDatabaseInCurrent(methods::CreateDatabaseInfo const& 
       agencyCallback->executeByCallbackOrTimeout(getReloadServerListTimeout() / interval);
 
       if (_server.isStopping()) {
-        return Result(TRI_ERROR_CLUSTER_TIMEOUT);
+        return Result(TRI_ERROR_SHUTTING_DOWN);
       }
     }
   }
@@ -1601,7 +1601,7 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(methods::CreateDatabaseI
 
   if (!res.successful()) {
     if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
-      return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+      return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("duplicate database name '") + database.getName() + "'");
     }
 
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN);
@@ -1708,7 +1708,7 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(methods::CreateDatabaseInfo 
     }
 
     if (_server.isStopping()) {
-      return Result(TRI_ERROR_CLUSTER_TIMEOUT);
+      return Result(TRI_ERROR_SHUTTING_DOWN);
     }
   } while(!res.successful());
 
@@ -1805,7 +1805,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
       agencyCallback->executeByCallbackOrTimeout(interval);
 
       if (_server.isStopping()) {
-        return Result(TRI_ERROR_CLUSTER_TIMEOUT);
+        return Result(TRI_ERROR_SHUTTING_DOWN);
       }
     }
   }
@@ -1853,7 +1853,7 @@ Result ClusterInfo::checkCollectionPreconditions(std::string const& databaseName
         if (it2 != (*it).second.end()) {
           // collection already exists!
           events::CreateCollection(databaseName, info.name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
-          return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+          return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("duplicate collection name '") + info.name + "'");
         }
       } else {
         // no collection in plan for this particular database... this may be true for
@@ -1877,7 +1877,7 @@ Result ClusterInfo::checkCollectionPreconditions(std::string const& databaseName
         if (it2 != (*it).second.end()) {
           // view already exists!
           events::CreateCollection(databaseName, info.name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
-          return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+          return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("duplicate collection name '") + info.name + "'");
         }
       }
     }
@@ -2466,8 +2466,8 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
       agencyCallback->executeByCallbackOrTimeout(interval);
 
       if (_server.isStopping()) {
-        events::DropCollection(dbName, collectionID, TRI_ERROR_CLUSTER_TIMEOUT);
-        return Result(TRI_ERROR_CLUSTER_TIMEOUT);
+        events::DropCollection(dbName, collectionID, TRI_ERROR_SHUTTING_DOWN);
+        return Result(TRI_ERROR_SHUTTING_DOWN);
       }
     }
   }
@@ -2573,7 +2573,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
         if (it2 != (*it).second.end()) {
           // view already exists!
           events::CreateView(databaseName, name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
-          return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+          return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("duplicate view name '") + name + "'");
         }
       }
     }
@@ -2586,7 +2586,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
         if (it2 != (*it).second.end()) {
           // collection already exists!
           events::CreateCollection(databaseName, name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
-          return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+          return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("duplicate view name '") + name + "'");
         }
       }
     }
@@ -3437,7 +3437,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
       agencyCallback->executeByCallbackOrTimeout(interval);
 
       if (_server.isStopping()) {
-        return Result(TRI_ERROR_CLUSTER_TIMEOUT);
+        return Result(TRI_ERROR_SHUTTING_DOWN);
       }
     }
   }

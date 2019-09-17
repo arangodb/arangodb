@@ -130,7 +130,7 @@ function exportTest (options) {
   }
 
   print(CYAN + Date() + ': Export data (json)' + RESET);
-  results.exportJson = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+  results.exportJson = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
   results.exportJson.failed = results.exportJson.status ? 0 : 1;
 
   try {
@@ -150,7 +150,7 @@ function exportTest (options) {
 
   print(CYAN + Date() + ': Export data (json.gz)' + RESET);
   args['compress-output'] = 'true';
-  results.exportJsonGz = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+  results.exportJsonGz = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
   results.exportJsonGz.failed = results.exportJsonGz.status ? 0 : 1;
 
   try {
@@ -176,7 +176,7 @@ function exportTest (options) {
     if (fs.exists(fs.join(tmpPath, 'ENCRYPTION'))) {
       fs.remove(fs.join(tmpPath, 'ENCRYPTION'));
     }
-    results.exportJsonEncrypt = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+    results.exportJsonEncrypt = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
     results.exportJsonEncrypt.failed = results.exportJsonGz.status ? 0 : 1;
 
     try {
@@ -202,7 +202,7 @@ function exportTest (options) {
 
   print(CYAN + Date() + ': Export data (jsonl)' + RESET);
   args['type'] = 'jsonl';
-  results.exportJsonl = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+  results.exportJsonl = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
   results.exportJsonl.failed = results.exportJsonl.status ? 0 : 1;
   try {
     fs.read(fs.join(tmpPath, 'UnitTestsExport.jsonl')).split('\n')
@@ -224,7 +224,7 @@ function exportTest (options) {
 
   print(CYAN + Date() + ': Export data (jsonl.gz)' + RESET);
   args['compress-output'] = 'true';
-  results.exportJsonlGz = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+  results.exportJsonlGz = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
   results.exportJsonlGz.failed = results.exportJsonl.status ? 0 : 1;
   try {
     fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.jsonl.gz')).split('\n')
@@ -248,7 +248,7 @@ function exportTest (options) {
   print(CYAN + Date() + ': Export data (xgmml)' + RESET);
   args['type'] = 'xgmml';
   args['graph-name'] = 'UnitTestsExport';
-  results.exportXgmml = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+  results.exportXgmml = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
   results.exportXgmml.failed = results.exportXgmml.status ? 0 : 1;
   try {
     const filesContent = fs.read(fs.join(tmpPath, 'UnitTestsExport.xgmml'));
@@ -276,7 +276,7 @@ function exportTest (options) {
 
   print(CYAN + Date() + ': Export data (xgmml.gz)' + RESET);
   args['compress-output'] = 'true';
-  results.exportXgmmlGz = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+  results.exportXgmmlGz = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
   results.exportXgmmlGz.failed = results.exportXgmml.status ? 0 : 1;
   try {
     const filesContent = fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.xgmml.gz'));
@@ -308,7 +308,7 @@ function exportTest (options) {
   args['query'] = 'FOR doc IN UnitTestsExport RETURN doc';
   delete args['graph-name'];
   delete args['collection'];
-  results.exportQuery = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+  results.exportQuery = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
   results.exportQuery.failed = results.exportQuery.status ? 0 : 1;
   try {
     fs.read(fs.join(tmpPath, 'query.jsonl')).split('\n')
@@ -330,7 +330,7 @@ function exportTest (options) {
 
   print(CYAN + Date() + ': Export query (xgmml.gz)' + RESET);
   args['compress-output'] = 'true';
-  results.exportQueryGz = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+  results.exportQueryGz = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
   results.exportQueryGz.failed = results.exportQuery.status ? 0 : 1;
   try {
     fs.readGzip(fs.join(tmpPath, 'query.jsonl')).split('\n')

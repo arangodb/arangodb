@@ -48,6 +48,9 @@
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
 
+#include <chrono>
+#include <thread>
+
 #include <v8.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -261,40 +264,54 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
 
 // Grant permissions on newly created database to current user
 // to be able to run the upgrade script
-arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
+arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, int64_t timeout) {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
 
-  ExecContext const& exec = ExecContext::current();
+  Result res;
+
   if (um != nullptr) {
+    ExecContext const& exec = ExecContext::current();
     // If the current user is empty (which happens if a Maintenance job
     // called us, or when authentication is off), granting rights
     // will fail. We hence ignore it here, but issue a warning below
     if (!exec.isSuperuser()) {
-      return um->updateUser(exec.user(), [&](auth::User& entry) {
-        entry.grantDatabase(info.getName(), auth::Level::RW);
-        entry.grantCollection(info.getName(), "*", auth::Level::RW);
-        return TRI_ERROR_NO_ERROR;
-      });
-    } else {
-      LOG_TOPIC("2a4dd", DEBUG, Logger::FIXME)
-        << "current ExecContext's user() is empty."
-        << "Database will be created without any user having permissions";
-     return Result();
-    }
+      auto const endTime = std::chrono::steady_clock::now() + std::chrono::seconds(timeout);
+      while (true) {
+        res = um->updateUser(exec.user(), [&](auth::User& entry) {
+          entry.grantDatabase(info.getName(), auth::Level::RW);
+          entry.grantCollection(info.getName(), "*", auth::Level::RW);
+          return TRI_ERROR_NO_ERROR;
+        });
+        if (res.ok() || 
+            !res.is(TRI_ERROR_ARANGO_CONFLICT) ||
+            std::chrono::steady_clock::now() > endTime) {
+          break;
+        }
+
+        if (info.server().isStopping()) {
+          res.reset(TRI_ERROR_SHUTTING_DOWN);
+          break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
+    } 
+
+    LOG_TOPIC("2a4dd", DEBUG, Logger::FIXME)
+      << "current ExecContext's user() is empty. "
+      << "Database will be created without any user having permissions";
   }
 
-  return Result();
+  return res;
 }
 
 // Create database on cluster;
 Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  Result res;
 
   // This operation enters the database as isBuilding into the agency
   // while the database is still building it is not visible.
   ClusterInfo& ci = info.server().getFeature<ClusterFeature>().clusterInfo();
-  res = ci.createIsBuildingDatabaseCoordinator(info);
+  Result res = ci.createIsBuildingDatabaseCoordinator(info);
 
   // Even entering the database as building failed; This can happen
   // because a database with this name already exists, or because we could
@@ -305,21 +322,20 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   }
 
   auto failureGuard = scopeGuard([&ci, info]() {
-    Result res;
     LOG_TOPIC("8cc61", ERR, Logger::FIXME)
-      << "Failed to create database " << info.getName() << " rolling back.";
-    res = ci.cancelCreateDatabaseCoordinator(info);
+      << "Failed to create database '" << info.getName() << "', rolling back.";
+    Result res = ci.cancelCreateDatabaseCoordinator(info);
     if (!res.ok()) {
       // this cannot happen since cancelCreateDatabaseCoordinator keeps retrying
       // indefinitely until the cancellation is either successful or the cluster
       // is shut down.
       LOG_TOPIC("92157", ERR, Logger::FIXME)
-        << "Failed to rollback creation of database " << info.getName() <<
-        ". This should never happen. Cleanup will happen through a supervision job.";
+        << "Failed to rollback creation of database '" << info.getName() <<
+        "'. Cleanup will happen through a supervision job.";
     }
   });
 
-  res = grantCurrentUser(info);
+  res = grantCurrentUser(info, 5); 
   if (!res.ok()) {
     return res;
   }
@@ -333,26 +349,25 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   // if any of these fail, database creation is considered unsuccessful
 
   UpgradeResult upgradeRes = methods::Upgrade::createDB(vocbase, info.getUsers());
+  failureGuard.cancel();
+
   // If the creation of system collections was successful,
   // make the database visible, otherwise clean up what we can.
   if (upgradeRes.ok()) {
-    failureGuard.cancel();
-    res = ci.createFinalizeDatabaseCoordinator(info);
+    return ci.createFinalizeDatabaseCoordinator(info);
+  } 
+    
+  // We leave this handling here to be able to capture
+  // error messages and return
+  // Cleanup entries in agency.
+  res = ci.cancelCreateDatabaseCoordinator(info);
+  if (!res.ok()) {
+    // this should never happen as cancelCreateDatabaseCoordinator keeps retrying
+    // until either cancellation is successful or the cluster is shut down.
     return res;
-  } else {
-    // We leave this handling here to be able to capture
-    // error messages and return
-    failureGuard.cancel();
-    // Cleanup entries in agency.
-    res = ci.cancelCreateDatabaseCoordinator(info);
-    if (!res.ok()) {
-      // this should never happen as cancelCreateDatabaseCoordinaotr keeps retrying
-      // until either cancellation is successful or the cluster is shut down.
-      return res;
-    } else {
-      return std::move(upgradeRes.result());
-    }
-  }
+  } 
+  
+  return std::move(upgradeRes.result());
 }
 
 // Create a database on SingleServer, DBServer,
@@ -360,14 +375,14 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   // Without the database feature, we can't create a database
   if (!info.server().hasFeature<DatabaseFeature>()) {
     events::CreateDatabase(info.getName(), TRI_ERROR_INTERNAL);
-    return Result(TRI_ERROR_INTERNAL);
+    return {TRI_ERROR_INTERNAL};
   }
   DatabaseFeature& databaseFeature = info.server().getFeature<DatabaseFeature>();
 
   TRI_vocbase_t* vocbase = nullptr;
-  int createDBres = databaseFeature.createDatabase(info.getId(), info.getName(), vocbase);
-  if (createDBres != TRI_ERROR_NO_ERROR) {
-    return Result(createDBres);
+  Result createResult = databaseFeature.createDatabase(info.getId(), info.getName(), vocbase);
+  if (createResult.fail()) {
+    return createResult;
   }
 
   TRI_ASSERT(vocbase != nullptr);
@@ -375,7 +390,7 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
 
   TRI_DEFER(vocbase->release());
 
-  Result res = grantCurrentUser(info);
+  Result res = grantCurrentUser(info, 10);
   if (!res.ok()) {
     return res;
   }

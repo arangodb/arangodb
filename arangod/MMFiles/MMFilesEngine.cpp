@@ -3109,7 +3109,7 @@ int MMFilesEngine::transferMarkers(LogicalCollection* collection,
 
   TRI_IF_FAILURE("transferMarkersCrash") {
     // intentionally kill the server
-    TRI_SegfaultDebugging("CollectorThreadTransfer");
+    TRI_TerminateDebugging("CollectorThreadTransfer");
   }
 
   if (res == TRI_ERROR_NO_ERROR && !cache->operations->empty()) {
@@ -3170,7 +3170,7 @@ int MMFilesEngine::transferMarkersWorker(LogicalCollection* collection,
     TRI_IF_FAILURE("CollectorThreadTransfer") {
       if (++numMarkers > 5) {
         // intentionally kill the server
-        TRI_SegfaultDebugging("CollectorThreadTransfer");
+        TRI_TerminateDebugging("CollectorThreadTransfer");
       }
     }
 
@@ -3198,7 +3198,7 @@ int MMFilesEngine::transferMarkersWorker(LogicalCollection* collection,
 
   TRI_IF_FAILURE("CollectorThreadTransferFinal") {
     // intentionally kill the server
-    TRI_SegfaultDebugging("CollectorThreadTransferFinal");
+    TRI_TerminateDebugging("CollectorThreadTransferFinal");
   }
 
   return TRI_ERROR_NO_ERROR;

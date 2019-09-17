@@ -46,6 +46,15 @@ using namespace arangodb::fuerte;
 
 using PromiseRes = arangodb::futures::Promise<network::Response>;
 
+/// @brief shardId or empty
+std::string Response::destinationShard() const {
+  if (this->destination.size() > 6 &&
+      this->destination.compare(0, 6, "shard:", 6) == 0) {
+    return this->destination.substr(6);
+  }
+  return StaticStrings::Empty;
+}
+
 template <typename T>
 auto prepareRequest(RestVerb type, std::string const& path, T&& payload,
                     Timeout timeout, Headers const& headers) {
@@ -126,15 +135,15 @@ FutureRes sendRequest(NetworkFeature& feature, DestinationId const& destination,
 /// a request until an overall timeout is hit (or the request succeeds)
 class RequestsState final : public std::enable_shared_from_this<RequestsState> {
  public:
-  RequestsState(NetworkFeature& feature, DestinationId const& destination, RestVerb type,
-                std::string const& path, velocypack::Buffer<uint8_t>&& payload,
-                Timeout timeout, Headers const& headers, bool retryNotFound)
+  RequestsState(NetworkFeature& feature, DestinationId destination, RestVerb type,
+                std::string path, velocypack::Buffer<uint8_t> payload,
+                Timeout timeout, Headers headers, bool retryNotFound)
       : _feature(feature),
-        _destination(destination),
+        _destination(std::move(destination)),
         _type(type),
-        _path(path),
+        _path(std::move(path)),
         _payload(std::move(payload)),
-        _headers(headers),
+        _headers(std::move(headers)),
         _workItem(nullptr),
         _promise(),
         _startTime(std::chrono::steady_clock::now()),
@@ -228,6 +237,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       }
 
       case fuerte::Error::CouldNotConnect:
+      case fuerte::Error::ConnectionClosed:
       case fuerte::Error::Timeout: {
         // Note that this case includes the refusal of a leader to accept
         // the operation, in which case we have to flush ClusterInfo:
@@ -249,7 +259,6 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       }
 
       default:  // a "proper error" which has to be returned to the client
-        _response = std::move(res);
         callResponse(err, std::move(res));
         break;
     }

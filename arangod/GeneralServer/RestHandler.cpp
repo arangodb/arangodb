@@ -32,8 +32,11 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
@@ -98,9 +101,10 @@ void RestHandler::setStatistics(RequestStatistics* stat) {
   }
 }
 
-bool RestHandler::forwardRequest() {
+futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
+  forwarded = false;
   if (!ServerState::instance()->isCoordinator()) {
-    return false;
+    return futures::makeFuture(Result());
   }
 
   // TODO refactor into a more general/customizable method
@@ -116,7 +120,7 @@ bool RestHandler::forwardRequest() {
   uint32_t shortId = forwardingTarget();
   if (shortId == 0) {
     // no need to actually forward
-    return false;
+    return futures::makeFuture(Result());
   }
 
   std::string serverId =
@@ -124,11 +128,13 @@ bool RestHandler::forwardRequest() {
 
   if (serverId.empty()) {
     // no mapping in agency, try to handle the request here
-    return false;
+    return futures::makeFuture(Result());
   }
 
   LOG_TOPIC("38d99", DEBUG, Logger::REQUESTS)
       << "forwarding request " << _request->messageId() << " to " << serverId;
+
+  forwarded = true;
 
   bool useVst = false;
   if (_request->transportType() == Endpoint::TransportType::VST) {
@@ -136,35 +142,8 @@ bool RestHandler::forwardRequest() {
   }
   std::string const& dbname = _request->databaseName();
 
-  std::unordered_map<std::string, std::string> const& oldHeaders = _request->headers();
-  std::unordered_map<std::string, std::string>::const_iterator it = oldHeaders.begin();
-  std::unordered_map<std::string, std::string> headers;
-  while (it != oldHeaders.end()) {
-    std::string const& key = (*it).first;
-
-    // ignore the following headers
-    if (key != StaticStrings::Authorization) {
-      headers.emplace(key, (*it).second);
-    }
-    ++it;
-  }
-  // FIXME why don't we just forward the header ?!
-  auto auth = AuthenticationFeature::instance();
-  if (auth != nullptr && auth->isActive()) {
-    // when in superuser mode, username is empty
-    //  in this case ClusterComm will add the default superuser token
-    std::string const& username = _request->user();
-    if (!username.empty()) {
-      VPackBuilder builder;
-      {
-        VPackObjectBuilder payload{&builder};
-        payload->add("preferred_username", VPackValue(username));
-      }
-      VPackSlice slice = builder.slice();
-      headers.emplace(StaticStrings::Authorization,
-                      "bearer " + auth->tokenCache().generateJwt(slice));
-    }
-  }
+  std::map<std::string, std::string> headers{_request->headers().begin(),
+                                             _request->headers().end()};
 
   auto& values = _request->values();
   std::string params;
@@ -179,87 +158,45 @@ bool RestHandler::forwardRequest() {
     params.append(StringUtils::urlEncode(i.second));
   }
 
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr happens only during controlled shutdown
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                  TRI_ERROR_SHUTTING_DOWN, "shutting down server");
-    return true;
-  }
-
-  std::unique_ptr<ClusterCommResult> res;
-  if (!useVst) {
-    HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
-    if (httpRequest == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid request type");
+  auto requestType =
+      fuerte::from_string(GeneralRequest::translateMethod(_request->requestType()));
+  auto payload = _request->toVelocyPackBuilderPtr()->steal();
+  NetworkFeature& feature = server().getFeature<NetworkFeature>();
+  auto future = network::sendRequest(feature, "server:" + serverId, requestType,
+                                     "/_db/" + StringUtils::urlEncode(dbname) +
+                                         _request->requestPath() + params,
+                                     std::move(*payload), network::Timeout(300), headers);
+  auto cb = [this, serverId, useVst,
+             self = shared_from_this()](network::Response&& response) -> Result {
+    int res = network::fuerteToArangoErrorCode(response);
+    if (res != TRI_ERROR_NO_ERROR) {
+      generateError(res);
+      return Result(res);
     }
-    
-    const char* ptr = reinterpret_cast<const char*>(httpRequest->body().data());
-    std::string body(ptr, httpRequest->body().size());
-    // Send a synchronous request to that shard using ClusterComm:
-    res = cc->syncRequest(TRI_NewTickServer(), "server:" + serverId,
-                          _request->requestType(),
-                          "/_db/" + StringUtils::urlEncode(dbname) +
-                              _request->requestPath() + params,
-                          body, headers, 300.0);
-  } else {
-    // do we need to handle multiple payloads here? - TODO
-    // here we switch from vst to http
-    res = cc->syncRequest(TRI_NewTickServer(), "server:" + serverId,
-                          _request->requestType(),
-                          "/_db/" + StringUtils::urlEncode(dbname) +
-                              _request->requestPath() + params,
-                          _request->payload().toJson(), headers, 300.0);
-  }
 
-  if (res->status == CL_COMM_TIMEOUT) {
-    // No reply, we give up:
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_CLUSTER_TIMEOUT,
-                  "timeout within cluster");
-    return true;
-  }
+    resetResponse(static_cast<rest::ResponseCode>(response.response->statusCode()));
+    _response->setContentType(fuerte::v1::to_string(response.response->contentType()));
 
-  if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
-    // there is no result
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_CLUSTER_CONNECTION_LOST,
-                  "lost connection within cluster");
-    return true;
-  }
-
-  if (res->status == CL_COMM_ERROR) {
-    // This could be a broken connection or an Http error:
-    TRI_ASSERT(nullptr != res->result && res->result->isComplete());
-    // In this case a proper HTTP error was reported by the DBserver,
-    // we simply forward the result. Intentionally fall through here.
-  }
-
-  bool dummy;
-  resetResponse(static_cast<rest::ResponseCode>(res->result->getHttpReturnCode()));
-
-  _response->setContentType(
-      res->result->getHeaderField(StaticStrings::ContentTypeHeader, dummy));
-
-  if (!useVst) {
-    HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
-    if (_response == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid response type");
+    if (!useVst) {
+      HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
+      if (_response == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "invalid response type");
+      }
+      httpResponse->body() = response.response->payloadAsString();
+    } else {
+      _response->setPayload(std::move(*response.response->stealPayload()), true);
     }
-    httpResponse->body().swap(&(res->result->getBody()));
-  } else {
-    // need to switch back from http to vst
-    std::shared_ptr<VPackBuilder> builder = res->result->getBodyVelocyPack();
-    std::shared_ptr<VPackBuffer<uint8_t>> buf = builder->steal();
-    _response->setPayload(std::move(*buf), true);
-  }
 
-  auto const& resultHeaders = res->result->getHeaderFields();
-  for (auto const& it : resultHeaders) {
-    _response->setHeader(it.first, it.second);
-  }
-  _response->setHeader(StaticStrings::RequestForwardedTo, serverId);
-  return true;
+    auto const& resultHeaders = response.response->messageHeader().meta;
+    for (auto const& it : resultHeaders) {
+      _response->setHeader(it.first, it.second);
+    }
+    _response->setHeader(StaticStrings::RequestForwardedTo, serverId);
+
+    return Result();
+  };
+  return std::move(future).thenValue(cb);
 }
 
 void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {

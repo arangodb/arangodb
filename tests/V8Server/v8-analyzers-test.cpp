@@ -1945,8 +1945,8 @@ TEST_F(V8AnalyzersTest, test_list) {
   }
   {
     TRI_vocbase_t* vocbase;
-    int res = dbFeature.createDatabase(1, "testVocbase", vocbase);
-    ASSERT_EQ(res, TRI_ERROR_NO_ERROR);
+    arangodb::Result res = dbFeature.createDatabase(1, "testVocbase", vocbase);
+    ASSERT_TRUE(res.ok());
     arangodb::methods::Collections::createSystem(
         *vocbase, 
         arangodb::tests::AnalyzerCollectionName, false);
@@ -2385,8 +2385,8 @@ TEST_F(V8AnalyzersTest, test_remove) {
   }
   {
     TRI_vocbase_t* vocbase;
-    int res = dbFeature.createDatabase(1, "testVocbase", vocbase);
-    ASSERT_EQ(res, TRI_ERROR_NO_ERROR);
+    arangodb::Result res = dbFeature.createDatabase(1, "testVocbase", vocbase);
+    ASSERT_TRUE(res.ok());
     arangodb::methods::Collections::createSystem(
         *vocbase, 
         arangodb::tests::AnalyzerCollectionName, false);
