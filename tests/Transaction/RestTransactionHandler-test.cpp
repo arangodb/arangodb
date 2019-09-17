@@ -310,7 +310,7 @@ TEST_F(RestTransactionHandlerTest, permission_denied_read_only) {
   }
   ASSERT_TRUE(coll != nullptr);
 
-  arangodb::ExecContext::ReadOnlySuperuserScope execContextScope();
+  arangodb::ExecContext::ReadOnlySuperuserScope execContextScope;
 
   request.setRequestType(arangodb::rest::RequestType::POST);
   request.addSuffix("begin");
@@ -343,7 +343,7 @@ TEST_F(RestTransactionHandlerTest, permission_denied_forbidden) {
   }
   ASSERT_TRUE(coll != nullptr);
 
-  arangodb::ExecContext::NobodyScope execContextScope();
+  arangodb::ExecContext::NobodyScope execContextScope;
 
   request.setRequestType(arangodb::rest::RequestType::POST);
   request.addSuffix("begin");

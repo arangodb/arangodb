@@ -21,8 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
 #include "../IResearch/common.h"
+#include "gtest/gtest.h"
+
 #include "../IResearch/RestHandlerMock.h"
 #include "../Mocks/StorageEngineMock.h"
 #include "../Mocks/Servers.h"
