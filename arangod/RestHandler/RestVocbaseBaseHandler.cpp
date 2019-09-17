@@ -58,7 +58,7 @@ using namespace arangodb::rest;
 namespace {
 class SimpleTransaction : public transaction::Methods {
  public:
-  SimpleTransaction(std::shared_ptr<transaction::Context>&& transactionContext,
+  explicit SimpleTransaction(std::shared_ptr<transaction::Context>&& transactionContext,
                     transaction::Options&& options = transaction::Options())
     : Methods(std::move(transactionContext), std::move(options)) {}
 };
