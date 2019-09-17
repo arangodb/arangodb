@@ -23,6 +23,8 @@
 #include "AqlItemBlockHelper.h"
 #include "gtest/gtest.h"
 
+#include "Aql/InputAqlItemRow.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
@@ -237,6 +239,49 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_slices) {
     VPackBuilder result;
     result.openObject();
     slice->toVelocyPack(nullptr, result);
+    ASSERT_TRUE(result.isOpenObject());
+    result.close();
+
+    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+
+    // Check exposed attributes
+    EXPECT_EQ(testee->size(), 1);
+    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    // check data
+    compareWithDummy(testee, 0, 0, 0);
+    compareWithDummy(testee, 0, 1, 1);
+  }
+}
+
+TEST_F(AqlItemBlockTest, test_serialization_deserialization_input_row) {
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 2, 2)};
+  block->emplaceValue(0, 0, dummyData(4));
+  block->emplaceValue(0, 1, dummyData(5));
+  block->emplaceValue(1, 0, dummyData(0));
+  block->emplaceValue(1, 1, dummyData(1));
+  {
+    InputAqlItemRow input{block, 0};
+    VPackBuilder result;
+    result.openObject();
+    input.toVelocyPack(nullptr, result);
+    ASSERT_TRUE(result.isOpenObject());
+    result.close();
+
+    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+
+    // Check exposed attributes
+    EXPECT_EQ(testee->size(), 1);
+    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    // check data
+    compareWithDummy(testee, 0, 0, 4);
+    compareWithDummy(testee, 0, 1, 5);
+  }
+
+  {
+    InputAqlItemRow input{block, 1};
+    VPackBuilder result;
+    result.openObject();
+    input.toVelocyPack(nullptr, result);
     ASSERT_TRUE(result.isOpenObject());
     result.close();
 
