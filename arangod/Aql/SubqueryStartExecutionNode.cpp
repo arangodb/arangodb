@@ -28,9 +28,12 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/SubqueryStartExecutionNode.h"
+#include "Meta/static_assert_size.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+
+
 
 namespace arangodb {
 namespace aql {
@@ -66,6 +69,7 @@ ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan, bool withDependenci
 }
 
 bool SubqueryStartNode::isEqualTo(SubqueryStartNode const& other) {
+  meta::details::static_assert_size<SubqueryStartNode, 456>();
   return ExecutionNode::isEqualTo(other);
 }
 

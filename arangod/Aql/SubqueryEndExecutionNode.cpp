@@ -28,6 +28,7 @@
 #include "Aql/IdExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/SubqueryEndExecutionNode.h"
+#include "Meta/static_assert_size.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -83,6 +84,7 @@ CostEstimate SubqueryEndNode::estimateCost() const {
 
 bool SubqueryEndNode::isEqualTo(SubqueryEndNode const& other) const
 {
+  meta::details::static_assert_size<SubqueryEndNode, 464>();
   TRI_ASSERT(_outVariable != nullptr); TRI_ASSERT(other._outVariable != nullptr);
   return ExecutionNode::isEqualTo(other) &&
     _outVariable->isEqualTo(*(other._outVariable));
