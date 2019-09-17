@@ -84,6 +84,8 @@ CostEstimate SubqueryEndNode::estimateCost() const {
 
 bool SubqueryEndNode::isEqualTo(SubqueryEndNode const& other) const
 {
+  // If this assertion fails, someone changed the size of SubqueryStartNode,
+  // likely by adding or removing members, requiring this method to be updated.
   meta::details::static_assert_size<SubqueryEndNode, 464>();
   TRI_ASSERT(_outVariable != nullptr); TRI_ASSERT(other._outVariable != nullptr);
   return ExecutionNode::isEqualTo(other) &&

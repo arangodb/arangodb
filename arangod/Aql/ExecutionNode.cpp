@@ -552,7 +552,8 @@ void ExecutionNode::cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClo
 }
 
 bool ExecutionNode::isEqualTo(ExecutionNode const& other) const {
-
+  // If this assertion fails, someone changed the size of ExecutionNode,
+  // likely by adding or removing members, requiring this method to be updated.
   meta::details::static_assert_size<ExecutionNode, 456>();
 
   std::function<bool(ExecutionNode* const, ExecutionNode* const)> comparator =

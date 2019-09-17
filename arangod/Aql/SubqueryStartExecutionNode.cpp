@@ -69,6 +69,8 @@ ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan, bool withDependenci
 }
 
 bool SubqueryStartNode::isEqualTo(SubqueryStartNode const& other) {
+  // If this assertion fails, someone changed the size of SubqueryStartNode,
+  // likely by adding or removing members, requiring this method to be updated.
   meta::details::static_assert_size<SubqueryStartNode, 456>();
   return ExecutionNode::isEqualTo(other);
 }
