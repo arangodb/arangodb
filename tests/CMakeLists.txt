@@ -266,8 +266,6 @@ target_include_directories(arangodbtests SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
 )
 
-set_property(TARGET ${BIN_ARANGODB_TESTS} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
-
 find_package(OpenSSL REQUIRED)
 list(APPEND IRESEARCH_LIB_RESOURCES
   "${LIB_EAY_DEBUG_DLL}"
