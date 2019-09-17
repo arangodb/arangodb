@@ -306,6 +306,8 @@ class Query {
   /// @brief pass-thru a resolver object from the transaction context
   CollectionNameResolver const& resolver();
 
+  ExecutionPlan* stealPlan() { return std::move(preparePlan()); }
+
  private:
   /// @brief initializes the query
   void init();
