@@ -54,7 +54,6 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
-#include <iostream> // todo wech.
 #ifndef _WIN32
 #include "Utilities/GssApiClient.h"
 
@@ -976,6 +975,36 @@ std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult const* result
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch the version from the server
 ////////////////////////////////////////////////////////////////////////////////
+static std::string getBareHostName(std::string hostname) {
+  std::string hostNamePart = hostname;
+  size_t hostStart = hostname.find("://");
+
+  if (hostStart != std::string::npos) {
+    hostStart += 3;
+    size_t hostEnd = hostname.rfind(":");
+    if (hostEnd == std::string::npos) {
+      hostEnd = hostname.length();
+    }
+    hostNamePart = hostname.substr(hostStart, hostEnd - hostStart);
+  } 
+  std::string thisHostname = boost::asio::ip::host_name();
+  boost::system::error_code ec;
+  /*auto ip = */boost::asio::ip::address::from_string(hostNamePart, ec);
+  if (!ec || thisHostname == hostNamePart) {
+    
+    // it is an Ip, or the pure hostname without domain - need to look it up
+    struct hostent* hn;
+    if (hostNamePart == "127.0.0.1") {
+      hostNamePart = thisHostname;
+    }
+    hn = gethostbyname(hostNamePart.c_str());
+    
+    return std::string(hn->h_name);
+  }
+  else {
+    return hostNamePart;
+  }
+}
 
 std::string SimpleHttpClient::getServerVersion(int* errorCode) {
   while (true) {
@@ -1025,6 +1054,7 @@ std::string SimpleHttpClient::getServerVersion(int* errorCode) {
     }
 #ifndef _WIN32
     else if (response->getHttpReturnCode() == static_cast<int>(rest::ResponseCode::UNAUTHORIZED)) {
+      
       auto hdrs = response->getHeaderFields();
       auto it = hdrs.find(StaticStrings::WwwAuthenticate);
       if (it != hdrs.end()) {
@@ -1033,58 +1063,17 @@ std::string SimpleHttpClient::getServerVersion(int* errorCode) {
                        [](unsigned char c){ return std::tolower(c); }
                        );
         if (value == "negotiate") {
-          std::string hostname = ip::host_name();
-          struct hostent* hn;
-
-          /*
-            boost::asio::io_service io_service;
-
-
-
-            std::vector < std::string > output;
-
-            try{
-            boost::asio::ip::tcp::resolver::query query(hostname, "");
-            boost::asio::ip::tcp::resolver::iterator destination = resolver_ptr.resolve(query);
-            boost::asio::ip::tcp::resolver::iterator end;
-            boost::asio::ip::tcp::endpoint endpoint;
-
-            while (destination != end){
-            endpoint = *destination++;
-            std::cout << "xx " << endpoint.address().to_string();
-            output.push_back(endpoint.address().to_string());
-            }
-            } catch(...){
-            output.push_back("Not resolved");
-            }
-          */
-
-
-  
-          hn = gethostbyname(hostname.c_str());
-          std::string fqdn(hn->h_name);
+          std::string fqdn(getBareHostName(getEndpointSpecification()));
           std::string realm;
           realm = "HTTP@";
-          //realm += fqdn;
-          //realm += "@";
-
-          std::cout << "xx " << hn->h_name << "\n\n";
           std::transform(fqdn.begin(), fqdn.end(), fqdn.begin(), 
-                         [](unsigned char c){ return std::toupper(c); }
-                         );
-          //  if (client->username().empty()) {
-          // realm = getenv("LOGNAME");
-          /* TODO: this defaults to root...
-             } else {
-             realm = client->username();
-             }*/
-          //  realm += '@';
+                 [](unsigned char c){ return std::toupper(c); }
+                 );
           realm += fqdn;
-          std::cout << realm << "\n";
-          // std::cout << client->username();
+          
           sockaddr_in source;
           sockaddr_in dest;
-
+          /*
           dest.sin_family = AF_INET;
           dest.sin_port = htons(3490);
           inet_aton("192.168.173.88", (in_addr*)&dest.sin_addr.s_addr);
@@ -1092,15 +1081,11 @@ std::string SimpleHttpClient::getServerVersion(int* errorCode) {
           source.sin_family = AF_INET;
           source.sin_port = htons(3490);
           inet_aton("192.168.173.88", (in_addr*)&source.sin_addr.s_addr);
-
+          */
           std::string error;
           std::string token = arangodb::getKerberosBase64Token(realm, error, &source,  &dest);
           if (token.length() == 0) {
-            std::cout << error << "\n";
-            throw error;
-          }
-          else {
-            std::cout << "Token: " << token << "\n";
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_HTTP_UNAUTHORIZED, "Kerberos error: " + error);
           }
           _params.setNegotiateToken(token);
           std::unique_ptr<SimpleHttpResult> response(
