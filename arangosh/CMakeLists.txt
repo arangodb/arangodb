@@ -61,8 +61,6 @@ if (DARWIN)
   target_compile_options(arangobench PRIVATE -Werror)
 endif()
 
-set_property(TARGET ${BIN_ARANGOBENCH} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
-
 ################################################################################
 ## arangobackup
 ################################################################################
@@ -123,8 +121,6 @@ endif()
 if (DARWIN)
   target_compile_options(arangobackup PRIVATE -Werror)
 endif()
-
-set_property(TARGET ${BIN_ARANGOBACKUP} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
 
 endif () # USE_ENTERPRISE
 
@@ -188,8 +184,6 @@ if (DARWIN)
   target_compile_options(arangodump PRIVATE -Werror)
 endif()
 
-set_property(TARGET ${BIN_ARANGODUMP} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
-
 ################################################################################
 ## arangoexport
 ################################################################################
@@ -248,8 +242,6 @@ endif()
 if (DARWIN)
   target_compile_options(arangoexport PRIVATE -Werror)
 endif()
-
-set_property(TARGET ${BIN_ARANGOEXPORT} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
 
 ################################################################################
 ## arangoimport
@@ -322,8 +314,6 @@ if (DARWIN)
   target_compile_options(arangoimport PRIVATE -Werror)
 endif()
 
-set_property(TARGET ${BIN_ARANGOIMPORT} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
-
 ################################################################################
 ## arangorestore
 ################################################################################
@@ -383,8 +373,6 @@ endif()
 if (DARWIN)
   target_compile_options(arangorestore PRIVATE -Werror)
 endif()
-
-set_property(TARGET ${BIN_ARANGORESTORE} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
 
 ################################################################################
 ## arangosh
@@ -454,8 +442,6 @@ if (DARWIN)
   target_compile_options(arangosh PRIVATE -Werror)
 endif()
 
-set_property(TARGET ${BIN_ARANGOSH} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
-
 ################################################################################
 ## arangovpack
 ################################################################################
@@ -512,8 +498,6 @@ endif()
 if (DARWIN)
   target_compile_options(arangovpack PRIVATE -Werror)
 endif()
-
-set_property(TARGET ${BIN_ARANGOVPACK} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
 
 ################################################################################
 ## foxx-manager

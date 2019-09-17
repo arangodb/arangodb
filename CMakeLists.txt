@@ -819,6 +819,7 @@ else()
 endif()
 
 message(STATUS "IPO_ENABLED: ${IPO_ENABLED}")
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
 
 ################################################################################
 ## LIBRARY RESOLV

@@ -352,7 +352,3 @@ if (DARWIN)
   target_compile_options(arango_geo PRIVATE -Werror)
   target_compile_options(arango PRIVATE -Werror)
 endif()
-
-set_property(TARGET arango PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
-set_property(TARGET arango_geo PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
-set_property(TARGET arango_v8 PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
