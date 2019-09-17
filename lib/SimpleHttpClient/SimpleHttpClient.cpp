@@ -55,11 +55,13 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
 #include <iostream> // todo wech.
+#ifndef _WIN32
 #include "Utilities/GssApiClient.h"
 
 #include <netinet/in.h>
 #include <boost/asio.hpp>
 namespace ip = boost::asio::ip;
+#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
