@@ -1095,6 +1095,12 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
     }
 
     case ExecutionNode::SUBQUERY_END: {
+      nrRegsHere[depth]++;
+      nrRegs[depth]++;
+      auto ep = ExecutionNode::castTo<SubqueryEndNode const*>(en);
+      TRI_ASSERT(ep != nullptr);
+      varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
+      totalNrRegs++;
       break;
     }
 
