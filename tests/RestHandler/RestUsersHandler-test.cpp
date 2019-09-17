@@ -200,8 +200,8 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
   ASSERT_TRUE(databaseFeature->createDatabase(1, "testDatabase", vocbase).ok());
   auto grantRequestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
   auto& grantRequest = *grantRequestPtr;
-  auto grantResponcePtr = std::make_unique<GeneralResponseMock>();
-  auto& grantResponce = *grantResponcePtr;
+  auto grantResponsePtr = std::make_unique<GeneralResponseMock>();
+  auto& grantResponse = *grantResponsePtr;
   auto grantWildcardRequestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
   auto& grantWildcardRequest = *grantWildcardRequestPtr;
   auto grantWildcardResponcePtr = std::make_unique<GeneralResponseMock>();
@@ -215,7 +215,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
   auto revokeWildcardResponcePtr = std::make_unique<GeneralResponseMock>();
   auto& revokeWildcardResponce = *revokeWildcardResponcePtr;
   arangodb::RestUsersHandler grantHandler(grantRequestPtr.release(),
-                                          grantResponcePtr.release());
+                                          grantResponsePtr.release());
   arangodb::RestUsersHandler grantWildcardHandler(grantWildcardRequestPtr.release(),
                                                   grantWildcardResponcePtr.release());
   arangodb::RestUsersHandler revokeHandler(revokeRequestPtr.release(),
@@ -255,7 +255,13 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
   revokeWildcardRequest.addSuffix("*");
   revokeWildcardRequest.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
 
-  arangodb::ExecContext::AdminScope execContextScope;
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+      : arangodb::ExecContext(userName, arangodb::auth::DatabaseResource{}, arangodb::auth::Level::RW, arangodb::auth::Level::NONE) {
+    }
+  } execContext;
+  arangodb::ExecContext::Scope execContextScope(&execContext);
+
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
   arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
@@ -284,9 +290,9 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     EXPECT_FALSE(arangodb::ExecContext::currentHasAccess(arangodb::auth::CollectionResource{vocbase->name(), "testDataSource"}, arangodb::auth::Level::RW));
 
     auto status = grantHandler.execute();
-    EXPECT_TRUE((arangodb::RestStatus::DONE == status));
-    EXPECT_TRUE((arangodb::rest::ResponseCode::NOT_FOUND == grantResponce.responseCode()));
-    auto slice = grantResponce._payload.slice();
+    EXPECT_EQ(arangodb::RestStatus::DONE, status);
+    EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND, grantResponse.responseCode());
+    auto slice = grantResponse._payload.slice();
     EXPECT_TRUE((slice.isObject()));
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
                  slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
@@ -328,7 +334,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     EXPECT_FALSE(arangodb::ExecContext::currentHasAccess(arangodb::auth::CollectionResource{vocbase->name(), "testDataSource"}, arangodb::auth::Level::RW));
 
     auto status = revokeHandler.execute();
-    EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+    EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_TRUE((arangodb::rest::ResponseCode::NOT_FOUND == revokeResponce.responseCode()));
     auto slice = revokeResponce._payload.slice();
     EXPECT_TRUE((slice.isObject()));
@@ -378,9 +384,9 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     EXPECT_FALSE(arangodb::ExecContext::currentHasAccess(arangodb::auth::CollectionResource{vocbase->name(), "testDataSource"}, arangodb::auth::Level::RW));
 
     auto status = grantHandler.execute();
-    EXPECT_TRUE((arangodb::RestStatus::DONE == status));
-    EXPECT_TRUE((arangodb::rest::ResponseCode::OK == grantResponce.responseCode()));
-    auto slice = grantResponce._payload.slice();
+    EXPECT_EQ(arangodb::RestStatus::DONE, status);
+    EXPECT_EQ(arangodb::rest::ResponseCode::OK, grantResponse.responseCode());
+    auto slice = grantResponse._payload.slice();
     EXPECT_TRUE((slice.isObject()));
     EXPECT_TRUE((slice.hasKey(vocbase->name() + "/testDataSource") &&
                  slice.get(vocbase->name() + "/testDataSource").isString() &&
@@ -423,7 +429,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     EXPECT_FALSE(arangodb::ExecContext::currentHasAccess(arangodb::auth::CollectionResource{vocbase->name(), "testDataSource"}, arangodb::auth::Level::RW));
 
     auto status = revokeHandler.execute();
-    EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+    EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_TRUE((arangodb::rest::ResponseCode::ACCEPTED == revokeResponce.responseCode()));
     auto slice = revokeResponce._payload.slice();
     EXPECT_TRUE((slice.isObject()));
@@ -469,9 +475,9 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     EXPECT_FALSE(arangodb::ExecContext::currentHasAccess(arangodb::auth::CollectionResource{vocbase->name(), "testDataSource"}, arangodb::auth::Level::RW));
 
     auto status = grantHandler.execute();
-    EXPECT_TRUE((arangodb::RestStatus::DONE == status));
-    EXPECT_TRUE((arangodb::rest::ResponseCode::NOT_FOUND == grantResponce.responseCode()));
-    auto slice = grantResponce._payload.slice();
+    EXPECT_EQ(arangodb::RestStatus::DONE, status);
+    EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND, grantResponse.responseCode());
+    auto slice = grantResponse._payload.slice();
     EXPECT_TRUE((slice.isObject()));
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
                  slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
@@ -521,7 +527,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     EXPECT_FALSE(arangodb::ExecContext::currentHasAccess(arangodb::auth::CollectionResource{vocbase->name(), "testDataSource"}, arangodb::auth::Level::RW));
 
     auto status = revokeHandler.execute();
-    EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+    EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_TRUE((arangodb::rest::ResponseCode::NOT_FOUND == revokeResponce.responseCode()));
     auto slice = revokeResponce._payload.slice();
     EXPECT_TRUE((slice.isObject()));
@@ -571,7 +577,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     EXPECT_FALSE(arangodb::ExecContext::currentHasAccess(arangodb::auth::CollectionResource{vocbase->name(), "testDataSource"}, arangodb::auth::Level::RW));
 
     auto status = grantWildcardHandler.execute();
-    EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+    EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_TRUE((arangodb::rest::ResponseCode::OK == grantWildcardResponce.responseCode()));
     auto slice = grantWildcardResponce._payload.slice();
     EXPECT_TRUE((slice.isObject()));
@@ -616,7 +622,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     EXPECT_FALSE(arangodb::ExecContext::currentHasAccess(arangodb::auth::CollectionResource{vocbase->name(), "testDataSource"}, arangodb::auth::Level::RW));
 
     auto status = revokeWildcardHandler.execute();
-    EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+    EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_TRUE((arangodb::rest::ResponseCode::ACCEPTED ==
                  revokeWildcardResponce.responseCode()));
     auto slice = revokeWildcardResponce._payload.slice();
