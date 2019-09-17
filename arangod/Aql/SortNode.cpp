@@ -280,11 +280,21 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
         getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
         calcRegsToKeep(), engine.getQuery()->trx(), _stable,
         inColRegId, inDocRegId, outDocRegId);
-    if (sorterType() == SorterType::Standard) {
-      return  std::make_unique<ExecutionBlockImpl<SortExecutor<MaterializerProducer>>>(&engine, this, std::move(infos));
-    } else {
-      return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor<MaterializerProducer>>>(&engine, this, std::move(infos));
-    }
+    // Currently ViewNode could emit document which is already missing from the collection (eventual consistency)
+    // this will  give following issues with constrained sort:
+    // 1. Invalid fullCount. Executor may be enable to materialize requested N documents and LIMIT node 
+    //    will be unable to switch to skip (as it didn`t got expected N it will continue to call getSome, not skipSome)
+    // 2. In cluster sorting issues may occur: Shard1 has keys 1..100. Shard2 has keys 101..200. SORT key LIMIT 5 requested
+    //    and key 1 is missing from collection. So shard1 returns only 4 keys 2,3,4,5 and GatherNode will combine
+    //    invalid results 2,3,4,5,101 instead of 2,3,4,5,6
+    // 3. In general LIMIT may return less than expected even if collection has enough documents
+    // Once this problem in ViewNode is solved  - this change could be reverted.
+    return  std::make_unique<ExecutionBlockImpl<SortExecutor<MaterializerProducer>>>(&engine, this, std::move(infos));
+    //if (sorterType() == SorterType::Standard) {
+    //  return  std::make_unique<ExecutionBlockImpl<SortExecutor<MaterializerProducer>>>(&engine, this, std::move(infos));
+    //} else {
+    //  return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor<MaterializerProducer>>>(&engine, this, std::move(infos));
+    //}
   } else {
     SortExecutorInfos infos(std::move(sortRegs), _limit, engine.itemBlockManager(),
       getRegisterPlan()->nrRegs[previousNode->getDepth()],
