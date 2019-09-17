@@ -439,7 +439,7 @@ void registerIndexFactory() {
     res = indexFactory.emplace(indexType,
                                arangodb::iresearch::IResearchRocksDBLink::factory());
   } else {
-    LOG_TOPIC("a562d", WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("a532d", WARN, arangodb::iresearch::TOPIC)
         << "unknown storage engine type '" << engine.name()
         << "' while registering index type '" << indexType << "', skipping";
     return;
