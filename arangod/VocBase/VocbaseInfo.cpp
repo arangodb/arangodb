@@ -141,7 +141,9 @@ void CreateDatabaseInfo::UsersToVelocyPack(VPackBuilder& builder) const {
     builder.add("username", VPackValue(user.name));
     builder.add("passwd", VPackValue(user.password));
     builder.add("active", VPackValue(user.active));
-    builder.add("extra", user.extra->slice());
+    if(user.extra) {
+      builder.add("extra", user.extra->slice());
+    }
   }
 }
 
