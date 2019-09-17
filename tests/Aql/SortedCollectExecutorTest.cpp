@@ -91,8 +91,8 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
         fakedQuery(server.createFakeQuery()),
         trx(fakedQuery->trx()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
-        collectRegister(ExecutionNode::MaxRegisterId),
-        expressionRegister(ExecutionNode::MaxRegisterId),
+        collectRegister(RegisterPlan::MaxRegisterId),
+        expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
         count(false),
         readableInputRegisters{0},
@@ -176,7 +176,7 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
         collectRegister(2),
         writeableOutputRegisters({1, 2}),
         nrOutputRegister(3),
-        expressionRegister(ExecutionNode::MaxRegisterId),
+        expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
         count(false),
         infos(1, nrOutputRegister, regToClear, regToKeep,
@@ -419,8 +419,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
 
   // if count = true, then we need to set a valid countRegister
   bool count = true;
-  RegisterId collectRegister = ExecutionNode::MaxRegisterId;
-  RegisterId expressionRegister = ExecutionNode::MaxRegisterId;
+  RegisterId collectRegister = RegisterPlan::MaxRegisterId;
+  RegisterId expressionRegister = RegisterPlan::MaxRegisterId;
   Variable const* expressionVariable = nullptr;
   std::vector<std::pair<std::string, RegisterId>> variables;
 
@@ -509,8 +509,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountNumbers, test) {
 
   // if count = true, then we need to set a valid countRegister
   bool count = true;
-  RegisterId collectRegister = ExecutionNode::MaxRegisterId;
-  RegisterId expressionRegister = ExecutionNode::MaxRegisterId;
+  RegisterId collectRegister = RegisterPlan::MaxRegisterId;
+  RegisterId expressionRegister = RegisterPlan::MaxRegisterId;
   Variable const* expressionVariable = nullptr;
   std::vector<std::pair<std::string, RegisterId>> variables;
   writeableOutputRegisters.insert(2);
@@ -615,8 +615,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
 
   // if count = true, then we need to set a valid countRegister
   bool count = true;
-  RegisterId collectRegister = ExecutionNode::MaxRegisterId;
-  RegisterId expressionRegister = ExecutionNode::MaxRegisterId;
+  RegisterId collectRegister = RegisterPlan::MaxRegisterId;
+  RegisterId expressionRegister = RegisterPlan::MaxRegisterId;
   Variable const* expressionVariable = nullptr;
   std::vector<std::pair<std::string, RegisterId>> variables;
   writeableOutputRegisters.insert(2);

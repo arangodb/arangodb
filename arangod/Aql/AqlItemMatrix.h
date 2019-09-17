@@ -25,6 +25,7 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/ShadowAqlItemRow.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/system-compiler.h"
