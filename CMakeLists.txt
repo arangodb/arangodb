@@ -1124,7 +1124,7 @@ endif()
 ################################################################################
 # we utilize GSS-API configuration in FindGSS.cmake from curl:
 set(CMAKE_USE_GSSAPI ON cached)
-if(CMAKE_USE_GSSAPI)
+if(CMAKE_USE_GSSAPI AND NOT MSVC)
   find_package(GSS)
 
   set(HAVE_GSSAPI ${GSS_FOUND})

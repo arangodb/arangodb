@@ -1021,6 +1021,7 @@ std::string SimpleHttpClient::getServerVersion(int* errorCode) {
         return "";
       }
     }
+#ifndef _WIN32
     else if (response->getHttpReturnCode() == static_cast<int>(rest::ResponseCode::UNAUTHORIZED)) {
       auto hdrs = response->getHeaderFields();
       auto it = hdrs.find(StaticStrings::WwwAuthenticate);
@@ -1139,6 +1140,7 @@ std::string SimpleHttpClient::getServerVersion(int* errorCode) {
         }
       }
     }
+#endif
     if (response == nullptr || !response->isComplete()) {
       return "";
     }

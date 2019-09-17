@@ -20,6 +20,7 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef _WIN32
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_krb5.h>
 #include <gssapi/gssapi_spnego.h>
@@ -125,3 +126,4 @@ std::string arangodb::getKerberosBase64Token(std::string const& service, std::st
   std::string outputBinary((const char *)output_token.value, output_token.length);
   return StringUtils::encodeBase64(outputBinary);
 }
+#endif
