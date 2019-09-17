@@ -139,7 +139,7 @@ void RestTasksHandler::registerTask(bool byId) {
   }
 
   ExecContext const& exec = ExecContext::current();
-  if (exec.hasAccess(exec.database(), auth::Level::RW)) {
+  if (!exec.hasAccess(exec.database(), auth::Level::RW)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                   "registering a task needs db RW permissions");
     return;
@@ -275,7 +275,7 @@ void RestTasksHandler::deleteTask() {
   }
 
   ExecContext const& exec = ExecContext::current();
-  if (exec.hasAccess(exec.database(), auth::Level::RW)) {
+  if (!exec.hasAccess(exec.database(), auth::Level::RW)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                   "unregister task needs db RW permissions");
     return;
