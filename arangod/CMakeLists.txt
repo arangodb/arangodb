@@ -225,6 +225,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/AqlValueGroup.cpp
   Aql/Arithmetic.cpp
   Aql/Ast.cpp
+  Aql/AstHelper.cpp
   Aql/AstNode.cpp
   Aql/AttributeAccessor.cpp
   Aql/BaseExpressionContext.cpp
