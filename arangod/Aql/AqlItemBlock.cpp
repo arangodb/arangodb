@@ -544,6 +544,7 @@ SharedAqlItemBlockPtr AqlItemBlock::steal(std::vector<size_t> const& chosen,
 ///  "raw":     List of actual values, positions 0 and 1 are always null
 ///                  such that actual indices start at 2
 void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result) const {
+  TRI_ASSERT(result.isOpenObject());
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
