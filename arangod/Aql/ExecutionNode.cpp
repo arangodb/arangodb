@@ -67,6 +67,7 @@
 
 #include <utility>
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
