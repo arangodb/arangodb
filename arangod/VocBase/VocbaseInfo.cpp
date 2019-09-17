@@ -162,12 +162,14 @@ Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
     }
 
     std::string name;
+    bool userSet = false;
     for(std::string const& key : std::vector<std::string>{"username", "user"}) {
       auto slice = user.get(key);
       if (slice.isNone()) {
         continue;
       } else if (slice.isString()) {
         name = slice.copyString();
+        userSet = true;
       } else {
         events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
         return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
@@ -197,12 +199,12 @@ Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
       extraBuilder->add(extra);
     }
 
-    // ignore empty names
-    if(!name.empty()) {
+    if(userSet) {
       _users.emplace_back(std::move(name), std::move(password), active, std::move(extraBuilder));
     } else {
-      LOG_TOPIC("da345", DEBUG, Logger::AUTHENTICATION) << "empty user name";
+      return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
     }
+
   }
   return Result();
 }
