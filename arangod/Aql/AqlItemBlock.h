@@ -356,6 +356,7 @@ class AqlItemBlock {
   }
 
   void setShadowRowDepth(size_t row, AqlValue const& other) {
+    TRI_ASSERT(other.isNumber());
     _data[getSubqueryDepthAddress(row)] = other;
     TRI_ASSERT(isShadowRow(row));
   }

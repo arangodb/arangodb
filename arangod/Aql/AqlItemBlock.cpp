@@ -118,7 +118,9 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
     it.next();
     try {
       if (column == 0) {
-        setShadowRowDepth(row, a);
+        if (!a.isEmpty()) {
+          setShadowRowDepth(row, a);
+        }
       } else {
         setValue(row, column - 1, a);  // if this throws, a is destroyed again
       }
@@ -156,7 +158,9 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
             case PositionalRun:
               TRI_ASSERT(tablePos < madeHere.size());
               if (column == 0) {
-                setShadowRowDepth(i, madeHere[tablePos]);
+                if (!madeHere[tablePos].isEmpty()) {
+                  setShadowRowDepth(i, madeHere[tablePos]);
+                }
               } else {
                 setValue(i, column - 1, madeHere[tablePos]);
               }
@@ -219,7 +223,9 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
                                                "found undefined data value");
               }
               if (column == 0) {
-                setShadowRowDepth(i, madeHere[tablePos]);
+                if (!madeHere[tablePos].isEmpty()) {
+                  setShadowRowDepth(i, madeHere[tablePos]);
+                }
               } else {
                 setValue(i, column - 1, madeHere[tablePos]);
               }
