@@ -239,7 +239,9 @@ void V8ClientConnection::setHostName(std::string hostname) {
 }
 
 std::shared_ptr<fuerte::Connection> V8ClientConnection::spnego() {
-
+#if _WIN32
+  return nullptr;
+#else
   std::string fqdn(_hostname);
   std::string realm;
   realm = "HTTP@";
@@ -320,6 +322,7 @@ std::shared_ptr<fuerte::Connection> V8ClientConnection::spnego() {
     return nullptr;
   }
   return newConnection;
+#endif
 }
 
 std::shared_ptr<fuerte::Connection> V8ClientConnection::acquireConnection() {
