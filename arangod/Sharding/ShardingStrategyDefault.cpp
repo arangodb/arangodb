@@ -66,7 +66,7 @@ inline void parseAttributeAndPart(std::string const& attr, arangodb::velocypack:
 }
 
 template <bool returnNullSlice>
-VPackSlice buildTemporarySlice(VPackSlice const& sub, Part const& part,
+VPackSlice buildTemporarySlice(VPackSlice const sub, Part const& part,
                                VPackBuilder& temporaryBuilder, bool splitSlash) {
   if (sub.isString()) {
     arangodb::velocypack::StringRef key(sub);
@@ -75,10 +75,15 @@ VPackSlice buildTemporarySlice(VPackSlice const& sub, Part const& part,
       if (pos != std::string::npos) {
         // We have an _id. Split it.
         key = key.substr(pos + 1);
+      } else {
+        splitSlash = false;
       }
     }
     switch (part) {
       case Part::ALL: {
+        if (!splitSlash) {
+          return sub;
+        }
         // by adding the key to the builder, we may invalidate the original key...
         // however, this is safe here as the original key is not used after we have
         // added to the builder
@@ -119,15 +124,17 @@ VPackSlice buildTemporarySlice(VPackSlice const& sub, Part const& part,
 
 template <bool returnNullSlice>
 uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& attributes,
-                              bool docComplete, int& error, std::string const& key) {
+                              bool docComplete, int& error, VPackStringRef const& key) {
   uint64_t hashval = TRI_FnvHashBlockInitial();
   error = TRI_ERROR_NO_ERROR;
   slice = slice.resolveExternal();
-  if (slice.isObject()) {
-    VPackBuilder temporaryBuilder;
-    for (auto const& attr : attributes) {
-      temporaryBuilder.clear();
+  
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder temporaryBuilder(buffer);
 
+  if (slice.isObject()) {
+    for (auto const& attr : attributes) {
+      
       arangodb::velocypack::StringRef realAttr;
       ::Part part;
       ::parseAttributeAndPart(attr, realAttr, part);
@@ -135,7 +142,7 @@ uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& 
       if (sub.isNone()) {
         // shard key attribute not present in document
         if (realAttr == StaticStrings::KeyString && !key.empty()) {
-          temporaryBuilder.add(VPackValue(key));
+          temporaryBuilder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
           sub = temporaryBuilder.slice();
         } else {
           if (!docComplete) {
@@ -148,22 +155,46 @@ uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& 
       // buildTemporarySlice may append data to the builder, which may invalidate
       // the original "sub" value. however, "sub" is reassigned immediately with
       // a new value, so it does not matter in reality
-      sub = ::buildTemporarySlice<returnNullSlice>(sub, part, temporaryBuilder, false);
+      sub = ::buildTemporarySlice<returnNullSlice>(sub, part, temporaryBuilder,
+                                                   /*splitSlash*/false);
       hashval = sub.normalizedHash(hashval);
+      temporaryBuilder.clear();
     }
-  } else if (slice.isString() && attributes.size() == 1) {
-    arangodb::velocypack::StringRef realAttr;
-    ::Part part;
-    ::parseAttributeAndPart(attributes[0], realAttr, part);
-    if (realAttr == StaticStrings::KeyString && key.empty()) {
-      // We always need the _key part. Everything else should be ignored
-      // beforehand.
-      VPackBuilder temporaryBuilder;
-      VPackSlice sub =
-          ::buildTemporarySlice<returnNullSlice>(slice, part, temporaryBuilder, true);
-      hashval = sub.normalizedHash(hashval);
+    
+    return hashval;
+    
+  } else if (slice.isString()) {
+    
+    // optimization for `_key` and `_id` with default sharding
+    if (attributes.size() == 1) {
+      arangodb::velocypack::StringRef realAttr;
+      ::Part part;
+      ::parseAttributeAndPart(attributes[0], realAttr, part);
+      if (realAttr == StaticStrings::KeyString) {
+        TRI_ASSERT(key.empty());
+        
+        // We always need the _key part. Everything else should be ignored
+        // beforehand.
+        VPackSlice sub =
+        ::buildTemporarySlice<returnNullSlice>(slice, part, temporaryBuilder,
+                                               /*splitSlash*/true);
+        return sub.normalizedHash(hashval);
+      }
+    }
+    
+    if (!docComplete) { // ok for use in update, replace and remove operation
+      error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
+      return hashval;
     }
   }
+  
+  // we can only get here if a developer calls this wrongly.
+  // allowed cases are either and object or (as an optimization)
+  // `_key` or `_id` string values and default sharding
+  
+  TRI_ASSERT(false);
+  error = TRI_ERROR_BAD_PARAMETER;
+  
   return hashval;
 }
 
@@ -188,7 +219,7 @@ ShardingStrategyNone::ShardingStrategyNone() : ShardingStrategy() {
 int ShardingStrategyNone::getResponsibleShard(arangodb::velocypack::Slice slice,
                                               bool docComplete, ShardID& shardID,
                                               bool& usesDefaultShardKeys,
-                                              std::string const& key) {
+                                              VPackStringRef const& key) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL, "unexpected invocation of ShardingStrategyNone");
 }
@@ -205,7 +236,7 @@ ShardingStrategyOnlyInEnterprise::ShardingStrategyOnlyInEnterprise(std::string c
 int ShardingStrategyOnlyInEnterprise::getResponsibleShard(arangodb::velocypack::Slice slice,
                                                           bool docComplete, ShardID& shardID,
                                                           bool& usesDefaultShardKeys,
-                                                          std::string const& key) {
+                                                          VPackStringRef const& key) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_ONLY_ENTERPRISE,
       std::string("sharding strategy '") + _name +
@@ -237,7 +268,7 @@ ShardingStrategyHashBase::ShardingStrategyHashBase(ShardingInfo* sharding)
 int ShardingStrategyHashBase::getResponsibleShard(arangodb::velocypack::Slice slice,
                                                   bool docComplete, ShardID& shardID,
                                                   bool& usesDefaultShardKeys,
-                                                  std::string const& key) {
+                                                  VPackStringRef const& key) {
   static constexpr char const* magicPhrase =
       "Foxx you have stolen the goose, give she back again!";
   static constexpr size_t magicLength = 52;
@@ -288,7 +319,7 @@ void ShardingStrategyHashBase::determineShards() {
 uint64_t ShardingStrategyHashBase::hashByAttributes(VPackSlice slice,
                                                     std::vector<std::string> const& attributes,
                                                     bool docComplete, int& error,
-                                                    std::string const& key) {
+                                                    VPackStringRef const& key) {
   return ::hashByAttributesImpl<false>(slice, attributes, docComplete, error, key);
 }
 
@@ -333,7 +364,7 @@ ShardingStrategyEnterpriseBase::ShardingStrategyEnterpriseBase(ShardingInfo* sha
 /// will affect the data distribution, which we want to avoid
 uint64_t ShardingStrategyEnterpriseBase::hashByAttributes(
     VPackSlice slice, std::vector<std::string> const& attributes,
-    bool docComplete, int& error, std::string const& key) {
+    bool docComplete, int& error, VPackStringRef const& key) {
   return ::hashByAttributesImpl<true>(slice, attributes, docComplete, error, key);
 }
 

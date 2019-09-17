@@ -267,14 +267,22 @@ function setupBinaries (builddir, buildType, configDir) {
   LOGS_DIR = fs.join(TOP_DIR, 'logs');
 
   let checkFiles = [
-    ARANGOBACKUP_BIN,
     ARANGOBENCH_BIN,
     ARANGODUMP_BIN,
     ARANGOD_BIN,
     ARANGOIMPORT_BIN,
     ARANGORESTORE_BIN,
     ARANGOEXPORT_BIN,
-    ARANGOSH_BIN];
+    ARANGOSH_BIN
+  ];
+  
+  if (global.ARANGODB_CLIENT_VERSION) {
+    let version = global.ARANGODB_CLIENT_VERSION(true);
+    if (version.hasOwnProperty('enterprise-version')) {
+      checkFiles.push(ARANGOBACKUP_BIN);
+    }
+  }
+
   for (let b = 0; b < checkFiles.length; ++b) {
     if (!fs.isFile(checkFiles[b])) {
       throw new Error('unable to locate ' + checkFiles[b]);
@@ -1025,7 +1033,8 @@ function abortSurvivors(arangod, options) {
   print(Date() + " Killing in the name of: ");
   print(arangod);
   if (!arangod.hasOwnProperty('exitStatus')) {
-    killWithCoreDump(options, arangod);
+    // killWithCoreDump(options, arangod);
+    arangod.exitStatus = killExternal(arangod.pid, termSignal);
   }
 }
 
@@ -1472,7 +1481,8 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
         instanceInfo.arangods.forEach(arangod => {
           if (!arangod.hasOwnProperty('exitStatus') ||
               (arangod.exitStatus.status === 'RUNNING')) {
-            killWithCoreDump(options, arangod);
+            // killWithCoreDump(options, arangod);
+            arangod.exitStatus = killExternal(arangod.pid, termSignal);
           }
           analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
         });

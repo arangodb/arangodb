@@ -53,8 +53,7 @@ RestStatus RestDocumentHandler::execute() {
   // execute one of the CRUD methods
   switch (type) {
     case rest::RequestType::DELETE_REQ:
-      removeDocument();
-      break;
+      return removeDocument();
     case rest::RequestType::GET:
       return readDocument();
     case rest::RequestType::HEAD:
@@ -73,25 +72,31 @@ RestStatus RestDocumentHandler::execute() {
 }
 
 void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
-  try {
-    GeneralRequest const* request = _request.get();
-    auto const type = request->requestType();
-    int result = static_cast<int>(_response->responseCode());
+  if (isFinalized) {
+    // reset the transaction so it releases all locks as early as possible
+    _activeTrx.reset();
 
-    switch (type) {
-      case rest::RequestType::DELETE_REQ:
-      case rest::RequestType::GET:
-      case rest::RequestType::HEAD:
-      case rest::RequestType::POST:
-      case rest::RequestType::PUT:
-      case rest::RequestType::PATCH:
-        break;
-      default:
-        events::IllegalDocumentOperation(*request, result);
-        break;
+    try {
+      GeneralRequest const* request = _request.get();
+      auto const type = request->requestType();
+      int result = static_cast<int>(_response->responseCode());
+
+      switch (type) {
+        case rest::RequestType::DELETE_REQ:
+        case rest::RequestType::GET:
+        case rest::RequestType::HEAD:
+        case rest::RequestType::POST:
+        case rest::RequestType::PUT:
+        case rest::RequestType::PATCH:
+          break;
+        default:
+          events::IllegalDocumentOperation(*request, result);
+          break;
+      }
+    } catch (...) {
     }
-  } catch (...) {
   }
+
   RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
 
@@ -102,7 +107,7 @@ uint32_t RestDocumentHandler::forwardingTarget() {
   }
 
   bool found = false;
-  std::string value = _request->header(StaticStrings::TransactionId, found);
+  std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (found) {
     uint64_t tid = basics::StringUtils::uint64(value);
     if (!transaction::isCoordinatorTransactionId(tid)) {
@@ -503,18 +508,18 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
 /// @brief was docuBlock REST_DOCUMENT_DELETE
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::removeDocument() {
+RestStatus RestDocumentHandler::removeDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() < 1 || suffixes.size() > 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/document/<document-handle> or "
                   "/_api/document/<collection> with a BODY");
-    return false;
+    return RestStatus::DONE;
   }
 
   // split the document reference
-  std::string const& collectionName = suffixes[0];
+  std::string const& cname = suffixes[0];
   std::string key;
   if (suffixes.size() == 2) {
     key = suffixes[1];
@@ -564,7 +569,7 @@ bool RestDocumentHandler::removeDocument() {
       // parameter
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "Request body not parseable");
-      return false;
+      return RestStatus::DONE;
     }
     search = builderPtr->slice();
   }
@@ -572,40 +577,45 @@ bool RestDocumentHandler::removeDocument() {
   if (!search.isArray() && !search.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "Request body not parseable");
-    return false;
+    return RestStatus::DONE;
   }
 
-  auto trx = createTransaction(collectionName, AccessMode::Type::WRITE);
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE);
   if (suffixes.size() == 2 || !search.isArray()) {
-    trx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+    _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
-  Result res = trx->begin();
+  Result res = _activeTrx->begin();
 
   if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
-    return false;
+    generateTransactionError(cname, res, "");
+    return RestStatus::DONE;
   }
 
   bool const isMultiple = search.isArray();
-  OperationResult result = trx->remove(collectionName, search, opOptions);
-
-  res = trx->finish(result.result);
-
-  if (result.fail()) {
-    generateTransactionError(result);
-    return false;
-  }
-
-  if (!res.ok()) {
-    generateTransactionError(collectionName, res, key);
-    return false;
-  }
-
-  generateDeleted(result, collectionName,
-                  TRI_col_type_e(trx->getCollectionType(collectionName)),
-                  trx->transactionContextPtr()->getVPackOptionsForDump(), isMultiple);
-  return true;
+  
+  return waitForFuture(_activeTrx->removeAsync(cname, search, opOptions)
+                       .thenValue([=](OperationResult opRes) {
+    auto res = _activeTrx->finish(opRes.result);
+    
+    // ...........................................................................
+    // outside write transaction
+    // ...........................................................................
+    
+    if (opRes.fail()) {
+      generateTransactionError(opRes);
+      return;
+    }
+    
+    if (!res.ok()) {
+      generateTransactionError(cname, res, key);
+      return;
+    }
+    
+    generateDeleted(opRes, cname,
+                    TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+                    _activeTrx->transactionContextPtr()->getVPackOptionsForDump(), isMultiple);
+  }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
