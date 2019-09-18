@@ -7128,8 +7128,6 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
 // Splices in subqueries by replacing subquery nodes by
 // a SubqueryStartNode and a SubqueryEndNode with the subquery's nodes
 // in between.
-// TODO: check ownership of ExecutionNodes etc
-//
 void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                          OptimizerRule const& rule) {
   bool modified = false;
