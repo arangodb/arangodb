@@ -62,6 +62,7 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
 
  private:
   void standardResponse();
+  void initializeTransaction(LogicalCollection&);
 
  private:
   RestStatus handleCommandGet();

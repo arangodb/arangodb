@@ -178,7 +178,9 @@ RestStatus RestCollectionHandler::handleCommandGet() {
                   .thenValue([this](futures::Unit&&) { standardResponse(); }));
         } else if (sub == "count") {
           // /_api/collection/<identifier>/count
-          _ctxt = std::make_unique<methods::Collections::Context>(_vocbase, *coll);
+          initializeTransaction(*coll);
+          _ctxt = std::make_unique<methods::Collections::Context>(_vocbase, *coll,
+                                                                  _activeTrx.get());
           skipGenerate = true;
           bool details = _request->parsedValue("details", false);
           status = waitForFuture(
@@ -691,29 +693,8 @@ void RestCollectionHandler::collectionRepresentation(LogicalCollection& coll,
                                                      bool showCount, bool detailedCount) {
   if (showProperties || showCount) {
     // Here we need a transaction
-    std::unique_ptr<transaction::Methods> trx;
-    try {
-      trx = createTransaction(coll.name(), AccessMode::Type::READ);
-    } catch (basics::Exception const& ex) {
-      if (ex.code() == TRI_ERROR_TRANSACTION_NOT_FOUND) {
-      // this will happen if the tid of a managed transaction is passed in,
-      // but the transaction hasn't yet started on the DB server. in
-      // this case, we create an ad-hoc transaction on the underlying
-      // collection
-        trx = std::make_unique<SingleCollectionTransaction>(transaction::StandaloneContext::Create(_vocbase), coll.name(), AccessMode::Type::READ);
-      } else {
-        throw;
-      }
-    }
-
-    TRI_ASSERT(trx != nullptr);
-    Result res = trx->begin();
-
-    if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    methods::Collections::Context ctxt(_vocbase, coll, trx.get());
+    initializeTransaction(coll);
+    methods::Collections::Context ctxt(_vocbase, coll, _activeTrx.get());
 
     collectionRepresentation(ctxt, showProperties, showFigures, showCount, detailedCount);
   } else {
@@ -802,4 +783,29 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
 void RestCollectionHandler::standardResponse() {
   generateOk(rest::ResponseCode::OK, _builder);
   _response->setHeaderNC(StaticStrings::Location, _request->requestPath());
+}
+
+void RestCollectionHandler::initializeTransaction(LogicalCollection& coll) {
+  try {
+    _activeTrx = createTransaction(coll.name(), AccessMode::Type::READ);
+  } catch (basics::Exception const& ex) {
+    if (ex.code() == TRI_ERROR_TRANSACTION_NOT_FOUND) {
+      // this will happen if the tid of a managed transaction is passed in,
+      // but the transaction hasn't yet started on the DB server. in
+      // this case, we create an ad-hoc transaction on the underlying
+      // collection
+      _activeTrx = std::make_unique<SingleCollectionTransaction>(
+          transaction::StandaloneContext::Create(_vocbase), coll.name(),
+          AccessMode::Type::READ);
+    } else {
+      throw;
+    }
+  }
+
+  TRI_ASSERT(_activeTrx != nullptr);
+  Result res = _activeTrx->begin();
+
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
