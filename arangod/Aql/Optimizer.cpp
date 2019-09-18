@@ -74,7 +74,7 @@ void Optimizer::addPlanInternal(std::unique_ptr<ExecutionPlan> plan,
                                 RuleDatabase::iterator const& nextRule) {
   TRI_ASSERT(plan != nullptr);
   TRI_ASSERT(!_rules.empty());
-  
+
   plan->setValidity(true);
 
   if (wasModified) {
@@ -102,11 +102,11 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
                             QueryOptions const& queryOptions, bool estimateAllPlans) {
   _runOnlyRequiredRules = false;
   ExecutionPlan* initialPlan = plan.get();
- 
+
   if (ADB_LIKELY(_rules.empty())) {
     auto const& rules = OptimizerRulesFeature::rules();
     _rules.reserve(rules.size());
-    
+
     TRI_ASSERT(std::is_sorted(rules.begin(), rules.end(), [](OptimizerRule const& lhs, OptimizerRule const& rhs) {
       return lhs.level < rhs.level;
     }));
@@ -154,7 +154,7 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
     }
   }
   _newPlans.clear();
-  
+
   while (true) {
     // std::cout << "Have " << _plans.size() << " plans:" << std::endl;
     // for (auto const& p : _plans.list) {
@@ -172,17 +172,17 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
       if (_currentRule == _rules.end()) {
         // nothing to do, just keep it
         _newPlans.push_back(std::move(p), _currentRule);
-      } else {                              
+      } else {
         // find next rule
         auto it = _currentRule;
         TRI_ASSERT(it != _rules.end());
-        
+
         auto const& rule = OptimizerRulesFeature::ruleByIndex(*it);
-        
+
         // skip over rules if we should
         // however, we don't want to skip those rules that will not create
         // additional plans
-        if (p->isDisabledRule(rule.level) || 
+        if (p->isDisabledRule(rule.level) ||
             (_runOnlyRequiredRules && rule.canCreateAdditionalPlans() && rule.canBeDisabled())) {
           // we picked a disabled rule or we have reached the max number of
           // plans and just skip this rule
@@ -285,7 +285,7 @@ void Optimizer::disableRule(ExecutionPlan* plan, int level) {
   }
 }
 
-void Optimizer::disableRule(ExecutionPlan* plan, velocypack::StringRef name) {
+void Optimizer::disableRule(ExecutionPlan* plan, arangodb::velocypack::StringRef name) {
   if (!name.empty() && name[0] == '-') {
     name = name.substr(1);
   }
