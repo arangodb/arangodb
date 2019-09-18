@@ -16,6 +16,8 @@ devel
 * Add new server option `--cluster.default-replication-factor` that allows to set the
   default replication factor for non-system collections (default: 1).
 
+* Bugfix: The AQL sort-limit optimization was applied in some cases it shouldn't, resulting in undefined behaviour.
+
 * Remove operations documents in the cluster will now use an optimization, if all sharding keys 
   were specified. Should the sharding keys not match the values in the actual document
   a not found error will be returned.
