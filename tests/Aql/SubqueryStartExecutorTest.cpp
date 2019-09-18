@@ -42,6 +42,16 @@ ExecutorInfos MakeBaseInfos(RegisterId numRegs) {
   }
   return ExecutorInfos(emptyRegisterList, emptyRegisterList, numRegs, numRegs, {}, toKeep);
 }
+
+void TestShadowRow(SharedAqlItemBlockPtr const& block, size_t row, bool isRelevant) {
+  EXPECT_TRUE(block->isShadowRow(row));
+  // We do this additional if, in order to allow the outer test loop to continue
+  // even if we do not have a shadow row.
+  if (block->isShadowRow(row)) {
+    ShadowAqlItemRow shadow{block, row};
+    EXPECT_EQ(shadow.isRelevant(), isRelevant);
+  }
+}
 }  // namespace
 
 class SubqueryStartExecutorTest : public ::testing::Test {
@@ -98,7 +108,7 @@ TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_single_input) {
 
   block = output.stealBlock();
   EXPECT_FALSE(block->isShadowRow(0));
-  EXPECT_TRUE(block->isShadowRow(1));
+  TestShadowRow(block, 1, true);
 }
 
 TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line_in_single_pass) {
@@ -123,9 +133,9 @@ TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line_in_sin
 
   block = output.stealBlock();
   EXPECT_FALSE(block->isShadowRow(0));
-  EXPECT_TRUE(block->isShadowRow(1));
+  TestShadowRow(block, 1, true);
   EXPECT_FALSE(block->isShadowRow(2));
-  EXPECT_TRUE(block->isShadowRow(3));
+  TestShadowRow(block, 3, true);
   EXPECT_FALSE(block->isShadowRow(4));
-  EXPECT_TRUE(block->isShadowRow(5));
+  TestShadowRow(block, 5, true);
 }
