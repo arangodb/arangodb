@@ -174,7 +174,7 @@ void BenchFeature::updateStartCounter() { ++_started; }
 int BenchFeature::getStartCounter() { return _started; }
 
 void BenchFeature::start() {
-  ClientFeature& client = server().getFeature<ClientFeature>();
+  ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
   client.setRetries(3);
   client.setWarn(true);
 

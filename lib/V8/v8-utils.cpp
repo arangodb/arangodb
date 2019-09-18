@@ -690,7 +690,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!url.empty() && url[0] == '/') {
     // check if we are a server
     isLocalUrl = true;
-    auto& server = ApplicationServer::server();
+    TRI_ASSERT(server.hasFeature<HttpEndpointProvider>());
     auto& feature = server.getFeature<HttpEndpointProvider>();
     endpoints = feature.httpEndpoints();
 

@@ -414,17 +414,17 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   addFunction(functions, { "ANALYZER", ".,.", flags, &dummyContextFunc });  // (filter expression, analyzer)
 }
 
-void registerIndexFactory() {
+void registerIndexFactory(arangodb::application_features::ApplicationServer& server) {
   auto const& indexType = arangodb::iresearch::DATA_SOURCE_TYPE.name();
-  auto& server = arangodb::application_features::ApplicationServer::server();
-  if (!server.hasFeature<arangodb::StorageEngine>()) {
+  if (!server.hasFeature<arangodb::EngineSelectorFeature>() ||
+      !server.getFeature<arangodb::EngineSelectorFeature>().selected()) {
     LOG_TOPIC("a562d", WARN, arangodb::iresearch::TOPIC)
         << "failed to find StorageEngine feature while registering index type '"
         << indexType << "', skipping";
     return;
   }
 
-  auto& engine = server.getFeature<arangodb::StorageEngine>();
+  auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
   // ok to const-cast since this should only be called on startup
   auto& indexFactory = const_cast<arangodb::IndexFactory&>(engine.indexFactory());
 
@@ -956,7 +956,7 @@ void IResearchFeature::prepare() {
   ::iresearch::scorers::init();
 
   // register 'arangosearch' index
-  registerIndexFactory();
+  registerIndexFactory(server());
 
   // register 'arangosearch' view
   registerViewFactory();

@@ -752,7 +752,7 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   using namespace arangodb::application_features;
 
   auto const& positionals = options->processingResult()._positionals;
-  auto& client = server().getFeature<ClientFeature>();
+  auto& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
 
   if (client.databaseName() != "_system") {
     LOG_TOPIC("6b53c", FATAL, Logger::BACKUP)

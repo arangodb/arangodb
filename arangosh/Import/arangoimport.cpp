@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
     server.addFeature<GreetingsFeaturePhase>(
         std::make_unique<GreetingsFeaturePhase>(server, true));
 
-    server.addFeature<ClientFeature>(std::make_unique<ClientFeature>(server, false));
+    server.addFeature<HttpEndpointProvider>(std::make_unique<ClientFeature>(server, false));
     server.addFeature<ConfigFeature>(
         std::make_unique<ConfigFeature>(server, "arangoimport"));
     server.addFeature<ImportFeature>(std::make_unique<ImportFeature>(server, &ret));

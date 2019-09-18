@@ -97,6 +97,9 @@ ReplicationApplierConfiguration& ReplicationApplierConfiguration::operator=(
   _incremental = other._incremental;
   _verbose = other._verbose;
   _restrictType = other._restrictType;
+  for (auto& c : other._restrictCollections) {
+    _restrictCollections.emplace(c);
+  }
 
   return *this;
 }

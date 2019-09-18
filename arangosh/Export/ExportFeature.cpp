@@ -208,7 +208,7 @@ void ExportFeature::prepare() {
 }
 
 void ExportFeature::start() {
-  ClientFeature& client = server().getFeature<ClientFeature>();
+  ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
 
   int ret = EXIT_SUCCESS;
   *_result = ret;

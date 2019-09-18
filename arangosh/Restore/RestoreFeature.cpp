@@ -363,6 +363,7 @@ arangodb::Result checkDumpDatabase(arangodb::application_features::ApplicationSe
                                    arangodb::ManagedDirectory& directory,
                                    bool forceSameDatabase) {
   using arangodb::ClientFeature;
+  using arangodb::HttpEndpointProvider;
   using arangodb::Logger;
   using arangodb::application_features::ApplicationServer;
 
@@ -380,7 +381,7 @@ arangodb::Result checkDumpDatabase(arangodb::application_features::ApplicationSe
         << "Database name in source dump is '" << databaseName << "'";
   }
 
-  ClientFeature& client = server.getFeature<ClientFeature>();
+  ClientFeature& client = server.getFeature<HttpEndpointProvider, ClientFeature>();
   if (forceSameDatabase && databaseName != client.databaseName()) {
     return {TRI_ERROR_BAD_PARAMETER,
             std::string("database name in dump.json ('") + databaseName +
@@ -1375,7 +1376,7 @@ void RestoreFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  ClientFeature& client = server().getFeature<ClientFeature>();
+  ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
 
   _exitCode = EXIT_SUCCESS;
 

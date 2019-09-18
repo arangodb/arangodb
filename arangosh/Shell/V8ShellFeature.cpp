@@ -369,7 +369,8 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
       } else {
         std::ostringstream is;
 
-        ClientFeature& client = server().getFeature<ClientFeature>();
+        ClientFeature& client =
+            server().getFeature<HttpEndpointProvider, ClientFeature>();
         is << "Could not connect to endpoint '" << client.endpoint()
            << "', database: '" << v8connection->databaseName()
            << "', username: '" << v8connection->username() << "'";
@@ -402,9 +403,9 @@ std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
 
   bool haveClient = false;
   if (createConnection) {
-    if (server().hasFeature<ClientFeature>()) {
+    if (server().hasFeature<HttpEndpointProvider>()) {
       haveClient = true;
-      ClientFeature& client = server().getFeature<ClientFeature>();
+      ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
       if (client.isEnabled()) {
         v8connection = std::make_unique<V8ClientConnection>(server());
         v8connection->connect(&client);
@@ -415,7 +416,7 @@ std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
   initMode(ShellFeature::RunMode::INTERACTIVE, positionals);
 
   if (createConnection && haveClient) {
-    ClientFeature& client = server().getFeature<ClientFeature>();
+    ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
     v8connection->initServer(_isolate, context, &client);
   }
 
@@ -460,8 +461,8 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
   uint64_t nrCommands = 0;
 
   ClientFeature* client = nullptr;
-  if (server().hasFeature<ClientFeature>()) {
-    client = &(server().getFeature<ClientFeature>());
+  if (server().hasFeature<HttpEndpointProvider>()) {
+    client = &(server().getFeature<HttpEndpointProvider, ClientFeature>());
     if (!client->isEnabled()) {
       client = nullptr;
     }

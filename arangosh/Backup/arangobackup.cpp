@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
         std::make_unique<GreetingsFeaturePhase>(server, true));
 
     server.addFeature<BackupFeature>(std::make_unique<BackupFeature>(server, ret));
-    server.addFeature<ClientFeature>(std::make_unique<ClientFeature>(server, false));
+    server.addFeature<HttpEndpointProvider>(std::make_unique<ClientFeature>(server, false));
     server.addFeature<ConfigFeature>(
         std::make_unique<ConfigFeature>(server, "arangobackup"));
     server.addFeature<LoggerFeature>(std::make_unique<LoggerFeature>(server, false));

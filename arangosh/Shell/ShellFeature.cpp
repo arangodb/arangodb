@@ -74,7 +74,7 @@ void ShellFeature::collectOptions(std::shared_ptr<options::ProgramOptions> optio
 void ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   _positionals = options->processingResult()._positionals;
 
-  ClientFeature& client = server().getFeature<ClientFeature>();
+  ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
   ConsoleFeature& console = server().getFeature<ConsoleFeature>();
 
   if (client.endpoint() == "none") {

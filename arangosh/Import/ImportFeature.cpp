@@ -248,7 +248,7 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 }
 
 void ImportFeature::start() {
-  ClientFeature& client = server().getFeature<ClientFeature>();
+  ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
 
   int ret = EXIT_SUCCESS;
   *_result = ret;

@@ -1104,7 +1104,7 @@ void DumpFeature::start() {
   }
 
   // get database name to operate on
-  auto& client = server().getFeature<ClientFeature>();
+  auto& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
 
   // get a client to use in main thread
   auto httpClient = _clientManager.getConnectedClient(_options.force, true, true);

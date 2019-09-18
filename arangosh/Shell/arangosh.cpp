@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
           std::make_unique<GreetingsFeaturePhase>(server, true));
       server.addFeature<V8ShellFeaturePhase>(std::make_unique<V8ShellFeaturePhase>(server));
 
-      server.addFeature<ClientFeature>(std::make_unique<ClientFeature>(server, true));
+      server.addFeature<HttpEndpointProvider>(std::make_unique<ClientFeature>(server, true));
       server.addFeature<ConfigFeature>(std::make_unique<ConfigFeature>(server, name));
       server.addFeature<ConsoleFeature>(std::make_unique<ConsoleFeature>(server));
       server.addFeature<LanguageFeature>(std::make_unique<LanguageFeature>(server));

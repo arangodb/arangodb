@@ -79,7 +79,7 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
                                          bool force, bool logServerVersion,
                                          bool logDatabaseNotFound, bool quiet) {
   auto& server = application_features::ApplicationServer::server();
-  ClientFeature& client = server.getFeature<ClientFeature>();
+  ClientFeature& client = server.getFeature<HttpEndpointProvider, ClientFeature>();
 
   try {
     httpClient = client.createHttpClient();

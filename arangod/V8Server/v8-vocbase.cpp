@@ -1648,6 +1648,7 @@ static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& server = application_features::ApplicationServer::server();
+  TRI_ASSERT(server.hasFeature<HttpEndpointProvider>());
   auto& endpoints = server.getFeature<HttpEndpointProvider>();
   auto& vocbase = GetContextVocBase(isolate);
 
