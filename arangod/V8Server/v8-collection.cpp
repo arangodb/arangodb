@@ -956,7 +956,7 @@ static void JS_FiguresVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  auto builder = collection->figures();
+  auto builder = collection->figures().get();
 
   trx.finish(TRI_ERROR_NO_ERROR);
 

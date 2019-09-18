@@ -44,20 +44,24 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
   void shutdownExecute(bool isFinalized) noexcept override final;
 
  protected:
-  void collectionRepresentation(VPackBuilder& builder, std::string const& name,
-                                bool showProperties, bool showFigures,
-                                bool showCount, bool detailedCount);
-
-  void collectionRepresentation(arangodb::velocypack::Builder& builder,
-                                LogicalCollection& coll, bool showProperties,
+  void collectionRepresentation(std::string const& name, bool showProperties,
                                 bool showFigures, bool showCount, bool detailedCount);
 
-  void collectionRepresentation(VPackBuilder& builder, methods::Collections::Context& ctxt,
-                                bool showProperties, bool showFigures,
-                                bool showCount, bool detailedCount);
+  void collectionRepresentation(LogicalCollection& coll, bool showProperties,
+                                bool showFigures, bool showCount, bool detailedCount);
+
+  void collectionRepresentation(methods::Collections::Context& ctxt, bool showProperties,
+                                bool showFigures, bool showCount, bool detailedCount);
+
+  futures::Future<futures::Unit> collectionRepresentationAsync(
+      methods::Collections::Context& ctxt, bool showProperties,
+      bool showFigures, bool showCount, bool detailedCount);
 
   virtual Result handleExtraCommandPut(LogicalCollection& coll, std::string const& command,
                                        velocypack::Builder& builder) = 0;
+
+ private:
+  void standardResponse();
 
  private:
   RestStatus handleCommandGet();
@@ -66,7 +70,9 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
   void handleCommandDelete();
 
  private:
+  VPackBuilder _builder;
   std::unique_ptr<transaction::Methods> _activeTrx;
+  std::unique_ptr<methods::Collections::Context> _ctxt;
 };
 
 }  // namespace arangodb

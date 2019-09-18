@@ -87,15 +87,17 @@ futures::Future<OperationResult> warmupOnCoordinator(std::string const& dbname,
 /// @brief returns figures for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
-                         std::shared_ptr<arangodb::velocypack::Builder>&);
+futures::Future<OperationResult> figuresOnCoordinator(std::string const& dbname,
+                                                      std::string const& collname,
+                                                      std::shared_ptr<arangodb::velocypack::Builder>);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts number of documents in a coordinator, by shard
 ////////////////////////////////////////////////////////////////////////////////
 
-int countOnCoordinator(transaction::Methods& trx, std::string const& collname,
-                       std::vector<std::pair<std::string, uint64_t>>& result);
+futures::Future<std::pair<OperationResult, std::vector<std::pair<std::string, uint64_t>>>> countOnCoordinator(
+    transaction::Methods& trx, std::string const& collname,
+    std::vector<std::pair<std::string, uint64_t>>&& counts);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the selectivity estimates from DBservers

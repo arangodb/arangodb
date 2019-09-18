@@ -20,15 +20,16 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ClusterCollection.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterMethods.h"
-#include "ClusterCollection.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterIndex.h"
+#include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "MMFiles/MMFilesCollection.h"
@@ -249,19 +250,19 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
 }
 
 /// @brief return the figures for a collection
-std::shared_ptr<VPackBuilder> ClusterCollection::figures() {
+futures::Future<std::shared_ptr<VPackBuilder>> ClusterCollection::figures() {
   auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
   builder->close();
 
-  auto res = figuresOnCoordinator(_logicalCollection.vocbase().name(),
-                                  std::to_string(_logicalCollection.id()), builder);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  return builder;
+  return figuresOnCoordinator(_logicalCollection.vocbase().name(),
+                              std::to_string(_logicalCollection.id()), builder)
+      .thenValue([builder](OperationResult&& opRes) -> std::shared_ptr<VPackBuilder> {
+        if (opRes.fail()) {
+          THROW_ARANGO_EXCEPTION(opRes.result);
+        }
+        return builder;
+      });
 }
 
 void ClusterCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
