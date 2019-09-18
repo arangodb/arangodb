@@ -23,12 +23,17 @@
 #ifndef ARANGOD_AQL_SUBQUERY_START_EXECUTOR_H
 #define ARANGOD_AQL_SUBQUERY_START_EXECUTOR_H
 
-#include "Aql/ExecutorInfos.h"
-#include "Aql/SingleRowFetcher.h"
-#include "Aql/Stats.h"
+#include <utility>
 
 namespace arangodb {
 namespace aql {
+
+template <bool allowsPassThrough>
+class SingleRowFetcher;
+class NoStats;
+class ExecutorInfos;
+enum class ExecutionState;
+class OutputAqlItemRow;
 
 class SubqueryStartExecutor {
  public:
@@ -43,6 +48,14 @@ class SubqueryStartExecutor {
   using Stats = NoStats;
   SubqueryStartExecutor(Fetcher& fetcher, Infos& infos);
   ~SubqueryStartExecutor();
+
+  /**
+   * @brief produce the next Row of Aql Values.
+   *
+   * @return ExecutionState,
+   *         if something was written output.hasValue() == true
+   */
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 };
 }  // namespace aql
 }  // namespace arangodb

@@ -23,12 +23,32 @@
 #include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
 
+#include "Aql/OutputAqlItemRow.h"
+#include "Aql/Stats.h"
 #include "Aql/SubqueryStartExecutor.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::tests;
+using namespace arangodb::tests::aql;
 
-class SubqueryStartExecutorTest : public ::testing::Test {};
+namespace {
+ExecutorInfos MakeBaseInfos(RegisterId numRegs) {
+  auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
+      std::initializer_list<RegisterId>{});
+  std::unordered_set<RegisterId> toKeep;
+  for (RegisterId r = 0; r < numRegs; ++r) {
+    toKeep.emplace(r);
+  }
+  return ExecutorInfos(emptyRegisterList, emptyRegisterList, numRegs, numRegs, {}, toKeep);
+}
+}  // namespace
+
+class SubqueryStartExecutorTest : public ::testing::Test {
+ protected:
+  ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager{&monitor};
+};
 
 TEST_F(SubqueryStartExecutorTest, check_properties) {
   EXPECT_TRUE(SubqueryStartExecutor::Properties::preservesOrder)
@@ -39,4 +59,21 @@ TEST_F(SubqueryStartExecutorTest, check_properties) {
   EXPECT_TRUE(SubqueryStartExecutor::Properties::inputSizeRestrictsOutputSize)
       << "The block is restricted by input, it will atMost produce 2 times the "
          "input. (Might be less if input contains shadowRows";
+}
+
+TEST_F(SubqueryStartExecutorTest, empty_input_does_not_add_shadow_rows) {
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
+  VPackBuilder input;
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
+  auto infos = MakeBaseInfos(1);
+  SubqueryStartExecutor testee(fetcher, infos);
+
+  NoStats stats{};
+  ExecutionState state{ExecutionState::HASMORE};
+  OutputAqlItemRow ouput{std::move(block), infos.getOutputRegisters(),
+                         infos.registersToKeep(), infos.registersToClear()};
+  std::tie(state, stats) = testee.produceRows(ouput);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!ouput.produced());
+  ASSERT_EQ(ouput.numRowsLeft(), 1000);
 }
