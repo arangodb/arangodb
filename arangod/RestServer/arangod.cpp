@@ -332,9 +332,31 @@ namespace arangodb {
 // *restartAction = myRestartAction;
 // arangodb::application_features::ApplicationServer::server->beginShutdown();
 
+#ifdef __linux__
+// The following is a hack which is currently (September 2019) needed to
+// let our static executables compiled with libmusl and gcc 8.3.0 properly
+// detect that we are a multi-threaded application.
+void* g(void *p) {
+  return p;
+}
+
+void gg() {
+}
+
+void f() {
+  pthread_t t;
+  pthread_create(&t, nullptr, g, nullptr);
+  pthread_cancel(t);
+  pthread_join(t, nullptr);
+  static pthread_once_t once_control = PTHREAD_ONCE_INIT;
+  pthread_once(&once_control, gg);
+}
+#endif
+
 int main(int argc, char* argv[]) {
 #ifdef __linux__
-  // Do not delete this! See lib/Basics/operating-system.h for details.
+  if (argc == -1) { f(); }
+  // Do not delete this! See above for an explanation.
   ThrowSomeException();
 #endif
 
