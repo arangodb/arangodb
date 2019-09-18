@@ -823,6 +823,42 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
   return TRI_ERROR_NO_ERROR;
 }
 
+<<<<<<< HEAD
+=======
+/// @brief stop operations in this vocbase. must be called prior to
+/// shutdown to clean things up
+void TRI_vocbase_t::stop() {
+  try {
+    // stop replication
+    if (_replicationApplier != nullptr) {
+      _replicationApplier->stopAndJoin();
+    }
+
+    // mark all cursors as deleted so underlying collections can be freed soon
+    _cursorRepository->garbageCollect(true);
+
+    // mark all collection keys as deleted so underlying collections can be freed
+    // soon, we have to retry, since some of these collection keys might currently
+    // still being in use:
+    auto lastTime = TRI_microtime();
+    while (true) {
+      if (!_collectionKeys->garbageCollect(true)) {
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      if (TRI_microtime() - lastTime > 1.0) {
+        LOG_TOPIC(WARN, Logger::STARTUP)
+          << "Have collection keys left over, keep trying to garbage collect...";
+        lastTime = TRI_microtime();
+      }
+    }
+
+  } catch (...) {
+    // we are calling this on shutdown, and always want to go on from here
+  }
+}
+
+>>>>>>> cba7e5205f1... Fix a shutdown hanger because of a collection status lock.
 /// @brief closes a database and all collections
 void TRI_vocbase_t::shutdown() {
   // stop replication
