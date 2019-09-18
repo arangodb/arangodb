@@ -35,7 +35,11 @@
 namespace arangodb {
 
 HotBackup::HotBackup(application_features::ApplicationServer& server)
+#ifdef USE_ENTERPRISE
     : _server(server) {
+#else
+{
+#endif
   if (ServerState::instance()->isCoordinator()) {
     _engine = BACKUP_ENGINE::CLUSTER;
   } else if (EngineSelectorFeature::isRocksDB()) {

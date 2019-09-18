@@ -80,7 +80,9 @@ private:
   arangodb::Result executeMMFiles(
     std::string const& command, VPackSlice const payload, VPackBuilder& report);
 
+#ifdef USE_ENTERPRISE
   application_features::ApplicationServer& _server;
+#endif
   BACKUP_ENGINE _engine;
   
 };// class HotBackup

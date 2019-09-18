@@ -24,6 +24,7 @@
 #include "Store.h"
 
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicaitonServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
@@ -109,7 +110,7 @@ inline static bool endpointPathFromUrl(std::string const& url,
 }
 
 /// Ctor with name
-Store::Store(application_features::ApplicationServer& server, Agent* agent,
+Store::Store(arangodb::application_features::ApplicationServer& server, Agent* agent,
              std::string const& name)
     : _server(server), _agent(agent), _node(name, this) {}
 
