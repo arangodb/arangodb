@@ -1,3 +1,10 @@
+v3.5.2 (XXXX-XX-XX)
+-------------------
+
+* Fixed a bug in the edge cache's internal memory accounting, which led
+  to the edge cache underreporting its current memory usage.
+
+
 v3.5.1 (2019-09-24)
 -------------------
 
