@@ -25,7 +25,6 @@
 #include "Aql/Ast.h"
 #include "Aql/VariableGenerator.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Meta/static_assert_size.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -95,6 +94,5 @@ Variable* Variable::varFromVPack(Ast* ast, arangodb::velocypack::Slice const& ba
 }
 
 bool Variable::isEqualTo(Variable const& other) const {
-  meta::details::static_assert_size<Variable, 48>();
   return (id == other.id) && (name == other.name);
 }
