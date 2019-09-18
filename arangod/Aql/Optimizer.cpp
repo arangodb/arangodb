@@ -148,9 +148,9 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
       continue;
     }
     if (name[0] == '-') {
-      disableRule(initialPlan, velocypack::StringRef(name));
+      disableRule(initialPlan, arangodb::velocypack::StringRef(name));
     } else {
-      enableRule(initialPlan, velocypack::StringRef(name));
+      enableRule(initialPlan, arangodb::velocypack::StringRef(name));
     }
   }
   _newPlans.clear();
@@ -309,7 +309,7 @@ void Optimizer::enableRule(ExecutionPlan* plan, int level) {
   plan->enableRule(level);
 }
 
-void Optimizer::enableRule(ExecutionPlan* plan, velocypack::StringRef name) {
+void Optimizer::enableRule(ExecutionPlan* plan, arangodb::velocypack::StringRef name) {
   if (!name.empty() && name[0] == '+') {
     name = name.substr(1);
   }
