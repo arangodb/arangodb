@@ -823,8 +823,6 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
   return TRI_ERROR_NO_ERROR;
 }
 
-<<<<<<< HEAD
-=======
 /// @brief stop operations in this vocbase. must be called prior to
 /// shutdown to clean things up
 void TRI_vocbase_t::stop() {
@@ -858,7 +856,6 @@ void TRI_vocbase_t::stop() {
   }
 }
 
->>>>>>> cba7e5205f1... Fix a shutdown hanger because of a collection status lock.
 /// @brief closes a database and all collections
 void TRI_vocbase_t::shutdown() {
   // stop replication
