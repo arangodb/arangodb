@@ -137,6 +137,7 @@ These flags can be set in the first call to `cmake`:
 - `-DUSE_BACKTRACE=1` - Add backtraces to native code asserts & exceptions
 - `-DUSE_FAILURE_TESTS=1` - Adds JavaScript hook to crash the server for data integrity tests
 - `-DUSE_GOOGLE_TESTS=On` (default is On so this is set unless you explicitly disable it)
+- `-DUSE_IPO=AUTO` (Toggles interprocedural optimization; see below)
 
 Example flags for Windows:
 
@@ -170,6 +171,14 @@ At runtime arangod needs to be started with these options:
 ### Build with AddressSanitizer (or ASan)
 
     -DUSE_JEMALLOC=Off -DBASE_LD_FLAGS="-fsanitize=address" -DBASE_CXX_FLAGS="-fsanitize=address -fno-omit-frame-pointer"
+
+### Toggle interprocedural optimization
+
+    -DUSE_IPO=AUTO
+
+AUTO, which is the default, enables IPO for release builds without google tests.
+Look for `IPO_ENABLED` in the cmake output to see the result of the decision!
+Besides AUTO, it can be set to any cmake true/false value (e.g. ON or OFF).
 
 ### Debugging the build process
 
