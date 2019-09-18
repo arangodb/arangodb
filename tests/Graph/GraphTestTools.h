@@ -75,40 +75,19 @@ struct GraphTestSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
 
     // setup required application features
-    server.addFeature<arangodb::DatabasePathFeature>(
-        std::make_unique<arangodb::DatabasePathFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::DatabasePathFeature>(), false);
-
-    server.addFeature<arangodb::DatabaseFeature>(
-        std::make_unique<arangodb::DatabaseFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::DatabaseFeature>(), false);
-
-    server.addFeature<arangodb::QueryRegistryFeature>(
-        std::make_unique<arangodb::QueryRegistryFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::QueryRegistryFeature>(), false);  // must be first
-
+    features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // must be first
     system = std::make_unique<TRI_vocbase_t>(server, TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                                              0, TRI_VOC_SYSTEM_DATABASE);
-    server.addFeature<arangodb::SystemDatabaseFeature>(
-        std::make_unique<arangodb::SystemDatabaseFeature>(server, system.get()));
-    features.emplace_back(server.getFeature<arangodb::SystemDatabaseFeature>(),
+    features.emplace_back(server.addFeature<arangodb::SystemDatabaseFeature>(
+                              system.get()),
                           false);  // required for IResearchAnalyzerFeature
-
-    server.addFeature<arangodb::TraverserEngineRegistryFeature>(
-        std::make_unique<arangodb::TraverserEngineRegistryFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::TraverserEngineRegistryFeature>(),
+    features.emplace_back(server.addFeature<arangodb::TraverserEngineRegistryFeature>(),
                           false);  // must be before AqlFeature
-
-    server.addFeature<arangodb::AqlFeature>(std::make_unique<arangodb::AqlFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::AqlFeature>(), true);
-
-    server.addFeature<arangodb::aql::OptimizerRulesFeature>(
-        std::make_unique<arangodb::aql::OptimizerRulesFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::aql::OptimizerRulesFeature>(), true);
-
-    server.addFeature<arangodb::aql::AqlFunctionFeature>(
-        std::make_unique<arangodb::aql::AqlFunctionFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::aql::AqlFunctionFeature>(),
+    features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
+    features.emplace_back(server.addFeature<arangodb::aql::OptimizerRulesFeature>(), true);
+    features.emplace_back(server.addFeature<arangodb::aql::AqlFunctionFeature>(),
                           true);  // required for IResearchAnalyzerFeature
 
     for (auto& f : features) {

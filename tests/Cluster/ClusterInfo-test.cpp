@@ -166,40 +166,19 @@ class ClusterInfoTest : public ::testing::Test {
                                     arangodb::LogLevel::FATAL);
 
     // setup required application features
-    server.addFeature<arangodb::AuthenticationFeature>(
-        std::make_unique<arangodb::AuthenticationFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::AuthenticationFeature>(),
-                          false);  // required for ClusterFeature::prepare()
-
-    server.addFeature<arangodb::DatabaseFeature>(
-        std::make_unique<arangodb::DatabaseFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::DatabaseFeature>(), false);
-
-    server.addFeature<arangodb::application_features::CommunicationFeaturePhase>(
-        std::make_unique<arangodb::application_features::CommunicationFeaturePhase>(server));
-    features.emplace_back(server.getFeature<arangodb::application_features::CommunicationFeaturePhase>(),
+    features.emplace_back(addFeature<arangodb::AuthenticationFeature>(), false);  // required for ClusterFeature::prepare()
+    features.emplace_back(addFeature<arangodb::DatabaseFeature>(), false);
+    features.emplace_back(addFeature<arangodb::application_features::CommunicationFeaturePhase>(),
                           false);
-
-    server.addFeature<arangodb::ClusterFeature>(
-        std::make_unique<arangodb::ClusterFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::ClusterFeature>(), false);  // required for ClusterInfo::instance()
-
-    server.addFeature<arangodb::QueryRegistryFeature>(
-        std::make_unique<arangodb::QueryRegistryFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::QueryRegistryFeature>(),
-                          false);  // required for DatabaseFeature::createDatabase(...)
-
-    server.addFeature<arangodb::V8DealerFeature>(
-        std::make_unique<arangodb::V8DealerFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
-
-    server.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::ViewTypesFeature>(), false);  // required for LogicalView::instantiate(...)
+    features.emplace_back(addFeature<arangodb::ClusterFeature>(),
+                          false);  // required for ClusterInfo::instance()
+    features.emplace_back(addFeature<arangodb::QueryRegistryFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
+    features.emplace_back(addFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
+    features.emplace_back(addFeature<arangodb::ViewTypesFeature>(), false);  // required for LogicalView::instantiate(...)
 
 #if USE_ENTERPRISE
-    server.addFeature<arangodb::LdapFeature>(std::make_unique<arangodb::LdapFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
+    features.emplace_back(addFeature<arangodb::LdapFeature>(),
+                          false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
     for (auto& f : features) {

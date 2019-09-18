@@ -100,6 +100,8 @@ class ApplicationFeature;
 // This destroys the features.
 
 class ApplicationServer {
+  using FeatureMap =
+      std::unordered_map<std::type_index, std::unique_ptr<ApplicationFeature>>;
   ApplicationServer(ApplicationServer const&) = delete;
   ApplicationServer& operator=(ApplicationServer const&) = delete;
 
@@ -220,9 +222,17 @@ class ApplicationServer {
    // adds a feature to the application server. the application server
    // will take ownership of the feature object and destroy it in its
    // destructor
-   template <typename Type, typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0>
-   void addFeature(std::unique_ptr<Type>&& feature) {
-     _features.emplace(std::type_index(typeid(Type)), std::move(feature));
+   template <typename Type, typename As = Type, typename... Args,
+             typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0,
+             typename std::enable_if<std::is_base_of<ApplicationFeature, As>::value, int>::type = 0,
+             typename std::enable_if<std::is_base_of<As, Type>::value, int>::type = 0>
+   As& addFeature(Args&&... args) {
+     TRI_ASSERT(!hasFeature<As>());
+     std::pair<FeatureMap::iterator, bool> result =
+         _features.emplace(std::type_index(typeid(As)),
+                           std::make_unique<Type>(*this, std::forward<Args>(args)...));
+     TRI_ASSERT(result.second);
+     return *dynamic_cast<As*>(result.first->second.get());
    }
 
    // checks for the existence of a feature by type. will not throw when used
@@ -340,7 +350,7 @@ class ApplicationServer {
    std::shared_ptr<options::ProgramOptions> _options;
 
    // map of feature names to features
-   std::unordered_map<std::type_index, std::unique_ptr<ApplicationFeature>> _features;
+   FeatureMap _features;
 
    // features order for prepare/start
    std::vector<std::reference_wrapper<ApplicationFeature>> _orderedFeatures;

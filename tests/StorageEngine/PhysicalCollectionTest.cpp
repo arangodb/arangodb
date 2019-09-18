@@ -54,21 +54,12 @@ class PhysicalCollectionTest : public ::testing::Test {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // setup required application features
-    server.addFeature<arangodb::AuthenticationFeature>(
-        std::make_unique<arangodb::AuthenticationFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::AuthenticationFeature>());  // required for VocbaseContext
-
-    server.addFeature<arangodb::DatabaseFeature>(
-        std::make_unique<arangodb::DatabaseFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::DatabaseFeature>());
-
-    server.addFeature<arangodb::QueryRegistryFeature>(
-        std::make_unique<arangodb::QueryRegistryFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::QueryRegistryFeature>());  // required for TRI_vocbase_t
+    features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>());  // required for VocbaseContext
+    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>());
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>());  // required for TRI_vocbase_t
 
 #if USE_ENTERPRISE
-    server.addFeature<arangodb::LdapFeature>(std::make_unique<arangodb::LdapFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::LdapFeature>());
+    features.emplace_back(server.addFeature<arangodb::LdapFeature>());
 #endif
 
     for (auto& f : features) {

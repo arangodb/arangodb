@@ -71,30 +71,15 @@ class FlushFeatureTest : public ::testing::Test {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
                                     arangodb::LogLevel::FATAL);
 
-    server.addFeature<arangodb::AuthenticationFeature>(
-        std::make_unique<arangodb::AuthenticationFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::AuthenticationFeature>(),
+    features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(),
                           false);  // required for ClusterFeature::prepare()
-
-    server.addFeature<arangodb::ClusterFeature>(
-        std::make_unique<arangodb::ClusterFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::ClusterFeature>(), false);  // required for V8DealerFeature::prepare()
-
-    server.addFeature<arangodb::DatabaseFeature>(
-        std::make_unique<arangodb::DatabaseFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::DatabaseFeature>(), false);  // required for MMFilesWalRecoverState constructor
-
-    server.addFeature<arangodb::QueryRegistryFeature>(
-        std::make_unique<arangodb::QueryRegistryFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
-
-    server.addFeature<arangodb::V8DealerFeature>(
-        std::make_unique<arangodb::V8DealerFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
+    features.emplace_back(server.addFeature<arangodb::ClusterFeature>(), false);  // required for V8DealerFeature::prepare()
+    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);  // required for MMFilesWalRecoverState constructor
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
+    features.emplace_back(server.addFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
 
 #if USE_ENTERPRISE
-    server.addFeature<arangodb::LdapFeature>(std::make_unique<arangodb::LdapFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
+    features.emplace_back(server.addFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
     arangodb::DatabaseFeature::DATABASE =

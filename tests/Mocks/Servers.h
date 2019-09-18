@@ -71,8 +71,7 @@ class MockServer {
   template <typename Type, typename As = Type, typename... Args>
   As& addFeature(bool start, Args&&... args) {
     TRI_ASSERT(!_started);
-    _server.addFeature<As>(std::make_unique<Type>(_server, std::forward<Args>(args)...));
-    As& feature = _server.getFeature<As>();
+    As& feature = _server.addFeature<Type, As>(std::forward<Args>(args)...);
     _features.emplace(&feature, start);
     return feature;
   }
@@ -81,8 +80,7 @@ class MockServer {
   // it will not be prepared, started, etc.
   template <typename Type, typename As = Type, typename... Args>
   As& addFeatureUntracked(Args&&... args) {
-    _server.addFeature<As>(std::make_unique<Type>(_server, std::forward<Args>(args)...));
-    return _server.getFeature<As>();
+    return _server.addFeature<Type, As>(std::forward<Args>(args)...);
   }
 
   // convenience method to fetch feature, equivalent to server().getFeature....

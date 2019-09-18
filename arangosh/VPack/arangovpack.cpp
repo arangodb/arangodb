@@ -55,21 +55,18 @@ int main(int argc, char* argv[]) {
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;
 
-    server.addFeature<BasicFeaturePhaseClient>(
-        std::make_unique<BasicFeaturePhaseClient>(server));
-    server.addFeature<GreetingsFeaturePhase>(
-        std::make_unique<GreetingsFeaturePhase>(server, true));
+    server.addFeature<BasicFeaturePhaseClient>();
+    server.addFeature<GreetingsFeaturePhase>(true);
 
     // default is to use no config file
-    server.addFeature<ConfigFeature>(
-        std::make_unique<ConfigFeature>(server, "arangovpack", "none"));
-    server.addFeature<LoggerFeature>(std::make_unique<LoggerFeature>(server, false));
-    server.addFeature<RandomFeature>(std::make_unique<RandomFeature>(server));
-    server.addFeature<ShellColorsFeature>(std::make_unique<ShellColorsFeature>(server));
-    server.addFeature<ShutdownFeature>(std::make_unique<ShutdownFeature>(
-        server, std::vector<std::type_index>{std::type_index(typeid(VPackFeature))}));
-    server.addFeature<VPackFeature>(std::make_unique<VPackFeature>(server, &ret));
-    server.addFeature<VersionFeature>(std::make_unique<VersionFeature>(server));
+    server.addFeature<ConfigFeature>("arangovpack", "none");
+    server.addFeature<LoggerFeature>(false);
+    server.addFeature<RandomFeature>();
+    server.addFeature<ShellColorsFeature>();
+    server.addFeature<ShutdownFeature>(
+        std::vector<std::type_index>{std::type_index(typeid(VPackFeature))});
+    server.addFeature<VPackFeature>(&ret);
+    server.addFeature<VersionFeature>();
 
     try {
       server.run(argc, argv);

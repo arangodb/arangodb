@@ -59,29 +59,24 @@ int main(int argc, char* argv[]) {
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;
 
-    server.addFeature<BasicFeaturePhaseClient>(
-        std::make_unique<BasicFeaturePhaseClient>(server));
-    server.addFeature<CommunicationFeaturePhase>(
-        std::make_unique<CommunicationFeaturePhase>(server));
-    server.addFeature<GreetingsFeaturePhase>(
-        std::make_unique<GreetingsFeaturePhase>(server, true));
+    server.addFeature<BasicFeaturePhaseClient>();
+    server.addFeature<CommunicationFeaturePhase>();
+    server.addFeature<GreetingsFeaturePhase>(true);
 
-    server.addFeature<HttpEndpointProvider>(std::make_unique<ClientFeature>(server, false));
-    server.addFeature<ConfigFeature>(
-        std::make_unique<ConfigFeature>(server, "arangorestore"));
-    server.addFeature<LoggerFeature>(std::make_unique<LoggerFeature>(server, false));
-    server.addFeature<RandomFeature>(std::make_unique<RandomFeature>(server));
-    server.addFeature<RestoreFeature>(std::make_unique<RestoreFeature>(server, ret));
-    server.addFeature<ShellColorsFeature>(std::make_unique<ShellColorsFeature>(server));
-    server.addFeature<ShutdownFeature>(std::make_unique<ShutdownFeature>(
-        server, std::vector<std::type_index>{std::type_index(typeid(RestoreFeature))}));
-    server.addFeature<SslFeature>(std::make_unique<SslFeature>(server));
-    server.addFeature<TempFeature>(
-        std::make_unique<TempFeature>(server, "arangorestore"));
-    server.addFeature<VersionFeature>(std::make_unique<VersionFeature>(server));
+    server.addFeature<ClientFeature, HttpEndpointProvider>(false);
+    server.addFeature<ConfigFeature>("arangorestore");
+    server.addFeature<LoggerFeature>(false);
+    server.addFeature<RandomFeature>();
+    server.addFeature<RestoreFeature>(ret);
+    server.addFeature<ShellColorsFeature>();
+    server.addFeature<ShutdownFeature>(
+        std::vector<std::type_index>{std::type_index(typeid(RestoreFeature))});
+    server.addFeature<SslFeature>();
+    server.addFeature<TempFeature>("arangorestore");
+    server.addFeature<VersionFeature>();
 
 #ifdef USE_ENTERPRISE
-    server.addFeature<EncryptionFeature>(std::make_unique<EncryptionFeature>(server));
+    server.addFeature<EncryptionFeature>();
 #endif
 
     try {

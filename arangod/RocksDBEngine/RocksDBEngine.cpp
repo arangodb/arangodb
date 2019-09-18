@@ -210,7 +210,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
   // to configure this engine and the MMFiles PersistentIndexFeature
   startsAfter<RocksDBOptionFeature>();
 
-  server.addFeature<RocksDBRecoveryManager>(std::make_unique<RocksDBRecoveryManager>(server));
+  server.addFeature<RocksDBRecoveryManager>();
 }
 
 RocksDBEngine::~RocksDBEngine() { shutdownRocksDBInstance(); }

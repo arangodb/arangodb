@@ -110,22 +110,12 @@ class LogicalViewTest : public ::testing::Test {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
                                     arangodb::LogLevel::ERR);
 
-    server.addFeature<arangodb::AuthenticationFeature>(
-        std::make_unique<arangodb::AuthenticationFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::AuthenticationFeature>(), false);  // required for ExecContext
-
-    server.addFeature<arangodb::QueryRegistryFeature>(
-        std::make_unique<arangodb::QueryRegistryFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
-
-    server.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::ViewTypesFeature>(), false);  // required for LogicalView::create(...)
+    features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(), false);  // required for ExecContext
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
+    features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(), false);  // required for LogicalView::create(...)
 
 #if USE_ENTERPRISE
-    server.addFeature<arangodb::LdapFeature>(std::make_unique<arangodb::LdapFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
-
+    features.emplace_back(server.addFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
     for (auto& f : features) {

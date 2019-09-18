@@ -2087,25 +2087,15 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
     arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    newServer.addFeature<arangodb::ClusterFeature>(
-        std::make_unique<arangodb::ClusterFeature>(newServer));  // required to create ClusterInfo instance
-    newServer.addFeature<arangodb::DatabaseFeature>(std::make_unique<arangodb::DatabaseFeature>(newServer));  // required for IResearchAnalyzerFeature::emplace>(std::make_unique<arangodb::DatabaseFeature(newServer));  // required for IResearchAnalyzerFeature::emplace>(...)
-    newServer.addFeature<arangodb::QueryRegistryFeature>(
-        std::make_unique<arangodb::QueryRegistryFeature>(newServer));  // required for constructing TRI_vocbase_t
-    newServer.addFeature<arangodb::ShardingFeature>(std::make_unique<arangodb::ShardingFeature>(newServer));  // required for Collections::create>(std::make_unique<arangodb::ShardingFeature(newServer));  // required for Collections::create>(...)
-    newServer.addFeature<arangodb::SystemDatabaseFeature>(
-        std::make_unique<arangodb::SystemDatabaseFeature>(newServer));  // required for IResearchAnalyzerFeature::start>(std::make_unique<arangodb::SystemDatabaseFeature(newServer));  // required for IResearchAnalyzerFeature::start>()
-    newServer.addFeature<arangodb::V8DealerFeature>(std::make_unique<arangodb::V8DealerFeature>(newServer));  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(newServer));  // required for DatabaseFeature::createDatabase>(...)
-    newServer.addFeature<arangodb::application_features::CommunicationFeaturePhase>(
-        std::make_unique<arangodb::application_features::CommunicationFeaturePhase>(newServer));  // required for SimpleHttpClient::doRequest>(std::make_unique<arangodb::application_features::CommunicationFeaturePhase(newServer));  // required for SimpleHttpClient::doRequest>()
-    newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
-        std::make_unique<arangodb::iresearch::IResearchAnalyzerFeature>(newServer));  // required for running upgrade task
-    arangodb::iresearch::IResearchAnalyzerFeature& feature =
-        newServer.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    arangodb::DatabaseFeature& dbFeature =
-        newServer.getFeature<arangodb::DatabaseFeature>();
-    arangodb::SystemDatabaseFeature& sysDatabase =
-        newServer.getFeature<arangodb::SystemDatabaseFeature>();
+    newServer.addFeature<arangodb::ClusterFeature>();  // required to create ClusterInfo instance
+    auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace>(std::make_unique<arangodb::DatabaseFeature(newServer));  // required for IResearchAnalyzerFeature::emplace>(...)
+    newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
+    newServer.addFeature<arangodb::ShardingFeature>();  // required for Collections::create>(std::make_unique<arangodb::ShardingFeature(newServer)); // required for Collections::create>(...)
+    auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start>(std::make_unique<arangodb::SystemDatabaseFeature(newServer));  // required for IResearchAnalyzerFeature::start>()
+    newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(newServer)); // required for DatabaseFeature::createDatabase>(...)
+    newServer.addFeature<arangodb::application_features::CommunicationFeaturePhase>();  // required for SimpleHttpClient::doRequest>(std::make_unique<arangodb::application_features::CommunicationFeaturePhase(newServer));  // required for SimpleHttpClient::doRequest>()
+    auto& feature =
+        newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>();  // required for running upgrade task
     arangodb::aql::OptimizerRulesFeature(this->server.server()).prepare();  // required for Query::preparePlan(...)
     auto clearOptimizerRules = irs::make_finally([this]() -> void {
       arangodb::aql::OptimizerRulesFeature(this->server.server()).unprepare();
@@ -2167,28 +2157,15 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     });
 
     arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    newServer.addFeature<arangodb::ClusterFeature>(
-        std::make_unique<arangodb::ClusterFeature>(newServer));  // required to create ClusterInfo instance
-    newServer.addFeature<arangodb::DatabaseFeature>(std::make_unique<arangodb::DatabaseFeature>(
-        newServer));  // required for IResearchAnalyzerFeature::emplace(...)
-    newServer.addFeature<arangodb::QueryRegistryFeature>(
-        std::make_unique<arangodb::QueryRegistryFeature>(newServer));  // required for constructing TRI_vocbase_t
-    newServer.addFeature<arangodb::ShardingFeature>(
-        std::make_unique<arangodb::ShardingFeature>(newServer));  // required for Collections::create>(std::make_unique<arangodb::ShardingFeature(server));  // required for Collections::create>(...)
-    newServer.addFeature<arangodb::SystemDatabaseFeature>(
-        std::make_unique<arangodb::SystemDatabaseFeature>(newServer));  // required for IResearchAnalyzerFeature::start()
-    newServer.addFeature<arangodb::V8DealerFeature>(std::make_unique<arangodb::V8DealerFeature>(newServer));  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase>(...)
-    newServer.addFeature<arangodb::application_features::CommunicationFeaturePhase>(
-        std::make_unique<arangodb::application_features::CommunicationFeaturePhase>(
-            newServer));  // required for SimpleHttpClient::doRequest()
-    newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
-        std::make_unique<arangodb::iresearch::IResearchAnalyzerFeature>(newServer));  // required for running upgrade task
-    arangodb::iresearch::IResearchAnalyzerFeature& feature =
-        newServer.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    arangodb::DatabaseFeature& dbFeature =
-        newServer.getFeature<arangodb::DatabaseFeature>();
-    arangodb::SystemDatabaseFeature& sysDatabase =
-        newServer.getFeature<arangodb::SystemDatabaseFeature>();
+    newServer.addFeature<arangodb::ClusterFeature>();  // required to create ClusterInfo instance
+    auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace(...)
+    newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
+    newServer.addFeature<arangodb::ShardingFeature>();  // required for Collections::create>(std::make_unique<arangodb::ShardingFeature(server)); // required for Collections::create>(...)
+    auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start()
+    newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)
+    newServer.addFeature<arangodb::application_features::CommunicationFeaturePhase>();  // required for SimpleHttpClient::doRequest()
+    auto& feature =
+        newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>();  // required for running upgrade task
     arangodb::aql::OptimizerRulesFeature(this->server.server()).prepare();  // required for Query::preparePlan(...)
     auto clearOptimizerRules = irs::make_finally([this]() -> void {
       arangodb::aql::OptimizerRulesFeature(this->server.server()).unprepare();
@@ -2570,27 +2547,16 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   // create a new instance of an ApplicationServer and fill it with the required features
   // cannot use the existing server since its features already have some state
   arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-  newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
-      std::make_unique<arangodb::iresearch::IResearchAnalyzerFeature>(newServer));
-  newServer.addFeature<arangodb::DatabaseFeature>(
-      std::make_unique<arangodb::DatabaseFeature>(newServer));
-  newServer.addFeature<arangodb::aql::AqlFunctionFeature>(
-      std::make_unique<arangodb::aql::AqlFunctionFeature>(newServer));
-  newServer.addFeature<arangodb::QueryRegistryFeature>(
-      std::make_unique<arangodb::QueryRegistryFeature>(newServer));  // required for constructing TRI_vocbase_t
-  newServer.addFeature<arangodb::ShardingFeature>(
-      std::make_unique<arangodb::ShardingFeature>(newServer));
-  newServer.addFeature<arangodb::SystemDatabaseFeature>(
-      std::make_unique<arangodb::SystemDatabaseFeature>(newServer));
-  newServer.addFeature<arangodb::V8DealerFeature>(std::make_unique<arangodb::V8DealerFeature>(newServer));  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase>(...)
-
   auto& analyzers =
-      newServer.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto& functions = newServer.getFeature<arangodb::aql::AqlFunctionFeature>();
-  auto& dbfeature = newServer.getFeature<arangodb::DatabaseFeature>();
+      newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto& dbfeature = newServer.addFeature<arangodb::DatabaseFeature>();
+  auto& functions = newServer.addFeature<arangodb::aql::AqlFunctionFeature>();
+  newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
+  auto& sharding = newServer.addFeature<arangodb::ShardingFeature>();
+  auto& systemdb = newServer.addFeature<arangodb::SystemDatabaseFeature>();
+  newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)
+
   auto cleanup = arangodb::scopeGuard([&dbfeature]() { dbfeature.unprepare(); });
-  auto& sharding = newServer.getFeature<arangodb::ShardingFeature>();
-  auto& systemdb = newServer.getFeature<arangodb::SystemDatabaseFeature>();
 
   sharding.prepare();
 
@@ -3466,17 +3432,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
 
   arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   arangodb::iresearch::IResearchAnalyzerFeature feature(newServer);
-  newServer.addFeature<arangodb::DatabaseFeature>(std::make_unique<arangodb::DatabaseFeature>(
-      newServer));  // required for IResearchAnalyzerFeature::emplace(...)
-  newServer.addFeature<arangodb::QueryRegistryFeature>(
-      std::make_unique<arangodb::QueryRegistryFeature>(newServer));  // required for constructing TRI_vocbase_t
-  newServer.addFeature<arangodb::SystemDatabaseFeature>(
-      std::make_unique<arangodb::SystemDatabaseFeature>(newServer));  // required for IResearchAnalyzerFeature::start()
-  newServer.addFeature<arangodb::V8DealerFeature>(std::make_unique<arangodb::V8DealerFeature>(newServer));  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase>(...)
-  arangodb::DatabaseFeature& dbFeature =
-      newServer.getFeature<arangodb::DatabaseFeature>();
-  arangodb::SystemDatabaseFeature& sysDatabase =
-      newServer.getFeature<arangodb::SystemDatabaseFeature>();
+  auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace(...)
+  newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
+  auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start()
+  newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)
 
   // create system vocbase (before feature start)
   {
@@ -3737,17 +3696,10 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   // cannot use the existing server since its features already have some state
   arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   arangodb::iresearch::IResearchAnalyzerFeature feature(newServer);
-  newServer.addFeature<arangodb::DatabaseFeature>(std::make_unique<arangodb::DatabaseFeature>(
-      newServer));  // required for IResearchAnalyzerFeature::emplace(...)
-  newServer.addFeature<arangodb::QueryRegistryFeature>(
-      std::make_unique<arangodb::QueryRegistryFeature>(newServer));  // required for constructing TRI_vocbase_t
-  newServer.addFeature<arangodb::SystemDatabaseFeature>(
-      std::make_unique<arangodb::SystemDatabaseFeature>(newServer));  // required for IResearchAnalyzerFeature::start()
-  newServer.addFeature<arangodb::V8DealerFeature>(std::make_unique<arangodb::V8DealerFeature>(newServer));  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase>(...)
-  arangodb::DatabaseFeature& dbFeature =
-      newServer.getFeature<arangodb::DatabaseFeature>();
-  arangodb::SystemDatabaseFeature& sysDatabase =
-      newServer.getFeature<arangodb::SystemDatabaseFeature>();
+  auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace(...)
+  newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
+  auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start()
+  newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)
   auto cleanup = arangodb::scopeGuard([&dbFeature]() { dbFeature.unprepare(); });
 
   // create system vocbase (before feature start)

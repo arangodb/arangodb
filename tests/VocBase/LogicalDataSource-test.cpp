@@ -45,13 +45,8 @@ class LogicalDataSourceTest : public ::testing::Test {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // setup required application features
-    server.addFeature<arangodb::QueryRegistryFeature>(
-        std::make_unique<arangodb::QueryRegistryFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
-
-    server.addFeature<arangodb::ShardingFeature>(
-        std::make_unique<arangodb::ShardingFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::ShardingFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
+    features.emplace_back(server.addFeature<arangodb::ShardingFeature>(), false);
 
     for (auto& f : features) {
       f.first.prepare();

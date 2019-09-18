@@ -220,28 +220,12 @@ class IResearchOrderTest : public ::testing::Test {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
-    server.addFeature<arangodb::AqlFeature>(std::make_unique<arangodb::AqlFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::AqlFeature>(), true);
-
-    server.addFeature<arangodb::QueryRegistryFeature>(
-        std::make_unique<arangodb::QueryRegistryFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::QueryRegistryFeature>(), false);
-
-    server.addFeature<arangodb::TraverserEngineRegistryFeature>(
-        std::make_unique<arangodb::TraverserEngineRegistryFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::TraverserEngineRegistryFeature>(), false);
-
-    server.addFeature<arangodb::ViewTypesFeature>(
-        std::make_unique<arangodb::ViewTypesFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::ViewTypesFeature>(), false);  // required for IResearchFeature
-
-    server.addFeature<arangodb::aql::AqlFunctionFeature>(
-        std::make_unique<arangodb::aql::AqlFunctionFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::aql::AqlFunctionFeature>(), true);
-
-    server.addFeature<arangodb::iresearch::IResearchFeature>(
-        std::make_unique<arangodb::iresearch::IResearchFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::iresearch::IResearchFeature>(), true);
+    features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::TraverserEngineRegistryFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(), false);  // required for IResearchFeature
+    features.emplace_back(server.addFeature<arangodb::aql::AqlFunctionFeature>(), true);
+    features.emplace_back(server.addFeature<arangodb::iresearch::IResearchFeature>(), true);
 
     for (auto& f : features) {
       f.first.prepare();

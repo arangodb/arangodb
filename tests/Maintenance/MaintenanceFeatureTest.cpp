@@ -398,7 +398,7 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
       std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
                                                           std::string(), "path");
   arangodb::application_features::ApplicationServer as(po, nullptr);
-  as.addFeature<arangodb::MaintenanceFeature>(std::make_unique<TestMaintenanceFeature>(as));
+  as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
       &as.getFeature<arangodb::MaintenanceFeature>());
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
@@ -480,7 +480,7 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_preaction) {
       std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
                                                           std::string(), "path");
   arangodb::application_features::ApplicationServer as(po, nullptr);
-  as.addFeature<arangodb::MaintenanceFeature>(std::make_unique<TestMaintenanceFeature>(as));
+  as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
       &as.getFeature<arangodb::MaintenanceFeature>());
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
@@ -537,7 +537,7 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_postaction) {
       std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
                                                           std::string(), "path");
   arangodb::application_features::ApplicationServer as(po, nullptr);
-  as.addFeature<arangodb::MaintenanceFeature>(std::make_unique<TestMaintenanceFeature>(as));
+  as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
       &as.getFeature<arangodb::MaintenanceFeature>());
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
@@ -596,7 +596,7 @@ TEST(MaintenanceFeatureTestThreaded, priority_queue_should_be_able_to_process_fa
                                                           std::string(), "path");
 
   arangodb::application_features::ApplicationServer as(po, nullptr);
-  as.addFeature<arangodb::MaintenanceFeature>(std::make_unique<TestMaintenanceFeature>(as));
+  as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
       &as.getFeature<arangodb::MaintenanceFeature>());
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
@@ -643,7 +643,7 @@ TEST(MaintenanceFeatureTestThreaded, action_delete) {
       std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
                                                           std::string(), "path");
   arangodb::application_features::ApplicationServer as(po, nullptr);
-  as.addFeature<arangodb::MaintenanceFeature>(std::make_unique<TestMaintenanceFeature>(as));
+  as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
       &as.getFeature<arangodb::MaintenanceFeature>());
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);

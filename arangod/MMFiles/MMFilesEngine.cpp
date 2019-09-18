@@ -172,13 +172,10 @@ MMFilesEngine::MMFilesEngine(application_features::ApplicationServer& server)
   startsAfter<application_features::BasicFeaturePhaseServer>();
   startsAfter<MMFilesPersistentIndexFeature>();  // yes, intentional!
 
-  server.addFeature<MMFilesWalRecoveryFeature>(
-      std::make_unique<MMFilesWalRecoveryFeature>(server));
-  server.addFeature<MMFilesLogfileManager>(std::make_unique<MMFilesLogfileManager>(server));
-  server.addFeature<MMFilesPersistentIndexFeature>(
-      std::make_unique<MMFilesPersistentIndexFeature>(server));
-  server.addFeature<MMFilesCompactionFeature>(
-      std::make_unique<MMFilesCompactionFeature>(server));
+  server.addFeature<MMFilesWalRecoveryFeature>();
+  server.addFeature<MMFilesLogfileManager>();
+  server.addFeature<MMFilesPersistentIndexFeature>();
+  server.addFeature<MMFilesCompactionFeature>();
 }
 
 MMFilesEngine::~MMFilesEngine() {

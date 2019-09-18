@@ -176,13 +176,9 @@ class ShardDistributionReporterTest : public ::testing::Test {
     aliases[dbserver3] = dbserver3short;
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
-    server.addFeature<arangodb::DatabaseFeature>(
-        std::make_unique<arangodb::DatabaseFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::DatabaseFeature>(), false);  // required for TRI_vocbase_t::dropCollection(...)
-
-    server.addFeature<arangodb::QueryRegistryFeature>(
-        std::make_unique<arangodb::QueryRegistryFeature>(server));
-    features.emplace_back(server.getFeature<arangodb::QueryRegistryFeature>(),
+    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
+                          false);  // required for TRI_vocbase_t::dropCollection(...)
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
                           false);  // required for TRI_vocbase_t instantiation
 
     for (auto& f : features) {

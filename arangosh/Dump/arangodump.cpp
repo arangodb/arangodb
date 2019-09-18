@@ -67,27 +67,23 @@ int main(int argc, char* argv[]) {
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;
 
-    server.addFeature<CommunicationFeaturePhase>(
-        std::make_unique<CommunicationFeaturePhase>(server));
-    server.addFeature<BasicFeaturePhaseClient>(
-        std::make_unique<BasicFeaturePhaseClient>(server));
-    server.addFeature<GreetingsFeaturePhase>(
-        std::make_unique<GreetingsFeaturePhase>(server, true));
+    server.addFeature<CommunicationFeaturePhase>();
+    server.addFeature<BasicFeaturePhaseClient>();
+    server.addFeature<GreetingsFeaturePhase>(true);
 
-    server.addFeature<HttpEndpointProvider>(std::make_unique<ClientFeature>(server, false));
-    server.addFeature<ConfigFeature>(
-        std::make_unique<ConfigFeature>(server, "arangodump"));
-    server.addFeature<DumpFeature>(std::make_unique<DumpFeature>(server, ret));
-    server.addFeature<LoggerFeature>(std::make_unique<LoggerFeature>(server, false));
-    server.addFeature<RandomFeature>(std::make_unique<RandomFeature>(server));
-    server.addFeature<ShellColorsFeature>(std::make_unique<ShellColorsFeature>(server));
-    server.addFeature<ShutdownFeature>(std::make_unique<ShutdownFeature>(
-        server, std::vector<std::type_index>{std::type_index(typeid(DumpFeature))}));
-    server.addFeature<SslFeature>(std::make_unique<SslFeature>(server));
-    server.addFeature<VersionFeature>(std::make_unique<VersionFeature>(server));
+    server.addFeature<ClientFeature, HttpEndpointProvider>(false);
+    server.addFeature<ConfigFeature>("arangodump");
+    server.addFeature<DumpFeature>(ret);
+    server.addFeature<LoggerFeature>(false);
+    server.addFeature<RandomFeature>();
+    server.addFeature<ShellColorsFeature>();
+    server.addFeature<ShutdownFeature>(
+        std::vector<std::type_index>{std::type_index(typeid(DumpFeature))});
+    server.addFeature<SslFeature>();
+    server.addFeature<VersionFeature>();
 
 #ifdef USE_ENTERPRISE
-    server.addFeature<EncryptionFeature>(std::make_unique<EncryptionFeature>(server));
+    server.addFeature<EncryptionFeature>();
 #endif
 
     try {
