@@ -187,18 +187,23 @@ SupervisedScheduler::~SupervisedScheduler() {}
 
 bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
                                 bool allowDirectHandling) {
-  if (!isDirectDeadlockLane(lane) && allowDirectHandling &&
-      !ServerState::instance()->isClusterRole() && (_jobsSubmitted - _jobsDone) < 2) {
-    _jobsSubmitted.fetch_add(1, std::memory_order_relaxed);
-    _jobsDequeued.fetch_add(1, std::memory_order_relaxed);
-    _jobsDirectExec.fetch_add(1, std::memory_order_release);
-    try {
-      handler();
-      _jobsDone.fetch_add(1, std::memory_order_release);
-      return true;
-    } catch (...) {
-      _jobsDone.fetch_add(1, std::memory_order_release);
-      throw;
+  if (!isDirectDeadlockLane(lane) && 
+      allowDirectHandling &&
+      !ServerState::instance()->isClusterRole()) {
+    uint64_t const jobsDone = _jobsDone.load(std::memory_order_acquire);
+    uint64_t const jobsSubmitted = _jobsSubmitted.load(std::memory_order_relaxed);
+    if (jobsSubmitted - jobsDone < 2) {
+      _jobsSubmitted.fetch_add(1, std::memory_order_relaxed);
+      _jobsDequeued.fetch_add(1, std::memory_order_relaxed);
+      _jobsDirectExec.fetch_add(1, std::memory_order_relaxed);
+      try {
+        handler();
+        _jobsDone.fetch_add(1, std::memory_order_release);
+        return true;
+      } catch (...) {
+        _jobsDone.fetch_add(1, std::memory_order_release);
+        throw;
+      }
     }
   }
 
@@ -226,17 +231,12 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
   static thread_local uint64_t lastSubmitTime_ns;
 
   // use memory order release to make sure, pushed item is visible
-  uint64_t jobsSubmitted = _jobsSubmitted.fetch_add(1, std::memory_order_release);
-  uint64_t approxQueueLength = jobsSubmitted - _jobsDone;
-  // fetching _jobsDone after _jobsSubmitted means there can be data races. 
-  // if the current thread doesn't get interrupted, the condition 
-  //   _jobsSubmitted > _jobsDone   will always hold true
-  // however, if the current thread gets interrupted and other threads finish their 
-  // jobs first, then the reverse may also be true:   jobsSubmitted < _jobsDone
-  // we guard against this by checking approxQueueLength for an underlow
-  if (ADB_UNLIKELY(approxQueueLength > std::numeric_limits<uint64_t>::max() - _maxFifoSize)) {
-    approxQueueLength = 0;
-  }
+  uint64_t const jobsDone = _jobsDone.load(std::memory_order_acquire);
+  uint64_t const jobsSubmitted = _jobsSubmitted.fetch_add(1, std::memory_order_relaxed);
+  uint64_t const approxQueueLength = jobsSubmitted - jobsDone;
+
+  // to make sure the queue length hasn't underflowed
+  TRI_ASSERT(approxQueueLength < std::numeric_limits<uint64_t>::max() / 2);
 
   uint64_t now_ns = getTickCount_ns();
   uint64_t sleepyTime_ns = now_ns - lastSubmitTime_ns;
@@ -285,9 +285,6 @@ bool SupervisedScheduler::start() {
 }
 
 void SupervisedScheduler::shutdown() {
-  // THIS IS WHAT WE SHOULD AIM FOR, BUT NOBODY CARES
-  // TRI_ASSERT(_jobsSubmitted <= _jobsDone);
-
   {
     std::unique_lock<std::mutex> guard(_mutex);
     _stopping = true;
@@ -297,8 +294,8 @@ void SupervisedScheduler::shutdown() {
   Scheduler::shutdown();
 
   while (true) {
-    auto jobsSubmitted = _jobsSubmitted.load();
-    auto jobsDone = _jobsDone.load();
+    auto jobsDone = _jobsDone.load(std::memory_order_acquire);
+    auto jobsSubmitted = _jobsSubmitted.load(std::memory_order_relaxed);
 
     if (jobsSubmitted <= jobsDone) {
       break;
@@ -366,7 +363,7 @@ void SupervisedScheduler::runWorker() {
         break;
       }
     
-      _jobsDequeued++;
+      _jobsDequeued.fetch_add(1, std::memory_order_relaxed);
 
       state->_lastJobStarted = clock::now();
       state->_working = true;
@@ -394,8 +391,8 @@ void SupervisedScheduler::runSupervisor() {
 
   while (!_stopping) {
     uint64_t jobsDone = _jobsDone.load(std::memory_order_acquire);
-    uint64_t jobsSubmitted = _jobsSubmitted.load(std::memory_order_acquire);
-    uint64_t jobsDequeued = _jobsDequeued.load(std::memory_order_acquire);
+    uint64_t jobsSubmitted = _jobsSubmitted.load(std::memory_order_relaxed);
+    uint64_t jobsDequeued = _jobsDequeued.load(std::memory_order_relaxed);
 
     if (jobsDone == lastJobsDone && (jobsDequeued < jobsSubmitted)) {
       jobsStallingTick++;
@@ -507,8 +504,9 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const {
   // then a job gets done fast (eg dequeued++, done++)
   // and then we read done.
   uint64_t jobsDone = _jobsDone.load(std::memory_order_acquire);
-  uint64_t jobsDequeued = _jobsDequeued.load(std::memory_order_acquire);
+  uint64_t jobsDequeued = _jobsDequeued.load(std::memory_order_relaxed);
   TRI_ASSERT(jobsDequeued >= jobsDone);
+
   switch (queueIndex) {
     case 0:
       // We can always! pull from high priority
@@ -644,7 +642,7 @@ Scheduler::QueueStatistics SupervisedScheduler::queueStatistics() const {
   uint64_t const numWorkers = _numWorkers.load(std::memory_order_relaxed);
 
   // read _jobsDone first, so the differences of the counters cannot get negative
-  uint64_t const jobsDone = _jobsDone.load(std::memory_order_relaxed);
+  uint64_t const jobsDone = _jobsDone.load(std::memory_order_acquire);
   uint64_t const jobsDequeued = _jobsDequeued.load(std::memory_order_relaxed);
   uint64_t const jobsSubmitted = _jobsSubmitted.load(std::memory_order_relaxed);
 
