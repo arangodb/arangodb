@@ -30,9 +30,31 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SubqueryStartExecutor::SubqueryStartExecutor(Fetcher& fetcher, Infos& infos) {}
+SubqueryStartExecutor::SubqueryStartExecutor(Fetcher& fetcher, Infos& infos)
+    : _fetcher(fetcher),
+      _state(ExecutionState::HASMORE),
+      _input(CreateInvalidInputRowHint{}) {}
 SubqueryStartExecutor::~SubqueryStartExecutor() = default;
 
 std::pair<ExecutionState, NoStats> SubqueryStartExecutor::produceRows(OutputAqlItemRow& output) {
+  while (!output.isFull()) {
+    if (_state == ExecutionState::DONE && !_input.isInitialized()) {
+      // Short cut, we are done, do not fetch further
+      return {ExecutionState::DONE, NoStats{}};
+    }
+    std::tie(_state, _input) = _fetcher.fetchRow(output.numRowsLeft() / 2);
+    if (!_input.isInitialized()) {
+      TRI_ASSERT(_state == ExecutionState::WAITING || _state == ExecutionState::DONE);
+      return {_state, NoStats{}};
+    }
+    TRI_ASSERT(!output.isFull());
+    output.copyRow(_input);
+    output.advanceRow();
+    TRI_ASSERT(!output.isFull());
+    output.createShadowRow(_input);
+    output.advanceRow();
+    _input = InputAqlItemRow(CreateInvalidInputRowHint{});
+  }
+
   return {ExecutionState::DONE, NoStats{}};
 }
