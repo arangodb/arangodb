@@ -139,3 +139,103 @@ TEST_F(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line_in_sin
   EXPECT_FALSE(block->isShadowRow(4));
   TestShadowRow(block, 5, true);
 }
+
+TEST_F(SubqueryStartExecutorTest, shadow_row_does_not_fit_in_current_block) {
+  auto input = VPackParser::fromJson(R"([
+      ["a"],
+      ["b"],
+      ["c"]
+  ])");
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+  auto infos = MakeBaseInfos(1);
+  SubqueryStartExecutor testee(fetcher, infos);
+
+  NoStats stats{};
+  ExecutionState state{ExecutionState::HASMORE};
+  {
+    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 3, 1)};
+    OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
+                            infos.registersToKeep(), infos.registersToClear()};
+    std::tie(state, stats) = testee.produceRows(output);
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    EXPECT_FALSE(output.produced());
+    EXPECT_EQ(output.numRowsWritten(), 3);
+
+    block = output.stealBlock();
+    EXPECT_FALSE(block->isShadowRow(0));
+    TestShadowRow(block, 1, true);
+    EXPECT_FALSE(block->isShadowRow(2));
+  }
+  {
+    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 3, 1)};
+    OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
+                            infos.registersToKeep(), infos.registersToClear()};
+    std::tie(state, stats) = testee.produceRows(output);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_FALSE(output.produced());
+    EXPECT_EQ(output.numRowsWritten(), 3);
+
+    block = output.stealBlock();
+    TestShadowRow(block, 0, true);
+    EXPECT_FALSE(block->isShadowRow(1));
+    TestShadowRow(block, 2, true);
+  }
+}
+
+// TODO:
+// This test can be enabled and should work as soon as the Fetcher skips non-relevant Subqueries
+TEST_F(SubqueryStartExecutorTest, DISABLED_does_only_add_shadowrows_on_data_rows) {
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 1)};
+  auto input = VPackParser::fromJson(R"([
+      ["a"],
+      ["b"],
+      ["c"]
+  ])");
+
+  auto infos = MakeBaseInfos(1);
+  {
+    SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
+    SubqueryStartExecutor testee(fetcher, infos);
+
+    NoStats stats{};
+    ExecutionState state{ExecutionState::HASMORE};
+    OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
+                            infos.registersToKeep(), infos.registersToClear()};
+    std::tie(state, stats) = testee.produceRows(output);
+    EXPECT_TRUE(state == ExecutionState::DONE);
+    EXPECT_FALSE(output.produced());
+    ASSERT_EQ(output.numRowsWritten(), 6);
+    block = output.stealBlock();
+    EXPECT_FALSE(block->isShadowRow(0));
+    TestShadowRow(block, 1, true);
+    EXPECT_FALSE(block->isShadowRow(2));
+    TestShadowRow(block, 3, true);
+    EXPECT_FALSE(block->isShadowRow(4));
+    TestShadowRow(block, 5, true);
+    // Taken from test above. We now have produced a block
+    // having 3 data rows alternating with 3 shadow rows
+  }
+  {
+    SingleRowFetcherHelper<false> fetcher(itemBlockManager, 6, false, block);
+    SubqueryStartExecutor testee(fetcher, infos);
+
+    NoStats stats{};
+    ExecutionState state{ExecutionState::HASMORE};
+    OutputAqlItemRow output{std::move(block), infos.getOutputRegisters(),
+                            infos.registersToKeep(), infos.registersToClear()};
+    std::tie(state, stats) = testee.produceRows(output);
+    EXPECT_TRUE(state == ExecutionState::DONE);
+    EXPECT_FALSE(output.produced());
+    ASSERT_EQ(output.numRowsWritten(), 9);
+    block = output.stealBlock();
+    EXPECT_FALSE(block->isShadowRow(0));
+    TestShadowRow(block, 1, true);
+    TestShadowRow(block, 2, false);
+    EXPECT_FALSE(block->isShadowRow(3));
+    TestShadowRow(block, 4, true);
+    TestShadowRow(block, 5, false);
+    EXPECT_FALSE(block->isShadowRow(6));
+    TestShadowRow(block, 7, true);
+    TestShadowRow(block, 8, true);
+  }
+}

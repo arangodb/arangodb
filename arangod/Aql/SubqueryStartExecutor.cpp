@@ -42,19 +42,25 @@ std::pair<ExecutionState, NoStats> SubqueryStartExecutor::produceRows(OutputAqlI
       // Short cut, we are done, do not fetch further
       return {ExecutionState::DONE, NoStats{}};
     }
-    std::tie(_state, _input) = _fetcher.fetchRow(output.numRowsLeft() / 2);
-    if (!_input.isInitialized()) {
-      TRI_ASSERT(_state == ExecutionState::WAITING || _state == ExecutionState::DONE);
-      return {_state, NoStats{}};
+    // This loop alternates between data row and shadow row
+    if (_input.isInitialized()) {
+      output.createShadowRow(_input);
+      _input = InputAqlItemRow(CreateInvalidInputRowHint{});
+    } else {
+      std::tie(_state, _input) = _fetcher.fetchRow(output.numRowsLeft() / 2);
+      if (!_input.isInitialized()) {
+        TRI_ASSERT(_state == ExecutionState::WAITING || _state == ExecutionState::DONE);
+        return {_state, NoStats{}};
+      }
+      TRI_ASSERT(!output.isFull());
+      output.copyRow(_input);
     }
-    TRI_ASSERT(!output.isFull());
-    output.copyRow(_input);
     output.advanceRow();
-    TRI_ASSERT(!output.isFull());
-    output.createShadowRow(_input);
-    output.advanceRow();
-    _input = InputAqlItemRow(CreateInvalidInputRowHint{});
   }
-
-  return {ExecutionState::DONE, NoStats{}};
+  if (_input.isInitialized()) {
+    // We atleast need to insert the Shadow row!
+    return {ExecutionState::HASMORE, NoStats{}};
+  }
+  // Take state from dependency.
+  return {_state, NoStats{}};
 }
