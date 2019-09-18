@@ -89,9 +89,8 @@ arangodb::Result HotBackup::executeRocksDB(
 
 arangodb::Result HotBackup::executeCoordinator(
   std::string const& command, VPackSlice const payload, VPackBuilder& report) {
-  auto& feature = _server.getFeature<ClusterFeature>();
-
 #ifdef USE_ENTERPRISE
+  auto& feature = _server.getFeature<ClusterFeature>();
   if (command == "create") {
     return hotBackupCoordinator(feature, payload, report);
   } else if (command == "lock") {
@@ -111,7 +110,6 @@ arangodb::Result HotBackup::executeCoordinator(
     return arangodb::Result(
       TRI_ERROR_NOT_IMPLEMENTED, command + " is not implemented on coordinators");
   }
-
 #endif
 
   // We'll never get here
