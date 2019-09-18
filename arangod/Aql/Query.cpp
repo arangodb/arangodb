@@ -112,8 +112,6 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
     _queryOptions.fromVelocyPack(_options->slice());
   }
 
-  // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR: " <<
-  // queryString << "\n";
   ProfileLevel level = _queryOptions.profile;
   if (level >= PROFILE_LEVEL_TRACE_1) {
     LOG_TOPIC("22a70", INFO, Logger::QUERIES) << TRI_microtime() - _startTime << " "
