@@ -1,6 +1,9 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* Fixed a bug in the edge cache's internal memory accounting, which led
+  to the edge cache underreporting its current memory usage.
+
 * Harden database creation against spurious "duplicate name" errors that
   were caused by other parallel operations lazily creating required
   system collections in the same database.
