@@ -2030,6 +2030,7 @@ std::unique_ptr<TRI_vocbase_t> MMFilesEngine::openExistingDatabase(
 
 
   arangodb::CreateDatabaseInfo info;
+  info.allowSystemDB(true);
   auto rv = info.load(id, args, VPackSlice::emptyArraySlice());
   if (rv.fail()) {
     THROW_ARANGO_EXCEPTION(rv);

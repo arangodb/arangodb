@@ -129,6 +129,10 @@ class CreateDatabaseInfo {
     return _sharding;
   }
 
+  void allowSystemDB(bool s) {
+    _isSystemDB = s;
+  }
+
 
  private:
 
@@ -147,7 +151,7 @@ class CreateDatabaseInfo {
 
   bool _vaildId = false;
   bool _vaild = false; // required because TRI_ASSERT needs variable in Release mode.
-  // bool _isSystemDB;
+  bool _isSystemDB = false;
 };
 
 struct VocbaseOptions {

@@ -177,6 +177,10 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, int
 Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
+  if(!TRI_vocbase_t::IsAllowedName(/*_isSystemDB*/ false, arangodb::velocypack::StringRef(info.getName()))){
+    return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+  }
+
   // This operation enters the database as isBuilding into the agency
   // while the database is still building it is not visible.
   ClusterInfo* ci = ClusterInfo::instance();

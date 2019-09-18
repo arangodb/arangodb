@@ -2049,7 +2049,11 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
 
   arangodb::CreateDatabaseInfo info;
-  info.load(id, args, VPackSlice::emptyArraySlice());
+  info.allowSystemDB(true); // when loading we allow system database names
+  auto res = info.load(id, args, VPackSlice::emptyArraySlice());
+  if(res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 
   auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, info);
 
