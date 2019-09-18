@@ -8,6 +8,18 @@ include(ExternalProject)
 
 remove_definitions("-DUSE_ENTERPRISE=1")
 
+# Disable IPO for 3rdParty libs. This is because they currently all use old
+# cmake versions, missing policy CMP0069.
+# Hopefully this can be removed later - just try it out and look for warnings in
+# cmake's output. Also, you can use the compile_commands.json optionally emitted
+# by cmake (see CMAKE_EXPORT_COMPILE_COMMANDS) and jq to get a list of files we
+# do not compile with IPO (assuming gcc or clang) with this command:
+#   < compile_commands.json jq '.[] | select(.command | test("-flto") | not) | .file' -r
+if (${IPO_ENABLED})
+    message ("Disabling IPO for 3rdParty libraries")
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION False)
+endif ()
+
 ################################################################################
 ## ZLIB
 ################################################################################
