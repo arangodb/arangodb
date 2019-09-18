@@ -365,6 +365,8 @@ std::unique_ptr<TRI_vocbase_t> ClusterEngine::openExistingDatabase(
     TRI_voc_tick_t id, VPackSlice args , bool wasCleanShutdown, bool isUpgrade) {
 
   arangodb::CreateDatabaseInfo info;
+  TRI_ASSERT(args.get("name").isString());
+  info.allowSystemDB(TRI_vocbase_t::IsSystemName(args.get("name").copyString()));
   auto res = info.load(id, args, VPackSlice::emptyArraySlice());
   if(res.fail()) {
     THROW_ARANGO_EXCEPTION(res);

@@ -2049,7 +2049,9 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
 
   arangodb::CreateDatabaseInfo info;
-  info.allowSystemDB(true); // when loading we allow system database names
+  TRI_ASSERT(args.get("name").isString());
+  // when loading we allow system database names
+  info.allowSystemDB(TRI_vocbase_t::IsSystemName(args.get("name").copyString()));
   auto res = info.load(id, args, VPackSlice::emptyArraySlice());
   if(res.fail()) {
     THROW_ARANGO_EXCEPTION(res);

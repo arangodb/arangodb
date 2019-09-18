@@ -1137,10 +1137,14 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       }
 
       arangodb::CreateDatabaseInfo info;
+      TRI_ASSERT(options.value.get("name").isString());
+      // when loading we allow system database names
+      info.allowSystemDB(TRI_vocbase_t::IsSystemName(options.value.get("name").copyString()));
+
       auto infoResult =  info.load(options.value, VPackSlice::emptyArraySlice());
       if(infoResult.fail()) {
         LOG_TOPIC("3fa12", ERR, Logger::HEARTBEAT) << "In agency database plan" << infoResult.errorMessage();
-        //TRI_ASSERT(false); -- not for missing name?!
+        TRI_ASSERT(false);
       }
 
       // known plan IDs
