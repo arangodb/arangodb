@@ -42,8 +42,6 @@
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
 
-#include <limits>
-
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -236,7 +234,7 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
   uint64_t const approxQueueLength = jobsSubmitted - jobsDone;
 
   // to make sure the queue length hasn't underflowed
-  TRI_ASSERT(approxQueueLength < std::numeric_limits<uint64_t>::max() / 2);
+  TRI_ASSERT(jobsDone <= jobsSubmitted);
 
   uint64_t now_ns = getTickCount_ns();
   uint64_t sleepyTime_ns = now_ns - lastSubmitTime_ns;
