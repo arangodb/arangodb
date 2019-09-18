@@ -1238,6 +1238,7 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
   status = TRI_ERROR_NO_ERROR;
 
   arangodb::CreateDatabaseInfo info;
+  info.allowSystemDB(true);
   auto rv = info.load(++vocbaseCount, args, VPackSlice::emptyArraySlice());
   if(rv.fail()) {
     THROW_ARANGO_EXCEPTION(rv);

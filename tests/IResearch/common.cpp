@@ -751,8 +751,9 @@ void assertFilterParseFail(std::string const& queryString,
   ASSERT_TRUE(parseResult.result.fail());
 }
 
-arangodb::CreateDatabaseInfo createInfo(std::string const& name, uint64_t id) {
+arangodb::CreateDatabaseInfo createInfo(std::string const& name, uint64_t id, bool allowSystem) {
   arangodb::CreateDatabaseInfo info;
+  info.allowSystemDB(allowSystem);
   auto rv = info.load(name, id);
   if(rv.fail()) {
     throw std::runtime_error(rv.errorMessage());
@@ -761,8 +762,7 @@ arangodb::CreateDatabaseInfo createInfo(std::string const& name, uint64_t id) {
 };
 
 arangodb::CreateDatabaseInfo systemDBInfo(std::string const& name, uint64_t id) {
-  auto rv =  createInfo(name, id);
-  rv.allowSystemDB(true);
+  auto rv =  createInfo(name, id, true);
   return rv;
 };
 
