@@ -21,26 +21,23 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-
+#include "Aql/SubqueryStartExecutionNode.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
-#include "Aql/SubqueryStartExecutionNode.h"
 #include "Meta/static_assert_size.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-
-
 namespace arangodb {
 namespace aql {
 
-SubqueryStartNode::SubqueryStartNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+SubqueryStartNode::SubqueryStartNode(ExecutionPlan* plan,
+                                     arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base) {}
-
 
 CostEstimate SubqueryStartNode::estimateCost() const {
   TRI_ASSERT(!_dependencies.empty());
@@ -63,22 +60,19 @@ std::unique_ptr<ExecutionBlock> SubqueryStartNode::createBlock(
 }
 
 ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                   bool withProperties) const {
+                                        bool withProperties) const {
   auto c = std::make_unique<SubqueryStartNode>(plan, _id);
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 bool SubqueryStartNode::isEqualTo(ExecutionNode const& other) const {
-  // If this assertion fails, someone changed the size of SubqueryStartNode,
-  // likely by adding or removing members, requiring this method to be updated.
-  meta::details::static_assert_size<SubqueryStartNode, 456>();
-  if (SubqueryStartNode const& p = dynamic_cast<SubqueryStartNode const*>(other)) {
-    return ExecutionNode::isEqualTo(other);
-  } else {
+  try {
+    SubqueryStartNode const& p = dynamic_cast<SubqueryStartNode const&>(other);
+    return ExecutionNode::isEqualTo(p);
+  } catch (const std::bad_cast& e) {
     return false;
   }
 }
 
-} // namespace aql
-} // namespace arangodb
-
+}  // namespace aql
+}  // namespace arangodb
