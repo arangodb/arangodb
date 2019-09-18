@@ -57,7 +57,7 @@ class SubqueryEndNode : public ExecutionNode {
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
-  bool isEqualTo(SubqueryEndNode const &other) const;
+  bool isEqualTo(ExecutionNode const &other) const override final;
 
   std::vector<Variable const*> getVariablesSetHere() const override final {
     return std::vector<Variable const*>{_outVariable};

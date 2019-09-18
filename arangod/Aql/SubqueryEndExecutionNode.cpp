@@ -21,13 +21,13 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/SubqueryEndExecutionNode.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/NodeFinder.h"
 #include "Aql/IdExecutor.h"
+#include "Aql/NodeFinder.h"
 #include "Aql/Query.h"
-#include "Aql/SubqueryEndExecutionNode.h"
 #include "Meta/static_assert_size.h"
 
 #include <velocypack/Iterator.h>
@@ -58,7 +58,7 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
 }
 
 ExecutionNode* SubqueryEndNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                   bool withProperties) const {
+                                      bool withProperties) const {
   auto outVariable = _outVariable;
 
   if (withProperties) {
@@ -68,7 +68,6 @@ ExecutionNode* SubqueryEndNode::clone(ExecutionPlan* plan, bool withDependencies
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
-
 
 void SubqueryEndNode::replaceOutVariable(Variable const* var) {
   _outVariable = var;
@@ -82,15 +81,17 @@ CostEstimate SubqueryEndNode::estimateCost() const {
   return estimate;
 }
 
-bool SubqueryEndNode::isEqualTo(SubqueryEndNode const& other) const
-{
-  // If this assertion fails, someone changed the size of SubqueryStartNode,
-  // likely by adding or removing members, requiring this method to be updated.
-  meta::details::static_assert_size<SubqueryEndNode, 464>();
-  TRI_ASSERT(_outVariable != nullptr); TRI_ASSERT(other._outVariable != nullptr);
-  return ExecutionNode::isEqualTo(other) &&
-    _outVariable->isEqualTo(*(other._outVariable));
+bool SubqueryEndNode::isEqualTo(ExecutionNode const& other) const {
+  TRI_ASSERT(_outVariable != nullptr);
+
+  try {
+    SubqueryEndNode const& p = dynamic_cast<SubqueryEndNode const&>(other);
+    TRI_ASSERT(p._outVariable != nullptr);
+    return ExecutionNode::isEqualTo(p) && _outVariable->isEqualTo(*(p._outVariable));
+  } catch (const std::bad_cast& e) {
+    return false;
+  }
 }
 
-} // namespace aql
-} // namespace arangodb
+}  // namespace aql
+}  // namespace arangodb

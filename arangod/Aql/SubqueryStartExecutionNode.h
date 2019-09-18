@@ -53,8 +53,7 @@ class SubqueryStartNode : public ExecutionNode {
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
-  bool isEqualTo(SubqueryStartNode const& other);
-  bool isEqualTo(SubqueryStartNode const* other);
+  bool isEqualTo(ExecutionNode const& other) const override final;
 };
 
 } // namespace aql

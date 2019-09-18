@@ -306,7 +306,9 @@ class Query {
   /// @brief pass-thru a resolver object from the transaction context
   CollectionNameResolver const& resolver();
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   ExecutionPlan* stealPlan() { return std::move(preparePlan()); }
+#endif
 
  private:
   /// @brief initializes the query
