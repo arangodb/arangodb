@@ -240,9 +240,8 @@ class OutputAqlItemRow {
 #endif
     _baseIndex = index;
   }
-
-  // Use this function with caution! We need it for the SortedCollectExecutor
-  // and CountCollectExecutor.
+  // Use this function with caution! We need it for the SortedCollectExecutor,
+  // CountCollectExecutor, and the ConstrainedSortExecutor.
   void setAllowSourceRowUninitialized() { _allowSourceRowUninitialized = true; }
 
   // This function can be used to restore the row's invariant.

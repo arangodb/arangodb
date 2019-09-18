@@ -30,6 +30,8 @@
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
 
+#include <memory>
+
 namespace arangodb {
 namespace aql {
 

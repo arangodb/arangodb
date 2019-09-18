@@ -92,14 +92,12 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
   _nrRegs = VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0);
 
   // Initialize the data vector:
-  if (_nrRegs > 0) {
-    increaseMemoryUsage(sizeof(AqlValue) * _nrItems * internalNrRegs());
-    try {
-      _data.resize(_nrItems * internalNrRegs());
-    } catch (...) {
-      decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * internalNrRegs());
-      throw;
-    }
+  increaseMemoryUsage(sizeof(AqlValue) * _nrItems * internalNrRegs());
+  try {
+    _data.resize(_nrItems * internalNrRegs());
+  } catch (...) {
+    decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * internalNrRegs());
+    throw;
   }
 
   // Now put in the data:
@@ -119,11 +117,18 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
     AqlValue a(it.value());
     it.next();
     try {
-      setValue(row, column, a);  // if this throws, a is destroyed again
+      if (column == 0) {
+        if (!a.isEmpty()) {
+          setShadowRowDepth(row, a);
+        }
+      } else {
+        setValue(row, column - 1, a);  // if this throws, a is destroyed again
+      }
     } catch (...) {
       a.destroy();
       throw;
     }
+
     madeHere.emplace_back(a);
   };
 
@@ -138,7 +143,7 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
     rawIterator.next();
     rawIterator.next();
 
-    for (RegisterId column = 0; column < _nrRegs; column++) {
+    for (RegisterId column = 0; column < internalNrRegs(); column++) {
       for (size_t i = 0; i < _nrItems; i++) {
         if (runLength > 0) {
           switch (runType) {
@@ -152,7 +157,13 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
 
             case PositionalRun:
               TRI_ASSERT(tablePos < madeHere.size());
-              setValue(i, column, madeHere[tablePos]);
+              if (column == 0) {
+                if (!madeHere[tablePos].isEmpty()) {
+                  setShadowRowDepth(i, madeHere[tablePos]);
+                }
+              } else {
+                setValue(i, column - 1, madeHere[tablePos]);
+              }
               break;
 
             case NoRun: {
@@ -211,8 +222,13 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
                 THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                                "found undefined data value");
               }
-
-              setValue(i, column, madeHere[tablePos]);
+              if (column == 0) {
+                if (!madeHere[tablePos].isEmpty()) {
+                  setShadowRowDepth(i, madeHere[tablePos]);
+                }
+              } else {
+                setValue(i, column - 1, madeHere[tablePos]);
+              }
             }
           }
         } else if (n == -2) {
@@ -224,15 +240,16 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
 
           int64_t low = VelocyPackHelper::getNumericValue<int64_t>(lowBound, 0);
           int64_t high = VelocyPackHelper::getNumericValue<int64_t>(highBound, 0);
-          emplaceValue(i, column, low, high);
+          TRI_ASSERT(column != 0);
+          emplaceValue(i, column - 1, low, high);
         } else if (n >= 2) {
           if (static_cast<size_t>(n) >= madeHere.size()) {
             // safeguard against out-of-bounds accesses
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "found undefined data value");
           }
-
-          setValue(i, column, madeHere[static_cast<size_t>(n)]);
+          TRI_ASSERT(column != 0);
+          setValue(i, column - 1, madeHere[static_cast<size_t>(n)]);
           // If this throws, all is OK, because it was already put into
           // the block elsewhere.
         } else {
@@ -533,6 +550,7 @@ SharedAqlItemBlockPtr AqlItemBlock::steal(std::vector<size_t> const& chosen,
 ///  "raw":     List of actual values, positions 0 and 1 are always null
 ///                  such that actual indices start at 2
 void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result) const {
+  TRI_ASSERT(result.isOpenObject());
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
@@ -597,7 +615,7 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result)
   };
 
   size_t pos = 2;  // write position in raw
-  for (RegisterId column = 0; column < _nrRegs; column++) {
+  for (RegisterId column = 0; column < internalNrRegs(); column++) {
     for (size_t i = 0; i < _nrItems; i++) {
       AqlValue const& a(_data[i * internalNrRegs() + column]);
 
