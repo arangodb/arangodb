@@ -1,3 +1,10 @@
+v3.5.2 (XXXX-XX-XX)
+-------------------
+
+* Fixed error message for error 1928 ("not in orphan") to "collection is
+  not in list of orphan collections".
+
+
 v3.5.1 (2019-09-24)
 -------------------
 
