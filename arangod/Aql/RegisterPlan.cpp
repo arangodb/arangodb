@@ -30,6 +30,7 @@
 #include "Aql/GraphNode.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/SubqueryEndExecutionNode.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
