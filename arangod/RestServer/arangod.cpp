@@ -333,17 +333,21 @@ namespace arangodb {
 // arangodb::application_features::ApplicationServer::server->beginShutdown();
 
 #ifdef __linux__
+
 // The following is a hack which is currently (September 2019) needed to
 // let our static executables compiled with libmusl and gcc 8.3.0 properly
 // detect that we are a multi-threaded application.
-void* g(void *p) {
+// See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91737 for developments
+// in gcc/libgcc to address this issue.
+
+static void* g(void *p) {
   return p;
 }
 
-void gg() {
+static void gg() {
 }
 
-void f() {
+static void f() {
   pthread_t t;
   pthread_create(&t, nullptr, g, nullptr);
   pthread_cancel(t);
@@ -355,9 +359,8 @@ void f() {
 
 int main(int argc, char* argv[]) {
 #ifdef __linux__
-  if (argc == -1) { f(); }
   // Do not delete this! See above for an explanation.
-  ThrowSomeException();
+  if (argc >= 1 && strcmp(argv[0], "not a/valid name") == 0) { f(); }
 #endif
 
   std::string workdir(arangodb::basics::FileUtils::currentDirectory().result());
