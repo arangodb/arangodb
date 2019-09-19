@@ -793,6 +793,8 @@ class ClusterInfo final {
 
   std::unordered_map<ServerID, std::string> getServerTimestamps();
 
+  std::unordered_map<ServerID, RebootId> rebootIds() const noexcept;
+
   uint64_t getPlanVersion() {
     READ_LOCKER(guard, _planProt.lock);
     return _planVersion;
@@ -898,7 +900,7 @@ class ClusterInfo final {
 
   struct ProtectionData {
     std::atomic<bool> isValid;
-    Mutex mutex;
+    mutable Mutex mutex;
     std::atomic<uint64_t> wantedVersion;
     std::atomic<uint64_t> doneVersion;
     arangodb::basics::ReadWriteLock lock;

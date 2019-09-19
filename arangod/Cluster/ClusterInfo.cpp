@@ -3519,6 +3519,15 @@ void ClusterInfo::loadServers() {
 }
 
 ////////////////////////////////////////////////////////////////////////
+/// @brief Hand out copy of reboot ids
+////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_map<ServerID, RebootId> ClusterInfo::rebootIds() const noexcept {
+  MUTEX_LOCKER(mutexLocker, _serversProt.mutex);
+  return _serversKnown.rebootIds();
+}
+
+////////////////////////////////////////////////////////////////////////
 /// @brief find the endpoint of a server from its ID.
 /// If it is not found in the cache, the cache is reloaded once, if
 /// it is still not there an empty string is returned as an error.
