@@ -293,7 +293,7 @@ VocbaseOptions getVocbaseOptions(VPackSlice const& options) {
     }
   }
 
-  ClusterFeature* cluster = dynamic_cast<ClusterFeature*>(application_features::ApplicationServer::lookupFeature("Cluster"));
+  auto cluster = application_features::ApplicationServer::lookupFeature<ClusterFeature>("Cluster");
   {
     VPackSlice replicationSlice = options.get(StaticStrings::ReplicationFactor);
     bool isSatellite = (replicationSlice.isString() && replicationSlice.compareString(StaticStrings::Satellite) == 0 );

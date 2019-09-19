@@ -291,7 +291,6 @@ static void SetupAqlPhase(
   features.emplace(new arangodb::TraverserEngineRegistryFeature(server), false);
 }
 
-//MockServer::MockServer() : _server(nullptr, nullptr), _engine(_server) {
 MockServer::MockServer()
     : _server(std::make_shared<arangodb::options::ProgramOptions>("", "", "", nullptr), nullptr),
       _engine(_server) {
