@@ -131,7 +131,8 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
 
 /// @brief lazy begin a transaction on subordinate servers
 Future<network::Response> beginTransactionRequest(transaction::Methods const* trx,
-                                                  TransactionState& state, ServerID const& server) {
+                                                  TransactionState& state,
+                                                  ServerID const& server) {
   TRI_voc_tid_t tid = state.id() + 1;
   TRI_ASSERT(!transaction::isLegacyTransactionId(tid));
 
@@ -140,28 +141,26 @@ Future<network::Response> beginTransactionRequest(transaction::Methods const* tr
   buildTransactionBody(state, server, builder);
 
   std::string path = std::string("/_db/")
-                    .append(StringUtils::urlEncode(state.vocbase().name()))
-                    .append("/_api/transaction/begin");
+                         .append(StringUtils::urlEncode(state.vocbase().name()))
+                         .append("/_api/transaction/begin");
 
   network::Headers headers;
   headers.emplace(StaticStrings::TransactionId, std::to_string(tid));
   auto body = std::make_shared<std::string>(builder.slice().toJson());
   return network::sendRequest("server:" + server, fuerte::RestVerb::Post,
                               std::move(path), std::move(buffer),
-                              network::Timeout(::CL_DEFAULT_TIMEOUT),
-                              std::move(headers));
+                              network::Timeout(::CL_DEFAULT_TIMEOUT), std::move(headers));
 }
 
 /// check the transaction cluster response with desited TID and status
 Result checkTransactionResult(TRI_voc_tid_t desiredTid, transaction::Status desStatus,
                               network::Response const& resp) {
-  
   int commError = network::fuerteToArangoErrorCode(resp);
   if (commError != TRI_ERROR_NO_ERROR) {
     // oh-oh cluster is in a bad state
     return Result(commError);
   }
-  
+
   VPackSlice answer = resp.response->slice();
   if ((resp.response->statusCode() == fuerte::StatusOK ||
        resp.response->statusCode() == fuerte::StatusCreated) &&
@@ -171,7 +170,8 @@ Result checkTransactionResult(TRI_voc_tid_t desiredTid, transaction::Status desS
         answer.get(std::vector<std::string>{"result", "status"});
 
     if (!idSlice.isString() || !statusSlice.isString()) {
-      return Result(TRI_ERROR_TRANSACTION_INTERNAL, "transaction has wrong format");
+      return Result(TRI_ERROR_TRANSACTION_INTERNAL,
+                    "transaction has wrong format");
     }
     TRI_voc_tid_t tid = StringUtils::uint64(idSlice.copyString());
     VPackValueLength len = 0;
@@ -199,7 +199,6 @@ Result checkTransactionResult(TRI_voc_tid_t desiredTid, transaction::Status desS
 }
 
 Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::Status status) {
-
   arangodb::TransactionState* state = trx.state();
   TRI_ASSERT(state->isRunning());
 
@@ -229,60 +228,61 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
 
   std::vector<Future<network::Response>> requests;
   for (std::string const& server : state->knownServers()) {
-    requests.emplace_back(network::sendRequest("server:" + server, verb, path, VPackBuffer<uint8_t>(),
-                                               network::Timeout(::CL_DEFAULT_TIMEOUT)));
+    requests.emplace_back(
+        network::sendRequest("server:" + server, verb, path, VPackBuffer<uint8_t>(),
+                             network::Timeout(::CL_DEFAULT_TIMEOUT)));
   }
-  
-  return futures::collectAll(requests)
-  .thenValue([=](std::vector<Try<network::Response>>&& responses) -> Result {
-    
-    if (state->isCoordinator()) {
-      TRI_ASSERT(transaction::isCoordinatorTransactionId(state->id()));
-      
-      for (Try<arangodb::network::Response> const& tryRes : responses) {
-        network::Response const& resp = tryRes.get();  // throws exceptions upwards
-        Result res = ::checkTransactionResult(tidPlus, status, resp);
-        if (res.fail()) {
-          return res;
-        }
-      }
-      
-      return Result();
-    }
 
-    TRI_ASSERT(state->isDBServer());
-    TRI_ASSERT(transaction::isLeaderTransactionId(state->id()));
-    
-    // Drop all followers that were not successful:
-    for (Try<arangodb::network::Response> const& tryRes : responses) {
-      network::Response const& resp = tryRes.get();  // throws exceptions upwards
-      
-      Result res = ::checkTransactionResult(tidPlus, status, resp);
-      if (res.fail()) {  // remove follower from all collections
-        ServerID follower = resp.serverId();
-        state->allCollections([&](TransactionCollection& tc) {
-          auto cc = tc.collection();
-          if (cc) {
-            Result r = cc->followers()->remove(follower);
-            if (r.ok()) {
-              // TODO: what happens if a server is re-added during a transaction ?
-              LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
-              << "synchronous replication: dropping follower " << follower
-              << " for shard " << tc.collectionName();
-            } else {
-              LOG_TOPIC("4971f", ERR, Logger::REPLICATION)
-              << "synchronous replication: could not drop follower " << follower
-              << " for shard " << tc.collectionName() << ": " << r.errorMessage();
-              res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
-              return false;  // cancel transaction
+  return futures::collectAll(requests).thenValue(
+      [=](std::vector<Try<network::Response>>&& responses) -> Result {
+        if (state->isCoordinator()) {
+          TRI_ASSERT(transaction::isCoordinatorTransactionId(state->id()));
+
+          for (Try<arangodb::network::Response> const& tryRes : responses) {
+            network::Response const& resp = tryRes.get();  // throws exceptions upwards
+            Result res = ::checkTransactionResult(tidPlus, status, resp);
+            if (res.fail()) {
+              return res;
             }
           }
-          return true;
-        });
-      }
-    }
-    return Result();  // succeed even if some followers did not commit
-  });
+
+          return Result();
+        }
+
+        TRI_ASSERT(state->isDBServer());
+        TRI_ASSERT(transaction::isLeaderTransactionId(state->id()));
+
+        // Drop all followers that were not successful:
+        for (Try<arangodb::network::Response> const& tryRes : responses) {
+          network::Response const& resp = tryRes.get();  // throws exceptions upwards
+
+          Result res = ::checkTransactionResult(tidPlus, status, resp);
+          if (res.fail()) {  // remove follower from all collections
+            ServerID follower = resp.serverId();
+            state->allCollections([&](TransactionCollection& tc) {
+              auto cc = tc.collection();
+              if (cc) {
+                Result r = cc->followers()->remove(follower);
+                if (r.ok()) {
+                  // TODO: what happens if a server is re-added during a transaction ?
+                  LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
+                      << "synchronous replication: dropping follower "
+                      << follower << " for shard " << tc.collectionName();
+                } else {
+                  LOG_TOPIC("4971f", ERR, Logger::REPLICATION)
+                      << "synchronous replication: could not drop follower "
+                      << follower << " for shard " << tc.collectionName()
+                      << ": " << r.errorMessage();
+                  res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+                  return false;  // cancel transaction
+                }
+              }
+              return true;
+            });
+          }
+        }
+        return Result();  // succeed even if some followers did not commit
+      });
 }
 }  // namespace
 
@@ -312,20 +312,19 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
   if (requests.empty()) {
     return res;
   }
-  
-  const TRI_voc_tid_t tid = state.id() + 1;
-  return futures::collectAll(requests)
-  .thenValue([=](std::vector<Try<network::Response>>&& responses) -> Result {
 
-    for (Try<arangodb::network::Response> const& tryRes : responses) {
-      network::Response const& resp = tryRes.get();  // throws exceptions upwards
-      Result res = ::checkTransactionResult(tid, transaction::Status::RUNNING, resp);
-      if (res.fail()) { // remove follower from all collections
-        return res;
-      }
-    }
-    return Result();  // all good
-  });
+  const TRI_voc_tid_t tid = state.id() + 1;
+  return futures::collectAll(requests).thenValue(
+      [=](std::vector<Try<network::Response>>&& responses) -> Result {
+        for (Try<arangodb::network::Response> const& tryRes : responses) {
+          network::Response const& resp = tryRes.get();  // throws exceptions upwards
+          Result res = ::checkTransactionResult(tid, transaction::Status::RUNNING, resp);
+          if (res.fail()) {  // remove follower from all collections
+            return res;
+          }
+        }
+        return Result();  // all good
+      });
 }
 
 /// @brief commit a transaction on a subordinate

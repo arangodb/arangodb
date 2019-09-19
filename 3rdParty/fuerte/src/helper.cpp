@@ -98,7 +98,7 @@ std::string to_string(Message& message) {
       }
       ss << std::endl;
     }
-    
+
     if (!req.header.meta().empty()) {
       ss << "meta:\n";
       for (auto const& item : req.header.meta()) {
@@ -122,7 +122,7 @@ std::string to_string(Message& message) {
     if (res.header.responseCode != StatusUndefined) {
       ss << "responseCode: " << res.header.responseCode << std::endl;
     }
-    
+
     if (!res.header.meta().empty()) {
       ss << "meta:\n";
       for (auto const& item : res.header.meta()) {
@@ -130,7 +130,7 @@ std::string to_string(Message& message) {
       }
       ss << std::endl;
     }
-    
+
     ss << "contentType: " << to_string(res.header.contentType()) << std::endl;
   }
   /*  if (header.user) {

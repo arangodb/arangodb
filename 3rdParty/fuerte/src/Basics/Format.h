@@ -31,7 +31,7 @@ namespace arangodb { namespace fuerte { namespace basics {
  * Alignment aware serialization and deserialization functions
  */
 
-template<typename T> 
+template <typename T>
 inline T uintFromPersistentLE(uint8_t const* p) {
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
   T value;
@@ -39,7 +39,7 @@ inline T uintFromPersistentLE(uint8_t const* p) {
   return basics::littleToHost<T>(value);
 }
 
-template<typename T>
+template <typename T>
 inline void uintToPersistentLE(uint8_t* p, T value) {
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
   value = basics::hostToLittle(value);

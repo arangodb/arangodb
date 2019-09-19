@@ -961,8 +961,7 @@ Future<Result> transaction::Methods::commitAsync() {
     auto const& exec = ExecContext::current();
     bool cancelRW = ServerState::readOnly() && !exec.isSuperuser();
     if (exec.isCanceled() || cancelRW) {
-      return Result(TRI_ERROR_ARANGO_READ_ONLY,
-                    "server is in read-only mode");
+      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
 
@@ -971,19 +970,19 @@ Future<Result> transaction::Methods::commitAsync() {
     // first commit transaction on subordinate servers
     f = ClusterTrxMethods::commitTransaction(*this);
   }
-  
+
   return std::move(f).thenValue([this](Result res) -> Result {
     if (res.fail()) {  // do not commit locally
       LOG_TOPIC("5743a", WARN, Logger::TRANSACTIONS)
-      << "failed to commit on subordinates: '" << res.errorMessage() << "'";
+          << "failed to commit on subordinates: '" << res.errorMessage() << "'";
       return res;
     }
-    
+
     res = _state->commitTransaction(this);
     if (res.ok()) {
       applyStatusChangeCallbacks(*this, Status::COMMITTED);
     }
-    
+
     return res;
   });
 }
@@ -993,7 +992,7 @@ Future<Result> transaction::Methods::abortAsync() {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
     return Result(TRI_ERROR_TRANSACTION_INTERNAL,
-                     "transaction not running on abort");
+                  "transaction not running on abort");
   }
 
   auto f = futures::makeFuture(Result());
@@ -1001,18 +1000,18 @@ Future<Result> transaction::Methods::abortAsync() {
     // first commit transaction on subordinate servers
     f = ClusterTrxMethods::abortTransaction(*this);
   }
-  
+
   return std::move(f).thenValue([this](Result res) -> Result {
     if (res.fail()) {  // do not commit locally
       LOG_TOPIC("d89a8", WARN, Logger::TRANSACTIONS)
-      << "failed to abort on subordinates: " << res.errorMessage();
+          << "failed to abort on subordinates: " << res.errorMessage();
     }  // abort locally anyway
-    
+
     res = _state->abortTransaction(this);
     if (res.ok()) {
       applyStatusChangeCallbacks(*this, Status::ABORTED);
     }
-    
+
     return res;
   });
 }

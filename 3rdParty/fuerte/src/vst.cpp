@@ -66,11 +66,13 @@ size_t ChunkHeader::writeHeaderToVST1_0(size_t chunkDataLen,
   if (isFirst() && numberOfChunks() > 1) {
     // Use extended header
     hdrLength = maxChunkHeaderSize;
-    basics::uintToPersistentLE<uint64_t>(hdr + 16, _messageLength);  // total message length
+    basics::uintToPersistentLE<uint64_t>(
+        hdr + 16, _messageLength);  // total message length
   } // else Use minimal header
-  basics::uintToPersistentLE<uint32_t>(hdr + 0, hdrLength + chunkDataLen);  // chunk length (header+data)
-  basics::uintToPersistentLE<uint32_t>(hdr + 4, _chunkX);  // chunkX
-  basics::uintToPersistentLE<uint64_t>(hdr + 8,_messageID);  // messageID
+  basics::uintToPersistentLE<uint32_t>(
+      hdr + 0, hdrLength + chunkDataLen);  // chunk length (header+data)
+  basics::uintToPersistentLE<uint32_t>(hdr + 4, _chunkX);     // chunkX
+  basics::uintToPersistentLE<uint64_t>(hdr + 8, _messageID);  // messageID
 
   // Now add hdr to buffer
   buffer.append(hdr, hdrLength);
@@ -85,10 +87,12 @@ size_t ChunkHeader::writeHeaderToVST1_1(size_t chunkDataLen,
     buffer.reserve(maxChunkHeaderSize);
   }
   uint8_t* hdr = buffer.data() + buffer.size();
-  basics::uintToPersistentLE<uint32_t>(hdr + 0, maxChunkHeaderSize + chunkDataLen);
-  basics::uintToPersistentLE<uint32_t>(hdr + 4, _chunkX);  // chunkX
+  basics::uintToPersistentLE<uint32_t>(hdr + 0,
+                                       maxChunkHeaderSize + chunkDataLen);
+  basics::uintToPersistentLE<uint32_t>(hdr + 4, _chunkX);     // chunkX
   basics::uintToPersistentLE<uint64_t>(hdr + 8, _messageID);  // messageID
-  basics::uintToPersistentLE<uint64_t>(hdr + 16, _messageLength);  // total message length
+  basics::uintToPersistentLE<uint64_t>(hdr + 16,
+                                       _messageLength);  // total message length
 
   buffer.advance(maxChunkHeaderSize);
   return maxChunkHeaderSize;
@@ -397,7 +401,8 @@ ChunkState readChunkVST1_1(Chunk& chunk, uint8_t const* hdr,
   chunk.header._chunkLength = basics::uintFromPersistentLE<uint32_t>(hdr + 0);
   chunk.header._chunkX = basics::uintFromPersistentLE<uint32_t>(hdr + 4);
   chunk.header._messageID = basics::uintFromPersistentLE<uint64_t>(hdr + 8);
-  chunk.header._messageLength = basics::uintFromPersistentLE<uint64_t>(hdr + 16);
+  chunk.header._messageLength =
+      basics::uintFromPersistentLE<uint64_t>(hdr + 16);
 
   if (avail < chunk.header._chunkLength) {
     return ChunkState::Incomplete;

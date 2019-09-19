@@ -53,10 +53,9 @@ std::string Response::destinationShard() const {
   }
   return StaticStrings::Empty;
 }
-  
+
 std::string Response::serverId() const {
-  if (this->destination.size() > 7 &&
-      this->destination.compare(0, 7, "server:", 7) == 0) {
+  if (this->destination.size() > 7 && this->destination.compare(0, 7, "server:", 7) == 0) {
     return this->destination.substr(7);
   }
   return StaticStrings::Empty;
@@ -91,7 +90,7 @@ auto prepareRequest(RestVerb type, std::string const& path, T&& payload,
 
   return req;
 }
-  
+
 /// @brief send a request to a given destination
 FutureRes sendRequest(DestinationId const& destination, RestVerb type,
                       std::string const& path, velocypack::Buffer<uint8_t> payload,
@@ -113,8 +112,7 @@ FutureRes sendRequest(DestinationId const& destination, RestVerb type,
   }
   TRI_ASSERT(!endpoint.empty());
 
-  auto req = prepareRequest(type, path, std::move(payload), timeout,
-                            std::move(headers));
+  auto req = prepareRequest(type, path, std::move(payload), timeout, std::move(headers));
 
   // fits in SSO of std::function
   struct Pack {
@@ -312,7 +310,6 @@ FutureRes sendRequestRetry(DestinationId const& destination,
                            arangodb::fuerte::RestVerb type, std::string const& path,
                            velocypack::Buffer<uint8_t> payload, Timeout timeout,
                            Headers headers, bool retryNotFound) {
-
   //  auto req = prepareRequest(type, path, std::move(payload), timeout, headers);
   auto rs = std::make_shared<RequestsState>(destination, type, path,
                                             std::move(payload), timeout,

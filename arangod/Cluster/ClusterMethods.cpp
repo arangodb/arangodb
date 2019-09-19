@@ -220,9 +220,8 @@ Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx, ShardMap 
 }
 
 /// @brief add the correct header for the shard
-void addTransactionHeaderForShard(transaction::Methods const& trx,
-                                  ShardMap const& shardMap, ShardID const& shard,
-                                  network::Headers& headers) {
+void addTransactionHeaderForShard(transaction::Methods const& trx, ShardMap const& shardMap,
+                                  ShardID const& shard, network::Headers& headers) {
   TRI_ASSERT(trx.state()->isCoordinator());
   if (!ClusterTrxMethods::isElCheapo(trx)) {
     return;  // no need
@@ -306,17 +305,15 @@ static const char* notFoundSlice =
   "\x65\x73\x73\x61\x67\x65\x52\x64\x6f\x63\x75\x6d\x65\x6e\x74\x20"
   "\x6e\x6f\x74\x20\x66\x6f\x75\x6e\x64\x48\x65\x72\x72\x6f\x72\x4e"
   "\x75\x6d\x29\xb2\x04\x03";
-  
-  
-void mergeResultsAllShards(std::vector<VPackSlice> const& results,
-                           VPackBuilder& resultBody,
+
+void mergeResultsAllShards(std::vector<VPackSlice> const& results, VPackBuilder& resultBody,
                            std::unordered_map<int, size_t>& errorCounter,
                            VPackValueLength const expectedResults) {
   // errorCounter is not allowed to contain any NOT_FOUND entry.
   TRI_ASSERT(errorCounter.find(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ==
              errorCounter.end());
   size_t realNotFound = 0;
-  
+
   resultBody.clear();
   resultBody.openArray();
   for (VPackValueLength currentIndex = 0; currentIndex < expectedResults; ++currentIndex) {
@@ -349,21 +346,19 @@ void mergeResultsAllShards(std::vector<VPackSlice> const& results,
     errorCounter.emplace(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, realNotFound);
   }
 }
-  
-template<typename F>
-OperationResult processShardResponses(F&& func,
-                                      size_t expectedLen,
-                                      OperationOptions options,
-                                      std::vector<Try<network::Response>> const& responses) {
+
+template <typename F>
+OperationResult processCRUDShardResponses(F&& func, size_t expectedLen, OperationOptions options,
+                                          std::vector<Try<network::Response>> const& responses) {
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
   if (expectedLen == 0) {  // Only one can answer, we react a bit differently
-    
+
     int nrok = 0;
     int commError = TRI_ERROR_NO_ERROR;
     fuerte::StatusCode code;
     for (size_t i = 0; i < responses.size(); i++) {
       network::Response const& res = responses[i].get();
-      
+
       if (res.error == fuerte::Error::NoError) {
         // if no shard has the document, use NF answer from last shard
         const bool isNotFound = res.response->statusCode() == fuerte::StatusNotFound;
@@ -376,28 +371,28 @@ OperationResult processShardResponses(F&& func,
         commError = network::fuerteToArangoErrorCode(res);
       }
     }
-    
+
     if (nrok == 0) {  // This can only happen, if a commError was encountered!
       return OperationResult(commError);
     } else if (nrok > 1) {
       return OperationResult(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
     }
-    
+
     return std::forward<F>(func)(code, std::move(buffer), std::move(options), {});
   }
-  
+
   // We select all results from all shards and merge them back again.
   std::vector<VPackSlice> allResults;
   allResults.reserve(responses.size());
-  
+
   std::unordered_map<int, size_t> errorCounter;
   // If no server responds we return 500
-  for (size_t i = 0; i < responses.size(); i++) {
-    network::Response const& res = responses[i].get();
+  for (Try<network::Response> const& tryRes : responses) {
+    network::Response const& res = tryRes.get();
     if (res.error != fuerte::Error::NoError) {
       return OperationResult(network::fuerteToArangoErrorCode(res));
     }
-    
+
     allResults.push_back(res.response->slice());
     network::errorCodesFromHeaders(res.response->header.meta(), errorCounter,
                                    /*includeNotFound*/ false);
@@ -406,11 +401,10 @@ OperationResult processShardResponses(F&& func,
   // If we get here we get exactly one result for every shard.
   TRI_ASSERT(allResults.size() == responses.size());
   mergeResultsAllShards(allResults, resultBody, errorCounter, expectedLen);
-  return OperationResult(Result(), resultBody.steal(),
-                         std::move(options), std::move(errorCounter));
+  return OperationResult(Result(), resultBody.steal(), std::move(options),
+                         std::move(errorCounter));
 }
-} // namespace
-
+}  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Distribute one document onto a shard map. If this returns
@@ -1532,11 +1526,12 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
                                                    network::Timeout(CL_DEFAULT_LONG_TIMEOUT),
                                                    std::move(headers), /*retryNotFound*/ true));
   }
-  
-  auto cb = [=](std::vector<Try<network::Response>>&& responses) -> OperationResult {
-    return ::processShardResponses(network::clusterResultDelete, expectedLen, options, responses);
-  };
-  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+
+  return futures::collectAll(std::move(futures))
+      .thenValue([=](std::vector<Try<network::Response>>&& responses) -> OperationResult {
+        return ::processCRUDShardResponses(network::clusterResultDelete, expectedLen,
+                                           std::move(options), responses);
+      });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1804,61 +1799,11 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
     }
   }
 
-  auto cb = [=](std::vector<Try<network::Response>>&& responses) -> OperationResult {
-    std::shared_ptr<VPackBuffer<uint8_t>> buffer;
-    if (!useMultiple) {  // Only one can answer, we react a bit differently
-
-      int nrok = 0;
-      int commError = TRI_ERROR_NO_ERROR;
-      fuerte::StatusCode code;
-      for (size_t i = 0; i < responses.size(); i++) {
-        network::Response const& res = responses[i].get();
-
-        if (res.error == fuerte::Error::NoError) {
-          // if no shard has the document, use NF answer from last shard
-          const bool isNotFound = res.response->statusCode() == fuerte::StatusNotFound;
-          if (!isNotFound || (isNotFound && nrok == 0 && i == responses.size() - 1)) {
-            nrok++;
-            code = res.response->statusCode();
-            buffer = res.response->stealPayload();
-          }
-        } else {
-          commError = network::fuerteToArangoErrorCode(res);
-        }
-      }
-
-      if (nrok == 0) {  // This can only happen, if a commError was encountered!
-        return OperationResult(commError);
-      } else if (nrok > 1) {
-        return OperationResult(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
-      }
-
-      return network::clusterResultDocument(code, std::move(buffer), options, {});
-    }
-
-    // We select all results from all shards and merge them back again.
-    std::vector<VPackSlice> allResults;
-    allResults.reserve(shardIds->size());
-    std::unordered_map<int, size_t> errorCounter;
-    // If no server responds we return 500
-    for (size_t i = 0; i < responses.size(); i++) {
-      network::Response const& res = responses[i].get();
-      if (res.error != fuerte::Error::NoError) {
-        return OperationResult(network::fuerteToArangoErrorCode(res));
-      }
-
-      allResults.push_back(res.response->slice());
-      network::errorCodesFromHeaders(res.response->header.meta(), errorCounter,
-                                     /*includeNotFound*/ false);
-    }
-    VPackBuilder resultBody;
-    // If we get here we get exactly one result for every shard.
-    TRI_ASSERT(allResults.size() == shardIds->size());
-    mergeResultsAllShards(allResults, resultBody, errorCounter, expectedLen);
-    return OperationResult(Result(), resultBody.steal(),
-                           options, std::move(errorCounter));
-  };
-  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+  return futures::collectAll(std::move(futures))
+      .thenValue([=](std::vector<Try<network::Response>>&& responses) -> OperationResult {
+        return ::processCRUDShardResponses(network::clusterResultDocument, expectedLen,
+                                           std::move(options), responses);
+      });
 }
 
 /// @brief fetch edges from TraverserEngines
@@ -2507,64 +2452,12 @@ Future<OperationResult> modifyDocumentOnCoordinator(
                                                    network::Timeout(CL_DEFAULT_LONG_TIMEOUT),
                                                    headers, /*retryNotFound*/ true));
   }
-  
-  size_t const shardNum = shardIds->size();
-  auto cb = [=](std::vector<Try<network::Response>>&& responses) -> OperationResult {
-    std::shared_ptr<VPackBuffer<uint8_t>> buffer;
-    if (!useMultiple) {  // Only one can answer, we react a bit differently
-      
-      int nrok = 0;
-      int commError = TRI_ERROR_NO_ERROR;
-      fuerte::StatusCode code;
-      for (size_t i = 0; i < responses.size(); i++) {
-        network::Response const& res = responses[i].get();
-        
-        if (res.error == fuerte::Error::NoError) {
-          // if no shard has the document, use NF answer from last shard
-          const bool isNotFound = res.response->statusCode() == fuerte::StatusNotFound;
-          if (!isNotFound || (isNotFound && nrok == 0 && i == responses.size() - 1)) {
-            nrok++;
-            code = res.response->statusCode();
-            buffer = res.response->stealPayload();
-          }
-        } else {
-          commError = network::fuerteToArangoErrorCode(res);
-        }
-      }
-      
-      if (nrok == 0) {  // This can only happen, if a commError was encountered!
-        return OperationResult(commError);
-      } else if (nrok > 1) {
-        return OperationResult(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
-      }
-      
-      return network::clusterResultModify(code, std::move(buffer), options, {});
-    }
-    
-    // We select all results from all shards and merge them back again.
-    std::vector<VPackSlice> allResults;
-    allResults.reserve(shardNum);
-    
-    std::unordered_map<int, size_t> errorCounter;
-    // If no server responds we return 500
-    for (size_t i = 0; i < responses.size(); i++) {
-      network::Response const& res = responses[i].get();
-      if (res.error != fuerte::Error::NoError) {
-        return OperationResult(network::fuerteToArangoErrorCode(res));
-      }
-      
-      allResults.push_back(res.response->slice());
-      network::errorCodesFromHeaders(res.response->header.meta(), errorCounter,
-                                     /*includeNotFound*/ false);
-    }
-    VPackBuilder resultBody;
-    // If we get here we get exactly one result for every shard.
-    TRI_ASSERT(allResults.size() == shardNum);
-    mergeResultsAllShards(allResults, resultBody, errorCounter, expectedLen);
-    return OperationResult(Result(), resultBody.steal(),
-                           options, std::move(errorCounter));
-  };
-  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+
+  return futures::collectAll(std::move(futures))
+      .thenValue([=](std::vector<Try<network::Response>>&& responses) -> OperationResult {
+        return ::processCRUDShardResponses(network::clusterResultModify, expectedLen,
+                                           std::move(options), responses);
+      });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
