@@ -98,6 +98,7 @@ class OutputAqlItemRow {
                         AqlValueGuard& guard) {
     TRI_ASSERT(sourceRow.isRelevant());
     moveValueInto(registerId, sourceRow, guard);
+    TRI_ASSERT(produced());
     block().makeDataRow(_baseIndex);
   }
 
