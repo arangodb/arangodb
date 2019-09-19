@@ -31,8 +31,9 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the manager
-AqlItemBlockManager::AqlItemBlockManager(ResourceMonitor* resourceMonitor)
-    : _resourceMonitor(resourceMonitor) {
+AqlItemBlockManager::AqlItemBlockManager(ResourceMonitor* resourceMonitor,
+                                         SerializationFormat format)
+    : _resourceMonitor(resourceMonitor), _format(format) {
   TRI_ASSERT(resourceMonitor != nullptr);
 }
 

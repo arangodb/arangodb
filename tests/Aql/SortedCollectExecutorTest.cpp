@@ -87,7 +87,7 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
   NoStats stats;
 
   SortedCollectExecutorTestNoRowsUpstream()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
         trx(fakedQuery->trx()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
@@ -168,7 +168,7 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
   NoStats stats;
 
   SortedCollectExecutorTestRowsUpstream()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
         trx(fakedQuery->trx()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
@@ -391,7 +391,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_waits) {
 TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   ExecutionState state;
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
 
   mocks::MockAqlServer server{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
@@ -482,7 +482,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
 TEST(SortedCollectExecutorTestRowsUpstreamCountNumbers, test) {
   ExecutionState state;
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
 
   mocks::MockAqlServer server{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
@@ -588,7 +588,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountNumbers, test) {
 TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   ExecutionState state;
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
 
   mocks::MockAqlServer server{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();

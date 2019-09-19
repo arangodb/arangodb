@@ -24,6 +24,7 @@
 #include "AqlItemBlock.h"
 
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
@@ -117,6 +118,11 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
     AqlValue a(it.value());
     it.next();
     try {
+      if (getFormatType() == SerializationFormat::CLASSIC) {
+        setValue(row, column, a);  // if this throws, a is destroyed again
+      } else {
+        TRI_ASSERT(getFormatType() == SerializationFormat::SHADOWROWS);
+      }
       if (column == 0) {
         if (!a.isEmpty()) {
           setShadowRowDepth(row, a);
@@ -265,6 +271,10 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
 
   TRI_ASSERT(runLength == 0);
   TRI_ASSERT(runType == NoRun);
+}
+
+SerializationFormat AqlItemBlock::getFormatType() const {
+  return _manager.getFormatType();
 }
 
 /// @brief destroy the block, used in the destructor and elsewhere
@@ -615,7 +625,13 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result)
   };
 
   size_t pos = 2;  // write position in raw
-  for (RegisterId column = 0; column < internalNrRegs(); column++) {
+
+  RegisterId startRegister = 0;
+  if (getFormatType() == SerializationFormat::CLASSIC) {
+    // Skip over the shadowRows
+    startRegister = 1;
+  }
+  for (RegisterId column = startRegister; column < internalNrRegs(); column++) {
     for (size_t i = 0; i < _nrItems; i++) {
       AqlValue const& a(_data[i * internalNrRegs() + column]);
 

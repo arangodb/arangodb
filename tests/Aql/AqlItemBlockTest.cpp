@@ -36,7 +36,7 @@ namespace aql {
 class AqlItemBlockTest : public ::testing::Test {
  protected:
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
   std::shared_ptr<VPackBuilder> _dummyData{VPackParser::fromJson(R"(
           [
               "a",

@@ -27,6 +27,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/BlocksWithClients.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
@@ -127,9 +128,10 @@ void RestAqlHandler::setupClusterQuery() {
   VPackSlice querySlice = this->parseVPackBody(success);
   if (!success) {
     // if no success here, generateError will have been called already
-    LOG_TOPIC("ef4ca", ERR, arangodb::Logger::AQL) << "Failed to setup query. Could not "
-                                             "parse the transmitted plan. "
-                                             "Aborting query.";
+    LOG_TOPIC("ef4ca", ERR, arangodb::Logger::AQL)
+        << "Failed to setup query. Could not "
+           "parse the transmitted plan. "
+           "Aborting query.";
     return;
   }
 
@@ -180,6 +182,10 @@ void RestAqlHandler::setupClusterQuery() {
                   "body must be an object with attribute \"variables\"");
     return;
   }
+  // If we have a new format then it has to be included here.
+  // If not default to classic (old coordinator will not send it)
+  SerializationFormat format = VelocyPackHelper::getNumericValue<SerializationFormat>(
+      querySlice, "serializationFormat", SerializationFormat::CLASSIC);
 
   // Now we need to create shared_ptr<VPackBuilder>
   // That contains the old-style cluster snippet in order
@@ -236,7 +242,7 @@ void RestAqlHandler::setupClusterQuery() {
   answerBuilder.openObject();
   bool needToLock = true;
   bool res = registerSnippets(snippetsSlice, collectionBuilder.slice(), variablesSlice,
-                              options, ctx, ttl, needToLock, answerBuilder);
+                              options, ctx, ttl, format, needToLock, answerBuilder);
   if (!res) {
     // TODO we need to trigger cleanup here??
     // Registering the snippets failed.
@@ -258,13 +264,11 @@ void RestAqlHandler::setupClusterQuery() {
   generateOk(rest::ResponseCode::OK, answerBuilder.slice());
 }
 
-bool RestAqlHandler::registerSnippets(VPackSlice const snippetsSlice,
-                                      VPackSlice const collectionSlice,
-                                      VPackSlice const variablesSlice,
-                                      std::shared_ptr<VPackBuilder> options,
-                                      std::shared_ptr<transaction::Context> const& ctx,
-                                      double const ttl, bool& needToLock,
-                                      VPackBuilder& answerBuilder) {
+bool RestAqlHandler::registerSnippets(
+    VPackSlice const snippetsSlice, VPackSlice const collectionSlice,
+    VPackSlice const variablesSlice, std::shared_ptr<VPackBuilder> options,
+    std::shared_ptr<transaction::Context> const& ctx, double const ttl,
+    SerializationFormat format, bool& needToLock, VPackBuilder& answerBuilder) {
   TRI_ASSERT(answerBuilder.isOpenObject());
   answerBuilder.add(VPackValue("snippets"));
   answerBuilder.openObject();
@@ -292,7 +296,7 @@ bool RestAqlHandler::registerSnippets(VPackSlice const snippetsSlice,
     query->setTransactionContext(ctx);
 
     try {
-      query->prepare(_queryRegistry);
+      query->prepare(_queryRegistry, format);
     } catch (std::exception const& ex) {
       LOG_TOPIC("c1ce7", ERR, arangodb::Logger::AQL)
           << "failed to instantiate the query: " << ex.what();
@@ -384,83 +388,6 @@ bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
   return true;
 }
 
-// POST method for /_api/aql/instantiate (internal, deprecated)
-// The body is a VelocyPack with attributes "plan" for the execution plan and
-// "options" for the options, all exactly as in AQL_EXECUTEJSON.
-void RestAqlHandler::createQueryFromVelocyPack() {
-  bool success = false;
-  VPackSlice querySlice = this->parseVPackBody(success);
-  if (!success) {
-    LOG_TOPIC("c3e05", ERR, arangodb::Logger::AQL) << "invalid VelocyPack plan in query";
-    return;
-  }
-
-  TRI_ASSERT(querySlice.isObject());
-
-  VPackSlice plan = querySlice.get("plan");
-  if (plan.isNone()) {
-    LOG_TOPIC("2cce2", ERR, arangodb::Logger::AQL)
-        << "Invalid VelocyPack: \"plan\" attribute missing.";
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                  "body must be an object with attribute \"plan\"");
-    return;
-  }
-
-  std::shared_ptr<VPackBuilder> options;
-  double ttl;
-  std::tie(ttl, options) = getPatchedOptionsWithTTL(querySlice.get("options"));
-
-  std::string const part =
-      VelocyPackHelper::getStringValue(querySlice, "part", "");
-
-  auto planBuilder = std::make_shared<VPackBuilder>(VPackBuilder::clone(plan));
-  auto query = std::make_unique<Query>(false, _vocbase, planBuilder, options,
-                                       (part == "main" ? PART_MAIN : PART_DEPENDENT));
-
-  try {
-    query->prepare(_queryRegistry);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("d1cd2", ERR, arangodb::Logger::AQL)
-        << "failed to instantiate the query: " << ex.what();
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN, ex.what());
-    return;
-  } catch (...) {
-    LOG_TOPIC("2fe97", ERR, arangodb::Logger::AQL) << "failed to instantiate the query";
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
-                  "failed to instantiate the query");
-    return;
-  }
-
-  _qId = TRI_NewTickServer();
-  try {
-    _queryRegistry->insert(_qId, query.get(), ttl, true, false);
-    query.release();
-  } catch (...) {
-    LOG_TOPIC("eafbe", ERR, arangodb::Logger::AQL) << "could not keep query in registry";
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                  "could not insert query into registry");
-    return;
-  }
-
-  VPackBuilder answerBody;
-  try {
-    VPackObjectBuilder guard(&answerBody);
-    answerBody.add("queryId", VPackValue(arangodb::basics::StringUtils::itoa(_qId)));
-    answerBody.add("ttl", VPackValue(ttl));
-  } catch (arangodb::basics::Exception const& ex) {
-    generateError(rest::ResponseCode::BAD, ex.code(), ex.what());
-    return;
-  } catch (std::exception const& ex) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_FAILED, ex.what());
-    return;
-  } catch (...) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-    return;
-  }
-
-  sendResponse(rest::ResponseCode::ACCEPTED, answerBody.slice());
-}
-
 // PUT method for /_api/aql/<operation>/<queryId>, (internal)
 // this is using the part of the cursor API with side effects.
 // <operation>: can be "lock" or "getSome" or "skip" or "initializeCursor" or
@@ -519,7 +446,8 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
   } catch (arangodb::basics::Exception const& ex) {
     generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    LOG_TOPIC("d1266", ERR, arangodb::Logger::AQL) << "failed during use of Query: " << ex.what();
+    LOG_TOPIC("d1266", ERR, arangodb::Logger::AQL)
+        << "failed during use of Query: " << ex.what();
 
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                   ex.what());
@@ -545,8 +473,6 @@ RestStatus RestAqlHandler::execute() {
     case rest::RequestType::POST: {
       if (suffixes.size() != 1) {
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-      } else if (suffixes[0] == "instantiate") {
-        createQueryFromVelocyPack();  // deprecated in 3.4
       } else if (suffixes[0] == "setup") {
         setupClusterQuery();
       } else {
@@ -800,8 +726,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
 
         ExecutionState state;
         Result res;
-        std::tie(state, res) =
-            query->engine()->shutdown(errorCode);
+        std::tie(state, res) = query->engine()->shutdown(errorCode);
         if (state == ExecutionState::WAITING) {
           return RestStatus::WAITING;
         }
