@@ -297,7 +297,8 @@ VocbaseOptions getVocbaseOptions(VPackSlice const& options) {
   {
     VPackSlice replicationSlice = options.get(StaticStrings::ReplicationFactor);
     bool isSatellite = (replicationSlice.isString() && replicationSlice.compareString(StaticStrings::Satellite) == 0 );
-    bool isNumber = (replicationSlice.isNumber() && replicationSlice.getUInt() > 0 );
+    bool isNumber = replicationSlice.isNumber();
+    isSatellite = isSatellite || (isNumber && replicationSlice.getUInt() == 0);
     if(!isSatellite && !isNumber){
       if(cluster) {
         vocbaseOptions.replicationFactor = cluster->defaultReplicationFactor();
