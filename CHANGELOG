@@ -1,6 +1,9 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* Fixed "ArangoDB is not running in cluster mode" errors in active failover setups.
+  This affected at least /_admin/cluster/health.
+
 * Harden database creation against spurious "duplicate name" errors that
   were caused by other parallel operations lazily creating required
   system collections in the same database.
@@ -44,7 +47,6 @@ v3.4.9 (XXXX-XX-XX)
   /_api/replication/batch, /_api/replication/logger-follow and the internal
   route /_api/replication/addFollower. The new field `syncerId` is also added to
   the response of /_api/replication/logger-state.
-
 
 v3.4.8 (2019-09-09)
 -------------------
