@@ -516,7 +516,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
   TRI_ASSERT(coll != nullptr);
   ExecContext const& exec = ExecContext::current();
   bool canRead = exec.hasAccess(auth::CollectionResource{exec.database(), coll->name()}, auth::Level::RO);
-  if (!canRead) {
+  if (!canRead || !exec.hasAccess(exec.database(), auth::Level::RO)) {
     return Result(TRI_ERROR_FORBIDDEN, "cannot access " + coll->name());
   }
 

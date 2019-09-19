@@ -342,9 +342,11 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
                             bool create, VPackBuilder& output) {
   // can read indexes with RO on db and collection. Modifications require RW/RW
   ExecContext const& exec = ExecContext::current();
-  bool canModify = exec.hasAccess(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RW);
+  bool canReadDB = exec.hasAccess(exec.database(), auth::Level::RO);
+  bool canWriteDB = exec.hasAccess(exec.database(), auth::Level::RW);
+  bool canWrite = exec.hasAccess(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RW);
   bool canRead = exec.hasAccess(auth::CollectionResource{exec.database(), collection->name()}, auth::Level::RO);
-  if ((create && !canModify) || !canRead) {
+  if ((create && (!canWriteDB || !canWrite)) || (!canReadDB || !canRead)) {
     events::CreateIndex(collection->vocbase().name(), collection->name(),
 			input, TRI_ERROR_FORBIDDEN);
     return Result(TRI_ERROR_FORBIDDEN);

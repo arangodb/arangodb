@@ -110,6 +110,11 @@ std::unique_ptr<ExecContext> ExecContext::create(auth::AuthUser const& user,
       new ExecContext(user, std::move(database), sysLvl, dbLvl));
 }
 
+std::unique_ptr<ExecContext> ExecContext::createSuperuser() {
+  // you cannot use make_unique here because the constructor is protected
+  return std::unique_ptr<ExecContext>(new ExecContext(auth::Level::RW));
+}
+
 auth::Level ExecContext::authLevel(auth::DatabaseResource const& database) const {
   if (_type == Type::Internal || database.equals(_database)) {
     // should be RW for superuser, RO for read-only

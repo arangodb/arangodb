@@ -112,6 +112,7 @@ class ExecContext : public RequestContext {
  public:
   static std::unique_ptr<ExecContext> create(auth::AuthUser const& user,
                                              auth::DatabaseResource&& database);
+  static std::unique_ptr<ExecContext> createSuperuser();
   virtual ~ExecContext() {}
 
  protected:

@@ -285,6 +285,8 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
 
       execContext.reset(ExecContext::create(auth::AuthUser{_user}, auth::DatabaseResource{dbname}).release());
       allowContinue = execContext->hasAccess(auth::DatabaseResource{dbname}, auth::Level::RW);
+    } else {
+      execContext.reset(ExecContext::createSuperuser().release());
     }
 
     // permissions might have changed since starting this task
@@ -297,7 +299,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     bool queued = basics::function_utils::retryUntilTimeout(
         [this, self, execContext]() -> bool {
           return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self, this, execContext] {
-            ExecContext::SuperuserScope scope(_user.empty());
+            ExecContext::Scope scope(execContext.get());
             work(execContext.get());
 
             if (_periodic.load() && !application_features::ApplicationServer::isStopping()) {
