@@ -26,28 +26,22 @@
 #ifndef ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H
 #define ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H 1
 
-#include <functional>
-#include <queue>
-
-#include "Aql/AllRowsFetcher.h"
-#include "Aql/ConstFetcher.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionState.h"
-#include "Aql/ExecutionStats.h"
-#include "Aql/ExecutorInfos.h"
-#include "Aql/MultiDependencySingleRowFetcher.h"
-#include "Aql/SingleRowFetcher.h"
-#include "Aql/Stats.h"
-#include "OutputAqlItemRow.h"
+
+#include <functional>
+#include <memory>
+#include <queue>
 
 namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
-class InputAqlItemRow;
-class ExecutionNode;
 class ExecutionEngine;
+class ExecutionNode;
+class InputAqlItemRow;
+class OutputAqlItemRow;
+class Query;
 
 /**
  * @brief This is the implementation class of AqlExecutionBlocks.

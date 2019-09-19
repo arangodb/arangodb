@@ -24,6 +24,7 @@
 #include "AqlItemBlockManager.h"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/VelocyPackHelper.h"
 
 using namespace arangodb::aql;
@@ -135,6 +136,12 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestAndInitBlock(arangodb::velocyp
 ResourceMonitor* AqlItemBlockManager::resourceMonitor() const noexcept {
   return _resourceMonitor;
 }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+void AqlItemBlockManager::deleteBlock(AqlItemBlock* block) {
+  delete block;
+}
+#endif
 
 AqlItemBlockManager::Bucket::Bucket() : numItems(0) {
   for (size_t i = 0; i < numBlocksPerBucket; ++i) {

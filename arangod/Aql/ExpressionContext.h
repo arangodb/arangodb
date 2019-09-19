@@ -24,9 +24,6 @@
 #ifndef ARANGOD_AQL_EXPRESSION_CONTEXT_H
 #define ARANGOD_AQL_EXPRESSION_CONTEXT_H 1
 
-#include "Aql/types.h"
-#include "Basics/Common.h"
-
 #include <unicode/regex.h>
 
 struct TRI_vocbase_t;

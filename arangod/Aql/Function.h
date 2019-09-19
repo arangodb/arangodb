@@ -25,8 +25,10 @@
 #define ARANGOD_AQL_FUNCTION_H 1
 
 #include "Aql/Functions.h"
-#include "Basics/Common.h"
 
+#include <cstdint>
+#include <string>
+#include <utility>
 #include <type_traits>
 
 namespace arangodb {

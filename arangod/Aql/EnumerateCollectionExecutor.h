@@ -26,22 +26,30 @@
 #ifndef ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
 #define ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
 
-#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/OutputAqlItemRow.h"
-#include "Aql/Stats.h"
-#include "Aql/types.h"
+#include "Aql/InputAqlItemRow.h"
 #include "DocumentProducingHelper.h"
-#include "Utils/OperationCursor.h"
 
 #include <memory>
+#include <string>
+#include <unordered_set>
+#include <vector>
 
 namespace arangodb {
+struct OperationCursor;
+namespace transaction {
+class Methods;
+}
 namespace aql {
 
-class InputAqlItemRow;
+struct Collection;
+class EnumerateCollectionStats;
+class ExecutionEngine;
 class ExecutorInfos;
+class InputAqlItemRow;
+class OutputAqlItemRow;
+struct Variable;
 
 template <bool>
 class SingleRowFetcher;

@@ -22,6 +22,9 @@
 
 #include "DependencyProxy.h"
 
+#include "Basics/Exceptions.h"
+#include "Basics/voc-errors.h"
+
 using namespace arangodb::aql;
 
 template <bool passBlocksThrough>

@@ -25,7 +25,9 @@
 #define ARANGOD_AQL_FIXED_VAR_EXPRESSION_CONTEXT_H 1
 
 #include "Aql/AqlValue.h"
-#include "QueryExpressionContext.h"
+#include "Aql/QueryExpressionContext.h"
+
+#include <unordered_map>
 
 namespace arangodb {
 namespace velocypack {

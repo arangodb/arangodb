@@ -25,7 +25,6 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
-#include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
 #include "Aql/DistributeExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -34,16 +33,15 @@
 #include "Aql/GraphNode.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
-#include "Aql/ModificationNodes.h"
+#include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/Query.h"
 #include "Aql/RemoteExecutor.h"
 #include "Aql/ScatterExecutor.h"
 #include "Aql/SingleRemoteModificationExecutor.h"
+#include "Aql/SortRegister.h"
 #include "Aql/SortingGatherExecutor.h"
-
 #include "Transaction/Methods.h"
 
-#include <type_traits>
 #include <utility>
 
 using namespace arangodb::basics;

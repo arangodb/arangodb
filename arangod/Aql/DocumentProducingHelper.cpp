@@ -22,6 +22,16 @@
 
 #include "DocumentProducingHelper.h"
 
+#include "Aql/AqlValue.h"
+#include "Aql/OutputAqlItemRow.h"
+#include "Basics/StaticStrings.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 

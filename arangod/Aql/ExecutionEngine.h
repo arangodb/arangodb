@@ -25,16 +25,27 @@
 #define ARANGOD_AQL_EXECUTION_ENGINE_H 1
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Aql/ExecutionPlan.h"
+#include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
-#include "Aql/Query.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
+#include "Aql/types.h"
 #include "Basics/Common.h"
 
+#include <memory>
+#include <string>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+
 namespace arangodb {
+class Result;
 namespace aql {
 class AqlItemBlock;
 class ExecutionBlock;
+class ExecutionNode;
+class ExecutionPlan;
 class QueryRegistry;
+class Query;
 
 class ExecutionEngine {
  public:

@@ -26,15 +26,23 @@
 #ifndef ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H
 #define ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H 1
 
-#include "Aql/AqlItemBlock.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
+
+#include <cstdint>
+#include <unordered_set>
 
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
+namespace velocypack {
+class Builder;
+}
 namespace aql {
 
 class AqlItemBlock;
+class AqlItemBlockManager;
 struct AqlValue;
 
 struct CreateInvalidInputRowHint {

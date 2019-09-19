@@ -24,13 +24,18 @@
 #ifndef ARANGOD_AQL_BIND_PARAMETERS_H
 #define ARANGOD_AQL_BIND_PARAMETERS_H 1
 
-#include "Basics/Common.h"
-
-#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <utility>
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
 namespace aql {
 
 typedef std::unordered_map<std::string, std::pair<arangodb::velocypack::Slice, bool>> BindParametersType;

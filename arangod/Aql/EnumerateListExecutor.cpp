@@ -26,11 +26,12 @@
 #include "EnumerateListExecutor.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
+#include "Aql/SingleRowFetcher.h"
+#include "Aql/Stats.h"
 #include "Basics/Exceptions.h"
-#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

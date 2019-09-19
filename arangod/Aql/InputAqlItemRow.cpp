@@ -27,6 +27,10 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlValue.h"
+#include "Aql/Range.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include <utility>
 

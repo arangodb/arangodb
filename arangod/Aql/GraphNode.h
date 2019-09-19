@@ -25,8 +25,11 @@
 #define ARANGOD_AQL_GRAPH_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
-#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterTypes.h"
 #include "Cluster/TraverserEngineRegistry.h"
+#include "VocBase/voc-types.h"
+
+#include <velocypack/Builder.h>
 
 namespace arangodb {
 

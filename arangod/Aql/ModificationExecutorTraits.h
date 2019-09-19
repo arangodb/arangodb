@@ -24,6 +24,8 @@
 #define ARANGOD_AQL_MODIFICATION_EXECUTOR_TRAITS_H
 
 #include "Aql/ModificationExecutor.h"
+#include "Transaction/Methods.h"
+#include "Utils/OperationResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>

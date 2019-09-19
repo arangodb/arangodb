@@ -72,6 +72,8 @@
 #include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
 
+#include <velocypack/Parser.h>
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------

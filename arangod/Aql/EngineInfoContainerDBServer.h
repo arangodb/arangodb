@@ -24,17 +24,16 @@
 #ifndef ARANGOD_AQL_ENGINE_INFO_CONTAINER_DBSERVER_H
 #define ARANGOD_AQL_ENGINE_INFO_CONTAINER_DBSERVER_H 1
 
-#include "Basics/Common.h"
-
-#include "Aql/ExecutionNode.h"
 #include "Aql/types.h"
-#include "Cluster/ClusterInfo.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <boost/variant.hpp>
 #include <map>
 #include <set>
 #include <stack>
+#include <string>
+#include <vector>
 
 namespace arangodb {
 
@@ -45,6 +44,7 @@ class CollectionNameResolver;
 namespace aql {
 
 struct Collection;
+class ExecutionNode;
 class GraphNode;
 class GatherNode;
 class ScatterNode;
@@ -101,7 +101,7 @@ class EngineInfoContainerDBServer {
                           bool isResponsibleForInitializeCursor) const;
 
     void serializeSnippet(ServerID const& serverId, Query& query,
-                          std::vector<ShardID> const& shards, VPackBuilder& infoBuilder,
+                          std::vector<ShardID> const& shards, velocypack::Builder& infoBuilder,
                           bool isResponsibleForInitializeCursor) const;
 
     /// @returns type of the engine
@@ -153,7 +153,7 @@ class EngineInfoContainerDBServer {
     void combineTraverserEngines(ServerID const& serverID, arangodb::velocypack::Slice ids);
 
    private:
-    void injectTraverserEngines(VPackBuilder& infoBuilder) const;
+    void injectTraverserEngines(velocypack::Builder& infoBuilder) const;
 
     // @brief Map of LockType to ShardId
     std::unordered_map<AccessMode::Type, std::vector<ShardID>> _shardLocking;

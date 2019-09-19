@@ -24,14 +24,15 @@
 #ifndef ARANGOD_AQL_DOCUMENT_PRODUCING_NODE_H
 #define ARANGOD_AQL_DOCUMENT_PRODUCING_NODE_H 1
 
-#include "Basics/Common.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
 #include <unordered_set>
+#include <vector>
+#include <string>
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+class Slice;
+}
 namespace aql {
 class ExecutionPlan;
 struct Variable;

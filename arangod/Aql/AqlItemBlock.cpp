@@ -27,8 +27,11 @@
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/Range.h"
+#include "Aql/ResourceUsage.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>

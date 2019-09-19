@@ -28,8 +28,6 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/OutputAqlItemRow.h"
-#include "Aql/Stats.h"
 #include "Aql/types.h"
 
 #include <memory>
@@ -38,7 +36,9 @@ namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
+class OutputAqlItemRow;
 class ExecutorInfos;
+class FilterStats;
 template <bool>
 class SingleRowFetcher;
 

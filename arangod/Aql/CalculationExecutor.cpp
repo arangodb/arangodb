@@ -22,8 +22,16 @@
 
 #include "CalculationExecutor.h"
 
+#include "Aql/ExecutorExpressionContext.h"
+#include "Aql/Expression.h"
+#include "Aql/OutputAqlItemRow.h"
+#include "Aql/Query.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ScopeGuard.h"
+#include "Cluster/ServerState.h"
+#include "V8/v8-globals.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

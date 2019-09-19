@@ -23,9 +23,9 @@
 #ifndef ARANGOD_AQL_ALL_ROWS_FETCHER_H
 #define ARANGOD_AQL_ALL_ROWS_FETCHER_H
 
-#include "Aql/AqlItemMatrix.h"
-#include "Aql/ExecutionState.h"
+#include "Aql/types.h"
 
+#include <Basics/Common.h>
 #include <Basics/Exceptions.h>
 
 #include <memory>
@@ -34,6 +34,9 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
+class AqlItemMatrix;
+class SharedAqlItemBlockPtr;
+enum class ExecutionState;
 template <bool>
 class DependencyProxy;
 

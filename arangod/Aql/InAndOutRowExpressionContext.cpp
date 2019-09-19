@@ -21,12 +21,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "InAndOutRowExpressionContext.h"
-#include "Aql/AqlItemBlock.h"
+
 #include "Aql/AqlValue.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 
-#include <limits.h>
+#include <velocypack/Slice.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;

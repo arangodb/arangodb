@@ -22,13 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectionAccessingNode.h"
+
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 

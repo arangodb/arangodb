@@ -25,22 +25,30 @@
 #ifndef ARANGOD_AQL_AQL_VALUE_H
 #define ARANGOD_AQL_AQL_VALUE_H 1
 
-#include "Aql/Range.h"
+#include "Aql/AqlValueFwd.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
-#include "Basics/ConditionalDeleter.h"
-#include "Basics/VelocyPackHelper.h"
 
-#include <velocypack/Buffer.h>
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
+#include <vector>
 
-#include <v8.h>
-
+namespace v8 {
+template <class T>
+class Local;
+template <class T>
+using Handle = Local<T>;
+class Value;
+class Isolate;
+}
 namespace arangodb {
 namespace aql {
 class SharedAqlItemBlockPtr;
+struct Range;
+}
+namespace velocypack {
+template <typename T>
+class Buffer;
+class Builder;
+class Slice;
+class StringRef;
 }
 }  // namespace arangodb
 
@@ -418,21 +426,5 @@ static_assert(sizeof(AqlValue) == 16, "invalid AqlValue size");
 }  // namespace aql
 
 }  // namespace arangodb
-
-/// @brief hash function for AqlValue objects
-namespace std {
-
-template <>
-struct hash<arangodb::aql::AqlValue> {
-  size_t operator()(arangodb::aql::AqlValue const& x) const noexcept;
-};
-
-template <>
-struct equal_to<arangodb::aql::AqlValue> {
-  bool operator()(arangodb::aql::AqlValue const& a,
-                  arangodb::aql::AqlValue const& b) const noexcept;
-};
-
-}  // namespace std
 
 #endif

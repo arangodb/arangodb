@@ -24,16 +24,17 @@
 #ifndef ARANGOD_AQL_CLUSTER_BLOCKS_H
 #define ARANGOD_AQL_CLUSTER_BLOCKS_H 1
 
-#include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionNode.h"
-#include "Aql/SharedAqlItemBlockPtr.h"
-#include "Aql/SortRegister.h"
-#include "Basics/Common.h"
-#include "Cluster/ClusterComm.h"
-#include "Rest/GeneralRequest.h"
+#include "Aql/ExecutionState.h"
+#include "Basics/Result.h"
 
 #include <velocypack/Builder.h>
+
+#include <cstdint>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace arangodb {
 
@@ -51,6 +52,7 @@ namespace aql {
 class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
+class ExecutionNode;
 
 class BlocksWithClients : public ExecutionBlock {
  public:

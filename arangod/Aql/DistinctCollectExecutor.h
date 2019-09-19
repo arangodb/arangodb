@@ -26,22 +26,24 @@
 #ifndef ARANGOD_AQL_DISTINCT_COLLECT_EXECUTOR_H
 #define ARANGOD_AQL_DISTINCT_COLLECT_EXECUTOR_H
 
+#include "Aql/AqlValue.h"
 #include "Aql/AqlValueGroup.h"
-#include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/LimitStats.h"
-#include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
 
 #include <memory>
+#include <unordered_set>
 
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
 namespace aql {
 
 class InputAqlItemRow;
+class OutputAqlItemRow;
+class NoStats;
 class ExecutorInfos;
 template <bool>
 class SingleRowFetcher;
@@ -106,7 +108,7 @@ class DistinctCollectExecutor {
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
-  Infos const& infos() const noexcept;;
+  Infos const& infos() const noexcept;
   void destroyValues();
 
  private:

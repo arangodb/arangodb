@@ -23,16 +23,15 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_MATRIX_H
 #define ARANGOD_AQL_AQL_ITEM_MATRIX_H 1
 
-#include "Aql/AqlItemBlock.h"
-#include "Aql/InputAqlItemRow.h"
-#include "Aql/types.h"
-#include "Basics/Common.h"
-#include "Basics/system-compiler.h"
-
-#include <cmath>
+#include <cstdint>
+#include <utility>
+#include <vector>
 
 namespace arangodb {
 namespace aql {
+
+class InputAqlItemRow;
+class SharedAqlItemBlockPtr;
 
 /**
  * @brief A Matrix of AqlItemRows

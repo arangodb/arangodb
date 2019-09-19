@@ -24,7 +24,10 @@
 #ifndef ARANGOD_AQL_EXECUTOR_EXPRESSION_CONTEXT_H
 #define ARANGOD_AQL_EXECUTOR_EXPRESSION_CONTEXT_H 1
 
-#include "QueryExpressionContext.h"
+#include "Aql/QueryExpressionContext.h"
+#include "Aql/types.h"
+
+#include <vector>
 
 namespace arangodb {
 namespace aql {

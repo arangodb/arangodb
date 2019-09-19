@@ -25,17 +25,17 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutionStats.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/OutputAqlItemRow.h"
 #include "IResearch/ExpressionFilter.h"
-#include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/LocalDocumentId.h"
 
-#include "index/heap_iterator.hpp"
+#include <formats/formats.hpp>
+#include <index/heap_iterator.hpp>
+
+#include <utility>
 
 namespace iresearch {
 class score;
@@ -43,13 +43,15 @@ struct document;
 }  // namespace iresearch
 
 namespace arangodb {
+class LogicalCollection;
 
 namespace iresearch {
 struct Scorer;
 }
 
 namespace aql {
-
+struct ExecutionStats;
+class OutputAqlItemRow;
 template <bool>
 class SingleRowFetcher;
 

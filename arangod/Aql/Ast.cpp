@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Ast.h"
+#include "Aql/AstNode.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Arithmetic.h"
 #include "Aql/ExecutionPlan.h"
@@ -29,6 +30,7 @@
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Graphs.h"
+#include "Aql/ModificationOptions.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Basics/SmallVector.h"

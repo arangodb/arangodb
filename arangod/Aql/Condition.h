@@ -26,11 +26,11 @@
 
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
-#include "Basics/Common.h"
 #include "Basics/HashSet.h"
 #include "Transaction/Methods.h"
 
-#include <velocypack/Slice.h>
+#include <string>
+#include <vector>
 
 namespace arangodb {
 class Index;
@@ -41,6 +41,7 @@ class Ast;
 class EnumerateCollectionNode;
 class ExecutionPlan;
 class SortCondition;
+struct AstNode;
 struct Variable;
 
 enum ConditionPartCompareResult {

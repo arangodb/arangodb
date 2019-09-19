@@ -24,30 +24,20 @@
 #ifndef ARANGOD_AQL_AST_NODE_H
 #define ARANGOD_AQL_AST_NODE_H 1
 
-#include <algorithm>
+#include "Basics/ScopeGuard.h"
+
 #include <cstdint>
-#include <cstring>
 #include <functional>
-#include <iosfwd>
 #include <memory>
 #include <string>
-#include <type_traits>
 #include <unordered_map>
-#include <utility>
 #include <vector>
-
-#include "Basics/Exceptions.h"
-#include "Basics/ScopeGuard.h"
-#include "Basics/debugging.h"
-#include "Basics/operating-system.h"
-#include "Basics/voc-errors.h"
-
-#include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 
 namespace arangodb {
 namespace velocypack {
 class Builder;
+class Slice;
+class StringRef;
 }  // namespace velocypack
 namespace basics {
 struct AttributeName;

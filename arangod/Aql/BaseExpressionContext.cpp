@@ -22,10 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BaseExpressionContext.h"
+
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 
 using namespace arangodb::aql;
 

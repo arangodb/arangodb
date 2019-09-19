@@ -22,6 +22,8 @@
 
 #include "AqlValueGroup.h"
 
+#include "Basics/debugging.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 

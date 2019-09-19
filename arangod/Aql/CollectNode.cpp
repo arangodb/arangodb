@@ -22,15 +22,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectNode.h"
+
 #include "Aql/Ast.h"
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/DistinctCollectExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/HashedCollectExecutor.h"
+#include "Aql/Query.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/SortedCollectExecutor.h"
 #include "Aql/VariableGenerator.h"
 #include "Aql/WalkerWorker.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 

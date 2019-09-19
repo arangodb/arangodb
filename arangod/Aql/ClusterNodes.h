@@ -24,16 +24,8 @@
 #ifndef ARANGOD_AQL_CLUSTER_NODES_H
 #define ARANGOD_AQL_CLUSTER_NODES_H 1
 
-#include "Aql/Ast.h"
-#include "Aql/CollectionAccessingNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ModificationOptions.h"
-#include "Aql/Variable.h"
-#include "Aql/types.h"
-#include "Basics/Common.h"
-#include "Basics/StringUtils.h"
-#include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
 
 namespace arangodb {
 namespace aql {
@@ -155,8 +147,8 @@ class ScatterNode : public ExecutionNode {
   std::vector<std::string>& clients() noexcept;
 
  protected:
-  void writeClientsToVelocyPack(VPackBuilder& builder) const;
-  bool readClientsFromVelocyPack(VPackSlice base);
+  void writeClientsToVelocyPack(velocypack::Builder& builder) const;
+  bool readClientsFromVelocyPack(velocypack::Slice base);
 
  private:
   std::vector<std::string> _clients;

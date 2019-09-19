@@ -26,26 +26,23 @@
 #ifndef ARANGOD_AQL_HASHED_COLLECT_EXECUTOR_H
 #define ARANGOD_AQL_HASHED_COLLECT_EXECUTOR_H
 
-#include "Aql/Aggregator.h"
 #include "Aql/AqlValueGroup.h"
-#include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/LimitStats.h"
-#include "Aql/OutputAqlItemRow.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/Stats.h"
 #include "Aql/types.h"
 
 #include <memory>
+#include <unordered_map>
 
 namespace arangodb {
 namespace aql {
-
-class InputAqlItemRow;
+class OutputAqlItemRow;
 class ExecutorInfos;
 template <bool>
 class SingleRowFetcher;
+struct Aggregator;
 
 class HashedCollectExecutorInfos : public ExecutorInfos {
  public:

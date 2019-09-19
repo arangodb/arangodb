@@ -58,19 +58,14 @@
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/CostEstimate.h"
 #include "Aql/DocumentProducingNode.h"
-#include "Aql/ExecutorInfos.h"
-#include "Aql/Expression.h"
 #include "Aql/IndexHint.h"
-#include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
-#include "VocBase/LogicalView.h"
-#include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
 
 #include <type_traits>
 #include <utility>
+#include <memory>
+#include <unordered_set>
 
 namespace arangodb {
 namespace velocypack {
@@ -82,12 +77,15 @@ class Index;
 
 namespace aql {
 class Ast;
-struct Collection;
 class Condition;
 class ExecutionBlock;
 class ExecutionEngine;
 class ExecutionPlan;
+class ExecutorInfos;
+class Expression;
 class RedundantCalculationsReplacer;
+struct Collection;
+struct Variable;
 
 /// @brief sort element, consisting of variable, sort direction, and a possible
 /// attribute path to dig into the document

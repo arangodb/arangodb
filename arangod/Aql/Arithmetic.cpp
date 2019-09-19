@@ -23,10 +23,13 @@
 
 #include "Arithmetic.h"
 
+#include <algorithm>
+#include <limits>
+
 namespace {
 
 /// @brief returns whether or not the string is empty
-static bool isEmptyString(char const* p, size_t length) noexcept {
+bool isEmptyString(char const* p, size_t length) noexcept {
   char const* e = p + length;
 
   while (p < e) {

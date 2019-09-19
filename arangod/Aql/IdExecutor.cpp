@@ -21,11 +21,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IdExecutor.h"
+
 #include "Aql/AqlValue.h"
 #include "Aql/ConstFetcher.h"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/QueryOptions.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
+#include "Aql/Stats.h"
 
 #include <algorithm>
 

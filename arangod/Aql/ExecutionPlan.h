@@ -24,18 +24,19 @@
 #ifndef ARANGOD_AQL_EXECUTION_PLAN_H
 #define ARANGOD_AQL_EXECUTION_PLAN_H 1
 
-#include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ModificationOptions.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
 #include "Basics/SmallVector.h"
 
 #include <array>
+#include <cstdint>
+#include <memory>
+#include <vector>
 
 namespace arangodb {
 namespace velocypack {
 class Slice;
+class Builder;
 }
 
 namespace aql {
@@ -45,6 +46,9 @@ class CalculationNode;
 class CollectNode;
 class ExecutionNode;
 class Query;
+struct CollectOptions;
+struct CostEstimate;
+struct ModificationOptions;
 
 class ExecutionPlan {
  public:

@@ -25,7 +25,6 @@
 #define ARANGOD_AQL_GRAPHS_H 1
 
 #include "Aql/VariableGenerator.h"
-#include "Basics/Common.h"
 
 namespace arangodb {
 

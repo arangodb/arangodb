@@ -24,25 +24,33 @@
 #ifndef ARANGOD_AQL_DOCUMENT_PRODUCING_HELPER_H
 #define ARANGOD_AQL_DOCUMENT_PRODUCING_HELPER_H 1
 
-#include "Aql/AqlItemBlock.h"
-#include "Aql/ExecutionNode.h"
-#include "Aql/InputAqlItemRow.h"
-#include "Aql/OutputAqlItemRow.h"
-#include "Basics/Common.h"
-#include "Transaction/Helpers.h"
-#include "Transaction/Methods.h"
+#include "Aql/types.h"
+#include "VocBase/voc-types.h"
 
-#include <velocypack/Slice.h>
+#include <functional>
+#include <string>
+#include <unordered_set>
+#include <vector>
 
 namespace arangodb {
+class LocalDocumentId;
+namespace transaction {
+class Methods;
+}
+namespace velocypack {
+class Builder;
+class Slice;
+}
 namespace aql {
+class InputAqlItemRow;
+class OutputAqlItemRow;
 
 using DocumentProducingFunction =
-    std::function<void(LocalDocumentId const&, VPackSlice slice)>;
+    std::function<void(LocalDocumentId const&, velocypack::Slice slice)>;
 
 void handleProjections(std::vector<std::string> const& projections,
-                       transaction::Methods const* trxPtr, VPackSlice slice,
-                       VPackBuilder& b, bool useRawDocumentPointers);
+                       transaction::Methods const* trxPtr, velocypack::Slice slice,
+                       velocypack::Builder& b, bool useRawDocumentPointers);
 
 struct DocumentProducingFunctionContext {
  public:

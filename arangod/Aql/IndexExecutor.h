@@ -26,28 +26,30 @@
 #ifndef ARANGOD_AQL_INDEX_EXECUTOR_H
 #define ARANGOD_AQL_INDEX_EXECUTOR_H
 
-#include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/IndexNode.h"
-#include "Aql/OutputAqlItemRow.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/Stats.h"
-#include "Aql/types.h"
-#include "DocumentProducingHelper.h"
 #include "Indexes/IndexIterator.h"
-#include "Utils/OperationCursor.h"
+#include "Transaction/Methods.h"
 
 #include <memory>
 
 namespace arangodb {
+struct OperationCursor;
 namespace aql {
 
-class InputAqlItemRow;
+class ExecutionEngine;
 class ExecutorInfos;
+class InputAqlItemRow;
 
 template <bool pass>
 class SingleRowFetcher;
+
+struct AstNode;
+struct Collection;
+struct NonConstExpression;
 
 class IndexExecutorInfos : public ExecutorInfos {
  public:

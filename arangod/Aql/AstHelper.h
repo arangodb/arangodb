@@ -23,15 +23,15 @@
 #ifndef ARANGOD_AQL_AST_HELPER_H
 #define ARANGOD_AQL_AST_HELPER_H 1
 
-#include "Aql/Ast.h"
-#include "Aql/AstNode.h"
-#include "Aql/Variable.h"
 #include "Basics/SmallVector.h"
 
+#include <string>
 #include <unordered_set>
 
 namespace arangodb {
 namespace aql {
+struct AstNode;
+struct Variable;
 namespace ast {
 
 /// @brief determines the to-be-kept attribute of an INTO expression

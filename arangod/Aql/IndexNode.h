@@ -24,19 +24,16 @@
 #ifndef ARANGOD_AQL_INDEX_NODE_H
 #define ARANGOD_AQL_INDEX_NODE_H 1
 
-#include "Aql/Ast.h"
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/Variable.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
+#include "Basics/HashSet.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
-#include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
 
-#include <velocypack/Slice.h>
+#include <memory>
+#include <vector>
 
 namespace arangodb {
 
@@ -46,6 +43,7 @@ class Condition;
 class ExecutionBlock;
 class ExecutionEngine;
 class ExecutionPlan;
+class Expression;
 
 /// @brief struct to hold the member-indexes in the _condition node
 struct NonConstExpression {

@@ -24,11 +24,11 @@
 #ifndef ARANGOD_AQL_COLLECTIONS_H
 #define ARANGOD_AQL_COLLECTIONS_H 1
 
-#include <map>
-#include <vector>
-
-#include "Basics/Common.h"
 #include "VocBase/AccessMode.h"
+
+#include <map>
+#include <string>
+#include <vector>
 
 struct TRI_vocbase_t;
 

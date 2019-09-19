@@ -25,7 +25,9 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Arithmetic.h"
+#include "Aql/Range.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Basics/ConditionalDeleter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"

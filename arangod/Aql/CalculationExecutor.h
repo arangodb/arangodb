@@ -23,18 +23,15 @@
 #ifndef ARANGOD_AQL_CALACULATION_EXECUTOR_H
 #define ARANGOD_AQL_CALACULATION_EXECUTOR_H
 
-#include "Basics/Common.h"
-#include "Basics/ScopeGuard.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/Expression.h"
-#include "Aql/OutputAqlItemRow.h"
-#include "Aql/Query.h"
-#include "Aql/SingleRowFetcher.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/Stats.h"
-#include "Cluster/ServerState.h"
-#include "ExecutorExpressionContext.h"
-#include "V8/v8-globals.h"
+#include "Aql/types.h"
+
+#include <unordered_set>
+#include <vector>
 
 namespace arangodb {
 namespace transaction {
@@ -43,10 +40,11 @@ class Methods;
 
 namespace aql {
 
-class ExecutorInfos;
-class InputAqlItemRow;
 class Expression;
+class OutputAqlItemRow;
 class Query;
+template<bool passBlocksThrough>
+class SingleRowFetcher;
 struct Variable;
 
 struct CalculationExecutorInfos : public ExecutorInfos {

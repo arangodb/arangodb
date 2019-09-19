@@ -26,23 +26,20 @@
 #ifndef ARANGOD_AQL_COUNT_COLLECT_EXECUTOR_H
 #define ARANGOD_AQL_COUNT_COLLECT_EXECUTOR_H
 
-#include "Aql/AqlValueGroup.h"
-#include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/LimitStats.h"
-#include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
 
 #include <memory>
+#include <unordered_set>
 
 namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
+class NoStats;
 class ExecutorInfos;
+class OutputAqlItemRow;
 template <bool>
 class SingleRowFetcher;
 

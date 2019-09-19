@@ -27,9 +27,17 @@
 
 #include "Aql/Ast.h"
 #include "Aql/BlockCollector.h"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;

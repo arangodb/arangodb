@@ -22,9 +22,11 @@
 
 #include "CostEstimate.h"
 
+#include "Basics/debugging.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
-CostEstimate::CostEstimate(double estimatedCost, size_t estimatedNrItems)
+CostEstimate::CostEstimate(double estimatedCost, std::size_t estimatedNrItems)
     : estimatedCost(estimatedCost), estimatedNrItems(estimatedNrItems) {}
 
 CostEstimate::CostEstimate() : CostEstimate(-1.0, 0) {}

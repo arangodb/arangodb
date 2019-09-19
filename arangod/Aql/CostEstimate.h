@@ -24,8 +24,7 @@
 #ifndef ARANGOD_AQL_COST_ESTIMATE_H
 #define ARANGOD_AQL_COST_ESTIMATE_H 1
 
-#include "Basics/Common.h"
-#include "Basics/debugging.h"
+#include <cstdint>
 
 namespace arangodb {
 namespace aql {
@@ -33,7 +32,7 @@ namespace aql {
 /// @brief a simple object containing a cost estimate for ExecutionNodes
 struct CostEstimate {
   /// @brief create the cost estimate from values
-  CostEstimate(double estimatedCost, size_t estimatedNrItems);
+  CostEstimate(double estimatedCost, std::size_t estimatedNrItems);
 
   /// @brief initialize a still-invalid cost estimate
   CostEstimate();
@@ -57,7 +56,7 @@ struct CostEstimate {
 
   /// @brief cost
   /// @brief estimated number of items returned by the node
-  size_t estimatedNrItems;
+  std::size_t estimatedNrItems;
 };
 
 }  // namespace aql

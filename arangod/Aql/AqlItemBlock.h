@@ -25,18 +25,29 @@
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_H 1
 
 #include "Aql/AqlValue.h"
-#include "Aql/Range.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
 
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
+#include <vector>
 
 namespace arangodb {
+
+namespace transaction {
+class Methods;
+}
+
+namespace velocypack {
+class Builder;
+class Slice;
+}  // namespace velocypack
+
 namespace aql {
 class AqlItemBlockManager;
 class BlockCollector;
 class SharedAqlItemBlockPtr;
+struct ResourceMonitor;
 
 // an <AqlItemBlock> is a <nrItems>x<nrRegs> vector of <AqlValue>s (not
 // pointers). The size of an <AqlItemBlock> is the number of items.

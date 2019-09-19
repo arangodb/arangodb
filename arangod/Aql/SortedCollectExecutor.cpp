@@ -29,8 +29,10 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
-#include "Logger/LogMacros.h"
+#include "Basics/ConditionalDeleter.h"
+
+#include <velocypack/Buffer.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include <utility>
 

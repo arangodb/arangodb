@@ -24,15 +24,14 @@
 #ifndef ARANGOD_AQL_EXPRESSION_H
 #define ARANGOD_AQL_EXPRESSION_H 1
 
-#include "Aql/AstNode.h"
-#include "Aql/Range.h"
-#include "Aql/Variable.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
+#include "Basics/HashSet.h"
 
 #include <v8.h>
-#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+
+#include <cstdint>
+#include <unordered_map>
 
 namespace arangodb {
 namespace transaction {
@@ -43,14 +42,20 @@ namespace basics {
 class StringBuffer;
 }
 
+namespace velocypack {
+class Builder;
+}
+
 namespace aql {
 class AqlItemBlock;
 struct AqlValue;
 class Ast;
+struct AstNode;
 class AttributeAccessor;
 class ExecutionPlan;
 class ExpressionContext;
 class Query;
+struct Variable;
 
 /// @brief AqlExpression, used in execution plans and execution blocks
 class Expression {

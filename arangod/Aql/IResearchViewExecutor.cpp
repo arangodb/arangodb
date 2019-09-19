@@ -23,8 +23,10 @@
 
 #include "IResearchViewExecutor.h"
 
+#include "Aql/ExecutionStats.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -36,9 +38,10 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-#include "analysis/token_attributes.hpp"
-#include "search/boolean_filter.hpp"
-#include "search/score.hpp"
+
+#include <analysis/token_attributes.hpp>
+#include <search/boolean_filter.hpp>
+#include <search/score.hpp>
 
 // TODO Eliminate access to the plan if possible!
 // I think it is used for two things only:

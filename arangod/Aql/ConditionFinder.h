@@ -24,13 +24,16 @@
 #ifndef ARANGOD_AQL_CONDITION_FINDER_H
 #define ARANGOD_AQL_CONDITION_FINDER_H 1
 
-#include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
-#include "Basics/HashSet.h"
+
+#include <cstdint>
+#include <unordered_map>
 
 namespace arangodb {
 namespace aql {
+class ExecutionPlan;
+class SortCondition;
 struct Variable;
 
 /// @brief condition finder

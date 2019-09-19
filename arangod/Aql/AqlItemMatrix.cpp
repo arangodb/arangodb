@@ -22,6 +22,11 @@
 
 #include "AqlItemMatrix.h"
 
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
+#include "Basics/Exceptions.h"
+#include "Basics/voc-errors.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 

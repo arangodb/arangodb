@@ -26,11 +26,10 @@
 #ifndef ARANGOD_AQL_EXECUTOR_INFOS_H
 #define ARANGOD_AQL_EXECUTOR_INFOS_H 1
 
+#include "Aql/types.h"
+
 #include <memory>
 #include <unordered_set>
-
-#include "Aql/types.h"
-#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {

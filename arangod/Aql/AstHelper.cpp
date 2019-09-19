@@ -22,6 +22,10 @@
 
 #include "AstHelper.h"
 
+#include "Aql/Ast.h"
+#include "Aql/AstNode.h"
+#include "Aql/Variable.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 

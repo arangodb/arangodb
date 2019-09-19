@@ -26,7 +26,9 @@
 
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
+
+#include <cstdint>
+#include <vector>
 
 namespace arangodb {
 namespace aql {

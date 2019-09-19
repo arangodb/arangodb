@@ -25,21 +25,26 @@
 #define ARANGOD_AQL_AST_H 1
 
 #include "Aql/AstNode.h"
-#include "Aql/BindParameters.h"
 #include "Aql/Scopes.h"
-#include "Aql/Variable.h"
 #include "Aql/VariableGenerator.h"
-#include "Basics/Common.h"
-#include "Transaction/Methods.h"
+
+#include "Aql/types.h"
 #include "VocBase/AccessMode.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/StringRef.h>
 
+#include <Basics/AttributeNameParser.h>
 #include <functional>
 #include <iterator>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace arangodb {
+class CollectionNameResolver;
 
 namespace velocypack {
 class Slice;
@@ -47,8 +52,9 @@ class Slice;
 
 namespace aql {
 
+class BindParameters;
 class Query;
-class VariableGenerator;
+struct Variable;
 
 typedef std::unordered_map<Variable const*, std::unordered_set<std::string>> TopLevelAttributes;
 

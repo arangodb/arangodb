@@ -31,6 +31,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/FileUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "ClusterEngine/ClusterEngine.h"
@@ -40,17 +41,16 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "V8/v8-utils.h"
 #include "VocBase/KeyGenerator.h"
 #include "common.h"
 #include "gtest/gtest.h"
 #include "search/scorers.hpp"
-
-#include "Basics/icu-helper.h"
 
 #include "search/boolean_filter.hpp"
 

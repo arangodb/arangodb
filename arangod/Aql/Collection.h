@@ -24,7 +24,6 @@
 #ifndef ARANGOD_AQL_COLLECTION_H
 #define ARANGOD_AQL_COLLECTION_H 1
 
-#include "Basics/Common.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
 

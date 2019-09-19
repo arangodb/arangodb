@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,32 +17,37 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_ARITHMETIC_H
-#define ARANGOD_AQL_ARITHMETIC_H 1
+#ifndef ARANGOD_AQL_AQL_VALUE_FWD_H
+#define ARANGOD_AQL_AQL_VALUE_FWD_H 1
 
-#include <string>
+#include <functional>
 
 namespace arangodb {
 namespace aql {
 
-double stringToNumber(std::string const& value, bool& failed) noexcept;
-
-template <typename T>
-bool isUnsafeAddition(T l, T r);
-
-template <typename T>
-bool isUnsafeSubtraction(T l, T r);
-
-template <typename T>
-bool isUnsafeMultiplication(T l, T r);
-
-template <typename T>
-bool isUnsafeDivision(T l, T r);
+struct AqlValue;
 
 }  // namespace aql
 }  // namespace arangodb
 
-#endif
+/// @brief hash function for AqlValue objects
+/// Defined in AqlValue.cpp!
+namespace std {
+
+template <>
+struct hash<arangodb::aql::AqlValue> {
+  size_t operator()(arangodb::aql::AqlValue const& x) const noexcept;
+};
+
+template <>
+struct equal_to<arangodb::aql::AqlValue> {
+  bool operator()(arangodb::aql::AqlValue const& a,
+                  arangodb::aql::AqlValue const& b) const noexcept;
+};
+
+}  // namespace std
+
+#endif  // ARANGOD_AQL_AQL_VALUE_FWD_H

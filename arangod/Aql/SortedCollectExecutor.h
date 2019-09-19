@@ -35,7 +35,10 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/LimitStats.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Stats.h"
 #include "Aql/types.h"
+
+#include <velocypack/Builder.h>
 
 #include <memory>
 
@@ -156,7 +159,7 @@ class SortedCollectExecutor {
 
     void addLine(InputAqlItemRow& input);
     bool isSameGroup(InputAqlItemRow& input);
-    void groupValuesToArray(VPackBuilder& builder);
+    void groupValuesToArray(velocypack::Builder& builder);
     void writeToOutput(OutputAqlItemRow& output, InputAqlItemRow& input);
   };
 

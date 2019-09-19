@@ -24,22 +24,24 @@
 #ifndef ARANGOD_AQL_COLLECT_NODE_H
 #define ARANGOD_AQL_COLLECT_NODE_H 1
 
-#include "Aql/Aggregator.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/Variable.h"
-#include "Aql/types.h"
-#include "Basics/Common.h"
-#include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
 
-#include <velocypack/Slice.h>
+#include <cstdint>
+#include <functional>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
 namespace aql {
 class ExecutionBlock;
 class ExecutionPlan;
 class RedundantCalculationsReplacer;
+struct Aggregator;
 
 /// @brief class CollectNode
 class CollectNode : public ExecutionNode {

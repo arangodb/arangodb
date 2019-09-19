@@ -29,7 +29,11 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
+#include "Basics/voc-errors.h"
+
+#include <memory>
 
 namespace arangodb {
 namespace aql {

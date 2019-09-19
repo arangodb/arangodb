@@ -24,16 +24,21 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H 1
 
-#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 
 #include <array>
 
 namespace arangodb {
+
+namespace velocypack {
+class Slice;
+}
+
 namespace aql {
 
 class AqlItemBlock;
+class SharedAqlItemBlockPtr;
 struct ResourceMonitor;
 
 class AqlItemBlockManager {
@@ -57,9 +62,7 @@ class AqlItemBlockManager {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // Only used for the mocks in the catch tests. Other code should always use
   // SharedAqlItemBlockPtr which in turn call returnBlock()!
-  static void deleteBlock(AqlItemBlock* block) {
-    delete block;
-  }
+  static void deleteBlock(AqlItemBlock* block);
 #endif
 
 #ifndef ARANGODB_USE_GOOGLE_TESTS

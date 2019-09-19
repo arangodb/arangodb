@@ -24,17 +24,14 @@
 #ifndef ARANGOD_AQL_EXECUTION_BLOCK_H
 #define ARANGOD_AQL_EXECUTION_BLOCK_H 1
 
-#include "Aql/AqlItemBlock.h"
 #include "Aql/BlockCollector.h"
-#include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutionStats.h"
-#include "Aql/Variable.h"
-#include "Basics/system-functions.h"
-#include "QueryOptions.h"
+#include "Basics/Result.h"
 
+#include <cstdint>
 #include <deque>
+#include <utility>
+#include <vector>
 
 namespace arangodb {
 struct ClusterCommResult;
@@ -46,6 +43,7 @@ class Methods;
 namespace aql {
 class InputAqlItemRow;
 class ExecutionEngine;
+class ExecutionNode;
 class SharedAqlItemBlockPtr;
 
 class ExecutionBlock {

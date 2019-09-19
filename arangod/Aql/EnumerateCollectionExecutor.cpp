@@ -31,10 +31,10 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
-#include "Logger/LogMacros.h"
+#include "Aql/Stats.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 

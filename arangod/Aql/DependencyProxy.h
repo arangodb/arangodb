@@ -23,18 +23,20 @@
 #ifndef ARANGOD_AQL_BLOCK_FETCHER_H
 #define ARANGOD_AQL_BLOCK_FETCHER_H
 
-#include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
-#include "Basics/Exceptions.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
+#include "Aql/types.h"
 
 #include <memory>
 #include <queue>
+#include <unordered_set>
 #include <utility>
 
 namespace arangodb {
 namespace aql {
+class ExecutionBlock;
+class AqlItemBlockManager;
 
 /**
  * @brief Thin interface to access the methods of ExecutionBlock that are

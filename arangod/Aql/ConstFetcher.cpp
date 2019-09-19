@@ -22,8 +22,9 @@
 
 #include "ConstFetcher.h"
 
-#include "Aql/AqlItemBlock.h"
 #include "Aql/DependencyProxy.h"
+#include "Basics/Exceptions.h"
+#include "Basics/voc-errors.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

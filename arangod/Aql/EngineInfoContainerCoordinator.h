@@ -24,13 +24,14 @@
 #ifndef ARANGOD_AQL_ENGINE_INFO_CONTAINER_COORDINATOR_H
 #define ARANGOD_AQL_ENGINE_INFO_CONTAINER_COORDINATOR_H 1
 
-#include "Basics/Common.h"
-
 #include "Aql/types.h"
-#include "Cluster/ClusterInfo.h"
 
 #include <stack>
+#include <string>
+#include <unordered_set>
+
 namespace arangodb {
+class Result;
 
 namespace aql {
 

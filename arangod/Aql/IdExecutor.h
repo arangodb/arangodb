@@ -23,12 +23,13 @@
 #ifndef ARANGOD_AQL_ID_EXECUTOR_H
 #define ARANGOD_AQL_ID_EXECUTOR_H
 
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/Stats.h"
-#include "Aql/Variable.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 
-#include "Aql/ExecutionBlockImpl.h"
+#include <tuple>
+#include <utility>
 
 namespace arangodb {
 namespace transaction {
@@ -36,7 +37,8 @@ class Methods;
 }
 
 namespace aql {
-
+class ExecutionEngine;
+class ExecutionNode;
 class ConstFetcher;
 class AqlItemMatrix;
 class ExecutorInfos;

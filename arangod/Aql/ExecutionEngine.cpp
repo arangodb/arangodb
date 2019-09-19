@@ -23,14 +23,13 @@
 
 #include "ExecutionEngine.h"
 
-#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlResult.h"
-#include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/EngineInfoContainerDBServer.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/GraphNode.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/Query.h"
@@ -38,6 +37,7 @@
 #include "Aql/RemoteExecutor.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/WalkerWorker.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"

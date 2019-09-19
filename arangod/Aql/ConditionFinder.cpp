@@ -22,7 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ConditionFinder.h"
+
+#include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
