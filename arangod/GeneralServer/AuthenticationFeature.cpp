@@ -62,6 +62,10 @@ AuthenticationFeature::AuthenticationFeature(application_features::ApplicationSe
   setOptional(false);
   startsAfter("BasicsPhase");
 
+  for (auto const &method : availableAuthentificationMethods()) {
+    _enabledAuthentificationMethodsCfg.push_back(method);
+  }
+
 #ifdef USE_ENTERPRISE
   startsAfter("Ldap");
   startsAfter("Kerberos");
@@ -88,6 +92,13 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
   options->addOption("--server.authentication",
                      "enable authentication for ALL client requests",
                      new BooleanParameter(&_active));
+
+  options->addOption("--server.authentication-methods",
+                     "which authentification methods to support",
+                     new DiscreteValuesVectorParameter<StringParameter>
+                       (&_enabledAuthentificationMethodsCfg,
+                        availableAuthentificationMethods()),
+                     arangodb::options::makeFlags(options::Flags::FlushOnFirst));
 
   options->addOption(
       "--server.authentication-timeout",
@@ -145,6 +156,15 @@ void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
       LOG_TOPIC("9abfc", FATAL, arangodb::Logger::STARTUP)
           << "Given JWT secret too long. Max length is " << _maxSecretLength;
       FATAL_ERROR_EXIT();
+    }
+  }
+
+  auto map = mapAuthentificationMethods();
+  for (auto const &it : _enabledAuthentificationMethodsCfg) {
+    auto m = map.find(it);
+    if (m != map.end()) {
+      rest::AuthenticationMethod eMeth = m->second;
+      _enabledAuthentificationMethods.push_back(eMeth);
     }
   }
 }
@@ -228,4 +248,20 @@ void AuthenticationFeature::start() {
 
 void AuthenticationFeature::unprepare() { INSTANCE = nullptr; }
 
+std::unordered_map<std::string, rest::AuthenticationMethod> AuthenticationFeature::mapAuthentificationMethods() {
+  return std::unordered_map<std::string, rest::AuthenticationMethod>{
+    {"basic", rest::AuthenticationMethod::BASIC},
+    {"kerberos", rest::AuthenticationMethod::NEGOTIATE},
+    {"jwt", rest::AuthenticationMethod::JWT}
+  };
+}
+std::unordered_set<std::string> AuthenticationFeature::availableAuthentificationMethods() {
+  return std::unordered_set<std::string>{
+    {"basic"},
+#if USE_ENTERPRISE
+    {"kerberos"},
+#endif
+    {"jwt"}
+  };
+}
 }  // namespace arangodb

@@ -85,6 +85,20 @@ enum class EncodingType {
 
 enum class AuthenticationMethod { BASIC, JWT, NEGOTIATE, NONE };
 
+inline const char* authToString(AuthenticationMethod meth) {
+  switch (meth) {
+  case AuthenticationMethod::BASIC:
+    return "Basic";
+  case AuthenticationMethod::JWT:
+    return "Bearer";
+  case AuthenticationMethod::NEGOTIATE:
+    return "Negotiate";
+  case AuthenticationMethod::NONE:
+    return "";
+  }
+  return "";
+}
+
 enum class ResponseCode {
   CONTINUE = 100,
   SWITCHING_PROTOCOLS = 101,

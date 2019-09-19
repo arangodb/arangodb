@@ -51,6 +51,16 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
   std::string jwtSecret() const { return _authCache->jwtSecret(); }
   bool hasUserdefinedJwt() const { return !_jwtSecretProgramOption.empty(); }
 
+  std::vector<rest::AuthenticationMethod> const& getAuthMethods(){
+    return _enabledAuthentificationMethods;
+  }
+
+  bool isMethodAllowed(rest::AuthenticationMethod meth) {
+    return std::find(_enabledAuthentificationMethods.begin(),
+                     _enabledAuthentificationMethods.end(),
+                     meth) != _enabledAuthentificationMethods.end();
+  }
+
   double authenticationTimeout() const noexcept {
     return _authenticationTimeout;
   }
@@ -69,7 +79,12 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
     return _userManager.get();
   }
 
+  static std::unordered_set<std::string> availableAuthentificationMethods();
+  static std::unordered_map<std::string, rest::AuthenticationMethod> mapAuthentificationMethods();
+
  private:
+  std::vector<std::string> _enabledAuthentificationMethodsCfg;
+  std::vector<rest::AuthenticationMethod> _enabledAuthentificationMethods;
   std::unique_ptr<auth::UserManager> _userManager;
   std::unique_ptr<auth::TokenCache> _authCache;
   bool _authenticationUnixSockets;

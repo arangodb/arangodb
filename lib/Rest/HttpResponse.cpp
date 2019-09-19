@@ -216,6 +216,39 @@ void HttpResponse::writeHeader(StringBuffer* output) {
     output->appendText(TRI_CHAR_LENGTH_PAIR("Server: ArangoDB\r\n"));
   }
 
+  if (!_availableAuthMethods.empty()) {
+    char const* p = StaticStrings::WwwAuthenticate.data();
+    char const* end = p + StaticStrings::WwwAuthenticate.length();
+    int capState = 1;
+    StringBuffer Hdr;
+    while (p < end) {
+      if (capState == 1) {
+        // upper case
+        Hdr.appendCharUnsafe(::toupper(*p));
+        capState = 0;
+      } else if (capState == 0) {
+        // normal case
+        Hdr.appendCharUnsafe(::tolower(*p));
+        if (*p == '-') {
+          capState = 1;
+        } else if (*p == ':') {
+          capState = 2;
+        }
+      } else {
+        // output as is
+        Hdr.appendCharUnsafe(*p);
+      }
+      ++p;
+    }
+
+    for (auto const& it : _availableAuthMethods) {
+      output->appendText(Hdr);
+      output->appendText(TRI_CHAR_LENGTH_PAIR(": "));
+      output->appendText(authToString(it));
+      output->appendText("\r\n", 2);
+    }
+  }
+
   // this is just used by the batch handler, close connection
   output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: Close \r\n"));
 

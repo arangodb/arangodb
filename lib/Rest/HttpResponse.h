@@ -50,6 +50,14 @@ class HttpResponse : public GeneralResponse {
   bool isHeadResponse() const { return _isHeadResponse; }
 
  public:
+  void setAvailableAuthMethods(std::vector<rest::AuthenticationMethod> const& availableAuthMethods) {
+    _availableAuthMethods = availableAuthMethods;
+  }
+
+  std::vector<rest::AuthenticationMethod> const& getAvailableAuthMethods() {
+    return _availableAuthMethods;
+  }
+
   void setCookie(std::string const& name, std::string const& value,
                  int lifeTimeSeconds, std::string const& path,
                  std::string const& domain, bool secure, bool httpOnly);
@@ -111,6 +119,7 @@ class HttpResponse : public GeneralResponse {
  private:
   bool _isHeadResponse;
   std::vector<std::string> _cookies;
+  std::vector<rest::AuthenticationMethod> _availableAuthMethods;
   std::unique_ptr<basics::StringBuffer> _body;
   size_t _bodySize;
 

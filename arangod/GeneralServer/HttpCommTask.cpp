@@ -416,9 +416,8 @@ void HttpCommTask<T>::processRequest() {
 
   if (authResult == rest::ResponseCode::UNAUTHORIZED) {
     /// force auth
-    std::string realm = "Negotiate";
     auto res = std::make_unique<HttpResponse>(rest::ResponseCode::UNAUTHORIZED, nullptr);
-    res->setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
+    res->setAvailableAuthMethods(AuthenticationFeature::instance()->getAuthMethods());
     /// TODO: nice content?
     sendResponse(std::move(res), nullptr);
     return;
@@ -568,6 +567,10 @@ ResponseCode HttpCommTask<T>::handleAuthHeader(HttpRequest& req) {
         } else if (strncasecmp(authStr.c_str(), "negotiate ", 9) == 0) {
           authMethod = AuthenticationMethod::NEGOTIATE;
         }
+      }
+
+      if (!AuthenticationFeature::instance()->isMethodAllowed(authMethod)) {
+        return rest::ResponseCode::UNAUTHORIZED;
       }
 
       req.setAuthenticationMethod(authMethod);
@@ -736,6 +739,39 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     header->append(": ", 2);
     header->append(it.second);
     header->append("\r\n", 2);
+  }
+
+  if (!response.getAvailableAuthMethods().empty()) {
+    char const* p = StaticStrings::WwwAuthenticate.data();
+    char const* end = p + StaticStrings::WwwAuthenticate.length();
+    int capState = 1;
+    auto hdr = std::make_unique<VPackBuffer<uint8_t>>();
+    while (p < end) {
+      if (capState == 1) {
+        // upper case
+        hdr->push_back(::toupper(*p));
+        capState = 0;
+      } else if (capState == 0) {
+        // normal case
+        hdr->push_back(::tolower(*p));
+        if (*p == '-') {
+          capState = 1;
+        } else if (*p == ':') {
+          capState = 2;
+        }
+      } else {
+        // output as is
+        hdr->push_back(*p);
+      }
+      ++p;
+    }
+
+    for (auto const& it : response.getAvailableAuthMethods()) {
+      header->append(*hdr);
+      header->append(TRI_CHAR_LENGTH_PAIR(": "));
+      header->append(authToString(it));
+      header->append("\r\n", 2);
+    }
   }
 
   // add "Server" response header
