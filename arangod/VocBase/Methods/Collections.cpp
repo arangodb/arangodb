@@ -257,16 +257,16 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   VPackBuilder helper;
   builder.openArray();
 
-  bool isDBServer = ServerState::instance()->isDBServer();
-
   for (auto const& info : infos) {
     TRI_ASSERT(builder.isOpenArray());
 
     if (info.name.empty()) {
       events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
       return TRI_ERROR_ARANGO_ILLEGAL_NAME;
-    } else if (info.collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
-               info.collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+    }
+
+    if (info.collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
+        info.collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
       events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
       return TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
     }
@@ -279,33 +279,25 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     helper.add(arangodb::StaticStrings::DataSourceName,
                arangodb::velocypack::Value(info.name));
 
-
     if (ServerState::instance()->isCoordinator()) {
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
-      if(replicationFactorSlice.isNone()) {
+      if (replicationFactorSlice.isNone()) {
         auto factor = vocbase.replicationFactor();
-        if(factor > 0 && vocbase.IsSystemName(info.name)) {
+        if (factor > 0 && vocbase.IsSystemName(info.name)) {
           auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>("Cluster");
-          if (isDBServer) {
-            // DBServers have their own loacl copies of system collections
-            factor = 1;
-            // we need to ignore the minReplicationFactor for shards as well
-            helper.add(StaticStrings::MinReplicationFactor, VPackValue(1));
-          } else if (cl) {
-            factor = std::max(vocbase.replicationFactor(), cl->systemReplicationFactor());
-          }
+          factor = std::max(vocbase.replicationFactor(), cl->systemReplicationFactor());
         }
         helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
       }
 
       bool hasDistribute = false;
       auto distribute = info.properties.get(StaticStrings::DistributeShardsLike);
-      if(!distribute.isNone()) {
+      if (!distribute.isNone()) {
         hasDistribute = true;
       }
 
       // system collections will be sharded normally - we avoid a self reference when creating _graphs
-      if(vocbase.sharding() == "single" && !vocbase.IsSystemName(info.name)) {
+      if (vocbase.sharding() == "single" && !vocbase.IsSystemName(info.name)) {
         if(!hasDistribute) {
           helper.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::GraphCollection));
           hasDistribute = true;
@@ -314,9 +306,9 @@ Result Collections::create(TRI_vocbase_t& vocbase,
         }
       }
 
-      if(!hasDistribute){
+      if (!hasDistribute) {
         auto minReplicationFactorSlice = info.properties.get(StaticStrings::MinReplicationFactor);
-        if(minReplicationFactorSlice.isNone()) {
+        if (minReplicationFactorSlice.isNone()) {
           auto factor = vocbase.minReplicationFactor();
           helper.add(StaticStrings::MinReplicationFactor, VPackValue(factor));
         }
