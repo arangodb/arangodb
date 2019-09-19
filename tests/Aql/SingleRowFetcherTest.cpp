@@ -72,7 +72,6 @@ class SingleRowFetcherTestDoNotPassBlocks : public ::testing::Test {
 };
 
 TEST_F(SingleRowFetcherTestPassBlocks, there_are_no_blocks_upstream_the_producer_doesnt_wait) {
-  VPackBuilder input;
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
@@ -92,7 +91,6 @@ TEST_F(SingleRowFetcherTestPassBlocks, there_are_no_blocks_upstream_the_producer
 }
 
 TEST_F(SingleRowFetcherTestPassBlocks, there_are_blocks_upstream_the_producer_waits) {
-  VPackBuilder input;
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
@@ -117,7 +115,30 @@ TEST_F(SingleRowFetcherTestPassBlocks, there_are_blocks_upstream_the_producer_wa
 }
 
 TEST_F(SingleRowFetcherTestDoNotPassBlocks, there_are_blocks_upstream_the_producer_waits) {
-  VPackBuilder input;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 0};
+  InputAqlItemRow row{CreateInvalidInputRowHint{}};
+
+  dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
+      .andThenReturn(ExecutionState::DONE, nullptr);
+
+  {
+    SingleRowFetcher<passBlocksThrough> testee(dependencyProxyMock);
+
+    std::tie(state, row) = testee.fetchRow();
+    ASSERT_TRUE(state == ExecutionState::WAITING);
+    ASSERT_TRUE(!row);
+
+    std::tie(state, row) = testee.fetchRow();
+    ASSERT_TRUE(state == ExecutionState::DONE);
+    ASSERT_TRUE(!row);
+  }  // testee is destroyed here
+  // testee must be destroyed before verify, because it may call returnBlock
+  // in the destructor
+  ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
+  ASSERT_TRUE(dependencyProxyMock.numFetchBlockCalls() == 2);
+}
+
+TEST_F(SingleRowFetcherTestDoNotPassBlocks, handling_of_relevant_shadow_rows) {
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
@@ -143,7 +164,6 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks, there_are_blocks_upstream_the_produc
 
 TEST_F(SingleRowFetcherTestPassBlocks,
        single_upstream_block_with_a_single_row_producer_returns_done_immediately) {
-  VPackBuilder input;
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
@@ -166,7 +186,6 @@ TEST_F(SingleRowFetcherTestPassBlocks,
 
 TEST_F(SingleRowFetcherTestDoNotPassBlocks,
        single_upstream_block_with_a_single_row_producer_returns_done_immediately) {
-  VPackBuilder input;
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
@@ -189,7 +208,6 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
 
 TEST_F(SingleRowFetcherTestPassBlocks,
        single_upstream_block_with_a_single_row_producer_returns_hasmore_then_done_with_a_nullptr) {
-  VPackBuilder input;
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
@@ -217,7 +235,6 @@ TEST_F(SingleRowFetcherTestPassBlocks,
 
 TEST_F(SingleRowFetcherTestDoNotPassBlocks,
        single_upstream_block_with_a_single_row_producer_returns_hasmore_then_done_with_a_nullptr) {
-  VPackBuilder input;
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
@@ -245,7 +262,6 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
 
 TEST_F(SingleRowFetcherTestPassBlocks,
        single_upstream_block_with_a_single_row_producer_waits_then_returns_done) {
-  VPackBuilder input;
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
@@ -273,7 +289,6 @@ TEST_F(SingleRowFetcherTestPassBlocks,
 
 TEST_F(SingleRowFetcherTestDoNotPassBlocks,
        single_upstream_block_with_a_single_row_producer_waits_then_returns_done) {
-  VPackBuilder input;
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
@@ -301,7 +316,6 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
 
 TEST_F(SingleRowFetcherTestPassBlocks,
        single_upstream_bock_with_a_single_row_producer_waits_returns_hasmore_then_done) {
-  VPackBuilder input;
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
@@ -334,7 +348,6 @@ TEST_F(SingleRowFetcherTestPassBlocks,
 
 TEST_F(SingleRowFetcherTestDoNotPassBlocks,
        single_upstream_bock_with_a_single_row_producer_waits_returns_hasmore_then_done) {
-  VPackBuilder input;
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
