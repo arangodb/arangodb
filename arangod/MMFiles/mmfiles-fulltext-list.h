@@ -60,10 +60,4 @@ TRI_fulltext_list_t* TRI_InsertListMMFilesFulltextIndex(TRI_fulltext_list_t*,
 TRI_fulltext_list_t* TRI_RemoveListMMFilesFulltextIndex(TRI_fulltext_list_t*,
                                                         TRI_fulltext_list_entry_t);
 
-/// @brief return the number of entries
-uint32_t TRI_NumEntriesListMMFilesFulltextIndex(TRI_fulltext_list_t const*);
-
-/// @brief return a pointer to the first list entry
-TRI_fulltext_list_entry_t* TRI_StartListMMFilesFulltextIndex(TRI_fulltext_list_t const*);
-
 #endif

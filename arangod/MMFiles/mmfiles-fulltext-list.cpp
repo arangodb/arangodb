@@ -339,13 +339,3 @@ TRI_fulltext_list_t* TRI_RemoveListMMFilesFulltextIndex(TRI_fulltext_list_t* lis
 
   return list;
 }
-
-/// @brief return the number of entries
-uint32_t TRI_NumEntriesListMMFilesFulltextIndex(TRI_fulltext_list_t const* list) {
-  return GetNumEntries(list);
-}
-
-/// @brief return a pointer to the first list entry
-TRI_fulltext_list_entry_t* TRI_StartListMMFilesFulltextIndex(TRI_fulltext_list_t const* list) {
-  return GetStart(list);
-}
