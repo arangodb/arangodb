@@ -32,6 +32,11 @@
 namespace arangodb {
 namespace aql {
 
+struct CreateInvalidShadowRowHint {
+  // Forbid creating this via `{}`
+  explicit CreateInvalidShadowRowHint() = default;
+};
+
 /**
  * @brief One shadow row within an AqlItemBlock.
  *
@@ -50,6 +55,9 @@ namespace aql {
 
 class ShadowAqlItemRow {
  public:
+  explicit ShadowAqlItemRow(CreateInvalidShadowRowHint)
+    : _block(nullptr), _baseIndex(0) {}
+
   explicit ShadowAqlItemRow(
       // cppcheck-suppress passedByValue
       SharedAqlItemBlockPtr block, size_t baseIndex)
