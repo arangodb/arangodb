@@ -9,6 +9,18 @@ v3.5.2 (XXXX-XX-XX)
   `--server.scheduler-queue-size`, `--server.prio1-size` and `--server.maximal-queue-size`
   will now be honored and not exceeded.
 
+  The default queue sizes in the scheduler for requests buffering have
+  also been changed as follows:
+
+      request type        before      now
+      -----------------------------------
+      high priority          128     4096
+      medium priority    1048576     4096
+      low priority          4096     4096
+
+  The queue sizes can still be adjusted at server start using the above-
+  mentioned startup options.
+
 
 v3.5.1 (2019-09-24)
 -------------------
