@@ -60,7 +60,7 @@ arangodb::Result canUseAnalyzers( // validate
   arangodb::iresearch::IResearchLinkMeta const& meta, // metadata
   TRI_vocbase_t const& defaultVocbase // default vocbase
 ) {
-  auto& server = arangodb::application_features::ApplicationServer::server();
+  auto& server = defaultVocbase.server();
   auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
                         ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
                         : nullptr;

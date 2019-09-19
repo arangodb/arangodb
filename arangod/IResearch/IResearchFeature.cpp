@@ -39,6 +39,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "Containers.h"
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "IResearchCommon.h"
@@ -414,44 +415,33 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   addFunction(functions, { "ANALYZER", ".,.", flags, &dummyContextFunc });  // (filter expression, analyzer)
 }
 
-void registerIndexFactory(arangodb::application_features::ApplicationServer& server) {
+namespace {
+template <typename T>
+void registerSingleFactory(arangodb::application_features::ApplicationServer& server,
+                           arangodb::IndexTypeFactory const& factory) {
   auto const& indexType = arangodb::iresearch::DATA_SOURCE_TYPE.name();
-  if (!server.hasFeature<arangodb::EngineSelectorFeature>() ||
-      !server.getFeature<arangodb::EngineSelectorFeature>().selected()) {
-    LOG_TOPIC("a562d", WARN, arangodb::iresearch::TOPIC)
-        << "failed to find StorageEngine feature while registering index type '"
-        << indexType << "', skipping";
-    return;
+  if (server.hasFeature<T>()) {
+    auto& engine = server.getFeature<T>();
+    auto& engineFactory = const_cast<arangodb::IndexFactory&>(engine.indexFactory());
+    arangodb::Result res = engineFactory.emplace(indexType, factory);
+    if (!res.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          res.errorNumber(),
+          std::string("failure registering IResearch link factory with index "
+                      "factory from feature '") +
+              engine.name() + "': " + res.errorMessage());
+    }
   }
+}
+}  // namespace
 
-  auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
-  // ok to const-cast since this should only be called on startup
-  auto& indexFactory = const_cast<arangodb::IndexFactory&>(engine.indexFactory());
-
-  arangodb::Result res;
-  if (engine.name() == "ClusterEngine") {
-    res = indexFactory.emplace(indexType,
-                               arangodb::iresearch::IResearchLinkCoordinator::factory());
-  } else if (engine.name() == "MMFilesEngine") {
-    res = indexFactory.emplace(indexType,
-                               arangodb::iresearch::IResearchMMFilesLink::factory());
-  } else if (engine.name() == "RocksDBEngine") {
-    res = indexFactory.emplace(indexType,
-                               arangodb::iresearch::IResearchRocksDBLink::factory());
-  } else {
-    LOG_TOPIC("a532d", WARN, arangodb::iresearch::TOPIC)
-        << "unknown storage engine type '" << engine.name()
-        << "' while registering index type '" << indexType << "', skipping";
-    return;
-  }
-
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        res.errorNumber(),
-        std::string("failure registering IResearch link factory with index "
-                    "factory from feature '") +
-            engine.name() + "': " + res.errorMessage());
-  }
+void registerIndexFactory(arangodb::application_features::ApplicationServer& server) {
+  registerSingleFactory<arangodb::ClusterEngine>(
+      server, arangodb::iresearch::IResearchLinkCoordinator::factory());
+  registerSingleFactory<arangodb::MMFilesEngine>(
+      server, arangodb::iresearch::IResearchMMFilesLink::factory());
+  registerSingleFactory<arangodb::RocksDBEngine>(
+      server, arangodb::iresearch::IResearchRocksDBLink::factory());
 }
 
 void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
