@@ -1630,11 +1630,11 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   // copy all headers
   v8::Local<v8::Object> headers = v8::Object::New(isolate);
   for (auto const& it : response->header.meta()) {
-    v8::Local<v8::String> key = TRI_V8_STD_STRING(isolate, it.first);
-    v8::Local<v8::String> val = TRI_V8_STD_STRING(isolate, it.second);
-
-    headers->Set(key, val);
+    headers->Set(TRI_V8_STD_STRING(isolate, it.first),
+                 TRI_V8_STD_STRING(isolate, it.second));
   }
+  auto content = TRI_V8_STD_STRING(isolate, fuerte::to_string(response->contentType()));
+  headers->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ContentTypeHeader), content);
 
   result->Set(TRI_V8_ASCII_STRING(isolate, "headers"), headers);
 

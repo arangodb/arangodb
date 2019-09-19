@@ -101,6 +101,8 @@ std::string to_string(Message& message) {
 
     if (!req.header.meta().empty()) {
       ss << "meta:\n";
+      ss << "\t" << fu_content_type_key << " -:- " << to_string(req.header.contentType()) << "\n";
+      ss << "\t" << fu_accept_key << " -:- " << to_string(req.header.acceptType()) << "\n";
       for (auto const& item : req.header.meta()) {
         ss << "\t" << item.first << " -:- " << item.second << "\n";
       }
@@ -125,6 +127,7 @@ std::string to_string(Message& message) {
 
     if (!res.header.meta().empty()) {
       ss << "meta:\n";
+      ss << "\t" << fu_content_type_key << " -:- " << to_string(res.header.contentType()) << "\n";
       for (auto const& item : res.header.meta()) {
         ss << "\t" << item.first << " -:- " << item.second << "\n";
       }
