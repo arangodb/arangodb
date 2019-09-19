@@ -80,8 +80,8 @@ futures::Future<OperationResult> revisionOnCoordinator(std::string const& dbname
 /// @brief Warmup index caches on Shards
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> warmupOnCoordinator(std::string const& dbname,
-                                                     std::string const& cid);
+futures::Future<Result> warmupOnCoordinator(std::string const& dbname,
+                                            std::string const& cid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns figures for a sharded collection

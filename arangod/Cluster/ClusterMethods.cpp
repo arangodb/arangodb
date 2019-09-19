@@ -903,21 +903,21 @@ futures::Future<OperationResult> revisionOnCoordinator(std::string const& dbname
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
 
-futures::Future<OperationResult> warmupOnCoordinator(std::string const& dbname,
-                                                     std::string const& cid) {
+futures::Future<Result> warmupOnCoordinator(std::string const& dbname,
+                                            std::string const& cid) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
-    return futures::makeFuture(OperationResult(TRI_ERROR_SHUTTING_DOWN));
+    return futures::makeFuture(Result(TRI_ERROR_SHUTTING_DOWN));
   }
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, cid);
   if (collinfo == nullptr) {
-    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
+    return futures::makeFuture(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
 
   // If we get here, the sharding attributes are not only _key, therefore
@@ -950,7 +950,9 @@ futures::Future<OperationResult> warmupOnCoordinator(std::string const& dbname,
                                           // we don't care about response bodies, just that the requests succeeded
                                         });
   };
-  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+  return futures::collectAll(std::move(futures))
+      .thenValue(std::move(cb))
+      .thenValue([](OperationResult&& opRes) -> Result { return opRes.result; });
 }
 
 ////////////////////////////////////////////////////////////////////////////////

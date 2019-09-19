@@ -595,15 +595,15 @@ RestStatus RestCollectionHandler::handleCommandPut() {
         } else if (sub == "loadIndexesIntoMemory") {
           generateResponse = false;
           status = waitForFuture(
-              methods::Collections::warmup(_vocbase, *coll).thenValue([this](OperationResult&& opres) {
-                if (opres.fail()) {
-                  generateTransactionError(opres);
+              methods::Collections::warmup(_vocbase, *coll).thenValue([this, coll](Result&& res) {
+                if (res.fail()) {
+                  generateTransactionError(coll->name(), res, "");
                   return;
                 }
 
                 {
                   VPackObjectBuilder obj(&_builder, true);
-                  obj->add("result", VPackValue(opres.ok()));
+                  obj->add("result", VPackValue(res.ok()));
                 }
 
                 standardResponse();

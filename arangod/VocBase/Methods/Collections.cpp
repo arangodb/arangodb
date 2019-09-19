@@ -745,11 +745,11 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   return res;
 }
 
-futures::Future<OperationResult> Collections::warmup(TRI_vocbase_t& vocbase,
-                                                     LogicalCollection const& coll) {
+futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
+                                            LogicalCollection const& coll) {
   ExecContext const& exec = ExecContext::current();  // disallow expensive ops
   if (!exec.canUseCollection(coll.name(), auth::Level::RO)) {
-    return futures::makeFuture(OperationResult(TRI_ERROR_FORBIDDEN));
+    return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
   }
 
   if (ServerState::instance()->isCoordinator()) {
@@ -762,7 +762,7 @@ futures::Future<OperationResult> Collections::warmup(TRI_vocbase_t& vocbase,
   Result res = trx.begin();
 
   if (res.fail()) {
-    return futures::makeFuture(OperationResult(res));
+    return futures::makeFuture(res);
   }
 
   auto poster = [](std::function<void()> fn) -> bool {
@@ -781,10 +781,10 @@ futures::Future<OperationResult> Collections::warmup(TRI_vocbase_t& vocbase,
   if (queue->status() == TRI_ERROR_NO_ERROR) {
     res = trx.commit();
   } else {
-    return futures::makeFuture(OperationResult(queue->status()));
+    return futures::makeFuture(Result(queue->status()));
   }
 
-  return futures::makeFuture(OperationResult(res));
+  return futures::makeFuture(res);
 }
 
 futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {

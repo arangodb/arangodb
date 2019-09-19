@@ -2504,7 +2504,7 @@ static void JS_WarmupVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args)
       arangodb::methods::Collections::warmup(collection->vocbase(), *collection).get();
 
   if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res.result);
+    TRI_V8_THROW_EXCEPTION(res);
   }
   TRI_V8_RETURN_UNDEFINED();
 

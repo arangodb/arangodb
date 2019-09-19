@@ -122,8 +122,8 @@ struct Collections {
       double timeout                      // single-server drop timeout
   );
 
-  static futures::Future<OperationResult> warmup(TRI_vocbase_t& vocbase,
-                                                 LogicalCollection const& coll);
+  static futures::Future<Result> warmup(TRI_vocbase_t& vocbase,
+                                        LogicalCollection const& coll);
 
   static futures::Future<OperationResult> revisionId(Context& ctxt);
 
