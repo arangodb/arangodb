@@ -80,9 +80,6 @@ class MMFilesEngine final : public StorageEngine {
   // flush wal wait for collector
   void stop() override;
 
-  // minimum timeout for the synchronous replication
-  double minimumSyncReplicationTimeout() const override { return 0.5; }
-
   bool supportsDfdb() const override { return true; }
 
   bool useRawDocumentPointers() override { return true; }
@@ -152,6 +149,11 @@ class MMFilesEngine final : public StorageEngine {
 
   // database, collection and index management
   // -----------------------------------------
+
+  // return the path for all databases
+  std::string dataPath() const override {
+    return _databasePath;
+  }
 
   // return the path for a database
   std::string databasePath(TRI_vocbase_t const* vocbase) const override {

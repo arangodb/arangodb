@@ -328,11 +328,14 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
         }
       }
     }
-
     loops.push_back(std::make_unique<S2Loop>(vtx, S2Debug::DISABLE));
-    if (!loops.back()->IsValid()) {  // will check first and last for us
-      return Result(TRI_ERROR_BAD_PARAMETER, "Invalid loop in polygon");
+
+    S2Error error;
+    if (loops.back()->FindValidationError(&error)) {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    std::string("Invalid loop in polygon: ").append(error.text()));
     }
+    
     S2Loop* loop = loops.back().get();
     // normalization ensures that point orientation does not matter for Polygon
     // type the RFC recommends this for better compatibility
@@ -425,8 +428,10 @@ Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region)
       }
 
       loops.push_back(std::make_unique<S2Loop>(vtx, S2Debug::DISABLE));
-      if (!loops.back()->IsValid()) {  // will check first and last for us
-        return Result(TRI_ERROR_BAD_PARAMETER, "Invalid loop in polygon");
+      S2Error error;
+      if (loops.back()->FindValidationError(&error)) {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      std::string("Invalid loop in polygon: ").append(error.text()));
       }
       S2Loop* loop = loops.back().get();
       // normalization ensures that CCW orientation does not matter for Polygon
@@ -562,8 +567,10 @@ Result parseLoop(velocypack::Slice const& coords, bool geoJson, S2Loop& loop) {
     vertices.resize(vertices.size() - 1);  // remove redundant last vertex
   }
   loop.Init(vertices);
-  if (!loop.IsValid()) {  // will check first and last for us
-    return Result(TRI_ERROR_BAD_PARAMETER, "Invalid GeoJSON loop");
+  S2Error error;
+  if (loop.FindValidationError(&error)) {
+    return Result(TRI_ERROR_BAD_PARAMETER,
+                  std::string("Invalid loop: ").append(error.text()));
   }
   loop.Normalize();
 

@@ -93,6 +93,8 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
 
  private:
   bool _statistics;
+  bool _statisticsHistory;
+  bool _statisticsHistoryTouched;
 
   std::unique_ptr<stats::Descriptions> _descriptions;
   std::unique_ptr<StatisticsThread> _statisticsThread;

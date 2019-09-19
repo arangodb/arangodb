@@ -39,6 +39,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
+#include "Statistics/ServerStatistics.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
@@ -100,8 +101,9 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
 
   if (nestingLevel() == 0) { // result is valid
     // register with manager
-    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr);
+    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr, isReadOnlyTransaction());
     updateStatus(transaction::Status::RUNNING);
+    ServerStatistics::statistics()._transactionsStatistics._transactionsStarted++;
 
     setRegistered();
 
@@ -188,7 +190,7 @@ void RocksDBTransactionState::createTransaction() {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::TransactionOptions trxOpts;
   trxOpts.set_snapshot = true;
-  
+
   // unclear performance implications do not use for now
   // trxOpts.deadlock_detect = !hasHint(transaction::Hints::Hint::NO_DLD);
   if (isOnlyExclusiveTransaction()) {
@@ -336,7 +338,6 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
         coll->commitCounts(id(), postCommitSeq);
         committed = true;
       }
-
 #ifndef _WIN32
       // wait for sync if required, for all other platforms but Windows
       if (waitForSync()) {
@@ -391,6 +392,7 @@ Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTr
     if (res.ok()) {
       updateStatus(transaction::Status::COMMITTED);
       cleanupTransaction();  // deletes trx
+      ServerStatistics::statistics()._transactionsStatistics._transactionsCommitted++;
     } else {
       abortTransaction(activeTrx);  // deletes trx
     }
@@ -422,6 +424,7 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
     TRI_ASSERT(!_rocksTransaction && !_cacheTx && !_readSnapshot);
   }
 
+  ServerStatistics::statistics()._transactionsStatistics._transactionsAborted++;
   unuseCollections(nestingLevel());
   return result;
 }
@@ -593,6 +596,7 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
   }
 
   hasPerformedIntermediateCommit = true;
+  ServerStatistics::statistics()._transactionsStatistics._intermediateCommits++;
 
   TRI_IF_FAILURE("FailAfterIntermediateCommit") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

@@ -63,9 +63,6 @@ class ClusterEngine final : public StorageEngine {
   void prepare() override;
   void start() override;
 
-  // minimum timeout for the synchronous replication
-  double minimumSyncReplicationTimeout() const override { return 1.0; }
-
   bool supportsDfdb() const override { return false; }
   bool useRawDocumentPointers() override { return false; }
 
@@ -99,6 +96,10 @@ class ClusterEngine final : public StorageEngine {
 
   std::string versionFilename(TRI_voc_tick_t id) const override {
     // the cluster engine does not have any versioning information
+    return std::string();
+  }
+  std::string dataPath() const override {
+    // the cluster engine does not have any data path
     return std::string();
   }
   std::string databasePath(TRI_vocbase_t const* vocbase) const override {

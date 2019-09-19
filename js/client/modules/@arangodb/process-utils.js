@@ -165,6 +165,7 @@ let serverFailMessagesLocal = "";
 let cleanupDirectories = [];
 
 let BIN_DIR;
+let ARANGOBACKUP_BIN;
 let ARANGOBENCH_BIN;
 let ARANGODUMP_BIN;
 let ARANGOD_BIN;
@@ -226,6 +227,7 @@ function setupBinaries (builddir, buildType, configDir) {
     UNITTESTS_DIR = fs.join(UNITTESTS_DIR, buildType);
   }
 
+  ARANGOBACKUP_BIN = fs.join(BIN_DIR, 'arangobackup' + executableExt);
   ARANGOBENCH_BIN = fs.join(BIN_DIR, 'arangobench' + executableExt);
   ARANGODUMP_BIN = fs.join(BIN_DIR, 'arangodump' + executableExt);
   ARANGOD_BIN = fs.join(BIN_DIR, 'arangod' + executableExt);
@@ -254,7 +256,16 @@ function setupBinaries (builddir, buildType, configDir) {
     ARANGOIMPORT_BIN,
     ARANGORESTORE_BIN,
     ARANGOEXPORT_BIN,
-    ARANGOSH_BIN];
+    ARANGOSH_BIN
+  ];
+  
+  if (global.ARANGODB_CLIENT_VERSION) {
+    let version = global.ARANGODB_CLIENT_VERSION(true);
+    if (version.hasOwnProperty('enterprise-version')) {
+      checkFiles.push(ARANGOBACKUP_BIN);
+    }
+  }
+
   for (let b = 0; b < checkFiles.length; ++b) {
     if (!fs.isFile(checkFiles[b])) {
       throw new Error('unable to locate ' + checkFiles[b]);
@@ -646,7 +657,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
       instanceInfo.exitStatus = res;
     }
   } else {
-    res = executeExternalAndWait(cmd, args, false, timeout);
+    // V8 executeExternalAndWait thinks that timeout is in ms, so *100
+    res = executeExternalAndWait(cmd, args, false, timeout*100);
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
   }
@@ -859,6 +871,35 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, 
 // / @brief runs arangobench
 // //////////////////////////////////////////////////////////////////////////////
 
+function runArangoBackup (options, instanceInfo, which, cmds, rootDir, coreCheck = false) {
+  let args = {
+    'configuration': fs.join(CONFIG_DIR, 'arangobackup.conf'),
+    'log.foreground-tty': 'true',
+    'server.endpoint': instanceInfo.endpoint,
+    'server.connection-timeout': 10 // 5s default
+  };
+  if (options.username) {
+    args['server.username'] = options.username;
+  }
+  if (options.password) {
+    args['server.password'] = options.password;
+  }
+  
+  args = Object.assign(args, cmds);
+
+  if (!args.hasOwnProperty('verbose')) {
+    args['log.level'] = 'warning';
+  }
+  
+  args['flatCommands'] = [which];
+
+  return executeAndWait(ARANGOBACKUP_BIN, toArgv(args), options, 'arangobackup', instanceInfo.rootDir, false, coreCheck);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief runs arangobench
+// //////////////////////////////////////////////////////////////////////////////
+
 function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = false) {
   let args = {
     'configuration': fs.join(CONFIG_DIR, 'arangobench.conf'),
@@ -928,6 +969,24 @@ function dumpAgency(instanceInfo, options) {
 // //////////////////////////////////////////////////////////////////////////////
 function analyzeServerCrash (arangod, options, checkStr) {
   return crashUtils.analyzeCrash(ARANGOD_BIN, arangod, options, checkStr);
+}
+
+
+function checkUptime (instanceInfo, options) {
+  let ret = {};
+  let opts = Object.assign(makeAuthorizationHeaders(options),
+                           { method: 'GET' });
+  instanceInfo.arangods.forEach(arangod => {
+    let reply = download(arangod.url + '/_admin/statistics', '', opts);
+    if (reply.hasOwnProperty('error') || reply.code !== 200) {
+      throw new Error("unable to get statistics reply: " + JSON.stringify(reply));
+    }
+  
+    let statisticsReply = JSON.parse(reply.body);
+    
+    ret [ arangod.name ] = statisticsReply.server.uptime;
+  });
+  return ret;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1683,6 +1742,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
     throw x;
   }
   instanceInfo.role = role;
+  instanceInfo['name'] = role + ' - ' + port;
 
   if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
     if (!runProcdump(options, instanceInfo, rootDir, instanceInfo.pid)) {
@@ -1900,7 +1960,8 @@ exports.makeArgs = {
 exports.arangod = {
   check: {
     alive: checkArangoAlive,
-    instanceAlive: checkInstanceAlive
+    instanceAlive: checkInstanceAlive,
+    uptime: checkUptime
   },
   shutdown: shutdownArangod
 };
@@ -1917,7 +1978,8 @@ exports.run = {
   arangoImport: runArangoImport,
   arangoDumpRestore: runArangoDumpRestore,
   arangoDumpRestoreWithConfig: runArangoDumpRestoreCfg,
-  arangoBenchmark: runArangoBenchmark
+  arangoBenchmark: runArangoBenchmark,
+  arangoBackup: runArangoBackup
 };
 
 exports.shutdownInstance = shutdownInstance;

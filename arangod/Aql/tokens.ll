@@ -11,7 +11,6 @@
 %x DOUBLE_QUOTE
 %x COMMENT_SINGLE
 %x COMMENT_MULTI
-%x NOT
 
 %top{
 #include <stdint.h>
@@ -115,7 +114,7 @@ class Parser;
 }
 
 (?i:NOT) {
-  BEGIN(NOT);
+  return T_NOT;
 }
 
 (?i:AND) {
@@ -577,37 +576,6 @@ class Parser;
   /* line numbers are counted elsewhere already */
   yycolumn = 0;
 }
-
- /* ---------------------------------------------------------------------------
-  * special transformation for NOT IN to T_NIN
-  * --------------------------------------------------------------------------- */
-
-<NOT>(?i:IN) {
-  /* T_NOT + T_IN => T_NIN */
-  BEGIN(INITIAL);
-  return T_NIN;
-}
-
-<NOT>[\r\t\n ] {
-  /* ignore whitespace */
-}
-
-<NOT>. {
-  /* found something different to T_IN */
-  /* now push the character back into the input stream and return a T_NOT token */
-  BEGIN(INITIAL);
-  yyless(0);
-  /* must decrement offset by one character as we're pushing the char back onto the stack */
-  yyextra->decreaseOffset(1);
-  return T_NOT;
-}
-
-<NOT><<EOF>> {
-  /* make sure that we still return a T_NOT when we reach the end of the input */
-  BEGIN(INITIAL);
-  return T_NOT;
-}
-
 
 . {
   /* anything else is returned as it is */

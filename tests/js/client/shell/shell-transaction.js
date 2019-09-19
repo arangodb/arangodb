@@ -26,6 +26,8 @@
 // / @author Simon Grätzer
 // //////////////////////////////////////////////////////////////////////////////
 
+// tests for streaming transactions
+
 var jsunity = require('jsunity');
 var internal = require('internal');
 var arangodb = require('@arangodb');
@@ -1334,8 +1336,6 @@ function transactionCollectionsSuite () {
         }
 
         assertEqual(10, tc1.count());
-        assertEqual(10, tc2.count());
-
       } catch(err) {
         fail();
       } finally {

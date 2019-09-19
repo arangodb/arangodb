@@ -956,7 +956,7 @@ bool SynchronizeShard::first() {
 
     } catch (std::exception const& e) {
       std::stringstream error;
-      error << "synchronization of";
+      error << "synchronization of ";
       AppendShardInformationToMessage(database, shard, planId, startTime, error);
       error << " failed: " << e.what();
       LOG_TOPIC("1e576", ERR, Logger::MAINTENANCE) << error.str();

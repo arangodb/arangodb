@@ -114,9 +114,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual std::unique_ptr<PhysicalCollection> createPhysicalCollection(
       LogicalCollection& collection, velocypack::Slice const& info) = 0;
 
-  // minimum timeout for the synchronous replication
-  virtual double minimumSyncReplicationTimeout() const = 0;
-
   // status functionality
   // --------------------
 
@@ -147,6 +144,9 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   // return the absolute path for the VERSION file of a database
   virtual std::string versionFilename(TRI_voc_tick_t id) const = 0;
+
+  // return the path for the actual data
+  virtual std::string dataPath() const = 0;
 
   // return the path for a database
   virtual std::string databasePath(TRI_vocbase_t const* vocbase) const = 0;

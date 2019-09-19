@@ -24,18 +24,35 @@
 #ifndef ARANGOD_STATISTICS_SERVER_STATISTICS_H
 #define ARANGOD_STATISTICS_SERVER_STATISTICS_H 1
 
-class ServerStatistics {
- public:
-  static ServerStatistics statistics();
+#include <atomic>
+#include <memory>
 
-  static void initialize();
 
+struct TransactionStatistics {
+  TransactionStatistics() : _transactionsStarted(0), _transactionsAborted(0)
+                          , _transactionsCommitted(0), _intermediateCommits(0) {};
+
+  std::atomic<std::uint64_t> _transactionsStarted;
+  std::atomic<std::uint64_t> _transactionsAborted;
+  std::atomic<std::uint64_t> _transactionsCommitted;
+  std::atomic<std::uint64_t> _intermediateCommits;
+};
+
+struct ServerStatistics {
+
+  ServerStatistics(ServerStatistics const&) = delete;
+  ServerStatistics(ServerStatistics &&) = delete;
+  ServerStatistics& operator=(ServerStatistics const&) = delete;
+  ServerStatistics& operator=(ServerStatistics &&) = delete;
+
+  static ServerStatistics& statistics();
+  static void initialize(double);
+
+  TransactionStatistics _transactionsStatistics;
   double _startTime;
-  double _uptime;
+  std::atomic<double> _uptime;
 
- private:
-  static double START_TIME;
-  ServerStatistics() : _startTime(0.0), _uptime(0.0) {}
+  ServerStatistics(double start) : _transactionsStatistics(), _startTime(start), _uptime(0.0) {}
 };
 
 #endif

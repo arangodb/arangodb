@@ -247,7 +247,7 @@ void SocketTask::resetKeepAlive() {
   _keepAliveTimer->async_wait([self](const asio_ns::error_code& ec) {
     if (!ec) {  // error will be true if timer was canceled
       if (auto s = self.lock()) {
-        LOG_TOPIC("f0948", INFO, Logger::COMMUNICATION)
+        LOG_TOPIC("f0948", DEBUG, Logger::COMMUNICATION)
           << "keep alive timeout - closing stream!";
         s->closeStream();
       }

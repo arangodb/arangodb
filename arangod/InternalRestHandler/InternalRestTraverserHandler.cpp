@@ -28,6 +28,7 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
 #include "Cluster/TraverserEngineRegistry.h"
+#include "Rest/GeneralResponse.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
 
@@ -69,7 +70,7 @@ RestStatus InternalRestTraverserHandler::execute() {
         break;
     }
   } catch (arangodb::basics::Exception const& ex) {
-    generateError(ResponseCode(ex.code()), ex.code(), ex.what());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::exception const& ex) {
     generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
