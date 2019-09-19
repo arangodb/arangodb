@@ -1,3 +1,10 @@
+v3.5.2 (xxxx-xx-xx)
+
+* Fix strange shutdown hanger which came from the fact that currently
+  libgcc/libmusl wrongly detect multi-threadedness in statically linked
+  executables.
+
+
 v3.5.1 (2019-09-24)
 -------------------
 
