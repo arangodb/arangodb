@@ -255,7 +255,7 @@ static int StringifyJson(TRI_string_buffer_t* buffer, TRI_json_t const* object, 
 /// @brief initialize a null object in place
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitNull(TRI_json_t* result) {
+static void InitNull(TRI_json_t* result) {
   result->_type = TRI_JSON_NULL;
 }
 
@@ -263,7 +263,7 @@ static inline void InitNull(TRI_json_t* result) {
 /// @brief initialize a boolean object in place
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitBoolean(TRI_json_t* result, bool value) {
+static void InitBoolean(TRI_json_t* result, bool value) {
   result->_type = TRI_JSON_BOOLEAN;
   result->_value._boolean = value;
 }
@@ -272,7 +272,7 @@ static inline void InitBoolean(TRI_json_t* result, bool value) {
 /// @brief initialize a number object in place
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitNumber(TRI_json_t* result, double value) {
+static void InitNumber(TRI_json_t* result, double value) {
   // check if the number can be represented in JSON
   if (std::isnan(value) || value == HUGE_VAL || value == -HUGE_VAL) {
     result->_type = TRI_JSON_NULL;
@@ -286,7 +286,7 @@ static inline void InitNumber(TRI_json_t* result, double value) {
 /// @brief initialize a string object in place
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitString(TRI_json_t* result, char* value, size_t length) {
+static void InitString(TRI_json_t* result, char* value, size_t length) {
   TRI_ASSERT(value != nullptr);
 
   result->_type = TRI_JSON_STRING;
@@ -295,22 +295,10 @@ static inline void InitString(TRI_json_t* result, char* value, size_t length) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize a string reference object in place
-////////////////////////////////////////////////////////////////////////////////
-
-static inline void InitStringReference(TRI_json_t* result, char const* value, size_t length) {
-  TRI_ASSERT(value != nullptr);
-
-  result->_type = TRI_JSON_STRING_REFERENCE;
-  result->_value._string.data = (char*)value;
-  result->_value._string.length = (uint32_t)length + 1;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize an array in place
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitArray(TRI_json_t* result, size_t initialSize) {
+static void InitArray(TRI_json_t* result, size_t initialSize) {
   result->_type = TRI_JSON_ARRAY;
 
   if (initialSize == 0) {
@@ -324,7 +312,7 @@ static inline void InitArray(TRI_json_t* result, size_t initialSize) {
 /// @brief initialize an object in place
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitObject(TRI_json_t* result, size_t initialSize) {
+static void InitObject(TRI_json_t* result, size_t initialSize) {
   result->_type = TRI_JSON_OBJECT;
 
   if (initialSize == 0) {
@@ -340,7 +328,7 @@ static inline void InitObject(TRI_json_t* result, size_t initialSize) {
 /// @brief determine whether a JSON value is of type string
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool IsString(TRI_json_t const* json) {
+static bool IsString(TRI_json_t const* json) {
   return (json != nullptr &&
           (json->_type == TRI_JSON_STRING || json->_type == TRI_JSON_STRING_REFERENCE) &&
           json->_value._string.data != nullptr);
