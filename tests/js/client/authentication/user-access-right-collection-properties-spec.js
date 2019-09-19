@@ -113,7 +113,9 @@ describe('User Rights Management', () => {
                     (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
                   try {
                     let col = db._collection(colName);
+
                     col.ensureHashIndex('foo');
+		    fail();
                   } catch (e) {
                     expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
                   }
@@ -139,6 +141,7 @@ describe('User Rights Management', () => {
                     let col = db._collection(colName);
                     let wfs = col.properties().waitForSync;
                     col.properties({waitForSync: !wfs});
+                    fail();
                   } catch (e) {
                     expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
                   }
