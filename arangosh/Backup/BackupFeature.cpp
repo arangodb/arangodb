@@ -324,7 +324,6 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
                                 arangodb::BackupFeature::Options const& options,
                                 arangodb::ClientManager& clientManager) {
   arangodb::Result result;
-
   double originalUptime = 0.0;
   if (options.maxWaitForRestart > 0.0) {
     result = ::getUptime(client, originalUptime);
@@ -646,7 +645,7 @@ arangodb::Result executeTransfere(arangodb::httpclient::SimpleHttpClient& client
 namespace arangodb {
 
 BackupFeature::BackupFeature(application_features::ApplicationServer& server, int& exitCode)
-    : ApplicationFeature(server, BackupFeature::featureName()), _clientManager{Logger::BACKUP}, _exitCode{exitCode} {
+    : ApplicationFeature(server, BackupFeature::featureName()), _clientManager{server, Logger::BACKUP}, _exitCode{exitCode} {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<ClientFeature>();

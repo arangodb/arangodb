@@ -22,10 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicationApplierConfiguration.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -97,9 +99,9 @@ ReplicationApplierConfiguration& ReplicationApplierConfiguration::operator=(
   _incremental = other._incremental;
   _verbose = other._verbose;
   _restrictType = other._restrictType;
-  for (auto& c : other._restrictCollections) {
-    _restrictCollections.emplace(c);
-  }
+  _restrictCollections.clear();
+  _restrictCollections.insert(other._restrictCollections.begin(),
+                              other._restrictCollections.end());
 
   return *this;
 }
@@ -186,6 +188,7 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool i
 
   builder.add("restrictCollections", VPackValue(VPackValueType::Array));
   for (std::string const& it : _restrictCollections) {
+    LOG_DEVEL << "printing '" << it << "'";
     builder.add(VPackValue(it));
   }
   builder.close();  // restrictCollections
@@ -352,6 +355,7 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
 
     for (auto const& it : VPackArrayIterator(value)) {
       if (it.isString()) {
+        LOG_DEVEL << "adding '" << it.copyString() << "'";
         configuration._restrictCollections.emplace(it.copyString());
       }
     }

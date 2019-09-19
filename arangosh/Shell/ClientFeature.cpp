@@ -233,8 +233,7 @@ void ClientFeature::readPassword() {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   try {
-    auto& server = ApplicationServer::server();
-    ConsoleFeature& console = server.getFeature<ConsoleFeature>();
+    ConsoleFeature& console = server().getFeature<ConsoleFeature>();
 
     if (console.isEnabled()) {
       _password = console.readPassword("Please specify a password: ");
@@ -252,8 +251,7 @@ void ClientFeature::readJwtSecret() {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   try {
-    auto& server = ApplicationServer::server();
-    ConsoleFeature& console = server.getFeature<ConsoleFeature>();
+    ConsoleFeature& console = server().getFeature<ConsoleFeature>();
 
     if (console.isEnabled()) {
       _jwtSecret = console.readPassword("Please specify the JWT secret: ");

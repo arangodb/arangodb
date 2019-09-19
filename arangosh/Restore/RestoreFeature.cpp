@@ -281,7 +281,8 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
   using arangodb::velocypack::ObjectBuilder;
 
   // get client feature for configuration info
-  arangodb::ClientFeature& client = server.getFeature<arangodb::ClientFeature>();
+  arangodb::ClientFeature& client =
+      server.getFeature<arangodb::HttpEndpointProvider, arangodb::ClientFeature>();
 
   // get httpclient by hand rather than using manager, to bypass any built-in
   // checks which will fail if the database doesn't exist
@@ -1119,7 +1120,7 @@ RestoreFeature::JobData::JobData(ManagedDirectory& d, RestoreFeature& f,
 
 RestoreFeature::RestoreFeature(application_features::ApplicationServer& server, int& exitCode)
     : ApplicationFeature(server, RestoreFeature::featureName()),
-      _clientManager{Logger::RESTORE},
+      _clientManager{server, Logger::RESTORE},
       _clientTaskQueue{server, ::processJob, ::handleJobResult},
       _exitCode{exitCode} {
   requiresElevatedPrivileges(false);

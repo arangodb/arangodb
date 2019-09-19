@@ -570,7 +570,7 @@ DumpFeature::JobData::JobData(ManagedDirectory& dir, DumpFeature& feat,
 
 DumpFeature::DumpFeature(application_features::ApplicationServer& server, int& exitCode)
     : ApplicationFeature(server, DumpFeature::featureName()),
-      _clientManager{Logger::DUMP},
+      _clientManager{server, Logger::DUMP},
       _clientTaskQueue{server, ::processJob, ::handleJobResult},
       _exitCode{exitCode} {
   requiresElevatedPrivileges(false);

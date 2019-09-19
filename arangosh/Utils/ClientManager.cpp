@@ -23,6 +23,7 @@
 
 #include "ClientManager.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Logger/Logger.h"
@@ -70,16 +71,16 @@ arangodb::Result getHttpErrorMessage(arangodb::httpclient::SimpleHttpResult* res
 
 namespace arangodb {
 
-ClientManager::ClientManager(LogTopic& topic) : 
-    _topic{topic} {}
+ClientManager::ClientManager(application_features::ApplicationServer& server, LogTopic& topic)
+    : _server(server), _topic{topic} {}
 
 ClientManager::~ClientManager() {}
 
 Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpClient>& httpClient,
                                          bool force, bool logServerVersion,
                                          bool logDatabaseNotFound, bool quiet) {
-  auto& server = application_features::ApplicationServer::server();
-  ClientFeature& client = server.getFeature<HttpEndpointProvider, ClientFeature>();
+  TRI_ASSERT(_server.hasFeature<HttpEndpointProvider>());
+  ClientFeature& client = _server.getFeature<HttpEndpointProvider, ClientFeature>();
 
   try {
     httpClient = client.createHttpClient();
@@ -105,7 +106,6 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
           << dbName << "', username: '" << client.username() << "'";
       LOG_TOPIC("b1ad6", ERR, _topic) << "Error message: '" << httpClient->getErrorMessage() << "'";
     }
-
     return {errorCode};
   }
 
